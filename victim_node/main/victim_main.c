@@ -32,6 +32,7 @@
 #include "mesh_setup.h"
 #include "phase_listener.h"
 #include "csv_logger.h"
+#include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
 static const char *TAG = "VICTIM_MAIN";
@@ -235,6 +236,22 @@ static void telemetry_task(void *arg)
 
 static void build_run_id(char *buf, size_t len)
 {
-    int64_t ts = esp_timer_get_time() / 1000000LL;
-    snprintf(buf, len, "RUN_%lld", (long long)ts);
+    nvs_handle_t h;
+    uint32_t run_num = 0;
+
+    esp_err_t err = nvs_open("nis16", NVS_READWRITE, &h);
+    if (err == ESP_OK) {
+        /* Read current counter — default 0 if key doesn't exist yet */
+        nvs_get_u32(h, "run_num", &run_num);
+        run_num++;
+        nvs_set_u32(h, "run_num", run_num);
+        nvs_commit(h);
+        nvs_close(h);
+    } else {
+        ESP_LOGW(TAG, "NVS open failed (%s) — using boot-time fallback",
+                 esp_err_to_name(err));
+        run_num = (uint32_t)(esp_timer_get_time() / 1000000LL);
+    }
+
+    snprintf(buf, len, "RUN_%03lu", (unsigned long)run_num);
 }
