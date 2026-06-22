@@ -35,7 +35,13 @@ extern "C" {
  *
  * Writes the CSV header row as the first line of the file.
  */
-esp_err_t csv_logger_init(const char *node_id, const char *run_id);
+typedef enum {
+    CSV_ROLE_VICTIM = 0,   /* 11-column telemetry rows only        */
+    CSV_ROLE_ROOT   = 1,   /* opens two files: telemetry + arrivals */
+} csv_logger_role_t;
+
+esp_err_t csv_logger_init(const char *node_id, const char *run_id,
+                           csv_logger_role_t role);
 
 /* ── Victim / Common telemetry row ──────────────────────────────────────── */
 
