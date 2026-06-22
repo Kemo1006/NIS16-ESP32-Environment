@@ -1,6 +1,6 @@
 /**
  * @file csv_logger.c
- * @brief LittleFS-backed CSV telemetry logger implementation.
+ * @brief SPIFFS-backed CSV telemetry logger implementation.
  *
  * NIS16 — CTTHES2 Milestone 1 — Common Module
  */
@@ -22,10 +22,20 @@
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
-static FILE  *s_log_fp        = NULL;   /* telemetry file (all roles)  */
-static FILE  *s_arrivals_fp   = NULL;   /* probe arrivals (root only)  */
-static char   s_filepath[128]      = {0};
-static char   s_arrivals_path[128] = {0};
+static const char *TAG = "CSV_LOGGER";
+
+static FILE    *s_log_fp          = NULL;   /* telemetry file (all roles)   */
+static FILE    *s_arrivals_fp     = NULL;   /* probe arrivals (root only)   */
+static char     s_filepath[128]   = {0};    /* path of telemetry file       */
+static char     s_arrivals_path[128] = {0}; /* path of arrivals file        */
+static uint32_t s_row_count       = 0;     /* rows since last flush         */
+static bool     s_mounted         = false;
+
+/* UART port used for log export */
+#define EXPORT_UART     UART_NUM_0
+#define EXPORT_BUF_SIZE 512
+
+/* ── CSV headers ─────────────────────────────────────────────────────────── */
 
 static const char *TELEMETRY_HEADER =
     "timestamp_us,node_id,role,layer,parent_mac,"
@@ -37,37 +47,19 @@ static const char *PROBE_ARRIVAL_HEADER =
     "rssi_dbm,retry_count,tx_count,probes_received,"
     "phase_id,gt_label,src_mac,seq_num,latency_us\n";
 
-static const char *TAG = "CSV_LOGGER";
-
-static FILE  *s_log_fp        = NULL;
-static char   s_filepath[128] = {0};
-static uint32_t s_row_count   = 0;   /* rows written since last flush */
-static bool   s_mounted       = false;
-
-/* UART port used for log export */
-#define EXPORT_UART     UART_NUM_0
-#define EXPORT_BUF_SIZE 512
-
-/* ── CSV header strings ──────────────────────────────────────────────────── */
-
-/* Extra header for root probe-arrival rows */
-static const char *PROBE_ARRIVAL_HEADER =
-    "timestamp_us,node_id,role,layer,parent_mac,"
-    "rssi_dbm,retry_count,tx_count,probes_received,"
-    "phase_id,gt_label,src_mac,seq_num,latency_us\n";
-
-/* ── Forward declarations ─────────────────────────────────────────────────── */
+/* ── Forward declarations ────────────────────────────────────────────────── */
 static void serial_export_task(void *arg);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Public API — Initialisation
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-esp_err_t csv_logger_init(const char *node_id, const char *run_id)
+esp_err_t csv_logger_init(const char *node_id, const char *run_id,
+                           csv_logger_role_t role)
 {
     esp_err_t ret;
 
-    /* ── 1. Mount LittleFS ───────────────────────────────────────────────── */
+    /* ── 1. Mount SPIFFS (once) ──────────────────────────────────────────── */
     if (!s_mounted) {
         esp_vfs_spiffs_conf_t spiffs_cfg = {
             .base_path              = FS_MOUNT_POINT,
@@ -88,50 +80,54 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id)
                  (unsigned)(total / 1024), (unsigned)(used / 1024));
     }
 
-    /* ── 2. Build file path ──────────────────────────────────────────────── */
+    /* ── 2. Open telemetry file ──────────────────────────────────────────── */
     snprintf(s_filepath, sizeof(s_filepath),
-             "%s/%s_%s.csv", FS_MOUNT_POINT, node_id, run_id);
-    ESP_LOGI(TAG, "Log file: %s", s_filepath);
+             "%s/%s_%s_telem.csv", FS_MOUNT_POINT, node_id, run_id);
+    ESP_LOGI(TAG, "Telemetry file: %s", s_filepath);
 
-    /* ── 3. Open file (create or append) ─────────────────────────────────── */
-    bool file_exists = false;
     {
         struct stat st;
-        file_exists = (stat(s_filepath, &st) == 0);
+        bool exists = (stat(s_filepath, &st) == 0);
+        s_log_fp = fopen(s_filepath, "a");
+        if (!s_log_fp) {
+            ESP_LOGE(TAG, "Failed to open telemetry file: %s", s_filepath);
+            return ESP_FAIL;
+        }
+        if (!exists) {
+            fputs(TELEMETRY_HEADER, s_log_fp);
+        }
     }
 
-    s_log_fp = fopen(s_filepath, "a");
-    if (!s_log_fp) {
-        ESP_LOGE(TAG, "Failed to open log file: %s", s_filepath);
-        return ESP_FAIL;
-    }
+    /* ── 3. Open arrivals file (root only) ───────────────────────────────── */
+    if (role == CSV_ROLE_ROOT) {
+        snprintf(s_arrivals_path, sizeof(s_arrivals_path),
+                 "%s/%s_%s_arrivals.csv", FS_MOUNT_POINT, node_id, run_id);
+        ESP_LOGI(TAG, "Arrivals file:  %s", s_arrivals_path);
 
-    /* ── 4. Write header only if the file is brand-new ───────────────────── */
-    if (!file_exists) {
-        /*
-         * Write the broader probe-arrival header — it is a superset of the
-         * telemetry header.  The root uses this file for both telemetry rows
-         * and probe-arrival rows; victim nodes only write telemetry rows (the
-         * extra columns just remain absent from those rows).
-         *
-         * For strict schema separation, callers may pass a role flag; for
-         * Milestone 1 the single combined header is sufficient.
-         */
-        fputs(PROBE_ARRIVAL_HEADER, s_log_fp);
+        struct stat st;
+        bool exists = (stat(s_arrivals_path, &st) == 0);
+        s_arrivals_fp = fopen(s_arrivals_path, "a");
+        if (!s_arrivals_fp) {
+            ESP_LOGE(TAG, "Failed to open arrivals file: %s", s_arrivals_path);
+            fclose(s_log_fp);
+            s_log_fp = NULL;
+            return ESP_FAIL;
+        }
+        if (!exists) {
+            fputs(PROBE_ARRIVAL_HEADER, s_arrivals_fp);
+        }
     }
 
     s_row_count = 0;
-    ESP_LOGI(TAG, "Logger ready (file_existed=%d).", (int)file_exists);
+    ESP_LOGI(TAG, "Logger ready. Role: %s",
+             role == CSV_ROLE_ROOT ? "root" : "victim");
 
 #if CSV_EXPORT_ON_INIT
-    /* Debug helper: start serial export task immediately so host tools can
-     * request logs over USB without waiting for experiment end. Enable only
-     * in debug builds (see mesh_config.h). */
     esp_err_t rc = csv_logger_start_export_task();
     if (rc == ESP_OK) {
         ESP_LOGI(TAG, "CSV export task started on init (debug).");
     } else {
-        ESP_LOGW(TAG, "CSV export task failed to start on init: %s", esp_err_to_name(rc));
+        ESP_LOGW(TAG, "CSV export task failed to start: %s", esp_err_to_name(rc));
     }
 #endif
 
@@ -143,7 +139,7 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id)
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 esp_err_t csv_logger_append_telemetry(
-    int64_t    timestamp_us,
+    int64_t     timestamp_us,
     const char *node_id,
     const char *role_str,
     int         layer,
@@ -179,7 +175,7 @@ esp_err_t csv_logger_append_telemetry(
     );
 
     if (n < 0) {
-        ESP_LOGE(TAG, "fprintf failed");
+        ESP_LOGE(TAG, "fprintf (telemetry) failed");
         return ESP_FAIL;
     }
 
@@ -193,7 +189,7 @@ esp_err_t csv_logger_append_telemetry(
 }
 
 esp_err_t csv_logger_append_probe_arrival(
-    int64_t    timestamp_us,
+    int64_t     timestamp_us,
     const char *node_id,
     int         layer,
     uint8_t     parent_mac[6],
@@ -207,7 +203,11 @@ esp_err_t csv_logger_append_probe_arrival(
     uint32_t    seq_num,
     int64_t     latency_us)
 {
-    if (!s_log_fp) return ESP_ERR_INVALID_STATE;
+    if (!s_arrivals_fp) {
+        ESP_LOGE(TAG, "append_probe_arrival called but arrivals file not open "
+                      "(was csv_logger_init called with CSV_ROLE_ROOT?)");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     char parent_str[18], src_str[18];
     snprintf(parent_str, sizeof(parent_str),
@@ -219,7 +219,7 @@ esp_err_t csv_logger_append_probe_arrival(
              src_mac[0], src_mac[1], src_mac[2],
              src_mac[3], src_mac[4], src_mac[5]);
 
-    int n = fprintf(s_log_fp,
+    int n = fprintf(s_arrivals_fp,
         "%lld,%s,root,%d,%s,%d,%lu,%lu,%lu,%u,%u,%s,%lu,%lld\n",
         (long long)timestamp_us,
         node_id,
@@ -241,10 +241,9 @@ esp_err_t csv_logger_append_probe_arrival(
         return ESP_FAIL;
     }
 
-    s_row_count++;
+    /* Flush arrivals on the same cadence as telemetry. */
     if (s_row_count >= LOGGER_FLUSH_RECORDS) {
-        fflush(s_log_fp);
-        s_row_count = 0;
+        fflush(s_arrivals_fp);
     }
 
     return ESP_OK;
@@ -258,6 +257,7 @@ esp_err_t csv_logger_flush(void)
 {
     if (!s_log_fp) return ESP_ERR_INVALID_STATE;
     fflush(s_log_fp);
+    if (s_arrivals_fp) fflush(s_arrivals_fp);
     s_row_count = 0;
     return ESP_OK;
 }
@@ -265,10 +265,19 @@ esp_err_t csv_logger_flush(void)
 esp_err_t csv_logger_close(void)
 {
     if (!s_log_fp) return ESP_ERR_INVALID_STATE;
+
     fflush(s_log_fp);
     fclose(s_log_fp);
     s_log_fp = NULL;
-    ESP_LOGI(TAG, "Log file closed: %s", s_filepath);
+    ESP_LOGI(TAG, "Telemetry file closed: %s", s_filepath);
+
+    if (s_arrivals_fp) {
+        fflush(s_arrivals_fp);
+        fclose(s_arrivals_fp);
+        s_arrivals_fp = NULL;
+        ESP_LOGI(TAG, "Arrivals file closed: %s", s_arrivals_path);
+    }
+
     return ESP_OK;
 }
 
@@ -298,61 +307,89 @@ esp_err_t csv_logger_start_export_task(void)
     return ESP_OK;
 }
 
-/* ── Serial export task implementation ───────────────────────────────────── */
+/* ── Serial export task ──────────────────────────────────────────────────── */
 
 static void serial_export_task(void *arg)
 {
-    ESP_LOGI(TAG, "Serial export task waiting for EXPORT_LOGS command...");
+    ESP_LOGI(TAG, "Serial export task ready. Commands: "
+                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | LIST_FILES");
 
-    /* Re-use UART0 (USB-Serial) which is already initialised by IDF. */
     char cmd_buf[32] = {0};
     int  cmd_idx     = 0;
 
     while (true) {
         uint8_t ch = 0;
-        int len = uart_read_bytes(EXPORT_UART, &ch, 1,
-                                  pdMS_TO_TICKS(100));
+        int len = uart_read_bytes(EXPORT_UART, &ch, 1, pdMS_TO_TICKS(100));
         if (len <= 0) continue;
 
         if (ch == '\n' || ch == '\r') {
             cmd_buf[cmd_idx] = '\0';
 
-            /* ── Command: EXPORT_LOGS ─────────────────────────────────── */
+            /* ── EXPORT_LOGS — stream telemetry CSV ───────────────────── */
             if (strcmp(cmd_buf, "EXPORT_LOGS") == 0) {
-                ESP_LOGI(TAG, "EXPORT_LOGS received — streaming %s", s_filepath);
-
+                ESP_LOGI(TAG, "EXPORT_LOGS — streaming %s", s_filepath);
                 FILE *fp = fopen(s_filepath, "r");
                 if (!fp) {
-                    uart_write_bytes(EXPORT_UART,
-                                     "ERROR:FILE_NOT_FOUND\n", 21);
+                    uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
                 } else {
                     uart_write_bytes(EXPORT_UART, "READY_TO_SEND\n", 14);
-
                     char line[256];
                     while (fgets(line, sizeof(line), fp)) {
                         uart_write_bytes(EXPORT_UART, line, strlen(line));
                     }
                     fclose(fp);
                     uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
-                    ESP_LOGI(TAG, "File streamed successfully.");
+                    ESP_LOGI(TAG, "Telemetry file streamed.");
                 }
 
-            /* ── Command: DELETE_LOGS ────────────────────────────────── */
+            /* ── EXPORT_ARRIVALS — stream arrivals CSV (root only) ────── */
+            } else if (strcmp(cmd_buf, "EXPORT_ARRIVALS") == 0) {
+                ESP_LOGI(TAG, "EXPORT_ARRIVALS — streaming %s", s_arrivals_path);
+                if (s_arrivals_path[0] == '\0') {
+                    uart_write_bytes(EXPORT_UART, "ERROR:NOT_ROOT_NODE\n", 20);
+                } else {
+                    FILE *fp = fopen(s_arrivals_path, "r");
+                    if (!fp) {
+                        uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
+                    } else {
+                        uart_write_bytes(EXPORT_UART, "READY_TO_SEND\n", 14);
+                        char line[256];
+                        while (fgets(line, sizeof(line), fp)) {
+                            uart_write_bytes(EXPORT_UART, line, strlen(line));
+                        }
+                        fclose(fp);
+                        uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
+                        ESP_LOGI(TAG, "Arrivals file streamed.");
+                    }
+                }
+
+            /* ── DELETE_LOGS — erase both files ──────────────────────── */
             } else if (strcmp(cmd_buf, "DELETE_LOGS") == 0) {
-                if (remove(s_filepath) == 0) {
+                bool ok = true;
+                if (remove(s_filepath) != 0) {
+                    ESP_LOGE(TAG, "Failed to delete %s", s_filepath);
+                    ok = false;
+                }
+                if (s_arrivals_path[0] != '\0' && remove(s_arrivals_path) != 0) {
+                    ESP_LOGE(TAG, "Failed to delete %s", s_arrivals_path);
+                    ok = false;
+                }
+                if (ok) {
                     uart_write_bytes(EXPORT_UART, "LOGS_DELETED\n", 13);
-                    ESP_LOGI(TAG, "Log file deleted.");
+                    ESP_LOGI(TAG, "Log files deleted.");
                 } else {
                     uart_write_bytes(EXPORT_UART, "ERROR:DELETE_FAILED\n", 20);
-                    ESP_LOGE(TAG, "Failed to delete log file.");
                 }
 
-            /* ── Command: LIST_FILES ─────────────────────────────────── */
+            /* ── LIST_FILES — print both file paths ──────────────────── */
             } else if (strcmp(cmd_buf, "LIST_FILES") == 0) {
-                /* Convenience command: list all CSV files on the partition */
                 char out[160];
                 snprintf(out, sizeof(out), "FILE:%s\n", s_filepath);
                 uart_write_bytes(EXPORT_UART, out, strlen(out));
+                if (s_arrivals_path[0] != '\0') {
+                    snprintf(out, sizeof(out), "FILE:%s\n", s_arrivals_path);
+                    uart_write_bytes(EXPORT_UART, out, strlen(out));
+                }
                 uart_write_bytes(EXPORT_UART, "END_LIST\n", 9);
             }
 
