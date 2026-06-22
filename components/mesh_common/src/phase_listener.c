@@ -130,7 +130,7 @@ void phase_listener_broadcast(uint8_t phase_id)
 
     for (int i = 0; i < PHASE_BROADCAST_REPEAT; i++) {
         esp_err_t err = esp_mesh_send(NULL, &mdata,
-                                      MESH_DATA_P2P | MESH_DATA_TODS,
+                                      MESH_DATA_P2P | MESH_DATA_FROMDS,
                                       NULL, 0);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "Broadcast send failed (iter %d): %s",
