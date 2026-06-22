@@ -22,6 +22,21 @@
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
+static FILE  *s_log_fp        = NULL;   /* telemetry file (all roles)  */
+static FILE  *s_arrivals_fp   = NULL;   /* probe arrivals (root only)  */
+static char   s_filepath[128]      = {0};
+static char   s_arrivals_path[128] = {0};
+
+static const char *TELEMETRY_HEADER =
+    "timestamp_us,node_id,role,layer,parent_mac,"
+    "rssi_dbm,retry_count,tx_count,probes_count,"
+    "phase_id,gt_label\n";
+
+static const char *PROBE_ARRIVAL_HEADER =
+    "timestamp_us,node_id,role,layer,parent_mac,"
+    "rssi_dbm,retry_count,tx_count,probes_received,"
+    "phase_id,gt_label,src_mac,seq_num,latency_us\n";
+
 static const char *TAG = "CSV_LOGGER";
 
 static FILE  *s_log_fp        = NULL;
