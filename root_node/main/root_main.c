@@ -79,7 +79,7 @@ void app_main(void)
     ESP_ERROR_CHECK(phase_listener_start());
 
     /* ── 3. Logger ───────────────────────────────────────────────────────── */
-    ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id));
+    ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_ROOT));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
     /* ── 4. Start background tasks ───────────────────────────────────────── */
