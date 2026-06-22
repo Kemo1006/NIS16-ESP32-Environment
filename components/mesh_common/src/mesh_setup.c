@@ -192,13 +192,25 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
      * resolves it. Must be called after esp_wifi_start(), before
      * esp_mesh_start().
      */
-     /* Skipping esp_mesh_set_switch_parent_paras due to runtime incompatibilities
-      * observed on some ESP-IDF variants (returns ESP_ERR_MESH_ARGUMENT and leaves
-      * the internal RSSI ladder zeroed). Rely on disabling power-save (esp_mesh_disable_ps
-      * and esp_wifi_set_ps(WIFI_PS_NONE)) and mesh defaults instead. If future
-      * testing shows a need, reintroduce tuned parameters behind an IDF-version
-      * check. */
-     ESP_LOGI(TAG, "Not setting switch_parent_paras; using driver power-save disable instead.");
+    /*
+    * Explicitly set the RSSI threshold ladder for parent selection.
+    * In routerless mode on ESP-IDF 5.x the defaults do not initialize
+    * correctly — the ladder stays at <0,0,0> causing the victim to reject
+    * every parent candidate.
+    */
+    mesh_switch_parent_t switch_paras = {
+        .select_rssi  = -78,   /* preferred parent threshold (Table 3.2) */
+        .backoff_rssi = -85,   /* trigger parent switching below this    */
+    };
+    esp_err_t _sp = esp_mesh_set_switch_parent_paras(&switch_paras);
+    if (_sp != ESP_OK) {
+        ESP_LOGW(TAG, "esp_mesh_set_switch_parent_paras failed: %s",
+                esp_err_to_name(_sp));
+    } else {
+        ESP_LOGI(TAG, "RSSI ladder set: select=%d backoff=%d",
+                switch_paras.select_rssi,
+                switch_paras.backoff_rssi);
+    }
 #endif
 
     ESP_ERROR_CHECK(esp_mesh_start());
