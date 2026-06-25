@@ -108,7 +108,7 @@
 #define FS_PARTITION_LABEL      "spiffs"
 
 /** Base path where SPIFFS is mounted. */
-#define FS_MOUNT_POINT          "/logs"
+#define FS_MOUNT_POINT          "/spiffs"
 
 /** Write buffer size in bytes; flushed every LOGGER_FLUSH_RECORDS records. */
 #define LOGGER_BUF_SIZE         256U
@@ -123,7 +123,7 @@
 #define SERIAL_BAUD             115200
 
 /* Debug: start serial-export task at init for quick host pulls (0 = disabled) */
-#define CSV_EXPORT_ON_INIT     1
+#define CSV_EXPORT_ON_INIT     0
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * TASK PRIORITIES AND STACK SIZES

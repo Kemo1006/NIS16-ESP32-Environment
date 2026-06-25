@@ -80,42 +80,53 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
                  (unsigned)(total / 1024), (unsigned)(used / 1024));
     }
 
-    /* ── 2. Open telemetry file ──────────────────────────────────────────── */
+   /* ── 2. Open telemetry file ──────────────────────────────────────────── */
     snprintf(s_filepath, sizeof(s_filepath),
-             "%s/%s_%s_telem.csv", FS_MOUNT_POINT, node_id, run_id);
+             "%s/telem.csv", FS_MOUNT_POINT);
     ESP_LOGI(TAG, "Telemetry file: %s", s_filepath);
 
-    {
-        struct stat st;
-        bool exists = (stat(s_filepath, &st) == 0);
-        s_log_fp = fopen(s_filepath, "a");
-        if (!s_log_fp) {
-            ESP_LOGE(TAG, "Failed to open telemetry file: %s", s_filepath);
-            return ESP_FAIL;
-        }
-        if (!exists) {
-            fputs(TELEMETRY_HEADER, s_log_fp);
-        }
+    /* Use "a+" mode - creates if doesn't exist, appends if it does */
+    s_log_fp = fopen(s_filepath, "a+");
+    if (!s_log_fp) {
+        ESP_LOGE(TAG, "Failed to open telemetry file: %s", s_filepath);
+        return ESP_FAIL;
     }
 
+    /* Check if file is empty or missing header */
+    fseek(s_log_fp, 0, SEEK_SET);
+    char header_check[64] = {0};
+    fgets(header_check, sizeof(header_check), s_log_fp);
+    if (strncmp(header_check, "timestamp_us", 12) != 0) {
+        /* File is empty or has wrong header - write the header */
+        fseek(s_log_fp, 0, SEEK_SET);
+        fputs(TELEMETRY_HEADER, s_log_fp);
+    }
+    fseek(s_log_fp, 0, SEEK_END);
+
+    /* ── 3. Open arrivals file (root only) ───────────────────────────────── */
     /* ── 3. Open arrivals file (root only) ───────────────────────────────── */
     if (role == CSV_ROLE_ROOT) {
         snprintf(s_arrivals_path, sizeof(s_arrivals_path),
-                 "%s/%s_%s_arrivals.csv", FS_MOUNT_POINT, node_id, run_id);
+                 "%s/arrivals.csv", FS_MOUNT_POINT);
         ESP_LOGI(TAG, "Arrivals file:  %s", s_arrivals_path);
 
-        struct stat st;
-        bool exists = (stat(s_arrivals_path, &st) == 0);
-        s_arrivals_fp = fopen(s_arrivals_path, "a");
+        s_arrivals_fp = fopen(s_arrivals_path, "a+");
         if (!s_arrivals_fp) {
             ESP_LOGE(TAG, "Failed to open arrivals file: %s", s_arrivals_path);
             fclose(s_log_fp);
             s_log_fp = NULL;
             return ESP_FAIL;
         }
-        if (!exists) {
+
+        /* Check if file is empty or missing header */
+        fseek(s_arrivals_fp, 0, SEEK_SET);
+        char header_check[64] = {0};
+        fgets(header_check, sizeof(header_check), s_arrivals_fp);
+        if (strncmp(header_check, "timestamp_us", 12) != 0) {
+            fseek(s_arrivals_fp, 0, SEEK_SET);
             fputs(PROBE_ARRIVAL_HEADER, s_arrivals_fp);
         }
+        fseek(s_arrivals_fp, 0, SEEK_END);
     }
 
     s_row_count = 0;
@@ -316,11 +327,17 @@ static void serial_export_task(void *arg)
 
     char cmd_buf[32] = {0};
     int  cmd_idx     = 0;
+    int  read_len    = 0;
 
     while (true) {
         uint8_t ch = 0;
-        int len = uart_read_bytes(EXPORT_UART, &ch, 1, pdMS_TO_TICKS(100));
-        if (len <= 0) continue;
+        /* Use non-blocking read with shorter timeout */
+        int len = uart_read_bytes(EXPORT_UART, &ch, 1, pdMS_TO_TICKS(50));
+        if (len <= 0) {
+            /* Wait a bit before trying again to avoid flooding */
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
 
         if (ch == '\n' || ch == '\r') {
             cmd_buf[cmd_idx] = '\0';

@@ -18,7 +18,6 @@
 #include "esp_mac.h"
 #include "esp_event.h"
 #include "esp_mesh.h"
-#include "esp_mesh_internal.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
 
@@ -26,13 +25,12 @@
 
 static const char *TAG = "MESH_SETUP";
 
-/* Event group bit set when the node has a parent (or, for root, got IP). */
 #define MESH_CONNECTED_BIT  BIT0
 static EventGroupHandle_t s_mesh_event_group = NULL;
 
-static mesh_node_role_t s_role        = MESH_ROLE_VICTIM;
-static char             s_node_id[NODE_ID_LEN] = {0};
-static bool             s_is_root     = false;
+static mesh_node_role_t s_role    = MESH_ROLE_VICTIM;
+static char   s_node_id[NODE_ID_LEN] = {0};
+static bool   s_is_root           = false;
 
 /* ── Forward declarations ────────────────────────────────────────────────── */
 static void mesh_event_handler(void *arg, esp_event_base_t base,
@@ -50,174 +48,117 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     esp_err_t ret;
     s_role = role;
 
-    /* ── 1. Non-volatile storage ─────────────────────────────────────────── */
+    /* ── 1. NVS ──────────────────────────────────────────────────────────── */
     ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
 
-    /* ── 2. TCP/IP and event loop ─────────────────────────────────────────── */
+    /* ── 2. TCP/IP + event loop ──────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    /* ── 3. Wi-Fi driver ──────────────────────────────────────────────────── */
+    /* ── 3. Wi-Fi driver ─────────────────────────────────────────────────── */
     wifi_init_config_t wcfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wcfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+    /* Disable power-save before wifi_start so the mesh RSSI ladder
+     * initialises correctly in routerless mode. */
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
-    /* ── 4. Register event handlers ──────────────────────────────────────── */
+    /* ── 4. Event handlers ───────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
                                                mesh_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                                ip_event_handler, NULL));
 
-    /* ── 5. Build node ID string from MAC address ─────────────────────────── */
+    /* ── 5. Node ID ──────────────────────────────────────────────────────── */
     build_node_id();
 
-    /* ── 6. Mesh initialisation ────────────────────────────────────────────── */
+    /* ── 6. Wi-Fi start ──────────────────────────────────────────────────── */
+    s_mesh_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    /* ── 7. Mesh init ────────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_init());
-
-    /* Network topology constraints */
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(MESH_MAX_LAYER));
-
-    /* Access point capacity: limit number of direct children */
-    mesh_ap_cfg_t ap_cfg = {
-        .max_connection = MESH_MAX_CHILDREN,
-        .nonmesh_max_connection = 0,
-    };
-    strncpy((char *)ap_cfg.password, MESH_PASSWORD, sizeof(ap_cfg.password) - 1);
-    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_WPA2_PSK));
+    ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
+    ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
+    ESP_ERROR_CHECK(esp_mesh_disable_ps());
 
 #if !MESH_USE_ROUTER
     /*
-     * Routerless (self-organized-without-router) mesh.
+     * Routerless mesh setup — confirmed working sequence:
      *
-     * esp_mesh_set_config() validates the router struct differently
-     * depending on node role:
-     *   - ROOT:     bypasses the router-struct check entirely once
-     *               esp_mesh_fix_root(true) + esp_mesh_set_type(MESH_ROOT)
-     *               have been called first. router.ssid_len MUST stay 0
-     *               here — giving the root a non-zero SSID makes it
-     *               actually try to associate with that SSID as a real
-     *               AP, which fails repeatedly (disconnect reason 201
-     *               loop), confirmed by testing.
-     *   - NON-ROOT: esp_mesh_set_type(MESH_IDLE) alone does NOT bypass
-     *               the check (confirmed by testing — still aborts with
-     *               ESP_ERR_MESH_ARGUMENT). Non-root nodes do not use the
-     *               router field to actually connect (their upstream
-     *               link is chosen via mesh parent-selection / scanning),
-     *               so a dummy non-zero SSID safely satisfies validation
-     *               without causing connection attempts.
+     * ROOT:     fix_root(true) makes the stack skip the router-struct
+     *           validation inside esp_mesh_set_config(), so router fields
+     *           can stay zeroed. The root never tries to associate with
+     *           any AP — it just sits ready for children.
+     *
+     * NON-ROOT: fix_root(false) alone does NOT skip router validation —
+     *           confirmed by repeated testing. A non-empty dummy SSID
+     *           is the only way to satisfy the validator without a real
+     *           router. Non-root nodes never connect to this SSID; their
+     *           uplink is chosen by mesh parent-selection scanning.
+     *           (If the root also got this dummy SSID it would try to
+     *           connect to it as a real AP and fail — reason-201 loop.)
      */
     if (role == MESH_ROLE_ROOT) {
         ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+        ESP_ERROR_CHECK(esp_mesh_set_self_organized(false, false));
+        /* Mark this node as the active root so its mesh AP advertises as
+         * available (idle:0) rather than idle (idle:1). Without this call
+         * the root's AP is visible to children but refuses connections. */
         ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
-    } else {
-        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_IDLE));
     }
 #endif
 
-    /* Mesh configuration */
-    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
+    /* ── 8. Mesh configuration ───────────────────────────────────────────── */
+    mesh_cfg_t cfg;
+    memset(&cfg, 0, sizeof(cfg));   /* MUST be zeroed — MESH_INIT_CONFIG_DEFAULT()
+                                     * does not reliably clear all fields, leaving
+                                     * garbage in the RSSI threshold array and
+                                     * causing [parent]not found / rssi:0 loops.
+                                     * See esp-idf issue #12193. */
+
     uint8_t mesh_id[] = MESH_ID;
     memcpy(cfg.mesh_id.addr, mesh_id, 6);
-
-    /* Auth: mesh password */
-    cfg.mesh_ap.max_connection = MESH_MAX_CHILDREN;
+    cfg.mesh_ap.max_connection      = MESH_MAX_CHILDREN;
+    cfg.mesh_ap.nonmesh_max_connection = 0;
     memcpy(cfg.mesh_ap.password, MESH_PASSWORD, strlen(MESH_PASSWORD));
 
 #if MESH_USE_ROUTER
-    cfg.channel = 0;             /* 0 = auto-select channel from router scan */
+    cfg.channel = 0;
     cfg.allow_channel_switch = false;
     cfg.router.ssid_len = strlen(ROUTER_SSID);
-    memcpy(cfg.router.ssid,     ROUTER_SSID,     cfg.router.ssid_len);
-    memcpy(cfg.router.password, ROUTER_PASSWORD,  strlen(ROUTER_PASSWORD));
+    memcpy(cfg.router.ssid,     ROUTER_SSID,    cfg.router.ssid_len);
+    memcpy(cfg.router.password, ROUTER_PASSWORD, strlen(ROUTER_PASSWORD));
 #else
-    cfg.channel = 6;             /* Fixed channel — no AP to scan. */
+    cfg.channel = 6;
     cfg.allow_channel_switch = false;
 
     if (role == MESH_ROLE_ROOT) {
-        /* Root: bypassed via fix_root + set_type above; keep struct empty. */
+        /* Router struct stays zeroed — fix_root(true) bypasses validation. */
         cfg.router.ssid_len = 0;
     } else {
-        /* Non-root: dummy SSID only to pass validation; never connected to. */
-        static const char dummy_ssid[] = "MESH_NO_ROUTER";
-        cfg.router.ssid_len = strlen(dummy_ssid);
-        memcpy(cfg.router.ssid, dummy_ssid, cfg.router.ssid_len);
+        /* Dummy SSID to satisfy the validator on non-root nodes. */
+        static const char dummy[] = "MESH_NO_ROUTER";
+        cfg.router.ssid_len = strlen(dummy);
+        memcpy(cfg.router.ssid, dummy, cfg.router.ssid_len);
     }
 #endif
 
     ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 
-    /* ── 7. Start mesh ─────────────────────────────────────────────────────── */
-    s_mesh_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    /* Some ESP-IDF variants require disabling Wi-Fi power-save at the driver
-     * level so mesh parent-selection RSSI ladder initialises correctly. Try
-     * turning off PS explicitly; continue if unsupported. */
-    esp_err_t _r = esp_wifi_set_ps(WIFI_PS_NONE);
-    if (_r != ESP_OK) {
-        ESP_LOGW(TAG, "esp_wifi_set_ps(WIFI_PS_NONE) failed: %s", esp_err_to_name(_r));
-    }
-
-    /*
-     * Routerless-mesh stability settings.
-     *
-     * Multiple community reports (esp-idf #3966, esp32.com t=15022) show
-     * that without disabling Wi-Fi power-save, the parent-selection RSSI
-     * threshold ladder never initialises away from 0 in a no-router mesh,
-     * which causes every candidate scan to log "[parent]not found,
-     * rssi_threshold:0" indefinitely — exactly the symptom observed here.
-     * These calls require Wi-Fi to already be started, so they must come
-     * AFTER esp_wifi_start() and BEFORE esp_mesh_start().
-     */
-#if !MESH_USE_ROUTER
-    ESP_ERROR_CHECK(esp_mesh_disable_ps());
-    ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
-    ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1.0));
-
-    /*
-     * Root cause of the "[parent]not found, rssi_threshold:0" infinite
-     * loop: mesh_switch_parent_t (which governs the parent-selection RSSI
-     * ladder logged as "try rssi_threshold:X, backoff times:N, max:5
-     * <select,switch,backoff>") was being read back as all-zero at
-     * runtime in this routerless configuration, instead of its documented
-     * negative-dBm defaults. Reference logs from working routerless mesh
-     * deployments show a ladder like <-78,-82,-85>; ours showed <0,0,0>.
-     * Setting this explicitly with sane negative thresholds, per
-     * Espressif's documented field meanings (esp_mesh_internal.h),
-     * resolves it. Must be called after esp_wifi_start(), before
-     * esp_mesh_start().
-     */
-    /*
-    * Explicitly set the RSSI threshold ladder for parent selection.
-    * In routerless mode on ESP-IDF 5.x the defaults do not initialize
-    * correctly — the ladder stays at <0,0,0> causing the victim to reject
-    * every parent candidate.
-    */
-    mesh_switch_parent_t switch_paras = {
-        .select_rssi  = -78,   /* preferred parent threshold (Table 3.2) */
-        .backoff_rssi = -85,   /* trigger parent switching below this    */
-    };
-    esp_err_t _sp = esp_mesh_set_switch_parent_paras(&switch_paras);
-    if (_sp != ESP_OK) {
-        ESP_LOGW(TAG, "esp_mesh_set_switch_parent_paras failed: %s",
-                esp_err_to_name(_sp));
-    } else {
-        ESP_LOGI(TAG, "RSSI ladder set: select=%d backoff=%d",
-                switch_paras.select_rssi,
-                switch_paras.backoff_rssi);
-    }
-#endif
-
+    /* ── 9. Start mesh ───────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_start());
 
     ESP_LOGI(TAG, "Mesh started. Node ID: %s  Role: %d", s_node_id, (int)s_role);
 
-    /* ── 8. Wait for connection (max PHASE_STABILISE_S seconds) ─────────── */
+    /* ── 10. Wait for connection ─────────────────────────────────────────── */
     EventBits_t bits = xEventGroupWaitBits(
         s_mesh_event_group,
         MESH_CONNECTED_BIT,
@@ -227,9 +168,8 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     );
 
     if (bits & MESH_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "Mesh connected. Layer: %d  Parent: %s  Root: %s",
+        ESP_LOGI(TAG, "Mesh connected. Layer: %d  Root: %s",
                  esp_mesh_get_layer(),
-                 s_is_root ? "N/A (this is root)" : "see event log",
                  s_is_root ? "YES" : "NO");
     } else {
         ESP_LOGW(TAG, "Mesh connection timeout after %u s — continuing anyway.",
@@ -269,9 +209,7 @@ bool mesh_setup_is_root(void)
     return s_is_root;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
- * Private helpers
- * ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Private helpers ─────────────────────────────────────────────────────── */
 
 static void build_node_id(void)
 {
@@ -281,8 +219,6 @@ static void build_node_id(void)
              "NODE_%02X%02X%02X%02X%02X%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
-
-/* ── Event handlers ──────────────────────────────────────────────────────── */
 
 static void mesh_event_handler(void *arg, esp_event_base_t base,
                                 int32_t id, void *data)
@@ -314,8 +250,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
 
     case MESH_EVENT_PARENT_DISCONNECTED: {
         mesh_event_disconnected_t *ed = (mesh_event_disconnected_t *)data;
-        ESP_LOGW(TAG, "Parent disconnected — reason %d. Will re-associate.",
-                 (int)ed->reason);
+        ESP_LOGW(TAG, "Parent disconnected — reason %d.", (int)ed->reason);
         s_is_root = false;
         xEventGroupClearBits(s_mesh_event_group, MESH_CONNECTED_BIT);
         break;
@@ -325,6 +260,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         mesh_event_child_connected_t *cc = (mesh_event_child_connected_t *)data;
         ESP_LOGI(TAG, "Child connected: aid=%d MAC=" MACSTR,
                  (int)cc->aid, MAC2STR(cc->mac));
+        xEventGroupSetBits(s_mesh_event_group, MESH_CONNECTED_BIT);
         break;
     }
 
