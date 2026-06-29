@@ -322,6 +322,8 @@ esp_err_t csv_logger_start_export_task(void)
 
 static void serial_export_task(void *arg)
 {
+    uart_driver_install(EXPORT_UART, 256, 0, 0, NULL, 0);
+    
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | LIST_FILES");
 
