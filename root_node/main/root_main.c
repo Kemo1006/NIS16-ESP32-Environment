@@ -53,7 +53,7 @@ static char s_node_id[NODE_ID_LEN]  = {0};
 static char s_run_id[RUN_ID_LEN]    = {0};
 
 /*
- * Cumulative probe counter — written by probe_sink_task, read by
+ * Cumulative probe counter — written by probe_data_cb, read by
  * telemetry_task.  Declared volatile so the compiler does not cache the
  * value in a register across the sampling loop.
  */
@@ -79,7 +79,8 @@ static volatile uint32_t s_broadcast_sends = 0;
 
 /* ── Forward declarations ─────────────────────────────────────────────────── */
 static void experiment_controller_task(void *arg);
-static void probe_sink_task(void *arg);
+static void probe_data_cb(const uint8_t *data, size_t len,
+                          const uint8_t from_addr[6]);
 static void telemetry_task(void *arg);
 static void build_run_id(char *buf, size_t len);
 
@@ -105,20 +106,25 @@ void app_main(void)
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_ROOT));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
-    /* ── 4. Start background tasks ───────────────────────────────────────── */
-    xTaskCreate(probe_sink_task,  "probe_sink",  STACK_PROBE_SINK,
-                NULL, TASK_PRIO_PROBE_SINK,  NULL);
+    /* ── 4. Probe sink: register a handler for incoming probe packets.
+     *       esp_mesh_recv() must be called from ONE task only, so instead of a
+     *       competing receive loop the phase listener (the single reader) hands
+     *       us every non-phase packet via this callback. ──────────────────── */
+    phase_listener_set_data_cb(probe_data_cb);
+    ESP_LOGI(TAG, "Probe sink registered (via phase-listener dispatch).");
+
+    /* ── 5. Start background tasks ───────────────────────────────────────── */
     xTaskCreate(telemetry_task,   "telemetry",   STACK_TELEMETRY,
                 NULL, TASK_PRIO_TELEMETRY,   NULL);
 
-    /* ── 5. Experiment controller (runs in its own task so app_main returns) */
+    /* ── 6. Experiment controller (runs in its own task so app_main returns) */
     xTaskCreate(experiment_controller_task, "exp_ctrl", STACK_TELEMETRY * 2,
                 NULL, TASK_PRIO_TELEMETRY + 1, NULL);
 
-    /* ── 6. Block until experiment ends ──────────────────────────────────── */
+    /* ── 7. Block until experiment ends ──────────────────────────────────── */
     phase_listener_wait_for_terminate();
 
-    /* ── 7. Finalise ─────────────────────────────────────────────────────── */
+    /* ── 8. Finalise ─────────────────────────────────────────────────────── */
     ESP_LOGI(TAG, "Experiment complete. Flushing and closing log.");
     csv_logger_flush();
     csv_logger_close();
@@ -146,55 +152,18 @@ void app_main(void)
 
 /*
  * Thin wrapper around phase_listener_broadcast() that updates the shared
- * send/failure counters.  phase_listener_broadcast() already logs warnings
- * on failed sends; we just need the aggregate counts here.
+ * send/failure counters used as the root's tx/retry telemetry proxies.
  *
- * Because phase_listener_broadcast() sends PHASE_BROADCAST_REPEAT copies
- * and each copy either succeeds or fails, we snapshot the mesh routing
- * table size as a proxy for "how many destinations were attempted" and
- * treat any non-OK return as one failure.  In practice, broadcast failures
- * during a healthy mesh are rare and serve as a useful anomaly signal.
+ * phase_listener_broadcast() now does all the real work — one self-loopback
+ * plus a routing-table unicast to every node, repeated PHASE_BROADCAST_REPEAT
+ * times — and returns how many of those individual sends failed. We count one
+ * logical broadcast per repeat as "tx", and the returned failures as "retry".
  */
 static void broadcast_and_count(uint8_t phase_id)
 {
-    /*
-     * phase_listener_broadcast() is void — it logs failures internally but
-     * doesn't surface a per-attempt result.  We call esp_mesh_send() once
-     * ourselves before handing off, purely to get a result code for the
-     * counter update, then let phase_listener_broadcast() do the full
-     * PHASE_BROADCAST_REPEAT sequence.
-     *
-     * Simpler alternative that avoids the double-send: track failures inside
-     * phase_listener_broadcast() and expose a getter.  That refactor is
-     * deferred to Milestone 2 when attacker nodes also need send telemetry.
-     * For Milestone 1 we use the probe approach below which adds one extra
-     * send per phase transition (5 transitions total over a full run —
-     * negligible overhead).
-     */
-    phase_msg_t probe = {
-        .magic        = PHASE_MSG_MAGIC,
-        .phase_id     = phase_id,
-        .seq_num      = 0,          /* listener deduplicates; seq 0 is fine  */
-        .timestamp_us = esp_timer_get_time(),
-    };
-    mesh_data_t mdata = {
-        .data  = (uint8_t *)&probe,
-        .size  = sizeof(probe),
-        .proto = MESH_PROTO_BIN,
-        .tos   = MESH_TOS_P2P,
-    };
-    esp_err_t rc = esp_mesh_send(NULL, &mdata,
-                                 MESH_DATA_P2P | MESH_DATA_FROMDS, NULL, 0);
-    if (rc == ESP_OK) {
-        s_broadcast_sends++;
-    } else {
-        s_broadcast_failures++;
-        ESP_LOGW(TAG, "[CTRL] probe send failed: %s", esp_err_to_name(rc));
-    }
-
-    /* Now do the real repeated broadcast. */
-    phase_listener_broadcast(phase_id);
-    s_broadcast_sends += PHASE_BROADCAST_REPEAT;   /* count the repeat sends */
+    int failed = phase_listener_broadcast(phase_id);
+    s_broadcast_failures += (uint32_t)failed;
+    s_broadcast_sends    += PHASE_BROADCAST_REPEAT;
 }
 
 static void experiment_controller_task(void *arg)
@@ -232,80 +201,61 @@ static void experiment_controller_task(void *arg)
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * Probe sink task
+ * Probe sink callback
  *
- * Blocks on esp_mesh_recv() and filters for probe_pkt_t messages.
- * Logs one probe-arrival CSV row per received probe.
+ * Invoked by the phase listener (the single esp_mesh_recv() reader) for every
+ * non-phase packet. Filters for probe_pkt_t messages and logs one
+ * probe-arrival CSV row per received probe.
+ *
+ * Runs in the phase-listener task context — keep it short and non-blocking.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-static void probe_sink_task(void *arg)
+static void probe_data_cb(const uint8_t *data, size_t len,
+                          const uint8_t from_addr[6])
 {
-    static uint8_t rx_buf[sizeof(probe_pkt_t) + 64];
-    mesh_addr_t from = {0};
-    mesh_data_t mdata = {
-        .data = rx_buf,
-        .size = sizeof(rx_buf),
-    };
-    int flags = 0;
+    (void)from_addr;  /* src_mac travels inside the probe payload */
 
-    ESP_LOGI(TAG, "Probe sink task running.");
+    if (len < sizeof(probe_pkt_t)) return;
 
-    while (!phase_listener_is_terminated()) {
-        mdata.size = sizeof(rx_buf);
-        esp_err_t err = esp_mesh_recv(&from, &mdata,
-                                      pdMS_TO_TICKS(200), &flags, NULL, 0);
-        if (err == ESP_ERR_MESH_TIMEOUT) continue;
-        if (err != ESP_OK) {
-            ESP_LOGW(TAG, "probe_sink recv error: %s", esp_err_to_name(err));
-            vTaskDelay(pdMS_TO_TICKS(10));
-            continue;
-        }
+    const probe_pkt_t *pkt = (const probe_pkt_t *)data;
+    if (pkt->magic != PROBE_MAGIC) return;
 
-        if (mdata.size < sizeof(probe_pkt_t)) continue;
+    int64_t now     = esp_timer_get_time();
+    int64_t latency = now - pkt->send_ts_us;
+    s_probes_received++;
 
-        const probe_pkt_t *pkt = (const probe_pkt_t *)rx_buf;
-        if (pkt->magic != PROBE_MAGIC) continue;
+    /* Cross-layer snapshot at time of arrival */
+    uint8_t pmac[6] = {0};
+    mesh_setup_get_parent_mac(pmac);  /* root has no parent → all zeros */
+    int rssi = 0;
+    esp_wifi_sta_get_rssi(&rssi);
 
-        int64_t now     = esp_timer_get_time();
-        int64_t latency = now - pkt->send_ts_us;
-        s_probes_received++;
+    /*
+     * retry_count and tx_count in the arrivals row reflect the root's
+     * own outbound activity (phase broadcasts), not the incoming probe.
+     * This keeps the schema consistent with victim rows and lets the
+     * post-processing pipeline join on the same columns.
+     */
+    csv_logger_append_probe_arrival(
+        now,
+        s_node_id,
+        mesh_setup_get_layer(),
+        pmac,
+        rssi,
+        s_broadcast_failures,
+        s_broadcast_sends,
+        s_probes_received,
+        phase_listener_get_phase_id(),
+        phase_listener_get_label(),
+        (uint8_t *)pkt->src_mac,
+        pkt->seq_num,
+        latency
+    );
 
-        /* Cross-layer snapshot at time of arrival */
-        uint8_t pmac[6] = {0};
-        mesh_setup_get_parent_mac(pmac);  /* root has no parent → all zeros */
-        int rssi = 0;
-        esp_wifi_sta_get_rssi(&rssi);
-
-        /*
-         * retry_count and tx_count in the arrivals row reflect the root's
-         * own outbound activity (phase broadcasts), not the incoming probe.
-         * This keeps the schema consistent with victim rows and lets the
-         * post-processing pipeline join on the same columns.
-         */
-        csv_logger_append_probe_arrival(
-            now,
-            s_node_id,
-            mesh_setup_get_layer(),
-            pmac,
-            rssi,
-            s_broadcast_failures,
-            s_broadcast_sends,
-            s_probes_received,
-            phase_listener_get_phase_id(),
-            phase_listener_get_label(),
-            (uint8_t *)pkt->src_mac,
-            pkt->seq_num,
-            latency
-        );
-
-        ESP_LOGD(TAG, "Probe from " MACSTR " seq=%lu lat=%lld us",
-                 MAC2STR(pkt->src_mac),
-                 (unsigned long)pkt->seq_num,
-                 (long long)latency);
-    }
-
-    ESP_LOGI(TAG, "Probe sink task exiting.");
-    vTaskDelete(NULL);
+    ESP_LOGD(TAG, "Probe from " MACSTR " seq=%lu lat=%lld us",
+             MAC2STR(pkt->src_mac),
+             (unsigned long)pkt->seq_num,
+             (long long)latency);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

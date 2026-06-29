@@ -322,12 +322,29 @@ esp_err_t csv_logger_start_export_task(void)
 
 static void serial_export_task(void *arg)
 {
+    /*
+     * Install the UART0 driver before reading. The ESP-IDF console uses UART0
+     * for log output but does NOT install the interrupt-driven driver, so
+     * uart_read_bytes() fails on every call and the driver floods the console
+     * with "uart driver error" until this is done. Installing an RX buffer
+     * makes both reads (host commands) and writes (CSV stream) work.
+     */
+    if (!uart_is_driver_installed(EXPORT_UART)) {
+        esp_err_t derr = uart_driver_install(
+            EXPORT_UART, EXPORT_BUF_SIZE * 2, 0, 0, NULL, 0);
+        if (derr != ESP_OK) {
+            ESP_LOGE(TAG, "uart_driver_install failed: %s — export disabled",
+                     esp_err_to_name(derr));
+            vTaskDelete(NULL);
+            return;
+        }
+    }
+
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | LIST_FILES");
 
     char cmd_buf[32] = {0};
     int  cmd_idx     = 0;
-    int  read_len    = 0;
 
     while (true) {
         uint8_t ch = 0;

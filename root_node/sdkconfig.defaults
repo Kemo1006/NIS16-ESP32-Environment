@@ -1,0 +1,14 @@
+# Default Kconfig values for the root node.
+# These are applied whenever sdkconfig is (re)generated — e.g. after
+# `idf.py set-target` or on a fresh checkout — so the custom partition
+# table with the SPIFFS partition is never lost. Without this, set-target
+# falls back to the single-app table and the firmware aborts at boot with
+# "spiffs partition could not be found".
+
+# Use our custom partition table (defines nvs/otadata/app0/spiffs).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Flash size — the partition table extends to ~0x1F0000, so 2 MB minimum.
+CONFIG_ESPTOOLPY_FLASHSIZE_2MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="2MB"
