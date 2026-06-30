@@ -60,6 +60,66 @@ static char s_run_id[RUN_ID_LEN]    = {0};
 static volatile uint32_t s_probes_received = 0;
 
 /*
+ * Probe de-duplication table.
+ *
+ * ESP-WIFI-MESH's own internal MAC-layer retry/ack mechanism can deliver
+ * the same physical probe transmission to the root more than once (one
+ * fast, correctly-timed arrival plus one or more much-delayed duplicates
+ * with inflated latency). Without de-duplication, arrivals.csv ends up
+ * with far more rows than probes actually sent, and downstream PDR /
+ * latency features in later milestones would be computed over corrupted
+ * data. We track the highest seq_num seen per source MAC and silently
+ * drop any arrival whose seq_num was already logged for that source —
+ * the same pattern phase_listener.c already uses for phase broadcasts.
+ *
+ * Sized for Milestone 3's max topology (10 nodes); trivially sufficient
+ * for Milestone 1's single victim.
+ */
+#define PROBE_DEDUP_MAX_SOURCES   16
+
+typedef struct {
+    uint8_t  mac[6];
+    uint32_t last_seq;
+    bool     in_use;
+} probe_dedup_entry_t;
+
+static probe_dedup_entry_t s_dedup_table[PROBE_DEDUP_MAX_SOURCES];
+
+/**
+ * @brief Return true if this (mac, seq_num) was already seen and logged.
+ *        Updates the table as a side effect when it's a new arrival.
+ */
+static bool probe_is_duplicate(const uint8_t mac[6], uint32_t seq_num)
+{
+    int free_slot = -1;
+
+    for (int i = 0; i < PROBE_DEDUP_MAX_SOURCES; i++) {
+        if (!s_dedup_table[i].in_use) {
+            if (free_slot < 0) free_slot = i;
+            continue;
+        }
+        if (memcmp(s_dedup_table[i].mac, mac, 6) == 0) {
+            if (seq_num <= s_dedup_table[i].last_seq) {
+                return true;   /* duplicate or stale/out-of-order retry */
+            }
+            s_dedup_table[i].last_seq = seq_num;
+            return false;
+        }
+    }
+
+    /* First time seeing this source MAC — register it. */
+    if (free_slot >= 0) {
+        memcpy(s_dedup_table[free_slot].mac, mac, 6);
+        s_dedup_table[free_slot].last_seq = seq_num;
+        s_dedup_table[free_slot].in_use   = true;
+    } else {
+        ESP_LOGW(TAG, "Dedup table full (%d sources) — cannot track new MAC",
+                 PROBE_DEDUP_MAX_SOURCES);
+    }
+    return false;
+}
+
+/*
  * Broadcast failure counter — incremented by experiment_controller_task
  * whenever phase_listener_broadcast() reports a failed esp_mesh_send().
  * Used as the root's proxy for MAC-layer retry activity: the root itself
@@ -219,6 +279,15 @@ static void probe_data_cb(const uint8_t *data, size_t len,
 
     const probe_pkt_t *pkt = (const probe_pkt_t *)data;
     if (pkt->magic != PROBE_MAGIC) return;
+
+    /* Drop duplicate deliveries of the same probe (ESP-MESH internal
+     * retry can deliver one probe to the root more than once). Only the
+     * first arrival per (src_mac, seq_num) is counted and logged. */
+    if (probe_is_duplicate(pkt->src_mac, pkt->seq_num)) {
+        ESP_LOGD(TAG, "Duplicate probe dropped: " MACSTR " seq=%lu",
+                 MAC2STR(pkt->src_mac), (unsigned long)pkt->seq_num);
+        return;
+    }
 
     int64_t now     = esp_timer_get_time();
     int64_t latency = now - pkt->send_ts_us;
