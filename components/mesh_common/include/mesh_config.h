@@ -30,6 +30,11 @@
 /** Maximum children per node (limits fan-out in star / tree topologies). */
 #define MESH_MAX_CHILDREN   10
 
+/** Max nodes the root snapshots from the routing table when broadcasting a
+ *  phase downstream. ESP-WIFI-MESH has no single broadcast primitive, so the
+ *  root unicasts to every node in this table. Sized well above any topology. */
+#define MESH_ROUTE_TABLE_MAX 32
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * ROUTER / UPLINK (only used when the root bridges to an AP)
  * Set MESH_USE_ROUTER to 0 for a pure self-contained mesh (recommended for
@@ -135,7 +140,7 @@
 #define TASK_PRIO_PROBE_SINK        6    /**< Root probe receiver */
 #define TASK_PRIO_SERIAL_EXPORT     3    /**< Low priority — only runs post-experiment */
 
-#define STACK_PHASE_LISTENER    4096U
+#define STACK_PHASE_LISTENER    6144U   /* also runs the non-phase data cb (probe sink) */
 #define STACK_TELEMETRY         4096U
 #define STACK_PROBE_GEN         4096U
 #define STACK_PROBE_SINK        4096U

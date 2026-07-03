@@ -22,6 +22,7 @@
 #include "esp_log.h"
 #include "esp_mesh.h"
 #include "esp_timer.h"
+#include "esp_mac.h"
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
@@ -39,6 +40,9 @@ static EventGroupHandle_t s_term_eg = NULL;
 
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;
+
+/* Handler for non-phase packets (e.g. probe arrivals). NULL = drop them. */
+static phase_listener_data_cb_t s_data_cb = NULL;
 
 /* ── Forward declarations ────────────────────────────────────────────────── */
 static void     phase_listener_task(void *arg);
@@ -108,7 +112,12 @@ void phase_listener_wait_for_terminate(void)
                         pdFALSE, pdFALSE, portMAX_DELAY);
 }
 
-void phase_listener_broadcast(uint8_t phase_id)
+void phase_listener_set_data_cb(phase_listener_data_cb_t cb)
+{
+    s_data_cb = cb;
+}
+
+int phase_listener_broadcast(uint8_t phase_id)
 {
     phase_msg_t msg = {
         .magic      = PHASE_MSG_MAGIC,
@@ -124,24 +133,59 @@ void phase_listener_broadcast(uint8_t phase_id)
         .tos   = MESH_TOS_P2P,
     };
 
-    /* Broadcast target — all nodes in the mesh. */
-    mesh_addr_t to = {0};
-    memset(to.addr, 0, 6); 
+    int failed = 0;
 
+    /*
+     * ESP-WIFI-MESH has no single "broadcast to all nodes" call. To reach every
+     * node we:
+     *   1. Send to NULL — which the mesh stack delivers to the ROOT (us). This
+     *      is what keeps the root's OWN phase state and TERMINATE signal in
+     *      sync; it's a guaranteed local loopback.
+     *   2. Unicast P2P to every node in the routing table — this is the only
+     *      way packets actually travel DOWNSTREAM to the children. (The old
+     *      code did only step 1, so children never saw a single phase.)
+     * The listener deduplicates by seq_num, so the root receiving its own
+     * message twice (via NULL and possibly via its own routing-table entry) is
+     * harmless. All PHASE_BROADCAST_REPEAT copies share one seq_num on purpose:
+     * repeats add reliability but apply the phase exactly once.
+     */
     for (int i = 0; i < PHASE_BROADCAST_REPEAT; i++) {
-        esp_err_t err = esp_mesh_send(NULL, &mdata,
-                                      MESH_DATA_P2P | MESH_DATA_FROMDS,
-                                      NULL, 0);
+        /* (1) Root's own copy — guaranteed loopback to our recv queue. */
+        esp_err_t err = esp_mesh_send(NULL, &mdata, MESH_DATA_FROMDS, NULL, 0);
         if (err != ESP_OK) {
-            ESP_LOGW(TAG, "Broadcast send failed (iter %d): %s",
+            failed++;
+            ESP_LOGW(TAG, "Self broadcast failed (iter %d): %s",
                      i, esp_err_to_name(err));
         }
+
+        /* (2) Downstream copies — one unicast per node in the routing table. */
+        mesh_addr_t route[MESH_ROUTE_TABLE_MAX];
+        int table_size = 0;
+        err = esp_mesh_get_routing_table(route, MESH_ROUTE_TABLE_MAX * 6,
+                                         &table_size);
+        if (err != ESP_OK) {
+            failed++;
+            ESP_LOGW(TAG, "get_routing_table failed (iter %d): %s",
+                     i, esp_err_to_name(err));
+        } else {
+            for (int n = 0; n < table_size; n++) {
+                err = esp_mesh_send(&route[n], &mdata, MESH_DATA_P2P, NULL, 0);
+                if (err != ESP_OK) {
+                    failed++;
+                    ESP_LOGW(TAG, "Broadcast to " MACSTR " failed (iter %d): %s",
+                             MAC2STR(route[n].addr), i, esp_err_to_name(err));
+                }
+            }
+        }
+
         vTaskDelay(pdMS_TO_TICKS(PHASE_BROADCAST_GAP_MS));
     }
 
-    ESP_LOGI(TAG, "[ROOT] Broadcast phase_id=%u  seq=%lu  label=%u",
+    ESP_LOGI(TAG, "[ROOT] Broadcast phase_id=%u  seq=%lu  label=%u  (%d failed sends)",
              phase_id, (unsigned long)s_bcast_seq,
-             phase_id_to_label(phase_id));
+             phase_id_to_label(phase_id), failed);
+
+    return failed;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -151,10 +195,12 @@ void phase_listener_broadcast(uint8_t phase_id)
 static void phase_listener_task(void *arg)
 {
     /*
-     * Buffer large enough for a phase_msg_t plus any future extension.
-     * esp_mesh_recv() fills both the data and the source address.
+     * Buffer large enough for any application packet we expect on the mesh
+     * (phase broadcasts AND probe packets, which are larger). This is the
+     * single esp_mesh_recv() reader on the node; non-phase packets are handed
+     * to the registered data callback rather than dropped.
      */
-    static uint8_t rx_buf[sizeof(phase_msg_t) + 16];
+    static uint8_t rx_buf[128];
 
     mesh_addr_t   from  = {0};
     mesh_data_t   mdata = {
@@ -177,15 +223,18 @@ static void phase_listener_task(void *arg)
             continue;
         }
 
-        /* Ignore packets that are too small to be a phase message. */
-        if (mdata.size < sizeof(phase_msg_t)) {
-            continue;
-        }
-
+        /*
+         * Decide whether this is a phase broadcast. Anything else (probe
+         * packets, etc.) is dispatched to the registered data callback — we
+         * are the only esp_mesh_recv() reader, so we must not drop it.
+         */
         const phase_msg_t *msg = (const phase_msg_t *)rx_buf;
-
-        /* Check magic cookie — filters out probe and other traffic. */
-        if (msg->magic != PHASE_MSG_MAGIC) {
+        bool is_phase = (mdata.size >= sizeof(phase_msg_t) &&
+                         msg->magic == PHASE_MSG_MAGIC);
+        if (!is_phase) {
+            if (s_data_cb) {
+                s_data_cb(rx_buf, mdata.size, from.addr);
+            }
             continue;
         }
 

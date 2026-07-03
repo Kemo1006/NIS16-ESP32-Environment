@@ -20,7 +20,6 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/atomic.h"
 
 #include "esp_log.h"
 #include "esp_mesh.h"
@@ -109,8 +108,12 @@ void app_main(void)
  * Probe generator task
  *
  * Sends a probe_pkt_t toward the root every PROBE_INTERVAL_MS milliseconds.
- * The root is addressed via esp_mesh_send() with MESH_DATA_TODS flag, which
- * routes the packet up the tree to the root regardless of intermediate hops.
+ * The root is addressed by passing `to = NULL` with the MESH_DATA_TODS flag:
+ * per the ESP-WIFI-MESH API, a NULL destination means "the root", and TODS
+ * marks the packet as travelling upward through the mesh. The root receives it
+ * on the normal esp_mesh_recv() path. (Passing a zeroed mesh_addr_t instead of
+ * NULL was the old bug — a 00:00:00:00:00:00 MAC is not the root, so no probe
+ * ever arrived.)
  *
  * For Milestone 2 (blackhole), victim nodes will instead send directly to the
  * attacker's MAC address.  For Milestone 1, root is always the destination.
@@ -120,11 +123,6 @@ static void probe_gen_task(void *arg)
 {
     ESP_LOGI(TAG, "Probe generator task running at %u ms interval.",
              PROBE_INTERVAL_MS);
-
-    /* Destination: root node (addressed with the TODS flag). */
-    mesh_addr_t to = {0};
-    /* MESH_ADDR_TODS is a special address constant meaning "toward the root". */
-    memset(to.addr, 0, 6);   /* zero addr + TODS flag = root */
 
     probe_pkt_t pkt = {
         .magic = PROBE_MAGIC,
@@ -144,8 +142,8 @@ static void probe_gen_task(void *arg)
         pkt.seq_num      = ++seq;
         pkt.send_ts_us   = esp_timer_get_time();
 
-        esp_err_t err = esp_mesh_send(&to, &mdata,
-                                      MESH_DATA_P2P | MESH_DATA_TODS,
+        esp_err_t err = esp_mesh_send(NULL, &mdata,
+                                      MESH_DATA_TODS,
                                       NULL, 0);
         if (err == ESP_OK) {
             s_probes_sent++;

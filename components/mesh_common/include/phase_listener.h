@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "esp_err.h"
 
 #ifdef __cplusplus
@@ -90,9 +91,43 @@ void phase_listener_wait_for_terminate(void);
  * Sends PHASE_BROADCAST_REPEAT copies with PHASE_BROADCAST_GAP_MS delays
  * between them.  Increments an internal sequence counter automatically.
  *
+ * Each repeat delivers the message both to the root itself (loopback, to keep
+ * the root's own state in sync) and downstream to every node in the routing
+ * table — ESP-WIFI-MESH has no single broadcast primitive, so the root must
+ * unicast to each child.
+ *
  * @param phase_id   Phase to broadcast (0–4).
+ * @return Number of individual esp_mesh_send() calls that failed across all
+ *         repeats (0 = all sends succeeded). Used by the root as a retry proxy.
  */
-void phase_listener_broadcast(uint8_t phase_id);
+int phase_listener_broadcast(uint8_t phase_id);
+
+/* ── Non-phase data dispatch ─────────────────────────────────────────────── */
+
+/**
+ * @brief Callback invoked for every received mesh packet that is NOT a phase
+ *        broadcast (i.e. application data such as probe packets).
+ *
+ * @param data       Pointer to the received payload (valid only for the call).
+ * @param len        Payload length in bytes.
+ * @param from_addr  6-byte source MAC of the sender.
+ *
+ * IMPORTANT: this runs in the phase-listener task context. Keep it short and
+ * non-blocking; copy out anything you need to retain.
+ */
+typedef void (*phase_listener_data_cb_t)(const uint8_t *data, size_t len,
+                                         const uint8_t from_addr[6]);
+
+/**
+ * @brief Register a handler for non-phase mesh packets.
+ *
+ * The phase listener is the SINGLE task that calls esp_mesh_recv() on a node
+ * (esp_mesh_recv must not be called from more than one task — competing readers
+ * steal each other's packets). Roles that need to consume application data
+ * (e.g. the root's probe sink) register a callback here instead of running
+ * their own receive loop. Pass NULL to unregister.
+ */
+void phase_listener_set_data_cb(phase_listener_data_cb_t cb);
 
 #ifdef __cplusplus
 }
