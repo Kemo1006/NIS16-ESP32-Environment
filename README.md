@@ -309,6 +309,7 @@ Then re-flash / reset both boards and repeat from step 6, bumping `--repeat`.
 ```powershell
 # 0. Find ports (numbers change!)
 python -m serial.tools.list_ports
+python -m serial.tools.list_ports -v (more detailed)
 
 # EASIEST: auto-export on Ctrl+]
 .\run.ps1 -Port COM3 -Role root   -Flash      # terminal 1

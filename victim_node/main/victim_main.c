@@ -136,6 +136,21 @@ static void probe_gen_task(void *arg)
         .tos   = MESH_TOS_P2P,
     };
 
+    /*
+     * Wormhole capture-copy destination (Milestone 2). During the wormhole
+     * phase the victim also unicasts each probe to Attacker B, emulating B
+     * "capturing local mesh traffic" (we cannot sniff the closed-source Wi-Fi
+     * firmware, so the capture is modelled as an explicit app-layer copy). The
+     * normal victim→root send above is left untouched, so the root still gets
+     * the slow multi-hop copy; B tunnels the metadata to A for the fast copy.
+     * If the MAC is still the all-zero placeholder, the copy is skipped.
+     */
+    static const uint8_t b_mac[6] = WORMHOLE_ATTACKER_B_MAC;
+    const uint8_t zero_mac[6] = {0};
+    bool wormhole_capture_enabled = (memcmp(b_mac, zero_mac, 6) != 0);
+    mesh_addr_t b_dest = {0};
+    memcpy(b_dest.addr, b_mac, 6);
+
     uint32_t seq = 0;
 
     while (!phase_listener_is_terminated()) {
@@ -154,6 +169,18 @@ static void probe_gen_task(void *arg)
             s_retry_count++;
             ESP_LOGW(TAG, "Probe send failed seq=%lu: %s",
                      (unsigned long)seq, esp_err_to_name(err));
+        }
+
+        /* Wormhole capture-copy: only during the wormhole phase, only if a
+         * real Attacker-B MAC is configured. P2P unicast to B by MAC. */
+        if (wormhole_capture_enabled &&
+            phase_listener_get_phase_id() == PHASE_ID_WORMHOLE) {
+            esp_err_t werr = esp_mesh_send(&b_dest, &mdata,
+                                           MESH_DATA_P2P, NULL, 0);
+            if (werr != ESP_OK) {
+                ESP_LOGD(TAG, "Wormhole copy seq=%lu to B failed: %s",
+                         (unsigned long)seq, esp_err_to_name(werr));
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(PROBE_INTERVAL_MS));

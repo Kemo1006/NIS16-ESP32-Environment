@@ -84,7 +84,21 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 
     /* ── 7. Mesh init ────────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_init());
-    ESP_ERROR_CHECK(esp_mesh_set_max_layer(MESH_MAX_LAYER));
+
+    /*
+     * M3 topology shaping. Default (NIS_TOPO_TREE) keeps the exact M1 behaviour:
+     * self-organising TREE, depth up to MESH_MAX_LAYER. STAR caps depth at 2 so
+     * every node attaches straight to root; LINEAR forces a CHAIN. Physical
+     * placement still does most of the work — these just bias the stack.
+     */
+    int max_layer = MESH_MAX_LAYER;
+#if (MESH_TOPOLOGY == NIS_TOPO_STAR)
+    max_layer = 2;   /* root(1) + direct children(2) only */
+#elif (MESH_TOPOLOGY == NIS_TOPO_LINEAR)
+    ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
+#endif
+    ESP_ERROR_CHECK(esp_mesh_set_max_layer(max_layer));
+
     ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
     ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
     ESP_ERROR_CHECK(esp_mesh_disable_ps());

@@ -3,6 +3,7 @@ idf_component_register(
         "src/mesh_setup.c"
         "src/phase_listener.c"
         "src/csv_logger.c"
+        "src/wormhole.c"
     INCLUDE_DIRS
         "include"
     REQUIRES

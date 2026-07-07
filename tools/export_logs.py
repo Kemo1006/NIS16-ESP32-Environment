@@ -182,9 +182,10 @@ def main() -> int:
     p.add_argument("--port", required=True, help="Serial port, e.g. COM3")
     p.add_argument(
         "--role",
-        choices=["root", "victim"],
+        choices=["root", "victim", "attacker_a", "attacker_b"],
         default="victim",
-        help="Node role. 'root' also pulls arrivals.csv.",
+        help="Node role. 'root' also pulls arrivals.csv; attacker roles pull "
+             "telem only.",
     )
     p.add_argument("--topology", default="unknown",
                    help="star | tree | linear | partial (for the filename)")

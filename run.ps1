@@ -17,6 +17,10 @@
 .EXAMPLE
   # Flash first, watch the full run, then Ctrl+] to auto-export:
   .\run.ps1 -Port COM3 -Role root -Flash -Repeat 2
+
+.EXAMPLE
+  # GUARANTEED FRESH RUN: wipe old data first, flash, run, then Ctrl+] to export:
+  .\run.ps1 -Port COM9 -Role root -Wipe -Flash
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Port,
@@ -25,13 +29,23 @@ param(
     [string]$Attack   = 'none',
     [int]$Repeat      = 1,
     [switch]$Flash,    # also (re)flash before monitoring — restarts the experiment
-    [switch]$Clean     # after a successful export, wipe the board's logs so the
+    [switch]$Clean,    # after a successful export, wipe the board's logs so the
                        # NEXT run starts empty (prevents stacked multi-run files)
+    [switch]$Wipe      # BEFORE flashing, erase the board's logs so THIS run starts
+                       # empty — use for a guaranteed fresh, unstacked run
 )
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
 $proj = if ($Role -eq 'root') { 'root_node' } else { 'victim_node' }
+
+# 0) Optional pre-run wipe so this run's CSV is a single clean run (no stacking).
+#    The on-device command listener runs from boot, so DELETE_LOGS is accepted now.
+if ($Wipe) {
+    Write-Host "Wiping old logs on $Port before this run ..." -ForegroundColor Yellow
+    Push-Location (Join-Path $base 'tools')
+    try { python export_logs.py --port $Port --wipe } finally { Pop-Location }
+}
 
 # 1) Monitor (optionally flash first). Ctrl+] exits the monitor and returns here.
 Push-Location (Join-Path $base $proj)

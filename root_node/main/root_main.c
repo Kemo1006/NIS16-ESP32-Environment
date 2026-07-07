@@ -140,9 +140,9 @@ void app_main(void)
  * Experiment controller task
  *
  * Implements EXPERIMENT_CONTROLLER() from Figure 4.2 of the thesis.
- * For Milestone 1 we run the BASELINE-only sequence (no attack phase).
- * The attack-phase broadcasts (phase_id 1 or 2) are left as stubs so
- * Milestone 2 can simply fill them in.
+ * Sequence: Baseline → [Attack, if ACTIVE_ATTACK set] → Cooldown → Terminate.
+ * ACTIVE_ATTACK (mesh_config.h) selects the attack phase for a given run; the
+ * default is ATTACK_NONE, which reproduces the Milestone-1 baseline-only run.
  *
  * Each call to phase_listener_broadcast() sends PHASE_BROADCAST_REPEAT
  * copies internally.  We count the individual esp_mesh_send outcomes via
@@ -179,13 +179,24 @@ static void experiment_controller_task(void *arg)
     ESP_LOGI(TAG, "[CTRL] Phase 0 complete.");
 
     /*
-     * ── Phase 1 / 2: Attack (DEFERRED to Milestone 2) ───────────────────
-     * Milestone 1 runs baseline only.  The stubs below show where the
-     * Milestone-2 code will go.
-     *
-     *   broadcast_and_count(PHASE_ID_BLACKHOLE);   // or WORMHOLE
-     *   vTaskDelay(pdMS_TO_TICKS(PHASE_ATTACK_S * 1000));
+     * ── Phase 1 / 2: Attack (Milestone 2 / 4) ───────────────────────────
+     * ACTIVE_ATTACK (mesh_config.h, overridable from the build) selects which
+     * manipulation the root drives during the attack window:
+     *   ATTACK_NONE           → skip; baseline-only run (Milestone 1 behaviour)
+     *   PHASE_ID_BLACKHOLE(1) → blackhole phase (teammate's module)
+     *   PHASE_ID_WORMHOLE (2) → wormhole phase  (this module)
+     * The attackers/victims react to the broadcast phase ID; the root only has
+     * to announce it and hold the window open for PHASE_ATTACK_S.
      */
+#if (ACTIVE_ATTACK != ATTACK_NONE)
+    ESP_LOGI(TAG, "[CTRL] Starting PHASE %d — Attack (%u s)",
+             ACTIVE_ATTACK, PHASE_ATTACK_S);
+    broadcast_and_count(ACTIVE_ATTACK);
+    vTaskDelay(pdMS_TO_TICKS(PHASE_ATTACK_S * 1000));
+    ESP_LOGI(TAG, "[CTRL] Attack phase complete.");
+#else
+    ESP_LOGI(TAG, "[CTRL] ACTIVE_ATTACK=NONE — skipping attack window (baseline run).");
+#endif
 
     /* ── Phase 3: Cooldown ───────────────────────────────────────────────── */
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 3 — Cooldown (%u s)", PHASE_COOLDOWN_S);
