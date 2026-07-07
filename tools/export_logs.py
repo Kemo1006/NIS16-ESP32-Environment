@@ -60,7 +60,14 @@ except ImportError:
         "    pip install pyserial"
     )
 
-BAUD = 115200          # must match SERIAL_BAUD in mesh_config.h
+BAUD = 115200          # MUST match the firmware console baud
+                       # (CONFIG_ESP_CONSOLE_UART_BAUDRATE in each project's
+                       # sdkconfig). It is 115200 — a 460800 experiment was
+                       # reverted because sdkconfig kept regenerating back to
+                       # 115200, leaving export/wipe talking a baud the device
+                       # wasn't listening on (garbage -> "never saw END_OF_FILE").
+                       # See esp32-issues.md I-007. If you ever DO get a higher
+                       # console baud to stick in sdkconfig, change this to match.
 READ_TIMEOUT_S = 2.0   # per-line read timeout
 OVERALL_TIMEOUT_S = 30 # give up on a stream after this long
 

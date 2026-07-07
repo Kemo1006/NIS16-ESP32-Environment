@@ -7,10 +7,14 @@
  * - Attack phase (PHASE_ID_BLACKHOLE): probes are silently dropped
  *
  * Build target: victim_node/
- * 
- * in CMakeLists.txt set: SRCS to blackhole_victim.c
- * and in root_main.c uncomment line 246 & 247 to run 
- * the blackhole attack phase
+ *
+ * Enabled by a single build flag — no source editing needed. Build BOTH boards
+ * with the same flag for a blackhole run:
+ *     cd root_node   && idf.py -DACTIVE_ATTACK=1 build flash
+ *     cd victim_node && idf.py -DACTIVE_ATTACK=1 build flash
+ * The victim CMakeLists selects THIS file when ACTIVE_ATTACK=1; the root
+ * announces PHASE_ID_BLACKHOLE during the attack window. A plain build (no flag)
+ * is a normal baseline run.
  *
  * NIS16 — CTTHES2 Milestone 2 — Blackhole Attack
  */
@@ -195,9 +199,12 @@ static void probe_forwarder_task(void *arg)
             ESP_LOGD(TAG, "BLACKHOLE: dropped probe seq=%lu (phase=%u)",
                      (unsigned long)pkt.seq_num, phase);
         } else {
-            /* ── FORWARD to root (NULL destination = root with TODS) ────── */
+            /* ── FORWARD to root (NULL destination + TODS = "send to root") ──
+             * Same addressing as the normal victim (victim_main.c). A zeroed
+             * mesh_addr_t or the extra MESH_DATA_P2P flag is NOT used — that was
+             * the old data-plane bug; TODS with to=NULL is the proven path. */
             esp_err_t err = esp_mesh_send(NULL, &mdata,
-                                          MESH_DATA_TODS | MESH_DATA_P2P,
+                                          MESH_DATA_TODS,
                                           NULL, 0);
             if (err == ESP_OK) {
                 s_probes_forwarded++;

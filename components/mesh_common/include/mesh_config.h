@@ -23,12 +23,48 @@
 /** Mesh network password (WPA2-PSK style; 8–64 printable ASCII chars). */
 #define MESH_PASSWORD       "MeshSecure2026!"
 
+/** Wi-Fi channel for the routerless mesh (1–13; must be identical on every
+ *  node). Use a non-overlapping channel (1, 6, or 11) that is QUIET in your
+ *  environment. Channel 6 is the most congested default — if the mesh keeps
+ *  dropping (reason 6 / handshake-timeout storms), try 1 or 11 and pick whichever
+ *  your local APs are NOT using. See esp32-issues.md I-008. */
+#define MESH_CHANNEL        11
+
 /** Maximum hop depth the mesh is allowed to grow to.
  *  Set to 6 for multi-topology experiments; root is layer 0. */
 #define MESH_MAX_LAYER      6
 
 /** Maximum children per node (limits fan-out in star / tree topologies). */
 #define MESH_MAX_CHILDREN   10
+
+/* ── M3 topology shaping ──────────────────────────────────────────────────────
+ * ESP-WIFI-MESH self-organises by RSSI + physical placement, so the four
+ * proposal topologies are set up mostly by WHERE the boards sit. These knobs
+ * bias the stack to match the intended shape and are overridable from the build
+ * (-DMESH_TOPOLOGY=...) so a run can pick a topology with no source editing:
+ *
+ *   idf.py build                        → default (TREE, unchanged M1 behaviour)
+ *   idf.py -DMESH_TOPOLOGY=0 build       → STAR (cap depth at 2)
+ *   idf.py -DMESH_TOPOLOGY=2 build       → LINEAR (force a chain)
+ *
+ *   NIS_TOPO_STAR    — cap depth at 2: every node is a direct child of root.
+ *   NIS_TOPO_TREE    — default self-organising tree (unchanged M1 behaviour).
+ *   NIS_TOPO_LINEAR  — force a CHAIN so nodes line up hop-by-hop.
+ *   NIS_TOPO_PARTIAL — tree that allows multiple potential parents (same code
+ *                      path as TREE; the "partial" shape comes from physical
+ *                      placement, not a firmware knob — see verify_topology.py).
+ * Build ALL boards in a run with the SAME topology, or nodes will disagree on
+ * max-layer/chain shaping. (Names are NIS_-prefixed to avoid clashing with the
+ * IDF MESH_TOPO_* enum.)
+ * ────────────────────────────────────────────────────────────────────────── */
+#define NIS_TOPO_STAR       0
+#define NIS_TOPO_TREE       1
+#define NIS_TOPO_LINEAR     2
+#define NIS_TOPO_PARTIAL    3
+
+#ifndef MESH_TOPOLOGY
+#define MESH_TOPOLOGY       NIS_TOPO_TREE
+#endif
 
 /** Max nodes the root snapshots from the routing table when broadcasting a
  *  phase downstream. ESP-WIFI-MESH has no single broadcast primitive, so the
@@ -79,6 +115,29 @@
 /* Cooldown and Terminate both map to label 0 (normal) per Table 4.1. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * ATTACK SELECTION  (Milestone 2)
+ *
+ * Selects which manipulation the ROOT announces during the attack window, and
+ * (via each project's main/CMakeLists.txt) which victim firmware is built.
+ * Overridable from the build so no source editing is needed per run:
+ *
+ *   idf.py build                       → ATTACK_NONE: baseline-only run (M1)
+ *   idf.py -DACTIVE_ATTACK=1 build      → blackhole run (root announces phase 1,
+ *                                         victim builds blackhole_victim.c)
+ *
+ * Build BOTH boards with the SAME flag for a given run, or the root will
+ * announce an attack that no victim reacts to (no signature).
+ * (Wormhole = 2 is reserved for the other branch; not implemented here.)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Sentinel meaning "no attack phase — run baseline → cooldown only". */
+#define ATTACK_NONE             255
+
+#ifndef ACTIVE_ATTACK
+#define ACTIVE_ATTACK           ATTACK_NONE
+#endif
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * PHASE BROADCAST RELIABILITY
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -124,7 +183,12 @@
 /** Maximum CSV file size per run before log rotation (bytes). */
 #define LOGGER_MAX_FILE_BYTES   (500U * 1024U)    /* 500 KB */
 
-/** USB serial baud rate for log extraction. */
+/** USB serial baud rate for log extraction (informational only — the export
+ *  task streams over UART0 at the CONSOLE baud, set by
+ *  CONFIG_ESP_CONSOLE_UART_BAUDRATE in sdkconfig, currently 115200). A 460800
+ *  experiment was reverted (sdkconfig kept regenerating back to 115200 →
+ *  export/wipe baud mismatch; see esp32-issues.md I-007). Keep this in sync with
+ *  the sdkconfig value and export_logs.py's BAUD. */
 #define SERIAL_BAUD             115200
 
 /* Debug: start serial-export task at init for quick host pulls (0 = disabled) */

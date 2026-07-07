@@ -12,3 +12,4 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # Flash size — the partition table extends to ~0x1F0000, so 2 MB minimum.
 CONFIG_ESPTOOLPY_FLASHSIZE_2MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="2MB"
+
