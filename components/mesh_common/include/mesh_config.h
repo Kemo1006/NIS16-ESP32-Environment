@@ -31,31 +31,45 @@
 #define MESH_CHANNEL        11
 
 /** Maximum hop depth the mesh is allowed to grow to.
- *  Set to 6 for multi-topology experiments; root is layer 0. */
+ *  Set to 6 for multi-topology experiments; root is layer 1 (ESP-MESH
+ *  convention — esp_mesh_get_layer() returns 1 at the root). */
 #define MESH_MAX_LAYER      6
 
-/** Maximum children per node (limits fan-out in star / tree topologies). */
+/** Default max children per node (fan-out cap). Per-topology overrides below
+ *  narrow this for LINEAR (chain) and PARTIAL (constrained branching). */
 #define MESH_MAX_CHILDREN   10
 
-/* ── M3 topology shaping ──────────────────────────────────────────────────────
- * ESP-WIFI-MESH self-organises by RSSI + physical placement, so the four
- * proposal topologies are set up mostly by WHERE the boards sit. These knobs
- * bias the stack to match the intended shape and are overridable from the build
+/* ── M3 topology shaping (proposal §4.2.2) ────────────────────────────────────
+ * The proposal defines FOUR physical deployment layouts (§4.2.2): star, tree,
+ * linear chain, and partial mesh. It stresses that these are PHYSICAL node
+ * arrangements — ESP-WIFI-MESH still self-organises its routing tree by RSSI +
+ * link metrics (§4.2.2, p.86). So placement does most of the work; these knobs
+ * BIAS the stack toward the intended shape and are overridable from the build
  * (-DMESH_TOPOLOGY=...) so a run can pick a topology with no source editing:
  *
  *   idf.py build                        → default (TREE, unchanged M1 behaviour)
- *   idf.py -DMESH_TOPOLOGY=0 build       → STAR (cap depth at 2)
- *   idf.py -DMESH_TOPOLOGY=2 build       → LINEAR (force a chain)
+ *   idf.py -DMESH_TOPOLOGY=0 build       → STAR   (cap depth at 2)
+ *   idf.py -DMESH_TOPOLOGY=2 build       → LINEAR (force a chain, 1 child/node)
+ *   idf.py -DMESH_TOPOLOGY=3 build       → PARTIAL(multi-hop, constrained fan-out)
  *
- *   NIS_TOPO_STAR    — cap depth at 2: every node is a direct child of root.
- *   NIS_TOPO_TREE    — default self-organising tree (unchanged M1 behaviour).
- *   NIS_TOPO_LINEAR  — force a CHAIN so nodes line up hop-by-hop.
- *   NIS_TOPO_PARTIAL — tree that allows multiple potential parents (same code
- *                      path as TREE; the "partial" shape comes from physical
- *                      placement, not a firmware knob — see verify_topology.py).
+ *   NIS_TOPO_STAR    — §4.2.2.1: central hub. Cap depth at 2 so every node is a
+ *                      direct child of the root (root=layer 1, leaves=layer 2);
+ *                      minimal routing complexity, direct RSSI relationships.
+ *   NIS_TOPO_TREE    — §4.2.2.2: native self-organising ESP-MESH tree, multi-hop
+ *                      layering beneath the root (unchanged M1 behaviour).
+ *   NIS_TOPO_LINEAR  — §4.2.2.3: force a CHAIN (MESH_TOPO_CHAIN) AND cap fan-out
+ *                      at 1 child/node, so nodes line up hop-by-hop from the
+ *                      farthest node toward the root.
+ *   NIS_TOPO_PARTIAL — §4.2.2.4: the "primary experimental environment". Stays
+ *                      multi-hop like TREE, but the fan-out cap is narrowed
+ *                      (MESH_PARTIAL_MAX_CHILDREN) so nodes cannot all crowd the
+ *                      root — they attach to a SUBSET of parents, forcing the
+ *                      branched, semi-structured connectivity + adaptive parent
+ *                      switching the proposal describes. verify_topology.py
+ *                      --expect partial checks for those parent-switch events.
  * Build ALL boards in a run with the SAME topology, or nodes will disagree on
- * max-layer/chain shaping. (Names are NIS_-prefixed to avoid clashing with the
- * IDF MESH_TOPO_* enum.)
+ * max-layer / chain / fan-out shaping. (Names are NIS_-prefixed to avoid
+ * clashing with the IDF MESH_TOPO_* enum.)
  * ────────────────────────────────────────────────────────────────────────── */
 #define NIS_TOPO_STAR       0
 #define NIS_TOPO_TREE       1
@@ -65,6 +79,16 @@
 #ifndef MESH_TOPOLOGY
 #define MESH_TOPOLOGY       NIS_TOPO_TREE
 #endif
+
+/** LINEAR chain: each node accepts at most ONE child, so the mesh is forced
+ *  into a single hop-by-hop line rather than a branching tree. */
+#define MESH_LINEAR_MAX_CHILDREN   1
+
+/** PARTIAL mesh: narrowed fan-out (vs MESH_MAX_CHILDREN) so the root/intermediate
+ *  nodes can't absorb everyone — nodes spread across a SUBSET of parents and the
+ *  tree branches + deepens instead of flattening into a star. Keep >1 so a real
+ *  branched partial mesh (not a chain) can form. */
+#define MESH_PARTIAL_MAX_CHILDREN  2
 
 /** Max nodes the root snapshots from the routing table when broadcasting a
  *  phase downstream. ESP-WIFI-MESH has no single broadcast primitive, so the
@@ -136,6 +160,51 @@
 #ifndef ACTIVE_ATTACK
 #define ACTIVE_ATTACK           ATTACK_NONE
 #endif
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WORMHOLE TUNNEL  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_WORMHOLE == 2)
+ *
+ * The wormhole is a TWO-node colluding attack, emulated ENTIRELY at the
+ * application layer (normal esp_mesh_send/esp_mesh_recv — no raw 802.11 frames,
+ * per the thesis method). Select it with -DACTIVE_ATTACK=2 on EVERY board (the
+ * root then announces PHASE_ID_WORMHOLE during the attack window, exactly like
+ * blackhole), and pick each attacker board's tunnel end with -DWORMHOLE_END:
+ *
+ *   idf.py -DACTIVE_ATTACK=2                    build flash   (root)
+ *   idf.py -DACTIVE_ATTACK=2 -DWORMHOLE_END=0   build flash   (Node A — exit)
+ *   idf.py -DACTIVE_ATTACK=2 -DWORMHOLE_END=1   build flash   (Node B — entry)
+ *
+ * Behaviour during the wormhole phase (baseline/cooldown = normal victim):
+ *   Node B (entry, leaf-side) — instead of sending its probes to the root, it
+ *     encapsulates each probe and TUNNELS it to Node A (addressed by A's MAC).
+ *   Node A (exit, root-side)  — receives the tunnelled probes and RE-INJECTS
+ *     the original probe to the root, so B's traffic surfaces near A. This
+ *     distorts the path/latency the root observes AND adds A<->B tunnel traffic
+ *     — the cross-layer signature CTTHES3's clustering is meant to detect.
+ *     (Contrast with blackhole: there probes VANISH; here they still arrive,
+ *     but late and via a fabricated shortcut.)
+ * Build the SAME -DACTIVE_ATTACK=2 on all three boards; only the two attacker
+ * boards take -DWORMHOLE_END. See wormhole_victim.c and WORKFLOWS.md.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#define WORMHOLE_END_A          0   /**< exit / root-side  (re-injects to root)  */
+#define WORMHOLE_END_B          1   /**< entry / leaf-side (captures + tunnels)  */
+
+#ifndef WORMHOLE_END
+#define WORMHOLE_END            WORMHOLE_END_A
+#endif
+
+/** Node A's Wi-Fi STA MAC — Node B tunnels captured probes to this address.
+ *  ⚠️ SET THIS to your Node-A board's STA MAC (the MAC export_logs.py and the
+ *  boot log report for that board, e.g. B0:CB:D8:F3:32:18). Only Node B reads
+ *  it; Node A ignores it. Node B logs a boot-time WARNING and every tunnel send
+ *  fails (visible as a climbing retry_count with tx frozen) if it is left at the
+ *  placeholder below — that is the #1 "wormhole didn't work" pitfall. */
+#define WORMHOLE_NODE_A_MAC     {0xF4, 0x2D, 0xC9, 0x73, 0xE6, 0x18}
+
+/** Magic cookie prefixing every tunnelled packet on the A<->B channel, so Node A
+ *  can tell a tunnelled probe from ordinary mesh traffic. ("TNL1") */
+#define WORMHOLE_TUNNEL_MAGIC   0x544E4C31U
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PHASE BROADCAST RELIABILITY

@@ -30,6 +30,15 @@
   .\run.ps1 -Port COM3 -Role victim -Attack blackhole -Wipe -Flash -Export
 
 .EXAMPLE
+  # WORMHOLE run: -Attack wormhole flashes the tunnel firmware (-DACTIVE_ATTACK=2).
+  # Run ALL THREE boards with -Attack wormhole -Flash; the two victim boards pick
+  # opposite ends with -WormholeEnd A (exit) / B (entry). Set WORMHOLE_NODE_A_MAC
+  # in mesh_config.h to Node A's STA MAC first (Node B tunnels to it).
+  .\run.ps1 -Port COM11 -Role root   -Attack wormhole              -Wipe -Flash -Export
+  .\run.ps1 -Port COM8  -Role victim -Attack wormhole -WormholeEnd A -Wipe -Flash -Export
+  .\run.ps1 -Port COM3  -Role victim -Attack wormhole -WormholeEnd B -Wipe -Flash -Export
+
+.EXAMPLE
   # M3: STAR topology (caps depth at 2, everyone a direct child of root).
   # Run EVERY board in the run with the SAME -Topology -Flash, or nodes disagree
   # on shaping. Physical placement still matters most (see verify_topology.py).
@@ -45,8 +54,14 @@ param(
     # firmware knob). Build EVERY board in a run with the SAME -Topology.
     [ValidateSet('tree', 'star', 'linear', 'partial')][string]$Topology = 'tree',
     # -Attack also picks the BUILD flag when -Flash is set: blackhole => -DACTIVE_ATTACK=1,
-    # none => -DACTIVE_ATTACK=255 (baseline; also clears a cached blackhole build).
-    [ValidateSet('none', 'blackhole')][string]$Attack = 'none',
+    # wormhole => -DACTIVE_ATTACK=2 (attacker victims also take -WormholeEnd),
+    # none => -DACTIVE_ATTACK=255 (baseline; also clears a cached attack build).
+    [ValidateSet('none', 'blackhole', 'wormhole')][string]$Attack = 'none',
+    # For -Attack wormhole on a victim board, which tunnel end this board is:
+    # A = exit/root-side (re-injects to root), B = entry/leaf-side (captures +
+    # tunnels). Ignored for the root and for non-wormhole attacks. Run one victim
+    # board as A and the other as B.
+    [ValidateSet('A', 'B')][string]$WormholeEnd = 'B',
     [int]$Repeat      = 1,
     [switch]$Flash,    # also (re)flash before monitoring — restarts the experiment
     [switch]$Export,   # after Ctrl+], pull the CSVs with export_logs.py. WITHOUT
@@ -72,10 +87,22 @@ if ($Wipe) {
     try { python export_logs.py --port $Port --wipe } finally { Pop-Location }
 }
 
-# Map -Attack to the ACTIVE_ATTACK build flag (only meaningful when flashing).
-# Always pass an explicit value so a plain run also CLEARS a cached blackhole
-# build: none => 255 (ATTACK_NONE / baseline), blackhole => 1.
-$attackFlag = if ($Attack -eq 'blackhole') { '-DACTIVE_ATTACK=1' } else { '-DACTIVE_ATTACK=255' }
+# Map -Attack to the ACTIVE_ATTACK build flag(s) (only meaningful when flashing).
+# Always pass an explicit value so a plain run also CLEARS a cached attack build:
+# none => 255 (ATTACK_NONE / baseline), blackhole => 1, wormhole => 2. For a
+# wormhole victim board we also pass -DWORMHOLE_END (A=0 exit, B=1 entry).
+$attackFlags = @()
+switch ($Attack) {
+    'blackhole' { $attackFlags += '-DACTIVE_ATTACK=1' }
+    'wormhole'  {
+        $attackFlags += '-DACTIVE_ATTACK=2'
+        if ($Role -eq 'victim') {
+            $endNum = if ($WormholeEnd -eq 'A') { 0 } else { 1 }
+            $attackFlags += "-DWORMHOLE_END=$endNum"
+        }
+    }
+    default     { $attackFlags += '-DACTIVE_ATTACK=255' }
+}
 
 # Map -Topology to the MESH_TOPOLOGY build flag (only meaningful when flashing).
 # Always pass an explicit value so a plain run also CLEARS a cached star/linear
@@ -88,6 +115,16 @@ $topologyNum = switch ($Topology) {
 }
 $topologyFlag = "-DMESH_TOPOLOGY=$topologyNum"
 
+# Give each distinct firmware variant its OWN build directory. Without this,
+# running multiple -Role victim boards at once (e.g. wormhole Node A + Node B +
+# a normal victim, all three "victim_node") race on the SAME build/ folder --
+# concurrent CMake/ninja processes stomp on build.ninja and you get
+# "ninja: error: failed recompaction: Permission denied". Root never collided
+# (separate project dir), but the three victim variants share one otherwise.
+$buildSuffix = "$Role`_$Attack`_$Topology"
+if ($Attack -eq 'wormhole' -and $Role -eq 'victim') { $buildSuffix += "_$WormholeEnd" }
+$buildDir = "build_$buildSuffix"
+
 # What happens after Ctrl+], for the on-screen hint.
 $exitHint = if ($doExport) { "to auto-export" } else { "to quit (no export)" }
 
@@ -95,14 +132,15 @@ $exitHint = if ($doExport) { "to auto-export" } else { "to quit (no export)" }
 Push-Location (Join-Path $base $proj)
 try {
     if ($Flash) {
-        Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$Attack). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
-        idf.py $attackFlag $topologyFlag -p $Port flash monitor
+        $attackLabel = if ($Attack -eq 'wormhole' -and $Role -eq 'victim') { "wormhole/$WormholeEnd" } else { $Attack }
+        Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$attackLabel, build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
+        idf.py -B $buildDir @attackFlags $topologyFlag -p $Port flash monitor
     } else {
-        if ($Attack -eq 'blackhole' -or $Topology -ne 'tree') {
+        if ($Attack -ne 'none' -or $Topology -ne 'tree') {
             Write-Host "NOTE: -Attack/-Topology have no effect without -Flash; monitoring the CURRENTLY flashed firmware." -ForegroundColor Yellow
         }
-        Write-Host "Monitoring $Role on $Port. Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
-        idf.py -p $Port monitor
+        Write-Host "Monitoring $Role on $Port (build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
+        idf.py -B $buildDir -p $Port monitor
     }
 } finally {
     Pop-Location

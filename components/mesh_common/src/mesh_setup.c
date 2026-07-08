@@ -86,18 +86,38 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     ESP_ERROR_CHECK(esp_mesh_init());
 
     /*
-     * M3 topology shaping. Default (NIS_TOPO_TREE) keeps the exact M1 behaviour:
-     * self-organising TREE, depth up to MESH_MAX_LAYER. STAR caps depth at 2 so
-     * every node attaches straight to root; LINEAR forces a CHAIN. Physical
-     * placement still does most of the work — these just bias the stack.
+     * M3 topology shaping (proposal §4.2.2 — all four deployment layouts).
+     * Physical placement still does most of the work (the mesh self-organises by
+     * RSSI); these knobs BIAS the stack toward the intended shape. Two levers:
+     * max_layer (hop depth) and max_children (fan-out, applied to the mesh AP
+     * config below). Defaults = NIS_TOPO_TREE = exact M1 behaviour.
+     *
+     *   STAR    (§4.2.2.1): cap depth at 2 → every node a direct child of root.
+     *   TREE    (§4.2.2.2): native self-organising multi-hop tree (default).
+     *   LINEAR  (§4.2.2.3): force a CHAIN + 1 child/node → hop-by-hop line.
+     *   PARTIAL (§4.2.2.4): multi-hop like TREE but narrowed fan-out → nodes
+     *                       branch across a subset of parents instead of all
+     *                       crowding the root (adaptive partial-mesh shape).
      */
-    int max_layer = MESH_MAX_LAYER;
+    int max_layer    = MESH_MAX_LAYER;
+    int max_children = MESH_MAX_CHILDREN;
+    const char *topo_name;
 #if (MESH_TOPOLOGY == NIS_TOPO_STAR)
-    max_layer = 2;   /* root(1) + direct children(2) only */
+    topo_name = "STAR";
+    max_layer = 2;                           /* root(L1) + direct children(L2) */
 #elif (MESH_TOPOLOGY == NIS_TOPO_LINEAR)
+    topo_name = "LINEAR";
     ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
+    max_children = MESH_LINEAR_MAX_CHILDREN; /* 1 child/node → strict chain     */
+#elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
+    topo_name = "PARTIAL";
+    max_children = MESH_PARTIAL_MAX_CHILDREN;/* narrowed fan-out → branched mesh */
+#else  /* NIS_TOPO_TREE */
+    topo_name = "TREE";
 #endif
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(max_layer));
+    ESP_LOGI(TAG, "Topology shaping: %s (max_layer=%d, max_children=%d)",
+             topo_name, max_layer, max_children);
 
     ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
     ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
@@ -140,7 +160,7 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 
     uint8_t mesh_id[] = MESH_ID;
     memcpy(cfg.mesh_id.addr, mesh_id, 6);
-    cfg.mesh_ap.max_connection      = MESH_MAX_CHILDREN;
+    cfg.mesh_ap.max_connection      = max_children;   /* per-topology fan-out */
     cfg.mesh_ap.nonmesh_max_connection = 0;
     memcpy(cfg.mesh_ap.password, MESH_PASSWORD, strlen(MESH_PASSWORD));
 
