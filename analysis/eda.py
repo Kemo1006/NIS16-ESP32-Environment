@@ -60,7 +60,16 @@ Usage:
 from __future__ import annotations
 
 import os
+import sys
 import warnings
+
+# Windows consoles default to a codepage (e.g. cp1252) that can't encode the
+# box-drawing characters (─) used in the printed summaries below. Reconfigure
+# to UTF-8 so this script's own diagnostic output never crashes the run after
+# all the real work (CSVs/plots) is already done. No-op on Python < 3.7 or
+# non-console stdout (piped/redirected), where reconfigure isn't available.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import matplotlib
 matplotlib.use("Agg")  # headless — no display required, just writes files

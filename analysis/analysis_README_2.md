@@ -1,10 +1,14 @@
 # NIS16 Data Pipeline — M8 EDA, running end-to-end, testing
 
-> ⬅️ **Back to [`PIPELINE_README.md`](PIPELINE_README.md)** — the first half
+> ⬅️ **Back to [`analysis_README.md`](analysis_README.md)** — the first half
 > (overview, M6 preprocessing, M7 feature engineering + the feature-column
 > caveats). This file is the back half: the **M8 EDA stage**, the full M6→M8 run
 > recipe, testing, and requirements. Split out to keep each file under 200 lines.
-> Read `PIPELINE_README.md` first (M6/M7), then this.
+> Read `analysis_README.md` first (M6/M7), then this.
+
+> 📂 **All commands below run from the `analysis/` folder** (where `eda.py` and the
+> `generate_*` scripts live). `cd analysis` first. Real captured CSVs are one level
+> up in `../tools/exports/`.
 
 ## M8 output — `eda_output/` (plots + tables)
 
@@ -83,15 +87,43 @@ per node again instead of one per run, that's bug #1 coming back.
 ## Full pipeline, M6 → M7 → M8
 
 ```bash
+cd analysis
 pip install -r requirements.txt
 
+# --- synthetic fixtures (no hardware needed) ---
 python generate_fake_data.py --output-dir fake_data           # M6/M7 unit-test fixtures
 python generate_eda_fake_data.py -o eda_fake_data/feature_table.csv  # M8-scale fixture
 
 python preprocess.py fake_data -o windowed_dataset.csv
 python features.py fake_data -o feature_table.csv
 python eda.py eda_fake_data/feature_table.csv -o eda_output/
+
+# The scripts do NOT create the output folder — make it first.
+# PowerShell:  New-Item -ItemType Directory -Force -Path wormhole_run,blackhole_run
+mkdir -p wormhole_run blackhole_run
+
+# --- real captured data: WORMHOLE set (top level of ../tools/exports/) ---
+python preprocess.py ../tools/exports -o wormhole_run/windowed_dataset.csv   # M6
+python features.py   ../tools/exports -o wormhole_run/feature_table.csv      # M7
+python eda.py        wormhole_run/feature_table.csv -o wormhole_run/eda_output/   # M8
+
+# --- real captured data: BLACKHOLE set (its own ../tools/exports/blackhole/ subfolder) ---
+python preprocess.py ../tools/exports/blackhole -o blackhole_run/windowed_dataset.csv   # M6
+python features.py   ../tools/exports/blackhole -o blackhole_run/feature_table.csv      # M7
+python eda.py        blackhole_run/feature_table.csv -o blackhole_run/eda_output/        # M8
 ```
+
+Run all three steps for the real captures (don't collapse to `features` → `eda`).
+`features.py` re-runs M6 internally, so the 2-step form still *computes* the same
+thing — but running `preprocess.py` explicitly is what writes the M6 deliverable
+`windowed_dataset.csv` and prints the **window discard-fraction quality report**
+the thesis requires you to report. M6 is graded separately, so produce its artifact.
+
+The two capture sets live in separate folders and the scripts read a folder
+**non-recursively**, so run them as two independent passes into two output
+folders (`wormhole_run/`, `blackhole_run/`) — never point one `eda.py` run at
+both. The blackhole set is where `PDR`'s real `0.0` attack signature shows up
+(vs. the wormhole/normal runs where it stays near 1.0).
 
 ## Testing
 

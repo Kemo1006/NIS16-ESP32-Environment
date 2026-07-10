@@ -10,8 +10,13 @@ intrusion-detection dataset. Covers CTTHES2 Milestones 6 and 7.
 
 > 📖 **This file covers M6 + M7 (preprocessing → features).** The M8 EDA
 > stage, the full M6→M8 run recipe, testing, and requirements are in its
-> companion **[`PIPELINE_EDA.md`](PIPELINE_EDA.md)** (split out to keep each
-> file under 200 lines). Read this first, then that.
+> companion **[`analysis_README_2.md`](analysis_README_2.md)** (split out to keep
+> each file under 200 lines). Read this first, then that.
+
+> 📂 **Where to run these.** All pipeline scripts (`preprocess.py`, `features.py`,
+> `eda.py`, the `generate_*` fixtures) and `requirements.txt` live in this
+> `analysis/` folder — `cd` into it first, then run the commands below as written.
+> Real captured CSVs live one level up in `../tools/exports/`.
 
 ## What's in here
 
@@ -31,6 +36,7 @@ between the two files — pull both fresh.
 ## Quick start
 
 ```bash
+cd analysis                     # all scripts + requirements.txt live here
 pip install -r requirements.txt
 
 # Generate synthetic test data (skip this once you have real CSVs)
@@ -42,6 +48,23 @@ python preprocess.py fake_data -o windowed_dataset.csv
 # M7: windowed dataset -> 16-feature table
 python features.py fake_data -o feature_table.csv
 ```
+
+On the **real captured data** (the CSVs pulled off the boards live in
+`../tools/exports/`), point the same scripts one folder up instead of at
+`fake_data`:
+
+```bash
+# wormhole capture set (top level of exports/)
+python preprocess.py ../tools/exports -o windowed_dataset.csv          # M6
+python features.py   ../tools/exports -o feature_table.csv             # M7
+
+# blackhole capture set (its own subfolder)
+python features.py   ../tools/exports/blackhole -o feature_table.csv
+```
+
+The scripts read a folder **non-recursively**, so `../tools/exports` (wormhole
+set) and `../tools/exports/blackhole` are two separate datasets — run them
+one at a time.
 
 `features.py` re-runs the M6 pipeline internally (it needs `windowed`
 *and* the intermediate gap-filled table, not just the final CSV), so
@@ -151,5 +174,5 @@ to catch it.
 
 ---
 
-➡️ **Continue in [`PIPELINE_EDA.md`](PIPELINE_EDA.md)** for M8 (the five EDA
-analyses from §4.2.6), the full M6→M8 run recipe, testing, and requirements.
+➡️ **Continue in [`analysis_README_2.md`](analysis_README_2.md)** for M8 (the five
+EDA analyses from §4.2.6), the full M6→M8 run recipe, testing, and requirements.

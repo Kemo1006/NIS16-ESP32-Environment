@@ -69,6 +69,14 @@ from __future__ import annotations
 
 import glob
 import os
+import sys
+
+# Windows consoles default to a codepage (e.g. cp1252) that can't encode the
+# box-drawing characters (─) used in the printed NaN-count summary below.
+# Reconfigure to UTF-8 so this script's own diagnostic output never crashes
+# the run after the real work (the output CSV) is already written.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import numpy as np
 import pandas as pd

@@ -37,6 +37,13 @@ import os
 import sys
 from dataclasses import dataclass, field
 
+# Windows consoles default to a codepage (e.g. cp1252) that can't encode the
+# box-drawing characters (─) used in the printed quality report below.
+# Reconfigure to UTF-8 so this script's own diagnostic output never crashes
+# the run after the real work (the output CSV) is already written.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import numpy as np
 import pandas as pd
 
@@ -244,15 +251,32 @@ def _fill_node_gaps(node_df: pd.DataFrame) -> pd.DataFrame:
     produce duplicate t_rel values and corrupt the reindex below. The
     caller (handle_missing_values) enforces this grouping.
     """
+    import warnings
     node_df = node_df.copy()
     t_int = node_df["t_rel"].round().astype(int)
 
     if t_int.duplicated().any():
-        raise ValueError(
-            "Duplicate relative timestamps within a single (node, run) group "
-            "— this indicates handle_missing_values() is not grouping by run "
-            "correctly, or the source CSV has duplicate timestamp_us rows."
+        # Real ESP32 hardware doesn't produce perfectly spaced 1 Hz samples
+        # — esp_timer jitter means two rows can round to the same integer
+        # second. Keep the row closest to its integer second, discard the
+        # duplicate. This preserves the 1 Hz grid assumption while being
+        # robust to typical hardware timing drift of a few ms per sample.
+        node_df["_t_int"] = t_int
+        node_df["_t_frac_err"] = (node_df["t_rel"] - t_int).abs()
+        node_df = (
+            node_df
+            .sort_values(["_t_int", "_t_frac_err"])
+            .drop_duplicates(subset="_t_int", keep="first")
+            .sort_values("_t_int")
         )
+        n_dropped = len(t_int) - len(node_df)
+        node_id_val = node_df["node_id"].iloc[0] if "node_id" in node_df.columns else "?"
+        warnings.warn(
+            f"[preprocess] {node_id_val}: dropped {n_dropped} duplicate "
+            f"t_rel row(s) due to esp_timer jitter — kept closest sample per second."
+        )
+        t_int = node_df["_t_int"]
+        node_df = node_df.drop(columns=["_t_int", "_t_frac_err"])
 
     full_index = pd.RangeIndex(t_int.min(), t_int.max() + 1)
 
