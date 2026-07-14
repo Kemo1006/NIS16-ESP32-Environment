@@ -1,0 +1,17 @@
+label,feature,mean,median,variance,n_valid,n_total
+Baseline,ForwardingRatio,,,,0,371
+Baseline,IngressEgressDelta,,,,0,371
+Baseline,RetryRate,0.0,0.0,0.0,371,371
+Baseline,PDR,0.9976363499121247,1.0,0.000514466570339246,275,371
+Baseline,ParentSwitchRate,0.0,0.0,0.0,371,371
+Baseline,LayerChangeCount,0.0,0.0,0.0,371,371
+Baseline,HopStabilityDuration,3.9973045822102424,4.0,0.0026954177897574112,371,371
+Baseline,RSSI_mean,-47.16293800539083,-61.8,801.6006024258759,371,371
+Baseline,RSSI_var,1.6077560646900269,0.16,58.070346319388804,371,371
+Baseline,RSSI_stability,3.8975741239892185,4.0,0.24353463976105494,371,371
+Baseline,RSSI_Hop_Diff,2.922237196765498,1.2000000000000028,11.50575417061266,371,371
+Baseline,LatencyHopRatio,,,,0,371
+Baseline,ConsistencyScore,,,,0,371
+Baseline,TunnelIntensity,,,,0,371
+Baseline,TunnelBytes,,,,0,371
+Baseline,TunnelLatency,,,,0,371

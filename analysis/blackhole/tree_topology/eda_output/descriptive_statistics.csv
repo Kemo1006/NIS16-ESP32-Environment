@@ -1,0 +1,17 @@
+feature,mean,median,variance,min,max,n_valid,n_total,nan_fraction
+ForwardingRatio,,,,,,0,132,1.0
+IngressEgressDelta,,,,,,0,132,1.0
+RetryRate,0.0,0.0,0.0,0.0,0.0,132,132,0.0
+PDR,,,,,,0,132,1.0
+ParentSwitchRate,0.0,0.0,0.0,0.0,0.0,132,132,0.0
+LayerChangeCount,0.0,0.0,0.0,0.0,0.0,132,132,0.0
+HopStabilityDuration,4.0,4.0,0.0,4.0,4.0,132,132,0.0
+RSSI_mean,-58.62840909090909,-58.0,3.7888241672449685,-65.6,-55.0,132,132,0.0
+RSSI_var,1.1309659090909092,0.24,18.023125061806038,0.0,34.56,132,132,0.0
+RSSI_stability,3.893939393939394,4.0,0.3398103169095535,0.0,4.0,132,132,0.0
+RSSI_Hop_Diff,1.685984848484849,1.3999999999999986,2.4450883356465436,0.0,8.199999999999996,132,132,0.0
+LatencyHopRatio,,,,,,0,132,1.0
+ConsistencyScore,,,,,,0,132,1.0
+TunnelIntensity,,,,,,0,132,1.0
+TunnelBytes,,,,,,0,132,1.0
+TunnelLatency,,,,,,0,132,1.0

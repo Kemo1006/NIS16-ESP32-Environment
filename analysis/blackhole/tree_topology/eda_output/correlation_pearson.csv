@@ -1,0 +1,9 @@
+,RetryRate,ParentSwitchRate,LayerChangeCount,HopStabilityDuration,RSSI_mean,RSSI_var,RSSI_stability,RSSI_Hop_Diff
+RetryRate,,,,,,,,
+ParentSwitchRate,,,,,,,,
+LayerChangeCount,,,,,,,,
+HopStabilityDuration,,,,,,,,
+RSSI_mean,,,,,1.0,-0.2739854225678328,0.301410407541235,-0.9052411430545678
+RSSI_var,,,,,-0.2739854225678328,1.0,-0.9246522704304749,0.2819390613144057
+RSSI_stability,,,,,0.301410407541235,-0.9246522704304749,1.0,-0.3215522327904693
+RSSI_Hop_Diff,,,,,-0.9052411430545678,0.2819390613144057,-0.3215522327904693,1.0
