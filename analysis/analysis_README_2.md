@@ -86,44 +86,60 @@ per node again instead of one per run, that's bug #1 coming back.
 
 ## Full pipeline, M6 → M7 → M8
 
+> 💡 **One-step shortcut:** `..\run.ps1 -Analyze` runs all three stages into the
+> right `analysis/<attack>/<topology>_topology/` folder automatically (see the
+> "Recommended" section of [`analysis_README.md`](analysis_README.md)). The
+> commands below are the manual equivalent — synthetic fixtures, or re-analysing
+> an existing export by hand without re-flashing.
+
 ```bash
 cd analysis
 pip install -r requirements.txt
 
 # --- synthetic fixtures (no hardware needed) ---
-python generate_fake_data.py --output-dir fake_data           # M6/M7 unit-test fixtures
-python generate_eda_fake_data.py -o eda_fake_data/feature_table.csv  # M8-scale fixture
-
+python generate_fake_data.py --output-dir fake_data                 # M6/M7 unit-test fixtures
+python generate_eda_fake_data.py -o eda_fake_data/feature_table.csv # M8-scale fixture
 python preprocess.py fake_data -o windowed_dataset.csv
-python features.py fake_data -o feature_table.csv
-python eda.py eda_fake_data/feature_table.csv -o eda_output/
-
-# The scripts do NOT create the output folder — make it first.
-# PowerShell:  New-Item -ItemType Directory -Force -Path wormhole_run,blackhole_run
-mkdir -p wormhole_run blackhole_run
-
-# --- real captured data: WORMHOLE set (top level of ../tools/exports/) ---
-python preprocess.py ../tools/exports -o wormhole_run/windowed_dataset.csv   # M6
-python features.py   ../tools/exports -o wormhole_run/feature_table.csv      # M7
-python eda.py        wormhole_run/feature_table.csv -o wormhole_run/eda_output/   # M8
-
-# --- real captured data: BLACKHOLE set (its own ../tools/exports/blackhole/ subfolder) ---
-python preprocess.py ../tools/exports/blackhole -o blackhole_run/windowed_dataset.csv   # M6
-python features.py   ../tools/exports/blackhole -o blackhole_run/feature_table.csv      # M7
-python eda.py        blackhole_run/feature_table.csv -o blackhole_run/eda_output/        # M8
+python features.py   fake_data -o feature_table.csv
+python eda.py        eda_fake_data/feature_table.csv -o eda_output/
 ```
 
-Run all three steps for the real captures (don't collapse to `features` → `eda`).
-`features.py` re-runs M6 internally, so the 2-step form still *computes* the same
-thing — but running `preprocess.py` explicitly is what writes the M6 deliverable
+### Real captured data — one `<attack>/<topology>_topology/` at a time
+
+Outputs **mirror the exports tree**: read
+`../tools/exports/<attack>/<topology>_topology/` and write into the matching
+`analysis/<attack>/<topology>_topology/`. Those output folders already exist (the
+scaffold ships a `.gitkeep`; `eda.py` creates its own `eda_output/`), so no
+`mkdir` is needed. `<attack>` = `baseline | blackhole | wormhole`; `<topology>` =
+`star | tree | linear | partial_mesh`.
+
+```bash
+# --- BASELINE on the tree topology — M6 -> M7 -> M8 ---
+python preprocess.py ../tools/exports/baseline/tree_topology -o baseline/tree_topology/windowed_dataset.csv   # M6
+python features.py   ../tools/exports/baseline/tree_topology -o baseline/tree_topology/feature_table.csv      # M7
+python eda.py        baseline/tree_topology/feature_table.csv -o baseline/tree_topology/eda_output/           # M8
+
+# --- BLACKHOLE on the tree topology (same pattern, swap baseline -> blackhole) ---
+python preprocess.py ../tools/exports/blackhole/tree_topology -o blackhole/tree_topology/windowed_dataset.csv
+python features.py   ../tools/exports/blackhole/tree_topology -o blackhole/tree_topology/feature_table.csv
+python eda.py        blackhole/tree_topology/feature_table.csv -o blackhole/tree_topology/eda_output/
+```
+
+For any other run, substitute the `<attack>` and `<topology>_topology` names on
+**both** the input (`../tools/exports/…`) and output paths — e.g.
+`baseline/partial_mesh_topology`, `wormhole/star_topology`.
+
+Run all three steps (don't collapse to `features` → `eda`). `features.py` re-runs
+M6 internally, so the 2-step form still *computes* the same thing — but running
+`preprocess.py` explicitly is what writes the M6 deliverable
 `windowed_dataset.csv` and prints the **window discard-fraction quality report**
 the thesis requires you to report. M6 is graded separately, so produce its artifact.
 
-The two capture sets live in separate folders and the scripts read a folder
-**non-recursively**, so run them as two independent passes into two output
-folders (`wormhole_run/`, `blackhole_run/`) — never point one `eda.py` run at
-both. The blackhole set is where `PDR`'s real `0.0` attack signature shows up
-(vs. the wormhole/normal runs where it stays near 1.0).
+The scripts read a folder **non-recursively**, and there is **one dataset per
+`<topology>_topology/` folder**, so run each attack/topology as its own pass into
+its own output folder — never point a single `eda.py` run at two runs at once. The
+blackhole set is where `PDR`'s real `0.0` attack signature shows up (vs. the
+baseline/wormhole runs where it stays near 1.0).
 
 ## Testing
 

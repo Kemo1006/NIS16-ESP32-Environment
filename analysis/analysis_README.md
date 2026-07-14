@@ -33,6 +33,31 @@ need to be on the same version. `run_pipeline()` returns three values
 two values into three or vice versa, you have a version mismatch
 between the two files — pull both fresh.
 
+## Recommended: capture → features in one step (`run.ps1 -Analyze`)
+
+You don't have to type these commands by hand. From the ESP-IDF PowerShell,
+`..\run.ps1 -Analyze` exports a board's CSVs **and then** runs the whole pipeline
+for you — M6 (`windowed_dataset.csv`), M7 (`feature_table.csv`), **and** M8/EDA
+(`eda_output/`). The raw CSVs stay in `../tools/exports/<attack>/<topology>_topology/`;
+all three analysis outputs are written to the mirroring
+`analysis/<attack>/<topology>_topology/` folder. Add `-Analyze` on the **last**
+board you export (the root), so every node's CSV — plus the root's
+`arrivals.csv` that PDR needs — is present when it runs:
+
+```powershell
+# victims first (export only), root LAST with -Analyze (exports THEN analyzes):
+..\run.ps1 -Port COM25 -Role victim -Attack blackhole -Wipe -Flash -Export
+..\run.ps1 -Port COM20 -Role root   -Attack blackhole -Wipe -Flash -Analyze
+# -> analysis/blackhole/tree_topology/{windowed_dataset.csv, feature_table.csv, eda_output/}
+```
+
+`-Analyze` implies `-Export`. The `analysis/{baseline,blackhole,wormhole}/` tree
+(one `<topology>_topology/` subfolder each) mirrors `tools/exports/` exactly, so
+each run's outputs land next to where its raw CSVs live. (M8 needs the extra
+`requirements.txt` deps — matplotlib/seaborn/scipy/scikit-learn; without them
+`-Analyze` does M6+M7 and skips M8.) The commands below are the standalone
+fallback (synthetic data, or re-analysing an export without re-flashing).
+
 ## Quick start
 
 ```bash
@@ -49,28 +74,24 @@ python preprocess.py fake_data -o windowed_dataset.csv
 python features.py fake_data -o feature_table.csv
 ```
 
-On the **real captured data** (the CSVs pulled off the boards live in
-`../tools/exports/`), point the same scripts one folder up instead of at
-`fake_data`:
+### Manual fallback (re-run analysis on real data without re-flashing)
+
+To (re)build a feature table by hand, point `features.py` at **one run's**
+exports subfolder and write into its mirror under `analysis/`:
 
 ```bash
-# wormhole capture set (top level of exports/)
-python preprocess.py ../tools/exports -o windowed_dataset.csv          # M6
-python features.py   ../tools/exports -o feature_table.csv             # M7
-
-# blackhole capture set (its own subfolder)
-python features.py   ../tools/exports/blackhole -o feature_table.csv
+# blackhole-on-tree run — M6+M7 then M8:
+python features.py ../tools/exports/blackhole/tree_topology \
+    -o blackhole/tree_topology/feature_table.csv
+python eda.py blackhole/tree_topology/feature_table.csv \
+    -o blackhole/tree_topology/eda_output
 ```
 
-The scripts read a folder **non-recursively**, so `../tools/exports` (wormhole
-set) and `../tools/exports/blackhole` are two separate datasets — run them
-one at a time.
-
-`features.py` re-runs the M6 pipeline internally (it needs `windowed`
-*and* the intermediate gap-filled table, not just the final CSV), so
-you can run it directly on a raw CSV folder without running
-`preprocess.py` first — that's not redundant, it's `features.py` doing
-M6 silently as a setup step before doing M7's actual work.
+Scripts read a folder **non-recursively**, so each `<attack>/<topology>_topology/`
+is one dataset — run them one at a time (a folder may pool multiple runs if you
+skipped `-Wipe`). `features.py` re-runs M6 internally (it needs the `windowed`
+*and* gap-filled tables, not just the final CSV), so pointing it at a raw-CSV
+folder is enough — no separate `preprocess.py` step.
 
 ## Where your CSVs need to come from
 

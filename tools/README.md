@@ -32,14 +32,29 @@ python export_logs.py --port COM6 --role victim --topology star --attack none --
 python export_logs.py --port COM3 --list
 ```
 
-Files are written to `tools/exports/` (override with `--outdir`), named like:
+Files are routed into `tools/exports/<attack-or-baseline>/<topology>_topology/`
+(override the root with `--outdir`, or `--flat` to skip the subfolders), named
+with the full run metadata:
 ```
-root_COM3_star_none_r1_20260629_143022_telem.csv
-root_COM3_star_none_r1_20260629_143022_arrivals.csv
-victim_COM6_star_none_r1_20260629_143105_telem.csv
+exports/blackhole/star_topology/root_COM20_star_blackhole_r1_20260629_143022_telem.csv
+exports/blackhole/star_topology/root_COM20_star_blackhole_r1_20260629_143022_arrivals.csv
+exports/baseline/tree_topology/victim_COM26_tree_none_r1_20260629_143105_telem.csv
 ```
-The `--topology`, `--attack`, and `--repeat` flags only affect the filename —
-they're the run metadata the milestone asks you to store with each CSV.
+So each run's CSVs group by attack, then topology, and the four topologies never
+mix. The `--topology`, `--attack`, and `--repeat` flags set both the folder and
+the filename metadata. (The topology folder names — `star_topology`,
+`tree_topology`, `linear_topology`, `partial_mesh_topology` — match the dirs
+already under `exports/blackhole/` and `exports/wormhole/`.)
+
+**Control victims:** a plain victim in an attack run is flashed `--attack none`
+but belongs with that run's data. Add `--attack-dir blackhole` (or `wormhole`)
+so it files under the attack's folder while its filename still reads `none`:
+```powershell
+python export_logs.py --port COM26 --role victim --topology tree \
+    --attack none --attack-dir blackhole --repeat 1
+# -> exports/blackhole/tree_topology/victim_COM26_tree_none_r1_..._telem.csv
+```
+Via `run.ps1`, pass `-DestAttack blackhole` on the control board instead.
 
 ### Wiping a board between runs
 Each board appends to the *same* `telem.csv` across reboots (the logger opens in
@@ -59,3 +74,22 @@ END_OF_FILE
 ```
 The script captures everything between the markers and filters out any
 interleaved ESP-IDF log lines (`I (1234) TAG: ...`) before saving.
+
+## validate_integrity.py
+
+Independent integrity check for whatever's in `exports/` — the M5 "integrity
+validation" half (extraction is the half above). No hardware needed.
+
+```powershell
+python validate_integrity.py                     # validates ./exports, recursive
+python validate_integrity.py exports/blackhole    # a subfolder
+python validate_integrity.py --strict             # WARNings also fail (exit 1)
+python validate_integrity.py --relock             # accept a changed hash as new baseline
+```
+
+Checks schema width, per-phase row counts (truncation detection), timestamp
+monotonicity, and SHA-256 checksums against a locked `manifest.json`. See
+[`../m5_extraction/README.md`](../m5_extraction/README.md) for the full spec
+and [`../../thesis-deviate.md`](../../thesis-deviate.md) for the 2026-07-12
+sampling-rate change this tool's phase-count check is calibrated against
+(pass `--sample-interval-ms 1000` for captures made before that date).

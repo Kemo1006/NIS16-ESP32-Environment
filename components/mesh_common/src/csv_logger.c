@@ -343,6 +343,15 @@ static void serial_export_task(void *arg)
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | LIST_FILES");
 
+    /* End-of-run call-to-action. This task only starts AFTER the experiment
+     * completes (app_main -> csv_logger_start_export_task), so the banner appears
+     * only on a finished run — never on an early Ctrl+]. Raw printf (no
+     * "I (...) TAG:" prefix) so it reads as a clean banner; prints for every role
+     * since they all start this one export task. Ctrl+] leaves idf.py monitor,
+     * which run.ps1 -Export turns into an auto-export of this board's CSVs. */
+    printf("\n===========You can ctrl + ] to export the data=========\n\n");
+    fflush(stdout);
+
     char cmd_buf[32] = {0};
     int  cmd_idx     = 0;
 
@@ -366,7 +375,17 @@ static void serial_export_task(void *arg)
                 if (!fp) {
                     uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
                 } else {
-                    uart_write_bytes(EXPORT_UART, "READY_TO_SEND\n", 14);
+                    /* Announce the file's byte size on the READY marker so the
+                     * host can render a % progress bar (READY_TO_SEND:<bytes>).
+                     * Old hosts that expect a bare "READY_TO_SEND" still match
+                     * on the prefix. */
+                    fseek(fp, 0, SEEK_END);
+                    long fsize = ftell(fp);
+                    fseek(fp, 0, SEEK_SET);
+                    char ready[40];
+                    int rlen = snprintf(ready, sizeof(ready),
+                                        "READY_TO_SEND:%ld\n", fsize);
+                    uart_write_bytes(EXPORT_UART, ready, rlen);
                     char line[256];
                     while (fgets(line, sizeof(line), fp)) {
                         uart_write_bytes(EXPORT_UART, line, strlen(line));
@@ -386,7 +405,15 @@ static void serial_export_task(void *arg)
                     if (!fp) {
                         uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
                     } else {
-                        uart_write_bytes(EXPORT_UART, "READY_TO_SEND\n", 14);
+                        /* Announce byte size for the host progress bar (see
+                         * the EXPORT_LOGS block above). */
+                        fseek(fp, 0, SEEK_END);
+                        long fsize = ftell(fp);
+                        fseek(fp, 0, SEEK_SET);
+                        char ready[40];
+                        int rlen = snprintf(ready, sizeof(ready),
+                                            "READY_TO_SEND:%ld\n", fsize);
+                        uart_write_bytes(EXPORT_UART, ready, rlen);
                         char line[256];
                         while (fgets(line, sizeof(line), fp)) {
                             uart_write_bytes(EXPORT_UART, line, strlen(line));

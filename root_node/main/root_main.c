@@ -226,6 +226,16 @@ static void broadcast_and_count(uint8_t phase_id)
     s_broadcast_sends    += PHASE_BROADCAST_REPEAT;
 }
 
+/*
+ * Visual phase banner — one separator line so each phase boundary is easy to
+ * find when scanning the console (and in screenshots). Console-only cosmetics;
+ * nothing is logged to the CSV here.
+ */
+static void phase_banner(const char *name)
+{
+    ESP_LOGI(TAG, "════════════════════ %s ════════════════════", name);
+}
+
 static void experiment_controller_task(void *arg)
 {
     ESP_LOGI(TAG, "[CTRL] Waiting %u s for mesh to stabilise...",
@@ -233,6 +243,7 @@ static void experiment_controller_task(void *arg)
     vTaskDelay(pdMS_TO_TICKS(PHASE_STABILISE_S * 1000));
 
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
+    phase_banner("PHASE 0 — BASELINE");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 0 — Baseline (%u s)", PHASE_BASELINE_S);
     broadcast_and_count(PHASE_ID_BASELINE);
     vTaskDelay(pdMS_TO_TICKS(PHASE_BASELINE_S * 1000));
@@ -247,6 +258,7 @@ static void experiment_controller_task(void *arg)
      * The root only announces the phase; the victim firmware reacts to it.
      */
 #if (ACTIVE_ATTACK != ATTACK_NONE)
+    phase_banner("PHASE — ATTACK");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE %d — Attack (%u s)",
              ACTIVE_ATTACK, PHASE_ATTACK_S);
     broadcast_and_count(ACTIVE_ATTACK);
@@ -257,12 +269,14 @@ static void experiment_controller_task(void *arg)
 #endif
 
     /* ── Phase 3: Cooldown ───────────────────────────────────────────────── */
+    phase_banner("PHASE 3 — COOLDOWN");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 3 — Cooldown (%u s)", PHASE_COOLDOWN_S);
     broadcast_and_count(PHASE_ID_COOLDOWN);
     vTaskDelay(pdMS_TO_TICKS(PHASE_COOLDOWN_S * 1000));
     ESP_LOGI(TAG, "[CTRL] Phase 3 complete.");
 
     /* ── Phase 4: Terminate ──────────────────────────────────────────────── */
+    phase_banner("PHASE 4 — TERMINATE");
     ESP_LOGI(TAG, "[CTRL] Broadcasting TERMINATE.");
     broadcast_and_count(PHASE_ID_TERMINATE);
 

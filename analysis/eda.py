@@ -234,11 +234,25 @@ def plot_distributions(
                 ax.set_yticks([])
         else:
             label_display = valid[label_col].map(lambda v: LABEL_NAMES.get(v, str(v)))
-            sns.histplot(
-                data=valid.assign(_label_display=label_display),
-                x=feat, hue="_label_display", kde=True, ax=axes[0],
-                element="step", stat="density", common_norm=False,
-            )
+            hist_df = valid.assign(_label_display=label_display)
+            try:
+                sns.histplot(
+                    data=hist_df,
+                    x=feat, hue="_label_display", kde=True, ax=axes[0],
+                    element="step", stat="density", common_norm=False,
+                )
+            except np.linalg.LinAlgError:
+                # A phase group with zero variance (e.g. a feature that's constant
+                # across a clean baseline run, like RetryRate = 0 everywhere) gives
+                # seaborn's gaussian_kde a singular covariance matrix and it raises
+                # LinAlgError. Drop the KDE overlay and redraw a plain histogram so
+                # the plot is still produced instead of taking down the whole M8 run.
+                axes[0].clear()
+                sns.histplot(
+                    data=hist_df,
+                    x=feat, hue="_label_display", kde=False, ax=axes[0],
+                    element="step", stat="density", common_norm=False,
+                )
             axes[0].set_title("Histogram by phase")
 
             sns.boxplot(

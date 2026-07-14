@@ -1,4 +1,4 @@
-# ESP32 Issues Log (Part 1 of 2) — NIS16 ESP-WIFI-MESH testbed
+# ESP32 Issues Log (Part 1 of 3) — NIS16 ESP-WIFI-MESH testbed
 
 Running log of problems hit while building/flashing/running the ESP32 mesh and
 the analysis pipeline. **Add a new entry every time something breaks.** Each
@@ -13,156 +13,169 @@ Branch context: `integration-test`. Newest issues on top.
 
 ---
 
-## I-010 · Victims join too late → capture only cooldown/terminate; root ran baseline-only
-- **Status:** ✅ FIXED — workaround applied and VERIFIED to produce a clean
-  blackhole capture (2026-07-08). Export set
-  `root_COM11_tree_blackhole_r1_20260708_035005*` /
-  `..._035013_arrivals.csv` / `victim_COM3_..._035008` /
-  `victim_COM8_..._035007` shows the textbook signature: all 4 files carry
-  ~179–180 `phase_id=1` rows, and in `arrivals.csv` split by `src_mac`, the
-  blackhole board (`B0:CB:D8:F3:32:18`) drops from **257 baseline arrivals → 0
-  during phase 1 → 121 in cooldown**, while the normal victim
-  (`F4:2D:C9:73:E6:18`) is unaffected (307 / 180 / 120). Root arrivals halved
-  from 30→15 per 15 s window exactly at the phase 0→1 flip and recovered at
-  1→3. Keep the boot-order + root-`-Attack` discipline below and it reproduces.
-- **Symptom:** In a 3-board run (root COM11, victim COM8, blackhole COM3), BOTH
-  victims logged only `phase_id=3` (cooldown) then `phase_id=4` (terminate) —
-  never phase 0 (baseline) or phase 1 (attack). Blackhole reported
-  `Dropped: 0`. Root reached cooldown at `root_ts ≈ 361 s`.
-- **Cause (two independent mistakes):**
-  1. **Late join.** The root's phase clock starts at ROOT boot and does NOT wait
-     for children. `run.ps1` flashes+monitors one board at a time (~30–40 s
-     flash each), so flashing root→victim→blackhole sequentially meant the
-     victims didn't join until the root was already ~360 s in (cooldown). They
-     missed baseline AND attack entirely.
-  2. **Root was baseline-only.** Cooldown at `root_ts ≈ 361 s` = 60 (stabilise)
-     + 300 (baseline), with NO 180 s attack window → the root was flashed
-     `-Attack none`. `-Attack blackhole` on the *victim* is inert unless the
-     ROOT also announces phase 1 (hence `Dropped: 0`).
-- **Fix / Workaround:**
-  1. Put `-Attack blackhole` on the **ROOT** too — the root drives the attack
-     phase; the victim flag only selects which victim firmware is built.
-  2. Get all boards booted inside the root's 60 s stabilise window. Firmware
-     persists across resets, so: flash victim + blackhole FIRST (they sit
-     scanning `[FIND] fail to find a network`, harmless), then flash the root
-     LAST — its 60 s stabilise absorbs the join, then baseline starts with all
-     3 present. Confirm `nodes in mesh: 3` on the root BEFORE the first
-     `phase_id=0` broadcast; during phase 1 the blackhole should log
-     `Dropped: N>0`.
+## I-015 · Export progress bar crawled at ~1 KB/s despite 115200 baud being ~11 KB/s
+- **Status:** ✅ FIXED — 2026-07-14.
+- **Symptom:** `EXPORT_LOGS` on a large `telem.csv` (hundreds of KB) took many
+  minutes; the added progress bar showed a steady ~1 KB/s rather than anywhere
+  near the 115200 baud's line rate.
+- **Cause:** the device (`csv_logger.c` `serial_export_task`) was already
+  streaming at full line rate — the bottleneck was entirely host-side.
+  `export_logs.py`'s `_capture_stream` called pyserial's `ser.readline()`, which
+  reads **one byte per call**; an 800 KB file meant ~800,000 per-byte Python
+  reads.
+- **Fix:** rewrote `_capture_stream` to read whatever's already buffered in one
+  `ser.read(ser.in_waiting)` call and split lines from a local `bytearray`
+  buffer itself (same framing/column-width filtering as before, verified
+  identical across chunk boundaries of 1/3/7/4096 bytes in a stubbed-serial
+  test). Throughput went from ~1 KB/s to ~11 KB/s (near the 115200 line rate) —
+  roughly a 10x speedup. Host-only change; takes effect immediately, no
+  reflash needed. (Separately, the device now also announces each file's byte
+  size on `READY_TO_SEND:<bytes>` so the progress bar can show a true `%` —
+  that half DOES need a reflash to take effect; see `m5_extraction/README.md`.)
+  Considered raising the console baud instead (would be a further ~4x) but
+  rejected: I-007 already showed a higher `CONFIG_ESP_CONSOLE_UART_BAUDRATE`
+  doesn't stick in `sdkconfig`, and any host/device baud mismatch fails the
+  whole export (and risks silently dropping malformed-width rows) rather than
+  erroring cleanly.
 
-## I-009 · Compiling too slow — full rebuild on every baseline↔blackhole switch
+---
+
+## I-014 · `preprocess.py` OOM `Unable to allocate 29.9 GiB` — one corrupt `timestamp_us` blows up the reindex grid
+- **Status:** 🩹 WORKAROUND (pipeline side) — verified 2026-07-13: M6→M7→M8 runs
+  clean on `baseline/linear_topology` after the guard drops the bad sample.
+- **Symptom:** `preprocess.py` on `baseline/linear_topology` aborted with
+  `numpy ArrayMemoryError: Unable to allocate 29.9 GiB for an array with shape
+  (4015695301,)` at `_fill_node_gaps`'s `reindex(full_index)`.
+- **Cause:** `victim_COM26_linear..._telem.csv` row 5006 had
+  `timestamp_us = 4015695302104779` (~4×10¹⁵ µs vs the normal ~10⁸) — an esp_timer
+  glitch. It's a valid integer so it passed numeric coercion, but after per-node
+  rebasing its relative time is ~4×10⁹ s, so `RangeIndex(min, max+1)` becomes ~4
+  billion rows → a 29.9 GiB allocation.
+- **Fix (pipeline, two layers so it can NEVER OOM again):** (1) `_fill_node_gaps`
+  drops any sample whose relative time exceeds `MAX_SESSION_SECONDS` (86400)
+  before the grid is built; (2) a hard tripwire refuses to densify if the grid
+  would exceed `MAX_GRID_ROWS` (500k), falling back to observed timestamps only.
+  The reindex is the pipeline's ONLY unbounded allocation (audited), so this caps
+  it absolutely. Verified: the 4-billion-row poison case peaks at **0.1 MB** even
+  with layer (1) disabled. Clean data untouched (tree output byte-identical).
+- **Still open (firmware side):** why esp_timer emitted a garbage timestamp for
+  one sample — possibly a logging race in `csv_logger.c`. Rare (1 row); pipeline
+  guard absorbs it for now.
+
+---
+
+## I-013 · `preprocess.py` crashes `cannot interpolate with object dtype` — an ESP-IDF log line leaked into a telemetry CSV during export
+- **Status:** 🩹 WORKAROUND (pipeline side) — verified 2026-07-13: `preprocess.py`
+  drops the bad rows and M6→M7→M8 runs clean on `baseline/partial_mesh_topology`.
+  The export-side contamination itself is not yet fixed (see last bullet).
+- **Symptom:** `run.ps1 -Analyze` / `preprocess.py` on
+  `baseline/partial_mesh_topology` died with `TypeError: Series cannot interpolate
+  with object dtype` at `_fill_node_gaps`'s `grid["rssi_dbm"].interpolate(...)`.
+  Only that folder; tree/star/linear baseline were fine.
+- **Cause:** two victim_COM21 `*_telem.csv` each had **one non-sample row** — an
+  async ESP-IDF mesh log line (`...<assoc>...channel:11...`, `[SCAN]...MAP:0...`)
+  interleaved into the CSV over the shared UART during export. Its commas split
+  into ~11 fields so `read_csv` didn't raise; `rssi_dbm` held a text token, typing
+  the column `object` → `interpolate` raises → whole run aborts.
+- **Fix (pipeline):** `preprocess.py` gained `NUMERIC_COLUMNS` +
+  `_coerce_and_drop_malformed()` — `pd.to_numeric(errors="coerce")` on the numeric
+  columns, drop any row whose present value won't parse, count them
+  (`Rows dropped (contaminated)`) and warn with the filenames. Clean data is
+  untouched → output byte-identical (determinism preserved).
+- **Still open (export side):** stop logs contaminating the CSV — raise/mute the
+  ESP-IDF log level during the export dump, or export over a framed channel. Until
+  then the pipeline workaround absorbs it.
+
+---
+
+## I-012 · Flash/wipe fails `FileNotFoundError` on COM21 — USB selective suspend powered the CP210x down
+- **Status:** ✅ FIXED (system-wide) — verified (2026-07-13): after disabling
+  USB selective suspend at the power-plan level, `esptool ... flash_id` connected
+  cleanly on COM21 (chip ESP32-D0WD-V3, MAC `f4:2d:c9:73:e6:18`, exit 0) on the
+  exact reset+open path that was failing.
+- **Symptom:** `run.ps1 -Port COM21 -Flash` failed *every* time — first the
+  `-Wipe` step, then esptool: `could not open port 'COM21':
+  FileNotFoundError(2, 'The system cannot find the file specified.')` /
+  `Could not open COM21, the port is busy or doesn't exist`. 100% reproducible,
+  yet `Get-CimInstance Win32_PnPEntity` showed COM21 present + `Status: OK` right
+  after the failure — the port vanishes only *at the moment esptool opens it*.
+- **Not the cause (ruled out by testing):** NOT a busy/held port (that throws
+  PermissionError, not FileNotFoundError; the compile step never opens the port,
+  so exiting mid-compile can't hold it); NOT a pyserial two-digit-COM bug (3.5
+  opened COM21 fine in isolation incl. the dtr/rts-before-open sequence);
+  NOT a PATH/python mismatch (failing esptool ran from the pinned venv). A raw
+  open test succeeded 20/20 while idle — the port was healthy *at rest*.
+- **Cause:** Windows USB **selective suspend** powered the CP210x down after 10 s
+  idle — registry `Device Parameters` showed `DeviceSelectiveSuspended:1`,
+  `SelectiveSuspendTimeout:10000`. Telltale timeline: an *immediate* open (my
+  `erase_flash`, or a lone `flash_id`) hits it awake and works; but a `run.ps1`
+  flash sits idle through the failed `-Wipe` + the minute-long ninja compile, so
+  by the time `ninja flash` reaches esptool the bridge is suspended → Windows
+  reports the device *gone* → FileNotFoundError. Same USB-power theme as I-008's
+  link instability, on the serial side.
+- **Fix (system-wide — do this, it's teammate-proof):** disable USB selective
+  suspend in the active power plan; it covers **every** USB device and survives
+  re-enumeration (which erasing/reflashing a board triggers, spawning a fresh
+  device instance):
+  ```powershell
+  $sub='2a737441-1930-4402-8d77-b2bebba308a3'; $set='48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
+  powercfg /setacvalueindex SCHEME_CURRENT $sub $set 0
+  powercfg /setdcvalueindex SCHEME_CURRENT $sub $set 0
+  powercfg /setactive SCHEME_CURRENT   # verify: powercfg /q SCHEME_CURRENT $sub $set → both Current ...Index: 0x0
+  ```
+- **Why NOT the per-device Device Manager uncheck (Ports → CP210x → Power
+  Management → "Allow the computer to turn off this device"):** it's per **device
+  instance** and *reverts when the board re-enumerates* — after an `erase_flash`,
+  COM21 came back as a new instance with the box re-checked (`SelectiveSuspendEnabled`
+  blank, timeout back to `10000`), so the flash failed again. Use the power-plan
+  fix above instead. Verify either way by connecting, not by the registry
+  (`DeviceSelectiveSuspended` is a live-status snapshot, not the setting):
+  `esptool.py --chip esp32 -p <COM> -b 460800 flash_id` should connect every time.
+- **ALSO check the USB cable — likely the real culprit here (2026-07-13):** after
+  the suspend fix, the COM21 cable *still* misbehaved, but moving the SAME board to
+  a different port+cable (COM26) worked immediately. A marginal/charge-only cable
+  drops the CP210x off the bus intermittently → port vanishes → the identical
+  `FileNotFoundError`. So `FileNotFoundError` has TWO causes that look alike: USB
+  selective suspend (above) AND a flaky cable/port. **Check the cable first — it's
+  the 5-second test:** swap to a known-good short/thick DATA cable, or move the
+  board to another physical port. Same power-margin theme as I-008. Use whichever
+  COM the good cable enumerates as (`-Port COM26`), and label/retire the bad cable.
+
+## I-011 · Stale build dir breaks the build after the repo folder moves ("configured for project 'OLD\path' not 'NEW\path'")
 - **Status:** ✅ FIXED
-- **Symptom:** Root builds took minutes even for a tiny change; every
-  `run.ps1 -Flash` that switched attack mode recompiled the whole ESP-IDF tree.
-- **Cause:** `root_node/CMakeLists.txt` applied `-DACTIVE_ATTACK=<n>` as a
-  **global** compile option (`idf_build_set_property COMPILE_OPTIONS`). Since
-  `run.ps1` passes an explicit value on every flash (255 baseline / 1 blackhole),
-  switching mode changed every object's command line → ninja rebuilt everything.
-- **Fix:** Moved the define to the root's `main` component only
-  (`target_compile_definitions(${COMPONENT_LIB} PRIVATE ACTIVE_ATTACK=...)`),
-  since `root_main.c` is its sole consumer. A mode switch now recompiles ~1 file.
-  Verified `root_main.c:249` is the only C consumer; other components fall back
-  to the `#ifndef ACTIVE_ATTACK` default in `mesh_config.h`.
-- **Other build-speed facts (not bugs):** ccache is already enabled
-  (`-DCCACHE_ENABLE=1`), so the *second* build of a given config is fast — do
-  NOT `idf.py fullclean` unless truly needed (it throws away the ccache-backed
-  objects). The *first* build of each project compiles all of ESP-IDF (~minutes,
-  unavoidable). Build root + victim in parallel (separate folders = safe) to
-  halve wall-clock. The `-- USING O3` line is mbedTLS building itself, not our
-  code; global app optimization is already `-Og` (fast to compile).
+- **Symptom:** `idf.py ... flash` (via `run.ps1`) fails immediately with
+  `Build directory '...\build_<variant>' configured for project 'OLD\PATH\...'
+  not 'THIS\PATH\...'. Run 'idf.py fullclean' to start again.` No compile
+  happens; the monitor step never runs.
+- **Cause:** CMake bakes the project's **absolute source path** into
+  `CMakeCache.txt` (`CMAKE_HOME_DIRECTORY`) at configure time. `build_*` dirs
+  are git-ignored (per Conventions in `CLAUDE.md`) so they don't ship via git —
+  but a `build_*` dir surviving a repo move/rename (this repo moved from
+  `...\Business\Claude\AI OS\...\Thesis\...` to `...\DLSU\Thesis\...`), or a
+  teammate copying the whole tree instead of cloning fresh, leaves a cached
+  path that no longer matches. **Can hit any teammate**, not just this
+  machine — anyone reorganizing folders or zipping the project with `build_*`
+  included will see it.
+- **Fix:** `run.ps1` now self-heals before every `-Flash`: it reads
+  `CMAKE_HOME_DIRECTORY` out of the target `build_<variant>/CMakeCache.txt` (if
+  present) and compares it to the current project path. On a mismatch it
+  prints a warning and deletes just that one stale `build_<variant>` dir, then
+  lets `idf.py` reconfigure from scratch — no manual `idf.py fullclean` needed.
+  Safe because `build_*` is disposable/git-ignored; nothing in source or SPIFFS
+  data is touched.
 
-## I-008 · WiFi link flaps: victim connects to root then drops (reason 6)
-- **Status:** 🩹 WORKAROUND — largely resolved by a different root board + ch 11.
-  Latest run (2026-07-08): a THIRD root board (MAC `1c:c3:ab:c1:98:a8`, COM11) on
-  **channel 11** ran the **FULL ~8-min experiment** to completion with BOTH
-  children joined (routing table = 3), victim RSSI **−54..−58 dBm** (was
-  −66..−69), victim sent **441 probes**, only 2 brief child drops (auto-rejoined
-  in ~10 s) vs constant flapping before. This **confirms the earlier root board
-  was the bad actor** (power/RF) — swapping it + moving to a quiet channel fixed
-  it. Keep an eye on the 2 residual drops; if they matter, chase root power
-  (cable/port) further. Original OPEN diagnosis kept below for history.
-- **(history) Status:** 🔴 OPEN (environmental — not a firmware bug)
-- **Symptom:** Victim finds the root and **associates successfully every time**
-  (`auth → assoc → run`), then the link dies ~1–2 s later and repeats forever.
-  Disconnect reasons are a grab-bag: **6** (non-auth STA / deauth), **105**
-  (parent stopped), **202**, **204** (handshake timeout). Every probe fails
-  `ESP_ERR_MESH_DISCONNECTED`. RSSI a weak **−66..−69 dBm** for two boards on the
-  same desk (should be −20..−40 that close).
-- **Why it's not firmware:** a config/credential mismatch fails cleanly at auth
-  and never reaches `run`. Here association always succeeds and then can't be
-  *sustained*, with mixed disconnect reasons + abnormally weak RSSI — the
-  fingerprint of RF/power instability. Both boards run the same commit, correct
-  roles (root `Role: 0`, victim joins), and boot fine at 460800 baud.
-- **Suspected causes (most→least likely):**
-  1. **Power/brownout** on WiFi TX spikes — thin USB cable / two boards sharing
-     one weak USB controller. Top suspect (weak RSSI + varied deauths).
-  2. **Channel 6 congestion** — mesh was hard-coded to ch 6, the busiest 2.4 GHz
-     channel; local APs there cause deauth/handshake-timeout storms.
-  3. **RF proximity** — radios <~30 cm apart desensing each other.
-- **Attempts:**
-  - 2026-07-08: reflashed both at 460800 — flap persists identically (rules out
-    the baud change; confirms it's the link, not serial).
-  - 2026-07-08: **made the channel configurable** — new `MESH_CHANNEL` in
-    `mesh_config.h` (was hard-coded `cfg.channel = 6` in `mesh_setup.c`), set to
-    **11**. Reflash BOTH boards; if still flapping, try `MESH_CHANNEL 1`. ⏳ test.
-  - 2026-07-08: `netsh wlan show networks` saw only **1 AP nearby** → the 2.4 GHz
-    band is quiet here, so **channel congestion is unlikely** the cause.
-    Suspect #2 (channel) DEPRIORITIZED; **power/brownout + RF proximity are now
-    the overwhelming suspects.** Also note reason **105 "parent stopped" = the
-    ROOT's AP dropping** → the ROOT board's power/stability may be the culprit;
-    monitor the root during a victim run to see if it resets or its AP restarts.
-- **Still-untested physical fixes:** good short/thick USB cables; power boards
-  from separate strong ports / a powered hub; move them ~1–2 m apart; power-cycle
-  both, start root first, wait ~10 s, then victim. This hardware *has* captured
-  clean baseline CSVs before, so the setup is capable.
+## I-010 … I-001 · older / long-settled issues → archived
 
-## I-007 · CSV export over serial is slow → 460800 attempt REVERTED
-- **Status:** ⛔ CAN'T FIX (as attempted) — reverted to 115200 for reliability.
-- **Symptom:** Exporting `telem.csv` took ~20–25 s (a 267 KB stacked file).
-- **Cause:** Console/UART0 baud is 115200 (~11.5 KB/s); baud is the bottleneck.
-- **Attempt (2026-07-08) and why it was reverted:** Raised
-  `CONFIG_ESP_CONSOLE_UART_BAUDRATE` to 460800 in sdkconfig + sdkconfig.defaults,
-  and set `export_logs.py BAUD=460800`. **It did not stick**: idf regenerated
-  `sdkconfig` back to **115200** on later builds (the sdkconfig.defaults line is
-  only applied to keys not already present, and the direct edit was normalized
-  away), so the FIRMWARE stayed at 115200 while the host tools moved to 460800.
-  Result — a baud MISMATCH that broke BOTH export AND wipe: `export_logs.py`
-  (and `run.ps1 -Wipe`) sent commands at 460800 that the 115200 device saw as
-  garbage → `TIMEOUT: never saw END_OF_FILE`, and `--wipe` silently did nothing
-  (board still showed old `Used: 262 KB` after a "successful" wipe).
-  Proof it never took: `idf.py monitor` still opened at `-b 115200` and showed
-  CLEAN text (would be garbage if firmware were at 460800).
-- **Resolution:** reverted everything to **115200** — `export_logs.py BAUD`,
-  `SERIAL_BAUD`, and removed the 460800 line from both `sdkconfig.defaults`.
-  sdkconfig was already back at 115200, so **no reflash needed** — export/wipe
-  work again immediately. Export stays ~20 s for a big file; acceptable, and a
-  `-Wipe` before each run keeps files to a single run (~50 KB, a few seconds).
-- **If you ever want the speedup for real:** set the console baud via
-  `idf.py menuconfig` (Component config → ESP System Settings → Channel/baud, or
-  Component config → Console) so it persists in sdkconfig, confirm `idf.py
-  monitor` opens at the new `-b`, THEN set `export_logs.py BAUD` to match. Don't
-  hand-edit sdkconfig — it gets regenerated.
-
-## I-006 · Blackhole attack required hand-editing two files
-- **Status:** ✅ FIXED
-- **Symptom:** Running the blackhole attack (M2) meant manually editing source on
-  both boards; easy to mismatch and leave a half-configured run.
-- **Cause:** No build-time attack selector; victim source was hard-picked.
-- **Fix:** Added `-DACTIVE_ATTACK` build flag (`mesh_config.h` `#ifndef` guard;
-  `ATTACK_NONE=255`, blackhole=1). Root announces the phase; victim
-  `main/CMakeLists.txt` builds `blackhole_victim.c` when `ACTIVE_ATTACK==1`.
-  Also wired `run.ps1 -Attack blackhole` to inject the flag on flash, and
-  `-Attack none` passes `-DACTIVE_ATTACK=255` (also clears a cached blackhole
-  build). Build-verified with zero warnings, and confirmed live: victim booted
-  `=== BLACKHOLE NODE STARTING ===`.
-
-## I-005 … I-001 · older resolved issues → archived
-
-📦 The older, long-settled entries (**I-005** `run.ps1 -Wipe`, **I-004** "fail to
+📦 Moved to **Part 2, [`esp32-issues-Part2.md`](esp32-issues-Part2.md)** to keep
+this log under 200 lines: **I-010** victims joined too late (boot-order fix —
+victims first, root LAST), **I-009** compiling too slow (per-component
+`ACTIVE_ATTACK` define + cross-config ccache sharing), **I-008** WiFi link flaps
+(reason 6 — fixed by a different root board + ch 11), **I-007** CSV export baud
+(460800 reverted),
+**I-006** blackhole hand-editing, **I-005** `run.ps1 -Wipe`, **I-004** "fail to
 find a network", **I-003** `-lunwind` from wrong dir, **I-002** `could not open
-COM9`, **I-001** export timeout workaround) moved to **Part 2,
-[`esp32-issues-Part2.md`](esp32-issues-Part2.md)** to keep this log under
-200 lines. Look there for those; add NEW issues here on top.
+COM9`, **I-001** export timeout workaround. Look there for those; add NEW issues
+here on top.
 
 ---
 

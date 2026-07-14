@@ -220,8 +220,14 @@
  * TELEMETRY SAMPLING
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Telemetry sample interval — 1 Hz as specified in the thesis. */
-#define SAMPLING_INTERVAL_MS    1000U
+/** Telemetry sample interval. Raised from the proposal's 1 Hz (1000ms) to 20 Hz
+ *  (50ms) on 2026-07-12 per adviser direction: a single run's telemetry file
+ *  must exceed 10,000 rows, and at 1 Hz the fixed 600s (Table 4.1) run only
+ *  yields ~600-700 rows. 600s / 50ms = 12,000 rows nominal — a margin above
+ *  the 10,000 floor. This is a DEVIATION from the proposal's stated "1 Hz" —
+ *  see ../../thesis-deviate.md. Requires the 4MB-flash partition table (see
+ *  partitions.csv) — a 1 Hz-sized SPIFFS partition cannot hold 20 Hz data. */
+#define SAMPLING_INTERVAL_MS    50U
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PROBE GENERATION (victim nodes)
@@ -249,8 +255,12 @@
 /** Flush to flash after this many records (thesis spec: every 10). */
 #define LOGGER_FLUSH_RECORDS    10U
 
-/** Maximum CSV file size per run before log rotation (bytes). */
-#define LOGGER_MAX_FILE_BYTES   (500U * 1024U)    /* 500 KB */
+/** Maximum CSV file size per run before log rotation (bytes). Not currently
+ *  enforced by csv_logger.c (no rotation logic implemented) — this is
+ *  aspirational sizing only. Raised alongside the 20 Hz sampling change
+ *  (~12,000 rows * ~68 bytes/row ≈ 816 KB); the grown SPIFFS partition
+ *  (partitions.csv, 2.4 MB) has room well beyond this. */
+#define LOGGER_MAX_FILE_BYTES   (1200U * 1024U)    /* 1200 KB */
 
 /** USB serial baud rate for log extraction (informational only — the export
  *  task streams over UART0 at the CONSOLE baud, set by
@@ -260,8 +270,13 @@
  *  the sdkconfig value and export_logs.py's BAUD. */
 #define SERIAL_BAUD             115200
 
-/* Debug: start serial-export task at init for quick host pulls (0 = disabled) */
-#define CSV_EXPORT_ON_INIT     0
+/* Start the serial-export listener at boot instead of only after the terminate
+ * phase. Set to 1 so a board is ALWAYS export-ready: a reset/reboot/crash (or the
+ * run.ps1 monitor->export handoff, which toggles the reset line) no longer leaves
+ * the listener disarmed and every board exports on the first pull. Does NOT change
+ * any telemetry/phase/sampling behaviour — only WHEN the export task starts.
+ * See esp32-issues.md (terminate-gated export). (0 = only-after-terminate.) */
+#define CSV_EXPORT_ON_INIT     1
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * TASK PRIORITIES AND STACK SIZES

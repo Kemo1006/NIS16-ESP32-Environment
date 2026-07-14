@@ -58,6 +58,18 @@ EXPECTED_SAMPLES_PER_WINDOW = 5     # 1 Hz logging rate × 5 s window
 MIN_VALID_SAMPLES = 4               # Section 4.2.4.1 point 4 — discard if < 4
 MAX_INTERP_GAP_SAMPLES = 2          # "gap of 1-2 consecutive missing samples"
 EPSILON = 1e-6                      # Equation 4.2 divide-by-zero guard
+MAX_SESSION_SECONDS = 24 * 3600    # 86400 — captures run for minutes, so a
+                                   # per-node relative time beyond a full day
+                                   # means a corrupt timestamp_us (esp_timer
+                                   # glitch), not real data. See _fill_node_gaps.
+# HARD CEILING on the dense 1 Hz reindex grid, in rows. This is a safety
+# tripwire, not a tuning knob: the sole place this pipeline can allocate an
+# unbounded array is the per-node reindex in _fill_node_gaps, and a corrupt
+# timestamp once made it try to allocate ~30 GiB and freeze the machine. Legit
+# per-node grids are <= MAX_SESSION_SECONDS+1 rows (86401), so this ceiling is
+# never hit by real data; if it ever would be, we refuse to densify instead of
+# risking the host's memory. 500k int64 rows is ~a few MB — trivially safe.
+MAX_GRID_ROWS = 500_000
 
 # Columns that are CUMULATIVE counters (monotonically increasing on the
 # node) — these get delta-converted per window (Equation 4.1).
@@ -90,6 +102,16 @@ IDENTITY_COLUMNS = (
     "node_id", "role", "layer", "parent_mac",
 )
 
+# Schema columns the firmware always writes as integers. A non-numeric value
+# in any of these means the row is contaminated (see _coerce_and_drop_malformed)
+# and must be dropped before any numeric step. node_id/role/parent_mac are
+# genuinely textual, so they're deliberately excluded here.
+NUMERIC_COLUMNS = (
+    "timestamp_us", "layer", "rssi_dbm",
+    "retry_count", "tx_count", "probes_count",
+    "phase_id", "gt_label",
+)
+
 
 @dataclass
 class PreprocessReport:
@@ -100,6 +122,9 @@ class PreprocessReport:
     """
     files_loaded: int = 0
     files_skipped: list[str] = field(default_factory=list)
+    rows_dropped_malformed: int = 0
+    rows_dropped_downsampled: int = 0
+    rows_dropped_corrupt_timestamp: int = 0
     raw_rows_total: int = 0
     windows_total: int = 0
     windows_discarded_incomplete: int = 0
@@ -118,7 +143,11 @@ class PreprocessReport:
             "── Preprocessing Quality Report ──────────────────────────",
             f"  Files loaded:               {self.files_loaded}",
             f"  Files skipped (bad/empty):  {len(self.files_skipped)}",
-            f"  Raw 1Hz rows ingested:      {self.raw_rows_total}",
+            f"  Rows dropped (contaminated):{self.rows_dropped_malformed}",
+            f"  Rows dropped (corrupt ts):  {self.rows_dropped_corrupt_timestamp}",
+            f"  Rows downsampled to 1Hz grid: {self.rows_dropped_downsampled} "
+            f"(expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)",
+            f"  Raw rows ingested:          {self.raw_rows_total}",
             f"  Windows formed:             {self.windows_total}",
             f"  Windows discarded (<4 smp): {self.windows_discarded_incomplete}",
             f"  Windows discarded (gap>2s): {self.windows_discarded_gap}",
@@ -197,8 +226,57 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame
         )
 
     raw = pd.concat(frames, ignore_index=True)
+    raw = _coerce_and_drop_malformed(raw, report)
     report.raw_rows_total = len(raw)
     return raw
+
+
+def _coerce_and_drop_malformed(
+    raw: pd.DataFrame, report: PreprocessReport
+) -> pd.DataFrame:
+    """
+    Force the schema's numeric columns to numbers and drop any row where one
+    failed to parse.
+
+    Such rows are contamination, not real samples: an ESP-IDF log line printed
+    asynchronously over the same UART (a mesh ``<assoc>``/``[SCAN]`` event, etc.)
+    gets interleaved into the CSV during serial export, so the row's fields shift
+    and a numeric column ends up holding a text token like ``" channel:11"`` or
+    ``" MAP:0"``. Even one such value makes pandas type the whole column as
+    ``object``, which then blows up interpolation downstream (``TypeError: Series
+    cannot interpolate with object dtype``). The firmware always writes every
+    numeric field as an integer, so a non-numeric value there means the row isn't
+    a genuine 1 Hz sample — dropping it keeps a single stray log line from
+    aborting the entire run, consistent with this pipeline's skip-bad-input,
+    report-the-count philosophy.
+
+    Clean data is unaffected: with no non-numeric tokens nothing is dropped and
+    the already-integer columns coerce back to the same dtype, so output stays
+    byte-identical (the determinism criterion).
+
+    The drop count (and, on request, the affected filenames) is recorded on
+    `report` rather than raised as a `warnings.warn()` — this can legitimately
+    fire on every real capture (any stray async log line interleaved over the
+    shared UART during export), so it belongs in the one-line quality summary
+    every run already prints, not as a console warning per run.
+    """
+    coerced = raw.copy()
+    bad_mask = pd.Series(False, index=coerced.index)
+    for col in NUMERIC_COLUMNS:
+        if col not in coerced.columns:
+            continue
+        as_num = pd.to_numeric(coerced[col], errors="coerce")
+        # Flag only values that were present but un-parseable (a genuinely
+        # empty cell stays NaN and is handled later as a normal missing sample).
+        bad_mask |= as_num.isna() & coerced[col].notna()
+        coerced[col] = as_num
+
+    n_bad = int(bad_mask.sum())
+    if n_bad:
+        report.rows_dropped_malformed += n_bad
+        coerced = coerced.loc[~bad_mask].reset_index(drop=True)
+
+    return coerced
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -232,10 +310,13 @@ def rebase_timestamps(raw: pd.DataFrame) -> pd.DataFrame:
 # Step 3 — Missing-sample handling (per-node, before windowing)
 # ─────────────────────────────────────────────────────────────────────────
 
-def _fill_node_gaps(node_df: pd.DataFrame) -> pd.DataFrame:
+def _fill_node_gaps(node_df: pd.DataFrame, report: PreprocessReport) -> pd.DataFrame:
     """
     Apply the thesis's missing-value rules to one (node, run) timeline,
-    operating on a synthetic 1 Hz grid built from t_rel.
+    operating on a synthetic 1 Hz grid built from t_rel (Table 4.10 windows
+    are defined at 1 Hz regardless of the firmware's raw sampling rate — see
+    SAMPLING_INTERVAL_MS / thesis-deviate.md; a faster raw rate, e.g. the
+    current 20 Hz, is downsampled to this grid, not resampled to match it).
 
     Continuous metrics (rssi_dbm): linear interpolation for gaps of
     1-2 consecutive missing samples; longer gaps are left as NaN (the
@@ -255,12 +336,35 @@ def _fill_node_gaps(node_df: pd.DataFrame) -> pd.DataFrame:
     node_df = node_df.copy()
     t_int = node_df["t_rel"].round().astype(int)
 
+    # Guard against a corrupt timestamp. A single garbage timestamp_us value
+    # (e.g. 4.0e15 µs seen from an esp_timer glitch) survives numeric coercion
+    # but makes t_int.max() astronomical, so the RangeIndex/reindex below tries
+    # to allocate tens of GiB and aborts the run (numpy _ArrayMemoryError). Real
+    # captures span minutes; drop any sample whose relative time exceeds
+    # MAX_SESSION_SECONDS before the grid is built. Anchored on min(), which is a
+    # legitimate small value (the outlier is a large positive, unsigned micros).
+    span_ok = (t_int - t_int.min()) <= MAX_SESSION_SECONDS
+    if not span_ok.all():
+        n_bad = int((~span_ok).sum())
+        node_id_val = node_df["node_id"].iloc[0] if "node_id" in node_df.columns else "?"
+        report.rows_dropped_corrupt_timestamp += n_bad
+        warnings.warn(
+            f"[preprocess] {node_id_val}: dropped {n_bad} sample(s) with a corrupt "
+            f"timestamp_us (relative time > {MAX_SESSION_SECONDS}s — esp_timer glitch). "
+            f"This should never happen on real data — investigate the source file."
+        )
+        node_df = node_df.loc[span_ok]
+        t_int = t_int.loc[span_ok]
+
     if t_int.duplicated().any():
-        # Real ESP32 hardware doesn't produce perfectly spaced 1 Hz samples
-        # — esp_timer jitter means two rows can round to the same integer
-        # second. Keep the row closest to its integer second, discard the
-        # duplicate. This preserves the 1 Hz grid assumption while being
-        # robust to typical hardware timing drift of a few ms per sample.
+        # Two or more raw samples can round to the same integer second —
+        # expected whenever the firmware's raw sampling rate is faster than
+        # the 1 Hz analysis grid (current rate: see SAMPLING_INTERVAL_MS /
+        # thesis-deviate.md), plus ordinary esp_timer jitter on top. Keep the
+        # row closest to its integer second, discard the rest. This preserves
+        # the 1 Hz grid Table 4.10 windows are defined on. Expected to fire on
+        # every real capture at rates > 1 Hz, so it's tallied on `report` and
+        # shown once in the quality summary rather than warned per node/file.
         node_df["_t_int"] = t_int
         node_df["_t_frac_err"] = (node_df["t_rel"] - t_int).abs()
         node_df = (
@@ -270,15 +374,27 @@ def _fill_node_gaps(node_df: pd.DataFrame) -> pd.DataFrame:
             .sort_values("_t_int")
         )
         n_dropped = len(t_int) - len(node_df)
-        node_id_val = node_df["node_id"].iloc[0] if "node_id" in node_df.columns else "?"
-        warnings.warn(
-            f"[preprocess] {node_id_val}: dropped {n_dropped} duplicate "
-            f"t_rel row(s) due to esp_timer jitter — kept closest sample per second."
-        )
+        report.rows_dropped_downsampled += n_dropped
         t_int = node_df["_t_int"]
         node_df = node_df.drop(columns=["_t_int", "_t_frac_err"])
 
-    full_index = pd.RangeIndex(t_int.min(), t_int.max() + 1)
+    # Build the dense 1 Hz grid — but never allocate an absurd one. The outlier
+    # drop above already bounds the span to MAX_SESSION_SECONDS, so this ceiling
+    # is a belt-and-suspenders tripwire: even if some future/edge path let a huge
+    # span through, we refuse to densify (which is what tried to grab ~30 GiB and
+    # froze the laptop) and fall back to the observed timestamps only, so the
+    # allocation can never exceed the number of real samples.
+    grid_rows = int(t_int.max()) - int(t_int.min()) + 1
+    if grid_rows > MAX_GRID_ROWS:
+        node_id_val = node_df["node_id"].iloc[0] if "node_id" in node_df.columns else "?"
+        warnings.warn(
+            f"[preprocess] {node_id_val}: dense 1 Hz grid would be {grid_rows:,} "
+            f"rows (> MAX_GRID_ROWS={MAX_GRID_ROWS:,}) — corrupt timestamps. "
+            f"Refusing to densify; using observed timestamps only, no gap-fill."
+        )
+        full_index = pd.Index(sorted(t_int.unique()))
+    else:
+        full_index = pd.RangeIndex(t_int.min(), t_int.max() + 1)
 
     grid = node_df.set_index(t_int).reindex(full_index)
 
@@ -309,7 +425,7 @@ def _fill_node_gaps(node_df: pd.DataFrame) -> pd.DataFrame:
     return grid.reset_index(drop=True)
 
 
-def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
+def handle_missing_values(df: pd.DataFrame, report: PreprocessReport) -> pd.DataFrame:
     """
     Apply _fill_node_gaps() independently per (node_id, run).
 
@@ -320,7 +436,7 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     """
     filled = []
     for (node_id, source_file), group in df.groupby(["node_id", "_source_file"]):
-        filled.append(_fill_node_gaps(group))
+        filled.append(_fill_node_gaps(group, report))
     return pd.concat(filled, ignore_index=True)
 
 
@@ -486,7 +602,7 @@ def run_pipeline(
 
     raw = load_raw_telemetry(input_dir, report)
     rebased = rebase_timestamps(raw)
-    filled = handle_missing_values(rebased)
+    filled = handle_missing_values(rebased, report)
     windowed = build_windows(filled, report)
 
     return windowed, report, filled

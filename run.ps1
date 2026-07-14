@@ -8,6 +8,15 @@
   moment you press Ctrl+] to leave the monitor, so you don't type the export
   command by hand. This way not every run auto-exports; you choose per run.
 
+  Ctrl+] only quits idf.py monitor's own terminal UI -- it can't know you typed
+  -Export by mistake. So after the monitor closes with -Export/-Clean/-Analyze
+  set, the script pauses for a few seconds before actually exporting: press 'n'
+  to skip (data stays safe on the board's SPIFFS either way), or press anything
+  else / do nothing to proceed right away. For a hard abort at ANY point in this
+  script (mid-monitor or mid-export) without closing this PowerShell window, use
+  Ctrl+Break -- Windows' equivalent of a shell's Ctrl+\ (Windows consoles don't
+  deliver Ctrl+\ as a signal, so Ctrl+Break is the real one here).
+
   Run this from the "ESP-IDF 5.3 PowerShell" window (idf.py + python + pyserial
   must be on PATH).
 
@@ -44,6 +53,13 @@
   # on shaping. Physical placement still matters most (see verify_topology.py).
   .\run.ps1 -Port COM8 -Role root   -Topology star -Wipe -Flash -Export
   .\run.ps1 -Port COM3 -Role victim -Topology star -Wipe -Flash -Export
+
+.EXAMPLE
+  # AUTO-ANALYZE: export THEN run the full M6+M7+M8 pipeline in one step. Add
+  # -Analyze on the LAST board you export (the root) so the whole run is present;
+  # feature_table.csv AND eda_output\ land in analysis\<attack>\<topology>_topology\.
+  .\run.ps1 -Port COM3 -Role victim -Attack blackhole -Wipe -Flash -Export   # victims first
+  .\run.ps1 -Port COM8 -Role root   -Attack blackhole -Wipe -Flash -Analyze  # root LAST -> analyzes
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Port,
@@ -62,22 +78,51 @@ param(
     # tunnels). Ignored for the root and for non-wormhole attacks. Run one victim
     # board as A and the other as B.
     [ValidateSet('A', 'B')][string]$WormholeEnd = 'B',
+    # Export FOLDER override for a control victim in an attack run. The board is
+    # flashed -Attack none (it's a plain victim) but its CSV belongs with the
+    # run's data, so pass e.g. -DestAttack blackhole to file it under
+    # exports/blackhole/<topology>_topology/ instead of exports/baseline/.
+    # Only affects where the export lands, not the firmware or the filename.
+    [ValidateSet('none', 'blackhole', 'wormhole')][string]$DestAttack = 'none',
     [int]$Repeat      = 1,
     [switch]$Flash,    # also (re)flash before monitoring — restarts the experiment
     [switch]$Export,   # after Ctrl+], pull the CSVs with export_logs.py. WITHOUT
                        # this the script just runs and exports NOTHING.
     [switch]$Clean,    # after a successful export, wipe the board's logs so the
                        # NEXT run starts empty (implies -Export)
-    [switch]$Wipe      # BEFORE flashing, erase the board's logs so THIS run starts
+    [switch]$Wipe,     # BEFORE flashing, erase the board's logs so THIS run starts
                        # empty — use for a guaranteed fresh, unstacked run
+    [switch]$Analyze   # after a successful export, auto-run the full analysis
+                       # pipeline over THIS run's exports subfolder: M6
+                       # (analysis/preprocess.py -> windowed_dataset.csv), M7
+                       # (analysis/features.py -> feature_table.csv), AND M8
+                       # (analysis/eda.py -> eda_output/), all written into the
+                       # matching analysis/<attack>/<topology>_topology/ folder.
+                       # Implies -Export. Use it on the LAST board you export (the
+                       # root), so the whole run — every node's CSV + the root's
+                       # arrivals.csv (needed for PDR) — is present when it runs.
+                       # (M8/EDA needs matplotlib/seaborn/scipy/scikit-learn; if
+                       # those aren't installed it runs M6+M7 and skips M8.)
 )
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
 $proj = if ($Role -eq 'root') { 'root_node' } else { 'victim_node' }
 
-# -Clean only makes sense if we actually export first, so it implies -Export.
-$doExport = $Export.IsPresent -or $Clean.IsPresent
+# ccache tuning (build-speed). ccache is already ON (idf.py passes CCACHE_ENABLE),
+# but the per-variant build dirs above defeat its fast "direct" mode: the same
+# source compiled under build_victim_none_tree vs build_victim_blackhole_tree has
+# DIFFERENT absolute build paths, so ccache keeps missing across configs. Pointing
+# CCACHE_BASEDIR at the project root makes ccache treat those paths as relative,
+# so the none/blackhole/wormhole x topology builds SHARE cache entries. Sloppiness
+# lets time/pch macros still hit. Measured direct-hit rate was only ~28% without
+# this. Setting these in this process' env; idf.py -> ninja -> ccache inherit them.
+$env:CCACHE_BASEDIR   = $base
+$env:CCACHE_SLOPPINESS = 'pch_defines,time_macros,include_file_mtime'
+
+# -Clean and -Analyze both need the export to have happened first, so both imply
+# -Export (you can only wipe-after or analyze data you've actually pulled).
+$doExport = $Export.IsPresent -or $Clean.IsPresent -or $Analyze.IsPresent
 
 # 0) Optional pre-run wipe so this run's CSV is a single clean run (no stacking).
 #    The on-device command listener runs from boot, so DELETE_LOGS is accepted now.
@@ -125,8 +170,30 @@ $buildSuffix = "$Role`_$Attack`_$Topology"
 if ($Attack -eq 'wormhole' -and $Role -eq 'victim') { $buildSuffix += "_$WormholeEnd" }
 $buildDir = "build_$buildSuffix"
 
+# Self-heal a build dir cached against a DIFFERENT absolute project path. CMake
+# bakes the absolute source path into CMakeCache.txt at configure time; if this
+# repo folder ever gets moved/renamed/re-cloned elsewhere (e.g. reorganized into
+# a different folder, or checked out fresh by another teammate at a different
+# path) a leftover build_* dir from the old location makes idf.py hard-fail with
+# "Build directory ... configured for project 'OLD\path' not 'NEW\path'. Run
+# 'idf.py fullclean' to start again." build_* dirs are git-ignored disposable
+# artifacts, so instead of failing we just wipe the stale one and let it
+# reconfigure from scratch — no manual fullclean needed by anyone.
+$cacheFile = Join-Path $base "$proj\$buildDir\CMakeCache.txt"
+if ($Flash -and (Test-Path $cacheFile)) {
+    $expectedHome = (Join-Path $base $proj) -replace '\\', '/'
+    $cachedHomeLine = Select-String -Path $cacheFile -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=' | Select-Object -First 1
+    if ($cachedHomeLine) {
+        $cachedHome = ($cachedHomeLine.Line -split '=', 2)[1]
+        if ($cachedHome -and ($cachedHome.TrimEnd('/') -ne $expectedHome.TrimEnd('/'))) {
+            Write-Host "Stale build dir '$buildDir' was configured for a different path ($cachedHome) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
+            Remove-Item -Recurse -Force (Join-Path $base "$proj\$buildDir")
+        }
+    }
+}
+
 # What happens after Ctrl+], for the on-screen hint.
-$exitHint = if ($doExport) { "to auto-export" } else { "to quit (no export)" }
+$exitHint = if ($doExport) { "to auto-export (you'll get a few seconds to cancel with 'n')" } else { "to quit (no export)" }
 
 # 1) Monitor (optionally flash first). Ctrl+] exits the monitor and returns here.
 Push-Location (Join-Path $base $proj)
@@ -148,17 +215,46 @@ try {
 
 # 2) Monitor closed. Export only if asked. (export_logs.py deasserts DTR/RTS so
 #    opening the port does NOT reset the board / kill its export task.)
+$laterHint = "To export later:  python tools\export_logs.py --port $Port --role $Role --topology $Topology --attack $Attack --repeat $Repeat"
+if ($DestAttack -ne 'none') { $laterHint += " --attack-dir $DestAttack" }
+
 if (-not $doExport) {
     Write-Host "`nMonitor closed - run only (no export). Data is safe on the board's SPIFFS." -ForegroundColor Green
-    Write-Host "To export later:  python tools\export_logs.py --port $Port --role $Role --topology $Topology --attack $Attack --repeat $Repeat" -ForegroundColor DarkGray
+    Write-Host $laterHint -ForegroundColor DarkGray
     return
 }
 
-Write-Host "`nMonitor closed - exporting $Role CSVs from $Port ..." -ForegroundColor Green
+# Cancel window: Ctrl+] just quit idf.py monitor's own terminal UI, it has no
+# say over the -Export/-Clean/-Analyze that follows -- so if you meant -Flash
+# ONLY and typed -Export by accident, this is the chance to bail before
+# anything actually leaves the board. Data is append-mode on SPIFFS either way,
+# so skipping here costs nothing. Press 'n' to skip; any other key (or letting
+# the timer run out) proceeds right away, so correct/intentional -Export runs
+# aren't meaningfully slowed down.
+Write-Host "`nMonitor closed - exporting $Role CSVs from $Port in 5s. Press 'n' to skip." -ForegroundColor Yellow
+$skipExport = $false
+$deadline = (Get-Date).AddSeconds(5)
+while ((Get-Date) -lt $deadline) {
+    if ([Console]::KeyAvailable) {
+        $key = [Console]::ReadKey($true)
+        if ($key.Key -eq [ConsoleKey]::N) { $skipExport = $true }
+        break   # any keypress decides it now -- don't make them sit out the timer
+    }
+    Start-Sleep -Milliseconds 100
+}
+if ($skipExport) {
+    Write-Host "Export skipped. Data is safe on $Port's SPIFFS." -ForegroundColor Green
+    Write-Host $laterHint -ForegroundColor DarkGray
+    return
+}
+
+Write-Host "Exporting $Role CSVs from $Port ..." -ForegroundColor Green
 Push-Location (Join-Path $base 'tools')
 try {
     $exportArgs = @('export_logs.py', '--port', $Port, '--role', $Role,
                     '--topology', $Topology, '--attack', $Attack, '--repeat', $Repeat)
+    # File a control victim (flashed attack=none) with its attack run's folder.
+    if ($DestAttack -ne 'none') { $exportArgs += @('--attack-dir', $DestAttack) }
     if ($Clean) { $exportArgs += '--delete' }   # wipe board AFTER a good download
     python @exportArgs
 } finally {
@@ -166,3 +262,94 @@ try {
 }
 Write-Host "Done. Files are in tools\exports\." -ForegroundColor Green
 if ($Clean) { Write-Host "Board logs wiped (--delete) - next run starts empty." -ForegroundColor Green }
+
+# 3) Optional auto-analysis (M6+M7+M8). The CSVs stay put in exports\; we just READ
+#    this run's exports subfolder and write the feature table (M6+M7) AND the EDA
+#    plots/tables (M8) into the MIRRORING folder under analysis\. Routing matches
+#    export_logs.py exactly: a control victim uses -DestAttack, otherwise -Attack;
+#    'none' -> baseline. Topology dir names mirror export_logs.py's _TOPOLOGY_DIR so
+#    exports\<a>\<t>\ <-> analysis\<a>\<t>\.
+if ($Analyze) {
+    $attackDir = if ($DestAttack -ne 'none') { $DestAttack }
+                 elseif ($Attack -ne 'none') { $Attack }
+                 else { 'baseline' }
+    $topoDir = switch ($Topology) {
+        'star'    { 'star_topology' }
+        'tree'    { 'tree_topology' }
+        'linear'  { 'linear_topology' }
+        'partial' { 'partial_mesh_topology' }
+    }
+    $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir"
+    $analysisSub = Join-Path $base "analysis\$attackDir\$topoDir"
+
+    # Pick a python for the pipeline. The ESP-IDF shell's `python` (the py3.11 IDF
+    # env) may lack the analysis deps while a separate CPython has them, so scan a
+    # few candidates. Two tiers: features.py (M6+M7) needs only pandas/numpy, but
+    # eda.py (M8) also needs matplotlib/seaborn/scipy/scikit-learn. Prefer a python
+    # with the FULL stack (runs both); fall back to a pandas-only one (features
+    # only, EDA skipped with a hint). Data is already safe in exports\, so if none
+    # is usable we just skip analysis rather than failing the run.
+    $edaPy = $null        # full EDA stack -> can run features AND eda
+    $featuresPy = $null   # at least pandas/numpy -> can run features
+    foreach ($cand in @('python', 'python3', 'C:\Python314\python.exe')) {
+        if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
+        & $cand -c "import pandas, numpy, matplotlib, seaborn, scipy, sklearn" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $edaPy = $cand
+            if (-not $featuresPy) { $featuresPy = $cand }
+            break
+        }
+        if (-not $featuresPy) {
+            & $cand -c "import pandas, numpy" 2>$null
+            if ($LASTEXITCODE -eq 0) { $featuresPy = $cand }
+        }
+    }
+
+    if (-not $featuresPy) {
+        Write-Host "Skipping auto-analysis: no python with pandas/numpy found." -ForegroundColor Yellow
+        Write-Host "  Fix once:  pip install -r analysis\requirements.txt   then re-run with -Analyze." -ForegroundColor DarkGray
+    }
+    elseif (-not (Test-Path $exportSub)) {
+        Write-Host "Skipping auto-analysis: no exported CSVs in $exportSub." -ForegroundColor Yellow
+    }
+    else {
+        if (-not (Test-Path $analysisSub)) { New-Item -ItemType Directory -Force -Path $analysisSub | Out-Null }
+        $windowedOut = Join-Path $analysisSub 'windowed_dataset.csv'
+        $featOut = Join-Path $analysisSub 'feature_table.csv'
+
+        Write-Host "`nAuto-analysis (M6): $featuresPy preprocess.py over $attackDir\$topoDir ..." -ForegroundColor Cyan
+        Push-Location (Join-Path $base 'analysis')
+        try { & $featuresPy preprocess.py $exportSub -o $windowedOut } finally { Pop-Location }
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Preprocess step failed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
+        } else {
+            Write-Host "Windowed dataset done -> analysis\$attackDir\$topoDir\windowed_dataset.csv" -ForegroundColor Green
+
+            Write-Host "Auto-analysis (M7): $featuresPy features.py over $attackDir\$topoDir ..." -ForegroundColor Cyan
+            Push-Location (Join-Path $base 'analysis')
+            try { & $featuresPy features.py $exportSub -o $featOut } finally { Pop-Location }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Feature step failed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
+            } else {
+                Write-Host "Features done -> analysis\$attackDir\$topoDir\feature_table.csv" -ForegroundColor Green
+
+                # M8 EDA — needs the full stack. Runs on the feature table we just wrote.
+                if ($edaPy) {
+                    $edaOut = Join-Path $analysisSub 'eda_output'
+                    Write-Host "Auto-analysis (M8): $edaPy eda.py -> $attackDir\$topoDir\eda_output ..." -ForegroundColor Cyan
+                    Push-Location (Join-Path $base 'analysis')
+                    try { & $edaPy eda.py $featOut -o $edaOut } finally { Pop-Location }
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host "EDA done -> analysis\$attackDir\$topoDir\eda_output\" -ForegroundColor Green
+                    } else {
+                        Write-Host "EDA step failed (exit $LASTEXITCODE). feature_table.csv is fine; see the error above." -ForegroundColor Yellow
+                    }
+                } else {
+                    Write-Host "Skipping M8/EDA: python has pandas but not matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
+                    Write-Host "  Fix once:  pip install -r analysis\requirements.txt   then re-run with -Analyze." -ForegroundColor DarkGray
+                }
+            }
+        }
+    }
+}
