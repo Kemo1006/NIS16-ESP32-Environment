@@ -1,5 +1,5 @@
 """
-preprocess.py — NIS16 Milestone 6: Cross-Layer Data Preprocessing Pipeline
+NIS16 Milestone 6: Cross-Layer Data Preprocessing Pipeline
 
 Converts raw per-node CSV telemetry logs (1 Hz samples) into a clean,
 windowed, analyzable DataFrame.
