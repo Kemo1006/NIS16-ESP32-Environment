@@ -1,5 +1,5 @@
 """
-features.py — NIS16 Milestone 7: Cross-Layer Feature Engineering (16 Features)
+NIS16 Milestone 7: Cross-Layer Feature Engineering (16 Features)
 
 Computes the 16 features defined in Table 4.11 of the thesis, from the
 outputs of Milestone 6's preprocessing pipeline (preprocess.py).
