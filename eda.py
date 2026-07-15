@@ -1,8 +1,6 @@
 """
-eda.py — NIS16 Milestone 8: Exploratory Data Analysis
-
+MILESTONE 8
 Implements the five analyses specified in thesis Section 4.2.6:
-
   1. Descriptive statistics — mean/median/variance/range per feature,
      across all nodes and phases.
   2. Distribution visualization — histograms/box plots for
@@ -51,7 +49,6 @@ attacker counters, primarily), re-running this module against fresh
 feature_table.csv output will pick the columns up automatically — no
 code change needed here, since exclusion is computed from which
 columns are actually all-NaN at run time, not from a hardcoded list.
-────────────────────────────────────────────────────────────────────────
 
 Usage:
     python eda.py feature_table.csv -o eda_output/
