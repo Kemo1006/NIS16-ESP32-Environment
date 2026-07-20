@@ -51,11 +51,32 @@ dropping the analysis:
   the exclusion is never silent. This generalizes Section 4.2.5.1's own
   documented tunnel-feature exclusion option to all currently-NaN
   columns, not just the tunnel ones.
+- Analysis #5 (PCA/t-SNE) **also excludes role-exclusive sparse columns**
+  (NaN fraction > 50%). Several features are defined for only ONE role —
+  `ForwardingRatio`/`IngressEgressDelta`/`ConsistencyScore` on the attacker,
+  `PDR` on victims — so no single window is non-NaN in all of them at once.
+  Without this, `dropna` across a common matrix wiped **every** row and the
+  projection came out an empty red placeholder. Now the broadly-defined
+  cross-layer features project over the windows that share them (e.g. a
+  blackhole run cleanly separates baseline vs attack victim windows in t-SNE).
+  The excluded columns are split into "all-NaN" vs "role-sparse" in the plot
+  subtitle so the reason is explicit.
 - Once M2's firmware closes the `recv_count`/`forward_count` gap and
   those columns start having real values, re-running `eda.py` against
   fresh `feature_table.csv` output picks them up automatically — the
   exclusion list is computed from which columns are actually all-NaN
   at run time, not hardcoded.
+
+### Wormhole tunnel features now populate (M7)
+
+`TunnelIntensity` and `TunnelBytes` are computed for the wormhole attacker
+endpoints (`node_role` `wormhole_a`/`wormhole_b`) from the tunnel-message
+counts their firmware logs into the shared schema (Node B `retry_count` =
+frames tunnelled, Node A `probes_count` = frames received). They stay NaN for
+victim/root and for baseline/blackhole runs, and ~0 in a wormhole run's
+baseline phase — matching Table 4.12's "null or zero for all other nodes and
+phases". `TunnelLatency` stays NaN by design: the A↔B UART tunnel is one-way,
+so no round trip exists to time.
 
 ### Two real bugs found while building this — both now covered by `generate_eda_fake_data.py`
 

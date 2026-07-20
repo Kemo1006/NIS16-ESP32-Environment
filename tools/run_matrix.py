@@ -118,29 +118,32 @@ def _board_lines(topo, attack, rep, ports, export):
                              ports["control"], ports["root"])
 
     if attack == "blackhole":
-        yield ("blackhole ATTACKER (real dropper)",
-               f".\\run.ps1 -Port {att} -Role victim -Attack blackhole "
-               f"{common}{vic_tail}")
+        # Relay model: attacker forwards/drops the victims' probes; the victim
+        # boards address the attacker's MAC (BLACKHOLE_ATTACKER_MAC must be set
+        # to the attacker board's STA MAC first — see BLACKHOLE-SETUP.md).
+        yield ("blackhole ATTACKER relay (forwards/drops victim probes)",
+               f".\\run.ps1 -Port {att} -Role child  -Attack blackhole "
+               f"-BlackholeRole attacker {common}{vic_tail}")
         for p in (nodeb, ctl):
-            tail = vic_tail
-            # -DestAttack files a control's `none` CSV into the attack folder.
-            dest = " -DestAttack blackhole" if export else ""
-            yield ("control (plain victim, no attack)",
-                   f".\\run.ps1 -Port {p} -Role victim{dest} {common}{tail}")
+            # Victim boards target the attacker; -Attack blackhole auto-files
+            # their CSVs into exports/blackhole/ (no -DestAttack needed).
+            yield ("victim -> sends its probes to the attacker's MAC",
+                   f".\\run.ps1 -Port {p} -Role child  -Attack blackhole "
+                   f"-BlackholeRole victim {common}{vic_tail}")
         yield ("root - announces the phase, boots LAST",
                f".\\run.ps1 -Port {root} -Role root -Attack blackhole "
                f"{common}{root_tail}")
 
     else:  # wormhole
         yield ("wormhole Node A (exit)",
-               f".\\run.ps1 -Port {att} -Role victim -Attack wormhole "
+               f".\\run.ps1 -Port {att} -Role child  -Attack wormhole "
                f"-WormholeEnd A {common}{vic_tail}")
         yield ("wormhole Node B (entry)",
-               f".\\run.ps1 -Port {nodeb} -Role victim -Attack wormhole "
+               f".\\run.ps1 -Port {nodeb} -Role child  -Attack wormhole "
                f"-WormholeEnd B {common}{vic_tail}")
         dest = " -DestAttack wormhole" if export else ""
         yield ("control (plain victim, no attack)",
-               f".\\run.ps1 -Port {ctl} -Role victim{dest} {common}{vic_tail}")
+               f".\\run.ps1 -Port {ctl} -Role child {dest} {common}{vic_tail}")
         yield ("root - announces the phase, boots LAST",
                f".\\run.ps1 -Port {root} -Role root -Attack wormhole "
                f"{common}{root_tail}")
@@ -151,10 +154,11 @@ def print_cmds(topo, attack, rep, ports, export):
     print("# Boot order: run the victim lines FIRST (they sit scanning), the "
           "root LAST")
     print("#   - the root's 60 s stabilise window must overlap the victims' "
-          "join (see ATTACKS.md).")
+          "join (see BASELINE-SETUP.md / BLACKHOLE-SETUP.md / WORMHOLE-SETUP.md).")
     if attack == "wormhole":
-        print("# Reminder: WORMHOLE_NODE_A_MAC in mesh_config.h must be "
-              f"{ports['attacker']}'s STA MAC before building (ATTACKS.md).")
+        print("# Reminder: the A<->B tunnel is a WIRED UART CABLE (crossed "
+              "GPIO17/16 + GND) — wire the two attacker boards together before "
+              "powering on. No MAC to set. See WORMHOLE-SETUP.md.")
     print("# Each board in its OWN ESP-IDF PowerShell; Ctrl+] at 'terminate' "
           "to export.")
     for comment, cmd in _board_lines(topo, attack, rep, ports, export):

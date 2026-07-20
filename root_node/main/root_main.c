@@ -39,7 +39,12 @@
 static const char *TAG = "ROOT_MAIN";
 
 /* ── Probe wire format (must match victim_main.c exactly) ────────────────── */
-#define PROBE_MAGIC     0x50524F42U   /* "PROB" */
+#define PROBE_MAGIC          0x50524F42U   /* "PROB" — normal probe            */
+/* Wormhole tunnel ("fast") copy, stamped by wormhole Node A on re-injection.
+ * The root logs these WITHOUT de-duping them against the normal copy, so the
+ * same (src_mac, seq_num) shows up twice with a latency mismatch — the wormhole
+ * signature. Must match wormhole_victim.c. ("PROW") */
+#define PROBE_MAGIC_WORMHOLE 0x50524F57U
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
@@ -301,12 +306,20 @@ static void probe_data_cb(const uint8_t *data, size_t len,
     if (len < sizeof(probe_pkt_t)) return;
 
     const probe_pkt_t *pkt = (const probe_pkt_t *)data;
-    if (pkt->magic != PROBE_MAGIC) return;
+    bool is_wormhole_copy = (pkt->magic == PROBE_MAGIC_WORMHOLE);
+    if (pkt->magic != PROBE_MAGIC && !is_wormhole_copy) return;
 
-    /* Drop duplicate deliveries of the same probe (ESP-MESH internal
-     * retry can deliver one probe to the root more than once). Only the
-     * first arrival per (src_mac, seq_num) is counted and logged. */
-    if (probe_is_duplicate(pkt->src_mac, pkt->seq_num)) {
+    /* Normal probes: de-dup — ESP-MESH internal retry can deliver the same
+     * probe to the root more than once, which would corrupt PDR/latency, so we
+     * count/log only the first arrival per (src_mac, seq_num).
+     *
+     * Wormhole tunnel copies (PROBE_MAGIC_WORMHOLE, stamped by Node A): do NOT
+     * de-dup. The whole point of the wormhole is that the same (src_mac,
+     * seq_num) arrives a SECOND time via the tunnel with a different latency —
+     * that duplicate + latency mismatch is the attack signature, so suppressing
+     * it here would hide the very thing we're trying to capture. */
+    if (!is_wormhole_copy &&
+        probe_is_duplicate(pkt->src_mac, pkt->seq_num)) {
         ESP_LOGD(TAG, "Duplicate probe dropped: " MACSTR " seq=%lu",
                  MAC2STR(pkt->src_mac), (unsigned long)pkt->seq_num);
         return;

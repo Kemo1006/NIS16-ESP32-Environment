@@ -26,7 +26,7 @@ cd "<repo>\NIS16-ESP32-Environment\tools"
 python export_logs.py --port COM3 --role root   --topology star --attack none --repeat 1
 
 # Victim node (COM6) — pulls telem.csv
-python export_logs.py --port COM6 --role victim --topology star --attack none --repeat 1
+python export_logs.py --port COM6 --role child  --topology star --attack none --repeat 1
 
 # Just see what's stored on a board, download nothing
 python export_logs.py --port COM3 --list
@@ -50,7 +50,7 @@ already under `exports/blackhole/` and `exports/wormhole/`.)
 but belongs with that run's data. Add `--attack-dir blackhole` (or `wormhole`)
 so it files under the attack's folder while its filename still reads `none`:
 ```powershell
-python export_logs.py --port COM26 --role victim --topology tree \
+python export_logs.py --port COM26 --role child  --topology tree \
     --attack none --attack-dir blackhole --repeat 1
 # -> exports/blackhole/tree_topology/victim_COM26_tree_none_r1_..._telem.csv
 ```

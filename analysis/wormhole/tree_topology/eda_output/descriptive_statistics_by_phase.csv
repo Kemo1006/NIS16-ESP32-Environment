@@ -12,8 +12,8 @@ Baseline,RSSI_stability,3.8977556109725686,4.0,0.20201995012468824,401,401
 Baseline,RSSI_Hop_Diff,2.479925187032419,1.2000000000000028,9.190052244389028,401,401
 Baseline,LatencyHopRatio,,,,0,401
 Baseline,ConsistencyScore,,,,0,401
-Baseline,TunnelIntensity,,,,0,401
-Baseline,TunnelBytes,,,,0,401
+Baseline,TunnelIntensity,0.0019417475728155341,0.0,0.0003864551266871891,206,401
+Baseline,TunnelBytes,0.2912621359223301,0.0,8.695240350461756,206,401
 Baseline,TunnelLatency,,,,0,401
 Wormhole,ForwardingRatio,,,,0,144
 Wormhole,IngressEgressDelta,,,,0,144
@@ -28,6 +28,6 @@ Wormhole,RSSI_stability,3.9444444444444446,4.0,0.09479409479409479,144,144
 Wormhole,RSSI_Hop_Diff,3.085763888888889,2.200000000000003,6.52282039141414,144,144
 Wormhole,LatencyHopRatio,,,,0,144
 Wormhole,ConsistencyScore,,,,0,144
-Wormhole,TunnelIntensity,,,,0,144
-Wormhole,TunnelBytes,,,,0,144
+Wormhole,TunnelIntensity,0.8027777777777777,0.8,0.0028090766823161187,72,144
+Wormhole,TunnelBytes,120.41666666666667,120.0,63.20422535211268,72,144
 Wormhole,TunnelLatency,,,,0,144

@@ -13,40 +13,39 @@ out or tune one function without touching the others.
 ────────────────────────────────────────────────────────────────────────
 HONEST SCOPE NOTE — read this before trusting the output blindly
 ────────────────────────────────────────────────────────────────────────
-Of the 16 features in Table 4.11, this module computes all 16, but THREE
-of them rely on raw telemetry fields that root_main.c / victim_main.c
-do not currently log, and are therefore filled with NaN + a flag rather
-than a fabricated number:
+Of the 16 features in Table 4.11, this module computes all 16. Three of them
+(ForwardingRatio / IngressEgressDelta / ConsistencyScore) are RELAY-node
+features and are only non-NaN for the blackhole ATTACKER row:
 
-  ForwardingRatio       — needs separate recv_count / forward_count for
-                          TRANSIT packets specifically (Equation 4.2).
-                          Current firmware only logs probes_count, a
-                          single counter that doesn't distinguish
-                          locally-generated traffic from forwarded
-                          transit traffic. Until the firmware logs
-                          recv_count/forward_count separately (this is
-                          exactly what Milestone 2's blackhole attacker
-                          state variables — recv_counter, forward_counter,
-                          drop_counter — are for), this feature is NaN
-                          for every row and flagged in the
-                          'missing_firmware_fields' column.
-
-  IngressEgressDelta    — same root cause as ForwardingRatio (Equation 4.3
-                          needs the same two counters). NaN + flagged.
-
-  ConsistencyScore      — derived directly from ForwardingRatio
-                          (Equation 4.15), so it inherits the same gap.
+  ForwardingRatio / IngressEgressDelta / ConsistencyScore
+                        — computed for node_role == "blackhole" from the
+                          attacker's counters (blackhole_victim.c logs
+                          probes_count = RECEIVED, tx_count = FORWARDED,
+                          retry_count = DROPPED into the shared schema). See
+                          compute_forwarding_features() for the mapping. They
+                          are NaN for victim/root rows (those nodes don't relay
+                          transit traffic, so a forwarding ratio is undefined
+                          for them — this is correct, not a gap), and NaN for
+                          every row of a run where the attacker's telemetry CSV
+                          was NOT exported (a data-collection gap — export the
+                          attacker board too). Baseline/wormhole runs have no
+                          blackhole attacker, so these are legitimately NaN there.
 
   TunnelIntensity/
-  TunnelBytes/
-  TunnelLatency          — these three are correctly NaN/0 for every
-                          non-attacker node per the thesis's own
-                          schema note ("present only for attacker nodes
-                          during topology-distortion runs"). That's not
-                          a gap, that's the spec. They'll populate once
-                          attacker_node/ firmware (Milestone 2) exists
-                          and starts writing tunnel_tx/tunnel_rx/
-                          inject_counter to its CSV.
+  TunnelBytes            — computed for the WORMHOLE attacker endpoints
+                          (node_role "wormhole_a"/"wormhole_b") from the
+                          tunnel-message counts their firmware
+                          (wormhole_victim.c) logs into the shared schema
+                          (Node B retry_count = frames tunnelled, Node A
+                          probes_count = frames received). NaN for
+                          victim/root and for baseline/blackhole runs (no
+                          wormhole endpoints), ~0 in a wormhole run's
+                          baseline phase — matching the thesis note "null
+                          or zero for all other nodes and phases". See
+                          compute_tunnel_features().
+  TunnelLatency          — stays NaN: the A<->B tunnel is a one-way UART
+                          write with no echo leg, so no round trip exists
+                          to time. Flagged, not faked (like LatencyHopRatio).
 
 Every other feature (11 of 16) computes a real number from data the
 firmware already logs. The NaN columns are still emitted with their
@@ -84,6 +83,12 @@ import pandas as pd
 EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 WINDOW_SECONDS = 5  # must match preprocess.py's WINDOW_SECONDS
 
+# Wire size of one wormhole tunnel frame, for TunnelBytes. Mirrors
+# sizeof(tunnel_pkt_t) in wormhole_victim.c: __attribute__((packed)) struct of
+# magic(4) + probe_pkt_t{magic(4)+seq(4)+send_ts(8)+src_mac(6)=22} + crc(4) = 30.
+# If that struct changes, change this to match.
+TUNNEL_FRAME_BYTES = 30
+
 # Firmware fields these three features need but root_main.c / victim_main.c
 # do not currently log (see module docstring). Listed once here so the
 # "missing_firmware_fields" flag and the docstring can't drift apart.
@@ -100,33 +105,56 @@ FEATURES_BLOCKED_ON_FIRMWARE = (
 
 def compute_forwarding_features(windowed: pd.DataFrame) -> pd.DataFrame:
     """
-    ForwardingRatio, IngressEgressDelta, ConsistencyScore.
+    ForwardingRatio (Eq 4.2), IngressEgressDelta (Eq 4.3), ConsistencyScore (Eq 4.15).
 
-    BLOCKED ON FIRMWARE — see module docstring. windowed (M6's output)
-    only carries probes_count_delta, a single counter that does not
-    separate "packets received for forwarding" (recv_count) from
-    "packets actually forwarded" (forward_count). Without that split,
-    Equation 4.2's numerator and denominator are the same undefined
-    quantity, so computing a number here would be fabrication, not
-    measurement. Returns NaN for all three with the gap flagged.
+    These are RELAY-node features — only defined for a node that receives transit
+    traffic and forwards it. In this testbed that is the blackhole ATTACKER
+    (node_role == "blackhole"), whose firmware (blackhole_victim.c) records, into
+    the shared 11-column schema:
+        probes_count = packets RECEIVED from victims   (-> probes_count_delta)
+        tx_count     = packets FORWARDED to root        (-> tx_count_delta)
+        retry_count  = packets DROPPED                  (-> retry_count_delta)
+    So for attacker rows: recv = probes_count_delta, forward = tx_count_delta, and
+        ForwardingRatio    = forward / recv        (~1.0 baseline, ~0 during attack)
+        IngressEgressDelta = |recv - forward|      (~0 baseline, > 0 during attack)
+        ConsistencyScore   = |ForwardingRatio - 1| (~0 baseline, ~1 during attack)
+
+    For every OTHER role (victim, root) these stay NaN on purpose — those nodes
+    don't relay transit traffic, so a forwarding ratio is undefined for them
+    (matches the thesis, where only the attacker has a meaningful forwarding
+    ratio). Windows where the attacker received nothing (recv==0) are also NaN,
+    since the ratio is undefined with no transit traffic.
+
+    NOTE: this needs the attacker board's telemetry CSV to be present. If you
+    only export root+victims (not the attacker), there are no blackhole-role
+    rows and all three stay NaN — that is a data-collection gap, not a bug here.
     """
     out = pd.DataFrame(index=windowed.index)
+    out["ForwardingRatio"] = np.nan
+    out["IngressEgressDelta"] = np.nan
+    out["ConsistencyScore"] = np.nan
 
-    has_recv = "recv_count_delta" in windowed.columns
-    has_fwd = "forward_count_delta" in windowed.columns
-
-    if has_recv and has_fwd:
-        # Future path, once firmware logs recv_count/forward_count
-        # separately (M2's blackhole attacker counters are exactly this).
+    # Preferred path: a future firmware that logs dedicated recv/forward columns.
+    if "recv_count_delta" in windowed.columns and "forward_count_delta" in windowed.columns:
         recv = windowed["recv_count_delta"]
         fwd = windowed["forward_count_delta"]
-        out["ForwardingRatio"] = fwd / (recv + EPSILON)
+        ratio = (fwd / (recv + EPSILON)).where(recv > 0, np.nan)
+        out["ForwardingRatio"] = ratio
         out["IngressEgressDelta"] = (recv - fwd).abs()
-        out["ConsistencyScore"] = (out["ForwardingRatio"] - 1.0).abs()
-    else:
-        out["ForwardingRatio"] = np.nan
-        out["IngressEgressDelta"] = np.nan
-        out["ConsistencyScore"] = np.nan
+        out["ConsistencyScore"] = (ratio - 1.0).abs()
+        return out
+
+    # Current firmware: derive from the blackhole attacker's overloaded counters.
+    # Compute ONLY for attacker rows; leave every other role NaN.
+    if "node_role" in windowed.columns:
+        mask = windowed["node_role"] == "blackhole"
+        if mask.any():
+            recv = windowed.loc[mask, "probes_count_delta"]
+            fwd = windowed.loc[mask, "tx_count_delta"]
+            ratio = (fwd / (recv + EPSILON)).where(recv > 0, np.nan)
+            out.loc[mask, "ForwardingRatio"] = ratio
+            out.loc[mask, "IngressEgressDelta"] = (recv - fwd).abs()
+            out.loc[mask, "ConsistencyScore"] = (ratio - 1.0).abs()
 
     return out
 
@@ -498,28 +526,56 @@ def compute_cross_layer_features(
 
 def compute_tunnel_features(windowed: pd.DataFrame) -> pd.DataFrame:
     """
-    TunnelIntensity, TunnelBytes, TunnelLatency.
+    TunnelIntensity (Eq 4.16), TunnelBytes, TunnelLatency (Eq 4.17).
 
-    Per the thesis's own schema note in Table 4.12: "present only for
-    attacker nodes during topology-distortion runs; for all other nodes
-    and phases, these fields are null or zero." This function correctly
-    returns NaN for every row UNTIL attacker_node/ firmware exists and
-    logs tunnel_tx_counter / tunnel_rx_counter / tunnel_bytes / 
-    inject_counter into its telemetry CSV (Milestone 2 deliverable,
-    currently in progress per this conversation's M1/M2 firmware work).
+    Per thesis Table 4.12: "present only for attacker nodes during
+    topology-distortion runs; for all other nodes and phases, these fields
+    are null or zero." In this testbed the topology-distortion attacker is
+    the WORMHOLE pair, whose firmware (wormhole_victim.c) records tunnel
+    activity into the shared 11-column schema — no dedicated tunnel columns
+    needed, exactly like the blackhole attacker overloads its counters:
 
-    Once that firmware field exists, this function should be extended
-    to read tunnel_tx_count_delta / tunnel_rx_count_delta / 
-    tunnel_bytes_delta from windowed (M6 would need those added to its
-    CUMULATIVE_COLUMNS list first) and compute:
-        TunnelIntensity = (tunnel_tx_delta + tunnel_rx_delta) / WINDOW_SECONDS
-        TunnelBytes     = tunnel_bytes_delta
-        TunnelLatency   = mean of per-packet echo RTTs within the window
+        Node B (node_role == "wormhole_b", entry): retry_count = probes
+            TUNNELLED to A over the wired UART link (0 in baseline, climbs
+            during the wormhole phase). -> retry_count_delta per window.
+        Node A (node_role == "wormhole_a", exit): probes_count = tunnel
+            frames RECEIVED from B over UART (0 until attack). ->
+            probes_count_delta per window.
+
+    Both are the per-endpoint tunnel-message count, so per 5 s window:
+        TunnelIntensity = tunnel_msgs_delta / WINDOW_SECONDS   (msgs/second)
+        TunnelBytes     = tunnel_msgs_delta * TUNNEL_FRAME_BYTES
+
+    These stay NaN for victim/root rows and for baseline/blackhole runs
+    (no wormhole endpoints present) — "null or zero for all other nodes and
+    phases" per the spec. During baseline phases of a wormhole run the
+    deltas are ~0, so TunnelIntensity/TunnelBytes are ~0 there, which is the
+    "or zero" half of the same spec note.
+
+    TunnelLatency stays NaN on purpose: the A<->B tunnel is a ONE-WAY UART
+    write (B -> A, wormhole_victim.c tunnel_forwarder_task), with no echo
+    leg back to B, so there is no round trip to time. Flagged rather than
+    faked from a wrong proxy — same honesty rule as LatencyHopRatio.
     """
     out = pd.DataFrame(index=windowed.index)
     out["TunnelIntensity"] = np.nan
     out["TunnelBytes"] = np.nan
-    out["TunnelLatency"] = np.nan
+    out["TunnelLatency"] = np.nan  # one-way UART tunnel: no RTT leg exists
+
+    if "node_role" not in windowed.columns:
+        return out
+
+    def _fill(mask: pd.Series, msg_col: str) -> None:
+        if mask.any() and msg_col in windowed.columns:
+            # Cumulative counters only ever climb; clip defends against a
+            # counter reset (node reboot mid-run) yielding a negative delta.
+            msgs = windowed.loc[mask, msg_col].clip(lower=0)
+            out.loc[mask, "TunnelIntensity"] = msgs / WINDOW_SECONDS
+            out.loc[mask, "TunnelBytes"] = msgs * TUNNEL_FRAME_BYTES
+
+    _fill(windowed["node_role"] == "wormhole_b", "retry_count_delta")
+    _fill(windowed["node_role"] == "wormhole_a", "probes_count_delta")
+
     return out
 
 

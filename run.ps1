@@ -36,34 +36,41 @@
   # BLACKHOLE run: -Attack blackhole flashes the attack firmware (-DACTIVE_ATTACK=1).
   # Run BOTH boards with -Attack blackhole -Flash for the attack to trigger.
   .\run.ps1 -Port COM8 -Role root   -Attack blackhole -Wipe -Flash -Export
-  .\run.ps1 -Port COM3 -Role victim -Attack blackhole -Wipe -Flash -Export
+  .\run.ps1 -Port COM3 -Role child  -Attack blackhole -Wipe -Flash -Export
 
 .EXAMPLE
   # WORMHOLE run: -Attack wormhole flashes the tunnel firmware (-DACTIVE_ATTACK=2).
   # Run ALL THREE boards with -Attack wormhole -Flash; the two victim boards pick
-  # opposite ends with -WormholeEnd A (exit) / B (entry). Set WORMHOLE_NODE_A_MAC
-  # in mesh_config.h to Node A's STA MAC first (Node B tunnels to it).
+  # opposite ends with -WormholeEnd A (exit) / B (entry). The A<->B tunnel is now
+  # a WIRED UART CABLE (Milestone 2): wire Node A GPIO17(TX)->Node B GPIO16(RX),
+  # Node A GPIO16(RX)->Node B GPIO17(TX), shared GND, BEFORE powering them on.
+  # No MAC to set anymore (WORMHOLE_NODE_A_MAC is obsolete). See WORMHOLE-SETUP.md.
   .\run.ps1 -Port COM11 -Role root   -Attack wormhole              -Wipe -Flash -Export
-  .\run.ps1 -Port COM8  -Role victim -Attack wormhole -WormholeEnd A -Wipe -Flash -Export
-  .\run.ps1 -Port COM3  -Role victim -Attack wormhole -WormholeEnd B -Wipe -Flash -Export
+  .\run.ps1 -Port COM8  -Role child  -Attack wormhole -WormholeEnd A -Wipe -Flash -Export
+  .\run.ps1 -Port COM3  -Role child  -Attack wormhole -WormholeEnd B -Wipe -Flash -Export
 
 .EXAMPLE
   # M3: STAR topology (caps depth at 2, everyone a direct child of root).
   # Run EVERY board in the run with the SAME -Topology -Flash, or nodes disagree
   # on shaping. Physical placement still matters most (see verify_topology.py).
   .\run.ps1 -Port COM8 -Role root   -Topology star -Wipe -Flash -Export
-  .\run.ps1 -Port COM3 -Role victim -Topology star -Wipe -Flash -Export
+  .\run.ps1 -Port COM3 -Role child  -Topology star -Wipe -Flash -Export
 
 .EXAMPLE
   # AUTO-ANALYZE: export THEN run the full M6+M7+M8 pipeline in one step. Add
   # -Analyze on the LAST board you export (the root) so the whole run is present;
   # feature_table.csv AND eda_output\ land in analysis\<attack>\<topology>_topology\.
-  .\run.ps1 -Port COM3 -Role victim -Attack blackhole -Wipe -Flash -Export   # victims first
+  .\run.ps1 -Port COM3 -Role child  -Attack blackhole -Wipe -Flash -Export   # victims first
   .\run.ps1 -Port COM8 -Role root   -Attack blackhole -Wipe -Flash -Analyze  # root LAST -> analyzes
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Port,
-    [Parameter(Mandatory = $true)][ValidateSet('root', 'victim')][string]$Role,
+    # Mesh-position role. 'child' is the preferred name for a non-root board;
+    # 'victim' is kept as a working alias (older commands/scripts still run). The
+    # CSV `node_role` is written by the FIRMWARE (per thesis Table 4.12), NOT by
+    # this flag, so naming a board 'child' here does not change the dataset's
+    # security role — the attack role is set separately by -BlackholeRole.
+    [Parameter(Mandatory = $true)][ValidateSet('root', 'child', 'victim')][string]$Role,
     # -Topology also picks the BUILD flag when -Flash is set (M3): star => cap
     # depth at 2, linear => force a chain, tree/partial => default self-organising
     # (unchanged M1 behaviour; "partial" comes from physical placement, not a
@@ -78,6 +85,12 @@ param(
     # tunnels). Ignored for the root and for non-wormhole attacks. Run one victim
     # board as A and the other as B.
     [ValidateSet('A', 'B')][string]$WormholeEnd = 'B',
+    # For -Attack blackhole on a victim board, which blackhole role this board is:
+    # attacker = the relay that forwards/drops victim probes; victim = a board
+    # that addresses its probes to the attacker's MAC (BLACKHOLE_ATTACKER_MAC).
+    # Ignored for the root and non-blackhole attacks. Run ONE board as attacker
+    # and the others as victim.
+    [ValidateSet('attacker', 'victim')][string]$BlackholeRole = 'attacker',
     # Export FOLDER override for a control victim in an attack run. The board is
     # flashed -Attack none (it's a plain victim) but its CSV belongs with the
     # run's data, so pass e.g. -DestAttack blackhole to file it under
@@ -90,8 +103,11 @@ param(
                        # this the script just runs and exports NOTHING.
     [switch]$Clean,    # after a successful export, wipe the board's logs so the
                        # NEXT run starts empty (implies -Export)
-    [switch]$Wipe,     # BEFORE flashing, erase the board's logs so THIS run starts
-                       # empty — use for a guaranteed fresh, unstacked run
+    [switch]$Wipe,     # BEFORE flashing, clear the board so THIS run starts empty.
+                       # WITH -Flash: FULL chip erase (esptool erase_flash) --
+                       # bulletproof, auto-fixes a full/crash-looping SPIFFS with
+                       # no manual erase-flash. WITHOUT -Flash: light serial
+                       # DELETE_LOGS (keeps firmware). Use for a fresh, unstacked run.
     [switch]$Analyze   # after a successful export, auto-run the full analysis
                        # pipeline over THIS run's exports subfolder: M6
                        # (analysis/preprocess.py -> windowed_dataset.csv), M7
@@ -107,7 +123,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
-$proj = if ($Role -eq 'root') { 'root_node' } else { 'victim_node' }
+$proj = if ($Role -eq 'root') { 'root_node' } else { 'child_node' }
 
 # ccache tuning (build-speed). ccache is already ON (idf.py passes CCACHE_ENABLE),
 # but the per-variant build dirs above defeat its fast "direct" mode: the same
@@ -124,12 +140,56 @@ $env:CCACHE_SLOPPINESS = 'pch_defines,time_macros,include_file_mtime'
 # -Export (you can only wipe-after or analyze data you've actually pulled).
 $doExport = $Export.IsPresent -or $Clean.IsPresent -or $Analyze.IsPresent
 
+# 0-pre) Auto-free THIS port. The #1 cause of "Could not open COMxx ... Access
+#    is denied" on flash is a stale idf.py/idf_monitor from an earlier run still
+#    holding the port (a monitor left open, not Ctrl+]-ed). Kill ONLY Espressif
+#    python processes whose command line targets THIS exact port -- never another
+#    board's monitor, never this script (it's powershell, not python), and never
+#    the flash/monitor this run is about to start (that process doesn't exist yet).
+$portEsc = [regex]::Escape($Port)
+$stale = Get-CimInstance Win32_Process -Filter "name='python.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ExecutablePath -like '*Espressif*' -and
+                   $_.CommandLine -match "\b$portEsc\b" -and
+                   $_.CommandLine -match 'idf_monitor|esp_idf_monitor|idf\.py|esptool' }
+if ($stale) {
+    foreach ($p in $stale) {
+        Write-Host "Freeing ${Port}: stopping stale process $($p.ProcessId) still holding it." -ForegroundColor DarkYellow
+        try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch { }
+    }
+    Start-Sleep -Milliseconds 600   # let the CP210x driver release the handle
+}
+
 # 0) Optional pre-run wipe so this run's CSV is a single clean run (no stacking).
-#    The on-device command listener runs from boot, so DELETE_LOGS is accepted now.
+#    Two modes:
+#    * -Wipe WITH -Flash  -> FULL CHIP ERASE (esptool erase_flash). This clears
+#      the whole SPIFFS at the bootloader level, so it ALWAYS works even on a
+#      board that's crash-looping on a full filesystem (root aborting with
+#      "Failed to open arrivals file", or a child spamming "fprintf failed") --
+#      the light serial DELETE_LOGS can't reach a crashing board, this can.
+#      Safe because -Flash re-writes bootloader+partitions+app right after.
+#      Falls back to the serial wipe if erase_flash can't run. This is what makes
+#      "storage full" self-heal: every -Wipe -Flash run starts truly empty, no
+#      manual `idf.py ... erase-flash` needed.
+#    * -Wipe WITHOUT -Flash -> light serial DELETE_LOGS only (keeps the firmware;
+#      the on-device command listener runs from boot, so DELETE_LOGS is accepted).
 if ($Wipe) {
-    Write-Host "Wiping old logs on $Port before this run ..." -ForegroundColor Yellow
-    Push-Location (Join-Path $base 'tools')
-    try { python export_logs.py --port $Port --wipe } finally { Pop-Location }
+    if ($Flash) {
+        Write-Host "Full-erasing $Port before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ..." -ForegroundColor Yellow
+        $erased = $false
+        try {
+            esptool.py --chip esp32 --port $Port erase_flash
+            if ($LASTEXITCODE -eq 0) { $erased = $true }
+        } catch { }
+        if (-not $erased) {
+            Write-Host "erase_flash didn't run (port busy? board unplugged?) -- falling back to serial DELETE_LOGS." -ForegroundColor Yellow
+            Push-Location (Join-Path $base 'tools')
+            try { python export_logs.py --port $Port --wipe } finally { Pop-Location }
+        }
+    } else {
+        Write-Host "Wiping old logs on $Port before this run (serial DELETE_LOGS; firmware kept) ..." -ForegroundColor Yellow
+        Push-Location (Join-Path $base 'tools')
+        try { python export_logs.py --port $Port --wipe } finally { Pop-Location }
+    }
 }
 
 # Map -Attack to the ACTIVE_ATTACK build flag(s) (only meaningful when flashing).
@@ -138,10 +198,17 @@ if ($Wipe) {
 # wormhole victim board we also pass -DWORMHOLE_END (A=0 exit, B=1 entry).
 $attackFlags = @()
 switch ($Attack) {
-    'blackhole' { $attackFlags += '-DACTIVE_ATTACK=1' }
+    'blackhole' {
+        $attackFlags += '-DACTIVE_ATTACK=1'
+        if ($Role -ne 'root') {
+            # attacker relay = 0, victim-that-targets-attacker = 1
+            $bhNum = if ($BlackholeRole -eq 'victim') { 1 } else { 0 }
+            $attackFlags += "-DBLACKHOLE_ROLE=$bhNum"
+        }
+    }
     'wormhole'  {
         $attackFlags += '-DACTIVE_ATTACK=2'
-        if ($Role -eq 'victim') {
+        if ($Role -ne 'root') {
             $endNum = if ($WormholeEnd -eq 'A') { 0 } else { 1 }
             $attackFlags += "-DWORMHOLE_END=$endNum"
         }
@@ -161,14 +228,24 @@ $topologyNum = switch ($Topology) {
 $topologyFlag = "-DMESH_TOPOLOGY=$topologyNum"
 
 # Give each distinct firmware variant its OWN build directory. Without this,
-# running multiple -Role victim boards at once (e.g. wormhole Node A + Node B +
-# a normal victim, all three "victim_node") race on the SAME build/ folder --
+# running multiple -Role child  boards at once (e.g. wormhole Node A + Node B +
+# a normal victim, all three "child_node") race on the SAME build/ folder --
 # concurrent CMake/ninja processes stomp on build.ninja and you get
 # "ninja: error: failed recompaction: Permission denied". Root never collided
 # (separate project dir), but the three victim variants share one otherwise.
 $buildSuffix = "$Role`_$Attack`_$Topology"
-if ($Attack -eq 'wormhole' -and $Role -eq 'victim') { $buildSuffix += "_$WormholeEnd" }
-$buildDir = "build_$buildSuffix"
+if ($Attack -eq 'wormhole'  -and $Role -ne 'root') { $buildSuffix += "_$WormholeEnd" }
+if ($Attack -eq 'blackhole' -and $Role -ne 'root') { $buildSuffix += "_$BlackholeRole" }
+# Per-COM-port build dir: append a sanitized port tag (COM25 -> COM25) so that
+# multiple boards running the SAME firmware variant (e.g. two plain baseline
+# victims, or two blackhole victims) each build in their OWN folder and can
+# flash in PARALLEL from separate windows without racing build.ninja
+# ("failed recompaction: Permission denied"). Trade-off: the first build per
+# port is a full build (ccache CCACHE_BASEDIR above still shares most objects
+# across ports). Root has its own project dir but is keyed by port too for
+# consistency.
+$portTag  = ($Port -replace '[^A-Za-z0-9]', '')
+$buildDir = "build_${buildSuffix}_$portTag"
 
 # Self-heal a build dir cached against a DIFFERENT absolute project path. CMake
 # bakes the absolute source path into CMakeCache.txt at configure time; if this
@@ -199,7 +276,7 @@ $exitHint = if ($doExport) { "to auto-export (you'll get a few seconds to cancel
 Push-Location (Join-Path $base $proj)
 try {
     if ($Flash) {
-        $attackLabel = if ($Attack -eq 'wormhole' -and $Role -eq 'victim') { "wormhole/$WormholeEnd" } else { $Attack }
+        $attackLabel = if ($Attack -eq 'wormhole' -and $Role -ne 'root') { "wormhole/$WormholeEnd" } else { $Attack }
         Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$attackLabel, build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
         idf.py -B $buildDir @attackFlags $topologyFlag -p $Port flash monitor
     } else {

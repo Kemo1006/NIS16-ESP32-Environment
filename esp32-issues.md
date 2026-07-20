@@ -13,6 +13,59 @@ Branch context: `integration-test`. Newest issues on top.
 
 ---
 
+## I-017 · Attacker under-sampled + corrupt CSV — full SPIFFS (slow writes)
+- **Status:** ✅ FIXED — 2026-07-15 (firmware + host; one-time `erase-flash` on the
+  already-full board).
+- **Symptom:** COM25 (attacker) logged ~0.5 Hz instead of ~20 Hz AND its exported
+  `telem.csv` had corrupt/fused lines. Priority fix (I-016) did not help.
+- **Diagnosis (via a temporary INSTR loop-timer in `blackhole_victim.c`):** the
+  blocker was the per-sample SPIFFS write — `log_max` measured **1.3–7.7 seconds**
+  per `csv_logger_append_telemetry`, while `rssi`/`mesh` calls were ~60–160 µs.
+  Boot banner showed **`SPIFFS Used: 1603 / 2287 KB` (70% full)**. SPIFFS write
+  speed collapses and garbage-collection thrashes as it fills; multi-second,
+  stressed writes both starved sampling and wrote malformed lines. COM25 was the
+  board reflashed/re-run dozens of times during debugging, so its flash filled;
+  the fresh victims wrote in <1 ms and sampled at ~10 Hz.
+- **Root cause of the buildup:** `-Wipe` sent `DELETE_LOGS`, which only
+  `remove()`d the file — SPIFFS never reclaimed the space, so it crept up every
+  run.
+- **Fix:**
+  1. `DELETE_LOGS` in `csv_logger.c` now **formats the whole SPIFFS partition**
+     (`esp_spiffs_format`), closing open handles first — so every `-Wipe` resets
+     `Used` to ~0 and the flash can't build up again.
+  2. `export_logs.py --wipe` now waits for the device's `LOGS_DELETED` ack (a
+     format takes longer than the old fixed 1 s sleep) so it isn't cut off by the
+     reflash that follows.
+  3. One-time `idf.py -p COM25 erase-flash` to clear the already-full board (the
+     format-on-wipe only takes effect once the new firmware is on the board).
+- **Note:** the INSTR instrumentation is left in `blackhole_victim.c` behind
+  `#define ATTACKER_TELEM_INSTRUMENT 0` (off) for future use.
+
+## I-016 · Attacker under-sampled telemetry — attack-phase windows discarded
+- **Status:** ✅ FIXED — 2026-07-15 (needs reflash of the attacker boards).
+- **Symptom:** In a blackhole/linear run every board logged ~5000–7400 telemetry
+  rows, but the ATTACKER (COM25) logged only **487** (~0.75 Hz vs the intended
+  ~20 Hz at `SAMPLING_INTERVAL_MS=50`), with a 47 s blackout. After M6 windowing
+  the attacker kept **0 windows in the attack phase** (each 5 s window had <4
+  samples → discarded), so `ForwardingRatio`/`IngressEgressDelta`/`ConsistencyScore`
+  came out null for the Blackhole phase even though the attacker board WAS
+  exported. (The attack itself was still proven on the victim side: PDR
+  0.94→0.00.) Wormhole tunnel features would suffer the same way.
+- **Cause:** the attacker's `telemetry_task` ran at `TASK_PRIO_TELEMETRY`=5 —
+  BELOW the relay/tunnel sink (6). On an intermediate attacker (esp. linear
+  topology) the relay path and the prio-8 phase listener kept the CPU busy, so
+  the lowest-priority telemetry loop was starved and missed most of its 50 ms
+  ticks. The victim's identical prio-5 loop is fine because it has no relay
+  competing for the CPU.
+- **Fix:** added `TASK_PRIO_ATTACKER_TELEMETRY`=7 (above the relay/tunnel sink 6,
+  below the phase listener 8) and used it for the telemetry task in
+  `blackhole_victim.c` and both wormhole ends in `wormhole_victim.c`. Telemetry
+  now preempts the relay (its per-sample work is sub-millisecond, so no probe is
+  lost and the forward/drop attack timing is unaffected) but still yields to the
+  packet handler. Restores the uniform `SAMPLING_INTERVAL_MS` rate the telemetry
+  loop (thesis Fig 4.24) assumes for every node — an implementation fix, not a
+  design change. Victim/root sampling is untouched.
+
 ## I-015 · Export progress bar crawled at ~1 KB/s despite 115200 baud being ~11 KB/s
 - **Status:** ✅ FIXED — 2026-07-14.
 - **Symptom:** `EXPORT_LOGS` on a large `telem.csv` (hundreds of KB) took many

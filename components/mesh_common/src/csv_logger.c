@@ -301,8 +301,18 @@ const char *csv_logger_get_filepath(void)
  * Serial export task
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+static bool s_export_task_started = false;
+
 esp_err_t csv_logger_start_export_task(void)
 {
+    if (s_export_task_started) {
+        /* Already running (e.g. started at csv_logger_init() via
+         * CSV_EXPORT_ON_INIT, then requested again at experiment end) —
+         * starting a second copy would race both tasks over the same UART0
+         * byte stream and corrupt every incoming command. */
+        return ESP_OK;
+    }
+
     BaseType_t rc = xTaskCreate(
         serial_export_task,
         "csv_export",
@@ -315,6 +325,7 @@ esp_err_t csv_logger_start_export_task(void)
         ESP_LOGE(TAG, "Failed to create serial export task");
         return ESP_FAIL;
     }
+    s_export_task_started = true;
     return ESP_OK;
 }
 
@@ -370,6 +381,19 @@ static void serial_export_task(void *arg)
 
             /* ── EXPORT_LOGS — stream telemetry CSV ───────────────────── */
             if (strcmp(cmd_buf, "EXPORT_LOGS") == 0) {
+                /* Mute ALL logging for the duration of the transfer. This is the
+                 * moment the host starts capturing the framed CSV, so from here
+                 * on any esp_log_* output (this node's own ESP_LOGW, or the
+                 * ESP-IDF mesh stack's chatter) must NOT interleave with the
+                 * stream — a log fragment splicing into the "END_OF_FILE\n"
+                 * marker is what made attacker exports fail with "never saw
+                 * END_OF_FILE" even though the whole file arrived (see
+                 * esp32-issues-Part3.md I-001). Silencing HERE — not at task
+                 * start — keeps the full experiment visible on the console even
+                 * when CSV_EXPORT_ON_INIT starts this task at boot; only the
+                 * actual export goes quiet. The raw READY/CSV/END_OF_FILE writes
+                 * below use uart_write_bytes directly and are unaffected. */
+                esp_log_level_set("*", ESP_LOG_NONE);
                 ESP_LOGI(TAG, "EXPORT_LOGS — streaming %s", s_filepath);
                 FILE *fp = fopen(s_filepath, "r");
                 if (!fp) {
@@ -387,8 +411,19 @@ static void serial_export_task(void *arg)
                                         "READY_TO_SEND:%ld\n", fsize);
                     uart_write_bytes(EXPORT_UART, ready, rlen);
                     char line[256];
+                    uint32_t streamed = 0;
                     while (fgets(line, sizeof(line), fp)) {
                         uart_write_bytes(EXPORT_UART, line, strlen(line));
+                        /* Yield every few dozen lines so the idle task runs and
+                         * the task watchdog is fed. A large telem.csv streamed in
+                         * one tight loop (with logging muted) can otherwise starve
+                         * idle and trip a watchdog reset partway through — the
+                         * stream then goes silent with no END_OF_FILE and the host
+                         * times out at a deterministic ~50%. */
+                        if ((++streamed & 0x3F) == 0) {
+                            uart_wait_tx_done(EXPORT_UART, pdMS_TO_TICKS(100));
+                            vTaskDelay(1);
+                        }
                     }
                     fclose(fp);
                     uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
@@ -397,6 +432,8 @@ static void serial_export_task(void *arg)
 
             /* ── EXPORT_ARRIVALS — stream arrivals CSV (root only) ────── */
             } else if (strcmp(cmd_buf, "EXPORT_ARRIVALS") == 0) {
+                /* Mute logging for the transfer — see the EXPORT_LOGS branch. */
+                esp_log_level_set("*", ESP_LOG_NONE);
                 ESP_LOGI(TAG, "EXPORT_ARRIVALS — streaming %s", s_arrivals_path);
                 if (s_arrivals_path[0] == '\0') {
                     uart_write_bytes(EXPORT_UART, "ERROR:NOT_ROOT_NODE\n", 20);
@@ -415,8 +452,15 @@ static void serial_export_task(void *arg)
                                             "READY_TO_SEND:%ld\n", fsize);
                         uart_write_bytes(EXPORT_UART, ready, rlen);
                         char line[256];
+                        uint32_t streamed = 0;
                         while (fgets(line, sizeof(line), fp)) {
                             uart_write_bytes(EXPORT_UART, line, strlen(line));
+                            /* Yield periodically to feed the watchdog — see the
+                             * EXPORT_LOGS streaming loop above. */
+                            if ((++streamed & 0x3F) == 0) {
+                                uart_wait_tx_done(EXPORT_UART, pdMS_TO_TICKS(100));
+                                vTaskDelay(1);
+                            }
                         }
                         fclose(fp);
                         uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
@@ -424,22 +468,31 @@ static void serial_export_task(void *arg)
                     }
                 }
 
-            /* ── DELETE_LOGS — erase both files ──────────────────────── */
+            /* ── DELETE_LOGS — FULL WIPE: format the whole SPIFFS partition ──
+             * A plain remove() only unlinks the files; SPIFFS does not reclaim
+             * their space promptly, so across many wipe/run cycles the flash
+             * creeps toward full and every write slows to a crawl (seconds per
+             * fflush — that starved the attacker's telemetry to <1 Hz and
+             * corrupted its own CSV; see esp32-issues I-016/I-017). Formatting
+             * resets "Used" to ~0 on every -Wipe, so the flash stays healthy and
+             * a manual `idf.py erase-flash` is never needed.
+             *
+             * Close any open log handles first — formatting with files open is
+             * undefined. Between runs these are already NULL (csv_logger_close()
+             * ran at experiment end), so this is normally a no-op; it just makes
+             * a mid-run wipe safe too. We do NOT reopen: -Wipe always precedes a
+             * reflash/reboot, and csv_logger_init() recreates the files with
+             * fresh headers on the next boot. */
             } else if (strcmp(cmd_buf, "DELETE_LOGS") == 0) {
-                bool ok = true;
-                if (remove(s_filepath) != 0) {
-                    ESP_LOGE(TAG, "Failed to delete %s", s_filepath);
-                    ok = false;
-                }
-                if (s_arrivals_path[0] != '\0' && remove(s_arrivals_path) != 0) {
-                    ESP_LOGE(TAG, "Failed to delete %s", s_arrivals_path);
-                    ok = false;
-                }
-                if (ok) {
+                if (s_log_fp)      { fclose(s_log_fp);      s_log_fp = NULL; }
+                if (s_arrivals_fp) { fclose(s_arrivals_fp); s_arrivals_fp = NULL; }
+                esp_err_t ferr = esp_spiffs_format(FS_PARTITION_LABEL);
+                if (ferr == ESP_OK) {
                     uart_write_bytes(EXPORT_UART, "LOGS_DELETED\n", 13);
-                    ESP_LOGI(TAG, "Log files deleted.");
+                    ESP_LOGI(TAG, "SPIFFS formatted — full wipe, Used reset to ~0.");
                 } else {
                     uart_write_bytes(EXPORT_UART, "ERROR:DELETE_FAILED\n", 20);
+                    ESP_LOGE(TAG, "SPIFFS format failed: %s", esp_err_to_name(ferr));
                 }
 
             /* ── LIST_FILES — print both file paths ──────────────────── */

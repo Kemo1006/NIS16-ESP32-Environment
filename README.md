@@ -66,17 +66,17 @@ When it finishes, you'll have two shortcuts (desktop + Start Menu):
 NIS16-ESP32-Environment/
 ├── components/mesh_common/   shared code used by EVERY board
 ├── root_node/                build + flash this onto the ONE root board
-├── victim_node/              build + flash this onto the victim board(s)
+├── child_node/              build + flash this onto the victim board(s)
 ├── tools/                    host-side export script (export_logs.py)
 ├── run.ps1                   one-command flash + auto-export helper
 └── partitions.csv            flash layout (includes the 'spiffs' data partition)
 ```
 
-You never edit `mesh_common` to build — `root_node` and `victim_node` both pull
+You never edit `mesh_common` to build — `root_node` and `child_node` both pull
 it in automatically.
 
 **Rule: the FOLDER you build from decides the role, not the COM port.**
-`root_node` → root firmware. `victim_node` → victim firmware.
+`root_node` → root firmware. `child_node` → victim firmware.
 
 ---
 
@@ -142,13 +142,13 @@ Open a **second** "ESP-IDF 5.3 PowerShell", then:
 
 ```powershell
 cd "PATH\TO\NIS16-ESP32-Environment"
-cd victim_node
+cd child_node
 idf.py build
 idf.py -p COM6 flash monitor      # replace COM6 with the victim's actual port
 ```
 
 **Success looks like:**
-- `Project name: victim_node`
+- `Project name: child_node`
 - `=== VICTIM NODE STARTING ===`
 - `SPIFFS mounted ...`
 - within ~60 s, the **root** monitor prints `Child connected` and

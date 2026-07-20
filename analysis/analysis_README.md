@@ -46,7 +46,7 @@ board you export (the root), so every node's CSV — plus the root's
 
 ```powershell
 # victims first (export only), root LAST with -Analyze (exports THEN analyzes):
-..\run.ps1 -Port COM25 -Role victim -Attack blackhole -Wipe -Flash -Export
+..\run.ps1 -Port COM25 -Role child  -Attack blackhole -Wipe -Flash -Export
 ..\run.ps1 -Port COM20 -Role root   -Attack blackhole -Wipe -Flash -Analyze
 # -> analysis/blackhole/tree_topology/{windowed_dataset.csv, feature_table.csv, eda_output/}
 ```

@@ -22,7 +22,7 @@ own** port (ports below are the confirmed 4-board matrix from
 ```powershell
 cd tools
 python export_logs.py --port COM20 --role root   --topology tree --attack none --repeat 1
-python export_logs.py --port COM25 --role victim --topology tree --attack none --repeat 1
+python export_logs.py --port COM25 --role child  --topology tree --attack none --repeat 1
 ```
 
 Files land in `tools/exports/` with run metadata baked into the filename. Every

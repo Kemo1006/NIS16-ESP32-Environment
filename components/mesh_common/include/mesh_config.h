@@ -162,6 +162,36 @@
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * BLACKHOLE RELAY  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_BLACKHOLE == 1)
+ *
+ * TRUE RELAY MODEL (thesis §4.2.1.2 C): one attacker board relays victim probes
+ * to the root (baseline) or drops them (attack); the victim boards address the
+ * attacker. Pick each board's blackhole role at build time with -DBLACKHOLE_ROLE
+ * (mirrors -DWORMHOLE_END). The victim CMakeLists selects the source per role:
+ *
+ *   idf.py -DACTIVE_ATTACK=1 -DBLACKHOLE_ROLE=0   build flash   (attacker relay -> blackhole_victim.c)
+ *   idf.py -DACTIVE_ATTACK=1 -DBLACKHOLE_ROLE=1   build flash   (victim -> victim_main.c, targets attacker)
+ *
+ * (run.ps1 -Attack blackhole -BlackholeRole attacker|victim injects the flag.)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#define BLACKHOLE_ROLE_ATTACKER  0   /**< relays victim probes / drops on attack */
+#define BLACKHOLE_ROLE_VICTIM    1   /**< sends its probes to the attacker's MAC  */
+
+#ifndef BLACKHOLE_ROLE
+#define BLACKHOLE_ROLE           BLACKHOLE_ROLE_ATTACKER
+#endif
+
+/** The blackhole attacker board's Wi-Fi STA MAC. A blackhole VICTIM board
+ *  (BLACKHOLE_ROLE=1) sends its probes here instead of to the root, so the
+ *  attacker can relay or drop them.
+ *  ⚠️ SET THIS to your attacker board's STA MAC before building the victim
+ *  boards — the attacker prints it at boot ("Set BLACKHOLE_ATTACKER_MAC ... to
+ *  my STA MAC: ..."), or read it with tools/Get-EspMac.ps1. Only blackhole
+ *  VICTIM builds read it; the attacker and all other builds ignore it. */
+#define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, 0xD8, 0xF3, 0x32, 0x18} // COM26 (blackhole attacker) — b0:cb:d8:f3:32:18
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * WORMHOLE TUNNEL  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_WORMHOLE == 2)
  *
  * The wormhole is a TWO-node colluding attack, emulated ENTIRELY at the
@@ -194,17 +224,38 @@
 #define WORMHOLE_END            WORMHOLE_END_A
 #endif
 
-/** Node A's Wi-Fi STA MAC — Node B tunnels captured probes to this address.
- *  ⚠️ SET THIS to your Node-A board's STA MAC (the MAC export_logs.py and the
- *  boot log report for that board, e.g. B0:CB:D8:F3:32:18). Only Node B reads
- *  it; Node A ignores it. Node B logs a boot-time WARNING and every tunnel send
- *  fails (visible as a climbing retry_count with tx frozen) if it is left at the
- *  placeholder below — that is the #1 "wormhole didn't work" pitfall. */
+/** UNUSED by the current firmware — the A<->B tunnel now runs over a wired
+ *  UART link (WORMHOLE_UART_* below), not the wireless mesh, so no MAC
+ *  addressing is needed between the two attacker boards. Left defined only
+ *  because tools/run_matrix.py, tools/Get-EspMac.ps1, run.ps1, and
+ *  ATTACKS-Commands.md still reference it in their instructions/output. */
 #define WORMHOLE_NODE_A_MAC     {0xF4, 0x2D, 0xC9, 0x73, 0xE6, 0x18}
 
 /** Magic cookie prefixing every tunnelled packet on the A<->B channel, so Node A
- *  can tell a tunnelled probe from ordinary mesh traffic. ("TNL1") */
+ *  can tell a tunnelled probe from a corrupted/garbage frame. ("TNL1") */
 #define WORMHOLE_TUNNEL_MAGIC   0x544E4C31U
+
+/** Physical out-of-band tunnel between Node A and Node B — Milestone 2 requires
+ *  "a wired UART link between A and B" as the out-of-band channel ("this is
+ *  what makes it a wormhole rather than ordinary forwarding"); the thesis
+ *  proposal's Figure 4.9 tunnel-packet design also assumes a point-to-point
+ *  serial link. Wire the two boards directly to each other:
+ *
+ *      Node A TX (GPIO WORMHOLE_UART_TX_PIN) -> Node B RX (GPIO WORMHOLE_UART_RX_PIN)
+ *      Node A RX (GPIO WORMHOLE_UART_RX_PIN) -> Node B TX (GPIO WORMHOLE_UART_TX_PIN)
+ *      Node A GND                            -> Node B GND
+ *
+ *  i.e. TX and RX are CROSSED between the two boards, GND is shared. This is a
+ *  separate physical cable between the two attacker boards ONLY — do not wire
+ *  it to your laptop, and it is independent of the wireless mesh entirely.
+ *
+ *  Defaults below are UART_NUM_1's pins on a standard non-PSRAM ESP32
+ *  DevKitC. If your boards are WROVER modules (GPIO16/17 used by PSRAM),
+ *  change these to a free GPIO pair on both boards before wiring. */
+#define WORMHOLE_UART_PORT      1        /* == UART_NUM_1 */
+#define WORMHOLE_UART_TX_PIN    17
+#define WORMHOLE_UART_RX_PIN    16
+#define WORMHOLE_UART_BAUD      115200
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PHASE BROADCAST RELIABILITY
@@ -283,9 +334,23 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #define TASK_PRIO_PHASE_LISTENER    8    /**< High priority — must wake quickly */
-#define TASK_PRIO_TELEMETRY         5    /**< Normal sampling loop */
+#define TASK_PRIO_TELEMETRY         5    /**< Normal sampling loop (victim/root) */
 #define TASK_PRIO_PROBE_GEN         5    /**< Victim probe generator */
-#define TASK_PRIO_PROBE_SINK        6    /**< Root probe receiver */
+#define TASK_PRIO_PROBE_SINK        6    /**< Root probe receiver / attacker relay/tunnel */
+#define TASK_PRIO_ATTACKER_TELEMETRY 7   /**< Attacker sampling loop. ABOVE the relay/
+                                          *   tunnel sink (6) so heavy relay traffic on
+                                          *   an intermediate attacker (esp. linear
+                                          *   topology) can't starve it — the victim's
+                                          *   plain prio-5 loop samples fine because it
+                                          *   has no relay competing, but the blackhole/
+                                          *   wormhole attacker at 5 dropped to <1 Hz and
+                                          *   its attack-phase windows got discarded (<4
+                                          *   samples/window). Kept BELOW the phase
+                                          *   listener (8) so packet dispatch and the
+                                          *   forward/drop attack timing are unaffected.
+                                          *   Restores the uniform SAMPLING_INTERVAL_MS
+                                          *   rate the telemetry loop (thesis Fig 4.24)
+                                          *   assumes for every node. */
 #define TASK_PRIO_SERIAL_EXPORT     3    /**< Low priority — only runs post-experiment */
 
 #define STACK_PHASE_LISTENER    6144U   /* also runs the non-phase data cb (probe sink) */

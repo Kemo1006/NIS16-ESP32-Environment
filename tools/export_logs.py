@@ -35,7 +35,7 @@ Pull the root node's telemetry AND probe-arrivals (-> exports/blackhole/star_top
         --topology star --attack blackhole --repeat 1
 
 Pull a victim node's telemetry (-> exports/baseline/tree_topology/):
-    python export_logs.py --port COM6 --role victim \
+    python export_logs.py --port COM6 --role child  \
         --topology tree --attack none --repeat 1
 
 Just see what's stored, don't download:
@@ -74,6 +74,26 @@ BAUD = 115200          # MUST match the firmware console baud
                        # console baud to stick in sdkconfig, change this to match.
 READ_TIMEOUT_S = 2.0   # per-line read timeout
 OVERALL_TIMEOUT_S = 30 # give up on a stream after this long
+POST_TOTAL_GRACE_S = 2.5  # once the device's announced byte total has fully
+                       # arrived, wait only this long for the END_OF_FILE marker
+                       # before completing anyway. The marker can be lost when a
+                       # still-running task (e.g. the blackhole ATTACKER's relay
+                       # task, which never exits) logs to UART0 during export and
+                       # its bytes splice into the "END_OF_FILE" line. The file
+                       # itself already arrived intact, so recovering it beats a
+                       # 30 s idle TIMEOUT. See esp32-issues-Part3.md I-001.
+
+# Resilience over speed. The console baud is fixed at 115200 (see BAUD above,
+# I-007) which is the safest choice on a low-quality cable — raw CSV streaming
+# has no error correction, so a faster baud would only trade dropped rows for
+# speed and punch gaps in the telemetry. Instead we make the transfer
+# self-healing: every failure seen in practice (the post-reset 0-row race, a
+# lost END_OF_FILE at ~99%, a transient cable glitch) is a TRANSIENT that a
+# re-read cures. The device holds the file until an explicit wipe, so re-issuing
+# EXPORT_LOGS is always safe and idempotent. We retry a few times and keep the
+# MOST COMPLETE capture, so a bad cable degrades gracefully instead of failing.
+EXPORT_ATTEMPTS = 4       # total tries per file before giving up
+RETRY_SETTLE_S  = 2.0     # let the board settle / finish flushing between tries
 
 # An ESP-IDF log line looks like: "I (12345) TAG: message"
 _LOG_LINE = re.compile(r"^[IWEDV] \(\d+\)")
@@ -156,6 +176,7 @@ def _capture_stream(ser: serial.Serial, command: str):
     recv_bytes = 0         # bytes seen so far, for the progress bar
     start_ts = time.time()
     last_draw = 0.0
+    last_data_ts = time.time()  # wall-clock of the most recent byte received
     # Idle timeout: give up only after OVERALL_TIMEOUT_S of NO data. A large
     # telem.csv can take a while to stream; as long as bytes keep arriving we
     # keep going, so big files no longer trip a fixed total-time cap.
@@ -207,7 +228,23 @@ def _capture_stream(ser: serial.Serial, command: str):
         n = ser.in_waiting
         chunk = ser.read(n if n > 0 else 1)
         if not chunk:
+            # No data this poll. If the device announced a byte total and we've
+            # already received the whole file, the END_OF_FILE marker was lost
+            # (interleaved device log output corrupted it — common on an
+            # actively-logging attacker node). After a short grace with nothing
+            # new arriving, treat the complete file as done instead of waiting
+            # out the full idle TIMEOUT and discarding a good capture.
+            if (started and total_bytes > 0 and recv_bytes >= total_bytes
+                    and time.time() - last_data_ts >= POST_TOTAL_GRACE_S):
+                _render_progress(recv_bytes, total_bytes, len(rows),
+                                 start_ts, final=True)
+                sys.stderr.write(
+                    "   NOTE: END_OF_FILE marker was missing, but the full "
+                    f"{_fmt_bytes(total_bytes)} arrived — recovered.\n")
+                sys.stderr.flush()
+                return rows, None
             continue
+        last_data_ts = time.time()
         deadline = time.time() + OVERALL_TIMEOUT_S  # got data — extend
         buf.extend(chunk)
 
@@ -237,6 +274,37 @@ def _capture_stream(ser: serial.Serial, command: str):
         sys.stderr.write("\n")
         sys.stderr.flush()
     return rows, "TIMEOUT: never saw END_OF_FILE"
+
+
+def _capture_with_retries(ser: serial.Serial, command: str):
+    """Capture a stream, retrying transient failures and keeping the most
+    complete result. Returns (rows, error_str, attempts_used).
+
+    A clean capture (error_str is None with at least one row) returns
+    immediately. Otherwise we keep re-issuing the command — the device streams
+    the same file each time — and hold onto whichever attempt yielded the most
+    rows. This turns the flaky cases (post-reset 0-row race, a marker lost at
+    ~99 %, an occasional glitch on a poor cable) into a brief, automatic retry
+    instead of a hard failure. Re-reads are safe: the file is untouched until an
+    explicit DELETE_LOGS/wipe.
+    """
+    best_rows, best_err = [], "no attempt made"
+    for attempt in range(1, EXPORT_ATTEMPTS + 1):
+        if attempt > 1:
+            # Give the board a moment to settle (a just-closed monitor may have
+            # reset it) and clear any stale bytes before re-issuing.
+            time.sleep(RETRY_SETTLE_S)
+            _drain(ser)
+            print(f"   retry {attempt}/{EXPORT_ATTEMPTS} "
+                  f"(best so far: {len(best_rows)} rows) ...")
+        rows, err = _capture_stream(ser, command)
+        # Perfect, complete capture — nothing to gain from more tries.
+        if err is None and rows:
+            return rows, None, attempt
+        # Keep the fullest attempt seen so far (more rows == closer to complete).
+        if len(rows) > len(best_rows):
+            best_rows, best_err = rows, err
+    return best_rows, best_err, EXPORT_ATTEMPTS
 
 
 def _list_files(ser: serial.Serial) -> None:
@@ -309,9 +377,12 @@ def main() -> int:
     p.add_argument("--port", required=True, help="Serial port, e.g. COM3")
     p.add_argument(
         "--role",
-        choices=["root", "victim"],
-        default="victim",
-        help="Node role. 'root' also pulls arrivals.csv.",
+        choices=["root", "child", "victim"],
+        default="child",
+        help="Mesh-position role for the filename (root | child). 'root' also "
+             "pulls arrivals.csv. 'victim' is kept as an alias for 'child'. This "
+             "only names the file — the CSV's node_role column is written by the "
+             "firmware per thesis Table 4.12 and is unaffected.",
     )
     p.add_argument("--topology", default="unknown",
                    help="star | tree | linear | partial (for the filename)")
@@ -363,8 +434,29 @@ def main() -> int:
         if args.wipe:
             print("-> DELETE_LOGS (wipe only) ...")
             _send_command(ser, "DELETE_LOGS")
-            time.sleep(1.0)
-            print("   wipe command sent. Device logs cleared.")
+            # The device now FORMATS the whole SPIFFS partition (not just a file
+            # delete), which takes longer than the old fixed 1 s — a full format
+            # erases every sector. Wait for the device's own ack ("LOGS_DELETED"
+            # / "ERROR:...") instead of guessing, so a slow format isn't cut off
+            # mid-way by the reflash that follows -Wipe. Fall back to a message if
+            # the board is old firmware that doesn't ack.
+            deadline = time.time() + 20
+            acked = False
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line == "LOGS_DELETED":
+                    print("   SPIFFS formatted — flash reset to empty.")
+                    acked = True
+                    break
+                if line.startswith("ERROR:"):
+                    print(f"   wipe FAILED: {line}", file=sys.stderr)
+                    return 1
+            if not acked:
+                print("   wipe command sent (no ack — older firmware, or already "
+                      "clean). Give it a moment before reflashing.")
             return 0
 
         # Commands to run for this role
@@ -375,17 +467,23 @@ def main() -> int:
         any_failed = False
         for command, kind in jobs:
             print(f"-> {command} ...")
-            rows, err = _capture_stream(ser, command)
-            if err:
-                print(f"   FAILED: {err}", file=sys.stderr)
-                any_failed = True
-                continue
-            if not rows:
+            rows, err, attempts = _capture_with_retries(ser, command)
+            # Persist whatever arrived, even when the stream timed out partway.
+            # A partial CSV is far more useful than silently discarding the
+            # thousands of rows that already transferred cleanly — previously an
+            # error 'continue'd straight past _save() and threw them all away.
+            if rows:
+                path = _make_filename(args, kind)
+                n = _save(rows, path)
+                data_rows = max(0, n - 1)  # minus header
+                tries = f" after {attempts} tries" if attempts > 1 else ""
+                tag = " (PARTIAL — see error below)" if err else ""
+                print(f"   saved {data_rows} data rows{tries} -> {path}{tag}")
+            elif not err:
                 print("   WARNING: stream was empty (0 rows).", file=sys.stderr)
-            path = _make_filename(args, kind)
-            n = _save(rows, path)
-            data_rows = max(0, n - 1)  # minus header
-            print(f"   saved {data_rows} data rows -> {path}")
+            if err:
+                print(f"   FAILED after {attempts} tries: {err}", file=sys.stderr)
+                any_failed = True
 
         if args.delete and not any_failed:
             print("-> DELETE_LOGS ...")

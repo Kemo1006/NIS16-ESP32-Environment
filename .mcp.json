@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "clion": {
+      "url": "http://127.0.0.1:64362/stream",
+      "type": "http",
+      "headers": {
+        "IJ_MCP_SERVER_PROJECT_PATH": "C:/Users/Angelo Calpoporo/CLionProjects/NIS16-ESP32-Environment"
+      }
+    }
+  }
+}

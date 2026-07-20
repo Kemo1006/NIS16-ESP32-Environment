@@ -39,7 +39,7 @@ the ~8-minute timeline:
 
 ```powershell
 .\run.ps1 -Port COM8 -Role root   -Wipe -Flash -Export
-.\run.ps1 -Port COM3 -Role victim -Wipe -Flash -Export
+.\run.ps1 -Port COM3 -Role child  -Wipe -Flash -Export
 ```
 
 Confirm in the root monitor that it announces baseline → attack → cooldown →

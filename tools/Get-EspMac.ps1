@@ -4,16 +4,21 @@
 
 .DESCRIPTION
   Wraps `esptool read_mac`, which reads the base MAC straight from the chip's
-  eFuse. On ESP32 the base MAC IS the Wi-Fi STA MAC, so it's exactly:
-    - the firmware's Node ID  (boot log: "NODE_XXXXXXXXXXXX")
-    - the value WORMHOLE_NODE_A_MAC needs in components/mesh_common/include/mesh_config.h
+  eFuse. On ESP32 the base MAC IS the Wi-Fi STA MAC, which is exactly the
+  firmware's Node ID (boot log: "NODE_XXXXXXXXXXXX"). Use it to identify which
+  physical board is on which COM port BEFORE flashing (match a board to its
+  Node ID so you assign root/victim/attacker roles to the right ports).
   Works on a blank / factory-reset board (it reads eFuse, not flash).
+
+  (Note: WORMHOLE_NODE_A_MAC is no longer used — the wormhole tunnel is a wired
+  UART cable now, not a MAC-addressed message — so this tool is purely for board
+  identification, not wormhole setup.)
 
   Each result object has four fields:
     Port   - the COM port queried
     MAC    - colon form, e.g. f4:2d:c9:73:e6:18
     NodeId - NODE_F42DC973E618        (matches the boot-log Node ID)
-    CArray - {0xF4, 0x2D, ...}        (paste straight into WORMHOLE_NODE_A_MAC)
+    CArray - {0xF4, 0x2D, ...}        (C-array form, if ever needed)
 
 .PARAMETER Port
   A single COM port to read, e.g. COM21.

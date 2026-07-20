@@ -47,7 +47,7 @@ cd "PATH\TO\NIS16-ESP32-Environment"
 .\run.ps1 -Port COM3 -Role root   -Flash
 
 # Terminal 2 — victim: flash, watch, then Ctrl+] to auto-export
-.\run.ps1 -Port COM6 -Role victim -Flash
+.\run.ps1 -Port COM6 -Role child  -Flash
 ```
 
 - **`-Role` must match what the board is actually flashed as.** Only `-Role root`
@@ -55,7 +55,7 @@ cd "PATH\TO\NIS16-ESP32-Environment"
   mistake and you'll miss `arrivals.csv`.
 - Already flashed / board still running and you just want to export? Drop `-Flash`:
   ```powershell
-  .\run.ps1 -Port COM6 -Role victim
+  .\run.ps1 -Port COM6 -Role child 
   ```
 - Add `-Clean` to wipe the board's logs **after** a good export, so the next run
   starts empty (prevents stacked, mixed-run files):
@@ -71,7 +71,7 @@ cd "PATH\TO\NIS16-ESP32-Environment"
    ```powershell
    cd tools
    python export_logs.py --port COM3 --role root   --topology star --attack none --repeat 1
-   python export_logs.py --port COM6 --role victim --topology star --attack none --repeat 1
+   python export_logs.py --port COM6 --role child  --topology star --attack none --repeat 1
    ```
 
 **Flags:**
@@ -129,13 +129,13 @@ Then re-flash / reset both boards and repeat from step 6, bumping `--repeat`.
    "blinks") and logs nothing. The target is already pinned in each project — just
    run `idf.py build`. **Fix if someone ran it:**
    ```powershell
-   git checkout -- root_node/sdkconfig victim_node/sdkconfig
+   git checkout -- root_node/sdkconfig child_node/sdkconfig
    idf.py build
    ```
 
 2. **One `idf.py` per project folder at a time.** Two builds hitting the same
    `build/` folder corrupt each other (`ranlib: libwear_levelling.a: No such file`).
-   Building `root_node` and `victim_node` in parallel is fine — they're different
+   Building `root_node` and `child_node` in parallel is fine — they're different
    folders. Fix a corrupted build with `idf.py fullclean` then `idf.py build`.
 
 3. **Flashing the app does NOT erase logs.** Telemetry lives at a fixed flash
@@ -148,7 +148,7 @@ Then re-flash / reset both boards and repeat from step 6, bumping `--repeat`.
 
 | Symptom | Cause / Fix |
 |---|---|
-| `spiffs partition could not be found` / board blinks / reboot loop | Someone ran `idf.py set-target`. Run `git checkout -- root_node/sdkconfig victim_node/sdkconfig` then `idf.py build`. Never run set-target again. |
+| `spiffs partition could not be found` / board blinks / reboot loop | Someone ran `idf.py set-target`. Run `git checkout -- root_node/sdkconfig child_node/sdkconfig` then `idf.py build`. Never run set-target again. |
 | `ranlib: libwear_levelling.a: No such file` | Two `idf.py` commands hit the same `build/`. Run `idf.py fullclean` then `idf.py build`. |
 | Wrong role on a board (e.g. "Project name: root_node" on the victim) | You built from the wrong folder. `cd` into the correct folder and re-flash. |
 | `could not open COMx` during export | The monitor is still open. Press **Ctrl + ]** in the monitor window first. |
@@ -166,16 +166,16 @@ python -m serial.tools.list_ports
 
 # EASIEST: auto-export on Ctrl+]
 .\run.ps1 -Port COM3 -Role root   -Flash      # terminal 1
-.\run.ps1 -Port COM6 -Role victim -Flash      # terminal 2
+.\run.ps1 -Port COM6 -Role child  -Flash      # terminal 2
 # wait ~8 min, then Ctrl+] in each -> auto-exports to tools\exports\
 
 # MANUAL:
 cd root_node;   idf.py build; idf.py -p COM3 flash monitor   # terminal 1
-cd victim_node; idf.py build; idf.py -p COM6 flash monitor   # terminal 2
+cd child_node; idf.py build; idf.py -p COM6 flash monitor   # terminal 2
 # wait ~8 min, then Ctrl+] in both monitors
 cd tools
 python export_logs.py --port COM3 --role root   --topology star --attack none --repeat 1
-python export_logs.py --port COM6 --role victim --topology star --attack none --repeat 1
+python export_logs.py --port COM6 --role child  --topology star --attack none --repeat 1
 ```
 
 **Two rules to never forget:** build from the **"ESP-IDF 5.3 PowerShell"**

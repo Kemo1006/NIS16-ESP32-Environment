@@ -46,9 +46,9 @@ are the confirmed 4-board matrix from
 
 ```powershell
 # example: STAR baseline run (do the same -Topology on EVERY board, each in its own shell)
-.\run.ps1 -Port COM25 -Role victim -Topology star -Wipe -Flash -Export
-.\run.ps1 -Port COM26 -Role victim -Topology star -Wipe -Flash -Export
-.\run.ps1 -Port COM21 -Role victim -Topology star -Wipe -Flash -Export
+.\run.ps1 -Port COM25 -Role child  -Topology star -Wipe -Flash -Export
+.\run.ps1 -Port COM26 -Role child  -Topology star -Wipe -Flash -Export
+.\run.ps1 -Port COM21 -Role child  -Topology star -Wipe -Flash -Export
 .\run.ps1 -Port COM20 -Role root   -Topology star -Wipe -Flash -Export   # root LAST
 
 # then verify the exported CSVs match the intended shape

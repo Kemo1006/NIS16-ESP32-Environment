@@ -235,22 +235,33 @@ def plot_distributions(
         else:
             label_display = valid[label_col].map(lambda v: LABEL_NAMES.get(v, str(v)))
             hist_df = valid.assign(_label_display=label_display)
+            # Cap the bin count explicitly. Seaborn's automatic (Freedman–Diaconis)
+            # bin rule sets width from the IQR, which collapses toward zero when a
+            # feature is nearly constant with a few outliers — RetryRate is 0.0
+            # everywhere, ForwardingRatio piles at 0 and 1. A near-zero bin width
+            # over a non-zero range asks for astronomically many bins and seaborn
+            # tries to allocate gigabytes for the step polygons, killing the whole
+            # M8 run. A fixed, distinct-value-aware cap keeps the histogram honest
+            # and bounded.
+            nbins = int(min(50, max(10, valid[feat].nunique())))
             try:
                 sns.histplot(
                     data=hist_df,
-                    x=feat, hue="_label_display", kde=True, ax=axes[0],
+                    x=feat, hue="_label_display", kde=True, ax=axes[0], bins=nbins,
                     element="step", stat="density", common_norm=False,
                 )
-            except np.linalg.LinAlgError:
+            except (np.linalg.LinAlgError, MemoryError, ValueError):
                 # A phase group with zero variance (e.g. a feature that's constant
                 # across a clean baseline run, like RetryRate = 0 everywhere) gives
-                # seaborn's gaussian_kde a singular covariance matrix and it raises
-                # LinAlgError. Drop the KDE overlay and redraw a plain histogram so
-                # the plot is still produced instead of taking down the whole M8 run.
+                # seaborn's gaussian_kde a singular covariance matrix (LinAlgError);
+                # a degenerate spread can also blow up bin allocation (MemoryError)
+                # or trip a ValueError. In any of these, drop the KDE overlay and
+                # redraw a plain capped-bin histogram so the plot is still produced
+                # instead of taking down the whole M8 run.
                 axes[0].clear()
                 sns.histplot(
                     data=hist_df,
-                    x=feat, hue="_label_display", kde=False, ax=axes[0],
+                    x=feat, hue="_label_display", kde=False, ax=axes[0], bins=nbins,
                     element="step", stat="density", common_norm=False,
                 )
             axes[0].set_title("Histogram by phase")
@@ -451,6 +462,7 @@ def run_dimensionality_reduction(
     exclude_tunnel: bool = True,
     tsne_perplexity: float | None = None,
     random_state: int = 42,
+    max_nan_fraction: float = 0.5,
 ) -> dict:
     """
     Z-score standardizes the feature columns (Equation 4.18), then runs
@@ -465,11 +477,17 @@ def run_dimensionality_reduction(
          4.2.5.1's own documented option: "auxiliary tunnel features may
          be excluded before normalization to assess whether behavioral
          separation emerges without explicit manipulation indicators."
-         Currently this has no additional effect beyond (1) since the
-         tunnel columns are already all-NaN — but the flag is kept
-         separate and explicit so it still does something meaningful
-         once tunnel data exists and someone wants to run this
-         comparison the thesis describes.
+      3. Columns whose NaN fraction exceeds `max_nan_fraction` (default
+         0.5). This is what keeps the projection from collapsing to zero
+         rows: several features are defined for only ONE node role —
+         ForwardingRatio/IngressEgressDelta/ConsistencyScore exist only on
+         the attacker, PDR only on victims — so no single window is
+         non-NaN in all of them at once. Feeding those role-exclusive
+         columns into a common matrix and then dropping rows with any NaN
+         wipes EVERY row (an attacker window is NaN in PDR, a victim window
+         is NaN in ForwardingRatio). Dropping the sparse columns first
+         projects the broadly-defined cross-layer features over the windows
+         that actually share them, instead of producing an empty plot.
 
     Rows with any remaining NaN in the surviving columns are dropped
     (PCA/t-SNE need a complete matrix) — the count dropped is reported,
@@ -485,7 +503,15 @@ def run_dimensionality_reduction(
     tunnel_cols = [c for c in candidate_cols if c.startswith("Tunnel")]
     tunnel_excluded = tunnel_cols if exclude_tunnel else []
 
-    excluded = sorted(set(allnan_excluded) | set(tunnel_excluded))
+    # Role-exclusive / structurally-sparse columns: too many NaNs to share a
+    # complete matrix with the rest. Excluding them is what prevents the
+    # all-rows-dropped empty projection (see docstring point 3).
+    sparse_excluded = [
+        c for c in candidate_cols
+        if c not in allnan_excluded and df[c].isna().mean() > max_nan_fraction
+    ]
+
+    excluded = sorted(set(allnan_excluded) | set(tunnel_excluded) | set(sparse_excluded))
     usable_cols = [c for c in candidate_cols if c not in excluded]
 
     label_col = "Label" if "Label" in df.columns else "window_label"
@@ -504,6 +530,8 @@ def run_dimensionality_reduction(
                 f"after dropping {n_dropped} rows with remaining NaNs)."
             ),
             "excluded_columns": excluded,
+            "allnan_excluded": sorted(allnan_excluded),
+            "sparse_excluded": sorted(sparse_excluded),
             "n_dropped_rows": n_dropped,
         }
 
@@ -538,6 +566,8 @@ def run_dimensionality_reduction(
         "labels": y,
         "usable_columns": usable_cols,
         "excluded_columns": excluded,
+        "allnan_excluded": sorted(allnan_excluded),
+        "sparse_excluded": sorted(sparse_excluded),
         "n_dropped_rows": n_dropped,
         "n_rows_used": len(working),
     }
@@ -587,10 +617,17 @@ def plot_dimensionality_reduction(
     axes[1].set_xlabel("t-SNE dim 1")
     axes[1].set_ylabel("t-SNE dim 2")
 
+    sparse = result.get("sparse_excluded") or []
+    allnan = result.get("allnan_excluded") or []
+    excl_bits = []
+    if allnan:
+        excl_bits.append(f"all-NaN: {', '.join(allnan)}")
+    if sparse:
+        excl_bits.append(f"role-sparse (>50% NaN): {', '.join(sparse)}")
     subtitle = (
         f"{result['n_rows_used']} windows used"
         + (f" ({result['n_dropped_rows']} dropped for remaining NaNs)" if result["n_dropped_rows"] else "")
-        + f"\nExcluded columns: {', '.join(result['excluded_columns']) if result['excluded_columns'] else 'none'}"
+        + ("\nExcluded — " + "; ".join(excl_bits) if excl_bits else "\nExcluded columns: none")
     )
     fig.suptitle(f"Dimensionality reduction — feature-space separability\n{subtitle}", fontsize=10)
     fig.tight_layout()
