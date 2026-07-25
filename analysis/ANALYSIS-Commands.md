@@ -30,27 +30,40 @@ attack × topology. Sibling of [`ATTACKS-Commands.md`](../../ATTACKS-Commands.md
 
 ---
 
+> ⚠️ **These read `.../trimmed`, not the raw export folder.** Exporting does not
+> trim, and an untrimmed folder still holds the Phase-2 flash session and the
+> export-plug-in session. Skipping the trim makes `verify_topology` WARN and
+> inflates `RSSI_var` from ~13 to ~1386 (pure artifact). Run this first:
+>
+> ```powershell
+> python ..\tools\trim_run.py ..\tools\exports\<attack>\<topology> --apply
+> ```
+>
+> Full detail: [Trimming exports before analysis](../LINEAR-RUNBOOK.md#-trimming-exports-before-analysis)
+
+---
+
 ## BASELINE (normal traffic, ground-truth label 0)
 
 ```powershell
 # baseline — star
-python preprocess.py ../tools/exports/baseline/star_topology -o baseline/star_topology/windowed_dataset.csv
-python features.py   ../tools/exports/baseline/star_topology -o baseline/star_topology/feature_table.csv
+python preprocess.py ../tools/exports/baseline/star_topology/trimmed -o baseline/star_topology/windowed_dataset.csv
+python features.py   ../tools/exports/baseline/star_topology/trimmed -o baseline/star_topology/feature_table.csv
 python eda.py        baseline/star_topology/feature_table.csv -o baseline/star_topology/eda_output/
 
 # baseline — tree
-python preprocess.py ../tools/exports/baseline/tree_topology -o baseline/tree_topology/windowed_dataset.csv
-python features.py   ../tools/exports/baseline/tree_topology -o baseline/tree_topology/feature_table.csv
+python preprocess.py ../tools/exports/baseline/tree_topology/trimmed -o baseline/tree_topology/windowed_dataset.csv
+python features.py   ../tools/exports/baseline/tree_topology/trimmed -o baseline/tree_topology/feature_table.csv
 python eda.py        baseline/tree_topology/feature_table.csv -o baseline/tree_topology/eda_output/
 
 # baseline — linear
-python preprocess.py ../tools/exports/baseline/linear_topology -o baseline/linear_topology/windowed_dataset.csv
-python features.py   ../tools/exports/baseline/linear_topology -o baseline/linear_topology/feature_table.csv
+python preprocess.py ../tools/exports/baseline/linear_topology/trimmed -o baseline/linear_topology/windowed_dataset.csv
+python features.py   ../tools/exports/baseline/linear_topology/trimmed -o baseline/linear_topology/feature_table.csv
 python eda.py        baseline/linear_topology/feature_table.csv -o baseline/linear_topology/eda_output/
 
 # baseline — partial_mesh
-python preprocess.py ../tools/exports/baseline/partial_mesh_topology -o baseline/partial_mesh_topology/windowed_dataset.csv
-python features.py   ../tools/exports/baseline/partial_mesh_topology -o baseline/partial_mesh_topology/feature_table.csv
+python preprocess.py ../tools/exports/baseline/partial_mesh_topology/trimmed -o baseline/partial_mesh_topology/windowed_dataset.csv
+python features.py   ../tools/exports/baseline/partial_mesh_topology/trimmed -o baseline/partial_mesh_topology/feature_table.csv
 python eda.py        baseline/partial_mesh_topology/feature_table.csv -o baseline/partial_mesh_topology/eda_output/
 ```
 
@@ -58,23 +71,23 @@ python eda.py        baseline/partial_mesh_topology/feature_table.csv -o baselin
 
 ```powershell
 # blackhole — star
-python preprocess.py ../tools/exports/blackhole/star_topology -o blackhole/star_topology/windowed_dataset.csv
-python features.py   ../tools/exports/blackhole/star_topology -o blackhole/star_topology/feature_table.csv
+python preprocess.py ../tools/exports/blackhole/star_topology/trimmed -o blackhole/star_topology/windowed_dataset.csv
+python features.py   ../tools/exports/blackhole/star_topology/trimmed -o blackhole/star_topology/feature_table.csv
 python eda.py        blackhole/star_topology/feature_table.csv -o blackhole/star_topology/eda_output/
 
 # blackhole — tree
-python preprocess.py ../tools/exports/blackhole/tree_topology -o blackhole/tree_topology/windowed_dataset.csv
-python features.py   ../tools/exports/blackhole/tree_topology -o blackhole/tree_topology/feature_table.csv
+python preprocess.py ../tools/exports/blackhole/tree_topology/trimmed -o blackhole/tree_topology/windowed_dataset.csv
+python features.py   ../tools/exports/blackhole/tree_topology/trimmed -o blackhole/tree_topology/feature_table.csv
 python eda.py        blackhole/tree_topology/feature_table.csv -o blackhole/tree_topology/eda_output/
 
 # blackhole — linear
-python preprocess.py ../tools/exports/blackhole/linear_topology -o blackhole/linear_topology/windowed_dataset.csv
-python features.py   ../tools/exports/blackhole/linear_topology -o blackhole/linear_topology/feature_table.csv
+python preprocess.py ../tools/exports/blackhole/linear_topology/trimmed -o blackhole/linear_topology/windowed_dataset.csv
+python features.py   ../tools/exports/blackhole/linear_topology/trimmed -o blackhole/linear_topology/feature_table.csv
 python eda.py        blackhole/linear_topology/feature_table.csv -o blackhole/linear_topology/eda_output/
 
 # blackhole — partial_mesh
-python preprocess.py ../tools/exports/blackhole/partial_mesh_topology -o blackhole/partial_mesh_topology/windowed_dataset.csv
-python features.py   ../tools/exports/blackhole/partial_mesh_topology -o blackhole/partial_mesh_topology/feature_table.csv
+python preprocess.py ../tools/exports/blackhole/partial_mesh_topology/trimmed -o blackhole/partial_mesh_topology/windowed_dataset.csv
+python features.py   ../tools/exports/blackhole/partial_mesh_topology/trimmed -o blackhole/partial_mesh_topology/feature_table.csv
 python eda.py        blackhole/partial_mesh_topology/feature_table.csv -o blackhole/partial_mesh_topology/eda_output/
 ```
 
@@ -82,23 +95,23 @@ python eda.py        blackhole/partial_mesh_topology/feature_table.csv -o blackh
 
 ```powershell
 # wormhole — star
-python preprocess.py ../tools/exports/wormhole/star_topology -o wormhole/star_topology/windowed_dataset.csv
-python features.py   ../tools/exports/wormhole/star_topology -o wormhole/star_topology/feature_table.csv
+python preprocess.py ../tools/exports/wormhole/star_topology/trimmed -o wormhole/star_topology/windowed_dataset.csv
+python features.py   ../tools/exports/wormhole/star_topology/trimmed -o wormhole/star_topology/feature_table.csv
 python eda.py        wormhole/star_topology/feature_table.csv -o wormhole/star_topology/eda_output/
 
 # wormhole — tree
-python preprocess.py ../tools/exports/wormhole/tree_topology -o wormhole/tree_topology/windowed_dataset.csv
-python features.py   ../tools/exports/wormhole/tree_topology -o wormhole/tree_topology/feature_table.csv
+python preprocess.py ../tools/exports/wormhole/tree_topology/trimmed -o wormhole/tree_topology/windowed_dataset.csv
+python features.py   ../tools/exports/wormhole/tree_topology/trimmed -o wormhole/tree_topology/feature_table.csv
 python eda.py        wormhole/tree_topology/feature_table.csv -o wormhole/tree_topology/eda_output/
 
 # wormhole — linear
-python preprocess.py ../tools/exports/wormhole/linear_topology -o wormhole/linear_topology/windowed_dataset.csv
-python features.py   ../tools/exports/wormhole/linear_topology -o wormhole/linear_topology/feature_table.csv
+python preprocess.py ../tools/exports/wormhole/linear_topology/trimmed -o wormhole/linear_topology/windowed_dataset.csv
+python features.py   ../tools/exports/wormhole/linear_topology/trimmed -o wormhole/linear_topology/feature_table.csv
 python eda.py        wormhole/linear_topology/feature_table.csv -o wormhole/linear_topology/eda_output/
 
 # wormhole — partial_mesh
-python preprocess.py ../tools/exports/wormhole/partial_mesh_topology -o wormhole/partial_mesh_topology/windowed_dataset.csv
-python features.py   ../tools/exports/wormhole/partial_mesh_topology -o wormhole/partial_mesh_topology/feature_table.csv
+python preprocess.py ../tools/exports/wormhole/partial_mesh_topology/trimmed -o wormhole/partial_mesh_topology/windowed_dataset.csv
+python features.py   ../tools/exports/wormhole/partial_mesh_topology/trimmed -o wormhole/partial_mesh_topology/feature_table.csv
 python eda.py        wormhole/partial_mesh_topology/feature_table.csv -o wormhole/partial_mesh_topology/eda_output/
 ```
 

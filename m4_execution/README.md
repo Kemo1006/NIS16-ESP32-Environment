@@ -68,7 +68,10 @@ python run_matrix.py --record --topology tree --attack blackhole --repeat 1
 The emitted commands mirror [`../../ATTACKS-Commands.md`](../../ATTACKS-Commands.md)
 exactly (board→role from its Board-assignment table). `--export-cmds` prints the
 standalone `export_logs.py` fallback for a cell run without `-Export`. Use
-`--sample-interval-ms 1000` on `--record` for pre-2026-07-12 (1 Hz) captures.
+`--sample-interval-ms` on `--record` when the capture predates the current rate:
+`1000` for pre-2026-07-12 (1 Hz), `50` for 2026-07-12..07-25 (20 Hz). The default
+is `100` (10 Hz, current since 2026-07-25); pass `200` for the 5 Hz baseline/linear
+capture made earlier that same day.
 
 ## Status & the gap
 

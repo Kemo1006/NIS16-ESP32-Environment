@@ -262,7 +262,8 @@ Check `tools\exports\wormhole\<topology>_topology\` (e.g. `linear_topology\`) fo
 - `<nodeA_id>_..._telem.csv`
 - `<nodeB_id>_..._telem.csv`
 
-All non-empty, ~660 s × 20 Hz ≈ 13,200 rows in each `telem.csv`. Confirm the
+All non-empty, ~660 s × 10 Hz ≈ 6,600 rows in each `telem.csv` (captures from
+2026-07-12..07-25 ran at 20 Hz and hold ~13,200 instead). Confirm the
 attack signature yourself:
 - **In the root's `arrivals.csv` — the DUPLICATE signature:** during rows labeled
   `gt_label=2`, each of Node B's probes appears **TWICE** — two rows with the

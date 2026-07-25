@@ -91,5 +91,8 @@ Checks schema width, per-phase row counts (truncation detection), timestamp
 monotonicity, and SHA-256 checksums against a locked `manifest.json`. See
 [`../m5_extraction/README.md`](../m5_extraction/README.md) for the full spec
 and [`../../thesis-deviate.md`](../../thesis-deviate.md) for the 2026-07-12
-sampling-rate change this tool's phase-count check is calibrated against
-(pass `--sample-interval-ms 1000` for captures made before that date).
+sampling-rate changes this tool's phase-count check is calibrated against.
+The default is `100` (10 Hz, current since 2026-07-25); pass `200` for the 5 Hz
+baseline/linear capture made earlier that day, or
+`--sample-interval-ms 50` for 2026-07-12..07-25 captures (20 Hz) or `1000` for
+anything earlier (1 Hz).

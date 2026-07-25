@@ -1,4 +1,4 @@
-# ATTACKS-Commands.md — full command matrix (5-board setup)
+# ATTACKS-Commands.md — full command matrix (6-board setup)
 
 > ⬅️ Companion to the per-scenario, step-by-step physical-setup guides:
 > [`BASELINE-SETUP.md`](BASELINE-SETUP.md), [`BLACKHOLE-SETUP.md`](BLACKHOLE-SETUP.md),
@@ -11,6 +11,11 @@
 > Every `run.ps1` command below is copy-pasteable — swap ports if your board
 > layout differs. (This file is allowed to run long — it's a reference, not prose.)
 >
+> 🏠 **Per-topology room-mapped walkthroughs** (root in Bedroom 2, boards across
+> Bedroom 1 / Family Hall / Master's Bedroom) live in
+> [`LINEAR-RUNBOOK.md`](LINEAR-RUNBOOK.md), [`TREE-RUNBOOK.md`](TREE-RUNBOOK.md),
+> [`STAR-RUNBOOK.md`](STAR-RUNBOOK.md), [`PARTIAL-RUNBOOK.md`](PARTIAL-RUNBOOK.md).
+>
 > **Phase timeline (all runs, from `mesh_config.h`):** 60 s stabilize → 300 s
 > baseline (label 0) → [180 s attack (label 1 blackhole / 2 wormhole), attack
 > runs only] → 120 s cooldown (label 0) → terminate. Baseline ≈ 8 min total;
@@ -18,7 +23,7 @@
 > clock on-chip and broadcasts every transition over the mesh — no board needs
 > the laptop connected during the run itself (USB is only for flash + export).
 
-## Board assignment (all 5 confirmed boards: COM20, COM21, COM25, COM26, COM27)
+## Board assignment (all 6 boards: COM20, COM21, COM22, COM25, COM26, COM27)
 
 | Port | Baseline run | Blackhole run | Wormhole run |
 |---|---|---|---|
@@ -26,6 +31,7 @@
 | **COM26** | plain victim | **attacker relay** (`-BlackholeRole attacker`) | **Node A** (exit, `-WormholeEnd A`) |
 | **COM27** | plain victim | **victim → attacker** (`-BlackholeRole victim`) | **Node B** (entry, `-WormholeEnd B`) |
 | **COM25** | plain victim | **victim → attacker** (`-BlackholeRole victim`) | control (plain, unaffected) |
+| **COM22** | plain victim | **victim → attacker** (`-BlackholeRole victim`) | control (plain, unaffected) |
 | **COM21** | plain victim | **victim → attacker** (`-BlackholeRole victim`) | control (plain, unaffected) |
 
 ### Board STA MACs (read with `esptool.py --port COMxx read_mac`)
@@ -36,18 +42,21 @@
 | **COM26** | `b0:cb:d8:f3:32:18` | **blackhole attacker / wormhole Node A** — this is `BLACKHOLE_ATTACKER_MAC` |
 | **COM27** | `f4:2d:c9:73:e6:18` | wormhole Node B / blackhole victim |
 | **COM25** | `b4:bf:e9:34:ed:80` | control / blackhole victim |
+| **COM22** | *(read it: `.\tools\Get-EspMac.ps1 -Port COM22`)* | control / blackhole victim |
 | **COM21** | `b4:bf:e9:32:fe:90` | control / blackhole victim |
 
 `BLACKHOLE_ATTACKER_MAC` in `mesh_config.h` is already set to COM26's MAC above
 (`{0xB0, 0xCB, 0xD8, 0xF3, 0x32, 0x18}`). If you ever change which board is the
 blackhole attacker, update that define to the new attacker's MAC from this table.
+COM22's MAC only matters for your own records — it's a victim/control, never the
+attacker, so no `#define` reads it.
 
 > 🕳️ **BLACKHOLE IS A RELAY MODEL** (thesis §4.2.1.2 C / Milestone 2). The
 > attacker board no longer generates its own probes — it **relays** the victim
 > boards' probes to root (baseline) or **drops** them (attack). So a blackhole
 > run has THREE distinct roles, chosen with `-BlackholeRole`:
 > - **attacker** (COM26): `-Attack blackhole -BlackholeRole attacker` → relay.
-> - **victim** (COM25/COM27/COM21): `-Attack blackhole -BlackholeRole victim` → sends
+> - **victim** (COM25/COM27/COM21/COM22): `-Attack blackhole -BlackholeRole victim` → sends
 >   its probes to the attacker's MAC (these are the boards whose traffic gets
 >   dropped; they are NOT plain controls anymore).
 > - **root** (COM20): `-Attack blackhole` → just announces the phase.
@@ -78,11 +87,13 @@ correct, they just don't run attacker firmware.
 
 ### Diagram node ↔ board mapping (proposal Figs 4.16–4.23)
 
-Each figure draws **6 nodes**; the testbed has **5 boards**, so COM25/COM21 stand
-in for the figures' extra normal `NODE 3/4/5/6`. The attack is always emulated on
-a **victim-role board** running attack firmware — the root only *announces/labels*
-the attack phase ([`root_main.c`](NIS16-ESP32-Environment/root_node/main/root_main.c)
-phase broadcast), it never drops or tunnels packets:
+Each figure draws **6 nodes**; the testbed now has **6 boards**
+(COM20/COM26/COM27/COM25/COM21/COM22), so it matches the figures **1:1** —
+COM25/COM21/COM22 are the figures' extra normal `NODE 3/4/5/6`. The attack is
+always emulated on a **victim-role board** running attack firmware — the root only
+*announces/labels* the attack phase
+([`root_main.c`](NIS16-ESP32-Environment/root_node/main/root_main.c) phase
+broadcast), it never drops or tunnels packets:
 
 | Board | Wormhole figs — 4.16 star · 4.18 tree · 4.20 linear · 4.22 partial | Blackhole figs — 4.19 tree · 4.21 linear · 4.23 partial |
 |---|---|---|
@@ -90,6 +101,7 @@ phase broadcast), it never drops or tunnels packets:
 | **COM26** | `ATTACKER A` | `ATTACKER` |
 | **COM27** | `ATTACKER B` | normal `NODE` (victim) |
 | **COM25** | normal `NODE` (control) | normal `NODE` (victim) |
+| **COM22** | normal `NODE` (control) | normal `NODE` (victim) |
 | **COM21** | normal `NODE` (control) | normal `NODE` (victim) |
 
 Which normal nodes land *behind* the attacker (the figures' "PACKETS DROPPED"
@@ -120,7 +132,7 @@ control board is flashed `-Attack none`, so *by default its CSV would land in
 corrupting that run's dataset with a file in the wrong folder. Adding
 **`-DestAttack wormhole`** files it **with the run** (`exports/wormhole/…`) while
 the board still runs plain — no attack firmware, filename still reads `none`.
-Only the export folder changes. (Wormhole controls are COM25 and COM21.)
+Only the export folder changes. (Wormhole controls are COM25, COM21, and COM22.)
 
 ```powershell
 # WRONG — COM25 control in a wormhole run, exports to exports/BASELINE/... (wrong folder):
@@ -147,6 +159,12 @@ runs every other board's CSV (plus root's own `arrivals.csv`, needed for PDR) is
 already in the exports folder, and `-Analyze` picks up all of them in one pass.
 Victim lines keep plain `-Export`.
 
+> 🔋 **Untethered runs (root-on-laptop only):** the `-Export`/`-Analyze` one-liners
+> below assume every board stays on USB. If your boards run on power banks across
+> rooms (see the runbooks), flash **without** `-Export`, run untethered, then
+> export each board by hand afterward with `tools\export_logs.py`. Same data, just
+> collected board-by-board over USB after the run.
+
 ---
 
 ## Baseline — no attack (all boards plain victims)
@@ -161,12 +179,14 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Topology star -Wipe -Flash
 .\run.ps1 -Port COM27 -Role child  -Topology star -Wipe -Flash
 .\run.ps1 -Port COM25 -Role child  -Topology star -Wipe -Flash
+.\run.ps1 -Port COM22 -Role child  -Topology star -Wipe -Flash
 .\run.ps1 -Port COM21 -Role child  -Topology star -Wipe -Flash
 .\run.ps1 -Port COM20 -Role root   -Topology star -Wipe -Flash
 # with export + auto-analyze -> exports/baseline/star_topology/ + analysis/baseline/star_topology/:
 .\run.ps1 -Port COM26 -Role child  -Topology star -Wipe -Flash -Export
 .\run.ps1 -Port COM27 -Role child  -Topology star -Wipe -Flash -Export
 .\run.ps1 -Port COM25 -Role child  -Topology star -Wipe -Flash -Export
+.\run.ps1 -Port COM22 -Role child  -Topology star -Wipe -Flash -Export
 .\run.ps1 -Port COM21 -Role child  -Topology star -Wipe -Flash -Export
 .\run.ps1 -Port COM20 -Role root   -Topology star -Wipe -Flash -Analyze
 ```
@@ -177,12 +197,14 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Topology tree -Wipe -Flash
 .\run.ps1 -Port COM27 -Role child  -Topology tree -Wipe -Flash
 .\run.ps1 -Port COM25 -Role child  -Topology tree -Wipe -Flash
+.\run.ps1 -Port COM22 -Role child  -Topology tree -Wipe -Flash
 .\run.ps1 -Port COM21 -Role child  -Topology tree -Wipe -Flash
 .\run.ps1 -Port COM20 -Role root   -Topology tree -Wipe -Flash
 # with export + auto-analyze -> exports/baseline/tree_topology/ + analysis/baseline/tree_topology/:
 .\run.ps1 -Port COM26 -Role child  -Topology tree -Wipe -Flash -Export
 .\run.ps1 -Port COM27 -Role child  -Topology tree -Wipe -Flash -Export
 .\run.ps1 -Port COM25 -Role child  -Topology tree -Wipe -Flash -Export
+.\run.ps1 -Port COM22 -Role child  -Topology tree -Wipe -Flash -Export
 .\run.ps1 -Port COM21 -Role child  -Topology tree -Wipe -Flash -Export
 .\run.ps1 -Port COM20 -Role root   -Topology tree -Wipe -Flash -Analyze
 ```
@@ -193,12 +215,14 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Topology linear -Wipe -Flash
 .\run.ps1 -Port COM27 -Role child  -Topology linear -Wipe -Flash
 .\run.ps1 -Port COM25 -Role child  -Topology linear -Wipe -Flash
+.\run.ps1 -Port COM22 -Role child  -Topology linear -Wipe -Flash
 .\run.ps1 -Port COM21 -Role child  -Topology linear -Wipe -Flash
 .\run.ps1 -Port COM20 -Role root   -Topology linear -Wipe -Flash
 # with export + auto-analyze -> exports/baseline/linear_topology/ + analysis/baseline/linear_topology/:
 .\run.ps1 -Port COM26 -Role child  -Topology linear -Wipe -Flash -Export
 .\run.ps1 -Port COM27 -Role child  -Topology linear -Wipe -Flash -Export
 .\run.ps1 -Port COM25 -Role child  -Topology linear -Wipe -Flash -Export
+.\run.ps1 -Port COM22 -Role child  -Topology linear -Wipe -Flash -Export
 .\run.ps1 -Port COM21 -Role child  -Topology linear -Wipe -Flash -Export
 .\run.ps1 -Port COM20 -Role root   -Topology linear -Wipe -Flash -Analyze
 ```
@@ -209,12 +233,14 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Topology partial -Wipe -Flash
 .\run.ps1 -Port COM27 -Role child  -Topology partial -Wipe -Flash
 .\run.ps1 -Port COM25 -Role child  -Topology partial -Wipe -Flash
+.\run.ps1 -Port COM22 -Role child  -Topology partial -Wipe -Flash
 .\run.ps1 -Port COM21 -Role child  -Topology partial -Wipe -Flash
 .\run.ps1 -Port COM20 -Role root   -Topology partial -Wipe -Flash
 # with export + auto-analyze -> exports/baseline/partial_mesh_topology/ + analysis/baseline/partial_mesh_topology/:
 .\run.ps1 -Port COM26 -Role child  -Topology partial -Wipe -Flash -Export
 .\run.ps1 -Port COM27 -Role child  -Topology partial -Wipe -Flash -Export
 .\run.ps1 -Port COM25 -Role child  -Topology partial -Wipe -Flash -Export
+.\run.ps1 -Port COM22 -Role child  -Topology partial -Wipe -Flash -Export
 .\run.ps1 -Port COM21 -Role child  -Topology partial -Wipe -Flash -Export
 .\run.ps1 -Port COM20 -Role root   -Topology partial -Wipe -Flash -Analyze
 ```
@@ -228,6 +254,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology star -Wipe -Flash  # attacker RELAY (forwards/drops victim probes)
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash  # victim -> sends probes to the attacker's MAC
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology star -Wipe -Flash  # root -- ANNOUNCES the phase (sets the ground-truth label); does NOT drop
 ```
@@ -236,6 +263,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology star -Wipe -Flash -Export   # attacker RELAY
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash -Export   # victim -> attacker
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology star -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology star -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -253,6 +281,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology star -Wipe -Flash  # REAL attacker (wormhole Node A / exit) -- -Role still says "victim"
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology star -Wipe -Flash  # REAL attacker (wormhole Node B / entry) -- -Role still says "victim"
 .\run.ps1 -Port COM25 -Role child                                  -Topology star -Wipe -Flash  # control -- plain victim firmware, no attack
+.\run.ps1 -Port COM22 -Role child                                  -Topology star -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM21 -Role child                                  -Topology star -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology star -Wipe -Flash  # root -- phase controller: -Attack makes it ANNOUNCE the attack phase (REQUIRED, sets the ground-truth label); it does NOT tunnel packets -- COM26/COM27 do
 ```
@@ -261,6 +290,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology star -Wipe -Flash -Export  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology star -Wipe -Flash -Export  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child  -DestAttack wormhole            -Topology star -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
+.\run.ps1 -Port COM22 -Role child  -DestAttack wormhole            -Topology star -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM21 -Role child  -DestAttack wormhole            -Topology star -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology star -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -272,6 +302,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology tree -Wipe -Flash  # attacker RELAY (forwards/drops victim probes)
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash  # victim -> sends probes to the attacker's MAC
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology tree -Wipe -Flash  # root -- ANNOUNCES the phase (sets the ground-truth label); does NOT drop
 ```
@@ -280,6 +311,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology tree -Wipe -Flash -Export   # attacker RELAY
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash -Export   # victim -> attacker
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology tree -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology tree -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -289,6 +321,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology tree -Wipe -Flash  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology tree -Wipe -Flash  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child                                  -Topology tree -Wipe -Flash  # control -- plain victim firmware, no attack
+.\run.ps1 -Port COM22 -Role child                                  -Topology tree -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM21 -Role child                                  -Topology tree -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology tree -Wipe -Flash  # root -- ANNOUNCES the attack phase (REQUIRED); does NOT tunnel -- COM26/COM27 do
 ```
@@ -297,6 +330,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology tree -Wipe -Flash -Export  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology tree -Wipe -Flash -Export  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child  -DestAttack wormhole            -Topology tree -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
+.\run.ps1 -Port COM22 -Role child  -DestAttack wormhole            -Topology tree -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM21 -Role child  -DestAttack wormhole            -Topology tree -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology tree -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -308,6 +342,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology linear -Wipe -Flash  # attacker RELAY (forwards/drops victim probes)
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash  # victim -> sends probes to the attacker's MAC
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology linear -Wipe -Flash  # root -- ANNOUNCES the phase (sets the ground-truth label); does NOT drop
 ```
@@ -316,6 +351,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology linear -Wipe -Flash -Export   # attacker RELAY
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash -Export   # victim -> attacker
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology linear -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology linear -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -325,6 +361,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology linear -Wipe -Flash  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology linear -Wipe -Flash  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child                                  -Topology linear -Wipe -Flash  # control -- plain victim firmware, no attack
+.\run.ps1 -Port COM22 -Role child                                  -Topology linear -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM21 -Role child                                  -Topology linear -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology linear -Wipe -Flash  # root -- ANNOUNCES the attack phase (REQUIRED); does NOT tunnel -- COM26/COM27 do
 ```
@@ -333,6 +370,7 @@ folder, so **no `-DestAttack` here**.
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology linear -Wipe -Flash -Export  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology linear -Wipe -Flash -Export  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child  -DestAttack wormhole            -Topology linear -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
+.\run.ps1 -Port COM22 -Role child  -DestAttack wormhole            -Topology linear -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM21 -Role child  -DestAttack wormhole            -Topology linear -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology linear -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -347,6 +385,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology partial -Wipe -Flash  # attacker RELAY (forwards/drops victim probes)
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash  # victim -> sends probes to the attacker's MAC
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash  # victim -> sends probes to the attacker's MAC
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology partial -Wipe -Flash  # root -- ANNOUNCES the phase (sets the ground-truth label); does NOT drop
 ```
@@ -355,6 +394,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
 .\run.ps1 -Port COM26 -Role child  -Attack blackhole -BlackholeRole attacker -Topology partial -Wipe -Flash -Export   # attacker RELAY
 .\run.ps1 -Port COM27 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM25 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash -Export   # victim -> attacker
+.\run.ps1 -Port COM22 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM21 -Role child  -Attack blackhole -BlackholeRole victim   -Topology partial -Wipe -Flash -Export   # victim -> attacker
 .\run.ps1 -Port COM20 -Role root   -Attack blackhole                         -Topology partial -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -364,6 +404,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology partial -Wipe -Flash  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology partial -Wipe -Flash  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child                                  -Topology partial -Wipe -Flash  # control -- plain victim firmware, no attack
+.\run.ps1 -Port COM22 -Role child                                  -Topology partial -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM21 -Role child                                  -Topology partial -Wipe -Flash  # control -- plain victim firmware, no attack
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology partial -Wipe -Flash  # root -- ANNOUNCES the attack phase (REQUIRED); does NOT tunnel -- COM26/COM27 do
 ```
@@ -372,6 +413,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
 .\run.ps1 -Port COM26 -Role child  -Attack wormhole -WormholeEnd A -Topology partial -Wipe -Flash -Export  # Node A (exit)
 .\run.ps1 -Port COM27 -Role child  -Attack wormhole -WormholeEnd B -Topology partial -Wipe -Flash -Export  # Node B (entry)
 .\run.ps1 -Port COM25 -Role child  -DestAttack wormhole            -Topology partial -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
+.\run.ps1 -Port COM22 -Role child  -DestAttack wormhole            -Topology partial -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM21 -Role child  -DestAttack wormhole            -Topology partial -Wipe -Flash -Export  # control -- plain victim (only its export folder changes)
 .\run.ps1 -Port COM20 -Role root   -Attack wormhole                -Topology partial -Wipe -Flash -Analyze  # root announces phase, boots LAST -> analyzes
 ```
@@ -384,7 +426,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
   in the same `<attack>/<topology>_topology/` folder as the run it belongs to,
   so no stray `none` file lands in `baseline/` and confuses the dataset. It
   changes ONLY the export folder — never the firmware (still plain victim) nor
-  the filename (still `..._none_...`). Wormhole controls are COM25 and COM21.
+  the filename (still `..._none_...`). Wormhole controls are COM25, COM21, and COM22.
 - **Wormhole tunnel is a WIRED UART link between COM26 (Node A) and COM27 (Node
   B), not a MAC-addressed WiFi message.** `WORMHOLE_NODE_A_MAC` in `mesh_config.h`
   is **no longer used by the firmware** — you do NOT set it for a wormhole run.
@@ -395,7 +437,7 @@ decides link order. Confirm the resulting chain with `verify_topology.py --expec
   ...` and Node B (COM27) for `Tunnelled probe ... via UART` during the attack
   window to confirm the wire works. `CRC mismatch` / `bad magic` = loose or
   mis-crossed jumpers.
-- **Blackhole attacker is COM26; victims are COM25, COM27, COM21.** Set
+- **Blackhole attacker is COM26; victims are COM25, COM27, COM21, COM22.** Set
   `BLACKHOLE_ATTACKER_MAC` in `mesh_config.h` to COM26's STA MAC before building,
   or the victims address the wrong MAC and there's no signature.
 - **`-Topology` defaults to `tree`** if omitted (`run.ps1` param default). Build

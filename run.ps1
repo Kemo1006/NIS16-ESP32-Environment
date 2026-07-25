@@ -65,6 +65,14 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Port,
+    # Which PHYSICAL board this is, e.g. node5. Purely an identifier: a COM number
+    # names the USB SOCKET here, not the board (these CP210x bridges report
+    # duplicate/blank serials, so Windows assigns COM per socket) — so every child
+    # goes through the same -Port and only -Label distinguishes them.
+    # It is echoed on start and passed to export_logs.py as --label, which puts it
+    # in the CSV filename (child_node5_..._telem.csv) instead of the COM number.
+    # Does NOT affect the firmware, the build, or what is captured.
+    [string]$Label = '',
     # Mesh-position role. 'child' is the preferred name for a non-root board;
     # 'victim' is kept as a working alias (older commands/scripts still run). The
     # CSV `node_role` is written by the FIRMWARE (per thesis Table 4.12), NOT by
@@ -123,6 +131,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
+
+# ── Node -> COM map ──────────────────────────────────────────────────────────
+# EDIT HERE if a board is replaced or Windows reassigns a COM number.
+# Derived from the COM ports in ascending order, which matches the NODE numbers
+# on the floor-plan diagrams (node 5 = COM26 = the red attacker node).
+# Verify a board's identity any time with:  python tools\board_check.py --port COMxx
+# NOTE: do NOT add a "-Node <n>" alias that maps a logical board number to a COM
+# port. It was tried on 2026-07-25 and reverted: these CP210x bridges report
+# duplicate/blank USB serial numbers, so Windows cannot tell the boards apart and
+# assigns COM numbers per USB SOCKET, not per board (Device Manager shows the same
+# COM claimed by several device instances). Moving a board to another socket
+# changes its COM, so any fixed node->COM table would eventually flash the WRONG
+# board. Identify a board by its MAC instead:  python tools\board_check.py --port COMxx
 $proj = if ($Role -eq 'root') { 'root_node' } else { 'child_node' }
 
 # ccache tuning (build-speed). ccache is already ON (idf.py passes CCACHE_ENABLE),
@@ -247,6 +268,11 @@ if ($Attack -eq 'blackhole' -and $Role -ne 'root') { $buildSuffix += "_$Blackhol
 $portTag  = ($Port -replace '[^A-Za-z0-9]', '')
 $buildDir = "build_${buildSuffix}_$portTag"
 
+# Deliberately keyed by PORT, not by -Label: boards sharing a port also share
+# identical firmware, so one build dir serves all of them (faster, less disk).
+# Labelling per board would rebuild the same image five times.
+if ($Label) { Write-Host "Board: $Label (on $Port)" -ForegroundColor Cyan }
+
 # Self-heal a build dir cached against a DIFFERENT absolute project path. CMake
 # bakes the absolute source path into CMakeCache.txt at configure time; if this
 # repo folder ever gets moved/renamed/re-cloned elsewhere (e.g. reorganized into
@@ -293,6 +319,10 @@ try {
 # 2) Monitor closed. Export only if asked. (export_logs.py deasserts DTR/RTS so
 #    opening the port does NOT reset the board / kill its export task.)
 $laterHint = "To export later:  python tools\export_logs.py --port $Port --role $Role --topology $Topology --attack $Attack --repeat $Repeat"
+# Carry -Label through. Without it the hint would produce child_<COM>_..._telem.csv, and
+# since every board is exported through the SAME port, all of them would collide on a name
+# that differs only by timestamp. The label is what keeps the files identifiable.
+if ($Label)                  { $laterHint += " --label $Label" }
 if ($DestAttack -ne 'none') { $laterHint += " --attack-dir $DestAttack" }
 
 if (-not $doExport) {
@@ -330,6 +360,8 @@ Push-Location (Join-Path $base 'tools')
 try {
     $exportArgs = @('export_logs.py', '--port', $Port, '--role', $Role,
                     '--topology', $Topology, '--attack', $Attack, '--repeat', $Repeat)
+    # Name the file after the BOARD, not the socket it happened to be plugged into.
+    if ($Label) { $exportArgs += @('--label', $Label) }
     # File a control victim (flashed attack=none) with its attack run's folder.
     if ($DestAttack -ne 'none') { $exportArgs += @('--attack-dir', $DestAttack) }
     if ($Clean) { $exportArgs += '--delete' }   # wipe board AFTER a good download

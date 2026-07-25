@@ -204,21 +204,40 @@ def find_files(outdir, topo, attack, rep):
     return sorted(os.path.basename(p) for p in glob.glob(pat))
 
 
+# export_logs.py's --role takes root | child | victim, and CHILD IS THE DEFAULT
+# (victim is kept only as an alias). Every runbook uses `--role child`, so real
+# captures are named child_*.csv. Counting only "victim_" made a complete 6-board
+# run report victim_telems=0 and refuse to record — same class of bug as the
+# 2026-07-24 filename-parser fix in validate_integrity.py. Accept both.
+_CHILD_PREFIXES = ("child_", "victim_")
+
+
 def coverage(files):
-    """(has_root_telem, has_root_arrivals, victim_telem_count) for a cell's
-    files — a complete 4-board run has root telem+arrivals and 3 victim telems."""
+    """(has_root_telem, has_root_arrivals, child_telem_count) for a cell's
+    files — a complete run has root telem+arrivals and >=3 child telems."""
     root_telem = any(f.startswith("root_") and f.endswith("_telem.csv")
                      for f in files)
     root_arr = any(f.startswith("root_") and f.endswith("_arrivals.csv")
                    for f in files)
     vic = sum(1 for f in files
-              if f.startswith("victim_") and f.endswith("_telem.csv"))
+              if f.startswith(_CHILD_PREFIXES) and f.endswith("_telem.csv"))
     return root_telem, root_arr, vic
 
 
 def validate_cell(outdir, topo, attack, sample_interval_ms):
-    """Run validate_integrity.py against the cell's folder. Returns (ok, output)."""
+    """Run validate_integrity.py against the cell's folder. Returns (ok, output).
+
+    Prefers the `trimmed\\` subfolder when it exists. That folder — not the raw
+    one — is what the analysis actually consumes, and the raw files still carry
+    the flash-session and export-session rows by design, so validating raw
+    reports timestamp regressions as FAIL for every board. (validate_integrity
+    also recurses, so pointing at the parent validated raw AND trimmed together:
+    14 files for a 7-file run, 6 of them failing.)
+    """
     folder = cell_dir(outdir, topo, attack)
+    trimmed = os.path.join(folder, "trimmed")
+    if os.path.isdir(trimmed):
+        folder = trimmed
     cmd = [sys.executable, os.path.join(_THIS_DIR, "validate_integrity.py"), folder]
     if sample_interval_ms is not None:
         cmd += ["--sample-interval-ms", str(sample_interval_ms)]
@@ -310,7 +329,14 @@ def record(outdir, topo, attack, rep, do_validate, sample_interval_ms):
 # ── Main ────────────────────────────────────────────────────────────────────
 def main():
     ap = argparse.ArgumentParser(description="Milestone-4 experiment-matrix driver.")
-    ap.add_argument("--outdir", default="exports", help="Where CSVs and the ledger live.")
+    # Resolve the default RELATIVE TO THIS SCRIPT, not to the shell's CWD.
+    # The runbooks invoke this as `python tools\run_matrix.py ...` from the repo
+    # root, where a bare "exports" points at a non-existent .\exports\ and the
+    # tool reports "No exported CSVs found" for a cell that is fully captured.
+    # An explicit --outdir still overrides this.
+    ap.add_argument("--outdir", default=os.path.join(_THIS_DIR, "exports"),
+                    help="Where CSVs and the ledger live "
+                         "(default: the exports/ folder next to this script).")
     ap.add_argument("--repeats", type=int, default=3, help="Target repeats per cell (>=3).")
 
     ap.add_argument("--status", action="store_true", help="Show the matrix progress grid.")

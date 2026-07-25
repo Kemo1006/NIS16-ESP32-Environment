@@ -43,6 +43,7 @@ throttled after reflashing.
 ```powershell
 cd tools
 python validate_integrity.py                     # validates ./exports, recursive
+python validate_integrity.py --sample-interval-ms 50     # for 2026-07-12..07-25 (20 Hz) captures
 python validate_integrity.py --sample-interval-ms 1000   # for pre-2026-07-12 (1 Hz) captures
 python validate_integrity.py --strict             # WARNings also fail (exit 1)
 ```
@@ -54,8 +55,18 @@ No hardware required — it runs entirely against whatever's already in
 - **Per-phase row counts** — each phase produced roughly the expected number of
   samples for the configured rate (`SAMPLING_INTERVAL_MS`), flagging truncation.
 - **Timestamp monotonicity** — `timestamp_us` never goes backwards within a file.
+- **Label integrity** — `gt_label` matches the Table 4.1 phase→label map on every
+  row (baseline/cooldown→0, blackhole→1, wormhole→2). This is the ground-truth
+  column M8 separates baseline from attack on, so a mislabel is a FAIL.
 - **Manifest / checksums** — a SHA-256 per file (`exports/manifest.json`) so a
   re-pull can be proven identical; a changed hash fails unless `--relock`.
+
+> **2026-07-24 fix:** the filename parser only accepted `root|victim` roles, but
+> `export_logs.py` defaults to `--role child`, so every `child_*.csv` failed to
+> parse and *silently skipped* its phase-coverage and role checks. The parser now
+> accepts `child`, so coverage validation actually runs on those files (it
+> immediately surfaced real phase-bleed in the control-victim captures). The
+> `gt_label` label check was added the same day.
 
 Run against real captures in `tools/exports/`, it correctly PASSed clean files
 and caught two genuine problems: a timestamp regression where data from an

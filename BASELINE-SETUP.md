@@ -187,9 +187,10 @@ Check `tools\exports\baseline\<topology>_topology\` (e.g. `linear_topology\`) �
 - `<victim_id>_..._telem.csv` (one per victim board)
 
 All non-empty. Row count in each `telem.csv` should be roughly
-`480 seconds × 20 samples/sec ≈ 9,600 rows` (firmware currently samples at
-20 Hz via `SAMPLING_INTERVAL_MS = 50` in `mesh_config.h` — a documented
-deviation from the thesis's stated 1 Hz). Every row's last column
+`480 seconds × 10 samples/sec ≈ 4,800 rows` (firmware samples at 10 Hz via
+`SAMPLING_INTERVAL_MS = 100` in `mesh_config.h` since 2026-07-25 — a documented
+deviation from the thesis's stated 1 Hz; it was 20 Hz / `50` from 2026-07-12 to
+2026-07-25, so captures from that window hold ~9,600 rows instead). Every row's last column
 (`gt_label`) should read `0` for the entire file, since this was a baseline
 run with no attack phase.
 

@@ -89,9 +89,16 @@ WINDOW_SECONDS = 5  # must match preprocess.py's WINDOW_SECONDS
 # If that struct changes, change this to match.
 TUNNEL_FRAME_BYTES = 30
 
-# Firmware fields these three features need but root_main.c / victim_main.c
-# do not currently log (see module docstring). Listed once here so the
-# "missing_firmware_fields" flag and the docstring can't drift apart.
+# The layer the firmware reports for the root (esp_mesh_get_layer() == 1).
+# Used only as a fallback when a run has no root row to read it from.
+ROOT_LAYER_DEFAULT = 1
+
+# RELAY-node features: only defined for a node that receives transit traffic
+# and forwards it, which in this testbed is the blackhole ATTACKER alone. They
+# are NaN in baseline and wormhole runs BY DESIGN (no relay present), and
+# populate on the attacker's windows in a blackhole run — verified 155/884 rows
+# on the 2026-07-25 blackhole·linear capture. This is not a firmware gap; the
+# name is kept because "missing_firmware_fields" is part of the output schema.
 FEATURES_BLOCKED_ON_FIRMWARE = (
     "ForwardingRatio",
     "IngressEgressDelta",
@@ -157,6 +164,79 @@ def compute_forwarding_features(windowed: pd.DataFrame) -> pd.DataFrame:
             out.loc[mask, "ConsistencyScore"] = (ratio - 1.0).abs()
 
     return out
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Shared: the root's probe-arrival log
+# ─────────────────────────────────────────────────────────────────────────
+
+def node_id_to_mac_norm(node_id: str) -> str:
+    """NODE_<MAC> -> bare uppercase hex, per build_node_id() (mesh_setup.c)."""
+    if not isinstance(node_id, str) or not node_id.startswith("NODE_"):
+        return ""
+    return node_id[5:].upper()
+
+
+def normalize_mac(mac: str) -> str:
+    """arrivals.csv src_mac is colon-separated; node_id's is not."""
+    if not isinstance(mac, str):
+        return ""
+    return mac.replace(":", "").upper()
+
+
+def load_arrivals(arrivals_dir: str) -> pd.DataFrame | None:
+    """
+    Load + rebase every *_arrivals.csv in arrivals_dir into one frame, or
+    None if there are none. Shared by the PDR and latency features so the
+    schema guard below lives in exactly one place.
+
+    Rebases each file onto its own run's relative clock (t=0 at that file's
+    first timestamp), matching preprocess.py's per-(node, run) approach.
+    This assumes the arrivals file's first timestamp is close to its run's
+    true start — true in practice since the root starts listening
+    immediately on boot, before any victim sends a first probe.
+
+    Adds: timestamp_s, t_rel, window_idx, window_start, _src_mac_norm.
+    """
+    arrival_files = sorted(glob.glob(os.path.join(arrivals_dir, "*_arrivals.csv")))
+    if not arrival_files:
+        return None
+
+    rebased_frames = []
+    for f in arrival_files:
+        a = pd.read_csv(f)
+        if a.empty:
+            continue
+        # An *_arrivals.csv that carries the TELEMETRY schema is a broken
+        # capture, not a PDR-less run: it means the export spliced telem.csv
+        # into the arrivals file and trim_run.py kept the telemetry block.
+        # Fail loudly here — silently returning PDR=NaN would let a whole
+        # feature table be built with the thesis's core detection feature
+        # quietly missing. Re-trim with the current tools/trim_run.py.
+        missing = {"src_mac", "seq_num"} - set(a.columns)
+        if missing:
+            raise ValueError(
+                f"{os.path.basename(f)} is missing {sorted(missing)} — it does "
+                f"not hold the probe-arrival schema (columns found: "
+                f"{list(a.columns)}). This file is a mis-trimmed copy of the "
+                f"root's telemetry. Re-run:  python trim_run.py "
+                f"<raw export folder> --apply   (tools/trim_run.py now splits "
+                f"mixed-schema captures) and point features.py at the "
+                f"regenerated trimmed folder."
+            )
+        a["timestamp_s"] = a["timestamp_us"] / 1_000_000.0
+        a["t_rel"] = a["timestamp_s"] - a["timestamp_s"].min()
+        a["window_idx"] = (a["t_rel"] // WINDOW_SECONDS).astype(int)
+        a["window_start"] = a["window_idx"] * WINDOW_SECONDS
+        a["_source_arrivals_file"] = os.path.basename(f)
+        rebased_frames.append(a)
+
+    if not rebased_frames:
+        return None
+
+    arrivals_rebased = pd.concat(rebased_frames, ignore_index=True)
+    arrivals_rebased["_src_mac_norm"] = arrivals_rebased["src_mac"].apply(normalize_mac)
+    return arrivals_rebased
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -226,47 +306,11 @@ def compute_pdr_features(
     out = pd.DataFrame(index=windowed.index, columns=["PDR"], dtype=float)
     out["PDR"] = np.nan
 
-    arrival_files = sorted(glob.glob(os.path.join(arrivals_dir, "*_arrivals.csv")))
-    if not arrival_files:
+    arrivals_rebased = load_arrivals(arrivals_dir)
+    if arrivals_rebased is None:
         return out  # no root log available — leave PDR as NaN, not 0
 
-    # Rebase each arrivals file onto its own run's relative clock (t=0
-    # at that file's first timestamp), matching preprocess.py's per-
-    # (node, run) rebasing approach. This assumes the arrivals file's
-    # first timestamp is close to its run's true start — true in
-    # practice since root starts listening immediately on boot, before
-    # any victim sends a first probe.
-    rebased_frames = []
-    for f in arrival_files:
-        a = pd.read_csv(f)
-        if a.empty:
-            continue
-        a["timestamp_s"] = a["timestamp_us"] / 1_000_000.0
-        a["t_rel"] = a["timestamp_s"] - a["timestamp_s"].min()
-        a["window_idx"] = (a["t_rel"] // WINDOW_SECONDS).astype(int)
-        a["window_start"] = a["window_idx"] * WINDOW_SECONDS
-        rebased_frames.append(a)
-
-    if not rebased_frames:
-        return out
-
-    arrivals_rebased = pd.concat(rebased_frames, ignore_index=True)
-
-    # node_id -> MAC, parsed from the NODE_<MAC> naming convention in
-    # build_node_id() (mesh_setup.c). MAC in node_id has no separators;
-    # arrivals.csv src_mac uses colon-separated hex — normalize both to
-    # bare uppercase hex for comparison.
-    def node_id_to_mac(node_id: str) -> str:
-        if not isinstance(node_id, str) or not node_id.startswith("NODE_"):
-            return ""
-        return node_id[5:].upper()
-
-    def normalize_mac(mac: str) -> str:
-        if not isinstance(mac, str):
-            return ""
-        return mac.replace(":", "").upper()
-
-    arrivals_rebased["_src_mac_norm"] = arrivals_rebased["src_mac"].apply(normalize_mac)
+    node_id_to_mac = node_id_to_mac_norm
 
     # Received count: distinct seq_num per (src_mac, window_start).
     received = (
@@ -318,6 +362,160 @@ def compute_pdr_features(
     out = pd.DataFrame(index=windowed.index)
     out["PDR"] = pdr_clipped.values
     out["_pdr_clipped"] = (pdr > 1.0).fillna(False).values
+
+    return out
+
+
+def compute_latency_features(
+    windowed: pd.DataFrame,
+    arrivals_dir: str,
+) -> pd.DataFrame:
+    """
+    LatencyHopRatio (Eq 4.14) and TunnelLatency (Table 4.11, auxiliary).
+
+    Both come out of the root's arrivals log, and both need the same
+    correction first, so they are computed together.
+
+    THE CLOCK PROBLEM
+    ─────────────────
+    root_main.c:329 logs `latency = now - pkt->send_ts_us`, where `now` is
+    the ROOT's esp_timer_get_time() and send_ts_us is the VICTIM's. Those
+    two clocks both start at their own board's boot and are never
+    synchronised, so the raw column is
+
+        latency_us = true_one_way_latency - (root_boot - victim_boot)
+
+    i.e. the truth plus a large constant offset — hugely NEGATIVE in
+    practice, because children are powered before the root (-194 s was
+    typical on the 2026-07-20 wormhole run). Used raw it is meaningless.
+
+    The offset is CONSTANT for a given (arrivals file, src_mac), so it
+    cancels under any subtraction within that group. That is what makes
+    both features recoverable from data already on disk, with no firmware
+    change and no re-run:
+
+    LatencyHopRatio
+        Subtract each (file, src_mac) MINIMUM. The result is delay
+        relative to that node's fastest observed delivery in the run —
+        a RELATIVE ONE-WAY delay, not the round trip Eq 4.14 names,
+        because the firmware sends no response leg to time an RTT
+        against. Divided by hop count (layer - 1; the root is layer 1)
+        it still carries exactly the signal the equation is for: delay
+        that does not match the reported path length. On the 2026-07-25
+        baseline·linear run it rises monotonically with depth
+        (1.9 ms at layer 2 -> 12.7 ms at layer 6), which is the
+        behaviour Eq 4.14's "consistent ratio per hop" describes.
+
+        This is a documented deviation — see thesis-deviate.md. The
+        thesis-faithful alternative (a root->victim response leg) is a
+        firmware change that would invalidate every run already captured.
+
+    TunnelLatency
+        The thesis defines this as the tunnel's round-trip time measured
+        with periodic echo messages; the A<->B UART link is one-way
+        (wormhole_victim.c tunnel_forwarder_task), so no echo exists.
+        What DOES exist is the milestone form's own stated wormhole
+        signature: "the same logical probe arrives at root twice — once
+        via slow multi-hop, once via fast wormhole shortcut, with a
+        measurable latency mismatch". root_main.c:316-320 deliberately
+        does NOT de-duplicate wormhole copies precisely so that both
+        arrivals survive into the log.
+
+        So TunnelLatency = the spread between the duplicate arrivals of
+        one probe, max(latency_us) - min(latency_us) over each
+        (file, src_mac, seq_num) group of size > 1. Both rows share one
+        victim clock and one root clock, so the offset cancels EXACTLY
+        here — no minimum-subtraction needed and no estimation involved.
+        This is a real measurement, not a proxy.
+
+        Keyed to the src_mac whose probes were duplicated (the same way
+        PDR is keyed), which deviates from Table 4.12's "attacker nodes
+        only" — the divergence is a property of the manipulated traffic,
+        and the arrivals row records no marker for which copy came
+        through the tunnel. Also in thesis-deviate.md.
+
+    Windows with no arrivals (or no duplicates, for TunnelLatency) stay
+    NaN rather than 0 — absence of a measurement is not a measurement of
+    zero, the same rule the PDR coverage set follows above.
+    """
+    out = pd.DataFrame(index=windowed.index)
+    out["LatencyHopRatio"] = np.nan
+    out["TunnelLatency"] = np.nan
+
+    arrivals = load_arrivals(arrivals_dir)
+    if arrivals is None or "latency_us" not in arrivals.columns:
+        return out
+
+    a = arrivals.copy()
+    grp = ["_source_arrivals_file", "_src_mac_norm"]
+
+    # ── LatencyHopRatio ──────────────────────────────────────────────
+    a["_lat_rel_ms"] = (
+        a["latency_us"] - a.groupby(grp)["latency_us"].transform("min")
+    ) / 1000.0
+
+    lat_win = (
+        a.groupby(["_src_mac_norm", "window_start"])["_lat_rel_ms"]
+        .mean()
+        .rename("_lat_rel_ms_mean")
+        .reset_index()
+    )
+
+    # ── TunnelLatency ────────────────────────────────────────────────
+    dup = a.groupby(grp + ["seq_num"]).agg(
+        _spread_us=("latency_us", lambda s: s.max() - s.min()),
+        _n=("latency_us", "size"),
+        window_start=("window_start", "min"),
+        _src=("_src_mac_norm", "first"),
+    ).reset_index(drop=True)
+    dup = dup[dup["_n"] > 1]
+
+    if not dup.empty:
+        tun_win = (
+            dup.groupby(["_src", "window_start"])["_spread_us"]
+            .mean()
+            .div(1000.0)
+            .rename("_tunnel_latency_ms")
+            .reset_index()
+            .rename(columns={"_src": "_src_mac_norm"})
+        )
+    else:
+        tun_win = pd.DataFrame(
+            columns=["_src_mac_norm", "window_start", "_tunnel_latency_ms"])
+
+    # ── Merge onto the windowed rows ─────────────────────────────────
+    w = windowed.copy()
+    w["_node_mac_norm"] = w["node_id"].apply(node_id_to_mac_norm)
+    w["_row_order"] = np.arange(len(w))
+
+    merged = w.merge(
+        lat_win, left_on=["_node_mac_norm", "window_start"],
+        right_on=["_src_mac_norm", "window_start"], how="left",
+    ).merge(
+        tun_win, left_on=["_node_mac_norm", "window_start"],
+        right_on=["_src_mac_norm", "window_start"], how="left",
+        suffixes=("", "_tun"),
+    ).sort_values("_row_order")
+
+    # Hop count = how many layers below the root this node sits. Derive the
+    # root's own layer from the data rather than hard-coding it: the firmware
+    # reports the root at layer 1 (esp_mesh_get_layer), but the M6/M7 test
+    # fixtures use 0-based layers, and hard-coding either convention silently
+    # produces an all-NaN column on the other. Fall back to the firmware
+    # convention when no root row is present (e.g. the root CSV wasn't
+    # exported). The root itself has no path to itself — NaN, not a divide
+    # by zero. layer == -1 is the disconnected sentinel and also lands NaN.
+    root_layer = ROOT_LAYER_DEFAULT
+    if "node_role" in merged.columns:
+        root_layers = merged.loc[merged["node_role"] == "root", "layer"]
+        if not root_layers.empty:
+            root_layer = root_layers.mode().iloc[0]
+
+    hops = merged["layer"] - root_layer
+    ratio = merged["_lat_rel_ms_mean"] / hops.where(hops > 0, np.nan)
+
+    out["LatencyHopRatio"] = ratio.values
+    out["TunnelLatency"] = merged["_tunnel_latency_ms"].values
 
     return out
 
@@ -634,6 +832,13 @@ def compute_features(
         result["PDR"] = pdr["PDR"].values
         if "_pdr_clipped" in pdr.columns:
             result["_pdr_clipped"] = pdr["_pdr_clipped"].values
+        # LatencyHopRatio / TunnelLatency also come from the arrivals log;
+        # they overwrite the NaN placeholders set by the cross-layer and
+        # tunnel blocks above (see compute_latency_features for why those
+        # placeholders existed and what changed).
+        lat = compute_latency_features(windowed, arrivals_dir)
+        result["LatencyHopRatio"] = lat["LatencyHopRatio"].values
+        result["TunnelLatency"] = lat["TunnelLatency"].values
     else:
         result["PDR"] = np.nan
 
@@ -695,9 +900,12 @@ def main():
     print()
     print("── Feature NaN Counts ──────────────────────────────")
     for col, n in nan_counts.items():
-        flag = " [FIRMWARE GAP]" if col in FEATURES_BLOCKED_ON_FIRMWARE else ""
-        flag = " [ATTACKER-ONLY, expected]" if col.startswith("Tunnel") else flag
-        flag = " [no response leg exists]" if col == "LatencyHopRatio" else flag
+        flag = " [RELAY-NODE ONLY: needs a blackhole run]" \
+            if col in FEATURES_BLOCKED_ON_FIRMWARE else ""
+        flag = " [ATTACKER-ONLY: needs a wormhole run]" \
+            if col.startswith("Tunnel") else flag
+        flag = " [relative one-way delay — see thesis-deviate.md]" \
+            if col == "LatencyHopRatio" else flag
         print(f"  {col}: {n}/{len(feature_table)} NaN{flag}")
     print("─────────────────────────────────────────────────────")
 

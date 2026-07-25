@@ -149,26 +149,35 @@ firmware already logs**: `RetryRate`, `PDR`, `ParentSwitchRate`,
 `RSSI_stability`, `RSSI_Hop_Diff`, plus the two raw `RSSI_mean`/`RSSI_var`
 M6 already computed (just renamed to match Table 4.12's column names).
 
-**5 are structurally present but currently `NaN` for every row**, for
-three different reasons — these are not bugs, they're documented gaps:
+**The remaining 5 are RUN-TYPE DEPENDENT** — each is NaN in run types
+where the behaviour it measures is not present, and populates in the run
+type where it is. None is uniformly NaN across the dataset:
 
 1. **`ForwardingRatio`, `IngressEgressDelta`, `ConsistencyScore`** —
-   blocked on firmware. Equation 4.2/4.3 need separate `recv_count`
-   and `forward_count` for transit packets specifically; the current
-   firmware only logs one generic `probes_count`. This resolves once
-   the attacker firmware's `recv_counter`/`forward_counter`/
-   `drop_counter` state variables (Milestone 2's own deliverable) are
-   logged to CSV and wired into `preprocess.py`'s
-   `CUMULATIVE_COLUMNS`.
-2. **`LatencyHopRatio`** — needs a Mean RTT from a probe/response
-   round trip; the current probe design is one-way (victim → root),
-   so there's no response leg to time. Would need a firmware change
-   to add one, not just a logging change.
-3. **`TunnelIntensity`, `TunnelBytes`, `TunnelLatency`** — correctly
-   `NaN`/attacker-only per the thesis's own Table 4.12 note ("present
-   only for attacker nodes during topology-distortion runs"). These
-   populate once `attacker_node/` firmware exists and logs tunnel
-   counters.
+   relay-node features. Only a node that receives transit traffic and
+   forwards it has a forwarding ratio, and the only relay in this
+   testbed is the **blackhole attacker**. NaN in baseline and wormhole
+   runs by design; populated on the attacker's windows in a blackhole
+   run (**155/884 rows**, 2026-07-25 blackhole·linear), derived from
+   its overloaded counters (`probes_count`=received, `tx_count`=
+   forwarded, `retry_count`=dropped).
+2. **`TunnelIntensity`, `TunnelBytes`, `TunnelLatency`** — attacker-only
+   per Table 4.12 ("present only for attacker nodes during
+   topology-distortion runs"). NaN in baseline and blackhole runs;
+   populated in a wormhole run (**307/723** and **109/723** rows,
+   2026-07-20 wormhole·linear).
+
+`LatencyHopRatio` and `TunnelLatency` were previously NaN in *every*
+run. Both are now computed from the root's arrivals log after removing
+the unsynchronised-clock offset — see **D-2** and **D-3** in
+[`thesis-deviate.md`](../thesis-deviate.md) for the method, the measured
+results, and the deviations from Eq 4.14's "Mean RTT" wording. No
+firmware change and no re-capture was needed.
+
+**Per run type: baseline 10/16 populated, blackhole 13/16, wormhole
+13/16 — and 16/16 across the combined matrix**, since every feature is
+populated by at least one run type. M7's "no feature is uniformly NaN"
+is a statement about the assembled dataset, not about any single run.
 
 Every NaN column is still emitted with the correct name, so the
 milestone criterion "feature table contains all 16 columns" is met

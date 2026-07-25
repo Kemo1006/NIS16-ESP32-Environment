@@ -14,7 +14,10 @@ Checks per file (see m5_extraction/README.md for the spec this implements):
                        at the 1 Hz sampling rate, generous tolerance (this flags
                        truncation, not exact counts — see PHASE_NOMINAL_S).
   3. Monotonicity    — timestamp_us never goes backwards within a file.
-  4. Manifest/SHA-256 — every file gets a locked checksum in manifest.json; a
+  4. Label integrity — gt_label matches the Table 4.1 phase->label map on every
+                       row (the ground-truth column M8 separates on); a mismatch
+                       is a mislabel or a field-shifted row the width check missed.
+  5. Manifest/SHA-256 — every file gets a locked checksum in manifest.json; a
                        changed hash on a re-run means the file was altered or a
                        re-pull was not byte-identical.
 
@@ -54,15 +57,32 @@ EXPECTED_HEADERS = {"telem": TELEM_HEADER, "arrivals": ARRIVALS_HEADER}
 # vs the 300 s * 1 Hz spec on a real capture) — hence the wide tolerance below.
 PHASE_DURATION_S = {0: 300, 1: 180, 2: 180, 3: 120}
 
-# mesh_config.h SAMPLING_INTERVAL_MS. Raised 1000ms -> 50ms on 2026-07-12 (see
-# thesis-deviate.md) so a run exceeds 10,000 rows; captures made before that date
-# were at 1 Hz. Override with --sample-interval-ms when validating older data.
-DEFAULT_SAMPLE_INTERVAL_MS = 50
+# mesh_config.h SAMPLING_INTERVAL_MS. Timeline of the firmware value:
+#   pre-2026-07-12 : 1000ms (1 Hz)  -> validate with --sample-interval-ms 1000
+#   2026-07-12     :   50ms (20 Hz) -> validate with --sample-interval-ms 50
+#   2026-07-25     :  200ms (5 Hz)  -> the one baseline/linear capture made that day
+#   2026-07-25     :  100ms (10 Hz) -> the default below (campaign rate)
+# Captures are NOT self-describing: the rate is not stored in the CSV, so you
+# must pass the rate that was in the firmware AT CAPTURE TIME when validating
+# anything older than the current default, or phase-coverage checks will be
+# judged against the wrong expected row counts.
+DEFAULT_SAMPLE_INTERVAL_MS = 100
 PHASE_NAMES = {0: "baseline", 1: "blackhole", 2: "wormhole", 3: "cooldown", 4: "terminate"}
 ATTACK_TO_PHASE = {"blackhole": 1, "wormhole": 2}
 
 UNDER_TOLERANCE = 0.5   # < 50% of nominal duration's rows -> suspected truncation
 OVER_TOLERANCE = 2.0    # > 200% of nominal -> suspiciously stuck/duplicated
+
+# gt_label ground-truth encoding: every node in a run carries the SAME per-phase
+# label (verified uniform across root / attacker / control-victim / wormhole
+# endpoints in tools/exports/). The label is the attack active during that phase,
+# NOT whether this particular board is the attacker — baseline & cooldown are
+# benign (0), the two attack phases carry their attack code. M8's baseline-vs-
+# attack separation depends on this column being correct, so validate it.
+PHASE_TO_LABEL = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0}
+# Fraction of correctly-sized rows whose gt_label may disagree with the phase→
+# label map before it's treated as a real mislabel (not a 1-row phase boundary).
+LABEL_MISMATCH_FAIL_FRACTION = 0.01
 # arrivals.csv aggregates probe arrivals from ALL victims in the mesh (root
 # receives ~1 row/sec PER victim, not one total), so its row count legitimately
 # scales with node count. Only the under-tolerance (truncation) check applies.
@@ -72,8 +92,13 @@ OVER_TOLERANCE = 2.0    # > 200% of nominal -> suspiciously stuck/duplicated
 # identities for a board the filename tags with role=victim.
 VICTIM_ROLE_ALIASES = {"victim", "blackhole", "wormhole_a", "wormhole_b"}
 
+# export_logs.py names files "<role>_..." where --role is root | child | victim
+# (default: child). The regex MUST list all three — an earlier version only
+# accepted root|victim, so every child_*.csv failed to parse and silently
+# skipped its phase-coverage and role checks. Keep this in sync with the
+# --role choices in export_logs.py.
 FILENAME_RE = re.compile(
-    r"^(?P<role>root|victim)_(?P<port>[^_]+)_(?P<topology>[^_]+)_(?P<attack>[^_]+)"
+    r"^(?P<role>root|victim|child)_(?P<port>[^_]+)_(?P<topology>[^_]+)_(?P<attack>[^_]+)"
     r"_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_(?P<kind>telem|arrivals)\.csv$"
 )
 
@@ -229,7 +254,9 @@ def _check_role_consistency(rows, header, meta, report):
     filename_role = meta["role"] if meta else None
     if not filename_role:
         return
-    if filename_role == "victim":
+    # "child" and "victim" are the same board position (export_logs.py keeps
+    # "victim" as an alias for "child"); both can carry any non-root node_role.
+    if filename_role in ("victim", "child"):
         ok = csv_role in VICTIM_ROLE_ALIASES
     else:
         ok = csv_role == filename_role
@@ -238,6 +265,59 @@ def _check_role_consistency(rows, header, meta, report):
             f"role in CSV ('{csv_role}') doesn't match role in filename "
             f"('{filename_role}')"
         )
+
+
+def _check_label_integrity(rows, header, report):
+    """gt_label must equal PHASE_TO_LABEL[phase_id] on every row.
+
+    This is the M5 "label" validator: the ground-truth column M8 trains its
+    baseline-vs-attack separation on. A row whose gt_label disagrees with its
+    phase is either a mislabel (firmware/labeling bug) or a field-shifted row
+    that still happens to have the right column count, so the width check missed
+    it. Only correctly-sized rows reach here (schema check filters the rest)."""
+    if not rows:
+        return
+    if "gt_label" not in header or "phase_id" not in header:
+        return  # schema check already FAILs on a missing column
+    label_idx = header.index("gt_label")
+    phase_idx = header.index("phase_id")
+
+    mismatches = 0
+    unknown_phase = 0
+    examples = []
+    for fields in rows:
+        try:
+            phase = int(fields[phase_idx])
+            label = int(fields[label_idx])
+        except (ValueError, IndexError):
+            mismatches += 1
+            continue
+        expected = PHASE_TO_LABEL.get(phase)
+        if expected is None:
+            unknown_phase += 1
+            continue
+        if label != expected:
+            mismatches += 1
+            if len(examples) < 3:
+                examples.append(f"phase {phase}->gt_label {label} (expected {expected})")
+
+    if unknown_phase:
+        report.warn(
+            f"{unknown_phase} row(s) have a phase_id outside the Table 4.1 set "
+            f"{sorted(PHASE_TO_LABEL)} — gt_label can't be checked for those"
+        )
+
+    if mismatches:
+        frac = mismatches / len(rows)
+        detail = "; ".join(examples)
+        msg = (
+            f"{mismatches}/{len(rows)} row(s) ({frac:.1%}) have gt_label "
+            f"inconsistent with phase_id [{detail}] — mislabel or field shift"
+        )
+        if frac > LABEL_MISMATCH_FAIL_FRACTION:
+            report.fail(msg)
+        else:
+            report.warn(msg)
 
 
 def _load_manifest(manifest_path):
@@ -292,6 +372,7 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms):
         rows, phase_counts = _check_schema_and_monotonicity(path, kind, report)
         if rows:
             _check_role_consistency(rows, EXPECTED_HEADERS[kind], meta, report)
+            _check_label_integrity(rows, EXPECTED_HEADERS[kind], report)
             if meta:
                 _check_phase_coverage(phase_counts, meta["attack"], kind, sample_interval_ms, report)
 

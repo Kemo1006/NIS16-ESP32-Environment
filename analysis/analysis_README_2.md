@@ -75,8 +75,17 @@ counts their firmware logs into the shared schema (Node B `retry_count` =
 frames tunnelled, Node A `probes_count` = frames received). They stay NaN for
 victim/root and for baseline/blackhole runs, and ~0 in a wormhole run's
 baseline phase — matching Table 4.12's "null or zero for all other nodes and
-phases". `TunnelLatency` stays NaN by design: the A↔B UART tunnel is one-way,
-so no round trip exists to time.
+phases".
+
+`TunnelLatency` no longer stays NaN. The A↔B UART tunnel is still one-way, so
+the thesis's "periodic echo messages" round trip does not exist — but the
+root's `arrivals.csv` holds **both** copies of every tunnelled probe
+(`root_main.c:316-320` deliberately skips de-duplication for wormhole copies),
+and the latency divergence between them is a direct measurement of what the
+tunnel did. Both rows share one victim clock and one root clock, so the
+unsynchronised-clock offset cancels exactly. On the 2026-07-20 wormhole·linear
+run this populates 109 rows, **102 of them on `gt_label = 2`**. See **D-3** in
+[`thesis-deviate.md`](../thesis-deviate.md).
 
 ### Two real bugs found while building this — both now covered by `generate_eda_fake_data.py`
 

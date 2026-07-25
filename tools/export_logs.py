@@ -276,6 +276,26 @@ def _capture_stream(ser: serial.Serial, command: str):
     return rows, "TIMEOUT: never saw END_OF_FILE"
 
 
+def _warn_on_mixed_schema(rows, kind: str) -> None:
+    """Flag a capture that spliced two different streams into one file.
+
+    If an EXPORT_LOGS stream's END_OF_FILE marker is corrupted, _capture_stream
+    keeps reading and the NEXT command's stream lands in the same row list —
+    telem.csv followed by arrivals.csv, each with its own header. The raw file
+    still holds everything, but the mismatch is invisible until preprocessing
+    blows up much later, so say it here while the board is still on the desk.
+    trim_run.py separates the blocks back out on --apply.
+    """
+    headers = [r for r in rows if r.startswith(_CSV_HEADER_TOKEN)]
+    if len(headers) <= 1:
+        return
+    kinds = ["arrivals" if "src_mac" in h else "telem" for h in headers]
+    print(f"   WARNING: capture contains {len(headers)} concatenated streams "
+          f"({', '.join(kinds)}) — expected only '{kind}'. Nothing is lost, but "
+          f"you MUST run trim_run.py --apply to split them before analysis.",
+          file=sys.stderr)
+
+
 def _capture_with_retries(ser: serial.Serial, command: str):
     """Capture a stream, retrying transient failures and keeping the most
     complete result. Returns (rows, error_str, attempts_used).
@@ -355,9 +375,20 @@ def _subdir_for(args) -> str:
 def _make_filename(args, kind: str) -> str:
     date = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     # e.g. exports/blackhole/star/root_COM3_star_blackhole_r1_20260629_..._telem.csv
-    safe_port = args.port.replace("/", "_").replace("\\", "_")
+    #
+    # The board tag is normally the COM port, but a COM number does NOT reliably
+    # identify a board here: these CP210x bridges report duplicate/blank USB
+    # serials, so Windows assigns COM per USB SOCKET. If you deliberately export
+    # every child through one socket, all five files would be named "..._COM26_..."
+    # and differ only by timestamp. --label overrides the tag so the board stays
+    # identifiable in the filename.
+    #
+    # Underscore is this scheme's field separator, so the tag must not contain one
+    # or downstream filename parsing shifts by a field.
+    tag = args.label if getattr(args, "label", None) else args.port
+    safe_tag = re.sub(r"[^A-Za-z0-9-]", "-", tag)
     name = (
-        f"{args.role}_{safe_port}_{args.topology}_{args.attack}"
+        f"{args.role}_{safe_tag}_{args.topology}_{args.attack}"
         f"_r{args.repeat}_{date}_{kind}.csv"
     )
     return os.path.join(_subdir_for(args), name)
@@ -397,6 +428,13 @@ def main() -> int:
                    help="Override ONLY the attack subfolder (not the filename). "
                         "Use for a control victim (flashed attack=none) that "
                         "belongs with an attack run: --attack none --attack-dir blackhole.")
+    p.add_argument("--label", default=None,
+                   help="Board tag used in the FILENAME instead of the COM port "
+                        "(e.g. --label node5). Use when several boards are exported "
+                        "through the same COM/USB socket, so the files stay "
+                        "distinguishable. Does not change what is exported, only "
+                        "the name. Underscores are converted to '-' (underscore is "
+                        "the filename field separator).")
     p.add_argument("--list", action="store_true",
                    help="Only list stored files; download nothing.")
     p.add_argument("--delete", action="store_true",
@@ -474,6 +512,7 @@ def main() -> int:
             # error 'continue'd straight past _save() and threw them all away.
             if rows:
                 path = _make_filename(args, kind)
+                _warn_on_mixed_schema(rows, kind)
                 n = _save(rows, path)
                 data_rows = max(0, n - 1)  # minus header
                 tries = f" after {attempts} tries" if attempts > 1 else ""

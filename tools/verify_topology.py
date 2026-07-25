@@ -36,6 +36,15 @@ from collections import Counter, defaultdict
 # Phase IDs (mirror mesh_config.h).
 PHASE_BASELINE = 0
 
+# Mesh-formation window before Phase 0 really begins — PHASE_STABILISE_S in
+# components/mesh_common/include/mesh_config.h. Rows logged before the root's
+# first phase broadcast reaches a node are stamped PHASE_ID_BASELINE by
+# default (phase_listener.c), so a node's INITIAL parent acquisition looks
+# like a baseline re-route unless this window is excluded. Milestone 3 asks
+# two separate questions — "converges within 60 s" and "stable through the
+# 5-minute baseline" — and counting formation as instability conflates them.
+STABILISE_S = 60.0
+
 # ESP-WIFI-MESH reports the root at layer 1.
 ROOT_LAYER = 1
 
@@ -65,9 +74,13 @@ def node_id_to_sta_int(node_id: str):
 
 # ── Per-node summary ────────────────────────────────────────────────────────
 class NodeSummary:
-    def __init__(self, node_id, role):
+    def __init__(self, node_id, role, stabilise_s=STABILISE_S):
         self.node_id = node_id
         self.role = role
+        self.stabilise_s = stabilise_s
+        # Changes seen during the formation window, excluded from the
+        # baseline-stability verdict but reported so the exclusion is visible.
+        self.formation_changes = 0
         self.sta_int = node_id_to_sta_int(node_id)
         self.samples = 0
         self.first_ts = None
@@ -88,15 +101,28 @@ class NodeSummary:
             self.first_ts = ts
         self.last_ts = ts
 
+        # Seconds since THIS node started logging. Each board's esp_timer
+        # starts at its own boot, so a node-relative clock is the only one
+        # available here; children boot before the root, which is exactly
+        # why their formation shows up inside their own first seconds.
+        t_rel = (ts - self.first_ts) / 1e6
+        forming = t_rel < self.stabilise_s
+
         if self.layers and self.layers[-1][1] != layer:
             self.layer_changes += 1
             if phase_id == PHASE_BASELINE:
-                self.baseline_layer_changes += 1
+                if forming:
+                    self.formation_changes += 1
+                else:
+                    self.baseline_layer_changes += 1
         # Ignore the transient all-zero parent before the node has a parent.
         if self.parents and self.parents[-1][1] != parent_mac and parent_mac != ZERO_MAC:
             self.parent_switches += 1
             if phase_id == PHASE_BASELINE:
-                self.baseline_parent_switches += 1
+                if forming:
+                    self.formation_changes += 1
+                else:
+                    self.baseline_parent_switches += 1
 
         self.layers.append((ts, layer))
         self.parents.append((ts, parent_mac))
@@ -130,7 +156,7 @@ class NodeSummary:
 
 
 # ── Load a run ──────────────────────────────────────────────────────────────
-def load_files(paths):
+def load_files(paths, stabilise_s=STABILISE_S):
     nodes = {}
     for path in paths:
         with open(path, newline="", encoding="utf-8") as f:
@@ -140,7 +166,8 @@ def load_files(paths):
             for row in reader:
                 nid = row["node_id"]
                 if nid not in nodes:
-                    nodes[nid] = NodeSummary(nid, row.get("role", "?"))
+                    nodes[nid] = NodeSummary(nid, row.get("role", "?"),
+                                             stabilise_s=stabilise_s)
                 try:
                     ts = int(row["timestamp_us"])
                     layer = int(row["layer"])
@@ -242,6 +269,10 @@ def main():
                     help="Assert the intended topology and report PASS/WARN.")
     ap.add_argument("--converge-limit", type=float, default=60.0,
                     help="Convergence deadline in seconds (Milestone-3 criterion).")
+    ap.add_argument("--stabilise-s", type=float, default=STABILISE_S,
+                    help="Mesh-formation window excluded from the baseline "
+                         "re-routing verdict (default: PHASE_STABILISE_S = "
+                         f"{STABILISE_S:.0f}s). Use 0 to count every change.")
     args = ap.parse_args()
 
     paths = resolve_files(args)
@@ -255,7 +286,7 @@ def main():
         print(f"  - {os.path.basename(p)}")
     print()
 
-    nodes = load_files(paths)
+    nodes = load_files(paths, stabilise_s=args.stabilise_s)
     if not nodes:
         print("No node rows parsed.", file=sys.stderr)
         return 2
@@ -288,10 +319,19 @@ def main():
         if n.baseline_parent_switches or n.baseline_layer_changes:
             baseline_stable = False
         flag = "OK " if ok else "  ?"
+        forming = (f"  formation {n.formation_changes}"
+                   if n.formation_changes else "")
         print(f"  [{flag}] {nid}  layer={n.final_layer}  converge={conv_str}  "
               f"parent_switches={n.parent_switches} (baseline {n.baseline_parent_switches})  "
               f"layer_changes={n.layer_changes} (baseline {n.baseline_layer_changes})  "
-              f"samples={n.samples}")
+              f"samples={n.samples}{forming}")
+    total_forming = sum(n.formation_changes for n in nodes.values())
+    if total_forming:
+        print(f"\n  ({total_forming} parent/layer change(s) occurred inside the "
+              f"first {args.stabilise_s:.0f}s of a node's own log — mesh "
+              f"formation, not re-routing. Excluded from the baseline verdict "
+              f"below; counted in the totals above. --stabilise-s 0 to include "
+              f"them.)")
     print()
 
     # ── Expected topology ───────────────────────────────────────────────────

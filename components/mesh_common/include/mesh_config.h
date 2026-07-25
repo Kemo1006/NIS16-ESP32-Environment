@@ -30,10 +30,25 @@
  *  your local APs are NOT using. See esp32-issues.md I-008. */
 #define MESH_CHANNEL        11
 
-/** Maximum hop depth the mesh is allowed to grow to.
- *  Set to 6 for multi-topology experiments; root is layer 1 (ESP-MESH
- *  convention — esp_mesh_get_layer() returns 1 at the root). */
-#define MESH_MAX_LAYER      6
+/** Maximum hop depth the mesh is allowed to grow to. Root is layer 1 (ESP-MESH
+ *  convention — esp_mesh_get_layer() returns 1 at the root).
+ *
+ *  SIZING RULE — this constant is the binding constraint for LINEAR only.
+ *  MESH_TOPO_CHAIN + MESH_LINEAR_MAX_CHILDREN=1 means every child consumes its
+ *  own layer, so N children need depth N+1:
+ *
+ *      4 children (5 boards) -> depth 5
+ *      5 children (6 boards) -> depth 6   <- the current lab setup
+ *      6 children (7 boards) -> depth 7
+ *
+ *  Raised 6 -> 7 on 2026-07-25 so the same firmware covers a 5-7 board setup
+ *  without a re-flash when a board is added. At 6 the 6th child of a 7-board
+ *  LINEAR run could not attach at all (no free slot below it, no layer 7) and
+ *  would sit at layer -1 logging disconnected rows.
+ *
+ *  Harmless for the other three: STAR overrides this to 2; TREE and PARTIAL are
+ *  limited by fan-out and physical range long before they reach depth 7. */
+#define MESH_MAX_LAYER      7
 
 /** Default max children per node (fan-out cap). Per-topology overrides below
  *  narrow this for LINEAR (chain) and PARTIAL (constrained branching). */
@@ -271,14 +286,45 @@
  * TELEMETRY SAMPLING
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Telemetry sample interval. Raised from the proposal's 1 Hz (1000ms) to 20 Hz
- *  (50ms) on 2026-07-12 per adviser direction: a single run's telemetry file
- *  must exceed 10,000 rows, and at 1 Hz the fixed 600s (Table 4.1) run only
- *  yields ~600-700 rows. 600s / 50ms = 12,000 rows nominal — a margin above
- *  the 10,000 floor. This is a DEVIATION from the proposal's stated "1 Hz" —
- *  see ../../thesis-deviate.md. Requires the 4MB-flash partition table (see
- *  partitions.csv) — a 1 Hz-sized SPIFFS partition cannot hold 20 Hz data. */
-#define SAMPLING_INTERVAL_MS    50U
+/** Telemetry sample interval. History of this value:
+ *
+ *    1 Hz (1000ms) — the proposal's stated rate; Table 4.10's window basis.
+ *   20 Hz (  50ms) — 2026-07-12, adviser direction: a single run's telemetry
+ *                    file must exceed 10,000 rows, and at 1 Hz the fixed 600s
+ *                    (Table 4.1) run yields only ~600-700. 600s/50ms = 12,000.
+ *    5 Hz ( 200ms) — 2026-07-25, team decision, to cut export time 4x (a 20 Hz
+ *                    telem.csv is ~1MB and takes ~90s/board over the 115200
+ *                    console; see tools/export_logs.py BAUD).
+ *   10 Hz ( 100ms) — 2026-07-25, team decision, settling between the two: half
+ *                    the export time of 20 Hz, double the row count of 5 Hz.
+ *                    (The rate moved 20 -> 10 -> 5 -> 10 over this one day; 10 Hz
+ *                    is the value the capture campaign should run at.)
+ *
+ *  ⚠ ROW-COUNT CAVEAT: 600s/100ms = 6,000 rows nominal per file (baseline 480s
+ *  -> 4,800; attack 660s -> 6,600). That is still BELOW the 10,000-rows-per-file
+ *  floor cited for the 20 Hz change — it reaches ~66% of it (5 Hz reached ~30%).
+ *  It clears 10,000 only if the requirement is read as per-RUN pooled across the
+ *  6 boards (~40,000 rows/run). CONFIRM THAT READING WITH THE ADVISER before
+ *  committing a full capture campaign; if the floor is genuinely per-file, only
+ *  20 Hz satisfies it at the run lengths Table 4.1 permits.
+ *
+ *  ANALYSIS IS UNAFFECTED by this value: preprocess.py downsamples whatever the
+ *  raw rate is onto a synthetic 1 Hz grid (preprocess.py:316-319, 337), so
+ *  Table 4.10's 5s / 5-sample windows still hold. 10 Hz supplies 10 raw samples
+ *  per grid-second, so MIN_VALID_SAMPLES stays comfortably satisfied.
+ *
+ *  Still a DEVIATION from the proposal's 1 Hz — record it in thesis-deviate.md
+ *  (referenced from several files, but that document does not yet exist).
+ *
+ *  The 4MB partition table (partitions.csv) remains valid: it was sized for
+ *  20 Hz, so 10 Hz needs half of that and fits comfortably.
+ *
+ *  ⚠ Captures are NOT self-describing — the rate is not stored in the CSV. When
+ *  validating older data, pass the rate used AT CAPTURE TIME:
+ *      --sample-interval-ms 200   the 2026-07-25 baseline/linear capture (5 Hz)
+ *      --sample-interval-ms  50   2026-07-12 .. 2026-07-25 captures  (20 Hz)
+ *      --sample-interval-ms 1000  anything before 2026-07-12         (1 Hz)  */
+#define SAMPLING_INTERVAL_MS    100U
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PROBE GENERATION (victim nodes)
