@@ -39,6 +39,8 @@ import os
 import re
 import sys
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 TELEM_HEADER = [
     "timestamp_us", "node_id", "role", "layer", "parent_mac",
     "rssi_dbm", "retry_count", "tx_count", "probes_count",
@@ -389,8 +391,13 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("directory", nargs="?", default="exports",
-                    help="Directory of exported CSVs to validate (recursive). Default: exports")
+    # Default resolves RELATIVE TO THIS SCRIPT, not the shell's CWD — a bare
+    # "exports" validates whatever stray folder happens to sit in the directory
+    # you ran from (usually nothing, so it reports 0 files and looks like a pass).
+    p.add_argument("directory", nargs="?",
+                    default=os.path.join(_THIS_DIR, "exports"),
+                    help="Directory of exported CSVs to validate (recursive). "
+                         "Default: the exports/ folder next to this script.")
     p.add_argument("--manifest", default=None,
                     help="Manifest JSON path. Default: <directory>/manifest.json")
     p.add_argument("--strict", action="store_true",

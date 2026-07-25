@@ -33,6 +33,8 @@ import os
 import sys
 from collections import Counter, defaultdict
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Phase IDs (mirror mesh_config.h).
 PHASE_BASELINE = 0
 
@@ -260,7 +262,13 @@ def check_expected(expect, nodes, children, root_id):
 # ── Main ────────────────────────────────────────────────────────────────────
 def main():
     ap = argparse.ArgumentParser(description="Verify mesh topology from telem CSVs.")
-    ap.add_argument("--dir", default="exports", help="Folder of exported CSVs.")
+    # Resolve the default RELATIVE TO THIS SCRIPT, not the shell's CWD. A bare
+    # "exports" silently scans (and lets other tools create) a stray .\exports\
+    # wherever you happen to be standing — the repo root, most often. Real
+    # captures always live in tools/exports/. An explicit --dir still wins.
+    ap.add_argument("--dir", default=os.path.join(_THIS_DIR, "exports"),
+                    help="Folder of exported CSVs "
+                         "(default: the exports/ folder next to this script).")
     ap.add_argument("--topology", default="star")
     ap.add_argument("--attack", default="none")
     ap.add_argument("--repeat", default="1")
