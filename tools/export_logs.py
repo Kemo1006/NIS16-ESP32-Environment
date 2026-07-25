@@ -55,6 +55,8 @@ import re
 import sys
 import time
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
 try:
     import serial  # pyserial
 except ImportError:
@@ -420,7 +422,17 @@ def main() -> int:
     p.add_argument("--attack", default="none",
                    help="none | blackhole | wormhole (for the filename)")
     p.add_argument("--repeat", default="1", help="Repeat number (for the filename)")
-    p.add_argument("--outdir", default="exports", help="Output directory")
+    # Resolve the default RELATIVE TO THIS SCRIPT, not the shell's CWD. This is
+    # the most damaging of the four CWD-relative defaults that existed: it does
+    # not merely scan the wrong folder, it WRITES irreplaceable captures into
+    # it. Running an export from root_node\ or child_node\ (where you already
+    # are for `idf.py set-target` / flashing) silently created
+    # root_node\exports\ and child_node\exports\ and filed a whole
+    # baseline-tree run in there, invisible to every analysis command. An
+    # explicit --outdir still wins.
+    p.add_argument("--outdir", default=os.path.join(_THIS_DIR, "exports"),
+                   help="Output directory (default: the exports/ folder next "
+                        "to this script, NOT one relative to your shell).")
     p.add_argument("--flat", action="store_true",
                    help="Write straight into --outdir instead of the default "
                         "<outdir>/<attack-or-baseline>/<topology>_topology/ subfolders.")
