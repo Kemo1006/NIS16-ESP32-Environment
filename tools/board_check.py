@@ -175,11 +175,22 @@ def check_runtime(port, wait_s):
     except Exception as e:
         return False, f"could not open port at {BAUD} ({e})", ""
 
+    # Give the passive listen everything except a small fixed probe budget,
+    # rather than a 60/40 split. The interesting late lines — the SPIFFS mount
+    # banner and the blackhole-victim marker — land AFTER mesh_setup_init()
+    # returns, and that call blocks for up to PHASE_STABILISE_S (60 s,
+    # mesh_setup.c:196) when there is no mesh to join, which is exactly the
+    # situation when you are checking one board on the desk. Under the old split
+    # a --wait 60 listened for only 36 s and never reached them; now --wait 75
+    # does. The default (10 s) is unchanged: 6 s passive, 4 s probe.
+    probe_budget = min(4.0, wait_s * 0.4)
+    listen_budget = max(wait_s - probe_budget, wait_s * 0.6)
+
     with ser:
         # 1) passive listen — a running app almost always chatters
         buf = ""
         t0 = time.time()
-        while time.time() - t0 < wait_s * 0.6:
+        while time.time() - t0 < listen_budget:
             d = ser.read(4096)
             if d:
                 buf += d.decode("utf-8", "replace")
@@ -190,7 +201,7 @@ def check_runtime(port, wait_s):
         ser.flush()
         t0 = time.time()
         reply = ""
-        while time.time() - t0 < wait_s * 0.4:
+        while time.time() - t0 < probe_budget:
             d = ser.read(4096)
             if d:
                 reply += d.decode("utf-8", "replace")
@@ -258,12 +269,14 @@ def identify_firmware(text, wait_s=None):
 
     if CHILD_GENERIC_BANNER in text:
         hint = ""
-        if wait_s is not None and wait_s < 60:
-            hint = f"  Re-run with --wait 60 (currently {wait_s:g})."
+        if wait_s is not None and wait_s < 75:
+            hint = f"  Re-run with --wait 75 (currently {wait_s:g})."
         return None, (
             "a CHILD — but PLAIN CHILD and BLACKHOLE VICTIM are built from the "
             "same firmware and are identical at boot. The line that separates "
-            "them prints only after the mesh comes up (~10-30 s)." + hint)
+            "them is in probe_gen_task(), which starts only after "
+            "mesh_setup_init() returns — and that blocks up to 60s "
+            "(PHASE_STABILISE_S) when there is no mesh to join." + hint)
 
     # Fallback: LIST_FILES lists arrivals.csv only on a root (csv_logger.c),
     # so it separates root from child even with no banner in the buffer.
@@ -407,11 +420,19 @@ def main():
         # then :146, and the same order in victim_main.c / root_main.c), so the
         # mount line lands seconds-to-tens-of-seconds into boot — long after the
         # startup banner and well past the default listen window. Not a fault.
-        hint = " Re-run with --wait 60." if args.wait < 60 else \
-               " Power-cycle the board and re-run."
-        print("      SPIFFS:   not reported — the mount line prints after mesh "
-              "init,")
-        print("                later than the boot banner." + hint)
+        print("      SPIFFS:   not reported — csv_logger_init() runs AFTER")
+        print("                mesh_setup_init(), which blocks up to 60s "
+              "(PHASE_STABILISE_S)")
+        print("                when there is no mesh to join — so the mount "
+              "line lands")
+        if args.wait < 75:
+            print(f"                ~60s after reset. Re-run with --wait 75 "
+                  f"(currently {args.wait:g}).")
+        else:
+            print("                ~60s after reset, and it still did not "
+                  "appear —")
+            print("                the board may not be reaching "
+                  "csv_logger_init() at all.")
 
     print("\n" + "-" * 62)
     if ok2 and ok3 and ok4:

@@ -180,7 +180,7 @@ The variants it distinguishes, and the flags that produce each:
 | `BLACKHOLE ATTACKER` | `-Attack blackhole -BlackholeRole attacker` | boot banner — instant |
 | `WORMHOLE NODE A` | `-Attack wormhole -WormholeEnd A` | boot banner — instant |
 | `WORMHOLE NODE B` | `-Attack wormhole -WormholeEnd B` | boot banner — instant |
-| `BLACKHOLE VICTIM` | `-Attack blackhole -BlackholeRole victim` | ⏳ **needs `--wait 60`** |
+| `BLACKHOLE VICTIM` | `-Attack blackhole -BlackholeRole victim` | ⏳ **needs `--wait 75`** |
 | `PLAIN CHILD` | `-Role child`, no `-Attack` | ⏳ **cannot be proven — see below** |
 
 ### ⚠️ Plain child vs blackhole victim — the one pair it cannot separate quickly
@@ -192,25 +192,33 @@ Both are built from the **same** `victim_main.c`, so at boot both print exactly
 Blackhole victim mode: probes -> attacker b0:cb:d8:f3:32:18
 ```
 
-— lives in `probe_gen_task()` (`victim_main.c:147`, inside `#if defined(BLACKHOLE_VICTIM_TARGET)`)
-and is printed **only once the mesh is up**, typically 10–30 s after reset. The default 10 s
-listen window ends long before that, so you get:
+— lives in `probe_gen_task()` (`victim_main.c:147`, inside `#if defined(BLACKHOLE_VICTIM_TARGET)`),
+and that task is only started at `victim_main.c:89` — **after `mesh_setup_init()` returns**.
+
+That is the part that matters: `mesh_setup_init()` blocks in `xEventGroupWaitBits()` for up to
+**`PHASE_STABILISE_S` = 60 s** (`mesh_setup.c:196`) waiting to join a mesh. When you are
+checking a single board on the desk there *is* no mesh, so it waits the **full 60 s** every
+time. The default 10 s listen window ends long before that, so you get:
 
 ```
       firmware: UNDETERMINED — a CHILD — but PLAIN CHILD and BLACKHOLE VICTIM are
                 built from the same firmware and are identical at boot. The line
                 that separates them prints only after the mesh comes up (~10-30 s).
-                Re-run with --wait 60 (currently 10).
+                Re-run with --wait 75 (currently 10).
 ```
 
 **To resolve it, give it longer:**
 
 ```powershell
-python board_check.py --port COM20 --wait 60
+python board_check.py --port COM20 --wait 75
 ```
 
+**75, not 60.** The tool spends a fixed 4 s on the `LIST_FILES` probe and the rest listening,
+so `--wait 75` listens for 71 s — enough to clear the 60 s mesh timeout *and* catch what comes
+after it. `--wait 60` listens for only 56 s and misses it every time.
+
 If the board is a blackhole victim, the marker appears and it reports `BLACKHOLE VICTIM`.
-If nothing appears even at `--wait 60`, it is *most likely* a plain child — but the tool
+If nothing appears even at `--wait 75`, it is *most likely* a plain child — but the tool
 still will not claim so, because "no evidence of X" is not proof of "not X".
 
 > 🧠 **Why it refuses to guess.** A confident `PLAIN CHILD` on a board that is really a
@@ -224,7 +232,7 @@ the board unable to read its own `telem.csv` — `EXPORT_LOGS` announces the rig
 size and returns **0 rows** (`esp32-issues` I-017). Check 4 reports it:
 
 ```powershell
-python board_check.py --port COM20 --wait 60
+python board_check.py --port COM20 --wait 75
 ```
 
 ```
@@ -237,12 +245,14 @@ python board_check.py --port COM20 --wait 60
 | ≥ 50 % | ⚠️ `<-- TOO FULL`. Clear it **before** the run |
 | 70 % | the I-017 board: 0.75 Hz sampling, corrupt lines, unreadable export |
 
-> ⏳ **`--wait 60` is required.** `csv_logger_init()` runs *after*
-> `mesh_setup_init()` (`blackhole_victim.c:125` then `:146`), so the
-> `SPIFFS mounted. Total: … Used: …` line lands seconds-to-tens-of-seconds into
-> boot — later than the startup banner and past the default 10 s window. At the
-> default you get `SPIFFS: not reported`, which is a **timing limitation, not a
-> fault**.
+> ⏳ **`--wait 75` is required — the same 60 s wall as above.** `csv_logger_init()`
+> runs *after* `mesh_setup_init()` (`blackhole_victim.c:125` then `:146`;
+> `victim_main.c:75` then `:85`), and that call blocks up to **`PHASE_STABILISE_S`
+> = 60 s** when there is no mesh to join. So `SPIFFS mounted. Total: … Used: …`
+> lands ~60 s after reset, long after the startup banner.
+>
+> At the default you get `SPIFFS: not reported` — a **timing limitation, not a
+> fault**. `--wait 60` is *also* too short (it listens 56 s); use **75**.
 
 To clear a full board, prefer the guaranteed route:
 
