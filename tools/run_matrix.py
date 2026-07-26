@@ -241,12 +241,17 @@ def validate_cell(outdir, topo, attack, sample_interval_ms):
     cmd = [sys.executable, os.path.join(_THIS_DIR, "validate_integrity.py"), folder]
     if sample_interval_ms is not None:
         cmd += ["--sample-interval-ms", str(sample_interval_ms)]
+    # BOTH halves of this are needed to echo validate_integrity.py's output
+    # without mojibake, and fixing only one leaves it broken:
+    #   * the CHILD picks its stdout encoding from the locale (cp1252 here) as
+    #     soon as stdout is a pipe rather than a console, so it emits an em-dash
+    #     as b'\x97'. PYTHONIOENCODING forces UTF-8 regardless.
+    #   * the PARENT with text=True alone decodes using that same locale
+    #     codepage, so encoding= has to match what the child now sends.
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
     try:
-        # encoding= is NOT optional: text=True alone decodes with the console
-        # codepage (cp1252 on this machine), which turns validate_integrity.py's
-        # em-dashes into mojibake in every line we echo below.
         res = subprocess.run(cmd, capture_output=True, text=True,
-                             encoding="utf-8", errors="replace")
+                             encoding="utf-8", errors="replace", env=env)
     except OSError as e:
         return False, f"(could not run validate_integrity.py: {e})"
     return res.returncode == 0, (res.stdout or "") + (res.stderr or "")
