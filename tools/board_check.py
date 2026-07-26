@@ -54,13 +54,26 @@ EXPECTED_FLASH = "4MB"  # partitions.csv needs the 4MB layout
 # Known boards in this project, by STA MAC. The AP MAC is normally STA+1, so we
 # match on a prefix-of-5-octets basis too. Sourced from captured telemetry
 # (node_id = NODE_<MAC>) and mesh_config.h's BLACKHOLE_ATTACKER_MAC.
+#
+# Labelled by NODE NUMBER, not COM port. Every board now reports through the one
+# port you happen to plug it into, so answering "COM26" for a board sitting on
+# COM20 reads like a contradiction — and the node number is what you actually
+# type (--label node5 -> child_node5_*.csv) and what the runbooks name boards by
+# ("Boards are identified by -Label, not by COM", LINEAR-RUNBOOK.md).
+# Old port names, kept only so the pre-2026-07-26 tables still decode:
+#   node1=COM20  node2=COM21  node3=COM22  node4=COM25  node5=COM26  node6=COM27
 KNOWN = {
-    "28:05:a5:32:d7:b4": "COM20  (ROOT)",
-    "b0:cb:d8:f3:32:18": "COM26  (blackhole ATTACKER / wormhole Node A)",
-    "f4:2d:c9:73:e6:18": "COM27  (wormhole Node B)",
-    "b4:bf:e9:34:ed:80": "COM21",
-    "b4:bf:e9:32:fe:90": "COM25",
-    "70:4b:ca:25:b7:68": "COM22",
+    "28:05:a5:32:d7:b4": "node1  (ROOT)",
+    "b0:cb:d8:f3:32:18": "node5  (blackhole ATTACKER / wormhole Node A)",
+    "f4:2d:c9:73:e6:18": "node6  (wormhole Node B)",
+    # ⚠️ node2/node4 UNCONFIRMED: ATTACKS-Commands.md's board table has these two
+    # MACs the other way round (its COM25 is our COM21). Nothing in the campaign
+    # depends on it — both are plain victims and all telemetry keys on the MAC —
+    # but the NAME could be swapped. Confirm once by plugging one in and reading
+    # the MAC here, then make ATTACKS-Commands.md agree.
+    "b4:bf:e9:34:ed:80": "node2  (unconfirmed, see roster note)",
+    "b4:bf:e9:32:fe:90": "node4  (unconfirmed, see roster note)",
+    "70:4b:ca:25:b7:68": "node3",
 }
 
 

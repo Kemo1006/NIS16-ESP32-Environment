@@ -135,14 +135,25 @@ holding BOOT, keep the board but expect to hold BOOT on every flash.
 Check 2 reads the STA MAC and matches it against the roster in `board_check.py`, built from
 this project's own captured telemetry (`node_id = NODE_<MAC>`) and `BLACKHOLE_ATTACKER_MAC`:
 
-| MAC | Board |
-|---|---|
-| `28:05:a5:32:d7:b4` | **COM20** — ROOT |
-| `b0:cb:d8:f3:32:18` | **COM26** — blackhole ATTACKER / wormhole Node A |
-| `f4:2d:c9:73:e6:18` | **COM27** — wormhole Node B |
-| `b4:bf:e9:34:ed:80` | **COM21** |
-| `b4:bf:e9:32:fe:90` | **COM25** |
-| `70:4b:ca:25:b7:68` | **COM22** |
+| MAC | Board | (old port name) |
+|---|---|---|
+| `28:05:a5:32:d7:b4` | **node1** — ROOT | COM20 |
+| `b4:bf:e9:34:ed:80` | **node2** ⚠️ | COM21 |
+| `70:4b:ca:25:b7:68` | **node3** | COM22 |
+| `b4:bf:e9:32:fe:90` | **node4** ⚠️ | COM25 |
+| `b0:cb:d8:f3:32:18` | **node5** — blackhole ATTACKER / wormhole Node A | COM26 |
+| `f4:2d:c9:73:e6:18` | **node6** — wormhole Node B | COM27 |
+
+> 🏷️ **Node numbers, not COM ports.** Every board now goes through whichever single port
+> you plug it into, so a board sitting on COM20 that reports "COM26" reads like a
+> contradiction. The node number is what you actually type (`--label node5` →
+> `child_node5_*.csv`) and how the runbooks name boards. The old port names are kept in
+> the last column only so the pre-2026-07-26 placement tables still decode.
+>
+> ⚠️ **node2 / node4 are unconfirmed.** `ATTACKS-Commands.md`'s board table has these two
+> MACs the other way round. Nothing in the campaign depends on it — both are plain victims
+> and every CSV keys on the MAC, not the name — but the *label* may be swapped. Confirm
+> once by plugging one in and reading the MAC here, then make `ATTACKS-Commands.md` agree.
 
 `NOT in the known roster` = a genuine spare. That matters: **`MESH_MAX_LAYER` is now 7**, so a
 7th board can join a LINEAR chain (5 children need depth 6; 6 children need depth 7).

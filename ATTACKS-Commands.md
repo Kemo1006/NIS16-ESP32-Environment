@@ -36,14 +36,26 @@
 
 ### Board STA MACs (read with `esptool.py --port COMxx read_mac`)
 
-| Port | STA MAC | Role note |
-|---|---|---|
-| **COM20** | `28:05:a5:32:d7:b4` | root |
-| **COM26** | `b0:cb:d8:f3:32:18` | **blackhole attacker / wormhole Node A** — this is `BLACKHOLE_ATTACKER_MAC` |
-| **COM27** | `f4:2d:c9:73:e6:18` | wormhole Node B / blackhole victim |
-| **COM25** | `b4:bf:e9:34:ed:80` | control / blackhole victim |
-| **COM22** | *(read it: `.\tools\Get-EspMac.ps1 -Port COM22`)* | control / blackhole victim |
-| **COM21** | `b4:bf:e9:32:fe:90` | control / blackhole victim |
+| Board | STA MAC | old port | Role note |
+|---|---|---|---|
+| **node1** | `28:05:a5:32:d7:b4` | COM20 | root |
+| **node2** ⚠️ | `b4:bf:e9:34:ed:80` | COM21 | control / blackhole victim |
+| **node3** | `70:4b:ca:25:b7:68` | COM22 | control / blackhole victim |
+| **node4** ⚠️ | `b4:bf:e9:32:fe:90` | COM25 | control / blackhole victim |
+| **node5** | `b0:cb:d8:f3:32:18` | COM26 | **blackhole attacker / wormhole Node A** — this is `BLACKHOLE_ATTACKER_MAC` |
+| **node6** | `f4:2d:c9:73:e6:18` | COM27 | wormhole Node B / blackhole victim |
+
+> 🏷️ **Boards are named by node number now, not COM port** — every board reports through
+> whichever single port you plug it into, so the port name stopped identifying anything.
+> `board_check.py` answers in the same vocabulary (`-> node5`), and `--label node5` is what
+> names the CSV. Old port names kept above so the placement diagrams below still decode.
+>
+> ⚠️ **node2 / node4 were swapped here.** Until 2026-07-26 this table listed
+> `b4:bf:e9:34:ed:80` as COM25 and `b4:bf:e9:32:fe:90` as COM21 — the opposite of
+> `board_check.py` and `BOARD-CHECK.md`. The two-source majority is used above. Nothing in
+> the campaign depended on it (both are plain victims, and every CSV keys on the MAC, not
+> the name), but **confirm it once** by plugging one board in and running
+> `python tools\board_check.py --port <port>` before trusting either label.
 
 `BLACKHOLE_ATTACKER_MAC` in `mesh_config.h` is already set to COM26's MAC above
 (`{0xB0, 0xCB, 0xD8, 0xF3, 0x32, 0x18}`). If you ever change which board is the

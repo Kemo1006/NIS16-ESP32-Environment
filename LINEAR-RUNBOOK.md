@@ -411,9 +411,13 @@ Notes:
 The MAC is the only identifier that truly belongs to the board:
 
 ```powershell
-python board_check.py --port COM26
-#  MAC b0:cb:d8:f3:32:18  ->  COM26 (blackhole ATTACKER / wormhole Node A)
+python board_check.py --port COM20
+#  MAC b0:cb:d8:f3:32:18  ->  node5  (blackhole ATTACKER / wormhole Node A)
 ```
+
+> 🏷️ `--port` is just the USB socket it happens to be in; the answer names the **board**.
+> Since every board now goes through the same port, this line is the only thing that tells
+> you which one you're holding — worth reading before you type `--label`.
 
 Worth confirming for the **attacker** especially — `BLACKHOLE_ATTACKER_MAC` is hard-coded in
 `mesh_config.h`, so if the attacker firmware lands on the wrong board every victim will send
