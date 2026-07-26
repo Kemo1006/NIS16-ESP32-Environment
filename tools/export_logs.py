@@ -262,6 +262,23 @@ def _capture_stream(ser: serial.Serial, command: str):
                     return [], payload
                 _render_progress(recv_bytes, total_bytes, len(rows),
                                  start_ts, final=True)
+                if not rows and total_bytes > 0:
+                    # The device announced a real file size and then closed the
+                    # frame without sending a single row. Nothing was lost in
+                    # transit — the board could not read its OWN file. In the
+                    # firmware that is EXPORT_LOGS doing
+                    # fseek(END)/ftell/fseek(SET) then fgets() returning NULL on
+                    # the first call (csv_logger.c), which is why the size is
+                    # right but the payload is empty. Retrying cannot help, so
+                    # say what actually happened instead of reporting a
+                    # transport timeout.
+                    return [], (
+                        f"device announced {_fmt_bytes(total_bytes)} then sent "
+                        f"END_OF_FILE with 0 rows — the BOARD could not read its "
+                        f"own telem.csv (not a cable/serial problem). "
+                        f"Power-cycle the board and export again before it logs "
+                        f"more; if it repeats, the file is unreadable on the "
+                        f"device and only DELETE_LOGS will clear it.")
                 return rows, None
             nl = buf.find(b"\n")
 
@@ -310,7 +327,12 @@ def _capture_with_retries(ser: serial.Serial, command: str):
     instead of a hard failure. Re-reads are safe: the file is untouched until an
     explicit DELETE_LOGS/wipe.
     """
-    best_rows, best_err = [], "no attempt made"
+    # Seed with None, not a placeholder string: when EVERY attempt returns 0
+    # rows the "keep the fullest attempt" test below is 0 > 0 == False, so the
+    # placeholder survived and got reported as the failure reason —
+    # "FAILED after 4 tries: no attempt made" — hiding the real error from the
+    # device. Track the last real error instead.
+    best_rows, best_err = [], None
     for attempt in range(1, EXPORT_ATTEMPTS + 1):
         if attempt > 1:
             # Give the board a moment to settle (a just-closed monitor may have
@@ -326,7 +348,12 @@ def _capture_with_retries(ser: serial.Serial, command: str):
         # Keep the fullest attempt seen so far (more rows == closer to complete).
         if len(rows) > len(best_rows):
             best_rows, best_err = rows, err
-    return best_rows, best_err, EXPORT_ATTEMPTS
+        elif err is not None:
+            # No improvement in rows, but a real reason — keep the latest one so
+            # a run that never gets a single row still reports WHY.
+            best_err = err
+    return best_rows, best_err or "no rows and no error reported by the device", \
+        EXPORT_ATTEMPTS
 
 
 def _list_files(ser: serial.Serial) -> None:

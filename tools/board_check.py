@@ -216,33 +216,54 @@ def check_runtime(port, wait_s):
 #
 # Keep these strings in sync with the ESP_LOGI banners in root_main.c,
 # victim_main.c, blackhole_victim.c and wormhole_victim.c.
+# These four are printed from app_main(), so they appear in the first
+# milliseconds of boot and are always inside the listen window.
 FIRMWARE_SIGNATURES = [
     ("=== BLACKHOLE ATTACKER (relay) STARTING ===",
      "BLACKHOLE ATTACKER  (-Attack blackhole -BlackholeRole attacker)"),
-    ("Blackhole victim mode",
-     "BLACKHOLE VICTIM    (-Attack blackhole -BlackholeRole victim)"),
     ("=== WORMHOLE NODE A (exit) STARTING ===",
      "WORMHOLE NODE A     (-Attack wormhole -WormholeEnd A)"),
     ("=== WORMHOLE NODE B (entry) STARTING ===",
      "WORMHOLE NODE B     (-Attack wormhole -WormholeEnd B)"),
     ("=== ROOT NODE STARTING ===",
      "ROOT                (-Role root)"),
-    ("=== VICTIM NODE STARTING ===",
-     "PLAIN CHILD         (-Role child, no -Attack)"),
 ]
 
+# A blackhole VICTIM is built from the same victim_main.c as a plain child, so
+# at boot BOTH print only "=== VICTIM NODE STARTING ===". The one line that
+# separates them lives in probe_gen_task() (victim_main.c:147, inside
+# #if defined(BLACKHOLE_VICTIM_TARGET)) and is printed only once the mesh is
+# up — typically 10-30 s after reset, well past the default listen window.
+#
+# So the generic banner ALONE proves "a child", never "a plain child".
+# Reporting PLAIN CHILD off it would tell you a blackhole victim was
+# un-attacked firmware, which is exactly the mistake this check exists to catch.
+CHILD_GENERIC_BANNER = "=== VICTIM NODE STARTING ==="
+BLACKHOLE_VICTIM_MARKER = "Blackhole victim mode"
 
-def identify_firmware(text):
+
+def identify_firmware(text, wait_s=None):
     """(variant, how_we_know) from captured boot output. Never guesses."""
     if not text:
         return None, "no output captured"
 
-    hits = [label for sig, label in FIRMWARE_SIGNATURES if sig in text]
-    if hits:
-        # A blackhole/wormhole banner is printed IN ADDITION to the generic
-        # "VICTIM NODE STARTING", so prefer the most specific match — the
-        # attack banners are listed first above.
-        return hits[0], "boot banner"
+    for sig, label in FIRMWARE_SIGNATURES:
+        if sig in text:
+            return label, "boot banner"
+
+    # Mesh is up and the probe task announced its target — now it is provable.
+    if BLACKHOLE_VICTIM_MARKER in text:
+        return ("BLACKHOLE VICTIM    (-Attack blackhole -BlackholeRole victim)",
+                "probe-generator log line")
+
+    if CHILD_GENERIC_BANNER in text:
+        hint = ""
+        if wait_s is not None and wait_s < 60:
+            hint = f"  Re-run with --wait 60 (currently {wait_s:g})."
+        return None, (
+            "a CHILD — but PLAIN CHILD and BLACKHOLE VICTIM are built from the "
+            "same firmware and are identical at boot. The line that separates "
+            "them prints only after the mesh comes up (~10-30 s)." + hint)
 
     # Fallback: LIST_FILES lists arrivals.csv only on a root (csv_logger.c),
     # so it separates root from child even with no banner in the buffer.
@@ -250,7 +271,7 @@ def identify_firmware(text):
         return "ROOT                (-Role root)", "LIST_FILES reply"
     if "FILE:" in text and "telem.csv" in text:
         return None, ("a CHILD of some kind (LIST_FILES shows telem.csv only, "
-                      "no arrivals.csv) — but the attack variant needs the boot "
+                      "no arrivals.csv) — but the variant needs the boot "
                       "banner; power-cycle the board and re-run")
     return None, ("banner not in the captured window — the board booted a while "
                   "ago. Power-cycle it and re-run to catch the banner")
@@ -338,7 +359,7 @@ def main():
     ok4, d4, runtime_text = check_runtime(port, args.wait)
     print(f"[4/4] Firmware runtime ....... {_mark(ok4)}  ({d4})")
 
-    variant, how = identify_firmware(runtime_text)
+    variant, how = identify_firmware(runtime_text, args.wait)
     if variant:
         print(f"      firmware: {variant}   [{how}]")
     else:

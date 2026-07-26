@@ -174,14 +174,48 @@ python board_check.py --port COM20
 
 The variants it distinguishes, and the flags that produce each:
 
-| Reported | Flashed with |
-|---|---|
-| `ROOT` | `-Role root` |
-| `PLAIN CHILD` | `-Role child`, no `-Attack` |
-| `BLACKHOLE ATTACKER` | `-Attack blackhole -BlackholeRole attacker` |
-| `BLACKHOLE VICTIM` | `-Attack blackhole -BlackholeRole victim` |
-| `WORMHOLE NODE A` | `-Attack wormhole -WormholeEnd A` |
-| `WORMHOLE NODE B` | `-Attack wormhole -WormholeEnd B` |
+| Reported | Flashed with | Identified from |
+|---|---|---|
+| `ROOT` | `-Role root` | boot banner — instant |
+| `BLACKHOLE ATTACKER` | `-Attack blackhole -BlackholeRole attacker` | boot banner — instant |
+| `WORMHOLE NODE A` | `-Attack wormhole -WormholeEnd A` | boot banner — instant |
+| `WORMHOLE NODE B` | `-Attack wormhole -WormholeEnd B` | boot banner — instant |
+| `BLACKHOLE VICTIM` | `-Attack blackhole -BlackholeRole victim` | ⏳ **needs `--wait 60`** |
+| `PLAIN CHILD` | `-Role child`, no `-Attack` | ⏳ **cannot be proven — see below** |
+
+### ⚠️ Plain child vs blackhole victim — the one pair it cannot separate quickly
+
+Both are built from the **same** `victim_main.c`, so at boot both print exactly
+`=== VICTIM NODE STARTING ===` and nothing else. The only line that distinguishes them —
+
+```
+Blackhole victim mode: probes -> attacker b0:cb:d8:f3:32:18
+```
+
+— lives in `probe_gen_task()` (`victim_main.c:147`, inside `#if defined(BLACKHOLE_VICTIM_TARGET)`)
+and is printed **only once the mesh is up**, typically 10–30 s after reset. The default 10 s
+listen window ends long before that, so you get:
+
+```
+      firmware: UNDETERMINED — a CHILD — but PLAIN CHILD and BLACKHOLE VICTIM are
+                built from the same firmware and are identical at boot. The line
+                that separates them prints only after the mesh comes up (~10-30 s).
+                Re-run with --wait 60 (currently 10).
+```
+
+**To resolve it, give it longer:**
+
+```powershell
+python board_check.py --port COM20 --wait 60
+```
+
+If the board is a blackhole victim, the marker appears and it reports `BLACKHOLE VICTIM`.
+If nothing appears even at `--wait 60`, it is *most likely* a plain child — but the tool
+still will not claim so, because "no evidence of X" is not proof of "not X".
+
+> 🧠 **Why it refuses to guess.** A confident `PLAIN CHILD` on a board that is really a
+> blackhole victim is the worst possible output here: you would trust it, run the experiment,
+> and only find out from the data. An honest `UNDETERMINED` costs you 50 seconds.
 
 ### Why it has to read the boot banner
 
