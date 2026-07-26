@@ -336,6 +336,34 @@ Unlike the trailing-session rows Phase 7b trims away, this one cannot be fixed i
 | `trim_run.py` | ❌ **cannot** split it. Splitting needs a **timestamp regression** = a reboot. A board powered continuously from Phase 6 into the run never reboots, so idle rows and run rows are **one unbroken session**. |
 | `preprocess.py` | ❌ **won't** drop it. "Rows dropped (contaminated)" counts only malformed rows (UART log lines interleaved during export). `layer = -1` rows are well-formed and survive into `windowed_dataset.csv` — verified. |
 | Net result | Benign-class windows that were never part of any run, indistinguishable from real baseline. |
+| **Worse** | **The oversized log can fill SPIFFS until the board cannot read its own `telem.csv` and the export returns 0 rows.** |
+
+> 🔥 **This is not hypothetical — it cost r2 on 2026-07-26.** The children sat
+> powered through Phases 7–8, so `telem.csv` reached **1.1 MB** for an 11-minute
+> run that should produce ~490 KB. `export_logs.py` then reported:
+>
+> ```
+> [####################] 100.0%  0 B/1.1 MB  0 rows  0 B/s
+> FAILED: device announced 1.1 MB then sent END_OF_FILE with 0 rows
+> ```
+>
+> The size is right (`ftell` worked) but no rows come out (`fgets` returned NULL).
+> Power-cycling does **not** help — the fault is in the filesystem, not a stuck
+> handle. This is [`esp32-issues`](esp32-issues.md) **I-017** recurring, where the
+> cure was a one-time `erase-flash`.
+>
+> ✅ **Recover it before you wipe anything** — `tools/recover_spiffs.py` dumps the
+> raw flash with esptool, bypassing the filesystem entirely:
+>
+> ```powershell
+> cd tools
+> python recover_spiffs.py --port COM20 -o exports\<attack>\<topology>\<name>_telem.csv
+> ```
+>
+> ~70 % of raw rows come back with **zero** corrupt rows. That is enough: M6
+> downsamples to a 1 Hz grid, so a 10 Hz stream missing 30 % still yields a
+> **complete** window set (measured: 134 of 134 windows, 1 discarded).
+> `--delete` / `--wipe` FORMAT the partition — do those only after recovering.
 
 ✅ **The safe order:** Phase 6 export with `--delete` → carry each child back, **unplugged** →
 Phase 7 + 8 at your own pace → **only then** plug all 5 in, wait ~30–60 s, and go to Phase 4 with
