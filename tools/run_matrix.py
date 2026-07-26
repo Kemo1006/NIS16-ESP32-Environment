@@ -329,6 +329,21 @@ def print_status(outdir, repeats, show_unrecorded=True):
     print("!" * 62)
 
 
+def _untrimmed(outdir, topo, attack, files):
+    """Of this cell's raw captures, which are absent from trimmed/.
+
+    The analysis pipeline and the validator both read trimmed/, so a capture that
+    never got trimmed is invisible to every downstream stage even though its raw
+    file sits right there in the cell folder.
+    """
+    trimmed = os.path.join(cell_dir(outdir, topo, attack), "trimmed")
+    if not os.path.isdir(trimmed):
+        return list(files)
+    present = {os.path.basename(p)
+               for p in glob.glob(os.path.join(trimmed, "*.csv"))}
+    return [f for f in files if f not in present]
+
+
 def record(outdir, topo, attack, rep, do_validate, sample_interval_ms):
     files = find_files(outdir, topo, attack, rep)
     if not files:
@@ -350,6 +365,25 @@ def record(outdir, topo, attack, rep, do_validate, sample_interval_ms):
             return 1
 
     if do_validate:
+        # validate_cell() validates the whole trimmed/ FOLDER, not this cell. If the
+        # cell was exported but never trimmed, that folder holds some OTHER repeat --
+        # which passes, and the cell gets marked done while its own data was never
+        # checked and is absent from the analysis input.
+        #
+        # Seen on star/blackhole/r2 (2026-07-27): raw had r1+r2 (14 files), trimmed
+        # had r1 only (7). --autorecord validated r1's arrivals file, printed
+        # "7 PASS / 0 FAIL", and recorded r2.
+        missing = _untrimmed(outdir, topo, attack, files)
+        if missing:
+            print(f"(!) {len(missing)} file(s) for {topo}/{attack}/r{rep} are NOT in "
+                  f"trimmed/ — validation would check a different repeat's data:")
+            for fn in sorted(missing)[:8]:
+                print(f"      {fn}")
+            print(f"    Run:  python tools\\trim_run.py "
+                  f"{cell_dir(outdir, topo, attack)} --apply")
+            print("    then re-run this command.")
+            return 1
+
         ok, out = validate_cell(outdir, topo, attack, sample_interval_ms)
         tail = out.strip().splitlines()[-6:] if out.strip() else []
         for ln in tail:
