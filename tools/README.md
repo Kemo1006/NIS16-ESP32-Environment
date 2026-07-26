@@ -132,12 +132,21 @@ anything earlier (1 Hz).
 >     info: phase 3 (cooldown): 483 probes from 4 victim(s) over 120s = 4.01/s (101% of baseline)
 > ```
 >
-> `info:` lines never affect status. It still WARNs on what genuinely matters: a
-> missing baseline or cooldown, a cooldown rate that collapsed against this run's
-> own baseline, a victim that probed at baseline and never came back, and — the
-> one that would otherwise pass silently — **probes still arriving during the
-> attack window** above `ATTACK_LEAK_TOLERANCE` (50 % of baseline), meaning the
-> drop never took hold.
+> `info:` lines never affect status. It still WARNs on a missing baseline or
+> cooldown, a cooldown rate that collapsed against this run's own baseline, and a
+> victim that probed at baseline and never came back.
+>
+> ⚠️ **The two attacks look OPPOSITE in this file, so the check reads
+> `ATTACK_SIGNATURE` before judging the attack window:**
+>
+> | attack | signature | fails when |
+> |---|---|---|
+> | `blackhole` | probes **stop** — 0 rows during the window | arrivals stay above `ATTACK_LEAK_TOLERANCE` (50 % of baseline) → the drop never took hold |
+> | `wormhole` | probes arrive **twice** — same `(src_mac, seq_num)` replayed out of the UART tunnel, so arrivals go *above* baseline | zero duplicates → the tunnel delivered nothing (check the wire with `uart_link_test`) |
+>
+> Judging a wormhole by the blackhole's rule marks a perfect capture broken:
+> `linear/wormhole/r1` warned *"125 % of baseline — the attack did not take
+> effect"* when that 125 % **was** the tunnel working.
 
 ---
 

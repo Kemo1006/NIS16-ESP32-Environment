@@ -78,7 +78,15 @@ OVER_TOLERANCE = 2.0    # > 200% of nominal -> suspiciously stuck/duplicated
 # window, as a fraction of that same run's baseline arrival rate. Some leakage is
 # normal (packets already queued when the phase flips); more than this means the
 # drop never really took hold and the run does not show the attack.
+# Applies to DROP-signature attacks only — see ATTACK_SIGNATURE.
 ATTACK_LEAK_TOLERANCE = 0.5
+
+# What the attack does to the root's arrivals log — the two are opposites, and a
+# check written for one declares a perfect capture of the other broken:
+#   drop      blackhole  probes STOP arriving (0 rows during the window)
+#   duplicate wormhole   probes arrive TWICE (Node B's are replayed out of the
+#                        UART tunnel, so arrivals go ABOVE baseline)
+ATTACK_SIGNATURE = {"blackhole": "drop", "wormhole": "duplicate"}
 
 # gt_label ground-truth encoding: every node in a run carries the SAME per-phase
 # label (verified uniform across root / attacker / control-victim / wormhole
@@ -217,10 +225,12 @@ def _check_schema_and_monotonicity(path, kind, report):
 
 
 def _phase_stats(rows, header):
-    """Per-phase (count, span_s, distinct src_macs) straight off the rows."""
+    """Per-phase count / span / rate / src_macs, plus the (src_mac, seq_num)
+    multiset needed to spot the wormhole's duplicate deliveries."""
     ts_idx = header.index("timestamp_us")
     ph_idx = header.index("phase_id")
     mac_idx = header.index("src_mac") if "src_mac" in header else None
+    seq_idx = header.index("seq_num") if "seq_num" in header else None
 
     stats = {}
     for fields in rows:
@@ -229,16 +239,84 @@ def _phase_stats(rows, header):
             ts = int(fields[ts_idx])
         except (ValueError, IndexError):
             continue
-        st = stats.setdefault(phase, {"count": 0, "lo": ts, "hi": ts, "macs": set()})
+        st = stats.setdefault(phase, {"count": 0, "lo": ts, "hi": ts,
+                                      "macs": set(), "pairs": {}})
         st["count"] += 1
         st["lo"] = min(st["lo"], ts)
         st["hi"] = max(st["hi"], ts)
         if mac_idx is not None and mac_idx < len(fields):
-            st["macs"].add(fields[mac_idx])
+            mac = fields[mac_idx]
+            st["macs"].add(mac)
+            if seq_idx is not None and seq_idx < len(fields):
+                key = (mac, fields[seq_idx])
+                st["pairs"][key] = st["pairs"].get(key, 0) + 1
     for st in stats.values():
         st["span_s"] = (st["hi"] - st["lo"]) / 1e6
         st["rate_hz"] = st["count"] / st["span_s"] if st["span_s"] > 0 else 0.0
+        # A probe the root logged more than once = the same (src_mac, seq_num)
+        # delivered twice: once over the mesh, once out of the wormhole tunnel.
+        st["dup_rows"] = sum(n - 1 for n in st["pairs"].values() if n > 1)
+        st["dup_macs"] = sorted({mac for (mac, _), n in st["pairs"].items() if n > 1})
     return stats
+
+
+def _check_attack_phase(phase_id, st, count, base, base_rate, attack, report):
+    """Did the attack actually happen? Judged by ITS OWN signature."""
+    name = PHASE_NAMES[phase_id]
+
+    if ATTACK_SIGNATURE.get(attack) == "duplicate":
+        # Wormhole: Node B's probes are tunnelled over UART and replayed, so the
+        # root logs the same (src_mac, seq_num) twice. Volume alone proves
+        # nothing — a wormhole that delivers ONE copy is indistinguishable from
+        # no attack at all, so test the duplicates, not the rate.
+        if count == 0:
+            report.warn(
+                f"phase {phase_id} ({name}) has 0 probe arrivals — a wormhole "
+                f"duplicates traffic, it does not stop it; the mesh was down or "
+                f"the capture is truncated"
+            )
+            return
+        dup = st["dup_rows"]
+        rate_txt = (f"{count} probes at {st['rate_hz']:.2f}/s = "
+                    f"{st['rate_hz'] / base_rate:.0%} of baseline" if base_rate
+                    else f"{count} probes")
+        if dup == 0:
+            report.warn(
+                f"phase {phase_id} ({name}): {rate_txt}, but NOT ONE probe "
+                f"arrived twice — "
+                f"the tunnel delivered nothing. Check the UART wire "
+                f"(uart_link_test) and that Node A's probes_count is climbing"
+            )
+            return
+        uniq = len(st["pairs"])
+        report.info(
+            f"phase {phase_id} ({name}): {rate_txt}; {dup} of them are DUPLICATE "
+            f"deliveries of {uniq} unique probes (x{count / uniq:.2f}) from "
+            f"{', '.join(st['dup_macs'])} — the expected wormhole signature"
+        )
+        if base["dup_rows"]:
+            report.warn(
+                f"phase 0 (baseline) already had {base['dup_rows']} duplicate "
+                f"probe arrival(s) before the tunnel opened — the duplication in "
+                f"phase {phase_id} is not attributable to the wormhole alone"
+            )
+        return
+
+    # Blackhole (default): the attack means probes STOP reaching the root.
+    if count == 0:
+        report.info(
+            f"phase {phase_id} ({name}): 0 probes reached the root — total drop, "
+            f"the expected attack signature (baseline was {base_rate:.2f}/s)"
+        )
+        return
+    leak = st["rate_hz"] / base_rate if base_rate else 0.0
+    msg = (f"phase {phase_id} ({name}): {count} probes still reached the root at "
+           f"{st['rate_hz']:.2f}/s = {leak:.0%} of baseline")
+    if leak > ATTACK_LEAK_TOLERANCE:
+        report.warn(msg + " — the attack did not take effect; check the "
+                          "attacker's tx_count is flat across this phase")
+    else:
+        report.info(msg + " (partial drop)")
 
 
 def _check_arrivals_coverage(rows, header, attack, report):
@@ -291,24 +369,14 @@ def _check_arrivals_coverage(rows, header, attack, report):
             continue
 
         if is_attack_phase:
-            # THE measurement of the run. Zero is success, not truncation.
-            if count == 0:
-                report.info(
-                    f"phase {phase_id} ({PHASE_NAMES[phase_id]}): 0 probes reached "
-                    f"the root — total drop, the expected attack signature "
-                    f"(baseline was {base_rate:.2f}/s)"
-                )
-                continue
-            leak = st["rate_hz"] / base_rate if base_rate else 0.0
-            msg = (
-                f"phase {phase_id} ({PHASE_NAMES[phase_id]}): {count} probes still "
-                f"reached the root at {st['rate_hz']:.2f}/s = {leak:.0%} of baseline"
-            )
-            if leak > ATTACK_LEAK_TOLERANCE:
-                report.warn(msg + " — the attack did not take effect; check the "
-                                  "attacker's tx_count is flat across this phase")
-            else:
-                report.info(msg + " (partial drop)")
+            # THE measurement of the run — and the two attacks look OPPOSITE here,
+            # so the test has to know which one it is looking at. A blackhole
+            # DROPS (arrivals fall to zero); a wormhole DUPLICATES (arrivals rise
+            # above baseline as Node B's probes land twice). Scoring the wormhole
+            # with the blackhole's rule called a textbook capture a failure:
+            # linear/wormhole/r1 warned "125% of baseline — the attack did not
+            # take effect" when that 125% WAS the tunnel working. See 2026-07-26.md.
+            _check_attack_phase(phase_id, st, count, base, base_rate, attack, report)
             continue
 
         # Benign phase (cooldown): probes should flow again at ~the baseline rate.
