@@ -297,7 +297,7 @@ This is the step `-Analyze` skips, and the whole reason to go manual:
 Get-ChildItem tools\exports\baseline\linear_topology
 python tools\trim_run.py tools\exports\baseline\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 ```
 
@@ -947,7 +947,7 @@ cd ..
 Get-ChildItem tools\exports\baseline\linear_topology
 python tools\trim_run.py tools\exports\baseline\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 ```
 
@@ -1060,7 +1060,7 @@ cd ..
 Get-ChildItem tools\exports\blackhole\linear_topology
 python tools\trim_run.py tools\exports\blackhole\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\blackhole\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\blackhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\blackhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\blackhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 ```
 
@@ -1226,7 +1226,7 @@ cd ..
 Get-ChildItem tools\exports\wormhole\linear_topology
 python tools\trim_run.py tools\exports\wormhole\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\wormhole\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\wormhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\wormhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\wormhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 ```
 

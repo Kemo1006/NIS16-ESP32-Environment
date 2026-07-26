@@ -899,14 +899,31 @@ def main():
 
     print()
     print("── Feature NaN Counts ──────────────────────────────")
+    total = len(feature_table)
+    has_nodes = "node_id" in feature_table.columns
     for col, n in nan_counts.items():
-        flag = " [RELAY-NODE ONLY: needs a blackhole run]" \
-            if col in FEATURES_BLOCKED_ON_FIRMWARE else ""
-        flag = " [ATTACKER-ONLY: needs a wormhole run]" \
-            if col.startswith("Tunnel") else flag
-        flag = " [relative one-way delay — see thesis-deviate.md]" \
-            if col == "LatencyHopRatio" else flag
-        print(f"  {col}: {n}/{len(feature_table)} NaN{flag}")
+        # The hint used to be static text keyed only on the column NAME, so a
+        # wormhole run printed "TunnelIntensity: 1616/2470 NaN [ATTACKER-ONLY:
+        # needs a wormhole run]" while that very column held 854 real values on
+        # both tunnel ends. Read literally it says the attack never happened.
+        # Describe what the data actually shows instead.
+        if n == total:
+            if col in FEATURES_BLOCKED_ON_FIRMWARE:
+                flag = " [all-NaN — RELAY-NODE ONLY: needs a blackhole run]"
+            elif col.startswith("Tunnel"):
+                flag = " [all-NaN — TUNNEL-END ONLY: needs a wormhole run]"
+            else:
+                flag = " [all-NaN]"
+        elif n:
+            carriers = (feature_table.loc[feature_table[col].notna(), "node_id"].nunique()
+                        if has_nodes else 0)
+            flag = (f" [{total - n} value(s) on {carriers} node(s) — "
+                    f"not applicable elsewhere]")
+        else:
+            flag = ""
+        if col == "LatencyHopRatio":
+            flag += " [relative one-way delay — see thesis-deviate.md]"
+        print(f"  {col}: {n}/{total} NaN{flag}")
     print("─────────────────────────────────────────────────────")
 
 

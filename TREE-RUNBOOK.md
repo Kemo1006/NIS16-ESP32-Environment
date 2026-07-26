@@ -225,7 +225,7 @@ cd ..
 Get-ChildItem tools\exports\baseline\tree_topology
 python tools\trim_run.py tools\exports\baseline\tree_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\tree_topology --apply     # -> ...\tree_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\baseline\tree_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\baseline\tree_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\baseline\tree_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 ```
 
@@ -441,7 +441,7 @@ cd ..
 Get-ChildItem tools\exports\baseline\tree_topology      # expect 7 files BEFORE analyzing
 python tools\trim_run.py tools\exports\baseline\tree_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\tree_topology --apply     # -> ...\tree_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\baseline\tree_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\baseline\tree_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\baseline\tree_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 cd analysis
 python preprocess.py ..\tools\exports\baseline\tree_topology\trimmed -o baseline\tree_topology\windowed_dataset.csv
@@ -517,7 +517,7 @@ cd ..
 Get-ChildItem tools\exports\blackhole\tree_topology      # expect 7 files BEFORE analyzing
 python tools\trim_run.py tools\exports\blackhole\tree_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\blackhole\tree_topology --apply     # -> ...\tree_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\blackhole\tree_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\blackhole\tree_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\blackhole\tree_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 cd analysis
 python preprocess.py ..\tools\exports\blackhole\tree_topology\trimmed -o blackhole\tree_topology\windowed_dataset.csv
@@ -629,7 +629,7 @@ cd ..
 Get-ChildItem tools\exports\wormhole\tree_topology      # expect 7 files BEFORE analyzing
 python tools\trim_run.py tools\exports\wormhole\tree_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\wormhole\tree_topology --apply     # -> ...\tree_topology\trimmed\ (raw untouched)
-(Get-ChildItem tools\exports\wormhole\tree_topology\trimmed\*.csv).Count   # MUST be 7 — a short count silently NaNs out PDR/latency
+(Get-ChildItem tools\exports\wormhole\tree_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
 Get-Content tools\exports\wormhole\tree_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
 cd analysis
 python preprocess.py ..\tools\exports\wormhole\tree_topology\trimmed -o wormhole\tree_topology\windowed_dataset.csv
