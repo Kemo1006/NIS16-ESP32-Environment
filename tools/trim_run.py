@@ -306,9 +306,45 @@ def main():
             print("  NOTE: point preprocess.py / features.py at that folder —")
             print("        it is the COMPLETE analysis input (trimmed files plus")
             print("        untouched copies of anything that needed no trimming).")
-    else:
+    if not args.in_place:
+        _warn_on_stale_outputs(paths, out_dir)
+    if not args.apply:
         print("  (dry run — nothing written. Re-run with --apply)")
     return 0
+
+
+def _warn_on_stale_outputs(source_paths, out_dir):
+    """Flag files sitting in trimmed/ whose raw source no longer exists.
+
+    This folder is written but never cleaned, so anything deleted or renamed
+    upstream leaves its trimmed copy behind — and every analysis tool reads the
+    FOLDER, not a file list, so the orphan is silently picked up.
+
+    Cost of not saying it, from star/wormhole/r1 (2026-07-26): a bad arrivals
+    export was deleted from the raw folder and re-pulled correctly, but the bad
+    trimmed copy stayed. features.py then loaded BOTH arrivals files and died on
+    the stale one, after the re-export had already fixed the problem. The
+    duplicate root telem in the same folder was quietly inflating the root's
+    window count to 264 against ~155 for every other node.
+
+    Warn rather than delete: this folder holds derived data, but it is one
+    command away from being someone's only copy if a raw export went missing.
+    """
+    try:
+        present = {os.path.basename(p) for p in glob.glob(os.path.join(out_dir, "*.csv"))}
+    except OSError:
+        return
+    expected = {os.path.basename(p) for p in source_paths}
+    stale = sorted(present - expected)
+    if not stale:
+        return
+    print()
+    print(f"  [!] {len(stale)} STALE file(s) in {os.path.abspath(out_dir)}")
+    print("      — present in the output folder but with no matching raw source.")
+    print("      Every analysis tool reads this folder, so these WILL be loaded:")
+    for name in stale:
+        print(f"        {name}")
+    print("      Delete them, or re-trim into a clean folder, before analysing.")
 
 
 if __name__ == "__main__":
