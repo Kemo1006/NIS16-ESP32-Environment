@@ -1,38 +1,48 @@
-# 🎬 M2 Demo Script — Application-Layer Attack Modules (15%)
+# 🎬 M2 Demo Script — Application-Layer Attack Module Implementation (15%)
 
-> ## ⚠️ Criteria not yet supplied
-> Unlike M1, **I don't have M2's criteria text.** Everything below is built from the milestone
-> scope in `2026-07-24.md` and the evidence in your repo. **Paste M2's criteria and I'll map
-> each one precisely** — the evidence won't change, only which bullet it answers.
->
-> Working assumption: *both attacks implemented at the application layer, producing observable
-> and distinguishable signatures at the root.*
+> ## 📋 The four criteria *(quoted from your Milestones Form)*
+> 1. **Blackhole:** root logs show the expected drop in arrivals during the attack window and
+>    normal arrivals before and after.
+> 2. **Wormhole:** root logs show duplicate probe arrivals **with measurable latency
+>    difference** during the attack window.
+> 3. Both attacks **toggle cleanly on phase transitions**; no leakage into baseline windows.
+> 4. Behavior is **consistent across all four topologies**.
 
-> ## 🎯 The framing that wins this milestone
-> **Each attack is measured twice — by the attacker's own counters, and independently by the
-> root's arrivals log. Different boards. Different files. Agreeing numbers.**
->
-> Say the words *"two independent measurements"* out loud. That's the phrase that separates
-> "we ran an attack" from "we measured an attack."
+## 🎯 Verdict: 3 of 4 fully met · criterion 4 is at 2 of 4 topologies
 
----
+| # | Criterion | Evidence | Status |
+|:-:|---|---|:--:|
+| 1 | Blackhole drop, normal before/after | root arrivals **1436 → 0 → 483** | ✅ |
+| 2 | Duplicates **with latency difference** | 181 pairs, median **9.8 ms** mismatch | ✅ |
+| 3 | Clean toggle, no baseline leakage | **0 duplicates** in baseline, every run | ✅ |
+| 4 | Consistent across **all four** topologies | linear ✅ star ✅ · tree & partial pending | ⚠️ **2/4** |
 
-## 📋 What M2 covers *(and what it doesn't)*
-
-| In scope | Out of scope |
-|---|---|
-| `blackhole_victim.c` — relay that drops | Multi-topology deployment → **M3** |
-| `wormhole_victim.c` — UART tunnel, Node A + Node B | Repeats / the 24-run matrix → **M4** |
-| Attack signatures visible in telemetry | Detection rules or thresholds → not this thesis phase |
-
-> 🗣️ *"M1 built the platform with no attack code. M2 adds the two attack modules. Deploying
-> them across four topologies is M3, and replicating each three times is M4."*
+> 🗣️ **Open with the framing:** *"The ESP32 Wi-Fi stack is closed-source binary, so both attacks
+> are emulated at the **application layer** using normal `esp_mesh_send` and `esp_mesh_recv` —
+> no raw 802.11 frames are touched. That's a deliberate constraint, and it means the mesh
+> control plane is never modified: the effect is cleanly attributable to the attack."*
 
 ---
 
-# 🔴 PART 1 · Blackhole — the drop signature
+# ✅ CRITERION 1 · Blackhole — drop during attack, normal before and after
 
-## 📊 SLIDE 1 — Attacker counters, `blackhole · star · r1`
+## 📊 SLIDE 1 — What the root logged *(the criterion asks for root logs specifically)*
+
+`blackhole · linear · r3` — root's `arrivals.csv`:
+
+| phase | probes arriving at root | rate |
+|---|---:|---|
+| 0 · baseline | **1436** | 3.99 /s |
+| **1 · ATTACK** | **0** | — |
+| 3 · cooldown | **483** | 4.02 /s |
+
+> 🗣️ *"The criterion asks for a drop during the attack window with normal arrivals either side.
+> **1436 in baseline, zero during the attack, 483 in cooldown** — and the cooldown rate matches
+> baseline at about four probes per second. That's the drop, and the recovery."*
+
+## 📊 SLIDE 2 — The attacker's own counters agree
+
+`blackhole · star · r1` — the attacker board:
 
 | phase | probes received | tx (forwarded) | retry (dropped) |
 |---|---:|---:|---:|
@@ -40,165 +50,215 @@
 | **1 · ATTACK** | 1455 → **2176** | **1453 → 1453** | 2 → **723** |
 | 3 · cooldown | 2176 → 2657 | 1453 → 1934 | 723 → 723 |
 
-> 🗣️ *"During the attack window the relay **received 721 probes and dropped 721**. Look at the
-> forwarded column — **1453 to 1453**, flat to the digit, for the full three minutes. Then in
-> cooldown it starts forwarding again and the counter resumes climbing."*
+> 🗣️ *"**721 received, 721 dropped, zero forwarded.** The forwarded counter is flat to the digit
+> for the full three minutes — that's the attacker silently not calling `esp_mesh_send`. Two
+> independent measurements: the attacker's own counters and the root's arrivals log, on
+> different boards writing different files."*
 
-💡 **Point at the `tx` column.** A flat counter between two climbing ones is the whole story.
+💡 Say the words **"two independent measurements."**
 
-## 📊 SLIDE 2 — The independent confirmation
-
-Same run, **different board, different file** — the root's arrivals log:
-
-| phase | probes arriving at root |
-|---|---:|
-| 0 · baseline | 1436 |
-| **1 · ATTACK** | **0** |
-| 3 · cooldown | 483 |
-
-> 🗣️ *"The attacker says it dropped 721. The root — a separate device writing a separate file —
-> says **zero probes arrived** during that window. Two independent measurements of the same
-> event, in exact agreement. In cooldown the attacker forwards 484 and the root logs 483; one
-> was still in flight when the phase ended."*
-
-## 🎥 CLIP CUE — the relay identifying itself *(~15 s)*
+## 🎥 CLIP CUE — how victims are pointed at the attacker *(~15 s)*
 ```
 === BLACKHOLE ATTACKER (relay) STARTING ===
-This is the blackhole ATTACKER. Set BLACKHOLE_ATTACKER_MAC on the victim
-boards to my STA MAC: b0:cb:d8:f3:32:18
+Set BLACKHOLE_ATTACKER_MAC on the victim boards to my STA MAC: b0:cb:d8:f3:32:18
 ```
-And on any victim:
 ```
 Blackhole victim mode: probes -> attacker b0:cb:d8:f3:32:18
 ```
-
-> 🗣️ *"Victims are **compiled** to address their probes to the attacker's MAC. That's what makes
-> this an application-layer attack — the relay sits in the probe path by addressing, not by
-> manipulating mesh routing. It never changes the control plane."*
+> 🗣️ *"Victims are **compiled** to address probes to the attacker's MAC — the behavioural
+> equivalent of a false short-route advertisement, without touching routing."*
 
 ---
 
-# 🔵 PART 2 · Wormhole — the duplicate signature
+# ✅ CRITERION 2 · Wormhole — duplicates WITH measurable latency difference
 
-## 📊 SLIDE 3 — Both tunnel ends, `wormhole · star · r2`
+> ⚠️ **The latency half of this criterion is easy to forget.** Duplicates alone don't satisfy
+> it — the form asks for a *measurable latency mismatch*. You have one. Show it.
 
-| node | role | phase 0 | **phase 2 (attack)** | phase 3 |
-|---|---|---|---|---|
-| node5 | **Node A** (exit) | probes 0 → 0 | probes **0 → 180** | 180 → 180 |
-| node6 | **Node B** (entry) | retry 0 → 0 | retry **0 → 180** | 180 → 180 |
+## 📊 SLIDE 3 — Duplicate arrivals
 
-> 🗣️ *"Node B is the tunnel entry — its counter climbs by exactly **180** during the attack
-> window. Node A is the exit — it replays exactly **180**. Both are zero in baseline. The two
-> ends of a physical wire, agreeing."*
-
-## 📊 SLIDE 4 — What the root sees, and how often
-
-| run | duplicate deliveries | multiplicity | source | dupes in baseline |
+| run | duplicate pairs | multiplicity | source | dupes in baseline |
 |---|---:|---:|---|---:|
 | linear · r1 | 181 | ×2.00 | Node B | **0** |
 | linear · r3 | 181 | ×2.00 | Node B | **0** |
 | star · r1 | 180 | ×2.00 | Node B | **0** |
 | star · r2 | 180 | ×2.00 | Node B | **0** |
 
-> 🗣️ *"The root receives the identical `(src_mac, seq_num)` pair **twice** — once over the mesh,
-> once replayed out of the tunnel. Detection here is **exact, not statistical**. Four runs, two
-> different topologies, the same result. And **zero duplicates in baseline or cooldown in every
-> single run** — so it isn't background retransmission."*
+## 📊 SLIDE 4 — The latency mismatch ⭐ *criterion 2's second half*
 
-## 🎥 CLIP CUE — the two tunnel ends booting *(~10 s)*
+Difference in `latency_us` between the **two copies of the same probe**:
+
+| run | pairs | median mismatch | min | max |
+|---|---:|---:|---:|---:|
+| linear · r1 | 181 | **9.77 ms** | 1.14 ms | 1224 ms |
+| linear · r3 | 181 | **8.84 ms** | 0.98 ms | 2187 ms |
+| star · r2 | 180 | **12.51 ms** | 4.02 ms | 124 ms |
+
+> 🗣️ *"Both copies are the same logical probe, so they share a send timestamp — which means the
+> difference in recorded latency is **purely the difference in arrival time** between the
+> multi-hop path and the wormhole shortcut. Median mismatch is **roughly 9 to 12
+> milliseconds**, on every run. That's the measurable latency difference the criterion asks
+> for.*
+>
+> *The maxima are outliers where a mesh copy was delayed by retries — which is itself the
+> expected behaviour, since the tunnel is a wire and the mesh path is contended."*
+
+## 🎥 CLIP CUE — the two tunnel ends *(~10 s)*
 ```
 === WORMHOLE NODE A (exit) STARTING ===
 === WORMHOLE NODE B (entry) STARTING ===
 ```
 
+## 📊 SLIDE 5 — Both ends of the tunnel agree
+
+`wormhole · star · r2`:
+
+| node | role | phase 0 | **phase 2 (attack)** | phase 3 |
+|---|---|---|---|---|
+| node5 | **Node A** (exit, near root) | 0 → 0 | probes **0 → 180** | 180 → 180 |
+| node6 | **Node B** (entry, near victims) | 0 → 0 | retry **0 → 180** | 180 → 180 |
+
+> 🗣️ *"Node B captures probe metadata and ships it over the UART link — CRC-protected. Node A
+> reconstructs a replica and re-injects it toward root through the legitimate mesh path. **B
+> counted 180 in, A counted 180 out**, and the root then logged 180 duplicates. Three
+> independent counts of the same event."*
+
 ---
 
-# ⭐ PART 3 · The slide that shows you understand your own work
+# ✅ CRITERION 3 · Clean toggle, no leakage into baseline
 
-## 📊 SLIDE 5 — The two attacks are opposites
+## 📊 SLIDE 6 — The toggle is exact
+
+| | baseline | attack window | cooldown |
+|---|---:|---:|---:|
+| **Blackhole** — forwarded | climbing | **flat (1453→1453)** | climbing again |
+| **Blackhole** — root arrivals | 1436 | **0** | 483 |
+| **Wormhole** — duplicates | **0** | **180–181** | **0** |
+
+> 🗣️ *"No leakage in either direction. The blackhole forwards normally right up to the phase
+> boundary and resumes immediately after. The wormhole produces **exactly zero** duplicates in
+> baseline and cooldown across all four runs — so the duplication is attributable to the attack
+> window alone, not to background retransmission."*
+
+💡 This is the slide that makes the labels trustworthy: attack-phase rows really are attack, and
+benign rows really are benign.
+
+---
+
+# ⚠️ CRITERION 4 · Consistent across all four topologies — **2 of 4**
+
+## 📊 SLIDE 7 — Be direct about this
+
+| Topology | Blackhole signature | Wormhole signature |
+|---|:--:|:--:|
+| ➖ Linear | ✅ 720/720/0, root 0 | ✅ 181 dupes |
+| ⭐ Star | ✅ 721/721/0, root 0 | ✅ 180 dupes |
+| 🌳 Tree | 🔴 pending | 🔴 pending |
+| 🕸️ Partial | 🔴 pending | 🔴 pending |
+
+> 🗣️ *"Two of four topologies so far, and the signature reproduced **identically** on both —
+> which is the substantive point. The wormhole came out at 181 on linear and 180 on star, and
+> the blackhole at zero root arrivals in both. Tree and partial are pending runtime, not method:
+> it's the same firmware with a different build flag.*
+>
+> *One reason we expect consistency: the blackhole works by **addressing** — victims send to the
+> attacker's MAC regardless of mesh position. And the wormhole tunnel is a **physical wire**, so
+> its behaviour doesn't depend on how far apart the two nodes end up. Neither mechanism is
+> topology-sensitive by construction."*
+
+> 💡 That last paragraph is the strongest thing you can say here. It explains **why** the
+> remaining two topologies are expected to match, without claiming they already do.
+
+---
+
+# ⭐ SLIDE 8 — The two attacks are opposites *(don't cut this)*
 
 | | Blackhole | Wormhole |
 |---|---|---|
-| **Mechanism** | relay silently drops | out-of-band UART tunnel replays |
-| **Effect on root traffic** | ⬇️ falls to **zero** | ⬆️ rises to **125 %** of baseline |
-| **Signature** | absence | exact duplication |
-| **Detection** | count arrivals | match `(src_mac, seq_num)` |
+| **Mechanism** | attacker stops calling `esp_mesh_send` | UART tunnel replays a replica probe |
+| **Effect at root** | ⬇️ arrivals fall to **zero** | ⬆️ arrivals rise to **125 %** of baseline |
+| **Signature** | absence | exact duplication + latency mismatch |
+| **How you detect it** | count arrivals | match `(src_mac, seq_num)` |
 
-> 🗣️ *"These are opposite signatures, and that matters for the dataset: a detector tuned to
-> 'traffic dropped' would completely miss the wormhole, because wormhole traffic goes **up**.
-> Having both in one dataset is what makes it useful."*
-
-> 💡 This slide is why a panel will believe you designed the dataset rather than just collected
-> it. It also pre-empts *"why does your attack increase traffic?"* — the most common M2 question.
+> 🗣️ *"Opposite signatures. A detector tuned to 'traffic dropped' would completely miss the
+> wormhole, because wormhole traffic goes **up**. Having both in one dataset is what makes it
+> useful for detection research."*
 
 ---
 
-## 📄 OPTIONAL — the code
-`child_node/main/blackhole_victim.c`, header comment. Four lines state the relay model:
-forward during baseline and cooldown, drop during the attack phase, never touch mesh routing.
+## 🗣️ The 2-minute M2 script
 
----
-
-## 🗣️ The 90-second M2 script
-
-> *"M2 adds the two attack modules to the platform M1 built.*
+> *"The ESP32 Wi-Fi stack is closed-source binary, so both attacks are emulated at the
+> application layer with normal mesh send and receive calls — no raw 802.11 frames.*
 >
-> *The blackhole is a relay. Victims are compiled to send probes to its MAC; it forwards them
-> normally, then drops them during the attack window. \[slide 1] **721 received, 721 dropped,
-> zero forwarded** — the forwarded counter is flat to the digit. \[slide 2] And independently,
-> the root logged **zero arrivals** in that same window. Two boards, two files, exact agreement.*
+> *\[slide 1] Blackhole: the root logged **1436 arrivals in baseline, zero during the attack,
+> 483 in cooldown**. \[slide 2] And the attacker's own counters say 721 received, 721 dropped,
+> zero forwarded — flat to the digit. Two independent measurements.*
 >
-> *The wormhole is the opposite. \[slide 3] Node B captures probes and ships them over a
-> physical UART cable to Node A, which replays them — so the root receives the same packet
-> twice and traffic goes **up**, not down. \[slide 4] **181, 181, 180, 180 duplicates across
-> four runs and two topologies**, with zero duplicates in baseline every time.*
+> *\[slide 3] Wormhole: **181 duplicate probe arrivals**, reproduced at 181, 180 and 180 across
+> four runs. \[slide 4] And the criterion asks for a measurable latency difference — the two
+> copies of each probe arrive **about 9 to 12 milliseconds apart**, median, on every run.*
 >
-> *\[slide 5] Opposite signatures — one is absence, the other is duplication. That's what makes
-> both worth having in one dataset."*
+> *\[slide 5] Both tunnel ends agree independently: Node B counted 180 in, Node A 180 out.*
+>
+> *\[slide 6] Both attacks toggle cleanly — **zero duplicates in baseline and cooldown**, so
+> there's no leakage into the benign windows.*
+>
+> *\[slide 7] Two of four topologies so far, with identical signatures on both. Tree and partial
+> are pending runtime — and neither mechanism is topology-sensitive by construction, because the
+> blackhole works by addressing and the wormhole runs over a wire."*
 
 ---
 
 ## 🛡️ M2 questions
 
 **"Why does the wormhole increase traffic instead of decreasing it?"** ⭐ *most likely*
-> *"Because the tunnel is out-of-band. Probes still take their normal mesh path **and** a copy
-> arrives through the UART wire, so the root sees both. The blackhole removes traffic; the
+> *"Because the tunnel is out-of-band. The probe still takes its normal mesh path **and** a
+> replica arrives through the UART shortcut, so the root sees both. Blackhole removes traffic;
 > wormhole duplicates it."*
 
-**"Could those duplicates just be retransmissions?"**
-> *"No. A retransmission would appear in baseline too, and baseline has **exactly zero**
-> duplicates in every run. They also all come from one source MAC — Node B, the tunnel entry.
-> And both tunnel-end boards independently counted 180."*
+**"You only have two topologies — criterion 4 says four."** ⭐ *expect this*
+> *"Correct, that one is at two of four. What I can show is that the signature is **identical**
+> on both — 181 duplicates on linear, 180 on star, zero root arrivals under blackhole in both.
+> And neither mechanism is topology-sensitive by construction: the blackhole works by
+> addressing, and the wormhole tunnel is a physical wire. Tree and partial are runtime, and
+> they're next."*
 
-**"How do you know the attacker dropped them rather than failing to send?"**
-> *"Because `probes_count` kept climbing — it was still receiving. Received rose by 721,
-> forwarded stayed flat, and the drop counter rose by exactly 721. A send failure would show
-> received flat too, or an error path in the log."*
+**"Is 9 milliseconds really 'measurable'?"**
+> *"It's measured directly in the data — both copies carry the same send timestamp, so the
+> difference in recorded latency is purely the arrival-time gap. Median 9 to 12 milliseconds
+> with a minimum around 1 millisecond, across 180-odd pairs per run. And it's consistently
+> positive: the tunnel path and the mesh path never arrive together."*
 
-**"Is this a realistic attack?"**
-> *"It's the application-layer form of both attacks. A real blackhole might also poison routing;
-> ours drops at the application layer so the mesh control plane stays untouched and the effect is
-> cleanly attributable. That's a deliberate scoping choice for a dataset — one variable at a
-> time."*
+**"Could those duplicates be retransmissions?"**
+> *"No. Retransmissions would appear in baseline too, and baseline has **exactly zero**
+> duplicates in every run. They all come from one source MAC — Node B, the tunnel entry — and
+> both tunnel-end boards independently counted 180."*
 
-**"Why is the wormhole a physical cable?"**
-> *"It models the out-of-band link a wormhole requires. Because it's a wire, its behaviour
-> doesn't depend on how far apart the two nodes end up in the mesh — which is why the signature
-> reproduced identically on linear and star."*
+**"How do you know the attacker dropped rather than failed to send?"**
+> *"`probes_count` kept climbing — it was still receiving. Received rose by 721, forwarded
+> stayed flat, drops rose by exactly 721. A send failure would show received flat too."*
 
-**"Where's the attacker's own telemetry in the dataset?"**
-> *"The attacker logs the same 11-column schema as every node — its `role` column reads
-> `blackhole` or `wormhole_a`/`wormhole_b`. The relay-specific features like `ForwardingRatio`
-> populate only on those rows, which is by design per Table 4.12."*
+**"Is CRC actually checked on the tunnel?"**
+> *"Yes — metadata is CRC-protected over the UART link so a corrupted transfer is detected
+> rather than replayed as a bad probe."*
+
+**"Isn't application-layer emulation less realistic than a real routing attack?"**
+> *"It's a deliberate constraint — the Wi-Fi stack is closed-source binary, so raw frame
+> injection isn't available. The upside for a dataset is that the mesh control plane is never
+> modified, so the observed effect is cleanly attributable to the attack rather than to routing
+> side-effects."*
 
 ---
 
 ## ✅ M2 checklist
 
-- [ ] Slides 1 + 2 side by side — the two independent measurements
-- [ ] Slides 3 + 4 — tunnel ends and the four-run reproduction
-- [ ] Slide 5 — the opposites table *(don't skip; it pre-empts the top question)*
-- [ ] Clip cued to the blackhole attacker + victim banners
-- [ ] Know cold: **721 / 721 / 0** · **181 · 181 · 180 · 180** · **0 dupes in baseline**
-- [ ] Can explain **why wormhole traffic rises** without notes
-- [ ] Ready to say *"M3 deploys these across topologies; M4 replicates them"* if asked about coverage
+- [ ] Slides 1 + 2 — root log **and** attacker counters *(criterion 1)*
+- [ ] Slides 3 + 4 — duplicates **and** latency mismatch *(criterion 2 — don't forget half 2)*
+- [ ] Slide 6 — the clean-toggle table *(criterion 3)*
+- [ ] Slide 7 — topology coverage, stated plainly *(criterion 4, the gap)*
+- [ ] Slide 8 — the opposites table
+- [ ] Clip cued: blackhole banner + victim line + both wormhole banners
+- [ ] Know cold: **1436 → 0 → 483** · **721/721/0** · **181·181·180·180** · **~9–12 ms**
+- [ ] Rehearse the criterion-4 answer — *"identical on both, and neither mechanism is
+      topology-sensitive by construction"*

@@ -19,13 +19,20 @@ if (Test-Path $log) { Remove-Item $log -Force }
 
 # The distinct firmware variants. Each differs by the compile flags it is built with,
 # which is what makes it a separate "variant" for the milestone.
+# Flag values taken from run.ps1:223-237 and child_node/main/CMakeLists.txt:
+#   ACTIVE_ATTACK=255 -> baseline / plain victim (M1 firmware)
+#   ACTIVE_ATTACK=1   -> blackhole  (BLACKHOLE_ROLE 0 = attacker relay, 1 = victim)
+#   ACTIVE_ATTACK=2   -> wormhole   (WORMHOLE_END  0 = Node A exit, 1 = Node B entry)
+# Getting these wrong silently builds the WRONG firmware and still reports BUILD OK —
+# an earlier version of this script used ACTIVE_ATTACK=1 for the wormhole rows, so it
+# compiled the blackhole attacker twice and labelled it "WORMHOLE".
 $variants = @(
-    @{ Name = "ROOT";              Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=1","-DMESH_TOPOLOGY=0") }
-    @{ Name = "CHILD plain";       Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=0","-DMESH_TOPOLOGY=0") }
-    @{ Name = "BLACKHOLE attacker";Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=0","-DMESH_TOPOLOGY=0") }
-    @{ Name = "BLACKHOLE victim";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0") }
-    @{ Name = "WORMHOLE Node A";   Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0") }
-    @{ Name = "WORMHOLE Node B";   Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0") }
+    @{ Name = "ROOT";               Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
+    @{ Name = "CHILD plain";        Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
+    @{ Name = "BLACKHOLE attacker"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=0","-DMESH_TOPOLOGY=0") }
+    @{ Name = "BLACKHOLE victim";   Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0") }
+    @{ Name = "WORMHOLE Node A";    Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0") }
+    @{ Name = "WORMHOLE Node B";    Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0") }
 )
 
 $results = @()
@@ -37,7 +44,15 @@ foreach ($v in $variants) {
     $bld = "build_check_" + ($v.Name -replace '[^A-Za-z0-9]','_')
 
     Push-Location $dir
-    $out = & idf.py -B $bld @($v.Flags) build 2>&1 | Out-String
+    # Splat via a plain variable. `@($v.Flags)` is an array SUBEXPRESSION, not a splat:
+    # PowerShell passed both -D flags to the native exe as one argument, producing
+    #   -DACTIVE_ATTACK="1 -DMESH_TOPOLOGY=0"
+    # which root_main.c's `#if ACTIVE_ATTACK` rejects with
+    #   error: token "=" is not valid in preprocessor expressions
+    # The child builds survived it only because they don't evaluate that macro the
+    # same way — so the bug looked like "ROOT is broken" when nothing was.
+    $flags = @($v.Flags)
+    $out = & idf.py -B $bld @flags build 2>&1 | Out-String
     $code = $LASTEXITCODE
     Pop-Location
 
@@ -52,11 +67,17 @@ foreach ($v in $variants) {
     $warnings = ([regex]::Matches($out, '(?m)^.*:\d+:\d+:\s+warning:')).Count
     $errors   = ([regex]::Matches($out, '(?m)^.*:\d+:\d+:\s+error:')).Count
 
+    # Confirm CMake selected the source file we expected. A wrong flag value can build
+    # a DIFFERENT variant and still exit 0, which would make this whole table a lie.
+    $srcMatch = [regex]::Match($out, 'Building (?:the )?([A-Za-z0-9_ ]+?)(?: firmware)?\s*\(')
+    $selected = if ($srcMatch.Success) { $srcMatch.Groups[1].Value.Trim() } else { "" }
+
     $results += [pscustomobject]@{
         Variant  = $v.Name
         Result   = if ($code -eq 0) { "BUILD OK" } else { "FAILED" }
         Warnings = $warnings
         Errors   = $errors
+        Selected = $selected
     }
 }
 
