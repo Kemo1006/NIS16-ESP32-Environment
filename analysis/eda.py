@@ -59,6 +59,7 @@ Usage:
 
 from __future__ import annotations
 
+import glob
 import os
 import sys
 import warnings
@@ -799,7 +800,37 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     summary["tunnel_end_projection_plot"] = tunnel_path
     summary["tunnel_end_projection"] = tunnel_result
 
+    summary["orphan_plots"] = _find_orphan_timeseries(df, output_dir)
+
     return summary
+
+
+def _find_orphan_timeseries(df: pd.DataFrame, output_dir: str) -> list[str]:
+    """Per-run plots in output_dir whose source file is no longer in the table.
+
+    The aggregate outputs (stats, correlation, PCA) are recomputed from
+    feature_table.csv on every run, so they always reflect the current dataset.
+    The per-run time-series PNGs are not: they are written once per source file
+    and never removed, so a capture that gets archived or re-exported leaves its
+    plot behind. The folder then shows more runs than the dataset contains, and
+    nothing says which are real.
+
+    Found on wormhole/star (2026-07-27): the first star r1 attempt was archived
+    after being re-run, but its 6 time-series plots stayed in eda_output/ — 18
+    plots for a 12-file dataset, 6 of them depicting a discarded run.
+
+    Reported, not deleted — same reasoning as trim_run.py's stale check.
+    """
+    if "source_file" not in df.columns:
+        return []
+    current = {os.path.splitext(str(s))[0] for s in df["source_file"].unique()}
+    prefix = "timeseries_"
+    orphans = []
+    for path in sorted(glob.glob(os.path.join(output_dir, prefix + "*.png"))):
+        stem = os.path.basename(path)[len(prefix):-len(".png")]
+        if stem not in current:
+            orphans.append(os.path.basename(path))
+    return orphans
 
 
 def main():
@@ -838,6 +869,14 @@ def main():
               f"tunnel features kept: {tunnel_info.get('tunnel_columns_kept') or 'none'}")
     else:
         print(f"  Tunnel-end projection:   skipped — {tunnel_info.get('skipped', 'n/a')}")
+    orphans = summary.get("orphan_plots") or []
+    if orphans:
+        print(f"  [!] {len(orphans)} STALE per-run plot(s) — source no longer in the "
+              f"feature table (archived or re-exported run):")
+        for name in orphans:
+            print(f"        {name}")
+        print("      Aggregate outputs are current; delete these so the folder "
+              "matches the dataset.")
     print(f"  All outputs in:          {args.output_dir}/")
     print("───────────────────────────────────────────────────────")
 
