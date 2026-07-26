@@ -117,11 +117,27 @@ baseline/linear capture made earlier that day, or
 `--sample-interval-ms 50` for 2026-07-12..07-25 captures (20 Hz) or `1000` for
 anything earlier (1 Hz).
 
-> ℹ️ **Known false positive on `*_arrivals.csv`.** The phase-coverage check assumes a
-> periodic sampler, but arrivals are an **event log** — one row per probe that
-> actually reached the root. In a blackhole run `phase 1 (blackhole) has 0 rows` is
-> the *deliverable*, not truncation. These come out as WARN, which does not block
-> `run_matrix.py --record`.
+> ℹ️ **`*_arrivals.csv` gets its own coverage check.** It is an **event log** — one
+> row per probe that actually reached the root — not a periodic sample, so scoring
+> it against the telemetry rate is meaningless: it flagged every healthy capture at
+> ratio ~0.4 and called the attack phase's 0 rows "possible truncation" when that
+> zero is the *deliverable*. Since 2026-07-26 arrivals files instead report the
+> measured probe rate per phase and test truncation against **their own baseline
+> rate**, so a clean run reads:
+>
+> ```
+> [PASS] root_node1_linear_blackhole_r3_..._arrivals.csv
+>     info: phase 0 (baseline): 1436 probes from 4 victim(s) over 360s = 3.98/s (reference rate)
+>     info: phase 1 (blackhole): 0 probes reached the root — total drop, the expected attack signature
+>     info: phase 3 (cooldown): 483 probes from 4 victim(s) over 120s = 4.01/s (101% of baseline)
+> ```
+>
+> `info:` lines never affect status. It still WARNs on what genuinely matters: a
+> missing baseline or cooldown, a cooldown rate that collapsed against this run's
+> own baseline, a victim that probed at baseline and never came back, and — the
+> one that would otherwise pass silently — **probes still arriving during the
+> attack window** above `ATTACK_LEAK_TOLERANCE` (50 % of baseline), meaning the
+> drop never took hold.
 
 ---
 

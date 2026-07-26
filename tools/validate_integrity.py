@@ -74,6 +74,11 @@ ATTACK_TO_PHASE = {"blackhole": 1, "wormhole": 2}
 
 UNDER_TOLERANCE = 0.5   # < 50% of nominal duration's rows -> suspected truncation
 OVER_TOLERANCE = 2.0    # > 200% of nominal -> suspiciously stuck/duplicated
+# For *_arrivals.csv only: probes still reaching the root DURING the attack
+# window, as a fraction of that same run's baseline arrival rate. Some leakage is
+# normal (packets already queued when the phase flips); more than this means the
+# drop never really took hold and the run does not show the attack.
+ATTACK_LEAK_TOLERANCE = 0.5
 
 # gt_label ground-truth encoding: every node in a run carries the SAME per-phase
 # label (verified uniform across root / attacker / control-victim / wormhole
@@ -87,7 +92,8 @@ PHASE_TO_LABEL = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0}
 LABEL_MISMATCH_FAIL_FRACTION = 0.01
 # arrivals.csv aggregates probe arrivals from ALL victims in the mesh (root
 # receives ~1 row/sec PER victim, not one total), so its row count legitimately
-# scales with node count. Only the under-tolerance (truncation) check applies.
+# scales with node count AND with how often the victims probe. Neither is known
+# here, so it gets its own check entirely — see _check_arrivals_coverage.
 
 # Attacker firmware self-identifies with a distinct role string instead of
 # "victim" (blackhole_victim.c / wormhole_victim.c) — both are legitimate
@@ -110,12 +116,19 @@ class FileReport:
         self.path = path
         self.fails = []
         self.warns = []
+        self.infos = []
 
     def fail(self, msg):
         self.fails.append(msg)
 
     def warn(self, msg):
         self.warns.append(msg)
+
+    def info(self, msg):
+        """A measurement worth printing that is NOT a problem. Never affects
+        status — used by the arrivals check to report the probe rate it found
+        instead of warning about a count it has no nominal for."""
+        self.infos.append(msg)
 
     @property
     def status(self):
@@ -203,12 +216,128 @@ def _check_schema_and_monotonicity(path, kind, report):
     return rows, phase_counts
 
 
+def _phase_stats(rows, header):
+    """Per-phase (count, span_s, distinct src_macs) straight off the rows."""
+    ts_idx = header.index("timestamp_us")
+    ph_idx = header.index("phase_id")
+    mac_idx = header.index("src_mac") if "src_mac" in header else None
+
+    stats = {}
+    for fields in rows:
+        try:
+            phase = int(fields[ph_idx])
+            ts = int(fields[ts_idx])
+        except (ValueError, IndexError):
+            continue
+        st = stats.setdefault(phase, {"count": 0, "lo": ts, "hi": ts, "macs": set()})
+        st["count"] += 1
+        st["lo"] = min(st["lo"], ts)
+        st["hi"] = max(st["hi"], ts)
+        if mac_idx is not None and mac_idx < len(fields):
+            st["macs"].add(fields[mac_idx])
+    for st in stats.values():
+        st["span_s"] = (st["hi"] - st["lo"]) / 1e6
+        st["rate_hz"] = st["count"] / st["span_s"] if st["span_s"] > 0 else 0.0
+    return stats
+
+
+def _check_arrivals_coverage(rows, header, attack, report):
+    """Phase coverage for *_arrivals.csv, which is an EVENT LOG — not a sampler.
+
+    telem.csv is written by a periodic sampler, so "rows vs duration x rate" is a
+    sound truncation test. arrivals.csv holds one row per probe that actually
+    REACHED the root, arriving at whatever rate the victims probe (~1 Hz each,
+    so ~4 Hz for a four-victim mesh) — a rate this script cannot know in advance.
+    Scoring it against the 10 Hz telemetry rate flagged every healthy capture at
+    ratio ~0.4, and reported the attack phase's 0 rows as "missing phase,
+    possible truncation" when that zero IS the result the run exists to produce
+    (Milestone 2: "zero forwarded probes reach the root during the attack
+    window"). Three WARNs on a perfect capture, every repeat. See 2026-07-26.md.
+
+    So: measure the probe rate per phase and report it, and test for truncation
+    against the file's OWN baseline rate rather than a fixed nominal.
+    """
+    attack_phase = ATTACK_TO_PHASE.get(attack)
+    stats = _phase_stats(rows, header)
+
+    base = stats.get(0)
+    if not base or not base["count"]:
+        report.warn(
+            "phase 0 (baseline) has 0 probe arrivals — the root logged no probes "
+            "before the attack window, so there is no reference rate. Capture is "
+            "truncated or no victim was probing."
+        )
+        return
+    base_rate = base["rate_hz"]
+    report.info(
+        f"phase 0 (baseline): {base['count']} probes from {len(base['macs'])} "
+        f"victim(s) over {base['span_s']:.0f}s = {base_rate:.2f}/s (reference rate)"
+    )
+
+    for phase_id in sorted(PHASE_DURATION_S):
+        if phase_id == 0:
+            continue
+        st = stats.get(phase_id)
+        count = st["count"] if st else 0
+        is_attack_phase = phase_id in ATTACK_TO_PHASE.values()
+
+        # Some other attack's phase: any rows here mean phase-id bleed. Unchanged.
+        if is_attack_phase and phase_id != attack_phase:
+            if count > 0:
+                report.warn(
+                    f"phase {phase_id} ({PHASE_NAMES[phase_id]}) has {count} rows "
+                    f"but filename attack='{attack}' — unexpected phase bleed"
+                )
+            continue
+
+        if is_attack_phase:
+            # THE measurement of the run. Zero is success, not truncation.
+            if count == 0:
+                report.info(
+                    f"phase {phase_id} ({PHASE_NAMES[phase_id]}): 0 probes reached "
+                    f"the root — total drop, the expected attack signature "
+                    f"(baseline was {base_rate:.2f}/s)"
+                )
+                continue
+            leak = st["rate_hz"] / base_rate if base_rate else 0.0
+            msg = (
+                f"phase {phase_id} ({PHASE_NAMES[phase_id]}): {count} probes still "
+                f"reached the root at {st['rate_hz']:.2f}/s = {leak:.0%} of baseline"
+            )
+            if leak > ATTACK_LEAK_TOLERANCE:
+                report.warn(msg + " — the attack did not take effect; check the "
+                                  "attacker's tx_count is flat across this phase")
+            else:
+                report.info(msg + " (partial drop)")
+            continue
+
+        # Benign phase (cooldown): probes should flow again at ~the baseline rate.
+        if count == 0:
+            report.warn(
+                f"phase {phase_id} ({PHASE_NAMES[phase_id]}) has 0 probe arrivals — "
+                f"expected traffic to resume at ~{base_rate:.2f}/s (missing phase, "
+                f"possible truncation)"
+            )
+            continue
+        ratio = st["rate_hz"] / base_rate if base_rate else 0.0
+        line = (f"phase {phase_id} ({PHASE_NAMES[phase_id]}): {count} probes from "
+                f"{len(st['macs'])} victim(s) over {st['span_s']:.0f}s = "
+                f"{st['rate_hz']:.2f}/s ({ratio:.0%} of baseline)")
+        if ratio < UNDER_TOLERANCE:
+            report.warn(line + " — rate collapsed vs this run's own baseline, "
+                               "possible truncation")
+        elif st["macs"] < base["macs"]:
+            report.warn(
+                line + f" — victim(s) {sorted(base['macs'] - st['macs'])} probed "
+                f"during baseline but never returned after the attack"
+            )
+        else:
+            report.info(line)
+
+
 def _check_phase_coverage(phase_counts, attack, kind, sample_interval_ms, report):
     attack_phase = ATTACK_TO_PHASE.get(attack)
-    # arrivals.csv aggregates ~1 row/sec PER VICTIM (root receives from every
-    # node), so its counts legitimately exceed the single-node nominal — only
-    # check for truncation (too few), never "too many".
-    check_upper_bound = kind != "arrivals"
+    check_upper_bound = True
     rate_hz = 1000.0 / sample_interval_ms
 
     for phase_id, duration_s in PHASE_DURATION_S.items():
@@ -376,7 +505,12 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms):
             _check_role_consistency(rows, EXPECTED_HEADERS[kind], meta, report)
             _check_label_integrity(rows, EXPECTED_HEADERS[kind], report)
             if meta:
-                _check_phase_coverage(phase_counts, meta["attack"], kind, sample_interval_ms, report)
+                if kind == "arrivals":
+                    _check_arrivals_coverage(rows, EXPECTED_HEADERS[kind],
+                                             meta["attack"], report)
+                else:
+                    _check_phase_coverage(phase_counts, meta["attack"], kind,
+                                          sample_interval_ms, report)
 
         digest = _sha256(path)
         size = os.path.getsize(path)
@@ -429,6 +563,8 @@ def main():
             print(f"    FAIL: {msg}")
         for msg in r.warns:
             print(f"    WARN: {msg}")
+        for msg in r.infos:
+            print(f"    info: {msg}")
 
     print(
         f"\n{len(reports)} file(s) — {counts['PASS']} PASS, {counts['WARN']} WARN, "
