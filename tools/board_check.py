@@ -277,6 +277,32 @@ def identify_firmware(text, wait_s=None):
                   "ago. Power-cycle it and re-run to catch the banner")
 
 
+# csv_logger.c prints this at every boot:
+#   "SPIFFS mounted. Total: %u KB  Used: %u KB"
+# It is the single most useful number for predicting an export failure. SPIFFS
+# read/write performance collapses as it fills: at 70% full the boards logged at
+# 0.75 Hz with corrupt lines (esp32-issues I-017), and on 2026-07-26 three
+# boards could no longer read their own telem.csv at all — EXPORT_LOGS announced
+# the right size then returned 0 rows. Checking this BEFORE a run costs seconds;
+# discovering it after costs the run.
+SPIFFS_RE = re.compile(r"SPIFFS mounted\.\s*Total:\s*(\d+)\s*KB\s+Used:\s*(\d+)\s*KB")
+SPIFFS_WARN_PCT = 50.0
+
+
+def spiffs_usage(text):
+    """(used_kb, total_kb, pct) from the boot banner, or None if not seen."""
+    m = SPIFFS_RE.search(text or "")
+    if not m:
+        return None
+    # Field order is Total then Used — csv_logger.c:79 prints
+    # "SPIFFS mounted. Total: %u KB  Used: %u KB". Reading them the other way
+    # round reports a nearly-empty board as nearly full.
+    total, used = int(m.group(1)), int(m.group(2))
+    if total <= 0:
+        return None
+    return used, total, used * 100.0 / total
+
+
 def identify(mac):
     if not mac:
         return "unknown (MAC not read)"
@@ -364,6 +390,20 @@ def main():
         print(f"      firmware: {variant}   [{how}]")
     else:
         print(f"      firmware: UNDETERMINED — {how}")
+
+    usage = spiffs_usage(runtime_text)
+    if usage:
+        used, total, pct = usage
+        flag = "  <-- TOO FULL" if pct >= SPIFFS_WARN_PCT else "  (healthy)"
+        print(f"      SPIFFS:   {used} / {total} KB used ({pct:.0f}%){flag}")
+        if pct >= SPIFFS_WARN_PCT:
+            print("                A full SPIFFS makes the board unable to read")
+            print("                its own telem.csv — EXPORT_LOGS then announces")
+            print("                the right size and returns 0 rows. Clear it")
+            print("                BEFORE the run: -Wipe -Flash (guaranteed), or")
+            print("                export_logs.py --wipe (verify it acks).")
+    else:
+        print("      SPIFFS:   not reported — power-cycle to catch the boot banner")
 
     print("\n" + "-" * 62)
     if ok2 and ok3 and ok4:
