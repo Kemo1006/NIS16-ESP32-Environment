@@ -1,78 +1,187 @@
-# 🎬 M5 Demo Script — Raw Data Extraction & Integrity Validation (10%)
+# 🎬 M5 — Raw Data Extraction and Integrity Validation (10%)
 
-> ## ⚠️ Criteria not yet supplied
-> **I don't have M5's criteria text.** Everything below is built from the milestone name and
-> the tooling in your repo. **Paste M5's criteria and I'll map each bullet precisely.**
+> ## 📋 Scope + criteria *(quoted)*
+> **Extraction:**
+> - Pull CSV files from each ESP32 via USB serial after each run.
+> - Store with run metadata (topology, attack type, repeat number, collection date).
 >
-> Working assumption: *telemetry reliably extracted from device flash over USB, and validated
-> for integrity before entering the dataset.*
-
-> ## 🎯 The framing
-> **"Nothing enters the dataset unvalidated."** M5 is where you demonstrate research rigour
-> rather than results — and it's the milestone that answers *"how do we know your data is
-> genuine?"* before anyone asks it.
-
----
-
-## 📊 SLIDE 1 — The extraction pipeline
-
-```
-board ──USB──▶ export_logs.py ──▶ trim_run.py ──▶ validate_integrity.py ──▶ ledger
-               schema guard        session split     5 checks + SHA-256
-```
-
-> 🗣️ *"Telemetry is written to each board's internal flash during the run — nothing streams to
-> the laptop. Afterwards we pull each CSV over USB serial, split out the experiment run, and
-> validate it. Only then does it count toward the matrix."*
-
----
-
-## 📊 SLIDE 2 — What `trim_run.py` does, and why it's safe
-
-> 🗣️ *"The firmware appends to one file across boots, and the rows carry no run ID. So an
-> export contains the experiment **plus** a short session from when we plug the board in to
-> export it. `trim_run.py` splits on **timestamp regressions** — the clock going backwards is
-> an unambiguous reboot — and keeps the longest segment.*
+> **Validation script checks:**
+> - **Sample coverage** — at least **95 %** of expected samples per node at the configured rate.
+> - **Phase labels populated** for every log row.
+> - **No file corruption or premature truncation.**
 >
-> *Two safety properties: it's a **dry run by default**, and `--apply` writes trimmed **copies**
-> into a separate folder. **The raw captures are never modified.**"*
+> **Criteria:**
+> - Validation report confirms **at least 24 clean runs** in the final dataset.
+> - Any run failing validation is **flagged for repeat collection**.
 
-Live output:
-```
-child_node5_star_wormhole_r2_...telem.csv
-    8420 data rows, 2 boot session(s)
-      session 1: rows 7415  span 763.4s  <-- KEEPING (longest)
-      session 2: rows 1005  span 100.9s
-    wrote 7415 row(s), dropped 1005 -> trimmed/...
-```
+## 🎯 Verdict
 
-💡 Good 15-second answer to *"aren't you throwing data away?"* — you're separating the run
-from the export session, and the raw file still holds both.
+| Requirement | Result | Status |
+|---|---|:--:|
+| Pull CSVs via USB serial | `export_logs.py`, 7 files per run | ✅ |
+| Store with run metadata | encoded in every filename | ✅ |
+| **Check: coverage ≥95 %** | measured **95.5–97.3 %** | ✅ |
+| **Check: phase labels every row** | label-integrity check, 0 failures | ✅ |
+| **Check: no corruption / truncation** | schema + monotonicity, 0 failures | ✅ |
+| ≥24 clean runs | **11 of 24** | ⚠️ |
+| Failing runs flagged for repeat | 4 guards, all fire at source | ✅ |
 
----
-
-## 📊 SLIDE 3 — The five integrity checks
-
-| # | Check | Catches |
-|:-:|---|---|
-| 1 | Schema width & row consistency | truncated or garbled rows |
-| 2 | Phase coverage vs expected rate | a run that ended early |
-| 3 | Timestamp monotonicity | an un-split reboot |
-| 4 | Label integrity vs phase→label map | a mislabelled row |
-| 5 | **SHA-256 manifest** | any later modification |
-
-```
-21 file(s) — 21 PASS, 0 WARN, 0 FAIL
-Manifest: .../trimmed/manifest.json
-```
-
-> 🗣️ *"Five checks on every file. **Every recorded cell across the whole matrix is
-> zero-FAIL.**"*
+> 🎯 **Framing:** *"Nothing enters the dataset unvalidated."* This is the milestone where you
+> demonstrate rigour rather than results — and it pre-answers *"how do we know your data is
+> genuine?"*
 
 ---
 
-## 📄 SLIDE 4 — The manifest ⭐ *your strongest artifact for "is this genuine?"*
+## 📦 EXTRACTION · Pull via USB + store with metadata
 
+### 📍 COMMAND — show the filenames
+```powershell
+Get-ChildItem tools\exports\wormhole\star_topology\*.csv | Select-Object -First 3 Name
+```
+```
+child_node5_star_wormhole_r2_20260727_022510_telem.csv
+   │        │      │        │    │        │       └ kind
+   │        │      │        │    │        └ collection time
+   │        │      │        │    └ collection date
+   │        │      │        └ repeat number
+   │        │      └ attack type
+   │        └ topology
+   └ role + node
+```
+
+> 🗣️ *"Every file carries its run metadata **in the filename** — role, node, topology, attack
+> type, repeat number and collection date. That's not just for humans: the tooling parses it,
+> which is how `--autorecord` knows which matrix cell a capture belongs to."*
+
+### 🎥 CLIP — the export itself
+Search your recording for `EXPORT_LOGS`:
+```
+-> EXPORT_LOGS ...
+   [####################] 100.0%  528 KB/469 KB  7301 rows  4 KB/s
+   saved 7300 data rows -> ...\child_node5_star_wormhole_r2_...telem.csv
+```
+
+---
+
+## ✅ CHECK 1 · Sample coverage ≥ 95 %
+
+### 📍 COMMAND
+```powershell
+python tools\validate_integrity.py tools\exports\baseline\linear_topology\trimmed
+```
+
+### 📋 SCREENSHOT
+```
+[PASS] child_node2_linear_none_r1_20260725_225635_telem.csv
+    info: sample coverage 97.1% of expected (4533 rows over 467s)
+[PASS] root_node1_linear_none_r1_20260725_233705_telem.csv
+    info: sample coverage 95.6% of expected (4598 rows over 481s)
+```
+
+> 🗣️ *"The criterion names a 95 percent floor, so the validator measures it directly — actual
+> rows against span times the configured 10 Hz. Across every capture we get **95.5 to 97.3
+> percent**. The shortfall is FreeRTOS scheduling jitter, not lost samples, and the root sits
+> lowest because it also runs the probe sink and the phase broadcaster."*
+
+💡 Honest detail worth adding: *"this check is separate from phase coverage, which uses a wider
+tolerance and targets a different failure — a missing phase. A node logging the whole run at 8
+Hz would pass that one and fail this one."*
+
+---
+
+## ✅ CHECK 2 · Phase labels populated for every row
+
+### 📍 COMMAND — same run, look at what passes silently
+```powershell
+python tools\validate_integrity.py tools\exports\blackhole\linear_topology\trimmed
+```
+📋 `21 file(s) — 21 PASS, 0 WARN, 0 FAIL` — the label check is one of the five.
+
+### 📄 SHOW the columns it validates
+```powershell
+Get-Content tools\exports\blackhole\linear_topology\trimmed\child_node2_linear_blackhole_r3_20260726_164256_telem.csv -TotalCount 2
+```
+```
+timestamp_us,...,phase_id,gt_label
+4752825,...,0,0
+                ↑    ↑
+          phase_id  gt_label
+```
+
+> 🗣️ *"Every row carries a `phase_id` and a `gt_label`, and the validator checks the label
+> against the phase-to-label map on **every row** — baseline and cooldown must be 0, blackhole
+> 1, wormhole 2. A single mislabelled row would fail the file."*
+
+---
+
+## ✅ CHECK 3 · No corruption or premature truncation
+
+📋 Same output. Two of the five checks cover this:
+
+| Check | Catches |
+|---|---|
+| **Schema width** | a truncated or garbled row |
+| **Timestamp monotonicity** | an un-split reboot mid-file |
+
+### 📍 COMMAND — show truncation being caught in practice
+```powershell
+python tools\trim_run.py tools\exports\wormhole\star_topology
+```
+📋 Screenshot a `[!] repeated capture` block and a session split:
+```
+[!] repeated capture: 2 header block(s), all telem schema — the export streamed this file 2x.
+    session 1: rows 6321  span 661.6s  <-- KEEPING (longest)
+```
+
+> 🗣️ *"The firmware appends to one file across boots, so an export contains the run **plus** the
+> short session from plugging the board in. `trim_run.py` splits on timestamp regressions — a
+> clock going backwards is an unambiguous reboot — and keeps the longest segment. It's a **dry
+> run by default** and writes **copies**, so raw captures are never modified."*
+
+---
+
+## ⚠️ CRITERION · Validation report confirms ≥24 clean runs — **11 of 24**
+
+### 📍 COMMAND ⚡ *safe to run live*
+```powershell
+python tools\run_matrix.py --status
+```
+```
+Progress: 11/24 runs collected (Milestone-4 minimum is 24)
+```
+
+### 📄 AND the report behind it
+```powershell
+Get-Content tools\exports\run_ledger.csv | Select-Object -First 5
+```
+
+> 🗣️ *"Eleven cells validated clean. A cell **can't be ticked by hand** — `--record` runs the
+> validator first and refuses on any failure. So this number means eleven runs whose data passed
+> every integrity check, not eleven attempts."*
+
+---
+
+## ✅ CRITERION · Failing runs flagged for repeat collection ⭐ *your strongest slide*
+
+Four guards, each from a real failure during collection:
+
+| Failure | Guard | Where it fires |
+|---|---|---|
+| Device streamed the **wrong file** | schema checked at capture; quarantined as `.rejected`, `--delete` suppressed so the board keeps its copy | `export_logs.py` |
+| **Stale derived files** after a re-export | flagged when a raw source disappears | `trim_run.py` |
+| **Duplicate capture** double-counting a node | flagged before analysis | `trim_run.py` |
+| **Cell recorded whose files were never trimmed** | refuses to record; prints the trim command | `run_matrix.py` |
+
+### 📍 COMMAND — show a guard actually firing
+```powershell
+python tools\run_matrix.py --record --topology tree --attack blackhole --repeat 1
+```
+📋 Refuses — no capture exists for that cell.
+
+### 📋 The manifest — the audit trail
+```powershell
+Get-Content tools\exports\wormhole\star_topology\trimmed\manifest.json | Select-Object -First 8
+```
 ```json
 {
   "child_node2_star_wormhole_r1_20260727_014200_telem.csv": {
@@ -80,109 +189,81 @@ Manifest: .../trimmed/manifest.json
     "sha256": "4df9c60cf014bf1bee9c26f128ce0f8afbbc0c1d6ef771c67f284f373d20dd2c",
     "size_bytes": 518330
   }
-}
 ```
 
-> 🗣️ *"Every capture is hashed at validation time and locked into a manifest — filename, row
-> count, size, and a SHA-256 digest. If a single byte changes afterwards, the next validation
-> fails. Combined with the version-controlled repository history, that's the integrity trail
-> for the whole dataset."*
+> 🗣️ *"Each of these corrupted a dataset at least once during collection. The duplicate-capture
+> one produced **no error at all** — one node counted twice, 264 windows against about 155 for
+> every other node, and every total still looked plausible. That's the failure mode that matters
+> most for a dataset, because nothing announces it.*
+>
+> *The fourth we added today: a cell was recorded while its files had never been trimmed, so the
+> validator checked a **different repeat's** data and passed. Now it refuses and tells you which
+> files are missing.*
+>
+> *And every validated file is SHA-256 hashed into a manifest — if a byte changes afterwards,
+> the next validation fails."*
 
 ---
 
-## 📊 SLIDE 5 — Three silent corruptions, each now caught at source ⭐ *your differentiator*
-
-Most projects don't have this slide. It shows you found your own failures.
-
-| Failure that occurred during collection | Now caught by |
-|---|---|
-| Device streamed the **wrong file** — telemetry saved under an `_arrivals.csv` name | Schema checked **at capture**; file quarantined as `.rejected`, `--delete` suppressed so the board keeps its copy |
-| **Stale derived files** left behind after a re-export | Flagged when a raw source disappears |
-| **Duplicate capture** double-counting one node | Flagged before any analysis runs |
-
-> 🗣️ *"Each of these corrupted a dataset at least once during collection.*
->
-> *The third is the one worth dwelling on: it produced **no error at all**. One node was counted
-> twice — 264 windows against about 155 for every other node — and every total still looked
-> plausible. That's the failure mode that matters most for a dataset, because **nothing
-> announces it**.*
->
-> *Each now fails at the moment it happens rather than twenty minutes later in the analysis, and
-> each is documented with the incident that produced it."*
-
-💡 If you only have 30 seconds for M5, **show this slide.** It's the most distinctive thing in
-the project.
-
----
-
-## 🗣️ The 75-second M5 script
+## 🗣️ 90-second script
 
 > *"M5 is extraction and integrity.*
 >
-> *\[slide 1] Telemetry lives on each board's flash during the run and is pulled over USB
-> afterwards, one board at a time.*
+> *\[filenames] CSVs are pulled from each board over USB after every run, and stored with the run
+> metadata encoded in the filename — topology, attack, repeat, collection date.*
 >
-> *\[slide 2] `trim_run.py` separates the experiment from the export session by splitting on
-> timestamp regressions — and it writes copies, so raw captures are never modified.*
+> *\[trim output] `trim_run.py` separates the experiment from the export session by splitting on
+> timestamp regressions, writing copies so raw captures are never modified.*
 >
-> *\[slide 3] Five checks on every file: schema, phase coverage, timestamp monotonicity, label
-> integrity, and a SHA-256 manifest. Every recorded cell is zero-FAIL.*
+> *\[validator] The criteria name three checks. Sample coverage: measured at **95.5 to 97.3
+> percent** against a 95 percent floor. Phase labels: validated on every row against the
+> phase-to-label map. Corruption and truncation: schema width and timestamp monotonicity. Every
+> recorded cell is zero-FAIL.*
 >
-> *\[slide 4] The manifest is what makes the dataset auditable — if a byte changes, the next
-> validation fails.*
+> *\[matrix] Eleven runs validated clean of twenty-four.*
 >
-> *\[slide 5] And these three guards each came from a real corruption during collection. The
-> duplicate-capture one produced no error at all — a node counted twice, with totals that still
-> looked plausible. That's why we added checks that fire at the moment the fault happens."*
+> *\[guards] And failing runs are flagged at source — four guards, each added after a real
+> corruption during collection, including one that produced no error at all."*
 
 ---
 
-## 🛡️ M5 questions
+## 🛡️ Questions
 
-**"How do we know the data is genuine?"** ⭐
-> *"Three things. SHA-256 per file in a manifest written at validation time. A ledger recording
-> when each cell was validated. And the attack signatures are cross-verified between independent
-> boards — the attacker's own counters and the root's arrivals log agree exactly, and those are
-> separate devices writing separate files."*
+**"How do we know the data is genuine?"** → *"Three things. SHA-256 per file in a manifest
+written at validation time. A ledger recording when each cell was validated. And the attack
+signatures are cross-verified between independent boards — the attacker's counters and the
+root's arrivals log agree exactly, on separate devices writing separate files."*
 
-**"Why do you trim the files? Isn't that discarding data?"**
-> *"It separates the experiment run from the export session — the firmware appends across boots,
-> so plugging a board in to export it adds rows. The raw capture is never modified; trimmed
-> copies go to a separate folder. And it's a dry run by default, so you see what would be
-> dropped before anything is written."*
+**"Why trim? Isn't that discarding data?"** → *"It separates the run from the export session —
+the firmware appends across boots. The raw capture is never modified; trimmed copies go to a
+separate folder, and it's a dry run by default so you see what would be dropped first."*
 
-**"What happens if an export fails halfway?"**
-> *"The partial capture is still saved — a partial CSV is more useful than discarding thousands
-> of rows that transferred cleanly — but it's reported as FAILED and the cell won't record. And
-> the board keeps its copy, because the delete step is skipped on any failure."*
+**"You need 24 clean runs and you have 11."** → *"Correct. Eleven validated clean, zero failures
+among them. The validation pipeline is complete and proven — what remains is runtime."*
 
-**"You said a device sent the wrong file. How often?"**
-> *"Once, in about eighty exports. The root's arrivals command streamed the telemetry file
-> instead. We haven't established the root cause — most likely a lost end-of-file marker making
-> the second capture re-read the first file, but that's unproven. What we did was make it
-> impossible to miss: the schema is checked at capture, and the board's copy is preserved so it
-> can simply be re-pulled."*
+**"What happens if an export fails halfway?"** → *"The partial capture is saved — more useful
+than discarding thousands of good rows — but it's reported as FAILED and the cell won't record.
+And the board keeps its copy, because the delete step is skipped on any failure. That's how we
+recovered a run where the device streamed the wrong file."*
 
-**"Could someone tamper with the CSVs after validation?"**
-> *"They'd fail the next validation — the manifest hash wouldn't match. And the repository
-> history is public and timestamped, so a file appearing without a corresponding export session
-> would be visible."*
+**"Has a run ever failed validation?"** → *"Yes, and each failure produced a guard. The most
+instructive was a duplicate capture that produced **no error at all** — a node counted twice
+with plausible-looking totals. That's why the checks now fire at the moment the fault happens
+rather than in analysis twenty minutes later."*
 
-**"Why validate at all if the firmware writes the files?"**
-> *"Because the failures we actually hit weren't firmware bugs — they were transport and
-> file-handling faults. A board that couldn't read its own flash, an export that streamed the
-> wrong file, a duplicate that double-counted a node. None of those are visible in the data
-> itself; they're only visible in checks."*
+**"Could someone tamper with the CSVs after validation?"** → *"They'd fail the next validation —
+the manifest hash wouldn't match. And the repository history is version-controlled and
+timestamped."*
 
 ---
 
-## ✅ M5 checklist
-
-- [ ] Validator screenshot showing `0 PASS / 0 WARN / 0 FAIL` line
-- [ ] `manifest.json` open, first entry visible
-- [ ] `trim_run.py` output showing the session split
-- [ ] **Three-guards table** on a slide *(the differentiator — don't cut this)*
-- [ ] Know: **five checks** · **0 FAIL everywhere** · **1 wrong-file export in ~80**
-- [ ] Can explain **why trimming is safe** (raw untouched, dry run default) in one sentence
-- [ ] Ready to say *"we haven't established the root cause"* about the wrong-file export —
-      don't invent one
+## ✅ Checklist
+- [ ] `validate_integrity.py` on **baseline·linear** — coverage lines screenshotted
+- [ ] `validate_integrity.py` on **blackhole·linear** — `21 PASS, 0 WARN, 0 FAIL`
+- [ ] `trim_run.py` dry run — session split + `[!] repeated capture` visible
+- [ ] `manifest.json` first entry — `sha256`, `row_count`, `size_bytes`
+- [ ] `run_matrix.py --status` — the 11/24 count
+- [ ] `run_ledger.csv` first rows
+- [ ] A filename annotated with its metadata fields
+- [ ] Four-guards table on a slide *(don't cut — it's the differentiator)*
+- [ ] Know: **95.5–97.3 %** · **0 FAIL** · **11/24** · **5 checks** · **4 guards**

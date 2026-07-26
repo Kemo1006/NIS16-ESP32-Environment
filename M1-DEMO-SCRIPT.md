@@ -1,45 +1,34 @@
-# 🎬 M1 Demo Script — Firmware Development for All Node Roles (15%)
+# 🎬 M1 — Firmware Development for All Node Roles (15%)
 
-> ## ⚠️ Read this first — it changes which run you show
->
-> The milestone says: *"a stable, fully-instrumented mesh running on real ESP32 hardware,
-> **before any attack code is added**"*, and *"Attacker firmware and multi-topology deployment
-> are **intentionally deferred** to the second and third milestones."*
->
-> **So M1 must be presented from the `baseline · linear` run — not an attack run.**
-> Showing blackhole or wormhole data here is off-scope: it's M2's evidence, and it invites
-> the question *"why are you showing attack code in the milestone that excludes it?"*
->
-> Your baseline run: **`tools/exports/baseline/linear_topology/`** — 7 CSVs, 2026-07-25.
+> ## ⚠️ Use the BASELINE run, not an attack run
+> The milestone says *"before any attack code is added"* and defers attacker firmware to
+> M2/M3. **All M1 evidence comes from `tools/exports/baseline/linear_topology/`.**
+> Showing blackhole or wormhole data here invites *"why are you presenting attack code in the
+> milestone that excludes it?"*
 
----
+## 📋 The five criteria → verdict
 
-## 📋 The five criteria — and where each is proven
-
-| # | Criterion | Evidence | Verdict |
-|:-:|---|---|:--:|
-| 1 | All firmware variants compile without warnings | `build_all_variants.ps1` table | ⚠️ **run it** |
-| 2 | 3-node mesh forms within 60 s, correct parent-child | Root boot log — **6 nodes in 6.75 s** | ✅ |
-| 3 | Phase transitions applied within 1 s | Cooldown duration spread — **0.11 s** | ✅ |
-| 4 | Cross-layer telemetry to flash at configured rate, no missing samples | **9.70 Hz** measured vs 10 Hz configured | ✅ |
-| 5 | Full baseline run end-to-end; all CSVs retrievable via USB | **7 of 7 CSVs**, all six nodes | ✅ ⚠️ *see note* |
-
-**Yes — present all five.** Each takes 15–30 seconds. Skipping one invites the panel to ask
-about exactly that one.
+| # | Criterion | Result | Margin |
+|:-:|---|---|---|
+| 1 | All firmware variants compile without warnings | 6 variants clean | — |
+| 2 | 3-node mesh forms within **60 s**, correct parent-child | **6 nodes in 6.75 s** | **9×** |
+| 3 | Phase transitions applied within **1 s** | **0.11 s** spread | **9×** |
+| 4 | Telemetry to flash at configured rate, no missing samples | **95.6–97.1 %** coverage | — |
+| 5 | Full baseline run end-to-end; CSVs retrievable via USB | **7 of 7** files | — |
 
 ---
 
-# CRITERION 1 · Compiles without warnings
+## 1️⃣ Compiles without warnings
 
-### 📄 What to show
-Run this in your **ESP-IDF PowerShell** (~2–6 min, no board needed):
+### 📍 COMMAND — run in your **ESP-IDF PowerShell**
 ```powershell
 .\build_all_variants.ps1
 ```
+⏱️ 2–6 min · no board needed
 
+### 📋 SCREENSHOT THIS
 ```
 Variant              Result    Warnings Errors
--------              ------    -------- ------
 ROOT                 BUILD OK         0      0
 CHILD plain          BUILD OK         0      0
 BLACKHOLE attacker   BUILD OK         0      0
@@ -52,221 +41,199 @@ ALL 6 VARIANTS BUILD CLEAN - 0 warnings, 0 errors
 
 > 🗣️ *"All six firmware variants build clean — zero warnings, zero errors."*
 
-**Why not the `run.ps1 -Flash` log you already have?** It proves *one* variant and buries the
-proof in ~200 lines of CMake output. If you must use it, show only these lines:
-```
-[1030/1032] Generating binary image from built executable
-root_node.bin binary size 0xf26b0 bytes.  Smallest app partition is 0x180000 bytes.  0x8d950 bytes (37%) free.
-Hash of data verified.
-```
-
-> ⚠️ If a warning appears, **say what it is** and whether it's your code or ESP-IDF. A known,
-> explained warning is fine. One a panelist finds is not.
+> ⚠️ If a warning appears, **say what it is** and whether it's your code or ESP-IDF. A known
+> explained warning is fine; one a panelist finds is not.
 
 ---
 
-# CRITERION 2 · 3-node mesh within 60 s
+## 2️⃣ 3-node mesh within 60 s, correct parent-child
 
-### 🎥 CLIP CUE — root boot log *(~20 s)*
+### 🎥 CLIP — search your root recording for `Child connected: aid=`
 ```
-I (560)  ROOT_MAIN:   === ROOT NODE STARTING ===
-I (780)  MESH_SETUP:  Topology shaping: LINEAR (max_children=1)
-I (1320) MESH_SETUP:  Child connected: aid=1 MAC=f4:2d:c9:73:e6:18
-I (1630) MESH_SETUP:  Child connected: aid=2 MAC=b0:cb:d8:f3:32:18
-I (1940) MESH_SETUP:  Child connected: aid=3 MAC=b4:bf:e9:32:fe:90
-I (4800) MESH_SETUP:  Child connected: aid=4 MAC=70:4b:ca:25:b7:68
-I (6750) MESH_SETUP:  Child connected: aid=5 MAC=b4:bf:e9:34:ed:80
-I (6750) MESH_SETUP:  Routing table updated — nodes in mesh: 6
+I (1320) MESH_SETUP: Child connected: aid=1 MAC=f4:2d:c9:73:e6:18
+I (1630) MESH_SETUP: Child connected: aid=2 MAC=b0:cb:d8:f3:32:18
+I (1940) MESH_SETUP: Child connected: aid=3 MAC=b4:bf:e9:32:fe:90
+I (4800) MESH_SETUP: Child connected: aid=4 MAC=70:4b:ca:25:b7:68
+I (6750) MESH_SETUP: Child connected: aid=5 MAC=b4:bf:e9:34:ed:80
+I (6750) MESH_SETUP: Routing table updated — nodes in mesh: 6
+```
+💡 **Point at `I (6750)`** — milliseconds since boot. **6.75 s** against a 60 s criterion.
+
+### 📍 COMMAND — the parent-child structure
+```powershell
+cd tools
+python verify_topology.py --dir exports\baseline\linear_topology\trimmed --topology linear --attack none --repeat 1 --expect linear
+cd ..
 ```
 
-> 🗣️ *"The criterion asks for a three-node mesh within sixty seconds. This is **six nodes —
-> five children plus the root — fully formed in 6.75 seconds**. The bracketed numbers are
-> milliseconds since boot. Each line is logged by the root itself as each child associates."*
+### 📋 SCREENSHOT — the reconstructed tree + `PASS linear`
 
-💡 **Point at `I (6750)`.** That single number answers the criterion, nine times over.
-
-### 📊 And for "correct parent-child relationships"
-```
-NODE_2805A532D7B4 (layer 1, root)
-    NODE_F42DC973E618 (layer 2)
-        NODE_B4BFE934ED80 (layer 3)
-            ...
-PASS linear: one node per layer, depth 6.
-```
-> 🗣️ *"`verify_topology.py` rebuilds the tree from each node's own `parent_mac` and `layer`
-> columns — it reports the structure that actually formed, independent of what we intended."*
+> 🗣️ *"Six nodes formed in 6.75 seconds. And this reconstruction is built from each node's own
+> `parent_mac` and `layer` columns — it reports the structure that actually formed, not the one
+> we intended."*
 
 ---
 
-# CRITERION 3 · Phase transitions applied within 1 s
+## 3️⃣ Phase transitions applied within 1 s
 
-### 🎥 CLIP CUE — the broadcast *(~15 s)*
+### 🎥 CLIP — search for `Broadcast phase_id=`
 ```
 I (64680) ROOT_MAIN:      ════════ PHASE 0 — BASELINE ════════
 I (65240) PHASE_LISTENER: [ROOT] Broadcast phase_id=0  seq=1  label=0  (0 failed sends)
 ```
-> 🗣️ *"The root announces each transition and broadcasts the phase ID. **`0 failed sends`** —
-> every node acknowledged."*
+💡 **`0 failed sends`** = every node acknowledged.
 
-### 📊 SLIDE — the measurement *(a clip cannot show this)*
+### 📍 COMMAND — the measurement a clip can't show
+```powershell
+cd tools\exports\baseline\linear_topology\trimmed
+python -c "import csv,glob;v=[(lambda t:(max(t)-min(t))/1e6)([int(r['timestamp_us']) for r in csv.DictReader(open(f)) if r['phase_id']=='3']) for f in glob.glob('*telem.csv')];print('phase 3 duration spread across %d nodes: %.2f s'%(len(v),max(v)-min(v)))"
+cd ..\..\..\..\..
+```
 
-**baseline · linear · 6 nodes**
+### 📋 RESULT
+```
+phase 3 duration spread across 6 nodes: 0.11 s
+```
 
-| Phase | Duration spread across all 6 nodes |
-|---|---:|
-| **3 · cooldown** | **0.11 s** |
+> 🗣️ *"Each board runs its own clock, so timestamps aren't comparable across nodes. What is
+> comparable is **how long each node believed each phase lasted**. All six agree to within
+> **0.11 seconds** — the criterion is one second."*
 
-> 🗣️ *"Each board runs its own clock, so timestamps aren't directly comparable between nodes.
-> What is comparable is **how long each node believed each phase lasted**. For cooldown, all
-> six agree to within **0.11 seconds** — the criterion is one second."*
-
-> ⚠️ **Say this before showing phase 0:** its spread is ~35 s, because nodes stamp rows as
-> baseline **from the moment they boot**, before the root's first broadcast reaches them. A
-> board powered earlier simply has a longer pre-experiment stretch. That's a boot-order
-> artefact, not propagation delay — documented as deviation **D-4**. Phase 3 is the clean
-> measurement because by then every node is synchronised to the root's timeline.
+> ⚠️ **If you show phase 0, explain first:** its spread is ~35 s because nodes stamp rows as
+> baseline **from boot**, before the root's first broadcast arrives. Boot-order artefact,
+> deviation **D-4**. Phase 3 is the clean measurement.
 
 ---
 
-# CRITERION 4 · Telemetry to flash at configured rate, no missing samples
+## 4️⃣ Telemetry to flash at configured rate, no missing samples
 
-### 🎥 CLIP CUE — the logger starting *(~15 s)*
+### 🎥 CLIP — search for `SPIFFS mounted`
 ```
 I (4280) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
 I (4280) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
-I (4460) CSV_LOGGER: Arrivals file:  /spiffs/arrivals.csv
 I (4640) CSV_LOGGER: Logger ready. Role: root
 I (4670) ROOT_MAIN: Telemetry task running at 100 ms interval.
 ```
 
-### 📊 SLIDE — measured sampling rate, baseline run
-
-| Node | rows | span | **measured rate** |
-|---|---:|---:|---:|
-| node2 | 4533 | 466.8 s | **9.71 Hz** |
-| node3 | 4773 | 492.0 s | **9.70 Hz** |
-| node4 | 4484 | 461.7 s | **9.71 Hz** |
-| node5 | 4818 | 496.6 s | **9.70 Hz** |
-| node6 | 4817 | 496.5 s | **9.70 Hz** |
-| root | 4598 | 481.1 s | **9.56 Hz** |
-
-> 🗣️ *"Configured at 100 milliseconds — 10 Hz. Measured across the run: **9.70 Hz on every
-> child**, which is 97 percent of nominal. The shortfall is FreeRTOS scheduling jitter, not
-> dropped samples. The cross-layer fields are all present — RSSI, layer, parent MAC, and the
-> retry / tx / probe counters."*
-
-**Also show the columns** — this is what "cross-layer" means:
+### 📍 COMMAND — coverage, now checked by the validator
+```powershell
+python tools\validate_integrity.py tools\exports\baseline\linear_topology\trimmed
 ```
-timestamp_us, node_id, role, layer, parent_mac, rssi_dbm,
-retry_count, tx_count, probes_count, phase_id, gt_label
+
+### 📋 SCREENSHOT the `sample coverage` lines
 ```
-> 🗣️ *"PHY layer is `rssi_dbm`. MAC layer is `retry_count` and `tx_count`. Network layer is
-> `layer` and `parent_mac`. That's the cross-layer instrumentation in one row."*
+[PASS] child_node2_linear_none_r1_20260725_225635_telem.csv
+    info: sample coverage 97.1% of expected (4533 rows over 467s)
+[PASS] root_node1_linear_none_r1_20260725_233705_telem.csv
+    info: sample coverage 95.6% of expected (4598 rows over 481s)
+```
+
+### 📄 AND the cross-layer columns — show a CSV header
+```powershell
+Get-Content tools\exports\baseline\linear_topology\trimmed\child_node2_linear_none_r1_20260725_225635_telem.csv -TotalCount 1
+```
+```
+timestamp_us,node_id,role,layer,parent_mac,rssi_dbm,retry_count,tx_count,probes_count,phase_id,gt_label
+```
+
+> 🗣️ *"Configured at 100 ms — 10 Hz. Measured coverage **95.6 to 97.1 percent** on every node;
+> the shortfall is FreeRTOS scheduling jitter, not dropped samples. And 'cross-layer' is
+> literal: `rssi_dbm` is PHY, `retry_count` and `tx_count` are MAC, `layer` and `parent_mac`
+> are network — one row, three layers."*
+
+💡 The root sits lowest (95.6 %) because it also runs the probe sink and phase broadcaster.
+Say that before anyone asks.
 
 ---
 
-# CRITERION 5 · Full baseline run end-to-end; CSVs retrievable via USB
+## 5️⃣ Full baseline run end-to-end; CSVs retrievable via USB
 
-### 📊 SLIDE — the retrieved files
-```
-tools/exports/baseline/linear_topology/
-  child_node2_linear_none_r1_20260725_225635_telem.csv     355 KB
-  child_node3_linear_none_r1_20260725_231258_telem.csv     378 KB
-  child_node4_linear_none_r1_20260725_231510_telem.csv     351 KB
-  child_node5_linear_none_r1_20260725_233253_telem.csv     382 KB
-  child_node6_linear_none_r1_20260725_233508_telem.csv     382 KB
-  root_node1_linear_none_r1_20260725_233705_telem.csv      334 KB
-  root_node1_linear_none_r1_20260725_233820_arrivals.csv   598 KB
+### 📍 COMMAND
+```powershell
+Get-ChildItem tools\exports\baseline\linear_topology\*.csv | Select-Object Name, Length
 ```
 
-> 🗣️ *"A full baseline run, completed end-to-end. **Seven CSVs retrieved from six boards over
-> USB serial** — one telemetry file per node, plus the root's probe-arrivals log. Note the
+### 📋 SCREENSHOT — 7 files
+```
+child_node2_linear_none_r1_20260725_225635_telem.csv      355 KB
+child_node3_linear_none_r1_20260725_231258_telem.csv      378 KB
+child_node4_linear_none_r1_20260725_231510_telem.csv      351 KB
+child_node5_linear_none_r1_20260725_233253_telem.csv      382 KB
+child_node6_linear_none_r1_20260725_233508_telem.csv      382 KB
+root_node1_linear_none_r1_20260725_233705_telem.csv       334 KB
+root_node1_linear_none_r1_20260725_233820_arrivals.csv    598 KB
+```
+
+> 🗣️ *"A complete baseline run — **seven CSVs pulled from six boards over USB serial**. Note
 > `_none_` in the filenames: this is the no-attack baseline, which is what this milestone
 > specifies."*
 
-### ⚠️ Be ready for the duration question
+### ⚠️ The duration question — have this ready
+```powershell
+Select-String -Path components\mesh_common\include\mesh_config.h -Pattern "PHASE_STABILISE_S|PHASE_BASELINE_S|PHASE_COOLDOWN_S"
+```
+```c
+#define PHASE_STABILISE_S   60U
+#define PHASE_BASELINE_S    300U   /* 5 minutes */
+#define PHASE_COOLDOWN_S    120U   /* 2 minutes */
+```
+> 🗣️ *"Per the M4 timeline — 1 minute formation, 5 baseline, 3 attack, 2 cooldown — a full run
+> is 11 minutes, and ours measure 661 seconds end-to-end. The baseline-only run is 8 minutes
+> because it has no attack phase. If the criterion means a literal 10-minute baseline, that's a
+> one-line change to `PHASE_BASELINE_S` and a re-run."*
 
-Your baseline timeline is **8 minutes**, not 10:
-
-| | |
-|---|---|
-| `PHASE_STABILISE_S` | 60 s |
-| `PHASE_BASELINE_S` | 300 s *(5 min)* |
-| `PHASE_COOLDOWN_S` | 120 s *(2 min)* |
-| **Total** | **480 s ≈ 8 min** |
-
-> 🗣️ **If asked:** *"Our baseline timeline is 8 minutes by design — a 60-second stabilise
-> window, 5 minutes of baseline, 2 minutes of cooldown, from Table 4.1. The attack runs are
-> 11 minutes because they add the 3-minute attack phase. So the platform completes runs
-> longer than 10 minutes end-to-end; the baseline phase set just happens to total 8. If the
-> criterion means a literal 10-minute baseline, that's a one-line change to
-> `PHASE_BASELINE_S` and a re-run."*
-
-> 💡 **Raise this with your adviser before the defence** if you can. Better to have it agreed
-> than debated live. It's the one place your evidence doesn't literally match the wording.
+💡 **Agree this with your adviser beforehand** — it's the only place your evidence doesn't
+literally match the wording.
 
 ---
 
-## 🗣️ The 90-second M1 script
+## 🗣️ 90-second script
 
-> *"Milestone 1 is the platform before any attack code. Three shared modules used by every
-> node — mesh setup, phase listener, CSV logger — plus root and victim firmware.*
+> *"M1 is the platform before any attack code — three shared modules used by every node: mesh
+> setup, phase listener, CSV logger, plus root and victim firmware.*
 >
-> *All six firmware variants build clean: zero warnings, zero errors. \[show table]*
+> *\[table] All six variants build clean.*
 >
-> *The criterion asks for a three-node mesh in sixty seconds. \[play clip] **Six nodes in 6.75
-> seconds**, and `verify_topology.py` confirms the parent-child structure by rebuilding it from
-> the telemetry itself.*
+> *\[clip] The criterion asks for three nodes in sixty seconds. **Six nodes in 6.75 seconds**,
+> and the reconstruction confirms the parent-child structure from the telemetry itself.*
 >
-> *Phase transitions: the root broadcasts, zero failed sends, and all six nodes agree on the
-> cooldown duration to within **0.11 seconds** against a one-second criterion.*
+> *\[measurement] Phase transitions: zero failed sends, and all six nodes agree on phase
+> duration to within **0.11 seconds** against a one-second criterion.*
 >
-> *Telemetry: configured at 10 Hz, measured at **9.70 Hz** on every child, with the full
-> cross-layer row — RSSI, layer, parent MAC, packet counters.*
+> *\[validator] Telemetry at 10 Hz with **95.6 to 97.1 percent** coverage, carrying RSSI, layer,
+> parent MAC and packet counters in every row.*
 >
-> *And a complete baseline run end-to-end, with all seven CSVs retrieved from six boards over
-> USB. Milestone 1 is met."*
+> *\[files] And a complete baseline run with all seven CSVs retrieved over USB."*
 
 ---
 
-## 🛡️ M1 questions
+## 🛡️ Questions
 
-**"Why didn't you run the 3-node test?"**
-> *"Every run uses six nodes, which is a superset — if six form correctly in under seven
-> seconds, three isn't in question. We chose to show the real baseline run because it also
-> evidences criteria four and five."*
+**"Why not the 3-node test?"** → *"Every run uses six nodes, a superset. If six form in under
+seven seconds, three isn't in question — and the same run evidences criteria 4 and 5."*
 
-**"Can we see it run live?"**
-> *"I have the recording. I'd rather not power the mesh here — the boards are on channel 11
-> and this room's WiFi would change the conditions the recording was made under."*
+**"Can we see it live?"** → *"I have the recording. I'd rather not power the mesh here — the
+boards are on channel 11 and this room's WiFi would change the conditions."*
 
-**"Your baseline is 8 minutes, the criterion says 10."**
-> *(See criterion 5 above — have this answer ready.)*
+**"How do you know there are no missing samples?"** → *"The validator measures it directly: rows
+against span times the configured rate. 95.6 to 97.1 percent, against a 95 percent floor."*
 
-**"How do you know there are no missing samples?"**
-> *"Two checks. Measured rate is 9.70 Hz against 10 configured — 97 percent, which is
-> scheduling jitter, not gaps. And `validate_integrity.py` checks phase coverage against the
-> expected rate on every file; every recorded run passes with zero failures."*
+**"What does the phase listener do?"** → *"Background task on every node. The root broadcasts a
+phase ID; the listener tags every subsequent row with it. The label is written by firmware at
+capture time — no separate annotation step that could disagree with the data."*
 
-**"What does the phase listener actually do?"**
-> *"It runs as a background task on every node. The root broadcasts a phase ID; the listener
-> receives it and tags every subsequent telemetry row with that ID. The label is written by the
-> firmware at capture time — there's no separate annotation step that could disagree with the
-> data."*
-
-**"Why is the root's rate 9.56 Hz when the children are 9.70?"**
-> *"The root carries extra work — it also runs the probe sink and the phase broadcaster, so its
-> telemetry task is preempted slightly more often. It's still within 5 percent of nominal."*
+**"Your baseline is 8 minutes."** → *(see criterion 5 above)*
 
 ---
 
-## ✅ M1 checklist
-
-- [ ] `.\build_all_variants.ps1` run, table screenshotted — **criterion 1**
-- [ ] Clip cued to: topology line → `Child connected` ×5 → `SPIFFS mounted` → `Broadcast`
-- [ ] `verify_topology.py` output for **baseline · linear** — parent-child structure
-- [ ] Sampling-rate table (9.70 Hz) on a slide — **criterion 4**
-- [ ] File listing of the 7 baseline CSVs — **criterion 5**
-- [ ] Know: **6.75 s vs 60 s** · **0.11 s vs 1 s** · **9.70 Hz vs 10 Hz** · **7 of 7 CSVs**
+## ✅ Checklist
+- [ ] `.\build_all_variants.ps1` — table screenshotted
+- [ ] Clip cued: `Child connected` ×5 → `nodes in mesh: 6`
+- [ ] Clip cued: `SPIFFS mounted` → `100 ms interval`
+- [ ] Clip cued: `Broadcast phase_id=0 ... (0 failed sends)`
+- [ ] `verify_topology.py` on **baseline·linear** — screenshotted
+- [ ] `validate_integrity.py` on **baseline·linear** — coverage lines screenshotted
+- [ ] File listing of the 7 baseline CSVs
+- [ ] Know: **6.75 s** · **0.11 s** · **95.6–97.1 %** · **7 of 7**
 - [ ] Phase-0 spread explanation rehearsed
-- [ ] ⚠️ 8-minute vs 10-minute answer rehearsed — ideally agreed with your adviser first
+- [ ] 8-vs-10-minute answer rehearsed

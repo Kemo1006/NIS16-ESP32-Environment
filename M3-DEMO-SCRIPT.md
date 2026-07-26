@@ -1,188 +1,235 @@
-# 🎬 M3 Demo Script — Multi-Topology Deployment (15%)
+# 🎬 M3 — Multi-Topology Testbed Deployment (15%)
 
-> ## 📋 Criteria *(these two are quoted — from `thesis-deviate.md` D-4)*
-> 1. *"Each topology converges to its intended parent-child structure **within 60 seconds**"*
-> 2. *"Mesh remains stable through a full 5-minute baseline phase (**no spontaneous
->    re-routing**)"*
+> ## 📋 The four criteria + setup constraint *(quoted)*
+> 1. Each topology **converges to its intended parent-child structure within 60 seconds**.
+> 2. Structure is **verified by inspecting parent-MAC and layer values** in root logs.
+> 3. Mesh **remains stable through a full 5-minute baseline phase** (no spontaneous re-routing).
+> 4. **Both attacks show their expected signatures in all four topologies.**
 >
-> ⚠️ If M3's form lists further criteria — e.g. a required number of topologies — **paste them
-> and I'll extend this.** The evidence below covers these two plus deployment coverage.
+> **Setup:** 5 to 10 ESP32 nodes, positions fixed and documented per topology.
 
-> ## ⚠️ This is the milestone with a real failure in it
-> One recorded run reports `Converged: NO`. **Do not hide it, do not lead with it.** The
-> prepared answer is in Part 3 — rehearse it out loud. It's the single most likely hard
-> question in your whole defence.
+## 🎯 Verdict
+
+| # | Criterion | Result | Status |
+|:-:|---|---|:--:|
+| — | 5–10 nodes, positions documented | **6 nodes**, floor plan per topology | ✅ |
+| 1 | Converges within 60 s | linear ✅ star ✅ — **1 star run fails** | ⚠️ |
+| 2 | Verified via parent-MAC + layer | `verify_topology.py` reconstructs the tree | ✅ |
+| 3 | Stable through 5-min baseline | YES on the passing runs | ⚠️ |
+| 4 | Both attacks in **all four** topologies | **2 of 4** — tree, partial pending | ⚠️ |
+
+> ⚠️ **This milestone contains a real failure.** Don't lead with it; the four-move answer is at
+> the bottom. Rehearse it out loud — it's the likeliest hard question in your defence.
 
 ---
 
-# 🟢 PART 1 · The evidence that passes
+## 🏠 SETUP · 5–10 nodes, positions fixed and documented
 
-## 📊 SLIDE 1 — Topology is verified from the data, not asserted ⭐ *your best artifact*
-
+### 📄 SHOW — the placement diagram in your runbook
+```powershell
+Select-String -Path STAR-RUNBOOK.md -Pattern "BEDROOM 1" -Context 6,14
 ```
-NODE_2805A532D7B4  (layer 1, role root)
-    NODE_704BCA25B768  (layer 2, victim)
-    NODE_B0CBD8F33218  (layer 2, wormhole_a)
-    NODE_B4BFE932FE90  (layer 2, victim)
-    NODE_B4BFE934ED80  (layer 2, victim)
-    NODE_F42DC973E618  (layer 2, wormhole_b)
+📋 Or just open **`STAR-RUNBOOK.md`** / **`LINEAR-RUNBOOK.md`** at the floor-plan section.
 
+> 🗣️ *"Six ESP32 nodes — within the 5-to-10 range. Positions are fixed and documented per
+> topology: each runbook carries the floor plan, which room each board sits in, and a
+> board-to-role table. The layout is taped down and reused across all runs of that topology."*
+
+---
+
+## 1️⃣ + 3️⃣ Converges within 60 s · stable through baseline
+
+### 📍 COMMAND — star
+```powershell
+cd tools
+python verify_topology.py --dir exports\wormhole\star_topology\trimmed --topology star --attack wormhole --repeat 2 --expect star
+cd ..
+```
+
+### 📋 SCREENSHOT — the verdict block
+```
 PASS star: all 5 nodes at layer 2 (direct children of root).
-Converged within 60s     : YES
-Baseline re-routing free : YES
+
+=== Milestone-3 verdict ===
+  Converged within 60s     : YES
+  Baseline re-routing free : YES
 ```
 
-> 🗣️ *"This is **not** our intended diagram. `verify_topology.py` reads each node's own
-> `parent_mac` and `layer` columns out of the telemetry and **rebuilds the tree that actually
-> formed**, then checks it against the expected shape. It's an independent measurement of the
-> physical deployment — if a board had ended up two hops out, this would say so."*
+### 📍 COMMAND — linear (structurally opposite)
+```powershell
+cd tools
+python verify_topology.py --dir exports\blackhole\linear_topology\trimmed --topology linear --attack blackhole --repeat 3 --expect linear
+cd ..
+```
+```
+PASS linear: one node per layer, depth 6.
+  Converged within 60s     : YES
+  Baseline re-routing free : YES
+```
 
-## 📊 SLIDE 2 — Two structurally opposite topologies, both passing
+> 🗣️ *"Two structurally opposite topologies — a six-deep chain and a flat five-spoke star —
+> both converging inside 60 seconds with no re-routing during the 5-minute baseline."*
 
-| Run | Reconstructed shape | Converged <60 s | No baseline re-routing |
-|---|---|:--:|:--:|
-| `linear · blackhole · r3` | one node per layer, **depth 6** | ✅ YES | ✅ YES |
-| `star · wormhole · r2` | all 5 at **layer 2** | ✅ YES | ✅ YES |
+### 🎥 CLIP — mesh forming, from the root recording
+Search for `Child connected: aid=` … through `nodes in mesh: 6` at **`I (6750)`**.
 
-> 🗣️ *"A six-deep chain and a flat five-spoke star — structurally opposite — both converging
-> inside sixty seconds with no re-routing during the baseline phase."*
+---
 
-## 📊 SLIDE 3 — How the shape is enforced
+## 2️⃣ Verified by parent-MAC and layer values ⭐ *your best artifact*
 
-| Topology | Build flag | Constraint applied in `mesh_setup.c` |
+### 📋 SCREENSHOT — the top of that same output
+```
+=== Reconstructed structure ===
+NODE_2805A532D7B4  (layer 1, role root)
+    NODE_704BCA25B768  (layer 2, role victim)
+    NODE_B0CBD8F33218  (layer 2, role wormhole_a)
+    NODE_B4BFE932FE90  (layer 2, role victim)
+    NODE_B4BFE934ED80  (layer 2, role victim)
+    NODE_F42DC973E618  (layer 2, role wormhole_b)
+```
+
+### 📄 AND show the raw columns it reads
+```powershell
+Get-Content tools\exports\wormhole\star_topology\trimmed\child_node5_star_wormhole_r2_20260727_022510_telem.csv -TotalCount 2
+```
+```
+timestamp_us,node_id,role,layer,parent_mac,rssi_dbm,...
+4752825,NODE_B0CBD8F33218,wormhole_a,2,28:05:a5:32:d7:b4,-42,...
+                                     ↑        ↑
+                                   layer   parent_mac
+```
+
+> 🗣️ *"The criterion asks that structure be verified by inspecting parent-MAC and layer values.
+> That's exactly what this does — it reads those two columns from every node's own telemetry
+> and **rebuilds the tree that actually formed**. It's independent of what we intended; if a
+> board had gone two hops out, this would say so."*
+
+### 📍 And how the shape is enforced in the first place
+```powershell
+Select-String -Path components\mesh_common\src\mesh_setup.c -Pattern "NIS_TOPO_STAR" -Context 1,3
+```
+```c
+#if (MESH_TOPOLOGY == NIS_TOPO_STAR)
+    topo_name = "STAR";
+    max_layer = 2;      /* root(L1) + direct children(L2) */
+```
+🎥 **Clip:** `I (780) MESH_SETUP: Topology shaping: STAR (max_layer=2, max_children=10)`
+
+| Topology | Flag | Constraint |
 |---|---|---|
 | star | `MESH_TOPOLOGY=0` | `max_layer = 2` |
-| tree | `MESH_TOPOLOGY=1` | native multi-hop (default) |
-| linear | `MESH_TOPOLOGY=2` | `MESH_TOPO_CHAIN` + `max_children = 1` |
-| partial | `MESH_TOPOLOGY=3` | narrowed `max_children` |
+| tree | `=1` | native multi-hop |
+| linear | `=2` | `MESH_TOPO_CHAIN` + `max_children = 1` |
+| partial | `=3` | narrowed `max_children` |
 
-Live boot-log line:
+> 🗣️ *"Two independent things: a compile-time constraint that shapes it, and a reconstruction
+> that measures what happened."*
+
+---
+
+## 4️⃣ Both attacks in all four topologies — ⚠️ **2 of 4**
+
+### 📍 COMMAND
+```powershell
+python tools\run_matrix.py --status
 ```
-I (780) MESH_SETUP: Topology shaping: STAR (max_layer=2, max_children=10)
-```
-
-> 🗣️ *"Topology isn't a label in a filename — it's a **compile-time constraint the mesh stack
-> enforces**. For star, `max_layer` is capped at 2, so a board physically cannot become a
-> grandchild; the stack refuses the association. So we have two independent things: the flag
-> that constrains it, and the reconstruction that measures what happened."*
-
-## 📊 SLIDE 4 — Deployment coverage
 
 | Topology | Baseline | Blackhole | Wormhole |
 |---|:--:|:--:|:--:|
-| 🌳 Tree | ✅ | 🔴 pending | 🔴 pending |
 | ➖ Linear | ✅ | ✅ | ✅ |
 | ⭐ Star | ✅ | ✅ | ✅ |
+| 🌳 Tree | ✅ | 🔴 pending | 🔴 pending |
 | 🕸️ Partial | ✅ | 🔴 pending | 🔴 pending |
 
-> 🗣️ *"Two of four topologies are deployed with both attacks. Tree and partial are pending —
-> that's M4 runtime, not a method gap."*
-
-> 📌 **Refresh before presenting:** `python slides\refresh_slide_numbers.py`
-
----
-
-# 🟡 PART 2 · What "converged" actually means
-
-Worth 20 seconds, because it pre-empts a technical challenge.
-
-> 🗣️ *"'Converged' is the timestamp of the **last** parent or layer change in a node's log.
-> Changes inside the first 60 seconds are counted as **formation**, not re-routing — the
-> criterion has two separate statements, and the tool was originally conflating them. A node's
-> initial parent acquisition was being counted as a baseline re-route, which is wrong: it hasn't
-> got a parent yet. That's documented as deviation **D-4**, and `--stabilise-s 0` restores the
-> old behaviour for audit."*
+> 🗣️ *"Two of four topologies carry both attacks, and the signatures reproduced **identically**
+> — the wormhole at 181 duplicates on linear and 180 on star, the blackhole at zero root
+> arrivals in both. Tree and partial are pending runtime, not method: it's the same firmware
+> with a different build flag.*
+>
+> *One reason we expect them to match: the blackhole works by **addressing** — victims send to
+> the attacker's MAC regardless of mesh position — and the wormhole tunnel is a **physical
+> wire**, so neither mechanism is topology-sensitive by construction."*
 
 ---
 
-# 🔴 PART 3 · The run that fails — prepare this
+## 🔴 The run that fails — prepare, don't volunteer
 
-**`star · blackhole · r1`** reports:
+**`star · blackhole · r1`**
 ```
 Converged within 60s     : NO
 Baseline re-routing free : NO
 ```
 
-### Do not volunteer it. If asked, answer in this order:
+### If asked, answer in this order:
 
-> 🗣️ **1. State it plainly.**
-> *"One star run doesn't meet it. Nodes dropped and re-attached during baseline, settling
-> around 100 seconds."*
+> **1. State it.** *"One star run doesn't meet it — nodes dropped and re-attached during
+> baseline, settling around 100 seconds."*
 >
-> **2. Give the counter-example.**
-> *"The next star run, same placement, converged inside sixty seconds with no re-routing — so
-> it isn't a fixed property of star."*
+> **2. Counter-example.** *"The next star run, same placement, converged inside 60 seconds with
+> no re-routing — so it isn't a fixed property of star."*
 >
-> **3. Admit the unknown.**
-> *"We haven't established the cause. We moved the boards closer to the root and join times
-> dropped to under seven seconds, but the mechanism changed rather than disappearing — from
-> failing to find the root, to dropping and re-attaching. The clean test is a `baseline · star`
-> run, which we haven't done."*
+> **3. Admit the unknown.** *"We haven't established the cause. We moved the boards closer to
+> the root and join times dropped under 7 seconds, but the mechanism changed rather than
+> disappearing — from failing to find the root, to dropping and re-attaching. The clean test is
+> a `baseline · star` run we haven't done."*
 >
-> **4. Bound the impact.**
-> *"Every disturbance is in phase 0. **Zero during the attack window** — which is why that run's
-> attack signature is clean and validated."*
+> **4. Bound it.** *"Every disturbance is in phase 0. **Zero during the attack window** — which
+> is why that run's attack signature is clean and validated."*
 
-> 💡 **Why this works:** states the failure, gives the counter-example, admits the unknown,
-> bounds the impact. Four moves, twenty seconds, nothing hidden. *"I don't know yet, and here's
-> the experiment that would settle it"* is a stronger answer than a confident guess that
-> unravels on the follow-up.
+💡 States the failure, gives the counter-example, admits the unknown, bounds the impact. Four
+moves, twenty seconds, nothing hidden.
 
 ---
 
-## 🗣️ The 90-second M3 script
+## 🗣️ 90-second script
 
-> *"M3 deploys the M2 attack modules across multiple topologies.*
+> *"M3 deploys the M2 attack modules across topologies, using six nodes with positions fixed and
+> documented per topology in the runbooks.*
 >
-> *\[slide 3] Topology is a compile-time constraint, not a configuration file — for star the
-> mesh stack caps depth at two, so a board can't become a grandchild.*
+> *\[mesh_setup.c] Topology is a compile-time constraint — for star the stack caps depth at 2,
+> so a board can't become a grandchild.*
 >
-> *\[slide 1] And we verify it from the data. `verify_topology.py` rebuilds the tree from each
-> node's own parent and layer columns — this is the structure that actually formed, not the one
-> we intended.*
+> *\[verify_topology output] And the criterion asks that structure be verified from parent-MAC
+> and layer values — that's exactly what this does, rebuilding the tree from the telemetry
+> itself.*
 >
-> *\[slide 2] Two structurally opposite topologies, a six-deep chain and a flat star, both
-> converging inside sixty seconds with no baseline re-routing.*
+> *\[both runs] Two structurally opposite topologies, both converging inside 60 seconds with no
+> baseline re-routing.*
 >
-> *\[slide 4] Two of four topologies carry both attacks; tree and partial are pending runtime."*
+> *\[matrix] Two of four topologies carry both attacks, with identical signatures. Tree and
+> partial are pending runtime."*
 
 ---
 
-## 🛡️ M3 questions
+## 🛡️ Questions
 
-**"How do you know it's really a star?"** ⭐
-> *"Two independent things. The build flag caps `max_layer` at 2, so the stack refuses a deeper
-> association. And `verify_topology.py` reconstructs the actual tree from telemetry. One is
-> intent, the other is measurement."*
+**"How do you know it's really a star?"** → *"Two independent things. The build flag caps
+`max_layer` at 2, so the stack refuses a deeper association. And `verify_topology.py`
+reconstructs the actual tree from parent-MAC and layer columns."*
 
-**"What counts as converged?"**
-> *(See Part 2 — the formation-window explanation.)*
+**"What counts as converged?"** → *"The timestamp of the last parent or layer change. Changes
+inside the first 60 seconds are counted as **formation**, not re-routing — the criterion has two
+separate statements and the tool was conflating them. Deviation D-4; `--stabilise-s 0` restores
+the old behaviour for audit."*
 
-**"Only two topologies have attack data."**
-> *"Correct. Linear and star are complete for both attacks; tree and partial are pending. The
-> deployment method is identical — it's the same firmware with a different build flag — so
-> what remains is runtime."*
+**"Do boards end up in the same positions each run?"** → *"The topology class does; the specific
+parent assignment doesn't — parents are chosen by signal at boot, which is the behaviour under
+study. Deviation D-6. Across linear wormhole r1–r3 the tunnel ends were adjacent, then 2 hops,
+then 3 — and the signature held at 181, 181, 180 because the tunnel is a wire."*
 
-**"Do the boards end up in the same positions each run?"**
-> *"The topology class does; the specific parent assignment doesn't. Parents are chosen by
-> signal strength at boot, which is the mesh behaviour under study — pinning it would mean
-> overriding the thing we're measuring. Recorded as deviation **D-6**. Across linear wormhole
-> r1 to r3 the two tunnel ends were adjacent, then two hops apart, then three — and the attack
-> signature held at 181, 181, 180 regardless, because the tunnel is a wire."*
-
-**"Why does star behave differently from linear?"**
-> *"Different physical demand. Linear only needs each board to hear its neighbour. Star needs
-> **every** board to hear the root directly, because the depth cap forbids attaching to a
-> sibling. On our floor plan that's a much harder radio requirement, and it's why star was the
-> topology that exposed the convergence issue."*
+**"Why does star behave differently from linear?"** → *"Different physical demand. Linear needs
+each board to hear its neighbour; star needs **every** board to hear the root directly, because
+the depth cap forbids attaching to a sibling. On our floor plan that's a much harder radio
+requirement — which is why star exposed the convergence issue."*
 
 ---
 
-## ✅ M3 checklist
-
-- [ ] `verify_topology.py` screenshots — **linear r3** and **star wormhole r2** (both YES/YES)
-- [ ] Coverage table refreshed
-- [ ] Boot-log line showing `Topology shaping:`
-- [ ] Know the four build flags and what each constrains
-- [ ] ⚠️ **Star-blackhole-r1 answer rehearsed out loud** — 4 moves, in order
-- [ ] Can explain the **formation window** (D-4) in one sentence
+## ✅ Checklist
+- [ ] `verify_topology.py` — **star wormhole r2** screenshotted (YES/YES)
+- [ ] `verify_topology.py` — **linear blackhole r3** screenshotted (YES/YES)
+- [ ] Reconstructed-tree block visible in both
+- [ ] A telemetry CSV header showing `layer` and `parent_mac`
+- [ ] Clip cued: `Topology shaping:` line
+- [ ] Runbook floor-plan page ready *(setup constraint)*
+- [ ] `run_matrix.py --status` for coverage
+- [ ] ⚠️ **Star-blackhole-r1 answer rehearsed — 4 moves, in order**
