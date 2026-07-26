@@ -531,6 +531,19 @@ cd ..
 cd tools; python verify_topology.py --dir exports\blackhole\tree_topology\trimmed --topology tree --attack blackhole --repeat 1 --expect tree; cd ..
 python tools\run_matrix.py --record --topology tree --attack blackhole --repeat 1
 ```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
 > 🔁 Bump `-Repeat`/`--repeat` `1`→`2`→`3` for r2/r3; don't clear the folder between repeats.
 - **Root `arrivals.csv`:** each victim present at `gt_label=0`, **gap during `gt_label=1`**, back at cooldown.
 - **Attacker COM26 `telem.csv`:** `tx_count` **flat during label 1**, `retry_count` (dropped) **climbs**.
@@ -630,6 +643,19 @@ cd ..
 cd tools; python verify_topology.py --dir exports\wormhole\tree_topology\trimmed --topology tree --attack wormhole --repeat 1 --expect tree; cd ..
 python tools\run_matrix.py --record --topology tree --attack wormhole --repeat 1
 ```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
 > 🔁 Bump `-Repeat`/`--repeat` `1`→`2`→`3` for r2/r3; don't clear the folder between repeats.
 - **Root `arrivals.csv`:** during `gt_label=2`, each of Node B's probes appears **TWICE**
   (same `src_mac`+`seq_num`, different `latency_us`); **once** during `gt_label=0`.

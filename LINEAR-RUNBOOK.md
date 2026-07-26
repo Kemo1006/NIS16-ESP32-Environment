@@ -230,6 +230,18 @@ first and only ticks the box if they pass:
 python tools\run_matrix.py --record --topology linear --attack blackhole --repeat 1
 ```
 
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
 ---
 
 ## 🛠️ Manual route without auto analyze
@@ -827,9 +839,19 @@ Otherwise, serial clearing is all you ever need.
 
 - **The root**, with `-Wipe -Flash` — it stacks `telem.csv` **and** `arrivals.csv` the same way.
   There is no `--delete` shortcut for the root; the `-Wipe -Flash` in Phase 4 already handles it.
-- **The repeat number, in three places:** the root's `-Repeat <N>` (Phase 4, attack runs), the
-  `--repeat <N>` on every Phase 6 child export, and the `--repeat <N>` on the Phase 8 `--record`.
-  All three must match, or the CSVs land under the wrong repeat tag.
+- **The repeat number — but only TWO of the three matter.** Where it actually lands:
+
+  | Where | Effect | Get it wrong and… |
+  |---|---|---|
+  | Phase 4 root `-Repeat <N>` | ⚪ **cosmetic on the manual route.** `run.ps1` uses it in exactly two places (`:321` a printed hint, `:362` the auto-export it only reaches with `-Export`/`-Analyze`). It touches **no build flag, no build folder, no firmware, no CSV column** — the rows have no run-id at all. | nothing. Export with the right `--repeat` and you're fine. |
+  | Phase 6/7 export `--repeat <N>` | 🔴 **This one names the file.** | the CSVs land under the wrong repeat tag. |
+  | Phase 8 `--record --repeat <N>` | 🔴 **This one ticks the box.** | you re-record the *previous* repeat and the matrix silently stays put. |
+
+  > 🩺 **Both real failures happened on 2026-07-26.** The root was booted with
+  > `-Repeat 1` for r2 — harmless, the export was still tagged `_r2_` correctly.
+  > But `--record … --repeat 1` then re-recorded r1, and the grid sat at 1/24
+  > with a complete r2 on disk and no complaint. Use **`--autorecord`** (below)
+  > and the third number stops being a thing you can get wrong.
 
 ### 🧊 Do NOT archive between repeats
 
@@ -1054,6 +1076,21 @@ cd ..
 cd tools; python verify_topology.py --dir exports\blackhole\linear_topology\trimmed --topology linear --attack blackhole --repeat 1 --expect linear; cd ..
 # validate THIS repeat's CSVs and tick it off in the 24-cell matrix:
 python tools\run_matrix.py --record --topology linear --attack blackhole --repeat 1
+```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
+```powershell
 python tools\run_matrix.py --status
 ```
 > 🔁 **Repeats:** that was **r1**. Do the whole blackhole run again for **r2** and **r3**,
@@ -1203,6 +1240,21 @@ cd ..
 ```powershell
 cd tools; python verify_topology.py --dir exports\wormhole\linear_topology\trimmed --topology linear --attack wormhole --repeat 1 --expect linear; cd ..
 python tools\run_matrix.py --record --topology linear --attack wormhole --repeat 1
+```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
+```powershell
 python tools\run_matrix.py --status
 ```
 > 🔁 **Repeats:** that was **r1**. Do the whole wormhole run again for **r2** and **r3**

@@ -524,6 +524,19 @@ cd ..
 cd tools; python verify_topology.py --dir exports\blackhole\star_topology\trimmed --topology star --attack blackhole --repeat 1 --expect star; cd ..
 python tools\run_matrix.py --record --topology star --attack blackhole --repeat 1
 ```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
 > 🔁 Bump `-Repeat`/`--repeat` `1`→`2`→`3` for r2/r3; don't clear the folder between repeats.
 - **Root `arrivals.csv`:** victim present at label 0, **gap during label 1**, back at cooldown.
 - **Attacker COM26:** `tx_count` flat during label 1, `retry_count` climbs.
@@ -604,6 +617,19 @@ cd ..
 cd tools; python verify_topology.py --dir exports\wormhole\star_topology\trimmed --topology star --attack wormhole --repeat 1 --expect star; cd ..
 python tools\run_matrix.py --record --topology star --attack wormhole --repeat 1
 ```
+
+> ✅ **Easier and safer: `--autorecord`.** It scans `exports/` for captures that are
+> complete but not yet ticked off, validates each, and records them — so you never
+> type `--topology` / `--attack` / `--repeat` again. Getting that last flag wrong
+> silently re-records the PREVIOUS repeat and leaves the matrix unchanged with good
+> data sitting on disk (this happened on 2026-07-26):
+>
+> ```powershell
+> python tools\run_matrix.py --autorecord
+> ```
+>
+> `--status` also warns on its own now if it spots captured-but-unrecorded cells.
+
 > 🔁 Bump `-Repeat`/`--repeat` `1`→`2`→`3` for r2/r3; don't clear the folder between repeats.
 - **Root `arrivals.csv`:** Node B's probes appear **TWICE** during label 2, **once** during label 0.
 - **Node B (COM27):** `retry_count` climbs only during label 2.

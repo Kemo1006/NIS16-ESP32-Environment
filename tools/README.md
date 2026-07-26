@@ -4,6 +4,26 @@ Laptop-side scripts for pulling telemetry CSVs off the ESP32 nodes after a run.
 This is the counterpart to the on-device serial-export task in
 `components/mesh_common/src/csv_logger.c`.
 
+## The seven tools, in the order you use them
+
+| Tool | What it's for |
+|---|---|
+| [`board_check.py`](#board_checkpy) | Before anything: is this board fine, what firmware is on it, **is its SPIFFS about to break the export** |
+| [`export_logs.py`](#export_logspy) | Pull `telem.csv` / `arrivals.csv` off a board over USB |
+| [`recover_spiffs.py`](#recover_spiffspy) | 🆘 When a board can no longer read its own files and `export_logs.py` returns 0 rows |
+| [`trim_run.py`](#trim_runpy) | Keep only the experiment run; split concatenated/duplicated captures |
+| [`validate_integrity.py`](#validate_integritypy) | Schema, phase coverage, timestamp monotonicity, SHA-256 manifest |
+| [`verify_topology.py`](#verify_topologypy) | Rebuild the mesh from `parent_mac`/`layer` and assert the intended shape |
+| [`run_matrix.py`](#run_matrixpy) | Track the M4 24-run matrix; `--autorecord` ticks off what's on disk |
+
+> ⚠️ **All of these resolve their default `exports` folder next to the SCRIPT, not
+> your shell's current directory.** That was not always true — running one from
+> the repo root or from `root_node\` used to create/scan a stray `exports\` there,
+> and `export_logs.py` once filed a whole baseline-tree run into
+> `root_node\exports\` where no analysis command looks. Explicit paths always win.
+
+---
+
 ## export_logs.py
 
 Connects to a node over USB serial, asks it to stream its stored CSV file(s),
@@ -96,3 +116,125 @@ The default is `100` (10 Hz, current since 2026-07-25); pass `200` for the 5 Hz
 baseline/linear capture made earlier that day, or
 `--sample-interval-ms 50` for 2026-07-12..07-25 captures (20 Hz) or `1000` for
 anything earlier (1 Hz).
+
+> ℹ️ **Known false positive on `*_arrivals.csv`.** The phase-coverage check assumes a
+> periodic sampler, but arrivals are an **event log** — one row per probe that
+> actually reached the root. In a blackhole run `phase 1 (blackhole) has 0 rows` is
+> the *deliverable*, not truncation. These come out as WARN, which does not block
+> `run_matrix.py --record`.
+
+---
+
+## board_check.py
+
+Is this board dead, blank, or fine — **without erasing anything**. Four checks:
+serial port, bootloader (also reads the MAC), flash chip, firmware runtime.
+
+```powershell
+python board_check.py --list                     # which COM ports exist
+python board_check.py --port COM20               # diagnose that one
+python board_check.py --port COM20 --wait 75     # also report firmware variant + SPIFFS
+```
+
+It additionally reports **which firmware variant** is flashed (ROOT / PLAIN CHILD /
+BLACKHOLE ATTACKER / BLACKHOLE VICTIM / WORMHOLE NODE A / WORMHOLE NODE B) and
+**SPIFFS usage**, which is the number that predicts an export failure.
+
+`--wait 75` is needed for the last two: `mesh_setup_init()` blocks up to
+`PHASE_STABILISE_S` (60 s) when there is no mesh to join, and both the SPIFFS
+banner and the blackhole-victim marker are logged *after* it returns.
+
+Full guide: [`../BOARD-CHECK.md`](../BOARD-CHECK.md).
+
+---
+
+## recover_spiffs.py
+
+🆘 **For when a board can no longer read its own files.** Symptom:
+
+```
+[####################] 100.0%  0 B/1.1 MB  0 rows  0 B/s
+FAILED: device announced 1.1 MB then sent END_OF_FILE with 0 rows
+```
+
+The size is right (`ftell` worked) but nothing streams (`fgets` returned NULL).
+That is SPIFFS exhaustion — `esp32-issues` I-017 — and **power-cycling does not
+help**, because the fault is in the filesystem, not a stuck handle.
+
+```powershell
+python recover_spiffs.py --port COM20 -o exports\<attack>\<topology>\<name>_telem.csv
+python recover_spiffs.py --dump saved.bin -o out.csv --kind arrivals
+```
+
+esptool reads the raw `spiffs` partition off the flash chip, bypassing the ESP32's
+filesystem entirely, and the CSV rows are extracted from the dump.
+
+- **~70 % of rows recover, with zero corrupt rows.** Only byte runs delimited by
+  `\n` on *both* sides in the raw flash are accepted; rows straddling SPIFFS page
+  metadata are dropped rather than spliced. (Stripping the metadata first and
+  splitting on newlines welds the tail of one row onto the head of the next and
+  fabricates data that passes validation — measured at 303 invented rows before
+  this rule was added.)
+- **70 % is enough.** M6 downsamples to a 1 Hz grid, so a 10 Hz stream missing 30 %
+  still yields a complete window set (measured: 134 windows kept, 1 discarded).
+- Partition offset/size are read from `../partitions.csv`, not hard-coded.
+
+> 🚨 Run this **before** `--delete` / `--wipe` / `-Wipe -Flash`. All three format the
+> partition and the data is gone.
+
+---
+
+## trim_run.py
+
+Keeps only the experiment run from an exported CSV. See
+[**Trimming exports before analysis**](../LINEAR-RUNBOOK.md#-trimming-exports-before-analysis)
+for the full rationale.
+
+```powershell
+python trim_run.py exports\baseline\linear_topology              # dry run
+python trim_run.py exports\baseline\linear_topology --apply      # -> .../trimmed/
+```
+
+Splits on **schema first** (a lost `END_OF_FILE` can concatenate two different
+streams, or the same file twice, into one capture), then on **boot sessions**
+(timestamp regressions), keeping the longest. Files needing no trimming are
+**copied across unchanged**, so `trimmed/` is always the complete analysis input —
+check the `files in output : N of N` line.
+
+---
+
+## verify_topology.py
+
+Rebuilds the mesh from each node's `parent_mac` + `layer` and asserts the intended
+shape.
+
+```powershell
+python verify_topology.py --dir exports\baseline\linear_topology\trimmed `
+    --topology linear --attack none --repeat 1 --expect linear
+```
+
+> ⚠️ `--topology` defaults to `star`. Without the filters it matches **zero files**
+> and exits 2 on every other topology.
+
+Parent/layer changes inside the first `PHASE_STABILISE_S` (60 s) count as mesh
+**formation**, not baseline re-routing — they are reported separately, and
+`--stabilise-s 0` restores the old all-inclusive behaviour.
+
+---
+
+## run_matrix.py
+
+Tracks the Milestone-4 matrix (4 topologies × 2 attacks × 3 repeats = 24 runs).
+
+```powershell
+python run_matrix.py --status         # the grid; warns about unrecorded captures
+python run_matrix.py --autorecord     # validate + record everything on disk
+python run_matrix.py --next           # what to run next
+python run_matrix.py --cmds --topology linear --attack blackhole
+```
+
+**Prefer `--autorecord` over `--record`.** `--record` needs `--topology`,
+`--attack` and `--repeat` typed correctly; getting `--repeat` wrong silently
+re-records the *previous* repeat and leaves a finished capture unticked with no
+complaint. `--autorecord` scans, validates and records whatever is complete, and
+`--status` now flags captured-but-unrecorded cells on its own.
