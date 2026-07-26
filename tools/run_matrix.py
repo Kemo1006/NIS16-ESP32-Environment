@@ -249,7 +249,31 @@ def validate_cell(outdir, topo, attack, sample_interval_ms):
 
 
 # ── Views ───────────────────────────────────────────────────────────────────
-def print_status(outdir, repeats):
+def scan_unrecorded(outdir, repeats):
+    """Cells whose CSVs are on disk and complete, but which are NOT ticked off.
+
+    Exists because the failure is silent and easy: the repeat number lives in
+    THREE places (root -Repeat, export --repeat, record --repeat) and getting
+    the last one wrong records the previous repeat again. The captures sit on
+    disk looking finished while the matrix still says pending, and nothing
+    complains. Verified on 2026-07-26: r2 was exported and trimmed, then
+    `--record ... --repeat 1` re-recorded r1 and the grid stayed at 1/24.
+    """
+    ledger = load_ledger(outdir)
+    found = []
+    for topo, atk, rep in all_cells(repeats):
+        if ledger.get((topo, atk, rep), {}).get("status") == "done":
+            continue
+        files = find_files(outdir, topo, atk, rep)
+        if not files:
+            continue
+        root_t, root_a, vic = coverage(files)
+        complete = root_t and root_a and vic >= 3
+        found.append((topo, atk, rep, len(files), complete))
+    return found
+
+
+def print_status(outdir, repeats, show_unrecorded=True):
     rows = load_ledger(outdir)
     done = 0
     total = 0
@@ -278,6 +302,22 @@ def print_status(outdir, repeats):
             break
     else:
         print("All planned runs collected. [done]")
+
+    if not show_unrecorded:
+        return
+    pending = scan_unrecorded(outdir, repeats)
+    if not pending:
+        return
+    print("\n" + "!" * 62)
+    print("  CAPTURED BUT NOT RECORDED — data is on disk, matrix says pending:")
+    for topo, atk, rep, n, complete in pending:
+        tag = f"{n} file(s)" if complete else f"{n} file(s), INCOMPLETE"
+        print(f"    {topo}/{atk}/r{rep}   {tag}")
+    print()
+    print("  Usually the --repeat number on --record did not match the one you")
+    print("  exported with. Record them all in one go:")
+    print("      python run_matrix.py --autorecord")
+    print("!" * 62)
 
 
 def record(outdir, topo, attack, rep, do_validate, sample_interval_ms):
@@ -349,6 +389,11 @@ def main():
                          "(fallback when run without -Export).")
     ap.add_argument("--next", action="store_true",
                     help="Print the next pending cell AND its run.ps1 block.")
+    ap.add_argument("--autorecord", action="store_true",
+                    help="Scan exports/ for captures that are complete but not "
+                         "yet ticked off, validate and record each one. Use "
+                         "this instead of remembering --topology/--attack/"
+                         "--repeat by hand.")
     ap.add_argument("--record", action="store_true",
                     help="Validate a cell's CSVs and mark it done "
                          "(needs --topology --attack; --repeat optional).")
@@ -407,6 +452,34 @@ def main():
             ap.error("--export-cmds needs --topology and --attack")
         print_export_cmds(args.topology, args.attack, args.repeat, ports)
         return 0
+
+    if args.autorecord:
+        # record() reads this off itself (see its coverage check); the single
+        # --record path sets it the same way further down.
+        record._allow_incomplete = args.allow_incomplete
+        pending = scan_unrecorded(args.outdir, args.repeats)
+        if not pending:
+            print("Nothing to record — every capture on disk is already ticked "
+                  "off.")
+            print_status(args.outdir, args.repeats, show_unrecorded=False)
+            return 0
+        print(f"Found {len(pending)} unrecorded capture(s) on disk.\n")
+        failed = 0
+        for topo, atk, rep, _n, complete in pending:
+            if not complete and not args.allow_incomplete:
+                print(f"[SKIP] {topo}/{atk}/r{rep} — incomplete "
+                      f"(--allow-incomplete to force)\n")
+                failed += 1
+                continue
+            print(f"--- {topo}/{atk}/r{rep}")
+            rc = record(args.outdir, topo, atk, rep,
+                        do_validate=not args.no_validate,
+                        sample_interval_ms=args.sample_interval_ms)
+            if rc:
+                failed += 1
+            print()
+        print_status(args.outdir, args.repeats, show_unrecorded=False)
+        return 1 if failed else 0
 
     if args.record:
         if not (args.topology and args.attack):
