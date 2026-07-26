@@ -78,6 +78,7 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import re
 import shutil
 import sys
 
@@ -306,11 +307,63 @@ def main():
             print("  NOTE: point preprocess.py / features.py at that folder —")
             print("        it is the COMPLETE analysis input (trimmed files plus")
             print("        untouched copies of anything that needed no trimming).")
+    _warn_on_duplicate_captures(paths)
     if not args.in_place:
         _warn_on_stale_outputs(paths, out_dir)
     if not args.apply:
         print("  (dry run — nothing written. Re-run with --apply)")
     return 0
+
+
+_CAPTURE_RE = re.compile(
+    r"^(?P<role>root|child|victim)_(?P<label>[^_]+)_(?P<topology>[^_]+)_"
+    r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_"
+    r"(?P<kind>telem|arrivals)\.csv$"
+)
+
+
+def _warn_on_duplicate_captures(source_paths):
+    """Flag two captures of the SAME board, repeat and kind in one folder.
+
+    Exports are timestamped, so re-exporting or re-running a cell never
+    overwrites — it ADDS a second file. Nothing downstream notices: every
+    analysis tool globs the folder, so both copies load and that board is
+    counted twice. It is silent because the totals still look plausible.
+
+    Seen twice on 2026-07-26/27, both in star/wormhole/r1: re-pulling the root
+    left two root telem files, which pushed the root to 264 windows against
+    ~155 for every other node, and preprocess reported it without complaint.
+
+    This is the trap waiting for anyone who re-runs an already-captured cell —
+    a repeat that has to be redone for placement or a bad export. Archive or
+    delete the previous capture for that cell first; ARCHIVE-RUNBOOK.md covers
+    moving it out rather than deleting it.
+    """
+    seen = {}
+    unparsed = []
+    for p in source_paths:
+        name = os.path.basename(p)
+        m = _CAPTURE_RE.match(name)
+        if not m:
+            unparsed.append(name)
+            continue
+        g = m.groupdict()
+        key = (g["role"], g["label"], g["topology"], g["attack"],
+               g["repeat"], g["kind"])
+        seen.setdefault(key, []).append(name)
+
+    dupes = {k: v for k, v in seen.items() if len(v) > 1}
+    if not dupes:
+        return
+    print()
+    print(f"  [!] {len(dupes)} DUPLICATE capture(s) — same board, same repeat, "
+          f"same kind:")
+    for (role, label, topo, attack, rep, kind), names in sorted(dupes.items()):
+        print(f"      {label} {topo}/{attack} r{rep} {kind}  x{len(names)}")
+        for n in sorted(names):
+            print(f"        {n}")
+    print("      BOTH will be loaded by preprocess/features, counting that")
+    print("      board twice. Keep ONE per board per repeat before analysing.")
 
 
 def _warn_on_stale_outputs(source_paths, out_dir):
