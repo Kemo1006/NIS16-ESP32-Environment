@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 
@@ -166,6 +167,29 @@ class PreprocessReport:
 # ─────────────────────────────────────────────────────────────────────────
 # Step 1 — Load raw CSVs
 # ─────────────────────────────────────────────────────────────────────────
+
+_REPEAT_RE = re.compile(r"_r(\d+)_\d{8}_\d{6}_(?:telem|arrivals)\.csv$")
+
+
+def _repeat_from_filename(source_file: str):
+    """Pull the M4 repeat number out of an export filename, or NaN.
+
+    An analysis folder deliberately holds all three repeats at once (the M4
+    matrix counts them by the _r1_/_r2_/_r3_ tag), and this loader globs the
+    whole folder — so every window from r1, r2 and r3 lands in one table with
+    no way to tell them apart. That is fine for M8 separability, which pools
+    benign vs attack windows regardless of run, but it makes per-repeat
+    variance impossible to recover downstream: a reader can always pool, but
+    cannot un-pool.
+
+    Carrying the repeat as its own column costs nothing and keeps the dataset
+    usable for reproducibility questions ("does the signature hold across
+    runs?") that the pooled table cannot answer. NaN for any file that does
+    not follow the export naming convention.
+    """
+    m = _REPEAT_RE.search(source_file or "")
+    return int(m.group(1)) if m else np.nan
+
 
 def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame:
     """
@@ -504,6 +528,7 @@ def build_windows(df: pd.DataFrame, report: PreprocessReport) -> pd.DataFrame:
             "window_start": wdf["window_start"].iloc[0],
             "node_id": node_id,
             "source_file": source_file,
+            "run_repeat": _repeat_from_filename(source_file),
             "node_role": wdf["role"].mode().iloc[0] if not wdf["role"].mode().empty else wdf["role"].iloc[0],
             "layer": wdf["layer"].mode().iloc[0] if "layer" in wdf and not wdf["layer"].mode().empty else np.nan,
             "parent_mac": wdf["parent_mac"].iloc[-1] if "parent_mac" in wdf else None,

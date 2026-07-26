@@ -128,6 +128,44 @@ logged). TunnelIntensity and TunnelBytes remain attacker-keyed as specified.
 
 ---
 
+## D-5 · Baseline control: each attack run's phase 0, not a separate baseline run
+
+| | |
+|---|---|
+| **Milestones Form implies** | A baseline (no-attack) capture per topology, as the "normal" reference the attack runs are compared against. |
+| **We do** | `baseline · linear` captured as a native-mesh reference. For **star, tree and partial**, the control is **phase 0 of each attack run** — the 300 s benign window every run already contains, labelled `gt_label=0`. |
+| **Why** | It is a **better-matched control.** Phase 0 of an attack run shares the attack run's firmware, node roles, mesh session and placement — the attack turning on is the *only* variable. A separate baseline run differs in **two** ways at once: different firmware, and a different number of probing nodes, because in an attack run one board is the attacker or tunnel end and **relays** probes instead of originating them. Measured on `linear`: baseline has **5 probing victims at 4.90 probes/s**, attack-run phase 0 has **4 at ~3.9/s**. Comparing baseline-run windows against attack-run windows therefore confounds the attack with a traffic-composition change; comparing within a run does not. |
+| **Cost** | Two things are given up, both modest. (1) No native-mesh reference for star/tree/partial — how each topology behaves with no attack firmware present at all. (2) The `star` phase-0 instability (Open Item 1, `2026-07-27.md`) cannot be attributed to the topology vs the wormhole firmware without a `baseline · star` run. |
+| **Note on M4** | This changes nothing for Milestone 4, which is 24 **attack** runs gated on `validate_integrity.py`. The runbooks state baseline is "**not** part of the M4 24". |
+| **To restore literally** | Run `baseline · <topology>` once per topology (~11 min each). Worth doing for **star specifically**, purely to settle Open Item 1. |
+
+---
+
+## D-6 · Repeats share a topology class, not a fixed parent assignment
+
+| | |
+|---|---|
+| **Milestones Form implies** | Three repeats of the *same* configuration per cell. |
+| **We do** | The **topology class** is fixed by a compile-time constraint (`MESH_TOPOLOGY` → `max_layer` / `max_children` in `mesh_setup.c:105-118`) and verified per run by `verify_topology.py`. **Which board sits at which layer is not fixed** — parents are chosen by signal strength at each boot. |
+| **Evidence** | Across `linear · wormhole` r1–r3 the Node A ↔ Node B separation was adjacent → 2 hops → 3 hops. All three still reported `PASS linear: one node per layer, depth 6`. |
+| **Why not forced** | Pinning parents would require overriding the mesh's own parent selection, which is the behaviour under study. The self-organising layer is what makes this a mesh dataset rather than a fixed-route one. |
+| **Net effect** | The attack signature is **unaffected** — 181 / 181 / 180 duplicates across repeats — because the wormhole tunnel is a physical UART wire whose behaviour does not depend on mesh distance. **Radio-path features legitimately vary between repeats** (`RSSI_Hop_Diff`, `LatencyHopRatio`, `HopStabilityDuration`). That variance is real mesh behaviour, not noise to be removed. |
+| **Recoverable** | `preprocess.py` now writes a **`run_repeat`** column (see D-7), so per-repeat variance can be measured rather than assumed away. |
+
+---
+
+## D-7 · `run_repeat` column added to the windowed and feature tables
+
+| | |
+|---|---|
+| **Context** | An analysis folder deliberately holds all three repeats at once — the M4 matrix counts them by the `_r1_`/`_r2_`/`_r3_` filename tag — and `preprocess.py` globs the whole folder. Every window from r1, r2 and r3 therefore landed in one table with no way to separate them. |
+| **Why it mattered** | Fine for M8 separability, which pools benign vs attack windows regardless of run. But a reader **can always pool and cannot un-pool**: per-repeat variance, and any reproducibility question ("does the signature hold across runs?"), was unrecoverable from the published table. |
+| **We do** | `_repeat_from_filename()` parses the repeat out of `source_file` and emits it as **`run_repeat`**. It flows into `feature_table.csv` automatically. NaN for any file not following the export naming convention. |
+| **Verified** | `blackhole·linear` 786/863/821 · `wormhole·linear` 869/822/779 · `wormhole·star` 884 (r1 only). |
+| **Net effect** | Nothing else changes — no feature value, no window count, no label. One extra identifier column, which matters for a dataset intended for reuse. |
+
+---
+
 ## Not deviations (recorded so they aren't mistaken for gaps)
 
 - **ForwardingRatio / IngressEgressDelta / ConsistencyScore are NaN in baseline and
