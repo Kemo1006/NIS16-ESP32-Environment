@@ -217,6 +217,49 @@ still will not claim so, because "no evidence of X" is not proof of "not X".
 > blackhole victim is the worst possible output here: you would trust it, run the experiment,
 > and only find out from the data. An honest `UNDETERMINED` costs you 50 seconds.
 
+## 💾 Is this board's SPIFFS about to break the export?
+
+**This is the check that would have saved r2 on 2026-07-26.** A full SPIFFS makes
+the board unable to read its own `telem.csv` — `EXPORT_LOGS` announces the right
+size and returns **0 rows** (`esp32-issues` I-017). Check 4 reports it:
+
+```powershell
+python board_check.py --port COM20 --wait 60
+```
+
+```
+      SPIFFS:   12 / 2287 KB used (0%)  (healthy)
+```
+
+| reading | meaning |
+|---|---|
+| under ~10 % | clean — safe to run |
+| ≥ 50 % | ⚠️ `<-- TOO FULL`. Clear it **before** the run |
+| 70 % | the I-017 board: 0.75 Hz sampling, corrupt lines, unreadable export |
+
+> ⏳ **`--wait 60` is required.** `csv_logger_init()` runs *after*
+> `mesh_setup_init()` (`blackhole_victim.c:125` then `:146`), so the
+> `SPIFFS mounted. Total: … Used: …` line lands seconds-to-tens-of-seconds into
+> boot — later than the startup banner and past the default 10 s window. At the
+> default you get `SPIFFS: not reported`, which is a **timing limitation, not a
+> fault**.
+
+To clear a full board, prefer the guaranteed route:
+
+```powershell
+.\run.ps1 -Port COM20 -Role child -Label node5 ... -Wipe -Flash
+```
+
+`-Wipe -Flash` full-erases the chip. `export_logs.py --wipe` is faster but can
+report `no ack` and silently not take effect — verify it prints
+`SPIFFS formatted — flash reset to empty.` before trusting it.
+
+> 🆘 Already stuck with an unreadable board? **Do not wipe it yet** —
+> `tools/recover_spiffs.py --port COMxx -o <file>.csv` dumps the raw flash with
+> esptool and extracts the rows, bypassing the filesystem entirely.
+
+---
+
 ### Why it has to read the boot banner
 
 The attack role is a **compile-time build flag** (`-DACTIVE_ATTACK`, `-DBLACKHOLE_ROLE`,

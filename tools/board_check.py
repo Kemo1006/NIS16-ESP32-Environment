@@ -403,7 +403,15 @@ def main():
             print("                BEFORE the run: -Wipe -Flash (guaranteed), or")
             print("                export_logs.py --wipe (verify it acks).")
     else:
-        print("      SPIFFS:   not reported — power-cycle to catch the boot banner")
+        # csv_logger_init() runs AFTER mesh_setup_init() (blackhole_victim.c:125
+        # then :146, and the same order in victim_main.c / root_main.c), so the
+        # mount line lands seconds-to-tens-of-seconds into boot — long after the
+        # startup banner and well past the default listen window. Not a fault.
+        hint = " Re-run with --wait 60." if args.wait < 60 else \
+               " Power-cycle the board and re-run."
+        print("      SPIFFS:   not reported — the mount line prints after mesh "
+              "init,")
+        print("                later than the boot banner." + hint)
 
     print("\n" + "-" * 62)
     if ok2 and ok3 and ok4:
