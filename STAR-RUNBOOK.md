@@ -183,6 +183,28 @@ Track with `python tools\run_matrix.py --status`.
 
 ---
 
+> 🚨 **If an export ever pulls the WRONG FILE.** `--role root` runs two commands,
+> `EXPORT_LOGS` then `EXPORT_ARRIVALS`. On 2026-07-26 (star·wormhole·r1) the second
+> one streamed `telem.csv` instead, so a good run was saved under an `_arrivals.csv`
+> name holding a copy of the telemetry. Every later stage accepted it and the truth
+> only surfaced ~20 min later, when `features.py` refused to build PDR.
+>
+> `export_logs.py` now checks the stream's header against the file it asked for
+> (arrivals carry `src_mac`/`seq_num`, telemetry does not). On a mismatch it:
+> **quarantines** the capture as `....csv.rejected` — outside every downstream glob,
+> so nothing can pick it up — and **skips `--delete`**, so the board keeps the file.
+>
+> Recovery is just re-exporting the same board — **the run is NOT lost**:
+>
+> ```powershell
+> python export_logs.py --port COM20 --role root --label node1 `
+>     --topology <topology> --attack <attack> --repeat <N>    # NO --delete
+> ```
+>
+> That re-pulls telem *and* arrivals, so you get a second root telem file — **delete
+> the duplicate**, keeping exactly one root telem and one root arrivals, or
+> `preprocess.py` counts the root twice.
+
 ## 🛠️ Manual route without auto analyze
 
 Prefer to export and analyze by hand? **Drop `-Analyze` from the Phase 4 root command.**
@@ -231,7 +253,7 @@ Get-ChildItem tools\exports\baseline\star_topology
 python tools\trim_run.py tools\exports\baseline\star_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\star_topology --apply     # -> ...\star_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\baseline\star_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\baseline\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\baseline\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 ```
 
 Expect **7 files**: 5 child `_telem.csv` + the root's `_telem.csv` and `_arrivals.csv`. Anything
@@ -439,7 +461,7 @@ Get-ChildItem tools\exports\baseline\star_topology      # expect 7 files BEFORE 
 python tools\trim_run.py tools\exports\baseline\star_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\star_topology --apply     # -> ...\star_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\baseline\star_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\baseline\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\baseline\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 cd analysis
 python preprocess.py ..\tools\exports\baseline\star_topology\trimmed -o baseline\star_topology\windowed_dataset.csv
 python features.py   ..\tools\exports\baseline\star_topology\trimmed -o baseline\star_topology\feature_table.csv
@@ -512,7 +534,7 @@ Get-ChildItem tools\exports\blackhole\star_topology      # expect 7 files BEFORE
 python tools\trim_run.py tools\exports\blackhole\star_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\blackhole\star_topology --apply     # -> ...\star_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\blackhole\star_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\blackhole\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\blackhole\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 cd analysis
 python preprocess.py ..\tools\exports\blackhole\star_topology\trimmed -o blackhole\star_topology\windowed_dataset.csv
 python features.py   ..\tools\exports\blackhole\star_topology\trimmed -o blackhole\star_topology\feature_table.csv
@@ -605,7 +627,7 @@ Get-ChildItem tools\exports\wormhole\star_topology      # expect 7 files BEFORE 
 python tools\trim_run.py tools\exports\wormhole\star_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\wormhole\star_topology --apply     # -> ...\star_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\wormhole\star_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\wormhole\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\wormhole\star_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 cd analysis
 python preprocess.py ..\tools\exports\wormhole\star_topology\trimmed -o wormhole\star_topology\windowed_dataset.csv
 python features.py   ..\tools\exports\wormhole\star_topology\trimmed -o wormhole\star_topology\feature_table.csv

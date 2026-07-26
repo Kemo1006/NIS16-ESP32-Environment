@@ -244,6 +244,28 @@ python tools\run_matrix.py --record --topology linear --attack blackhole --repea
 
 ---
 
+> 🚨 **If an export ever pulls the WRONG FILE.** `--role root` runs two commands,
+> `EXPORT_LOGS` then `EXPORT_ARRIVALS`. On 2026-07-26 (star·wormhole·r1) the second
+> one streamed `telem.csv` instead, so a good run was saved under an `_arrivals.csv`
+> name holding a copy of the telemetry. Every later stage accepted it and the truth
+> only surfaced ~20 min later, when `features.py` refused to build PDR.
+>
+> `export_logs.py` now checks the stream's header against the file it asked for
+> (arrivals carry `src_mac`/`seq_num`, telemetry does not). On a mismatch it:
+> **quarantines** the capture as `....csv.rejected` — outside every downstream glob,
+> so nothing can pick it up — and **skips `--delete`**, so the board keeps the file.
+>
+> Recovery is just re-exporting the same board — **the run is NOT lost**:
+>
+> ```powershell
+> python export_logs.py --port COM20 --role root --label node1 `
+>     --topology <topology> --attack <attack> --repeat <N>    # NO --delete
+> ```
+>
+> That re-pulls telem *and* arrivals, so you get a second root telem file — **delete
+> the duplicate**, keeping exactly one root telem and one root arrivals, or
+> `preprocess.py` counts the root twice.
+
 ## 🛠️ Manual route without auto analyze
 
 > 📌 **Shared reference** — the tree/star/partial runbooks link here. Swap `linear_topology`
@@ -298,7 +320,7 @@ Get-ChildItem tools\exports\baseline\linear_topology
 python tools\trim_run.py tools\exports\baseline\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 ```
 
 You want **6 boards present** — 5 child `_telem.csv` plus the root's `_telem.csv` *and*
@@ -948,7 +970,7 @@ Get-ChildItem tools\exports\baseline\linear_topology
 python tools\trim_run.py tools\exports\baseline\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\baseline\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\baseline\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\baseline\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 ```
 
 Then run M6 → M7 → M8 (identical to `run.ps1:399, 408, 419`):
@@ -1061,7 +1083,7 @@ Get-ChildItem tools\exports\blackhole\linear_topology
 python tools\trim_run.py tools\exports\blackhole\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\blackhole\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\blackhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\blackhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\blackhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 ```
 
 Then run M6 → M7 → M8 (identical to `run.ps1:399, 408, 419`):
@@ -1227,7 +1249,7 @@ Get-ChildItem tools\exports\wormhole\linear_topology
 python tools\trim_run.py tools\exports\wormhole\linear_topology             # dry run: lists boot sessions
 python tools\trim_run.py tools\exports\wormhole\linear_topology --apply     # -> ...\linear_topology\trimmed\ (raw untouched)
 (Get-ChildItem tools\exports\wormhole\linear_topology\trimmed\*.csv).Count   # MUST be 7 PER REPEAT (7 after r1, 14 after r2, 21 after r3 — the folder keeps them all); a short count silently NaNs out PDR/latency
-Get-Content tools\exports\wormhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num
+Get-Content tools\exports\wormhole\linear_topology\trimmed\*_arrivals.csv -TotalCount 1   # MUST list src_mac,seq_num (export_logs.py now rejects a wrong-file export up front, so this is a backstop)
 ```
 
 Then run M6 → M7 → M8 (identical to `run.ps1:399, 408, 419`):

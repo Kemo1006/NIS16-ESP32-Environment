@@ -315,6 +315,38 @@ def _warn_on_mixed_schema(rows, kind: str) -> None:
           file=sys.stderr)
 
 
+def _check_expected_schema(rows, kind: str):
+    """Did the device actually send the file we ASKED for? Returns an error
+    string when it didn't, else None.
+
+    Observed on star/wormhole/r1 (2026-07-26): EXPORT_ARRIVALS streamed
+    telem.csv instead of arrivals.csv, so a perfectly good run was saved with a
+    *_arrivals.csv name holding an exact copy of the telemetry. Every later
+    stage happily accepted it — trim_run split it, preprocess windowed it — and
+    the truth only surfaced ~20 minutes later when features.py refused to build
+    PDR. By then the board is usually unplugged, and if --delete ran, wiped.
+
+    The two schemas are trivially distinguishable (arrivals carries src_mac and
+    seq_num; telemetry does not), so check it here, while the board is still on
+    the desk and the file is still on its flash.
+    """
+    headers = [r for r in rows if r.startswith(_CSV_HEADER_TOKEN)]
+    if not headers:
+        return None  # no header at all — the empty/partial paths report that
+    got_arrivals = "src_mac" in headers[0] and "seq_num" in headers[0]
+    want_arrivals = kind == "arrivals"
+    if got_arrivals == want_arrivals:
+        return None
+    got, want = ("telemetry", "arrivals") if want_arrivals else ("arrivals", "telemetry")
+    return (
+        f"device sent {got} data when asked for {want}. The stream's header is "
+        f"{headers[0][:70]}... Nothing is lost on the device — the file is only "
+        f"removed by --delete/--wipe, which is being SKIPPED for this run. "
+        f"Re-issue the same export command; if it repeats, power-cycle the "
+        f"board first."
+    )
+
+
 def _capture_with_retries(ser: serial.Serial, command: str):
     """Capture a stream, retrying transient failures and keeping the most
     complete result. Returns (rows, error_str, attempts_used).
@@ -552,11 +584,23 @@ def main() -> int:
             if rows:
                 path = _make_filename(args, kind)
                 _warn_on_mixed_schema(rows, kind)
+                schema_err = _check_expected_schema(rows, kind)
+                if schema_err:
+                    # Park it OUTSIDE every downstream glob (*.csv / *_telem.csv
+                    # / *_arrivals.csv) so trim_run, preprocess and validate
+                    # cannot pick it up, but keep the bytes for diagnosis rather
+                    # than discarding a capture we may need to look at.
+                    path += ".rejected"
                 n = _save(rows, path)
                 data_rows = max(0, n - 1)  # minus header
                 tries = f" after {attempts} tries" if attempts > 1 else ""
                 tag = " (PARTIAL — see error below)" if err else ""
-                print(f"   saved {data_rows} data rows{tries} -> {path}{tag}")
+                if schema_err:
+                    print(f"   WRONG FILE: {schema_err}", file=sys.stderr)
+                    print(f"   quarantined {data_rows} rows -> {path}", file=sys.stderr)
+                    any_failed = True
+                else:
+                    print(f"   saved {data_rows} data rows{tries} -> {path}{tag}")
             elif not err:
                 print("   WARNING: stream was empty (0 rows).", file=sys.stderr)
             if err:
