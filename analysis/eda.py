@@ -639,6 +639,110 @@ def plot_dimensionality_reduction(
     return out_path, result
 
 
+def plot_tunnel_end_projection(
+    df: pd.DataFrame,
+    output_dir: str,
+    max_nan_fraction: float = 0.4,
+    **kwargs,
+) -> tuple[str | None, dict]:
+    """
+    Companion projection over the TUNNEL-END nodes only, with the tunnel
+    features kept in.
+
+    The whole-mesh plot above cannot show them: TunnelIntensity/TunnelBytes
+    exist on the two wormhole ends and nowhere else, so across a 6-node mesh
+    they sit around 67% NaN and are dropped as role-sparse. The result is a
+    projection built from the features a wormhole barely touches (RSSI,
+    retries, parent switches) — it answers "is the attack visible in what
+    EVERY node can measure?", which is the honest detection question, but it
+    is silent on the tunnel evidence and reads as though there is none.
+
+    Restricting the rows to the nodes that actually have a tunnel makes those
+    columns dense again, so this plot answers the complementary question:
+    "does the tunnel evidence separate the attack window?" Keep both — one is
+    the realistic detector's view, the other the ground-truth confirmation.
+
+    Returns (None, {...}) when the table has no tunnel data at all (any
+    baseline or blackhole run), which is not an error — there is simply no
+    tunnel to plot.
+
+    max_nan_fraction is 0.4 here rather than the 0.5 used mesh-wide: on a
+    two-node subset a feature defined on exactly ONE end lands at ~0.50, right
+    on the boundary, and keeping it would drop the other end's rows entirely
+    at the dropna step — collapsing a two-node plot to one node. PDR is
+    exactly this case (victims have it, the wormhole exit does not).
+    """
+    tunnel_cols = [c for c in FEATURE_COLUMNS
+                   if c.startswith("Tunnel") and c in df.columns]
+    if not tunnel_cols:
+        return None, {"skipped": "no tunnel feature columns in this table"}
+
+    has_tunnel = df[tunnel_cols].notna().any(axis=1)
+    if not has_tunnel.any():
+        return None, {"skipped": "no rows carry tunnel data (not a wormhole run)"}
+
+    subset = df[has_tunnel].copy()
+    node_col = "node_id" if "node_id" in subset.columns else None
+    n_nodes = subset[node_col].nunique() if node_col else 0
+
+    result = run_dimensionality_reduction(
+        subset, exclude_tunnel=False, max_nan_fraction=max_nan_fraction, **kwargs
+    )
+    out_path = os.path.join(output_dir, "dimensionality_reduction_tunnel_ends.png")
+
+    if "error" in result:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.text(0.5, 0.5, result["error"], ha="center", va="center",
+                wrap=True, fontsize=10, color="darkred", transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        fig.savefig(out_path, dpi=120)
+        plt.close(fig)
+        return out_path, result
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    label_names = [LABEL_NAMES.get(v, str(v)) for v in result["labels"]]
+    palette = sns.color_palette("Set1", n_colors=len(set(label_names)))
+
+    sns.scatterplot(
+        x=result["pca_projection"][:, 0], y=result["pca_projection"][:, 1],
+        hue=label_names, palette=palette, ax=axes[0], s=40, alpha=0.8,
+    )
+    var_explained = result["pca_explained_variance_ratio"]
+    axes[0].set_title(
+        f"PCA (PC1: {var_explained[0]:.1%} var, PC2: {var_explained[1]:.1%} var)"
+    )
+    axes[0].set_xlabel("PC1")
+    axes[0].set_ylabel("PC2")
+
+    sns.scatterplot(
+        x=result["tsne_projection"][:, 0], y=result["tsne_projection"][:, 1],
+        hue=label_names, palette=palette, ax=axes[1], s=40, alpha=0.8,
+    )
+    axes[1].set_title(f"t-SNE (perplexity={result['tsne_perplexity_used']})")
+    axes[1].set_xlabel("t-SNE dim 1")
+    axes[1].set_ylabel("t-SNE dim 2")
+
+    kept_tunnel = [c for c in result["usable_columns"] if c.startswith("Tunnel")]
+    subtitle = (
+        f"{result['n_rows_used']} windows from {n_nodes} tunnel-end node(s); "
+        f"tunnel features INCLUDED: {', '.join(kept_tunnel) if kept_tunnel else 'none survived'}"
+    )
+    if result.get("excluded_columns"):
+        subtitle += "\nExcluded: " + ", ".join(result["excluded_columns"])
+    fig.suptitle(
+        "Tunnel-end projection — separability WITH the tunnel features\n" + subtitle,
+        fontsize=10,
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+
+    result["n_nodes"] = n_nodes
+    result["tunnel_columns_kept"] = kept_tunnel
+    return out_path, result
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Orchestration
 # ─────────────────────────────────────────────────────────────────────────
@@ -689,6 +793,12 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     summary["dimensionality_reduction_plot"] = dimred_path
     summary["dimensionality_reduction_excluded_columns"] = dimred_result.get("excluded_columns", [])
 
+    # 5b. Same projection over the tunnel ends only, tunnel features kept.
+    # Skipped (returns None) on baseline/blackhole tables, which have no tunnel.
+    tunnel_path, tunnel_result = plot_tunnel_end_projection(df, output_dir)
+    summary["tunnel_end_projection_plot"] = tunnel_path
+    summary["tunnel_end_projection"] = tunnel_result
+
     return summary
 
 
@@ -719,6 +829,15 @@ def main():
     print(f"  PCA/t-SNE plot:          {summary['dimensionality_reduction_plot']}")
     if summary["dimensionality_reduction_excluded_columns"]:
         print(f"    excluded: {summary['dimensionality_reduction_excluded_columns']}")
+    tunnel_plot = summary.get("tunnel_end_projection_plot")
+    tunnel_info = summary.get("tunnel_end_projection") or {}
+    if tunnel_plot:
+        print(f"  Tunnel-end projection:   {tunnel_plot}")
+        print(f"    {tunnel_info.get('n_rows_used', '?')} window(s) from "
+              f"{tunnel_info.get('n_nodes', '?')} tunnel-end node(s); "
+              f"tunnel features kept: {tunnel_info.get('tunnel_columns_kept') or 'none'}")
+    else:
+        print(f"  Tunnel-end projection:   skipped — {tunnel_info.get('skipped', 'n/a')}")
     print(f"  All outputs in:          {args.output_dir}/")
     print("───────────────────────────────────────────────────────")
 
