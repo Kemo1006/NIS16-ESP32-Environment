@@ -207,6 +207,55 @@ def check_runtime(port, wait_s):
     return False, f"silent for {wait_s}s — no app running (blank or crash-looping)", combined
 
 
+# Which firmware variant is on the board, read from its own boot banner.
+# The attack role is a COMPILE-TIME flag (-DACTIVE_ATTACK / -DBLACKHOLE_ROLE /
+# -DWORMHOLE_END, see run.ps1), so nothing on the device reports it at runtime —
+# the banner each variant prints at startup is the only self-declaration there
+# is. check_bootloader() resets the chip via esptool just before this runs, so
+# the banner is normally still in the captured output.
+#
+# Keep these strings in sync with the ESP_LOGI banners in root_main.c,
+# victim_main.c, blackhole_victim.c and wormhole_victim.c.
+FIRMWARE_SIGNATURES = [
+    ("=== BLACKHOLE ATTACKER (relay) STARTING ===",
+     "BLACKHOLE ATTACKER  (-Attack blackhole -BlackholeRole attacker)"),
+    ("Blackhole victim mode",
+     "BLACKHOLE VICTIM    (-Attack blackhole -BlackholeRole victim)"),
+    ("=== WORMHOLE NODE A (exit) STARTING ===",
+     "WORMHOLE NODE A     (-Attack wormhole -WormholeEnd A)"),
+    ("=== WORMHOLE NODE B (entry) STARTING ===",
+     "WORMHOLE NODE B     (-Attack wormhole -WormholeEnd B)"),
+    ("=== ROOT NODE STARTING ===",
+     "ROOT                (-Role root)"),
+    ("=== VICTIM NODE STARTING ===",
+     "PLAIN CHILD         (-Role child, no -Attack)"),
+]
+
+
+def identify_firmware(text):
+    """(variant, how_we_know) from captured boot output. Never guesses."""
+    if not text:
+        return None, "no output captured"
+
+    hits = [label for sig, label in FIRMWARE_SIGNATURES if sig in text]
+    if hits:
+        # A blackhole/wormhole banner is printed IN ADDITION to the generic
+        # "VICTIM NODE STARTING", so prefer the most specific match — the
+        # attack banners are listed first above.
+        return hits[0], "boot banner"
+
+    # Fallback: LIST_FILES lists arrivals.csv only on a root (csv_logger.c),
+    # so it separates root from child even with no banner in the buffer.
+    if "arrivals.csv" in text:
+        return "ROOT                (-Role root)", "LIST_FILES reply"
+    if "FILE:" in text and "telem.csv" in text:
+        return None, ("a CHILD of some kind (LIST_FILES shows telem.csv only, "
+                      "no arrivals.csv) — but the attack variant needs the boot "
+                      "banner; power-cycle the board and re-run")
+    return None, ("banner not in the captured window — the board booted a while "
+                  "ago. Power-cycle it and re-run to catch the banner")
+
+
 def identify(mac):
     if not mac:
         return "unknown (MAC not read)"
@@ -286,8 +335,14 @@ def main():
     if ok3 and size and EXPECTED_FLASH.lower() not in size.lower():
         print(f"      WARNING: expected {EXPECTED_FLASH} for this project's partitions.csv")
 
-    ok4, d4, _ = check_runtime(port, args.wait)
+    ok4, d4, runtime_text = check_runtime(port, args.wait)
     print(f"[4/4] Firmware runtime ....... {_mark(ok4)}  ({d4})")
+
+    variant, how = identify_firmware(runtime_text)
+    if variant:
+        print(f"      firmware: {variant}   [{how}]")
+    else:
+        print(f"      firmware: UNDETERMINED — {how}")
 
     print("\n" + "-" * 62)
     if ok2 and ok3 and ok4:

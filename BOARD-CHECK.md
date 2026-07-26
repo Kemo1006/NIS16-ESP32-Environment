@@ -155,6 +155,59 @@ this project's own captured telemetry (`node_id = NODE_<MAC>`) and `BLACKHOLE_AT
 
 ---
 
+## 🔎 WHICH FIRMWARE is on this board?
+
+The MAC tells you *which board*. It does not tell you *what was flashed onto it* — and with
+six boards taking five different builds, that is the easier thing to get wrong.
+
+Check 4 now reports it:
+
+```powershell
+cd tools
+python board_check.py --port COM20
+```
+
+```
+[4/4] Firmware runtime ....... OK  (app running and answering LIST_FILES)
+      firmware: BLACKHOLE ATTACKER  (-Attack blackhole -BlackholeRole attacker)   [boot banner]
+```
+
+The variants it distinguishes, and the flags that produce each:
+
+| Reported | Flashed with |
+|---|---|
+| `ROOT` | `-Role root` |
+| `PLAIN CHILD` | `-Role child`, no `-Attack` |
+| `BLACKHOLE ATTACKER` | `-Attack blackhole -BlackholeRole attacker` |
+| `BLACKHOLE VICTIM` | `-Attack blackhole -BlackholeRole victim` |
+| `WORMHOLE NODE A` | `-Attack wormhole -WormholeEnd A` |
+| `WORMHOLE NODE B` | `-Attack wormhole -WormholeEnd B` |
+
+### Why it has to read the boot banner
+
+The attack role is a **compile-time build flag** (`-DACTIVE_ATTACK`, `-DBLACKHOLE_ROLE`,
+`-DWORMHOLE_END` — see `run.ps1:216-237`). It is baked into the binary; nothing on the device
+exposes it at runtime. The banner each variant prints at startup is the **only**
+self-declaration there is, so `board_check.py` matches against those strings.
+
+Check 2 resets the chip via esptool immediately before Check 4 listens, so the banner is
+normally still in the captured window. If the board booted long ago and has stopped
+chattering you may instead get:
+
+```
+      firmware: UNDETERMINED — banner not in the captured window — the board booted
+                a while ago. Power-cycle it and re-run to catch the banner
+```
+
+**That is not a failure — power-cycle the board and run it again.** It reports
+`UNDETERMINED` rather than guessing, because a wrong answer here sends you into a run with
+the wrong firmware on a board, which you would not discover until the data came out wrong.
+
+> 🔁 If `run.ps1` reflashes a board, this reads the **new** firmware — it is live state, not a
+> record of what you intended. To confirm a board *before* a run, check it after flashing.
+
+---
+
 ## 🔒 Safety
 
 - **Never erases.** Reads only — no `write_flash`, no `erase_flash`. Safe on a board that
