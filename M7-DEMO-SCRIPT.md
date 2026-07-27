@@ -11,8 +11,8 @@ populate.
 
 | Feature | 2026-07-24 | **now** |
 |---|:--:|---:|
-| `LatencyHopRatio` | 🔴 NaN everywhere | 🟢 **6,742** windows |
-| `TunnelLatency` | 🔴 NaN everywhere | 🟢 **225** windows |
+| `LatencyHopRatio` | 🔴 NaN everywhere | 🟢 **7,239** windows |
+| `TunnelLatency` | 🔴 NaN everywhere | 🟢 **299** windows |
 
 ---
 
@@ -35,25 +35,25 @@ cd ..
 ### 📋 SCREENSHOT — this is your M7 slide
 ```
 feature                   populated
-RetryRate                     13346
-ParentSwitchRate              13346
-LayerChangeCount              13346
-HopStabilityDuration          13346
-RSSI_mean                     13346
-RSSI_var                      13346
-RSSI_stability                13346
-RSSI_Hop_Diff                 13346
-PDR                            9205
-LatencyHopRatio                6742
-TunnelIntensity                1897
-TunnelBytes                    1897
+RetryRate                     14430
+ParentSwitchRate              14430
+LayerChangeCount              14430
+HopStabilityDuration          14430
+RSSI_mean                     14430
+RSSI_var                      14430
+RSSI_stability                14430
+RSSI_Hop_Diff                 14430
+PDR                            9718
+LatencyHopRatio                7239
+TunnelIntensity                2338
+TunnelBytes                    2338
+IngressEgressDelta             1204
 ForwardingRatio                1125
 ConsistencyScore               1125
-IngressEgressDelta             1204
-TunnelLatency                   225
+TunnelLatency                   299
 ```
 
-> 🗣️ *"All sixteen Table 4.11 features, across 13,346 windows in the assembled dataset. **Every
+> 🗣️ *"All sixteen Table 4.11 features, across 14,430 windows in the assembled dataset. **Every
 > one is populated** — none is uniformly NaN. The counts differ because several features are
 > role-exclusive by design, which is the next slide."*
 
@@ -63,11 +63,11 @@ TunnelLatency                   225
 
 | Tier | Features | Populated on | Count |
 |---|---|---|---:|
-| **Universal** | `RetryRate`, `ParentSwitchRate`, `LayerChangeCount`, `HopStabilityDuration`, all four `RSSI_*` | every node, every run | **13,346** |
-| **Victim-keyed** | `PDR`, `LatencyHopRatio` | nodes that originate probes | 9,205 / 6,742 |
+| **Universal** | `RetryRate`, `ParentSwitchRate`, `LayerChangeCount`, `HopStabilityDuration`, all four `RSSI_*` | every node, every run | **14,430** |
+| **Victim-keyed** | `PDR`, `LatencyHopRatio` | nodes that originate probes | 9,718 / 7,239 |
 | **Role-exclusive** | `ForwardingRatio`, `ConsistencyScore`, `IngressEgressDelta` | the blackhole relay only | ~1,125 |
-| | `TunnelIntensity`, `TunnelBytes` | the two wormhole ends only | 1,897 |
-| | `TunnelLatency` | Node B, while the tunnel is live | 225 |
+| | `TunnelIntensity`, `TunnelBytes` | the two wormhole ends only | 2,338 |
+| | `TunnelLatency` | Node B, while the tunnel is live | 299 |
 
 > 🗣️ *"NaN here means **not applicable to this node role**, not missing data. Table 4.12 states
 > it explicitly: tunnel fields are present only for attacker nodes during topology-distortion
@@ -109,12 +109,12 @@ cd ..
 
 ## 📊 The two recovered features — worth 30 seconds
 
-### `LatencyHopRatio` — 6,742 windows
+### `LatencyHopRatio` — 7,239 windows
 > 🗣️ *"Originally NaN everywhere because the probe protocol has no round-trip leg. It's now
 > computed as a **relative one-way delay** instead of mean RTT — deviation **D-2**, recorded with
 > the reasoning and what it would take to restore literally."*
 
-### `TunnelLatency` — 225 windows
+### `TunnelLatency` — 299 windows
 > 🗣️ *"Same story. Rather than a UART echo round-trip, it's the **divergence between the two
 > arrivals of the same probe** — the mesh copy and the tunnelled copy. Deviation **D-3**."*
 
@@ -152,7 +152,7 @@ cd ..
 
 > *"M7 computes the sixteen Table 4.11 features from the windowed dataset.*
 >
-> *\[headline table] All sixteen are populated across the assembled dataset — 13,346 windows.
+> *\[headline table] All sixteen are populated across the assembled dataset — 14,430 windows.
 > None is uniformly NaN.*
 >
 > *\[tiers slide] The counts differ because features are role-scoped. Eight are universal —
@@ -172,10 +172,10 @@ cd ..
 
 **"Why is `TunnelIntensity` NaN on most rows?"** ⭐
 > *"It's attacker-keyed by design — Table 4.12 says tunnel fields are present only for attacker
-> nodes. It populates on both tunnel ends and nowhere else: 1,897 windows across the dataset.
+> nodes. It populates on both tunnel ends and nowhere else: 2,338 windows across the dataset.
 > Role-exclusive, not missing."*
 
-**"Doesn't 225 windows for `TunnelLatency` seem very few?"**
+**"Doesn't 299 windows for `TunnelLatency` seem very few?"**
 > *"It's Node B only, and only while the tunnel is actively carrying traffic — the attack window.
 > That's about 37 windows per wormhole run, and we have six wormhole cells. The number is small
 > because the scope is narrow, not because samples are lost."*
@@ -194,10 +194,10 @@ cd ..
 ---
 
 ## ✅ Checklist
-- [ ] Headline table — all 16 populated across 13,346 windows
+- [ ] Headline table — all 16 populated across 14,430 windows
 - [ ] Three-tiers slide *(universal / victim-keyed / role-exclusive)*
 - [ ] Per-run NaN report from `features.py`
 - [ ] The two recovered features + the ~10 ms divergence output
 - [ ] `thesis-deviate.md` open at D-2 and D-3
-- [ ] Know: **16/16 populated** · **13,346 windows** · **~10 ms divergence**
+- [ ] Know: **16/16 populated** · **14,430 windows** · **~10 ms divergence**
 - [ ] Say **"not applicable, not missing"** before showing any NaN count

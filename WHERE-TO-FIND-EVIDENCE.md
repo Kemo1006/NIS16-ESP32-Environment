@@ -3,7 +3,7 @@
 > For each criterion: **the exact command to run**, or **the exact log line to cue in your
 > recording**. Nothing here needs hardware.
 >
-> 🔄 **Numbers current as of 2026-07-27, matrix at 15/24.** Re-check before presenting.
+> 🔄 **Numbers current as of 2026-07-27, matrix at 16/24.** Re-check before presenting.
 
 ---
 
@@ -130,11 +130,11 @@ cd ..\..\..
 ### Criterion 3 — Clean toggle, no leakage into baseline
 📋 Same validator output as criterion 1 & 2 — point at **`0` duplicates in phase 0 and phase 3**.
 
-### Criterion 4 — Consistent across all four topologies ⚠️ *3 of 4*
+### Criterion 4 — Consistent across all four topologies ✅
 ```powershell
 python tools\run_matrix.py --status
 ```
-📋 Linear ✅ · Star ✅ · Partial ✅ · Tree blackhole ✅, tree wormhole pending.
+📋 All four topologies carry both attacks.
 
 ---
 
@@ -169,7 +169,7 @@ cd ..
 📋 The **reconstructed tree** at the top of that same output. Say: *"this is rebuilt from each
 node's own `parent_mac` and `layer` columns — not our intended diagram."*
 
-### Criterion 4 — Both attacks show signatures in all four topologies ⚠️ *3 of 4*
+### Criterion 4 — Both attacks show signatures in all four topologies ✅
 ```powershell
 python tools\run_matrix.py --status
 ```
@@ -182,7 +182,7 @@ table. 6 nodes, positions fixed and documented per topology.
 
 # 🔴 M4 · Phase-Controlled Experiment Execution
 
-### Criterion 1 — At least 24 complete runs ⚠️ *15 of 24*
+### Criterion 1 — At least 24 complete runs ⚠️ *16 of 24*
 ```powershell
 python tools\run_matrix.py --status
 ```
@@ -237,11 +237,11 @@ python tools\validate_integrity.py tools\exports\wormhole\star_topology\trimmed
 
 📋 **Screenshot both** the `sample coverage` lines and the `0 FAIL` summary.
 
-### Criterion — Validation report confirms ≥24 clean runs ⚠️ *15 of 24*
+### Criterion — Validation report confirms ≥24 clean runs ⚠️ *16 of 24*
 ```powershell
 python tools\run_matrix.py --status
 ```
-> 🗣️ *"Fifteen cells validated clean. A cell can't be ticked by hand — `--record` runs the
+> 🗣️ *"Sixteen cells validated clean. A cell can't be ticked by hand — `--record` runs the
 > validator first and refuses on any failure."*
 
 ### Criterion — Any run failing validation is flagged for repeat collection

@@ -7,11 +7,11 @@
 >
 > **Specified run timeline:** 1 min formation · 5 min baseline · 3 min attack · 2 min cooldown
 
-## 🎯 Verdict: criteria 2 and 3 fully met · criterion 1 at 15 of 24
+## 🎯 Verdict: criteria 2 and 3 fully met · criterion 1 at 16 of 24
 
 | # | Criterion | Evidence | Status |
 |:-:|---|---|:--:|
-| 1 | ≥24 complete runs | **15/24**, 3 cells fully replicated | ⚠️ |
+| 1 | ≥24 complete runs | **16/24**, 3 cells fully replicated | ⚠️ |
 | 2 | Per-node CSV logs intact | **0 FAIL** across every recorded cell | ✅ |
 | 3 | Phase IDs match root timeline within tolerance | spread **0.11–0.15 s** across 6 nodes | ✅ |
 
@@ -101,7 +101,7 @@ passes five checks before the run counts.
 
 ---
 
-# ⚠️ CRITERION 1 · At least 24 complete runs — **15 of 24**
+# ⚠️ CRITERION 1 · At least 24 complete runs — **16 of 24**
 
 ## 📊 SLIDE 4 ⚡ *safe to run live*
 
@@ -122,10 +122,10 @@ linear    wormhole   [x]  [x]  [x]
 partial   blackhole  [ ]  [ ]  [ ]
 partial   wormhole   [ ]  [ ]  [ ]
 
-Progress: 15/24 runs collected
+Progress: 16/24 runs collected
 ```
 
-> 🗣️ *"Fifteen of twenty-four. **Four cells fully replicated** at three repeats each. Every
+> 🗣️ *"Sixteen of twenty-four. **Four cells fully replicated** at three repeats each. Every
 > recorded run is complete — seven files, zero failures — and matches the specified timeline.
 > What remains is runtime: eleven minutes per run plus exports. There are no unknowns left in
 > the method."*
@@ -166,7 +166,7 @@ linear,blackhole,3,done,2026-07-26 17:22:05,...
 > *\[slide 3] Every recorded run is intact — seven files each, zero failures — and a cell can't
 > be marked done unless its files pass validation.*
 >
-> *\[slide 4] Fifteen of twenty-four, with four cells fully replicated. What remains is runtime."*
+> *\[slide 4] Sixteen of twenty-four, with four cells fully replicated. What remains is runtime."*
 
 ---
 
@@ -175,7 +175,7 @@ linear,blackhole,3,done,2026-07-26 17:22:05,...
 **"You need 24 and you have 10."** ⭐ *expect this*
 > *"Correct. Four cells fully replicated, every recorded run complete and zero-FAIL, all
 > matching the specified timeline. The method, tooling and analysis pipeline are proven
-> end-to-end on those three cells — what's left is about eleven minutes of runtime per run. I'd
+> end-to-end on those four cells — what's left is about eleven minutes of runtime per run. I'd
 > rather present ten validated runs than twenty-four unvalidated ones."*
 
 **"What does 'within tolerance' mean here?"**
@@ -212,5 +212,5 @@ linear,blackhole,3,done,2026-07-26 17:22:05,...
 - [ ] Validator `0 FAIL` slide **before** the matrix slide
 - [ ] ⚠️ Re-run `--status` the morning of · screenshot as backup
 - [ ] `run_ledger.csv` open in a second window
-- [ ] Know: **11.0 min measured** · **0.15 s** · **15/24** · **3 cells at 3/3** · **0 FAIL**
+- [ ] Know: **11.0 min measured** · **0.15 s** · **16/24** · **3 cells at 3/3** · **0 FAIL**
 - [ ] Rehearse holding the count slide without apologising

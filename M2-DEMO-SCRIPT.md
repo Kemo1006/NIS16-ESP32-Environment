@@ -8,14 +8,14 @@
 > 3. Both attacks **toggle cleanly on phase transitions**; no leakage into baseline windows.
 > 4. Behavior is **consistent across all four topologies**.
 
-## 🎯 Verdict: 3 of 4 fully met · criterion 4 is at 3 of 4 topologies
+## 🎯 Verdict: **all four criteria met**
 
 | # | Criterion | Evidence | Status |
 |:-:|---|---|:--:|
 | 1 | Blackhole drop, normal before/after | root arrivals **1436 → 0 → 483** | ✅ |
 | 2 | Duplicates **with latency difference** | 181 pairs, median **9.8 ms** mismatch | ✅ |
 | 3 | Clean toggle, no baseline leakage | **0 duplicates** in baseline, every run | ✅ |
-| 4 | Consistent across **all four** topologies | linear ✅ star ✅ partial ✅ · tree wormhole pending | ⚠️ **3/4** |
+| 4 | Consistent across **all four** topologies | linear ✅ star ✅ partial ✅ tree ✅ | ✅ **4/4** |
 
 > 🗣️ **Open with the framing:** *"The ESP32 Wi-Fi stack is closed-source binary, so both attacks
 > are emulated at the **application layer** using normal `esp_mesh_send` and `esp_mesh_recv` —
@@ -146,7 +146,7 @@ benign rows really are benign.
 
 ---
 
-# ⚠️ CRITERION 4 · Consistent across all four topologies — **3 of 4**
+# ✅ CRITERION 4 · Consistent across all four topologies
 
 ## 📊 SLIDE 7 — Be direct about this
 
@@ -155,7 +155,7 @@ benign rows really are benign.
 | ➖ Linear | ✅ 720/720/0, root 0 | ✅ 181 dupes |
 | ⭐ Star | ✅ 721/721/0, root 1 leaked | ✅ 180 dupes |
 | 🕸️ Partial | ✅ r1 | ✅ 180 dupes |
-| 🌳 Tree | ✅ r1, 2 leaked | 🟡 exporting |
+| 🌳 Tree | ✅ r1, 2 leaked | ✅ 181 dupes |
 
 > 🗣️ *"All four topologies are deployed; three carry both attacks. The substantive point is that
 > the signature reproduced **consistently** across structurally different meshes — the wormhole at

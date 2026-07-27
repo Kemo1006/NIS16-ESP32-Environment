@@ -5,7 +5,7 @@
 > `eda.py` implements directly, and the note in `2026-07-24.md`: *"all 5 analyses; outputs
 > generated"*.
 
-## 🎯 Verdict: all five analyses on all seven datasets · quality-limited until M4 fills
+## 🎯 Verdict: all five analyses on all nine datasets · quality-limited until M4 fills
 
 | §4.2.6 analysis | Output | Status |
 |---|---|:--:|
@@ -68,8 +68,10 @@ cd ..
 | blackhole · partial | 944 | 727 / 217 |
 | wormhole · linear | 2470 | 1819 / 651 |
 | wormhole · star | 2531 | 1881 / 650 |
+| wormhole · tree | 1053 | 801 / 252 |
+| wormhole · partial | 839 | 623 / 216 |
 
-> 🗣️ *"Seven datasets, all four topologies, both attacks plus the baseline control — **13,346
+> 🗣️ *"Nine datasets, all four topologies, both attacks plus the baseline control — **14,430
 > labelled windows** in total."*
 
 ---
@@ -145,7 +147,7 @@ your own analysis before anyone finds it.
 
 > 🗣️ *"M8 is quality-limited until M4 fills. Cross-topology separability — showing that baseline,
 > blackhole and wormhole separate **as classes** — needs the full matrix in one table. Right now
-> we have 15 of 24 cells, so the per-dataset EDA is complete but the cross-class comparison isn't
+> we have 16 of 24 cells, so the per-dataset EDA is complete but the cross-class comparison isn't
 > yet meaningful. That's runtime, not method: the pipeline runs unchanged on the fuller
 > dataset."*
 
@@ -160,8 +162,8 @@ cells, which are now at three repeats each."*
 > *"M8 is the exploratory analysis, and the thesis is explicit that it's **strictly descriptive**
 > — no detection rules or thresholds derived here, and none are.*
 >
-> *\[summary] All five §4.2.6 analyses run on all seven datasets: descriptive statistics,
-> distributions, time-series, Pearson and Spearman correlation, and PCA with t-SNE. **13,346
+> *\[summary] All five §4.2.6 analyses run on all nine datasets: descriptive statistics,
+> distributions, time-series, Pearson and Spearman correlation, and PCA with t-SNE. **14,430
 > labelled windows** across all four topologies.*
 >
 > *\[both projections] On dimensionality reduction we produce two plots. One uses only features
@@ -169,7 +171,7 @@ cells, which are now at three repeats each."*
 > nodes with the tunnel features kept in, because those exist on 2 of 6 nodes and get excluded
 > from a whole-mesh projection. Showing only one would mislead in either direction.*
 >
-> *The honest limitation: cross-class separability needs the full matrix. That's the 10 cells
+> *The honest limitation: cross-class separability needs the full matrix. That's the 8 cells
 > still to run, not a change to the analysis."*
 
 ---
@@ -209,7 +211,7 @@ cells, which are now at three repeats each."*
 - [ ] **Both** dimensionality-reduction plots exported side by side
 - [ ] One correlation heatmap
 - [ ] One time-series plot
-- [ ] Dataset coverage table (7 datasets, 13,346 windows)
+- [ ] Dataset coverage table (7 datasets, 14,430 windows)
 - [ ] Say **"strictly descriptive, no detection rules"** in the first 20 seconds
 - [ ] Ready to name what M4 unblocks — cross-class separability
-- [ ] Know: **5 analyses** · **7 datasets** · **13,346 windows** · **871 tunnel-end windows**
+- [ ] Know: **5 analyses** · **7 datasets** · **14,430 windows** · **871 tunnel-end windows**

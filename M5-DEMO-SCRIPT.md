@@ -23,7 +23,7 @@
 | **Check: coverage ≥95 %** | measured **95.5–97.3 %** | ✅ |
 | **Check: phase labels every row** | label-integrity check, 0 failures | ✅ |
 | **Check: no corruption / truncation** | schema + monotonicity, 0 failures | ✅ |
-| ≥24 clean runs | **15 of 24** | ⚠️ |
+| ≥24 clean runs | **16 of 24** | ⚠️ |
 | Failing runs flagged for repeat | 4 guards, all fire at source | ✅ |
 
 > 🎯 **Framing:** *"Nothing enters the dataset unvalidated."* This is the milestone where you
@@ -140,14 +140,14 @@ python tools\trim_run.py tools\exports\wormhole\star_topology
 
 ---
 
-## ⚠️ CRITERION · Validation report confirms ≥24 clean runs — **15 of 24**
+## ⚠️ CRITERION · Validation report confirms ≥24 clean runs — **16 of 24**
 
 ### 📍 COMMAND ⚡ *safe to run live*
 ```powershell
 python tools\run_matrix.py --status
 ```
 ```
-Progress: 15/24 runs collected (Milestone-4 minimum is 24)
+Progress: 16/24 runs collected (Milestone-4 minimum is 24)
 ```
 
 ### 📄 AND the report behind it
@@ -155,9 +155,9 @@ Progress: 15/24 runs collected (Milestone-4 minimum is 24)
 Get-Content tools\exports\run_ledger.csv | Select-Object -First 5
 ```
 
-> 🗣️ *"Fifteen cells validated clean. A cell **can't be ticked by hand** — `--record` runs the
-> validator first and refuses on any failure. So this number means fifteen runs whose data passed
-> every integrity check, not eleven attempts."*
+> 🗣️ *"Sixteen cells validated clean. A cell **can't be ticked by hand** — `--record` runs the
+> validator first and refuses on any failure. So this number means sixteen runs whose data passed
+> every integrity check, not sixteen attempts."*
 
 ---
 
@@ -220,7 +220,7 @@ Get-Content tools\exports\wormhole\star_topology\trimmed\manifest.json | Select-
 > phase-to-label map. Corruption and truncation: schema width and timestamp monotonicity. Every
 > recorded cell is zero-FAIL.*
 >
-> *\[matrix] Eleven runs validated clean of twenty-four.*
+> *\[matrix] Sixteen runs validated clean of twenty-four.*
 >
 > *\[guards] And failing runs are flagged at source — four guards, each added after a real
 > corruption during collection, including one that produced no error at all."*
@@ -238,7 +238,7 @@ root's arrivals log agree exactly, on separate devices writing separate files."*
 the firmware appends across boots. The raw capture is never modified; trimmed copies go to a
 separate folder, and it's a dry run by default so you see what would be dropped first."*
 
-**"You need 24 clean runs and you have 11."** → *"Correct. Fifteen validated clean, zero failures
+**"You need 24 clean runs and you have 16."** → *"Correct. Sixteen validated clean, zero failures
 among them. The validation pipeline is complete and proven — what remains is runtime."*
 
 **"What happens if an export fails halfway?"** → *"The partial capture is saved — more useful
@@ -262,8 +262,8 @@ timestamped."*
 - [ ] `validate_integrity.py` on **blackhole·linear** — `21 PASS, 0 WARN, 0 FAIL`
 - [ ] `trim_run.py` dry run — session split + `[!] repeated capture` visible
 - [ ] `manifest.json` first entry — `sha256`, `row_count`, `size_bytes`
-- [ ] `run_matrix.py --status` — the 15/24 count
+- [ ] `run_matrix.py --status` — the 16/24 count
 - [ ] `run_ledger.csv` first rows
 - [ ] A filename annotated with its metadata fields
 - [ ] Four-guards table on a slide *(don't cut — it's the differentiator)*
-- [ ] Know: **95.5–97.3 %** · **0 FAIL** · **15/24** · **5 checks** · **4 guards**
+- [ ] Know: **95.5–97.3 %** · **0 FAIL** · **16/24** · **5 checks** · **4 guards**

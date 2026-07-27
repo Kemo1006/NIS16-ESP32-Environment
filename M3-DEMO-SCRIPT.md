@@ -16,7 +16,7 @@
 | 1 | Converges within 60 s | linear ✅ star ✅ tree ✅ partial ✅ — **1 star run fails** | ⚠️ |
 | 2 | Verified via parent-MAC + layer | `verify_topology.py` reconstructs the tree | ✅ |
 | 3 | Stable through 5-min baseline | YES on the passing runs | ⚠️ |
-| 4 | Both attacks in **all four** topologies | **3 of 4** — tree wormhole pending | ⚠️ |
+| 4 | Both attacks in **all four** topologies | **4 of 4** — all topologies | ⚠️ |
 
 > ⚠️ **This milestone contains a real failure.** Don't lead with it; the four-move answer is at
 > the bottom. Rehearse it out loud — it's the likeliest hard question in your defence.
@@ -127,7 +127,7 @@ Select-String -Path components\mesh_common\src\mesh_setup.c -Pattern "NIS_TOPO_S
 
 ---
 
-## 4️⃣ Both attacks in all four topologies — ⚠️ **3 of 4**
+## 4️⃣ Both attacks in all four topologies — ✅ **all four**
 
 ### 📍 COMMAND
 ```powershell
@@ -138,7 +138,7 @@ python tools\run_matrix.py --status
 |---|:--:|:--:|:--:|
 | ➖ Linear | ✅ | ✅ | ✅ |
 | ⭐ Star | ✅ | ✅ | ✅ |
-| 🌳 Tree | ✅ | ✅ r1 | 🟡 exporting |
+| 🌳 Tree | ✅ | ✅ r1 | ✅ r1 |
 | 🕸️ Partial | ✅ | ✅ r1 | ✅ r1 |
 
 > 🗣️ *"**All four topologies are deployed**, and three of the four carry both attacks. The
