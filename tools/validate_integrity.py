@@ -314,14 +314,22 @@ def _check_attack_phase(phase_id, st, count, base, base_rate, attack, report):
             f"the expected attack signature (baseline was {base_rate:.2f}/s)"
         )
         return
-    leak = st["rate_hz"] / base_rate if base_rate else 0.0
-    msg = (f"phase {phase_id} ({name}): {count} probes still reached the root at "
-           f"{st['rate_hz']:.2f}/s = {leak:.0%} of baseline")
+    # Compare COUNTS against what the baseline rate predicts over the phase's
+    # nominal duration -- NOT rate against rate. A handful of leaked probes arrive
+    # microseconds apart, so their measured span is near zero and rate_hz explodes:
+    # tree/blackhole/r1 leaked 2 probes and this reported "208.22/s = 5277% of
+    # baseline - the attack did not take effect", when 2 against ~711 expected is a
+    # 99.7% drop and among the strongest results in the set.
+    nominal_s = PHASE_DURATION_S.get(phase_id, st["span_s"])
+    expected = base_rate * nominal_s
+    leak = count / expected if expected else 0.0
+    msg = (f"phase {phase_id} ({name}): {count} probes still reached the root — "
+           f"{leak:.1%} of the ~{expected:.0f} expected at the baseline rate")
     if leak > ATTACK_LEAK_TOLERANCE:
         report.warn(msg + " — the attack did not take effect; check the "
                           "attacker's tx_count is flat across this phase")
     else:
-        report.info(msg + " (partial drop)")
+        report.info(msg + " (near-total drop)")
 
 
 def _check_arrivals_coverage(rows, header, attack, report):
