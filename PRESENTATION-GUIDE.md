@@ -1,6 +1,6 @@
 # 🎤 Presentation Guide — NIS16 / CTTHES2
 
-> **Snapshot: 2026-07-27 · matrix at 8/24.**
+> **Snapshot: 2026-07-27 · matrix at 15/24.**
 > Every figure below was read out of the repo, not estimated. **Re-check the three
 > starred numbers on the morning of the defence** — a stale figure on a slide is worse
 > than a smaller true one.
@@ -42,7 +42,7 @@ detectable. Every strong artifact you own points at trustworthiness.
 |---|---|---|
 | **Lead / framing** | Slides 1–3, 13–14 | "What is the contribution?" "What are the limits?" |
 | **Firmware** | Slides 4–5 | "How is the attack implemented?" "How is the label produced?" |
-| **Experiment** | Slides 6–8 | "How do you know it's a star?" "Why 8/24?" |
+| **Experiment** | Slides 6–8 | "How do you know it's a star?" "Why 15/24?" |
 | **Analysis** | Slides 9–12 | "Why is this feature NaN?" "What does the PCA show?" |
 
 **Rule:** whoever owns a slide answers questions on it. Agree this beforehand — hesitation
@@ -52,7 +52,7 @@ about *who speaks* reads as uncertainty about the *content*.
 
 | | | Where it comes from |
 |---|---|---|
-| ⭐ **8 / 24** | M4 runs collected | `run_matrix.py --status` |
+| ⭐ **15/24** | M4 runs collected | `run_matrix.py --status` |
 | ⭐ **720 / 720 / 0** | Blackhole: received / dropped / forwarded | attacker telemetry |
 | ⭐ **181 · 181 · 180** | Wormhole duplicates across runs | root arrivals log |
 
@@ -258,7 +258,7 @@ tree   ▸ blackhole   ⬜   ⬜   ⬜     0/3  ░░░░░░░░░░
 tree   ▸ wormhole    ⬜   ⬜   ⬜     0/3  ░░░░░░░░░░
 partial▸ blackhole   ⬜   ⬜   ⬜     0/3  ░░░░░░░░░░
 partial▸ wormhole    ⬜   ⬜   ⬜     0/3  ░░░░░░░░░░
-                                    8/24
+                                    15/24
 ```
 
 **[SAY]**
@@ -406,7 +406,7 @@ mistakes rather than waiting to be told.
 
 **[LAYOUT]** Five numbered items, each one line, each with its deviation ID.
 
-1. **Matrix at 8/24** — remaining work is runtime, not method
+1. **Matrix at 15/24** — remaining work is runtime, not method
 2. **Repeats share a topology class, not a fixed parent assignment** — parents chosen by
    signal at boot *(D-6)*
 3. **Baseline control = each run's own phase 0**, not separate baseline runs *(D-5)*
@@ -427,7 +427,7 @@ vague ones read as evasion.
 
 ## Slide 15 — Next steps
 
-1. **16 runs** to complete M4
+1. **9 runs** to complete M4
 2. **`baseline · star`** — settles the convergence question
 3. **M8 separability** once the full matrix exists
 4. **RTT leg + wormhole echo frame** → CTTHES3 *(deliberately deferred: changing firmware now

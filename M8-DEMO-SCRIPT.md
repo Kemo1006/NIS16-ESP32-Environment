@@ -145,7 +145,7 @@ your own analysis before anyone finds it.
 
 > 🗣️ *"M8 is quality-limited until M4 fills. Cross-topology separability — showing that baseline,
 > blackhole and wormhole separate **as classes** — needs the full matrix in one table. Right now
-> we have 14 of 24 cells, so the per-dataset EDA is complete but the cross-class comparison isn't
+> we have 15 of 24 cells, so the per-dataset EDA is complete but the cross-class comparison isn't
 > yet meaningful. That's runtime, not method: the pipeline runs unchanged on the fuller
 > dataset."*
 

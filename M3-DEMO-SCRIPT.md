@@ -13,10 +13,10 @@
 | # | Criterion | Result | Status |
 |:-:|---|---|:--:|
 | — | 5–10 nodes, positions documented | **6 nodes**, floor plan per topology | ✅ |
-| 1 | Converges within 60 s | linear ✅ star ✅ — **1 star run fails** | ⚠️ |
+| 1 | Converges within 60 s | linear ✅ star ✅ tree ✅ partial ✅ — **1 star run fails** | ⚠️ |
 | 2 | Verified via parent-MAC + layer | `verify_topology.py` reconstructs the tree | ✅ |
 | 3 | Stable through 5-min baseline | YES on the passing runs | ⚠️ |
-| 4 | Both attacks in **all four** topologies | **2 of 4** — tree, partial pending | ⚠️ |
+| 4 | Both attacks in **all four** topologies | **3 of 4** — tree wormhole pending | ⚠️ |
 
 > ⚠️ **This milestone contains a real failure.** Don't lead with it; the four-move answer is at
 > the bottom. Rehearse it out loud — it's the likeliest hard question in your defence.
@@ -127,7 +127,7 @@ Select-String -Path components\mesh_common\src\mesh_setup.c -Pattern "NIS_TOPO_S
 
 ---
 
-## 4️⃣ Both attacks in all four topologies — ⚠️ **2 of 4**
+## 4️⃣ Both attacks in all four topologies — ⚠️ **3 of 4**
 
 ### 📍 COMMAND
 ```powershell
@@ -138,13 +138,13 @@ python tools\run_matrix.py --status
 |---|:--:|:--:|:--:|
 | ➖ Linear | ✅ | ✅ | ✅ |
 | ⭐ Star | ✅ | ✅ | ✅ |
-| 🌳 Tree | ✅ | 🔴 pending | 🔴 pending |
-| 🕸️ Partial | ✅ | 🔴 pending | 🔴 pending |
+| 🌳 Tree | ✅ | ✅ r1 | 🟡 exporting |
+| 🕸️ Partial | ✅ | ✅ r1 | ✅ r1 |
 
-> 🗣️ *"Two of four topologies carry both attacks, and the signatures reproduced **identically**
-> — the wormhole at 181 duplicates on linear and 180 on star, the blackhole at zero root
-> arrivals in both. Tree and partial are pending runtime, not method: it's the same firmware
-> with a different build flag.*
+> 🗣️ *"**All four topologies are deployed**, and three of the four carry both attacks. The
+> signatures reproduced consistently across them — the wormhole at 181 duplicates on linear,
+> 180 on star and 180 on partial, and the blackhole dropping to between zero and two probes out
+> of ~710 expected. Only tree · wormhole is outstanding, and it's exporting now.*
 >
 > *One reason we expect them to match: the blackhole works by **addressing** — victims send to
 > the attacker's MAC regardless of mesh position — and the wormhole tunnel is a **physical

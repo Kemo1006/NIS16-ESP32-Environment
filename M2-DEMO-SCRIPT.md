@@ -8,14 +8,14 @@
 > 3. Both attacks **toggle cleanly on phase transitions**; no leakage into baseline windows.
 > 4. Behavior is **consistent across all four topologies**.
 
-## 🎯 Verdict: 3 of 4 fully met · criterion 4 is at 2 of 4 topologies
+## 🎯 Verdict: 3 of 4 fully met · criterion 4 is at 3 of 4 topologies
 
 | # | Criterion | Evidence | Status |
 |:-:|---|---|:--:|
 | 1 | Blackhole drop, normal before/after | root arrivals **1436 → 0 → 483** | ✅ |
 | 2 | Duplicates **with latency difference** | 181 pairs, median **9.8 ms** mismatch | ✅ |
 | 3 | Clean toggle, no baseline leakage | **0 duplicates** in baseline, every run | ✅ |
-| 4 | Consistent across **all four** topologies | linear ✅ star ✅ · tree & partial pending | ⚠️ **2/4** |
+| 4 | Consistent across **all four** topologies | linear ✅ star ✅ partial ✅ · tree wormhole pending | ⚠️ **3/4** |
 
 > 🗣️ **Open with the framing:** *"The ESP32 Wi-Fi stack is closed-source binary, so both attacks
 > are emulated at the **application layer** using normal `esp_mesh_send` and `esp_mesh_recv` —
@@ -83,6 +83,7 @@ Blackhole victim mode: probes -> attacker b0:cb:d8:f3:32:18
 | linear · r3 | 181 | ×2.00 | Node B | **0** |
 | star · r1 | 180 | ×2.00 | Node B | **0** |
 | star · r2 | 180 | ×2.00 | Node B | **0** |
+| **partial · r1** | **180** | ×2.00 | Node B | **0** |
 
 ## 📊 SLIDE 4 — The latency mismatch ⭐ *criterion 2's second half*
 
@@ -145,21 +146,21 @@ benign rows really are benign.
 
 ---
 
-# ⚠️ CRITERION 4 · Consistent across all four topologies — **2 of 4**
+# ⚠️ CRITERION 4 · Consistent across all four topologies — **3 of 4**
 
 ## 📊 SLIDE 7 — Be direct about this
 
 | Topology | Blackhole signature | Wormhole signature |
 |---|:--:|:--:|
 | ➖ Linear | ✅ 720/720/0, root 0 | ✅ 181 dupes |
-| ⭐ Star | ✅ 721/721/0, root 0 | ✅ 180 dupes |
-| 🌳 Tree | 🔴 pending | 🔴 pending |
-| 🕸️ Partial | 🔴 pending | 🔴 pending |
+| ⭐ Star | ✅ 721/721/0, root 1 leaked | ✅ 180 dupes |
+| 🕸️ Partial | ✅ r1 | ✅ 180 dupes |
+| 🌳 Tree | ✅ r1, 2 leaked | 🟡 exporting |
 
-> 🗣️ *"Two of four topologies so far, and the signature reproduced **identically** on both —
-> which is the substantive point. The wormhole came out at 181 on linear and 180 on star, and
-> the blackhole at zero root arrivals in both. Tree and partial are pending runtime, not method:
-> it's the same firmware with a different build flag.*
+> 🗣️ *"All four topologies are deployed; three carry both attacks. The substantive point is that
+> the signature reproduced **consistently** across structurally different meshes — the wormhole at
+> 181 duplicates on linear, 180 on star and 180 on partial; the blackhole dropping to between
+> zero and two probes out of about 710 expected. Only tree · wormhole is outstanding.*
 >
 > *One reason we expect consistency: the blackhole works by **addressing** — victims send to the
 > attacker's MAC regardless of mesh position. And the wormhole tunnel is a **physical wire**, so
@@ -167,7 +168,7 @@ benign rows really are benign.
 > topology-sensitive by construction."*
 
 > 💡 That last paragraph is the strongest thing you can say here. It explains **why** the
-> remaining two topologies are expected to match, without claiming they already do.
+> remaining cell is expected to match, without claiming it already does.
 
 ---
 
@@ -218,11 +219,11 @@ benign rows really are benign.
 > wormhole duplicates it."*
 
 **"You only have two topologies — criterion 4 says four."** ⭐ *expect this*
-> *"Correct, that one is at two of four. What I can show is that the signature is **identical**
-> on both — 181 duplicates on linear, 180 on star, zero root arrivals under blackhole in both.
-> And neither mechanism is topology-sensitive by construction: the blackhole works by
-> addressing, and the wormhole tunnel is a physical wire. Tree and partial are runtime, and
-> they're next."*
+> *"All four are deployed; three carry both attacks. The signature is consistent across them —
+> 181 duplicates on linear, 180 on star, 180 on partial, and the blackhole dropping to between
+> zero and two probes out of about 710. Neither mechanism is topology-sensitive by construction:
+> the blackhole works by addressing, and the wormhole tunnel is a physical wire. Only tree ·
+> wormhole is outstanding, and it's exporting now."*
 
 **"Is 9 milliseconds really 'measurable'?"**
 > *"It's measured directly in the data — both copies carry the same send timestamp, so the
