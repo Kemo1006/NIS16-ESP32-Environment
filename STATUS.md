@@ -28,7 +28,7 @@ designed, NOT built, team decides; plan at `C:\Users\Basti\.claude\plans\mutable
 - `presets/linear-blackhole-g402.json` is GONE, not in the Recycle Bin (picker deletes with
   `-Force`). Recovery: OneDrive's **online** recycle bin. `linear-blackhole-home.json` is current.
 - **Two unreconciled panel-response tracks:** `Plan/THESIS3-PANEL-PLAN.md` (aug. 06 DRAFT) vs `ESP32-Environment/memory/panel-change-2026-09.md` (sep. 13, in-flight). Read both first.
-- Fresh git history, uncommitted to remote; CC/NIS16-ESP32-Environment frozen refs.
+- Now pushed to `origin/Unified` (sep. 17, 2026) — no longer uncommitted; CC/NIS16-ESP32-Environment frozen refs still apply.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
 - sep. 17, 2026 — **Fixed `cls` leaving a blank screen** in `run_wizard.ps1` + `menu.ps1`: the four
