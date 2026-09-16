@@ -1,0 +1,8 @@
+MILESTONE 3 - MULTI-TOPOLOGY DEPLOYMENT
+
+Milestone 3 - topology verified from the data, not assumed. Our coverage: tree, linear, and star are captured and verified; partial mesh is the one still pending. How we prove the shape: verify_topology.py rebuilds the tree from each node's own parent-MAC and layer columns - an independent check on the physical wiring. For this star run it confirms all five nodes sit at layer 2, the mesh converged within 60 seconds, and the baseline had no re-routing. So the topology label is earned from the data, not declared by us.
+
+
+MILESTONE 4 - PHASE-CONTROLLED EXECUTION
+
+Milestone 4 - the execution matrix. I want to be completely honest about status. We have 8 of 24 runs recorded, and - the number I'd emphasise - zero failures across every recorded cell. Two cells are fully replicated at three repeats each. The important framing: what remains is runtime, not unknowns. The method, the tooling, and the analysis pipeline are complete and already exercised end-to-end. Finishing the matrix is a matter of running more captures, not solving anything open.

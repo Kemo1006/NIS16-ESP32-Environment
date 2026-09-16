@@ -1,0 +1,24 @@
+# Default Kconfig values for the root node.
+# These are applied whenever sdkconfig is (re)generated — e.g. after
+# `idf.py set-target` or on a fresh checkout — so the custom partition
+# table with the SPIFFS partition is never lost. Without this, set-target
+# falls back to the single-app table and the firmware aborts at boot with
+# "spiffs partition could not be found".
+
+# Use our custom partition table (defines nvs/otadata/app0/spiffs).
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Flash size — boards confirmed 4MB via `esptool.py flash_id` (2026-07-12);
+# the partition table now extends to a full 0x400000 to fit 10,000+ row runs.
+# See ../docs/issue_logs/thesis-deviate.md.
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+
+# FAT long filenames — the SD status-report tree (sd_status.c) creates folder
+# names longer than 8.3, e.g. "partial_mesh_topology" (21 chars) and
+# "DLSU_Library" (12 chars). With the IDF default (CONFIG_FATFS_LFN_NONE),
+# FatFs rejects them with FR_INVALID_NAME and mkdir()/fopen() fail with errno
+# 22 EINVAL — the same bug fixed in sd_card_test/ on sep. 12, 2026.
+CONFIG_FATFS_LFN_HEAP=y
+

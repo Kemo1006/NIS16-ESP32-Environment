@@ -1,0 +1,16 @@
+# Workstation-management docs (this root). The code lives in
+# NIS16-ESP32-Environment-semi-final/, which has its own .gitignore.
+# Only personal / generated files are ignored here so the anchor docs get committed.
+
+CLAUDE.local.md      # personal overrides — never share
+.env                 # secrets
+*.log
+
+# Editor / OS junk
+.obsidian/workspace.json
+.DS_Store
+Thumbs.db
+
+# Python / build artifacts if any tooling runs from here
+__pycache__/
+*.pyc

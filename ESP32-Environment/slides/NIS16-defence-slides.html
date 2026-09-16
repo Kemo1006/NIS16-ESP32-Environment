@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NIS16 — Mesh Attack Telemetry Dataset</title>
+<style>
+  /* ============================================================
+     PRINT TO PDF:  open in Chrome  ->  Ctrl+P
+       Destination : Save as PDF
+       Layout      : Landscape
+       Margins     : None
+       Background graphics : ON   <-- important, or colours vanish
+     ============================================================ */
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: #4a5568; }
+
+  .slide {
+    width: 1280px; height: 720px; padding: 54px 68px;
+    background: #fff; color: #1a202c; position: relative;
+    page-break-after: always; break-after: page;
+    margin: 0 auto 24px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  @media print { .slide { margin: 0; box-shadow: none; } .noprint { display: none !important; } }
+
+  h1 { font-size: 46px; line-height: 1.15; letter-spacing: -.5px; }
+  h2 { font-size: 34px; margin-bottom: 6px; letter-spacing: -.3px; }
+  h3 { font-size: 21px; margin: 14px 0 8px; color: #2d3748; }
+  p, li { font-size: 19px; line-height: 1.5; }
+  ul { margin-left: 22px; } li { margin-bottom: 6px; }
+  .sub { font-size: 17px; color: #718096; margin-top: 4px; }
+  .tag { display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: .8px;
+         text-transform: uppercase; padding: 4px 11px; border-radius: 4px; margin-bottom: 12px; }
+  .t-done { background: #c6f6d5; color: #22543d; }
+  .t-part { background: #feebc8; color: #7b341e; }
+  .t-gap  { background: #fed7d7; color: #742a2a; }
+  .t-key  { background: #bee3f8; color: #2a4365; }
+  .num { font-variant-numeric: tabular-nums; }
+  .rule { height: 4px; background: #2b6cb0; width: 74px; margin: 10px 0 18px; border-radius: 2px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 17px; margin-top: 8px; }
+  th { background: #edf2f7; text-align: left; padding: 8px 11px; font-size: 15px;
+       text-transform: uppercase; letter-spacing: .4px; color: #4a5568; border-bottom: 2px solid #cbd5e0; }
+  td { padding: 8px 11px; border-bottom: 1px solid #e2e8f0; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.hi td { background: #fffaf0; font-weight: 700; }
+  .ok { color: #22543d; font-weight: 700; } .bad { color: #742a2a; font-weight: 700; }
+
+  pre { background: #1a202c; color: #e2e8f0; padding: 14px 18px; border-radius: 6px;
+        font-family: Consolas, monospace; font-size: 15px; line-height: 1.55; overflow: hidden; }
+  pre .g { color: #68d391; } pre .y { color: #f6e05e; } pre .r { color: #fc8181; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .card { background: #f7fafc; border-left: 4px solid #2b6cb0; padding: 14px 18px; border-radius: 0 6px 6px 0; }
+  .card.warn { border-left-color: #dd6b20; background: #fffaf0; }
+  .big { font-size: 62px; font-weight: 800; color: #2b6cb0; line-height: 1; }
+  .big-l { font-size: 15px; text-transform: uppercase; letter-spacing: .8px; color: #718096; margin-top: 6px; }
+  .foot { position: absolute; bottom: 22px; left: 68px; right: 68px;
+          display: flex; justify-content: space-between; font-size: 13px; color: #a0aec0;
+          border-top: 1px solid #e2e8f0; padding-top: 8px; }
+  .banner { background:#2b6cb0; color:#fff; padding:10px 18px; border-radius:6px;
+            font-size:18px; font-weight:600; margin-bottom:14px; }
+  .hint { background:#fffbea; border:1px dashed #d69e2e; padding:10px 14px; border-radius:6px;
+          font-size:15px; color:#744210; margin-top:auto; }
+  .title-slide { background: linear-gradient(135deg,#1a365d,#2b6cb0); color:#fff; justify-content:center; }
+  .title-slide h1 { font-size: 58px; } .title-slide .sub { color:#bee3f8; font-size:22px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1 · TITLE ============ -->
+<section class="slide title-slide">
+  <div style="font-size:15px;letter-spacing:2px;color:#90cdf4;margin-bottom:18px;">NIS16 · CTTHES2 · MILESTONE DEFENCE</div>
+  <h1>A Labelled Dataset of Wireless&nbsp;Mesh Telemetry Under Blackhole and Wormhole Attacks</h1>
+  <p class="sub" style="margin-top:26px;max-width:900px;">
+    Six ESP32 nodes · four topologies · two attack types · phase-labelled at capture time
+  </p>
+  <p style="margin-top:40px;font-size:17px;color:#90cdf4;">Team names · 2026-07-27</p>
+</section>
+
+<!-- ============ 2 · CONTRIBUTION ============ -->
+<section class="slide">
+  <span class="tag t-key">The contribution</span>
+  <h2>What this project delivers</h2><div class="rule"></div>
+  <div class="banner">A dataset — not a detector.</div>
+  <p>We capture wireless mesh telemetry while two attacks run under controlled conditions, and
+     publish it <strong>labelled, validated and documented</strong> so detection research can build on it.</p>
+  <div class="two" style="margin-top:22px;">
+    <div class="card"><h3 style="margin-top:0;">What we claim</h3>
+      <ul><li>The data is real and cross-verified</li><li>Labels are produced by the experiment itself</li>
+      <li>Every capture passes integrity validation</li><li>Limitations are documented, not hidden</li></ul></div>
+    <div class="card warn"><h3 style="margin-top:0;">What we do <em>not</em> claim</h3>
+      <ul><li>No detection accuracy is reported</li><li>No thresholds or rules are derived</li>
+      <li>EDA is strictly descriptive (§4.2.6)</li><li>Classifier work is the next phase</li></ul></div>
+  </div>
+  <div class="foot"><span>NIS16 · Contribution</span><span>2</span></div>
+</section>
+
+<!-- ============ 3 · TESTBED ============ -->
+<section class="slide">
+  <span class="tag t-key">Testbed</span>
+  <h2>Six ESP32 nodes, routerless mesh</h2><div class="rule"></div>
+  <div class="two">
+    <div>
+      <pre>          <span class="y">node1 · ROOT</span>
+             │  broadcasts phase ID
+   ┌────┬────┼────┬────┐
+ node2 node3 node4 node5 node6
+                    │     │
+                    └─────┘
+              <span class="g">UART tunnel (wormhole)</span></pre>
+      <ul style="margin-top:16px;">
+        <li><strong>ESP-WIFI-MESH</strong>, routerless, channel 11</li>
+        <li>Telemetry sampled at <strong>10 Hz</strong> to internal flash</li>
+        <li>Nothing streams live — CSVs pulled over USB afterwards</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dataset scale so far</h3>
+      <table>
+        <tr><td>Raw capture files</td><td class="n">65</td></tr>
+        <tr><td>Total size</td><td class="n">36.5 MB</td></tr>
+        <tr><td>Telemetry rows</td><td class="n">498,921</td></tr>
+        <tr><td>Feature windows</td><td class="n">7,191</td></tr>
+        <tr><td>EDA output files</td><td class="n">96</td></tr>
+      </table>
+      <div class="hint">⚙️ Boards: ESP32-D0WD-V3 · 4 MB flash · ESP-IDF v5.5.4</div>
+    </div>
+  </div>
+  <div class="foot"><span>NIS16 · Testbed</span><span>3</span></div>
+</section>
+
+<!-- ============ 4 · TIMELINE / LABELS ============ -->
+<section class="slide">
+  <span class="tag t-key">Method — the key idea</span>
+  <h2>Labels are produced by the experiment, not annotated after</h2><div class="rule"></div>
+  <div style="display:flex;margin:18px 0 8px;font-size:17px;font-weight:600;text-align:center;">
+    <div style="flex:300;background:#c6f6d5;padding:20px 8px;border-radius:6px 0 0 6px;">
+      PHASE 0 · BASELINE<br><span style="font-weight:400;font-size:15px;">300 s · gt_label 0</span></div>
+    <div style="flex:180;background:#fed7d7;padding:20px 8px;">
+      PHASE 1/2 · ATTACK<br><span style="font-weight:400;font-size:15px;">180 s · label 1 or 2</span></div>
+    <div style="flex:120;background:#c6f6d5;padding:20px 8px;border-radius:0 6px 6px 0;">
+      PHASE 3 · COOLDOWN<br><span style="font-weight:400;font-size:15px;">120 s · label 0</span></div>
+  </div>
+  <p style="margin-top:22px;">The <strong>root broadcasts the current phase ID</strong> over the mesh.
+     Every node stamps that ID into <strong>every telemetry row it writes</strong>.</p>
+  <div class="card" style="margin-top:18px;">
+    <strong>Why this matters for a dataset:</strong> the ground truth cannot drift from the data,
+    because it was written by the same firmware, in the same row, at the same instant.
+    No manual annotation step exists to get wrong.
+  </div>
+  <p style="margin-top:16px;font-size:17px;color:#4a5568;">
+    Each run also carries <strong>its own benign reference</strong> — 420 s of labelled-benign
+    traffic surrounding the attack window.</p>
+  <div class="foot"><span>NIS16 · Phase labelling</span><span>4</span></div>
+</section>
+
+<!-- ============ 5 · M1 ============ -->
+<section class="slide">
+  <span class="tag t-done">M1 · Firmware · 15% · Complete</span>
+  <h2>All node roles implemented</h2><div class="rule"></div>
+  <div class="two">
+    <div>
+      <pre>components/mesh_common/
+  mesh_setup.c      mesh init + topology shaping
+  phase_listener.c  phase ID broadcast / receive
+  csv_logger.c      10 Hz logging to SPIFFS
+
+root_node/main/root_main.c
+child_node/main/
+  victim_main.c  blackhole_victim.c  wormhole_victim.c</pre>
+    </div>
+    <div>
+      <h3>Topology is a compile-time constraint</h3>
+      <pre>I (780) MESH_SETUP: Topology shaping:
+   <span class="g">STAR (max_layer=2, max_children=10)</span></pre>
+      <p style="margin-top:14px;font-size:17px;">
+        <code>MESH_TOPOLOGY</code> sets <code>max_layer</code> / <code>max_children</code> in the
+        mesh stack. For star the depth is capped at 2 — a board <strong>cannot</strong> become a
+        grandchild; the stack refuses the association.</p>
+    </div>
+  </div>
+  <div class="foot"><span>NIS16 · M1 Firmware</span><span>5</span></div>
+</section>
+
+<!-- ============ 6 · M2 BLACKHOLE ============ -->
+<section class="slide">
+  <span class="tag t-done">M2 · Attack modules · 15% · Complete</span>
+  <h2>Blackhole — measured on two independent boards</h2><div class="rule"></div>
+  <div class="banner">720 received · 720 dropped · 0 forwarded — and the root logged 0 arrivals.</div>
+  <table>
+    <tr><th>Phase</th><th class="n">Probes received</th><th class="n">Forwarded (tx)</th>
+        <th class="n">Dropped</th><th class="n">Root arrivals</th></tr>
+    <tr><td>0 · baseline</td><td class="n">0 → 1439</td><td class="n">0 → 1439</td><td class="n">0</td><td class="n">1436</td></tr>
+    <tr class="hi"><td>1 · ATTACK</td><td class="n">1439 → 2159</td><td class="n">1439 → 1439</td>
+        <td class="n">0 → 720</td><td class="n bad">0</td></tr>
+    <tr><td>3 · cooldown</td><td class="n">2159 → 2643</td><td class="n">1439 → 1923</td><td class="n">720</td><td class="n">483</td></tr>
+  </table>
+  <div class="two" style="margin-top:20px;">
+    <div class="card"><strong>Source A — attacker's own telemetry.</strong>
+      <code>tx_count</code> completely flat across the window while <code>retry_count</code> climbs by exactly 720.</div>
+    <div class="card"><strong>Source B — root's arrivals log.</strong>
+      A different board, a different file: zero probes recorded during the same window.</div>
+  </div>
+  <div class="foot"><span>NIS16 · M2 Blackhole</span><span>6</span></div>
+</section>
+
+<!-- ============ 7 · M2 WORMHOLE ============ -->
+<section class="slide">
+  <span class="tag t-done">M2 · Attack modules · 15% · Complete</span>
+  <h2>Wormhole — the opposite signature, reproduced 4×</h2><div class="rule"></div>
+  <div class="banner">Traffic goes <em>up</em>, not down: probes arrive twice via an out-of-band UART tunnel.</div>
+  <table>
+    <tr><th>Run</th><th class="n">Duplicate deliveries</th><th class="n">Multiplicity</th>
+        <th>Source node</th><th class="n">Dupes in baseline</th></tr>
+    <tr><td>linear · r1</td><td class="n">181</td><td class="n">×2.00</td><td>Node B</td><td class="n ok">0</td></tr>
+    <tr><td>linear · r3</td><td class="n">181</td><td class="n">×2.00</td><td>Node B</td><td class="n ok">0</td></tr>
+    <tr class="hi"><td>star · r1</td><td class="n">180</td><td class="n">×2.00</td><td>Node B</td><td class="n ok">0</td></tr>
+    <tr class="hi"><td>star · r2</td><td class="n">180</td><td class="n">×2.00</td><td>Node B</td><td class="n ok">0</td></tr>
+  </table>
+  <p style="margin-top:20px;">Detection is exact, not statistical: the root receives the same
+     <code>(src_mac, seq_num)</code> pair twice — once over the mesh, once replayed out of the tunnel.</p>
+  <div class="card" style="margin-top:16px;">
+    <strong>Reproduced across two different topologies.</strong> The tunnel is a physical wire, so the
+    signature does not depend on mesh distance — which is itself a finding.</div>
+  <div class="foot"><span>NIS16 · M2 Wormhole</span><span>7</span></div>
+</section>
+
+<!-- ============ 8 · M3 ============ -->
+<section class="slide">
+  <span class="tag t-part">M3 · Multi-topology deployment · 15%</span>
+  <h2>Topology verified from the data, not assumed</h2><div class="rule"></div>
+  <div class="two">
+    <div>
+      <table>
+        <tr><th>Topology</th><th>Baseline</th><th>Blackhole</th><th>Wormhole</th></tr>
+        <tr><td>Tree</td><td class="ok">✔</td><td class="ok">✔</td><td class="ok">✔</td></tr>
+        <tr><td>Linear</td><td class="ok">✔</td><td class="ok">✔</td><td class="ok">✔</td></tr>
+        <tr><td>Star</td><td class="ok">✔</td><td class="ok">✔</td><td class="ok">✔</td></tr>
+        <tr><td>Partial</td><td class="ok">✔</td><td class="bad">pending</td><td class="bad">pending</td></tr>
+      </table>
+      <div class="hint" style="margin-top:18px;">📌 <strong>UPDATE ME</strong> when partial-mesh runs land.</div>
+    </div>
+    <div>
+      <pre>NODE_2805A532D7B4  (layer 1, root)
+    NODE_704BCA25B768  (layer 2, victim)
+    NODE_B0CBD8F33218  (layer 2, wormhole_a)
+    NODE_B4BFE932FE90  (layer 2, victim)
+    NODE_B4BFE934ED80  (layer 2, victim)
+    NODE_F42DC973E618  (layer 2, wormhole_b)
+
+<span class="g">PASS star: all 5 nodes at layer 2</span>
+<span class="g">Converged within 60s      : YES</span>
+<span class="g">Baseline re-routing free  : YES</span></pre>
+      <p style="margin-top:14px;font-size:17px;"><code>verify_topology.py</code> rebuilds the tree from each
+      node's own <code>parent_mac</code> / <code>layer</code> columns — an independent check on the physical setup.</p>
+    </div>
+  </div>
+  <div class="foot"><span>NIS16 · M3 Topologies</span><span>8</span></div>
+</section>
+
+<!-- ============ 9 · M4 (UPDATE THIS ONE) ============ -->
+<section class="slide">
+  <span class="tag t-gap">M4 · Phase-controlled execution · 15%</span>
+  <h2>Experiment matrix — current state</h2><div class="rule"></div>
+  <div class="two">
+    <div>
+      <pre>                    r1  r2  r3
+linear  ▸ blackhole <span class="g">✔   ✔   ✔</span>   3/3
+linear  ▸ wormhole  <span class="g">✔   ✔   ✔</span>   3/3
+star    ▸ wormhole  <span class="g">✔   ✔</span>   <span class="y">·</span>   2/3
+star    ▸ blackhole  ·   ·   ·   0/3
+tree    ▸ blackhole  ·   ·   ·   0/3
+tree    ▸ wormhole   ·   ·   ·   0/3
+partial ▸ blackhole  ·   ·   ·   0/3
+partial ▸ wormhole   ·   ·   ·   0/3
+                          <span class="y">TOTAL  8/24</span></pre>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:center;">
+      <div style="text-align:center;"><div class="big num">8/24</div><div class="big-l">runs recorded</div></div>
+      <div style="text-align:center;margin-top:26px;"><div class="big num" style="color:#22543d;">0</div>
+        <div class="big-l">failures across all recorded cells</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px;">
+    Two cells are <strong>fully replicated</strong> at three repeats. Every recorded cell passed
+    validation with zero failures. What remains is <strong>runtime — not unknowns</strong>:
+    the method, tooling and analysis pipeline are complete and exercised.</div>
+  <div class="hint">📌 <strong>UPDATE ME</strong> — re-run <code>python tools\run_matrix.py --status</code> the morning of and correct both numbers.</div>
+  <div class="foot"><span>NIS16 · M4 Execution</span><span>9</span></div>
+</section>
+
+<!-- ============ 10 · M5 ============ -->
+<section class="slide">
+  <span class="tag t-done">M5 · Extraction &amp; integrity · 10% · Complete</span>
+  <h2>Nothing enters the dataset unvalidated</h2><div class="rule"></div>
+  <pre>board ──USB──▶ <span class="y">export_logs.py</span> ──▶ <span class="y">trim_run.py</span> ──▶ <span class="y">validate_integrity.py</span> ──▶ ledger
+                schema guard      session split      5 checks + SHA-256</pre>
+  <div class="two" style="margin-top:20px;">
+    <div>
+      <h3>The five checks</h3>
+      <ul><li>Schema width &amp; row consistency</li><li>Phase coverage</li>
+      <li>Timestamp monotonicity</li><li>Label integrity vs phase map</li>
+      <li><strong>SHA-256 manifest</strong> locked per file</li></ul>
+    </div>
+    <div>
+      <pre>21 file(s) — <span class="g">21 PASS, 0 WARN, 0 FAIL</span>
+Manifest: trimmed/manifest.json</pre>
+      <p style="margin-top:14px;font-size:17px;">A matrix cell is marked done <strong>only</strong> if its
+      files pass. The ledger cannot be ticked by hand.</p>
+    </div>
+  </div>
+  <div class="foot"><span>NIS16 · M5 Integrity</span><span>10</span></div>
+</section>
+
+<!-- ============ 11 · M6 + M7 ============ -->
+<section class="slide">
+  <span class="tag t-done">M6 · Preprocessing · 10% &nbsp;+&nbsp; M7 · Features · 10%</span>
+  <h2>From raw counters to 16 engineered features</h2><div class="rule"></div>
+  <pre>raw 10 Hz ─▶ per-node re-basing ─▶ cumulative→delta ─▶ 5 s windows ─▶ modal labels</pre>
+  <div class="two" style="margin-top:20px;">
+    <div>
+      <h3>M6 · quality</h3>
+      <table>
+        <tr><td>Discard fraction</td><td class="n ok">0.2 – 0.8 %</td></tr>
+        <tr><td>Rows dropped (corrupt)</td><td class="n ok">0</td></tr>
+        <tr><td>Files skipped</td><td class="n ok">0</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>M7 · two features recovered</h3>
+      <table>
+        <tr><th>Feature</th><th>Before</th><th>Now</th></tr>
+        <tr><td>LatencyHopRatio</td><td class="bad">NaN everywhere</td><td class="n ok">1534</td></tr>
+        <tr><td>TunnelLatency</td><td class="bad">NaN everywhere</td><td class="n ok">114</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px;">
+    <strong>Role-exclusive NaN is correct, not missing.</strong> <code>ForwardingRatio</code> exists only on a
+    blackhole relay; tunnel features only on the two wormhole ends — as Table 4.12 specifies.
+    All 16 features are populated by at least one run type.</div>
+  <div class="foot"><span>NIS16 · M6 + M7</span><span>11</span></div>
+</section>
+
+<!-- ============ 12 · M8 ============ -->
+<section class="slide">
+  <span class="tag t-part">M8 · Exploratory data analysis · 10%</span>
+  <h2>Five analyses, three datasets</h2><div class="rule"></div>
+  <div class="two">
+    <div>
+      <h3>Per thesis §4.2.6</h3>
+      <ul><li>Descriptive statistics</li><li>Distribution visualisation</li>
+      <li>Time-series trajectories</li><li>Pearson + Spearman correlation</li>
+      <li>PCA and t-SNE projection</li></ul>
+      <div class="card warn" style="margin-top:16px;font-size:16px;">
+        <em>"EDA is strictly descriptive; no inferential claims or detection rules are derived
+        at this stage."</em> — and none are.</div>
+    </div>
+    <div>
+      <table>
+        <tr><th>Dataset</th><th class="n">Windows</th><th class="n">Benign</th><th class="n">Attack</th></tr>
+        <tr><td>blackhole · linear</td><td class="n">2470</td><td class="n">1820</td><td class="n">650</td></tr>
+        <tr><td>wormhole · linear</td><td class="n">2470</td><td class="n">1819</td><td class="n">651</td></tr>
+        <tr><td>wormhole · star</td><td class="n">1674</td><td class="n">1240</td><td class="n">434</td></tr>
+      </table>
+      <div class="hint" style="margin-top:16px;">📌 <strong>UPDATE ME</strong> after new runs are analysed.</div>
+    </div>
+  </div>
+  <div class="foot"><span>NIS16 · M8 EDA</span><span>12</span></div>
+</section>
+
+<!-- ============ 13 · TWO PROJECTIONS ============ -->
+<section class="slide">
+  <span class="tag t-key">Analysis note</span>
+  <h2>Why we show two projections, not one</h2><div class="rule"></div>
+  <div class="two">
+    <div class="card">
+      <h3 style="margin-top:0;">Whole-mesh projection</h3>
+      <p style="font-size:17px;"><em>Can the attack be seen in what <strong>every</strong> node measures?</em></p>
+      <p style="font-size:16px;margin-top:10px;">Tunnel features are <strong>excluded</strong> — they exist on
+      2 of 6 nodes (~67 % NaN), above our 50 % cutoff. This is the realistic detection question.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">Tunnel-end projection</h3>
+      <p style="font-size:17px;"><em>Does the <strong>tunnel evidence itself</strong> separate the attack?</em></p>
+      <p style="font-size:16px;margin-top:10px;">Restricted to the two tunnel-end nodes, with tunnel
+      features retained — 854 windows on linear, 306 on star.</p>
+    </div>
+  </div>
+  <div class="banner" style="margin-top:24px;background:#2d3748;">
+    Showing only the first would look like there is no evidence.
+    Showing only the second would overstate how easy detection is.</div>
+  <p style="margin-top:18px;font-size:17px;color:#4a5568;">
+    Both are honest answers to <em>different</em> questions. Neither replaces the other.</p>
+  <div class="foot"><span>NIS16 · Projections</span><span>13</span></div>
+</section>
+
+<!-- ============ 14 · DATA QUALITY ============ -->
+<section class="slide">
+  <span class="tag t-key">Engineering</span>
+  <h2>Three silent corruptions — each now caught at source</h2><div class="rule"></div>
+  <table>
+    <tr><th>Failure observed during collection</th><th>Now caught by</th></tr>
+    <tr><td>Device streamed the <strong>wrong file</strong> — telemetry saved under an arrivals name</td>
+        <td>Schema checked at capture; file quarantined, <code>--delete</code> suppressed</td></tr>
+    <tr><td><strong>Stale derived files</strong> left behind after a re-export</td>
+        <td>Flagged when a raw source disappears</td></tr>
+    <tr><td><strong>Duplicate capture</strong> double-counting one node</td>
+        <td>Flagged before any analysis runs</td></tr>
+  </table>
+  <div class="card warn" style="margin-top:24px;">
+    <strong>The third produced no error at all.</strong> One node was counted twice — 264 windows against
+    ~155 for every other node — and every total still looked plausible. That is the failure mode that
+    matters most for a dataset, because nothing announces it.</div>
+  <p style="margin-top:18px;font-size:17px;">Each guard fires <strong>at the moment the fault occurs</strong>,
+     not twenty minutes later in the analysis. Each is documented with the incident that produced it.</p>
+  <div class="foot"><span>NIS16 · Data quality</span><span>14</span></div>
+</section>
+
+<!-- ============ 15 · LIMITATIONS ============ -->
+<section class="slide">
+  <span class="tag t-part">Known limitations</span>
+  <h2>What we state before we are asked</h2><div class="rule"></div>
+  <table>
+    <tr><th style="width:56%;">Limitation</th><th>Status</th></tr>
+    <tr><td><strong>1.</strong> Matrix at 8/24 — remaining work is runtime, not method</td><td>Tracked openly</td></tr>
+    <tr><td><strong>2.</strong> Repeats share a topology <em>class</em>, not a fixed parent assignment</td><td>Deviation D-6</td></tr>
+    <tr><td><strong>3.</strong> Baseline control = each run's own phase 0</td><td>Deviation D-5</td></tr>
+    <tr><td><strong>4.</strong> Star r1 took ~100 s to stabilise; r2 converged inside 60 s — cause not established</td><td>Open, documented</td></tr>
+    <tr><td><strong>5.</strong> <code>TunnelLatency</code> keying deviates from Table 4.12</td><td>Deviation D-3 → CTTHES3</td></tr>
+  </table>
+  <div class="card" style="margin-top:22px;">
+    All five are recorded in <code>thesis-deviate.md</code> with the reasoning and what each one costs.
+    <strong>Item 4 is genuinely unresolved</strong> — the clean test is a baseline·star run we have not yet done.</div>
+  <div class="foot"><span>NIS16 · Limitations</span><span>15</span></div>
+</section>
+
+<!-- ============ 16 · NEXT ============ -->
+<section class="slide">
+  <span class="tag t-key">Next</span>
+  <h2>What comes after this milestone</h2><div class="rule"></div>
+  <table>
+    <tr><th style="width:8%;"></th><th style="width:62%;">Action</th><th>Why</th></tr>
+    <tr><td><strong>1</strong></td><td>Complete the remaining M4 runs</td><td>Unblocks M8 separability</td></tr>
+    <tr><td><strong>2</strong></td><td>Run <code>baseline · star</code></td><td>Settles the convergence question</td></tr>
+    <tr><td><strong>3</strong></td><td>Cross-topology separability analysis</td><td>Needs the full matrix</td></tr>
+    <tr><td><strong>4</strong></td><td>RTT leg + wormhole echo frame</td><td>Deferred to CTTHES3 — see below</td></tr>
+  </table>
+  <div class="card warn" style="margin-top:24px;">
+    <strong>Item 4 is a deliberate choice, not an oversight.</strong> Adding the round-trip leg would resolve
+    two documented deviations — but it changes the firmware, and every run captured so far would stop being
+    comparable. Scheduled for the next phase rather than mid-collection.</div>
+  <div class="foot"><span>NIS16 · Next steps</span><span>16</span></div>
+</section>
+
+<!-- ============ 17 · CLOSE ============ -->
+<section class="slide title-slide">
+  <h1 style="font-size:44px;">Thank you</h1>
+  <div style="display:flex;gap:60px;margin-top:44px;">
+    <div><div class="big" style="color:#90cdf4;">8/24</div><div class="big-l" style="color:#bee3f8;">runs recorded · 0 failures</div></div>
+    <div><div class="big" style="color:#90cdf4;">720/720/0</div><div class="big-l" style="color:#bee3f8;">blackhole: received / dropped / forwarded</div></div>
+    <div><div class="big" style="color:#90cdf4;">181·181·180</div><div class="big-l" style="color:#bee3f8;">wormhole duplicates, reproduced</div></div>
+  </div>
+  <p style="margin-top:48px;font-size:19px;color:#bee3f8;">Questions</p>
+</section>
+
+<div class="noprint" style="max-width:1280px;margin:0 auto 60px;padding:26px 34px;background:#fff;border-radius:8px;">
+  <h3 style="margin-top:0;">📄 To export as PDF</h3>
+  <p style="font-size:16px;">Open this file in <strong>Chrome</strong> → <strong>Ctrl + P</strong> →
+     Destination <strong>Save as PDF</strong> · Layout <strong>Landscape</strong> ·
+     Margins <strong>None</strong> · <strong>Background graphics ON</strong>.</p>
+  <p style="font-size:16px;margin-top:10px;"><strong>Before printing, update the three 📌 UPDATE ME slides</strong>
+     (8, 9, 12) with current numbers from <code>python tools\run_matrix.py --status</code>.
+     This panel does not appear in the PDF.</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  // ── Performance: stop VS Code from watching/indexing regenerable output ──
+  // ~97% of the files in this tree are inside build*/ dirs that every ESP-IDF
+  // build rewrites. Watching + IntelliSense-parsing them is the main cause of
+  // lag during ESP32 tasks. These excludes are safe: everything listed is
+  // git-ignored and regenerable (builds, captures, analysis outputs, caches).
+
+  // File watcher (biggest win — this is what churns during a build).
+  "files.watcherExclude": {
+    "**/build": true,
+    "**/build_*": true,
+    "**/managed_components": true,
+    "**/__pycache__": true,
+    "**/.git/**": true,
+    "**/tools/exports/**": true,
+    "**/analysis/**/eda_output/**": true
+  },
+
+  // Search / quick-open: don't scan generated files.
+  "search.exclude": {
+    "**/build": true,
+    "**/build_*": true,
+    "**/managed_components": true,
+    "**/__pycache__": true,
+    "**/tools/exports": true,
+    "**/analysis/**/eda_output": true,
+    "**/*.pyc": true
+  },
+
+  // Explorer: hide the build noise so the tree renders fast (source stays).
+  "files.exclude": {
+    "**/build": true,
+    "**/build_*": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+
+  // C/C++ IntelliSense: don't parse generated build artifacts.
+  "C_Cpp.files.exclude": {
+    "**/build": true,
+    "**/build_*": true,
+    "**/managed_components": true
+  }
+}

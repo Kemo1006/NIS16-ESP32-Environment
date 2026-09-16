@@ -1,0 +1,17 @@
+# Raw captures are EVIDENCE — store them byte-exact.
+#
+# Git's default text handling would normalise line endings on checkout, so a
+# teammate cloning this repo would get different bytes than the board actually
+# wrote. That silently breaks two things:
+#
+#   * validate_integrity.py's SHA-256 manifest (hashes would not match)
+#   * byte-for-byte provenance, which is the whole point of keeping raw CSVs
+#
+# `-text` disables all line-ending conversion for these paths.
+tools/exports/**/*.csv -text
+tools/exports/**/*.csv.orig -text
+
+# Analysis outputs are regenerated, not evidence — normal text handling is fine
+# for the CSVs, but the plots must never be touched.
+*.png binary
+*.pdf binary
