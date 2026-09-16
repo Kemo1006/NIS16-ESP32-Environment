@@ -195,3 +195,16 @@
   an earlier "not a code bug" note) — per-window attribution replaces the run-wide coverage gate,
   so `PDR==0` can finally be recorded (was 0 of 446 rows); also killed a `0/(0+EPSILON)`
   false-zero. thesis-deviate **D-8**. Full detail: MEMORY.md.
+- sep. 17, 2026 — Rolled from STATUS.md Recently done: **Wizard/menu nav overhaul, cont'd**
+  (`run_wizard.ps1` + `menu.ps1`, kept in sync) — `cls` clears the terminal (no Ctrl+C); both main
+  menus number 1-9 sequentially regardless of category; `menu.ps1` gained the wizard's
+  identify-a-port/-ALL + MAC tagging and now hides non-ESP32 (BLOCKED) ports everywhere, gating
+  UNKNOWN behind a typed confirm. Full detail: MEMORY.md.
+- sep. 17, 2026 — Rolled from MEMORY.md Decisions (shipped and stable): BUILT
+  `ESP32-Environment/analyze.ps1` — the analysis+validation front door (trim→M6→M7→M8→verify) on
+  captured data. No args = `menu.ps1`-style menu, runs pickable from a numbered list; `-List` shows
+  combos + row counts + running total; `-All`, `-Verify`, `-SkipTrim` for scripting. Finds captures
+  at ANY folder depth (a v1 bug checked only one level and silently missed every `-Scenario`-tagged
+  capture). Docs: `analysis/ANALYSIS-Commands.md`. ⚠️ `trim_run.py` does NOT clear `trimmed/` before
+  re-trimming, so stale files from a prior partial run get loaded by every analysis tool — it warns
+  `[!] N STALE file(s)`; menu [6] clears it.

@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 17, 2026 (wizard/menu `cls` blank-screen bug fixed, pushed to GitHub; re-run below still untouched)
+**Updated:** sep. 17, 2026 (wizard/menu plan tables now show each board's MAC, pushed to GitHub; re-run below still untouched)
 
 ## Current focus
 **Re-running the capture matrix from empty**, and the sep. 16 15:36 attempt must itself be redone —
@@ -31,11 +31,11 @@ designed, NOT built, team decides; plan at `C:\Users\Basti\.claude\plans\mutable
 - Now pushed to `origin/Unified` (sep. 17, 2026) — no longer uncommitted; CC/NIS16-ESP32-Environment frozen refs still apply.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 17, 2026 — **`menu.ps1`'s multi-board flow gained run_wizard's pre-flash summary** (boxed
+  Attack/Topology/Scenario/Location header, "Order (root is always last)" table, Exports/Analysis
+  footer), and BOTH front-ends' plan tables now show each board's MAC (cached from a preset /
+  Invoke-Identify / the blackhole precheck, else read live via `Resolve-BoardMac`). MEMORY.md.
 - sep. 17, 2026 — **Fixed `cls` leaving a blank screen** in `run_wizard.ps1` + `menu.ps1`: the four
   numbered-menu functions (`Show-Menu`, `Show-CaptureWizardMenu`, `Read-Choice`, `Show-MainMenu`)
   now redraw their title/options after `Clear-Host` via a new `Read-Line -Redraw` scriptblock,
   instead of leaving just the one-line prompt. Committed + pushed to GitHub. MEMORY.md.
-- sep. 17, 2026 — **Wizard/menu nav overhaul, cont'd** (`run_wizard.ps1` + `menu.ps1`, kept in
-  sync): `cls` clears the terminal (no Ctrl+C); both main menus number 1-9 sequentially regardless
-  of category; `menu.ps1` gained the wizard's identify-a-port/-ALL + MAC tagging and now hides
-  non-ESP32 (BLOCKED) ports everywhere, gating UNKNOWN behind a typed confirm. MEMORY.md.

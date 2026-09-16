@@ -387,12 +387,35 @@ function Get-LiveBoardMac {
     return $null
 }
 
+function Resolve-BoardMac {
+    # Best-effort MAC for the plan table: prefer what's already known (this
+    # session's Invoke-Identify cache, or a board this flow already read, e.g.
+    # the blackhole attacker via Confirm-BlackholeAttackerMac -Board) over
+    # reading the chip again - Get-LiveBoardMac/Invoke-Identify briefly reset
+    # the board, and every board here is about to be flashed anyway so a fresh
+    # read is harmless, but a cached value is free. Caches a fresh read back
+    # onto $Board.Mac so it isn't re-read later in the same flow.
+    param($Board)
+    if ($Board.Mac) { return $Board.Mac }
+    if ($script:IdentifiedPorts.ContainsKey($Board.Port)) {
+        $cached = $script:IdentifiedPorts[$Board.Port]
+        $mac = ($cached -split ' -> ')[0].Trim()
+        if ($mac -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { return $mac.ToLower() }
+    }
+    $mac = Get-LiveBoardMac -TargetPort $Board.Port
+    if ($mac) { $Board.Mac = $mac }
+    return $mac
+}
+
 function Confirm-BlackholeAttackerMac {
     # Cross-checks mesh_config.h's compiled BLACKHOLE_ATTACKER_MAC against the
     # ATTACKER board's ACTUAL live MAC (read over serial, no custom firmware
     # needed), before any build/flash happens. Offers to auto-fix the header
     # right here so the very next build picks up the correction.
-    param([string]$AttackerPort, [string]$AttackerLabel = $null)
+    # -Board is optional: when the caller has the board object (the multi-board
+    # flow does), the live MAC read here is cached onto it via Resolve-BoardMac
+    # so the plan table's MAC column doesn't read the chip a second time.
+    param([string]$AttackerPort, [string]$AttackerLabel = $null, $Board = $null)
 
     $want = Get-ConfiguredAttackerMac
     Write-Host ""
@@ -402,6 +425,7 @@ function Confirm-BlackholeAttackerMac {
         return
     }
     $live = Get-LiveBoardMac -TargetPort $AttackerPort
+    if ($live -and $Board) { $Board.Mac = $live }
     if (-not $live) {
         Write-Host "   Could not read $AttackerPort's live MAC (port busy / board unplugged?) -- skipping check." -ForegroundColor Yellow
         Write-Host "   mesh_config.h currently targets: $want -- double-check by eye before flashing victims." -ForegroundColor Yellow
@@ -432,6 +456,30 @@ function Confirm-BlackholeAttackerMac {
 }
 
 # ---- multi-board helpers (ported/trimmed from run_wizard.ps1) ---------------
+
+function Get-RunDirs {
+    # The attack/topology folder names the whole pipeline agrees on. 'none' files
+    # under baseline\ and 'partial' under partial_mesh\ - these MUST stay
+    # byte-identical to _subdir_for()/_TOPOLOGY_DIR in tools\export_logs.py and to
+    # s_attack_dirs/s_topo_dirs in components\mesh_common\src\sd_status.c. Kept in
+    # sync with run_wizard.ps1's identical function.
+    param([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario = 'none')
+    $attackDir = $Attack
+    if ($Attack -eq 'none') { $attackDir = 'baseline' }
+    $topoDir = switch ($Topology) {
+        'star'    { 'star' }
+        'tree'    { 'tree' }
+        'linear'  { 'linear' }
+        'partial' { 'partial_mesh' }
+    }
+    $scenarioSeg = if ($Scenario -and $Scenario -ne 'none') { "\$Scenario" } else { '' }
+    return [pscustomobject]@{
+        AttackDir = $attackDir
+        TopoDir   = $topoDir
+        Export    = (Join-Path $base "tools\exports\$attackDir\$topoDir\$Location$scenarioSeg")
+        Analysis  = (Join-Path $base "analysis\$attackDir\$topoDir\$Location$scenarioSeg")
+    }
+}
 
 function Get-PortKind {
     # Classifies a COM device by its driver description so a batch of boards
@@ -988,7 +1036,7 @@ if ($action -eq 2) {
         # (below) -- never asked per board, since it must land on the LAST
         # board exported (the root) so arrivals.csv covers the whole run.
 
-        $boards += [pscustomobject]@{ Port = $port; Role = $role; Label = $label; Params = $p; CmdText = $cmdText; Kind = ((Get-PortList | Where-Object { $_.Port -eq $port } | Select-Object -First 1).Kind) }
+        $boards += [pscustomobject]@{ Port = $port; Role = $role; Label = $label; Params = $p; CmdText = $cmdText; Mac = $null; Kind = ((Get-PortList | Where-Object { $_.Port -eq $port } | Select-Object -First 1).Kind) }
 
         if (-not (Read-YesNo -Question "Add another board?" -Default $true)) { break }
     }
@@ -1009,7 +1057,7 @@ if ($action -eq 2) {
             Write-Host "`nWARNING: blackhole normally wants exactly one attacker board (found $atkCount)." -ForegroundColor Yellow
         } else {
             $atkLbl = if ($atkBoard.Label) { $atkBoard.Label } else { $atkBoard.Port }
-            Confirm-BlackholeAttackerMac -AttackerPort $atkBoard.Port -AttackerLabel $atkLbl
+            Confirm-BlackholeAttackerMac -AttackerPort $atkBoard.Port -AttackerLabel $atkLbl -Board $atkBoard
         }
     }
     if ((Test-ScenarioNeedsTarget $scenario) -and -not $haveScenarioTarget) {
@@ -1039,11 +1087,55 @@ if ($action -eq 2) {
     if ($rootBoard) { $boards += $rootBoard }
 
     # ---- plan table + per-board confirm (no blind apply-to-all) -------------
+    # Boxed summary ported from run_wizard.ps1's pre-flash confirm (same
+    # Attack/Topology/Scenario header, "Order (root is always last)" table,
+    # Exports/Analysis footer) so both front-ends show the same thing before
+    # committing to a flash. menu.ps1 has no Repeat/swap-mode concept, so those
+    # two header lines are omitted rather than faked.
     Write-Host ""
-    Write-Host "Plan:" -ForegroundColor Cyan
+    Write-Host "------------------------------------------------------------" -ForegroundColor Green
+    Write-Host ("  Attack   : {0}" -f $attack)
+    Write-Host ("  Topology : {0}" -f $topo)
+    Write-Host ("  Scenario : {0}" -f $scenario)
+    if ($export) { Write-Host ("  Location : {0}" -f $loc) }
+    Write-Host ""
+    Write-Host "  Order (root is always last):"
+    $step = 0
+    foreach ($b in $boards) {
+        $step++
+        $lbl = if ($b.Label) { $b.Label } else { $b.Port }
+        if ($b.Role -eq 'root') {
+            $display = 'root'
+        } elseif ($attack -eq 'blackhole' -and $b.Params.BlackholeRole) {
+            $display = "blackhole $($b.Params.BlackholeRole)"
+        } elseif ($attack -eq 'wormhole' -and $b.Params.WormholeEnd) {
+            $display = "wormhole end $($b.Params.WormholeEnd)"
+        } else {
+            $display = "$attack child"
+        }
+        $tail = @()
+        if ($b.Params.Export)  { $tail += '-Export' }
+        if ($b.Params.Analyze) { $tail += '-Analyze' }
+        $tailText = $tail -join ' '
+        if ($b.Params.ScenarioTarget) { $tailText = "$tailText  << $scenario TARGET" }
+        $mac = Resolve-BoardMac -Board $b
+        $macDisp = if ($mac) { $mac } else { '(unread)' }
+        $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Params.BlackholeRole -eq 'attacker') { 'attacker' } else { 'child' }
+        $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $lbl, $display, $b.Port, $macDisp, $tailText)
+        Write-Host (Colorize-Role $line $role)
+    }
+    if ($export) {
+        $dirs = Get-RunDirs -Attack $attack -Topology $topo -Location $loc -Scenario $scenario
+        Write-Host ""
+        Write-Host "  Exports  -> $($dirs.Export)"
+        Write-Host "  Analysis -> $($dirs.Analysis)"
+    }
+    Write-Host "------------------------------------------------------------" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Commands:" -ForegroundColor Cyan
     for ($i = 0; $i -lt $boards.Count; $i++) {
         $b = $boards[$i]
-        Write-Host ("  [{0}] {1,-6} {2,-5} {3}" -f ($i + 1), $b.Port, $b.Role, $b.CmdText) -ForegroundColor White
+        Write-Host ("  [{0}] {1,-6} {2}" -f ($i + 1), $b.Port, $b.CmdText) -ForegroundColor DarkGray
     }
 
     $confirmed = @()

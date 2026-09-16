@@ -1958,6 +1958,28 @@ function Get-BoardMac {
     return $null
 }
 
+function Resolve-BoardMac {
+    # Best-effort MAC for the final confirm table: prefer what's already known
+    # (a preset that recorded it, or this session's Invoke-Identify cache) over
+    # reading the chip again - both Get-BoardMac and Invoke-Identify briefly
+    # reset the board, and every board here is about to be flashed anyway so a
+    # fresh read is harmless, but a cached value is free. Skips the live read
+    # under -SkipMacCheck/-DryRun, same gate the attacker-MAC precheck uses, so
+    # neither flag still touches a single board. Caches a fresh read back onto
+    # $Board.Mac so a later "record MACs into the preset?" step doesn't re-read.
+    param($Board, [switch]$SkipLiveRead)
+    if ($Board.Mac) { return $Board.Mac }
+    if ($script:IdentifiedPorts.ContainsKey($Board.Port)) {
+        $cached = $script:IdentifiedPorts[$Board.Port]
+        $mac = ($cached -split ' -> ')[0].Trim()
+        if ($mac -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { return $mac.ToLower() }
+    }
+    if ($SkipLiveRead) { return $null }
+    $mac = Get-BoardMac -TargetPort $Board.Port
+    if ($mac) { $Board.Mac = $mac }
+    return $mac
+}
+
 function Get-SdLocation {
     # Reads a running board's location.txt WITHOUT changing it, so a write can be
     # shown as "Goks -> G402" instead of a blind overwrite, and skipped entirely
@@ -3524,7 +3546,9 @@ foreach ($p in $plan) {
     $tail = '-Export'
     if ($p.Board.Role -eq 'root') { $tail = '-Analyze' }
     if ($p.Board.ScenarioTarget) { $tail = "$tail  << $scenario TARGET" }
-    $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $tail)
+    $mac = Resolve-BoardMac -Board $p.Board -SkipLiveRead:($SkipMacCheck -or $DryRun)
+    $macDisp = if ($mac) { $mac } else { '(unread)' }
+    $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $macDisp, $tail)
     $role = if ($p.Board.Role -eq 'root') { 'root' } elseif ($p.Board.Kind -eq 'attacker') { 'attacker' } else { 'child' }
     Write-Host (Colorize-Role $line $role)
 }

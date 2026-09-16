@@ -76,21 +76,20 @@
   print-title/options code as `$draw`, run it once up front, and pass `-Redraw $draw` so `cls`
   replays it after clearing. Other one-off `Read-Line` prompts (port pickers, y/n confirms) were
   NOT touched — lower priority, they only lose a line or two of context, not the whole menu.
+  **Cont'd same day (feature):** `menu.ps1`'s multi-board flow gained run_wizard's boxed pre-flash
+  summary (header + "Order (root is always last)" table + Exports/Analysis footer), replacing its
+  bare `Plan:` list (no Repeat/swap-mode lines - menu.ps1 has neither concept). Both front-ends'
+  Order tables now show each board's MAC via a new `Resolve-BoardMac`: prefers a preset's recorded
+  MAC / the `Invoke-Identify` cache / (blackhole attacker) the MAC `Confirm-BlackholeAttackerMac`
+  already read, else reads the chip live (harmless - the board is about to be flashed anyway),
+  skipped under wizard's `-SkipMacCheck`/`-DryRun` (shows `(unread)`). Useful against the
+  `BLACKHOLE_ATTACKER_MAC` mismatch bug above: the targeted MAC is now on the confirm screen itself.
 - sep. 16, 2026 — ⚠️ CAPTURE QUALITY, archived unresolved: `blackhole/linear/G402/mobility` — 3 of 4
   victims probed all run but root logged nothing from them in ANY phase (`B4BFE932FE90` changed
   layer 4→5 mid-run; `2805A532D7B4` at layer 6). NOT the MAC bug below (that run's attacker `0c:80`
   DID match the then-configured MAC, and one victim got through) — suspected mobility-disrupted TODS
   relay, still untested since the 15:36 re-run was itself voided by the MAC bug. `home/mobility`
   also exported ONLY root's CSVs — check `-Location`/`-Scenario` match on every board before export.
-- sep. 16, 2026 — BUILT: `ESP32-Environment/analyze.ps1` — the analysis+validation front door
-  (trim→M6→M7→M8→verify) on captured data. No args = `menu.ps1`-style menu, runs pickable from a
-  numbered list; `-List` shows combos + row counts + running total; `-All`, `-Verify`, `-SkipTrim`
-  for scripting. Finds captures at ANY folder depth (a v1 bug checked only one level and silently
-  missed every `-Scenario`-tagged capture). Docs: `analysis/ANALYSIS-Commands.md`.
-  ⚠️ `trim_run.py` does NOT clear `trimmed/` before re-trimming, so stale files from a prior partial
-  run get loaded by every analysis tool — it warns `[!] N STALE file(s)`; menu [6] clears it.
-- sep. 16, 2026 — ⚠️ **MEMORY.md has NO sync transport between laptops.** `combined/` is on a local
-  drive (`A:\`, NOT OneDrive) and `ESP32-Environment/`'s repo has no remote. Transport undecided.
 - sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR
   ONLY — thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly
   to root so no child-relay position exists there (tree/linear/partial keep a child attacker; all
@@ -119,7 +118,12 @@
   if so. See ARCHIVE.md for the doc-reorganization history.
 
 ## Durable facts & constraints
-- The code + docs live in the self-contained git repo `ESP32-Environment/` (fresh history, no remote — see sep. 14, 2026 combined-merge entry above); the paper (PDF + figures + milestone form) lives in `Paper/`. This repo is "Part 1 of 2" — firmware + tooling.
+- ⚠️ **CORRECTED sep. 17, 2026** (was stale, and answers the old "no sync transport between
+  laptops" question): the git repo root is this whole `Unified/` folder (code, docs, `Paper/`,
+  `ESP32-Environment/` all inside it), not `ESP32-Environment/` alone — branch `Unified`, remote
+  `origin` = `https://github.com/Kemo1006/NIS16-ESP32-Environment`, pushed and up to date as of
+  sep. 17. GitHub is now that transport: `git pull` on another laptop gets the same
+  MEMORY.md/STATUS.md/code.
 - Thesis: DLSU CCS, CTTHES2/THES3. Proponents: Calpoporo, Carlos, Ong, Reinante. Adviser: Cu, Gregory G.
 - Toolchain: ESP-IDF **v5.3.5** (bundles Python 3.11 + compiler); boards enumerate as "Silicon Labs CP210x USB to UART Bridge"; Windows reassigns COM numbers every plug — always re-check.
 - Mesh identity is shared across every board: `MESH_ID {0xAB,0xCD,0xEF,0x01,0x23,0x45}`, `MESH_PASSWORD "MeshSecure2026!"` in `components/mesh_common/include/mesh_config.h` — never change between flashing root and victims.
