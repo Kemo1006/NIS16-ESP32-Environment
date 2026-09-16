@@ -48,6 +48,34 @@
   there (that capture's own baseline is degraded, 0.164±0.372) — i.e. it surfaces the signature
   WITHOUT fabricating one. Full rationale: `docs/issue_logs/thesis-deviate.md` **D-8**.
   ⚠️ Remaining NaN is correct, not a gap: root never originates probes (PDR undefined for it).
+- sep. 17, 2026 — FIXED + BUILT: nav/UX overhaul, `run_wizard.ps1` + `menu.ps1` (kept in sync). Both
+  gained `m` (jump to main menu, replaces Ctrl+C) on every prompt via shared `Read-Line`→throw,
+  caught once at the outer loop; self-disables past the final confirm (`$script:NavLocked`) so it
+  can't abandon a half-flashed roster. Wizard also: `b` (back) at ports/roster steps; root-here
+  toggle (skips the full multi-laptop split just to mark root remote); blackhole/wormhole menus
+  gained "attacker/tunnel is on ANOTHER laptop" — the only prior path nominated a LOCAL board,
+  reading its MAC and overwriting `mesh_config.h` wrongly; `Select-Port` now hides a port an earlier
+  board already claimed (manual entry still allows deliberate swap-mode reuse). `menu.ps1` was
+  one-shot (ran one action, exited); now loops back to its main menu, grouped by category
+  (CAPTURE/DATA/MAINTENANCE/VERIFY); `b`-plumbing added but not yet wired into its flows. Verified
+  via `-DryRun` replay (wizard) / declined-confirm replay (menu.ps1, no dry-run switch exists).
+  **Cont'd same day:** both scripts' category menus now show sequential 1-9 on screen (a new
+  `$order`/`$display` lookup translates back to the real action/modeIdx, which used to leak gaps
+  like DATA showing 1/5/8); added `cls` beside `m` (same `Read-Line` choke point, no Ctrl+C
+  needed either). `menu.ps1` gained the wizard's identify-a-port/-ALL (`board_check.py`, cached
+  in `$script:IdentifiedPorts`) and its `Test-PortSafeToTouch` gate — BLOCKED (non-ESP32) ports
+  now hidden from every `menu.ps1` port picker, UNKNOWN needs the port name typed back to
+  confirm. `b`-back STILL not wired into any `menu.ps1` flow — needs the same `$step`-machine
+  treatment as the wizard (user-approved; only the multi-board flow was scoped before the
+  session moved to other requests).
+  **Cont'd same day (bug fix):** `cls` was leaving a BLANK screen — `Read-Line`'s handler did
+  `Clear-Host; continue`, but every numbered menu (`Show-Menu`, `Show-CaptureWizardMenu` in
+  run_wizard; `Read-Choice`, `Show-MainMenu` in menu.ps1) prints its title/options ONCE, above
+  the prompt loop, so Clear-Host wiped them with nothing to put them back. Fix: `Read-Line` now
+  takes an optional `-Redraw` scriptblock; those four functions capture their own
+  print-title/options code as `$draw`, run it once up front, and pass `-Redraw $draw` so `cls`
+  replays it after clearing. Other one-off `Read-Line` prompts (port pickers, y/n confirms) were
+  NOT touched — lower priority, they only lose a line or two of context, not the whole menu.
 - sep. 16, 2026 — ⚠️ CAPTURE QUALITY, archived unresolved: `blackhole/linear/G402/mobility` — 3 of 4
   victims probed all run but root logged nothing from them in ANY phase (`B4BFE932FE90` changed
   layer 4→5 mid-run; `2805A532D7B4` at layer 6). NOT the MAC bug below (that run's attacker `0c:80`
@@ -63,26 +91,6 @@
   run get loaded by every analysis tool — it warns `[!] N STALE file(s)`; menu [6] clears it.
 - sep. 16, 2026 — ⚠️ **MEMORY.md has NO sync transport between laptops.** `combined/` is on a local
   drive (`A:\`, NOT OneDrive) and `ESP32-Environment/`'s repo has no remote. Transport undecided.
-- sep. 16, 2026 — BUILT `ESP32-Environment/archive.ps1`, automating the archiving convention: one
-  dated+labelled folder per run under `archive/<date>_<label>/`, each with an auto-written README
-  giving the reason. MOVES (never copies/deletes) all captures + analysis output preserving the
-  attack/topology/location/scenario layout, then resets the `.gitkeep` scaffold (3 attacks × 4
-  topologies) + header-only ledger. Keeps `analysis/*.py|md|txt` and every `.gitkeep`. `-WhatIf`
-  previews; `-Label`/`-Reason`/`-Force` script it; refuses to run on an empty tree (a lone
-  header-only ledger doesn't count as data); auto-suffixes `-2` rather than overwrite an existing
-  archive. Used for all 3 archives today (`pre-restart`, `mobility-run`, `bad-attacker-mac`).
-  ⚠️ Git-Bash `mv` gives "Permission denied" on these dirs — the script uses `Move-Item`.
-  ⚠️ **PS 5.1 `Out-File -Encoding utf8` writes a BOM.** That silently broke `run_ledger.csv`:
-  `run_matrix.py` reads it with plain `encoding="utf-8"` + `csv.DictReader`, which does NOT strip a
-  BOM, so field 1 became `﻿` + `topology` and every `row["topology"]` would fail (pandas hides
-  this — it strips BOMs, so test with csv.DictReader). Use `-Encoding ascii`, or
-  `[System.IO.File]::WriteAllText(..., New-Object System.Text.UTF8Encoding $false)` when the text
-  may be non-ASCII.
-- sep. 16, 2026 — REWROTE `analysis/ANALYSIS-Commands.md` (was badly stale: `star_topology` naming,
-  no `<location>`/`<scenario>` layers, no tooling). Now: `analyze.ps1` first, trimming (+ the
-  stale-`trimmed/` gotcha), manual M6→M7→M8, `verify_attack.py` incl. how to read PASS/FAIL/SKIP
-  (a FAIL usually means a noisy baseline, not broken code), and a "looks like an error but isn't"
-  section (PS 5.1 red numpy-stderr; by-design NaN columns). All 13 paths link-checked.
 - sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR
   ONLY — thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly
   to root so no child-relay position exists there (tree/linear/partial keep a child attacker; all
@@ -106,15 +114,6 @@
   folder (all 5 path-builders agree on this; it was the bug fixed the same night). Build-dir suffix
   `_burst`/`_highload` is a SEPARATE concern (firmware variant, not export path).
   ⚠️ Verified only without hardware attached — NOT bench-tested on real boards yet.
-- sep. 15, 2026 — ⚠️ ROOT-CAUSED a FALSE `BLACKHOLE CONFIRMED` (ForwardingRatio 0.995→0.000, z=-19.6): the
-  `feature_table.csv` pooled THREE UNRELATED SESSIONS in one leaf — the real root export
-  (`..._r2_20260915_211307_...`) plus two RAW SD-card files copied in by hand
-  (`victim_NODE_20500DE70C80_r21_b22`, `..._F42DC973E618_r26_b28`). **THE FACT: an ON-CARD `r<N>` is that
-  board's own on-device run counter (times IT logged to THAT card), NOT the campaign repeat.** A card
-  mirrors the same `<attack>/<topology>/<location>/` tree as `exports/`, so dragging a card's folder over
-  the exports folder merges raw captures into a leaf where they still end in `_telem.csv` and get globbed
-  in silently; only `import_sdcard.py --repeat` restamps them to one campaign number. `verify_topology.py`
-  had already flagged both orphans ("No root node identified"/"Unresolved parents") — that was the tell.
 - ⚠️ TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live
   reference for THES3 writing (vocabulary for paper Tables 4.11/4.12) — pull it back to root
   if so. See ARCHIVE.md for the doc-reorganization history.

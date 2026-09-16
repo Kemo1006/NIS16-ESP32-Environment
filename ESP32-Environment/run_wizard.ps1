@@ -85,12 +85,53 @@ $SCENARIO_LABELS = @(
     'powercycle  - HUMAN: you unplug/replug one child (checklist only)'
 )
 
+# Bright role colors for a black console background -- root/child/attacker at a
+# glance in board summaries and roster listings. Named ConsoleColor values (Cyan/
+# Yellow/etc used elsewhere in this file) can't express these exact hex values, so
+# these are raw ANSI 24-bit escapes instead; Windows 10/11's default console and
+# Windows Terminal both render them. $script:AnsiReset MUST follow every use or the
+# color bleeds into whatever Write-Host prints next.
+$script:RoleAnsi = @{
+    root     = "$([char]27)[38;2;254;189;23m"   # #FEBD17
+    child    = "$([char]27)[38;2;27;192;186m"   # #1BC0BA
+    attacker = "$([char]27)[38;2;253;184;217m"  # #FDB8D9
+}
+$script:AnsiReset = "$([char]27)[0m"
+
+function Colorize-Role {
+    # Wraps $Text in the role's ANSI color + reset. $Role should be 'root',
+    # 'attacker', or anything else (treated as 'child') -- callers pass a board's
+    # Role/Kind field, not a raw hex value.
+    param([string]$Text, [string]$Role)
+    $key = if ($Role -eq 'root') { 'root' } elseif ($Role -eq 'attacker') { 'attacker' } else { 'child' }
+    return "$($script:RoleAnsi[$key])$Text$script:AnsiReset"
+}
+
 # ---------------------------------------------------------------- helpers ----
 
 function Read-Line {
-    param([string]$Prompt)
-    Write-Host -NoNewline $Prompt
-    return (Read-Host)
+    # EVERY prompt in the wizard goes through here, so the 'm' escape below -
+    # and 'cls' - are available everywhere by construction. There is no
+    # prompt you can get stuck on needing Ctrl+C, and no need to Ctrl+C just to
+    # get a clean terminal back either. 'b' is deliberately NOT handled here:
+    # back only means something where there is a previous question to return
+    # to, so it stays opt-in per call site via Test-BackAnswer.
+    # -Redraw lets a menu function (Show-Menu, Show-CaptureWizardMenu, ...) hand
+    # back the scriptblock that printed its title/options, so 'cls' can replay it
+    # after Clear-Host instead of leaving a blank screen with only the one-line
+    # prompt on it - Clear-Host wipes everything Read-Line itself has no memory of.
+    param([string]$Prompt, [scriptblock]$Redraw)
+    while ($true) {
+        Write-Host -NoNewline $Prompt
+        $raw = Read-Host
+        if (Test-ClearScreenAnswer $raw) {
+            Clear-Host
+            if ($Redraw) { & $Redraw }
+            continue
+        }
+        if (Test-MainMenuAnswer $raw) { Request-MainMenu }
+        return $raw
+    }
 }
 
 function Test-BackAnswer {
@@ -99,6 +140,41 @@ function Test-BackAnswer {
     # flow) has one consistent way to recognise it everywhere.
     param([string]$Raw)
     return [bool]($Raw -and ($Raw.Trim().ToLower() -in @('b', 'back')))
+}
+
+function Test-ClearScreenAnswer {
+    param([string]$Raw)
+    return [bool]($Raw -and ($Raw.Trim().ToLower() -eq 'cls'))
+}
+
+$script:MainMenuSignal = 'WIZARD-RETURN-TO-MAIN-MENU'
+$script:BackSignal     = 'WIZARD-GO-BACK'
+
+function Test-MainMenuAnswer {
+    param([string]$Raw)
+    return [bool]($Raw -and ($Raw.Trim().ToLower() -in @('m', 'menu', 'main')))
+}
+
+$script:NavLocked = $false
+
+function Request-MainMenu {
+    # Unwinds to the wizard's outermost loop from ANY prompt depth. Thrown rather
+    # than returned because prompts sit several helpers deep (Select-Port inside
+    # the roster step inside the step machine) and threading a sentinel back up
+    # through every one of those returns would mean touching every call site --
+    # and missing one would leave exactly the dead end this exists to remove.
+    # try/finally still unwinds normally, so Pop-Location and friends are not
+    # skipped. Caught once, at the :wizard loop near the bottom of this file.
+    if ($script:NavLocked) {
+        # Past the Proceed gate some boards may already be flashed. Quietly landing
+        # back on the main menu there would look like nothing had happened and invite
+        # a second run over a half-flashed set.
+        Write-Host ""
+        Write-Host "  'm' is disabled once flashing has started - boards are already part-way" -ForegroundColor Yellow
+        Write-Host "  through this run. Answer the prompt, or Ctrl+C if you really must stop." -ForegroundColor Yellow
+        return
+    }
+    throw $script:MainMenuSignal
 }
 
 function Test-ScenarioNeedsTarget {
@@ -119,6 +195,17 @@ function Test-BurstEligible {
     return $Child.Kind -in @('plain', 'victim', 'control')
 }
 
+function Get-FreeNodeLabel {
+    # Lowest nodeN not already used. For boards this laptop records but never
+    # touches (a root or attacker on someone else's laptop): the label only names
+    # them in the hand-off summary, so prompting for one asks the operator to
+    # invent a value their own machine will never act on.
+    param([string[]]$Taken)
+    $n = 1
+    while ($Taken -contains "node$n") { $n++ }
+    return "node$n"
+}
+
 function Show-Menu {
     # Returns the 0-based index of the chosen option, or -1 if the caller
     # passed -AllowBack and the operator typed 'b'/'back' - callers that opt
@@ -129,22 +216,28 @@ function Show-Menu {
         [int]$DefaultIndex = -1,   # -1 = no default, must choose
         [switch]$AllowBack
     )
-    Write-Host ""
-    Write-Host $Title -ForegroundColor Cyan
-    for ($i = 0; $i -lt $Options.Count; $i++) {
-        if ($i -eq $DefaultIndex) {
-            # The default is marked right on its option line, not only in the
-            # prompt below, so scanning the list alone shows what Enter picks.
-            # The numbers are bracketed [N] to match the "keep [N]" prompt hint;
-            # on their own the brackets could read as "already chosen", so the
-            # explicit "<- default (press Enter)" marker is what actually signals
-            # the default here - the brackets are just the selector style.
-            Write-Host ("  [{0}] {1}  <- default (press Enter)" -f ($i + 1), $Options[$i]) -ForegroundColor Green
-        }
-        else {
-            Write-Host ("  [{0}] {1}" -f ($i + 1), $Options[$i])
+    # Captured as a scriptblock (not just run inline) so it can be handed to
+    # Read-Line as -Redraw: 'cls' Clear-Hosts the whole screen, and this is the
+    # only place that knows how to put the title/options back afterward.
+    $draw = {
+        Write-Host ""
+        Write-Host $Title -ForegroundColor Cyan
+        for ($i = 0; $i -lt $Options.Count; $i++) {
+            if ($i -eq $DefaultIndex) {
+                # The default is marked right on its option line, not only in the
+                # prompt below, so scanning the list alone shows what Enter picks.
+                # The numbers are bracketed [N] to match the "keep [N]" prompt hint;
+                # on their own the brackets could read as "already chosen", so the
+                # explicit "<- default (press Enter)" marker is what actually signals
+                # the default here - the brackets are just the selector style.
+                Write-Host ("  [{0}] {1}  <- default (press Enter)" -f ($i + 1), $Options[$i]) -ForegroundColor Green
+            }
+            else {
+                Write-Host ("  [{0}] {1}" -f ($i + 1), $Options[$i])
+            }
         }
     }
+    & $draw
     $tries = 0
     while ($true) {
         $tries++
@@ -154,13 +247,16 @@ function Show-Menu {
         # Spells out both paths on the prompt itself instead of relying on the
         # reader already knowing "[N]" means "the default" - same reasoning as
         # the list marker above.
-        $backHint = if ($AllowBack) { ", or 'b' to go back" } else { '' }
+        # 'm' is handled inside Read-Line for every prompt in the wizard; it is
+        # advertised here (and on the other hand-written prompts) so it is
+        # discoverable rather than a hidden keyword.
+        $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'm' main menu, 'cls' clear" }
         $hint = if ($DefaultIndex -ge 0) {
-            "Press Enter to keep [$($DefaultIndex + 1)], or type 1-$($Options.Count) for another option$backHint > "
+            "Press Enter to keep [$($DefaultIndex + 1)], or type 1-$($Options.Count) for another option$navHint > "
         } else {
-            "Type 1-$($Options.Count)$backHint > "
+            "Type 1-$($Options.Count)$navHint > "
         }
-        $raw = Read-Line $hint
+        $raw = Read-Line $hint -Redraw $draw
         if ($AllowBack -and (Test-BackAnswer $raw)) { return -1 }
         if (-not $raw -and $DefaultIndex -ge 0) { return $DefaultIndex }
         $n = 0
@@ -168,6 +264,78 @@ function Show-Menu {
             return ($n - 1)
         }
         Write-Host "  Enter a number from 1 to $($Options.Count)." -ForegroundColor Yellow
+    }
+}
+
+function Show-CaptureWizardMenu {
+    # Grouped version of the top-level "What do you want to do?" menu, same
+    # CAPTURE/DATA/MAINTENANCE/VERIFY grouping menu.ps1's Show-MainMenu uses for
+    # its own main menu - kept in the same spirit (not a shared function, since
+    # the two launchers' option sets differ). Each item carries its REAL 0-based
+    # modeIdx (what the `if ($modeIdx -eq N)` checks at the call site expect
+    # back), but the NUMBER PRINTED ON SCREEN is a separate, always-sequential
+    # 1..9 position in display order - $order/$display below is the lookup
+    # between the two, so "[3]" always means "the 3rd line on screen" even
+    # though DATA's first item is modeIdx 4 and MAINTENANCE's is modeIdx 1.
+    $categories = @(
+        @{ Name = 'CAPTURE'; Items = @(
+            @{ Idx = 0; Text = 'Run a capture (attack/baseline + topology - the normal flow)' }
+        ) }
+        @{ Name = 'DATA'; Items = @(
+            @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
+            @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
+        ) }
+        @{ Name = 'MAINTENANCE'; Items = @(
+            @{ Idx = 1; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
+            @{ Idx = 2; Text = 'Write/update location.txt on an already-running board (over USB)' }
+            @{ Idx = 3; Text = 'Firmware self-test - build + flash ONE board and check the SD/location code (no capture, no attack, no export)' }
+            @{ Idx = 6; Text = 'Identify all boards (COM port + MAC, every board at once - no capture, no attack)' }
+        ) }
+        @{ Name = 'VERIFY'; Items = @(
+            @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
+        ) }
+    )
+    $exitIdx = 8
+
+    $order = @()
+    foreach ($cat in $categories) { foreach ($item in $cat.Items) { $order += $item.Idx } }
+    $order += $exitIdx   # always last on screen
+    $display = @{}   # real modeIdx -> number printed on screen
+    for ($i = 0; $i -lt $order.Count; $i++) { $display[$order[$i]] = $i + 1 }
+
+    # Same reasoning as Show-Menu's $draw: handed to Read-Line as -Redraw so
+    # 'cls' can put this whole grouped listing back after Clear-Host wipes it.
+    $draw = {
+        Write-Host ""
+        Write-Host "What do you want to do?" -ForegroundColor Cyan
+        foreach ($cat in $categories) {
+            Write-Host ""
+            Write-Host ("-- {0}" -f $cat.Name) -ForegroundColor DarkCyan
+            foreach ($item in $cat.Items) {
+                $num = $display[$item.Idx]
+                if ($item.Idx -eq 0) {
+                    Write-Host ("  [{0}] {1}  <- default (press Enter)" -f $num, $item.Text) -ForegroundColor Green
+                } else {
+                    Write-Host ("  [{0}] {1}" -f $num, $item.Text)
+                }
+            }
+        }
+        Write-Host ""
+        Write-Host ("  [{0}] Exit the wizard" -f $display[$exitIdx])
+    }
+    & $draw
+
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt $script:MaxPromptTries) {
+            throw "No valid selection for 'What do you want to do?' after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
+        }
+        $raw = Read-Line "Press Enter to keep [1], or type 1-9 for another option, 'm' main menu, 'cls' clear > " -Redraw $draw
+        if (-not $raw) { return 0 }
+        $n = 0
+        if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $order.Count) { return $order[$n - 1] }
+        Write-Host "  Enter a number from 1 to 9." -ForegroundColor Yellow
     }
 }
 
@@ -438,38 +606,61 @@ function Wait-ForNewPort {
 }
 
 function Select-Port {
-    param([string]$For, [object[]]$Ports)
+    # With -AllowBack the port list grows a "go back" entry and returns the
+    # $script:BackSignal string. A distinct sentinel, not $null: $null already
+    # means "this board is on another laptop" in Select-PortOrRemote's contract,
+    # and conflating the two would silently mark a board remote when the operator
+    # only meant to re-answer the previous question.
+    # -Taken hides ports already assigned to an earlier board in this SAME
+    # roster from the numbered pick-list - the list you're choosing FROM should
+    # not still show a port you (or an earlier step) already gave to node2 as if
+    # it were free for node3 too. It only hides them from the auto-numbered
+    # list: "type a port manually" still reaches a taken port on purpose, for
+    # the genuine shared-port/swap-mode case (see $swapMode below), with a
+    # confirm so that stays a deliberate choice, not an accidental duplicate.
+    param([string]$For, [object[]]$Ports, [switch]$AllowBack, [string[]]$Taken = @())
     $tries = 0
     while ($true) {
         $tries++
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid port chosen for $For after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
+        $shown = @($Ports | Where-Object { $Taken -notcontains $_.Port })
         Write-Host ""
         Write-Host "Select port for $For :" -ForegroundColor Cyan
-        if ($Ports.Count -eq 0) {
-            Write-Host "  (no COM ports detected - a charge-only USB cable creates no port)" -ForegroundColor Yellow
-        }
-        for ($i = 0; $i -lt $Ports.Count; $i++) {
-            $tag = ''
-            if ($script:IdentifiedPorts.ContainsKey($Ports[$i].Port)) {
-                $tag = "  [{0}]" -f $script:IdentifiedPorts[$Ports[$i].Port]
+        if ($shown.Count -eq 0) {
+            if ($Ports.Count -eq 0) {
+                Write-Host "  (no COM ports detected - a charge-only USB cable creates no port)" -ForegroundColor Yellow
+            } else {
+                Write-Host "  (every detected port is already assigned to another board in this roster -" -ForegroundColor Yellow
+                Write-Host "  auto-detect a new one, or type one manually to share a port on purpose)" -ForegroundColor Yellow
             }
-            $kindTag = Format-PortKindTag $Ports[$i].Kind
-            $color   = switch ($Ports[$i].Kind) { 'BLOCKED' { 'DarkGray' } 'UNKNOWN' { 'Yellow' } default { 'Gray' } }
-            Write-Host ("  [{0}] {1,-7} - {2}{3}{4}" -f ($i + 1), $Ports[$i].Port, $Ports[$i].Description, $tag, $kindTag) -ForegroundColor $color
+        }
+        for ($i = 0; $i -lt $shown.Count; $i++) {
+            $tag = ''
+            if ($script:IdentifiedPorts.ContainsKey($shown[$i].Port)) {
+                $tag = "  [{0}]" -f $script:IdentifiedPorts[$shown[$i].Port]
+            }
+            $kindTag = Format-PortKindTag $shown[$i].Kind
+            $color   = switch ($shown[$i].Kind) { 'BLOCKED' { 'DarkGray' } 'UNKNOWN' { 'Yellow' } default { 'Gray' } }
+            Write-Host ("  [{0}] {1,-7} - {2}{3}{4}" -f ($i + 1), $shown[$i].Port, $shown[$i].Description, $tag, $kindTag) -ForegroundColor $color
         }
         # Actions continue the same numbering as the ports above - one flat numbered
         # list, same convention as every other menu in this wizard (Show-Menu).
-        $identifyOneIdx = $Ports.Count + 1
-        $identifyAllIdx = $Ports.Count + 2
-        $autoDetectIdx  = $Ports.Count + 3
-        $manualIdx      = $Ports.Count + 4
+        $identifyOneIdx = $shown.Count + 1
+        $identifyAllIdx = $shown.Count + 2
+        $autoDetectIdx  = $shown.Count + 3
+        $manualIdx      = $shown.Count + 4
+        $backIdx        = if ($AllowBack) { $shown.Count + 5 } else { -1 }
         Write-Host ("  [{0}] identify a port (reads its MAC)" -f $identifyOneIdx)
         Write-Host ("  [{0}] identify ALL listed ports (reads each one in turn, takes a while)" -f $identifyAllIdx)
         Write-Host ("  [{0}] auto-detect (not plugged in yet - plug it in now, wizard finds the new port)" -f $autoDetectIdx)
-        Write-Host ("  [{0}] type a port manually" -f $manualIdx)
-        $raw = Read-Line '> '
+        Write-Host ("  [{0}] type a port manually (also how to deliberately share an already-taken port)" -f $manualIdx)
+        if ($AllowBack) { Write-Host ("  [{0}] go back to the previous question" -f $backIdx) }
+        $navHint = if ($AllowBack) { "  ('b' back, 'm' main menu, 'cls' clear)" } else { "  ('m' main menu, 'cls' clear)" }
+        $raw = Read-Line ">$navHint "
+
+        if ($AllowBack -and (Test-BackAnswer $raw)) { return $script:BackSignal }
 
         $n = 0
         if (-not [int]::TryParse($raw, [ref]$n)) {
@@ -477,26 +668,28 @@ function Select-Port {
             continue
         }
 
-        if ($n -ge 1 -and $n -le $Ports.Count) {
+        if ($AllowBack -and $n -eq $backIdx) { return $script:BackSignal }
+
+        if ($n -ge 1 -and $n -le $shown.Count) {
             # This port goes on to be flashed by run.ps1 - the single most
             # destructive thing the wizard does to whatever is on the other end.
-            if (-not (Test-PortSafeToTouch -Port $Ports[$n - 1].Port -Action 'flash firmware to it')) { continue }
-            return $Ports[$n - 1].Port
+            if (-not (Test-PortSafeToTouch -Port $shown[$n - 1].Port -Action 'flash firmware to it')) { continue }
+            return $shown[$n - 1].Port
         }
         if ($n -eq $identifyOneIdx) {
-            if ($Ports.Count -eq 0) { Write-Host "  Nothing to identify." -ForegroundColor Yellow; continue }
+            if ($shown.Count -eq 0) { Write-Host "  Nothing to identify." -ForegroundColor Yellow; continue }
             $which = Read-Line '  Which listed port number? > '
             $wn = 0
-            if ([int]::TryParse($which, [ref]$wn) -and $wn -ge 1 -and $wn -le $Ports.Count) {
-                Invoke-Identify -TargetPort $Ports[$wn - 1].Port
+            if ([int]::TryParse($which, [ref]$wn) -and $wn -ge 1 -and $wn -le $shown.Count) {
+                Invoke-Identify -TargetPort $shown[$wn - 1].Port
             }
             else { Write-Host "  Invalid number." -ForegroundColor Yellow }
             continue
         }
         if ($n -eq $identifyAllIdx) {
-            if ($Ports.Count -eq 0) { Write-Host "  Nothing to identify." -ForegroundColor Yellow; continue }
+            if ($shown.Count -eq 0) { Write-Host "  Nothing to identify." -ForegroundColor Yellow; continue }
             Write-Host ""
-            foreach ($p in $Ports) {
+            foreach ($p in $shown) {
                 Write-Host ("Identifying {0} ..." -f $p.Port) -ForegroundColor DarkGray
                 Invoke-Identify -TargetPort $p.Port
             }
@@ -513,7 +706,12 @@ function Select-Port {
                 $manual = $manual.Trim().ToUpper()
                 # Typing the port by hand skips the list, so it has to be checked
                 # here too - otherwise the guard is one typo wide.
-                if (Test-PortSafeToTouch -Port $manual -Action 'flash firmware to it') { return $manual }
+                if (-not (Test-PortSafeToTouch -Port $manual -Action 'flash firmware to it')) { continue }
+                if ($Taken -contains $manual) {
+                    $ans = Read-Line ("  {0} is already assigned to another board - SHARE it (swap mode, boards take turns)? [y/N] > " -f $manual)
+                    if ($ans -ne 'y' -and $ans -ne 'Y') { continue }
+                }
+                return $manual
             }
             continue
         }
@@ -528,13 +726,16 @@ function Select-PortOrRemote {
     # "is it here?" only when $MultiLaptop is set keeps the single-laptop path
     # byte-for-byte unchanged: no new prompt, no behavior change, when nobody
     # has opted into a split.
-    # Returns a port string, or $null for "not on this laptop".
-    param([string]$For, [object[]]$Ports, [bool]$MultiLaptop)
+    # Returns a port string, $null for "not on this laptop", or $script:BackSignal
+    # when -AllowBack is set and the operator wants the previous question again.
+    param([string]$For, [object[]]$Ports, [bool]$MultiLaptop, [switch]$AllowBack, [string[]]$Taken = @())
     if ($MultiLaptop) {
-        $ans = Read-Line "  Is $For plugged into THIS laptop? [Y/n] > "
+        $hint = if ($AllowBack) { " ('b' back, 'm' main menu, 'cls' clear)" } else { " ('m' main menu, 'cls' clear)" }
+        $ans = Read-Line "  Is $For plugged into THIS laptop? [Y/n]$hint > "
+        if ($AllowBack -and (Test-BackAnswer $ans)) { return $script:BackSignal }
         if ($ans -eq 'n' -or $ans -eq 'N') { return $null }
     }
-    return (Select-Port -For $For -Ports $Ports)
+    return (Select-Port -For $For -Ports $Ports -AllowBack:$AllowBack -Taken $Taken)
 }
 
 function Invoke-WipeBoards {
@@ -1419,6 +1620,201 @@ function Invoke-VerifyRun {
     try { python (Join-Path $base 'tools\verify_attack.py') @vaArgs } finally { Pop-Location }
 }
 
+function Invoke-IdentifyAllBoards {
+    # Scans EVERY detected, non-blocked COM port and reads its MAC + node name in
+    # one pass -- the "which physical board is which" question Invoke-Identify
+    # answers one port at a time, done for the whole desk at once. Read-only
+    # (board_check.py's bootloader MAC read only), gated per-port by
+    # Test-PortSafeToTouch exactly like Invoke-Identify, so a mouse receiver or
+    # Bluetooth link enumerated as a serial port is never poked. Mirrors
+    # menu.ps1's "Identify a board" (multi mode) - keep the two in sync.
+    $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+    if ($ports.Count -eq 0) {
+        Write-Host ""
+        Write-Host "  No usable COM ports detected. Is anything plugged in?" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host ""
+    Write-Host ("Detected {0} port(s):" -f $ports.Count) -ForegroundColor Cyan
+    foreach ($p in $ports) {
+        $tag = if ($p.Kind -eq 'UNKNOWN') { '  << unrecognised - will ask to confirm' } else { '' }
+        Write-Host ("   {0,-7} ({1}){2}" -f $p.Port, $p.Description, $tag)
+    }
+    Write-Host ""
+    Write-Host ("Reading all {0} board(s) -- MAC + node number ..." -f $ports.Count) -ForegroundColor DarkGray
+
+    $results = @()
+    Push-Location (Join-Path $base 'tools')
+    try {
+        foreach ($p in $ports) {
+            Write-Host ("  {0} ..." -f $p.Port) -ForegroundColor DarkGray
+            if (-not (Test-PortSafeToTouch -Port $p.Port -Action 'reset it to read a MAC')) {
+                $results += [pscustomobject]@{ Port = $p.Port; Mac = $null; Node = 'skipped (not confirmed)' }
+                continue
+            }
+            $out = & python board_check.py --port $p.Port --wait 1
+            $hit = $out | Select-String -Pattern 'MAC\s+([0-9a-fA-F:]{17})\s+->\s+(.+)$' | Select-Object -First 1
+            if ($hit) {
+                $mac  = $hit.Matches[0].Groups[1].Value.ToLower()
+                $node = $hit.Matches[0].Groups[2].Value
+                $script:IdentifiedPorts[$p.Port] = "$mac -> $node"
+                Write-Host ("    MAC {0}  ->  {1}" -f $mac, $node) -ForegroundColor Green
+            } else {
+                $mac  = $null
+                $node = 'could not identify (no MAC read)'
+                Write-Host ("    Could not read a MAC from {0} -- unplugged, port busy, or esptool unavailable." -f $p.Port) -ForegroundColor Yellow
+            }
+            $results += [pscustomobject]@{ Port = $p.Port; Mac = $mac; Node = $node }
+        }
+    } finally { Pop-Location }
+
+    # Read before the summary prints (not just for the cross-check below) so ROOT/
+    # attacker rows can be colored immediately instead of only after a second pass.
+    $configured = Get-ConfiguredAttackerMac
+
+    Write-Host ""
+    Write-Host "Summary:" -ForegroundColor Cyan
+    foreach ($r in $results) {
+        $macDisp = if ($r.Mac) { $r.Mac } else { '(unread)' }
+        $role = if ($r.Node -match '\(ROOT\)') { 'root' } elseif ($configured -and $r.Mac -eq $configured) { 'attacker' } else { 'child' }
+        $line = ("   {0,-7} {1,-17} {2}" -f $r.Port, $macDisp, $r.Node)
+        Write-Host (Colorize-Role $line $role)
+    }
+
+    # ---- cross-check against the compiled blackhole attacker MAC ------------
+    # BLACKHOLE_ATTACKER_MAC is baked into VICTIM firmware at BUILD time -- if it
+    # doesn't match whichever board is actually wearing the attacker role right
+    # now, every victim probe addresses a MAC nothing in the mesh holds and the
+    # whole run logs zero arrivals with no error pointing at why. This reads the
+    # boards just identified against that compiled value before any flashing.
+    Write-Host ""
+    if (-not $configured) {
+        Write-Host "  (Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h -- skipping attacker cross-check.)" -ForegroundColor DarkGray
+        return
+    }
+    Write-Host ("mesh_config.h BLACKHOLE_ATTACKER_MAC = {0}" -f $configured) -ForegroundColor Cyan
+    $readOk  = @($results | Where-Object { $_.Mac })
+    $matches = @($readOk | Where-Object { $_.Mac -eq $configured })
+
+    if ($matches.Count -eq 1) {
+        Write-Host ("  MATCH -- {0} ({1}) is the configured attacker. Victim boards will reach it." -f $matches[0].Port, $matches[0].Node) -ForegroundColor Green
+        return
+    }
+    if ($matches.Count -gt 1) {
+        Write-Host ("  WARNING: {0} of the boards just read all report this SAME MAC -- that should not happen (duplicate/cloned MAC?)." -f $matches.Count) -ForegroundColor Red
+        return
+    }
+    if ($readOk.Count -eq 0) {
+        Write-Host "  Could not confirm -- no MAC was successfully read from any board above." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "  NO MATCH among the boards just read -- none of these is the configured attacker." -ForegroundColor Red
+    Write-Host "  Victim probes targeting $configured will find nothing in the mesh and vanish for the" -ForegroundColor Red
+    Write-Host "  WHOLE run (baseline included), with every blackhole feature coming out all-NaN." -ForegroundColor Red
+    $fixOpts = @($readOk | ForEach-Object { "$($_.Port)  ($($_.Mac))  $($_.Node)" })
+    $fixOpts += 'Leave as-is'
+    $fixIdx = Show-Menu -Title 'Point BLACKHOLE_ATTACKER_MAC at one of the boards just read instead?' -Options $fixOpts -DefaultIndex ($fixOpts.Count - 1)
+    if ($fixIdx -lt $readOk.Count) {
+        $target = $readOk[$fixIdx]
+        if (Set-ConfiguredAttackerMac -Mac $target.Mac -PortLabel $target.Port) {
+            Write-Host ("  Fixed -- mesh_config.h now targets {0} ({1}). The next build will pick it up." -f $target.Mac, $target.Port) -ForegroundColor Green
+        } else {
+            Write-Host "  Could not write mesh_config.h -- fix it by hand before flashing victims." -ForegroundColor Red
+        }
+    } else {
+        Write-Host "  Left as-is -- victim boards will still target the wrong MAC until this is fixed." -ForegroundColor Yellow
+    }
+}
+
+function Invoke-RunAnalysisOnly {
+    # Standalone M6->M8 pipeline (preprocess.py -> features.py -> eda.py) over an
+    # already-exported (or SD-imported) folder -- the same three stages run.ps1's
+    # -Analyze switch chains automatically after a root export, exposed here to
+    # (re-)run analysis without touching a board (a fixed preprocessing bug, or a
+    # topology this laptop never itself flashed). Mirrors menu.ps1's "Run
+    # analysis only" action - keep the two in sync.
+    Write-Host ""
+    Write-Host "Nothing here touches a board or a COM port -- runs preprocess.py -> features.py" -ForegroundColor DarkGray
+    Write-Host "-> eda.py over an already-exported folder." -ForegroundColor DarkGray
+
+    $attackIdx   = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 0
+    $rAttack     = @('none', 'blackhole', 'wormhole')[$attackIdx]
+    $topoIdx     = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
+    $rTopology   = $TOPOLOGIES[$topoIdx]
+    $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
+    $rScenario   = $SCENARIOS[$scenarioIdx]
+    $locationIdx = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex 0
+    $rLocation   = $LOCATIONS[$locationIdx]
+
+    $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
+    if (-not (Test-Path $dirs.Export)) {
+        Write-Host ("`n  {0} doesn't exist -- export a board or import a card for this run first." -f $dirs.Export) -ForegroundColor Yellow
+        return
+    }
+
+    # Same two-tier python scan run.ps1's -Analyze uses: prefer a python with the
+    # full EDA stack (matplotlib/seaborn/scipy/scikit-learn) so M6+M7+M8 all run;
+    # fall back to a pandas/numpy-only one (M6+M7 only, M8 skipped with a hint)
+    # rather than failing the whole thing.
+    $edaPy = $null
+    $featuresPy = $null
+    foreach ($cand in @('python', 'python3', 'C:\Python314\python.exe')) {
+        if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
+        & $cand -c "import pandas, numpy, matplotlib, seaborn, scipy, sklearn" 2>$null
+        if ($LASTEXITCODE -eq 0) { $edaPy = $cand; if (-not $featuresPy) { $featuresPy = $cand }; break }
+        if (-not $featuresPy) {
+            & $cand -c "import pandas, numpy" 2>$null
+            if ($LASTEXITCODE -eq 0) { $featuresPy = $cand }
+        }
+    }
+    if (-not $featuresPy) {
+        Write-Host "`n  No python with pandas/numpy found -- pip install -r analysis\requirements.txt first." -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Test-Path $dirs.Analysis)) { New-Item -ItemType Directory -Force -Path $dirs.Analysis | Out-Null }
+    $windowedOut = Join-Path $dirs.Analysis 'windowed_dataset.csv'
+    $featOut     = Join-Path $dirs.Analysis 'feature_table.csv'
+    $edaOut      = Join-Path $dirs.Analysis 'eda_output'
+
+    Write-Host ""
+    Write-Host ("Running: python analysis\preprocess.py {0} -o {1}" -f $dirs.Export, $windowedOut) -ForegroundColor DarkGray
+    Write-Host ("     ->  python analysis\features.py {0} -o {1}" -f $dirs.Export, $featOut) -ForegroundColor DarkGray
+    if ($edaPy) {
+        Write-Host ("     ->  python analysis\eda.py {0} -o {1}" -f $featOut, $edaOut) -ForegroundColor DarkGray
+    } else {
+        Write-Host "     ->  (EDA/M8 skipped -- $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn)" -ForegroundColor DarkGray
+    }
+    $goAns = Read-Line "`nRun this now? [Y/n] > "
+    if ($goAns -eq 'n' -or $goAns -eq 'N') { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
+
+    Push-Location (Join-Path $base 'analysis')
+    try {
+        Write-Host "`nM6: preprocess.py ..." -ForegroundColor Cyan
+        & $featuresPy preprocess.py $dirs.Export -o $windowedOut
+        if ($LASTEXITCODE -ne 0) { Write-Host "Preprocess failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
+
+        Write-Host "M7: features.py ..." -ForegroundColor Cyan
+        & $featuresPy features.py $dirs.Export -o $featOut
+        if ($LASTEXITCODE -ne 0) { Write-Host "Features step failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
+
+        if ($edaPy) {
+            Write-Host "M8: eda.py ..." -ForegroundColor Cyan
+            & $edaPy eda.py $featOut -o $edaOut
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "EDA failed (exit $LASTEXITCODE); feature_table.csv is fine, see the error above." -ForegroundColor Yellow
+            } else {
+                Write-Host ("Done -> analysis\$($dirs.AttackDir)\$($dirs.TopoDir)\$rLocation\eda_output\") -ForegroundColor Green
+            }
+        } else {
+            Write-Host "Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
+            Write-Host "  Fix once: pip install -r analysis\requirements.txt" -ForegroundColor DarkGray
+        }
+    } finally { Pop-Location }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -1820,7 +2216,7 @@ function Read-RepeatNumber {
     while ($true) {
         $tries++
         if ($tries -gt $script:MaxPromptTries) { throw "No valid repeat number after $script:MaxPromptTries attempts - aborting." }
-        $backHint = if ($AllowBack) { " (or 'b' to go back)" } else { '' }
+        $backHint = if ($AllowBack) { " (or 'b' back, 'm' main menu, 'cls' clear)" } else { '' }
         $raw = Read-Line "> [$DefaultRepeat]$backHint "
         if ($AllowBack -and (Test-BackAnswer $raw)) { return -1 }
         if (-not $raw) { return $DefaultRepeat }
@@ -1864,7 +2260,8 @@ function Show-PresetDetails {
         if ($live -notcontains $b.Port) { $miss = '  << port NOT PRESENT' }
         if ($b.ScenarioTarget) { $miss = "  << $cfgScenario TARGET$miss" }
         $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-19}{5}" -f $step, $b.Label, $b.Display, $b.Port, $mac, $miss).TrimEnd()
-        if ($miss) { Write-Host $line -ForegroundColor Yellow } else { Write-Host $line }
+        $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+        if ($miss) { Write-Host $line -ForegroundColor Yellow } else { Write-Host (Colorize-Role $line $role) }
     }
 
     # Free cross-check (a file read, no board contact): does this preset's attacker
@@ -1946,6 +2343,17 @@ function Format-RunParams {
 # ================================================================ CONFIG =====
 # Either loaded from a preset, or gathered through the menus below.
 
+# Everything from the mode menu to the end of the run is wrapped in this one loop
+# so that typing 'm' at ANY prompt (Read-Line throws $script:MainMenuSignal) lands
+# back on the mode menu instead of killing the wizard. Only this outermost frame
+# catches it; a genuine error still propagates untouched. The body is left at its
+# original indentation on purpose - re-indenting ~1200 lines would bury the real
+# change in whitespace noise, and PowerShell does not care either way.
+$originalPreset = $Preset
+:wizard while ($true) {
+try {
+$Preset = $originalPreset
+
 $attack = ''; $topology = ''; $location = ''; $repeat = 1; $scenario = 'none'
 $roster = @()
 
@@ -1974,21 +2382,17 @@ if (-not $Preset) {
         if ($DryRun) { Write-Host "DRY RUN - nothing will be flashed." -ForegroundColor Yellow }
         $bannerShown = $true
 
-        $modeIdx = Show-Menu -Title 'What do you want to do?' -Options @(
-            'Run a capture (attack/baseline + topology - the normal flow)',
-            "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)",
-            'Write/update location.txt on an already-running board (over USB)',
-            'Firmware self-test - build + flash ONE board and check the SD/location code (no capture, no attack, no export)',
-            'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)',
-            'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)'
-        ) -DefaultIndex 0
+        $modeIdx = Show-CaptureWizardMenu
 
+        if ($modeIdx -eq 8) { Write-Host ""; Write-Host "Bye - nothing was flashed." -ForegroundColor DarkGray; exit 0 }
         if ($modeIdx -eq 0) { break }
         if ($modeIdx -eq 1) { Invoke-WipeBoards; continue }
         if ($modeIdx -eq 2) { Invoke-SetLocationBoards; continue }
         if ($modeIdx -eq 3) { Invoke-FirmwareSelfTest; continue }
         if ($modeIdx -eq 4) { Invoke-ImportSdCard; continue }
         if ($modeIdx -eq 5) { Invoke-VerifyRun; continue }
+        if ($modeIdx -eq 6) { Invoke-IdentifyAllBoards; continue }
+        if ($modeIdx -eq 7) { Invoke-RunAnalysisOnly; continue }
     }
 }
 
@@ -2350,7 +2754,8 @@ else {
 
     # Step machine so a wrong answer doesn't cost re-typing every question
     # after it. Steps: 0 attack, 1 topology, 2 location, 3 scenario, 4 repeat,
-    # 5 multi-laptop, 6 child count, 7 per-child roster (one child per visit,
+    # 5 root-here? + multi-laptop (its own inner retry loop, not two step numbers),
+    # 6 child count, 7 per-child roster (one child per visit,
     # driven by $i), 8 attacker/tunnel roles (skipped for baseline), 9 scenario
     # target (only for burst/mobility/powercycle), 10 root board. Each step's
     # prompt takes 'b'/'back' (wherever there is a previous step to return to)
@@ -2363,6 +2768,7 @@ else {
     $scenarioIdx = 0
     $repeat      = 1
     $multiLaptop = $false
+    $rootHere    = $true
     $childCount  = 2
     $children    = @()
     $i           = 1
@@ -2448,16 +2854,38 @@ else {
             }
 
             5 {
-                Write-Host ""
-                Write-Host "Is this ONE experiment's boards split across MULTIPLE laptops? e.g. Laptop A" -ForegroundColor DarkGray
-                Write-Host "runs the root + some children, Laptop B runs the attacker + other children." -ForegroundColor DarkGray
-                Write-Host "Answer the roster questions below for the FULL experiment on every laptop," -ForegroundColor DarkGray
-                Write-Host "then mark which boards are physically here when asked." -ForegroundColor DarkGray
-                $multiAns = Read-Line "`nSplit across multiple laptops? [y/N] (or 'b' to go back) > "
-                if (Test-BackAnswer $multiAns) { $step = 4; continue flow }
-                $multiLaptop = ($multiAns -eq 'y' -or $multiAns -eq 'Y')
-                $step = 6
-                continue flow
+                # Two questions, one step: asked in an inner loop (not a new top-level
+                # step number) so 'b' on the second one re-asks the first instead of
+                # unwinding all the way to step 4 - the same "one step, own retry loop"
+                # idiom step 6/7 use below for their own multi-part prompts.
+                :rootStep while ($true) {
+                    Write-Host ""
+                    $rootAns = Read-Line "`nIs the ROOT board physically on THIS laptop? [Y/n] (or 'b' back, 'm' main menu) > "
+                    if (Test-BackAnswer $rootAns) { $step = 4; continue flow }
+                    $rootHere = -not ($rootAns -eq 'n' -or $rootAns -eq 'N')
+
+                    if (-not $rootHere) {
+                        # Root lives elsewhere - that alone makes this a multi-laptop
+                        # split, so skip re-asking the split question below; it would
+                        # just confirm what "no" already said. Roster questions still
+                        # cover the FULL experiment so labels/ports line up with
+                        # whichever laptop the root and any other remote boards are on.
+                        $multiLaptop = $true
+                        $step = 6
+                        continue flow
+                    }
+
+                    Write-Host ""
+                    Write-Host "Is this ONE experiment's boards ALSO split across other laptops? e.g. this" -ForegroundColor DarkGray
+                    Write-Host "laptop runs the root + some children, another runs the attacker + the rest." -ForegroundColor DarkGray
+                    Write-Host "Answer the roster questions below for the FULL experiment on every laptop," -ForegroundColor DarkGray
+                    Write-Host "then mark which of the OTHER boards are physically here when asked." -ForegroundColor DarkGray
+                    $multiAns = Read-Line "`nSplit across multiple laptops? [y/N] (or 'b' back, 'm' main menu) > "
+                    if (Test-BackAnswer $multiAns) { continue rootStep }
+                    $multiLaptop = ($multiAns -eq 'y' -or $multiAns -eq 'Y')
+                    $step = 6
+                    continue flow
+                }
             }
 
             6 {
@@ -2476,7 +2904,7 @@ else {
                 while ($true) {
                     $tries++
                     if ($tries -gt $script:MaxPromptTries) { throw "No valid child count after $script:MaxPromptTries attempts - aborting." }
-                    $raw = Read-Line "`nHow many CHILD boards (NOT counting the root)? > [$childCount] (or 'b' to go back) "
+                    $raw = Read-Line "`nHow many CHILD boards (NOT counting the root)? > [$childCount] (or 'b' back, 'm' main menu) "
                     if (Test-BackAnswer $raw) { $backCount = $true; break }
                     if (-not $raw) { break }
                     $n = 0
@@ -2529,7 +2957,7 @@ else {
                 while ($true) {
                     $ltries++
                     if ($ltries -gt $script:MaxPromptTries) { throw "No valid label for child $i after $script:MaxPromptTries attempts - aborting." }
-                    $raw = Read-Line "`nLabel for child $i > [$suggested] (or 'b' to go back) "
+                    $raw = Read-Line "`nLabel for child $i > [$suggested] (or 'b' back, 'm' main menu) "
                     if (Test-BackAnswer $raw) { $backChild = $true; break }
                     $label = if (-not $raw) { $suggested } else { $raw.Trim() }
                     # The label is what names the CSV. Two boards sharing one silently overwrite
@@ -2553,7 +2981,12 @@ else {
                     continue flow
                 }
 
-                $port = Select-PortOrRemote -For "$label (child $i of $childCount)" -Ports $ports -MultiLaptop $multiLaptop
+                $takenPorts = @($children | Where-Object { $_.Port } | Select-Object -ExpandProperty Port)
+                $port = Select-PortOrRemote -For "$label (child $i of $childCount)" -Ports $ports -MultiLaptop $multiLaptop -AllowBack -Taken $takenPorts
+                # Back here re-asks THIS child's label - nothing has been committed
+                # to $children yet, so re-entering step 7 with $i unchanged is the
+                # whole undo.
+                if ($port -eq $script:BackSignal) { continue flow }
 
                 $children += [pscustomobject]@{
                     Label          = $label
@@ -2569,6 +3002,12 @@ else {
 
             8 {
                 # Assign attack roles. Asking "which one" enforces the count rule by construction.
+                # Coming back into this step must not stack a second auto-added remote
+                # attacker on top of the one a previous visit created. Only boards THIS
+                # step invented carry .Synthetic, so a real remote child the operator
+                # entered in step 7 and picked as attacker survives untouched.
+                $children = @($children | Where-Object { -not $_.Synthetic })
+
                 if ($attack -eq 'blackhole') {
                     $labels = @($children | ForEach-Object {
                         $tag = ''
@@ -2576,16 +3015,44 @@ else {
                         $portText = if ($_.Port) { $_.Port } else { 'remote - not on this laptop' }
                         "$($_.Label)  ($portText)$tag"
                     })
+                    # MULTI-LAPTOP SPLIT: the attacker may be on a teammate's laptop.
+                    # Without this option the menu offered only local boards, so the
+                    # only way through was to nominate one of YOUR victims as the
+                    # attacker - which then sent the pre-flight gate off to read that
+                    # board's MAC and rewrite mesh_config.h to the wrong value.
+                    if ($multiLaptop) { $labels += 'None of these - the ATTACKER is on ANOTHER laptop' }
+
                     $idx = Show-Menu -Title 'Which child is the BLACKHOLE ATTACKER? (exactly one)' -Options $labels -AllowBack
                     if ($idx -eq -1) { Undo-LastChild; $step = 7; continue flow }
-                    for ($ci = 0; $ci -lt $children.Count; $ci++) {
-                        if ($ci -eq $idx) {
-                            $children[$ci].Kind = 'attacker'
-                            $children[$ci].Display = 'blackhole ATTACKER'
+
+                    if ($multiLaptop -and $idx -eq $children.Count) {
+                        $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                        $children += [pscustomobject]@{
+                            Label          = $remoteLabel
+                            Port           = $null
+                            Role           = 'child'
+                            Kind           = 'attacker'
+                            Display        = 'blackhole ATTACKER (other laptop)'
+                            ScenarioTarget = $false
+                            Synthetic      = $true
                         }
-                        else {
-                            $children[$ci].Kind = 'victim'
-                            $children[$ci].Display = 'blackhole victim'
+                        foreach ($c in $children) {
+                            if ($c.Kind -ne 'attacker') { $c.Kind = 'victim'; $c.Display = 'blackhole victim' }
+                        }
+                        Write-Host ""
+                        Write-Host ("  Remote attacker recorded as '{0}' - tell that laptop's operator to use the" -f $remoteLabel) -ForegroundColor DarkGray
+                        Write-Host "  same label. You'll be asked for its MAC before anything is flashed." -ForegroundColor DarkGray
+                    }
+                    else {
+                        for ($ci = 0; $ci -lt $children.Count; $ci++) {
+                            if ($ci -eq $idx) {
+                                $children[$ci].Kind = 'attacker'
+                                $children[$ci].Display = 'blackhole ATTACKER'
+                            }
+                            else {
+                                $children[$ci].Kind = 'victim'
+                                $children[$ci].Display = 'blackhole victim'
+                            }
                         }
                     }
                 }
@@ -2596,11 +3063,49 @@ else {
                         $portText = if ($_.Port) { $_.Port } else { 'remote - not on this laptop' }
                         "$($_.Label)  ($portText)$tag"
                     })
-                    $idxA = Show-Menu -Title 'Which child is WORMHOLE Node A (exit / re-injects to root)?' -Options $labels -AllowBack
+                    # The two tunnel ends are opposite ends of ONE physical cable, so
+                    # they are either both on this desk or both not - a roster where
+                    # the cable spans two laptops is not a thing. Hence one combined
+                    # escape here rather than a remote option on each of the two menus.
+                    $menuLabels    = @($labels)
+                    $bothRemoteIdx = -1
+                    if ($multiLaptop) {
+                        $bothRemoteIdx = $menuLabels.Count
+                        $menuLabels += 'Neither - BOTH tunnel ends are on ANOTHER laptop'
+                    }
+
+                    $idxA = Show-Menu -Title 'Which child is WORMHOLE Node A (exit / re-injects to root)?' -Options $menuLabels -AllowBack
                     if ($idxA -eq -1) { Undo-LastChild; $step = 7; continue flow }
+
+                    if ($multiLaptop -and $idxA -eq $bothRemoteIdx) {
+                        $taken  = @($children | Select-Object -ExpandProperty Label)
+                        $labelA = Get-FreeNodeLabel -Taken $taken
+                        $labelB = Get-FreeNodeLabel -Taken (@($taken) + $labelA)
+                        $children += [pscustomobject]@{
+                            Label = $labelA; Port = $null; Role = 'child'; Kind = 'A'
+                            Display = 'wormhole Node A (other laptop)'; ScenarioTarget = $false; Synthetic = $true
+                        }
+                        $children += [pscustomobject]@{
+                            Label = $labelB; Port = $null; Role = 'child'; Kind = 'B'
+                            Display = 'wormhole Node B (other laptop)'; ScenarioTarget = $false; Synthetic = $true
+                        }
+                        foreach ($c in $children) {
+                            if ($c.Kind -notin @('A', 'B')) { $c.Kind = 'control'; $c.Display = 'control (plain firmware)' }
+                        }
+                        Write-Host ""
+                        Write-Host ("  Remote tunnel ends recorded as '{0}' (A) and '{1}' (B) - the cable and both" -f $labelA, $labelB) -ForegroundColor DarkGray
+                        Write-Host "  boards live on that laptop; nothing is flashed for them here." -ForegroundColor DarkGray
+                        $step = if (Test-ScenarioNeedsTarget $scenario) { 9 } else { 10 }
+                        continue flow
+                    }
+
+                    # Node B is picked from the REAL boards only - the combined escape
+                    # above already covers "not here", and offering it again would let
+                    # A be local while B is remote.
                     $idxB = -1
                     while ($true) {
-                        $idxB = Show-Menu -Title 'Which child is WORMHOLE Node B (entry / captures + tunnels)?' -Options $labels
+                        $idxB = Show-Menu -Title 'Which child is WORMHOLE Node B (entry / captures + tunnels)?' -Options $labels -AllowBack
+                        if ($idxB -eq -1) { continue flow }   # re-ask Node A (step 8 re-entry strips synthetics)
                         if ($idxB -ne $idxA) { break }
                         Write-Host "  Node B must be a different board from Node A." -ForegroundColor Yellow
                     }
@@ -2661,12 +3166,25 @@ else {
             }
 
             10 {
+                if (-not $rootHere) {
+                    # Step 5 already said the root is on another laptop. It is never
+                    # built, flashed, exported or saved from here - it is in the roster
+                    # only so the hand-off summary can name it - so asking for a label
+                    # was asking the operator to supply a value this laptop never uses.
+                    $rootLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                    $rootPort  = $null
+                    Write-Host ""
+                    Write-Host ("ROOT is on another laptop - recorded as '{0}', nothing flashed for it here." -f $rootLabel) -ForegroundColor DarkGray
+                    $step = 11
+                    continue flow
+                }
+
                 $backRoot = $false
                 $ltries = 0
                 while ($true) {
                     $ltries++
                     if ($ltries -gt $script:MaxPromptTries) { throw "No valid root label after $script:MaxPromptTries attempts - aborting." }
-                    $raw = Read-Line "`nLabel for the ROOT board > [node1] (or 'b' to go back) "
+                    $raw = Read-Line "`nLabel for the ROOT board > [node1] (or 'b' back, 'm' main menu) "
                     if (Test-BackAnswer $raw) { $backRoot = $true; break }
                     $rootLabel = if (-not $raw) { 'node1' } else { $raw.Trim() }
                     if (@($children | Select-Object -ExpandProperty Label) -contains $rootLabel) {
@@ -2683,7 +3201,11 @@ else {
                     continue flow
                 }
 
-                $rootPort = Select-PortOrRemote -For "$rootLabel (ROOT)" -Ports $ports -MultiLaptop $multiLaptop
+                # Whether root is here was already settled in step 5 (and the remote
+                # case returned above), so this only ever runs for a local root.
+                $takenPorts = @($children | Where-Object { $_.Port } | Select-Object -ExpandProperty Port)
+                $rootPort = Select-Port -For "$rootLabel (ROOT)" -Ports $ports -AllowBack -Taken $takenPorts
+                if ($rootPort -eq $script:BackSignal) { continue flow }
                 $step = 11
                 continue flow
             }
@@ -2781,7 +3303,10 @@ if ($attack -eq 'blackhole') {
         if ($wantMac) { Write-Host ("mesh_config.h BLACKHOLE_ATTACKER_MAC = {0}" -f $wantMac) -ForegroundColor Cyan }
 
         if ($SkipMacCheck -or $DryRun) {
-            Write-Host ("Not asking for {0}'s MAC (" -f $remoteAttacker.Label) + $(if ($DryRun) { 'dry run' } else { '-SkipMacCheck' }) + ")." -ForegroundColor DarkGray
+            # One fully-parenthesised expression: in argument mode the bare '+' used
+            # to be parsed as its own argument, printing "MAC ( + dry run + )."
+            $why = if ($DryRun) { 'dry run' } else { '-SkipMacCheck' }
+            Write-Host ("Not asking for {0}'s MAC ({1})." -f $remoteAttacker.Label, $why) -ForegroundColor DarkGray
         }
         else {
             Write-Host "Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
@@ -2999,7 +3524,9 @@ foreach ($p in $plan) {
     $tail = '-Export'
     if ($p.Board.Role -eq 'root') { $tail = '-Analyze' }
     if ($p.Board.ScenarioTarget) { $tail = "$tail  << $scenario TARGET" }
-    Write-Host ("   [{0}] {1,-8} {2,-27} {3,-7} {4}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $tail)
+    $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $tail)
+    $role = if ($p.Board.Role -eq 'root') { 'root' } elseif ($p.Board.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+    Write-Host (Colorize-Role $line $role)
 }
 Write-Host ""
 Write-Host "  Exports  -> $exportDir"
@@ -3112,6 +3639,10 @@ if ($go -ne 'y' -and $go -ne 'Y') {
     Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
     return
 }
+
+# Everything above this line is answerable and reversible; below it, boards get
+# written to. See Request-MainMenu.
+$script:NavLocked = $true
 
 # ---------------------------------------------------------------- execute ----
 
@@ -3229,4 +3760,24 @@ Write-Host "src_mac should go silent during gt_label=1 rows and resume at cooldo
 if ($attack -ne 'none') {
     Write-Host ""
     Write-Host "Graded run? Record it:  python tools\run_matrix.py --autorecord" -ForegroundColor DarkGray
+}
+
+break wizard
+}
+catch {
+    # Only the 'm' escape is handled here; every real failure keeps its original
+    # behaviour (message, stack, non-zero exit) by being rethrown untouched.
+    if ($_.Exception.Message -ne $script:MainMenuSignal) { throw }
+    if ($originalPreset) {
+        # -Preset is the "just run this" entry point, so there is no mode menu
+        # behind it to return to.
+        Write-Host ""
+        Write-Host "Nothing to go back to (-Preset was given) - exiting." -ForegroundColor DarkGray
+        break wizard
+    }
+    Write-Host ""
+    Write-Host "Back to the main menu - nothing was flashed." -ForegroundColor Cyan
+    $bannerShown = $false
+    continue wizard
+}
 }

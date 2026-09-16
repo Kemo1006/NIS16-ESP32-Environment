@@ -155,3 +155,43 @@
     location + repeat, then auto-matches the roster preset and auto-picks the card drive when exactly
     one looks like a card; `--delete-source` + import-everything are always-on defaults now.
     `run_wizard.ps1` also gained a "Verify a run" menu option (`Invoke-VerifyRun`).
+- sep. 15, 2026 — Rolled from MEMORY.md Decisions (root-caused, guards added, no longer live risk):
+  ⚠️ ROOT-CAUSED a FALSE `BLACKHOLE CONFIRMED` (ForwardingRatio 0.995→0.000, z=-19.6): the
+  `feature_table.csv` pooled THREE UNRELATED SESSIONS in one leaf — the real root export
+  (`..._r2_20260915_211307_...`) plus two RAW SD-card files copied in by hand
+  (`victim_NODE_20500DE70C80_r21_b22`, `..._F42DC973E618_r26_b28`). THE FACT: an ON-CARD `r<N>` is
+  that board's own on-device run counter (times IT logged to THAT card), NOT the campaign repeat. A
+  card mirrors the same `<attack>/<topology>/<location>/` tree as `exports/`, so dragging a card's
+  folder over the exports folder merges raw captures into a leaf where they still end in
+  `_telem.csv` and get globbed in silently; only `import_sdcard.py --repeat` restamps them to one
+  campaign number. `verify_topology.py` had already flagged both orphans ("No root node identified"/
+  "Unresolved parents") — that was the tell.
+- sep. 16, 2026 — Rolled from STATUS.md Recently done + MEMORY.md: `analyze.ps1` gained a menu;
+  archived twice (`pre-restart`, `mobility-run`) and reset the scaffold. REWROTE
+  `analysis/ANALYSIS-Commands.md` (was badly stale: `star_topology` naming, no `<location>`/
+  `<scenario>` layers, no tooling) — now leads with `analyze.ps1`, covers trimming (+ the
+  stale-`trimmed/` gotcha), manual M6→M7→M8, `verify_attack.py` PASS/FAIL/SKIP reading (a FAIL
+  usually means a noisy baseline, not broken code), and a "looks like an error but isn't" section
+  (PS 5.1 red numpy-stderr; by-design NaN columns). All 13 paths link-checked.
+- sep. 16, 2026 — Rolled from STATUS.md Recently done: analysis grid 1Hz→10Hz + window 5s→1s
+  (**D-9**, 577→2,894 rows/run); attack/topology/location/scenario now columns on every row
+  (**D-10**, fixes `combine_all` pooling scenarios). Full detail: MEMORY.md.
+- sep. 17, 2026 — Rolled from MEMORY.md Decisions (shipped and stable): BUILT
+  `ESP32-Environment/archive.ps1`, automating the archiving convention: one dated+labelled folder
+  per run under `archive/<date>_<label>/`, each with an auto-written README giving the reason.
+  MOVES (never copies/deletes) all captures + analysis output preserving the
+  attack/topology/location/scenario layout, then resets the `.gitkeep` scaffold (3 attacks × 4
+  topologies) + header-only ledger. Keeps `analysis/*.py|md|txt` and every `.gitkeep`. `-WhatIf`
+  previews; `-Label`/`-Reason`/`-Force` script it; refuses to run on an empty tree (a lone
+  header-only ledger doesn't count as data); auto-suffixes `-2` rather than overwrite an existing
+  archive. ⚠️ Git-Bash `mv` gives "Permission denied" on these dirs — the script uses `Move-Item`.
+  ⚠️ **PS 5.1 `Out-File -Encoding utf8` writes a BOM.** That silently broke `run_ledger.csv`:
+  `run_matrix.py` reads it with plain `encoding="utf-8"` + `csv.DictReader`, which does NOT strip a
+  BOM, so field 1 became `﻿` + `topology` and every `row["topology"]` would fail (pandas hides
+  this — it strips BOMs, so test with csv.DictReader). Use `-Encoding ascii`, or
+  `[System.IO.File]::WriteAllText(..., New-Object System.Text.UTF8Encoding $false)` when the text
+  may be non-ASCII.
+- sep. 17, 2026 — Rolled from STATUS.md Recently done: **FIXED PDR** (it WAS a code bug — corrects
+  an earlier "not a code bug" note) — per-window attribution replaces the run-wide coverage gate,
+  so `PDR==0` can finally be recorded (was 0 of 446 rows); also killed a `0/(0+EPSILON)`
+  false-zero. thesis-deviate **D-8**. Full detail: MEMORY.md.

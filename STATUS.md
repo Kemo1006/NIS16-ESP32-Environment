@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 16, 2026 (PDR fixed; grid/window changed; stale attacker MAC found — re-run needed)
+**Updated:** sep. 17, 2026 (wizard/menu `cls` blank-screen bug fixed, pushed to GitHub; re-run below still untouched)
 
 ## Current focus
 **Re-running the capture matrix from empty**, and the sep. 16 15:36 attempt must itself be redone —
@@ -22,7 +22,7 @@ designed, NOT built, team decides; plan at `C:\Users\Basti\.claude\plans\mutable
    was stale (`0c:80`) while the attacker board was `1c:38`, so victims P2P'd every probe to a board
    not in the mesh: root logged ZERO arrivals in all phases, PDR + ForwardingRatio 100% NaN. MAC is
    now fixed in `mesh_config.h` — **reflash EVERY board** (victims compile it in) before re-running.
-4. Low priority: `menu.ps1`'s "Verify a run" lacks a `--scenario` question (hardcoded flat path).
+4. Low priority: `menu.ps1` "Verify a run" lacks `--scenario`; its `b`-back still isn't wired in (Recently done).
 
 ## Blockers / open questions
 - `presets/linear-blackhole-g402.json` is GONE, not in the Recycle Bin (picker deletes with
@@ -31,10 +31,11 @@ designed, NOT built, team decides; plan at `C:\Users\Basti\.claude\plans\mutable
 - Fresh git history, uncommitted to remote; CC/NIS16-ESP32-Environment frozen refs.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- sep. 16, 2026 — **FIXED PDR** (it WAS a code bug — corrects an earlier "not a code bug" note):
-  per-window attribution replaces the run-wide coverage gate, so `PDR==0` can finally be recorded
-  (was 0 of 446 rows); also killed a `0/(0+EPSILON)` false-zero. thesis-deviate **D-8**. MEMORY.md.
-- sep. 16, 2026 — Grid 1Hz→10Hz + window 5s→1s (**D-9**, 577→2,894 rows/run); attack/topology/
-  location/scenario now columns on every row (**D-10**, fixes combine_all pooling scenarios). MEMORY.md.
-- sep. 16, 2026 — Rewrote `ANALYSIS-Commands.md`; `analyze.ps1` gained a menu; archived twice
-  (`pre-restart`, `mobility-run`) and reset the scaffold. MEMORY.md.
+- sep. 17, 2026 — **Fixed `cls` leaving a blank screen** in `run_wizard.ps1` + `menu.ps1`: the four
+  numbered-menu functions (`Show-Menu`, `Show-CaptureWizardMenu`, `Read-Choice`, `Show-MainMenu`)
+  now redraw their title/options after `Clear-Host` via a new `Read-Line -Redraw` scriptblock,
+  instead of leaving just the one-line prompt. Committed + pushed to GitHub. MEMORY.md.
+- sep. 17, 2026 — **Wizard/menu nav overhaul, cont'd** (`run_wizard.ps1` + `menu.ps1`, kept in
+  sync): `cls` clears the terminal (no Ctrl+C); both main menus number 1-9 sequentially regardless
+  of category; `menu.ps1` gained the wizard's identify-a-port/-ALL + MAC tagging and now hides
+  non-ESP32 (BLOCKED) ports everywhere, gating UNKNOWN behind a typed confirm. MEMORY.md.
