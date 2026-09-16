@@ -3,6 +3,13 @@
 > Sample transcripts of `.\menu.ps1`. `<-` marks what YOU type (just a number or y/n, then Enter).
 > Pressing Enter alone accepts the `[default N]`. Nothing runs until the final "Run this now?".
 
+> **Navigating (sep. 17, 2026).** Every prompt takes `b` = back one question, `m` = main menu,
+> `cls` = redraw. The transcripts below omit that suffix for readability; the real prompts print it.
+> `b` re-asks the PREVIOUS question with whatever you already answered as its new default, so
+> correcting one wrong answer costs one keystroke instead of restarting the flow. In the
+> multi-board flow `b` part-way through a board cancels just that board and keeps the rest of the
+> plan; the plan summary then also offers add / remove / edit node.
+
 ## The main menu (always first)
 ```
 

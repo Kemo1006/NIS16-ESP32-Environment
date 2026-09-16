@@ -37,6 +37,13 @@ static mesh_node_role_t s_role    = MESH_ROLE_VICTIM;
 static char   s_node_id[NODE_ID_LEN] = {0};
 static bool   s_is_root           = false;
 
+/* Heartbeat table readiness (root only — set by heartbeat_table_init(), see
+ * the Command Center heartbeat section further down). Declared up here, not
+ * down with the rest of that section's state, because mesh_event_handler's
+ * MESH_EVENT_ROUTING_TABLE_REMOVE case reads it and that handler is defined
+ * before the heartbeat section in this file. */
+static bool s_table_ready = false;
+
 /* ── Forward declarations ────────────────────────────────────────────────── */
 static void mesh_event_handler(void *arg, esp_event_base_t base,
                                 int32_t id, void *data);
@@ -44,6 +51,12 @@ static void ip_event_handler(void *arg, esp_event_base_t base,
                               int32_t id, void *data);
 static void build_node_id(void);
 static void log_mesh_status(void);
+/* Declared this early (defs live down in the heartbeat section) so
+ * mesh_event_handler can call them for instant disconnect reporting instead
+ * of waiting on the heartbeat table's own staleness timer — see the
+ * MESH_EVENT_CHILD_DISCONNECTED / MESH_EVENT_ROUTING_TABLE_REMOVE cases. */
+static void heartbeat_table_print(void);
+static void heartbeat_mark_offline(const uint8_t mac[6]);
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Public API
@@ -342,6 +355,12 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         ESP_LOGI(TAG, "Child disconnected: aid=%d MAC=" MACSTR,
                  (int)cd->aid, MAC2STR(cd->mac));
         log_mesh_status();
+        /* This is the one disconnect the mesh names a specific MAC for — a
+         * node dropping straight off the ROOT. Evict + reprint right now
+         * instead of waiting up to HEARTBEAT_STALE_MS (three missed
+         * heartbeats) for the table's own staleness sweep to notice. A no-op
+         * on any node other than the root (s_table_ready guard inside). */
+        heartbeat_mark_offline(cd->mac);
         break;
     }
 
@@ -353,6 +372,18 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
     case MESH_EVENT_ROUTING_TABLE_REMOVE:
         ESP_LOGI(TAG, "Routing table shrunk (node removed).");
         log_mesh_status();
+        /* Unlike CHILD_DISCONNECTED this carries no MAC (just a table-size
+         * delta), so it can't name which row to evict — but it DOES fire for
+         * a multi-hop node dropping off deeper in the tree, which no other
+         * event does (see heartbeat_table_print's own comment on this gap).
+         * Forcing an immediate stale-sweep print here means a node that had
+         * already crossed HEARTBEAT_STALE_MS gets reported the moment the
+         * mesh notices, not up to HEARTBEAT_TABLE_REPRINT_MS later. It does
+         * NOT shrink the staleness floor itself — three missed heartbeats is
+         * still what tells a real drop apart from one lost frame. */
+        if (s_table_ready) {
+            heartbeat_table_print();
+        }
         break;
 
     case MESH_EVENT_ROOT_SWITCH_REQ:
@@ -398,6 +429,18 @@ static void ip_event_handler(void *arg, esp_event_base_t base,
  *
  * NIS16 — CTTHES3 — Command Center
  * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* s_table_ready itself now lives up in the module-private state block at the
+ * top of the file (mesh_event_handler's ROUTING_TABLE_REMOVE case needs to
+ * read it, and that's defined well before this section). Only the node that
+ * called heartbeat_table_init() (the root, from root_main) owns a node
+ * table. Gating on this rather than on mesh_setup_is_root(): that flag is
+ * only set by MESH_EVENT_PARENT_CONNECTED, which a fixed root in a
+ * routerless mesh never receives. */
+
+/* Reset by every table print, change-triggered ones included, so a periodic
+ * print never lands right on top of one a change just produced. */
+static int64_t s_last_print_us = 0;
 
 static void heartbeat_task(void *arg)
 {
@@ -453,6 +496,17 @@ static void heartbeat_task(void *arg)
             ESP_LOGD(TAG, "Heartbeat send failed: %s", esp_err_to_name(err));
         }
 
+        if (s_table_ready) {
+            /* Feed our own row in locally instead of relying on the send above
+             * looping back — the root's row would otherwise age out forever. */
+            heartbeat_ingest((const uint8_t *)&pkt, sizeof(pkt));
+
+            if (esp_timer_get_time() - s_last_print_us >=
+                    (int64_t)HEARTBEAT_TABLE_REPRINT_MS * 1000) {
+                heartbeat_table_print();
+            }
+        }
+
         vTaskDelay(pdMS_TO_TICKS(HEARTBEAT_INTERVAL_MS));
     }
 }
@@ -487,6 +541,28 @@ static heartbeat_entry_t s_heartbeat_table[HEARTBEAT_TABLE_MAX];
 
 static void heartbeat_table_print(void)
 {
+    int64_t now = esp_timer_get_time();
+    s_last_print_us = now;
+
+    /* Drop nodes that stopped reporting, so the printed count reflects what is
+     * actually reachable. Nothing else evicts: a mesh disconnect event only
+     * names the direct child, while a node several hops down goes silent with
+     * no event at all — going by "has it reported recently" catches both. */
+    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
+        heartbeat_entry_t *e = &s_heartbeat_table[i];
+        if (!e->in_use) {
+            continue;
+        }
+        uint32_t age_ms = (uint32_t)((now - e->last_seen_us) / 1000LL);
+        if (age_ms > HEARTBEAT_STALE_MS) {
+            char macstr[18];
+            snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
+            ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: %s (%s)",
+                     (unsigned)(age_ms / 1000U), macstr, e->nickname);
+            e->in_use = false;
+        }
+    }
+
     int idx[HEARTBEAT_TABLE_MAX];
     int n = 0;
     for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
@@ -516,8 +592,6 @@ static void heartbeat_table_print(void)
         idx[j + 1] = cur;
     }
 
-    int64_t now = esp_timer_get_time();
-
     ESP_LOGI(TAG, "==================== MESH TOPOLOGY (%d node%s) ====================",
              n, n == 1 ? "" : "s");
     ESP_LOGI(TAG, "%-4s %-18s %-11s %-16s %-6s %-6s %-6s",
@@ -533,6 +607,32 @@ static void heartbeat_table_print(void)
                  (unsigned long)age_s);
     }
     ESP_LOGI(TAG, "=====================================================================");
+}
+
+/* Instant counterpart to heartbeat_table_print()'s age-based staleness sweep
+ * (see MESH_EVENT_CHILD_DISCONNECTED above): evicts one row the moment the
+ * mesh names its MAC, rather than waiting up to HEARTBEAT_STALE_MS for the
+ * age check to notice it stopped reporting. A no-op if the table isn't ready
+ * (mesh_event_handler runs on every node; only the root owns a table) or the
+ * MAC isn't a row we're tracking (already evicted, or never made it in). */
+static void heartbeat_mark_offline(const uint8_t mac[6])
+{
+    if (!s_table_ready) {
+        return;
+    }
+    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
+        heartbeat_entry_t *e = &s_heartbeat_table[i];
+        if (!e->in_use || memcmp(e->mac, mac, 6) != 0) {
+            continue;
+        }
+        char macstr[18];
+        snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
+        ESP_LOGW(TAG, "Node OFFLINE (child-disconnected event) — %s (%s)",
+                 macstr, e->nickname);
+        e->in_use = false;
+        heartbeat_table_print();
+        return;
+    }
 }
 
 void heartbeat_table_init(void)
@@ -551,6 +651,8 @@ void heartbeat_table_init(void)
     e->current_phase = PHASE_ID_BASELINE;
     e->last_seen_us  = esp_timer_get_time();
     e->in_use        = true;
+
+    s_table_ready = true;
 
     heartbeat_table_print();
 }

@@ -9,12 +9,13 @@
   Covers: baseline / blackhole / wormhole runs (flash, wipe, export, analyze)
   for ONE board or MULTIPLE boards at once (opens one ESP-IDF window per
   board, root exported last), export-only, wipe/erase a board, identify-a-
-  board (MAC/node), running the M6->M8 analysis pipeline standalone on
+  board (MAC/node), writing/updating location.txt on an already-running board
+  over USB, running the M6->M8 analysis pipeline standalone on
   already-exported CSVs, and verifying a captured attack against the
   published 3-sigma signature. Thin wrapper over run.ps1 + tools\*.py, so
   nothing about the dataset or firmware changes.
-  For saved rosters/presets, MAC-drift checks across repeats, or bulk
-  set-location on many boards, see run_wizard.ps1 instead.
+  For saved rosters/presets or MAC-drift checks across repeats, see
+  run_wizard.ps1 instead.
   ASCII-only on purpose (Windows PowerShell 5.1 misreads non-ASCII in .ps1).
 #>
 $ErrorActionPreference = 'Stop'
@@ -81,9 +82,33 @@ function Read-Line {
     # the scriptblock that printed its title/options, so 'cls' can replay it
     # after Clear-Host instead of leaving a blank screen with only the one-line
     # prompt on it - Clear-Host wipes everything Read-Line itself has no memory of.
-    param([string]$Prompt, [scriptblock]$Redraw)
+    #
+    # -Default / -AllowBack put a free-text prompt on the same footing as
+    # Read-Choice and Read-YesNo: blank returns the default, 'b' returns
+    # $script:BackSignal, and the prompt SAYS so. Both are opt-in so the
+    # nested one-off prompts ("Which listed port number?") that already sit
+    # under a menu keep rendering exactly as before instead of growing a
+    # second, redundant nav hint.
+    param(
+        [string]$Prompt,
+        [scriptblock]$Redraw,
+        [string]$Default,
+        [switch]$AllowBack
+    )
+    $bits = @()
+    if ($PSBoundParameters.ContainsKey('Default') -and $Default -ne '') { $bits += "default $Default" }
+    if ($AllowBack) { $bits += "'b' back" }
+    $suffix = if ($bits.Count -gt 0) { " [{0}]" -f ($bits -join ', ') } else { '' }
+    # The prompt text already ends in its own ': ' / '> ' - splice the hint in
+    # ahead of that rather than tacking it on after, so the cursor still sits
+    # at the end of the line where the operator types.
+    $shown = $Prompt
+    if ($suffix) {
+        if ($Prompt -match '^(.*?)(\s*[:>]\s*)$') { $shown = $Matches[1] + $suffix + $Matches[2] }
+        else { $shown = $Prompt + $suffix }
+    }
     while ($true) {
-        Write-Host -NoNewline $Prompt
+        Write-Host -NoNewline $shown
         $raw = Read-Host
         if (Test-ClearScreenAnswer $raw) {
             Clear-Host
@@ -91,6 +116,8 @@ function Read-Line {
             continue
         }
         if (Test-MainMenuAnswer $raw) { Request-MainMenu }
+        if ($AllowBack -and (Test-BackAnswer $raw)) { return $script:BackSignal }
+        if ([string]::IsNullOrWhiteSpace($raw) -and $PSBoundParameters.ContainsKey('Default')) { return $Default }
         return $raw
     }
 }
@@ -131,7 +158,11 @@ function Read-YesNo {
     # set and the operator typed 'b' - callers that opt in must check for that
     # sentinel before using the result as a bool.
     param([string]$Question, [bool]$Default = $true, [switch]$AllowBack)
-    if ($Default) { $hint = 'Y/n' } else { $hint = 'y/N' }
+    # Spells the default out ("default Y") instead of leaving it encoded in
+    # which letter is capitalised -- Read-Choice announces "[default 1]" right
+    # next to it, and two prompts in the same flow disagreeing about how loudly
+    # they state their default is exactly the inconsistency this removes.
+    if ($Default) { $hint = 'Y/n, default Y' } else { $hint = 'y/N, default N' }
     $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'm' main menu, 'cls' clear" }
     while ($true) {
         $ans = Read-Line ("{0} [{1}]{2}: " -f $Question, $hint, $navHint)
@@ -251,17 +282,32 @@ function Select-Port {
     }
 }
 
+function Get-LocationList {
+    # The one list of sites, so Select-Location (export folder) and the
+    # write-location-to-a-board flow further down can never offer different
+    # sets. Keep in sync with run.ps1's -Location ValidateSet and with
+    # run_wizard.ps1's $LOCATIONS.
+    return ,@('home', 'G402', 'DLSU_Library', 'Goks')
+}
+
 function Select-Location {
     # run.ps1 requires -Location whenever -Export/-Clean/-Analyze is used, so
     # any flow that can export asks this. Keep the ValidateSet in run.ps1 in sync.
-    $locs = @('home', 'G402', 'DLSU_Library', 'Goks')
-    $idx  = Read-Choice -Title "Where was this run captured?" -Options $locs -Default 1
+    # -Current is the previously-picked value, so a step machine re-asking this
+    # after a 'b' offers what was already chosen rather than resetting to home.
+    param([string]$Current, [switch]$AllowBack)
+    $locs = Get-LocationList
+    $def  = [array]::IndexOf($locs, $Current) + 1
+    if ($def -lt 1) { $def = 1 }
+    $idx  = Read-Choice -Title "Where was this run captured?" -Options $locs -Default $def -AllowBack:$AllowBack
+    if ($script:BackSignal -eq $idx) { return $script:BackSignal }
     return $locs[$idx - 1]
 }
 
 function Select-Scenario {
     # Run-to-run variation the panel asked for. 'none' is byte-identical to the
     # old behaviour. Keep this option list in sync with run.ps1's ValidateSet.
+    param([string]$Current, [switch]$AllowBack)
     $opts = @(
         'none        (today''s behaviour -- no variation)',
         'burst       (CODE: one child fires 100 probes back-to-back in the attack window)',
@@ -269,8 +315,12 @@ function Select-Scenario {
         'mobility    (HUMAN: you move one child from spot A to spot B -- checklist only)',
         'powercycle  (HUMAN: you unplug/replug one child -- checklist only)'
     )
-    $idx = Read-Choice -Title "Scenario for this run (every board in the run gets the SAME one)?" -Options $opts -Default 1
-    return @('none', 'burst', 'highload', 'mobility', 'powercycle')[$idx - 1]
+    $vals = @('none', 'burst', 'highload', 'mobility', 'powercycle')
+    $def  = [array]::IndexOf($vals, $Current) + 1
+    if ($def -lt 1) { $def = 1 }
+    $idx = Read-Choice -Title "Scenario for this run (every board in the run gets the SAME one)?" -Options $opts -Default $def -AllowBack:$AllowBack
+    if ($script:BackSignal -eq $idx) { return $script:BackSignal }
+    return $vals[$idx - 1]
 }
 
 function Test-ScenarioNeedsTarget {
@@ -285,6 +335,7 @@ function Select-SdCard {
     # A pulled card mirrors the exports tree (<attack>/<topology>/<location>/),
     # so a drive whose ROOT holds any of these folders is almost certainly one of
     # ours. Same rule as run_wizard.ps1's Get-SdCardCandidates -- keep in sync.
+    param([switch]$AllowBack)
     $markers = @('baseline', 'blackhole', 'wormhole')
     $opts  = @()
     $roots = @()
@@ -298,8 +349,9 @@ function Select-SdCard {
     }
     $opts += 'Type a path manually'
 
-    $idx = Read-Choice -Title "Which card? (insert it first)" -Options $opts -Default 1
-    if ($idx -eq $opts.Count) { return (Read-Line "Card path (e.g. E:\): ") }
+    $idx = Read-Choice -Title "Which card? (insert it first)" -Options $opts -Default 1 -AllowBack:$AllowBack
+    if ($script:BackSignal -eq $idx) { return $script:BackSignal }
+    if ($idx -eq $opts.Count) { return (Read-Line "Card path (e.g. E:\): " -AllowBack:$AllowBack) }
     return $roots[$idx - 1]
 }
 
@@ -651,7 +703,12 @@ function Get-ReorderedBoards {
     $rootBoard = $Boards | Where-Object { $_.Role -eq 'root' } | Select-Object -First 1
     $ordered = @($children)
     if ($rootBoard) { $ordered += $rootBoard }
-    return $ordered
+    # Comma operator, not a bare return: `return $ordered` UNROLLS a
+    # one-element array into a scalar PSCustomObject, and a caller that then
+    # does `$boards += $new` (adding a board from the plan-adjust menu) dies
+    # with "does not contain a method named 'op_Addition'" -- while
+    # $boards.Count silently reads as $null, mislabelling the next board.
+    return ,$ordered
 }
 
 function Show-PlanWarnings {
@@ -866,6 +923,112 @@ function Edit-BoardInteractive {
     }
 }
 
+function Add-BoardInteractive {
+    # Collects ONE new board for the multi-board plan (port/role/attack
+    # sub-role/scenario-target/label) -- Wipe/Flash/Export/Clean are run-wide
+    # toggles the caller already asked once, so they're applied by the caller
+    # afterward via Format-BoardCmdText, same as Edit-BoardInteractive does.
+    # Used both by the initial "add boards one at a time" loop and by the
+    # post-summary "Add another board" adjustment, so a board added late goes
+    # through the exact same Qs.
+    #
+    # -AllowBack threads through every sub-prompt: hitting 'b' at ANY of them
+    # abandons just THIS board (nothing is appended to $Boards) and returns
+    # $script:BackSignal, instead of the only escape being 'm' (which nukes
+    # every board collected so far). haveRoot/haveScenarioTarget are derived
+    # fresh from $Boards each call rather than tracked as running state, so an
+    # abandoned board never leaves a phantom "root already taken" behind.
+    param(
+        [Parameter(Mandatory)][string]$Topo,
+        [Parameter(Mandatory)][string]$Attack,
+        [Parameter(Mandatory)][string]$Scenario,
+        [Parameter(Mandatory)]$Boards,
+        [switch]$AllowBack
+    )
+
+    # Normalised up front: a caller can hand us a single board that PowerShell
+    # already unrolled to a scalar, whose .Count reads as $null and would
+    # label the next board "Board 1" on top of an existing one.
+    $existing           = @($Boards)
+    $haveRoot           = [bool]@($existing | Where-Object { $_.Role -eq 'root' }).Count
+    $haveScenarioTarget = [bool]@($existing | Where-Object { $_.Params.ContainsKey('ScenarioTarget') }).Count
+
+    Write-Host ""
+    Write-Host ("--- Board {0} " -f ($existing.Count + 1)) -ForegroundColor Cyan
+    $taken = @($existing | ForEach-Object { $_.Port })
+    $port  = Select-BoardPort -Taken $taken -AllowBack:$AllowBack
+    if ($port -eq $script:BackSignal) { return $script:BackSignal }
+
+    $roleOpts = if ($haveRoot) { @('child / victim') } else { @('root', 'child / victim') }
+    $roleIdx  = Read-Choice -Title "Mesh role of THIS board?" -Options $roleOpts -Default 1 -AllowBack:$AllowBack
+    if ($roleIdx -eq $script:BackSignal) { return $script:BackSignal }
+    $role = if (-not $haveRoot -and $roleIdx -eq 1) { 'root' } else { 'child' }
+
+    $bhRole = 'attacker'
+    $wEnd   = 'B'
+    if ($Attack -eq 'blackhole' -and $role -ne 'root') {
+        $i = Read-Choice -Title "Blackhole role of THIS board?" -Options @(
+            'attacker  (relay that forwards then drops victim probes)',
+            'victim    (sends its probes to the attacker MAC)'
+        ) -Default 1 -AllowBack:$AllowBack
+        if ($i -eq $script:BackSignal) { return $script:BackSignal }
+        if ($i -eq 2) { $bhRole = 'victim' } else { $bhRole = 'attacker' }
+    }
+    if ($Attack -eq 'wormhole' -and $role -ne 'root') {
+        $i = Read-Choice -Title "Wormhole tunnel end of THIS board?" -Options @(
+            'A  (exit / root-side: re-injects to root)',
+            'B  (entry / leaf-side: captures + tunnels)'
+        ) -Default 2 -AllowBack:$AllowBack
+        if ($i -eq $script:BackSignal) { return $script:BackSignal }
+        if ($i -eq 1) { $wEnd = 'A' } else { $wEnd = 'B' }
+    }
+
+    # Scenario target: exactly one child. Burst also needs a plain send path
+    # (not the attacker relay / a wormhole tunnel end) since only
+    # victim_main.c carries the burst logic -- so a blackhole ATTACKER or a
+    # wormhole A/B board is not offered the question.
+    $isScenarioTarget = $false
+    if ($role -ne 'root' -and (Test-ScenarioNeedsTarget $Scenario) -and -not $haveScenarioTarget) {
+        $burstEligible = -not (($Attack -eq 'blackhole' -and $bhRole -eq 'attacker') -or $Attack -eq 'wormhole')
+        if ($Scenario -ne 'burst' -or $burstEligible) {
+            $tgt = Read-YesNo -Question "Is THIS board the $Scenario TARGET (the one that bursts / is moved / is power-cycled)?" -Default $false -AllowBack:$AllowBack
+            # BackSignal (a string) must be the LEFT operand: a bare `$tgt -eq
+            # $script:BackSignal` coerces the string to bool when $tgt is a
+            # real $true answer, comparing $true -eq $true and misfiring as a
+            # false "back" on a legitimate "yes".
+            if ($script:BackSignal -eq $tgt) { return $script:BackSignal }
+            $isScenarioTarget = $tgt
+        }
+    }
+
+    $labelPrompt = if ($AllowBack) {
+        "Board label / node id (e.g. node5), blank to skip ('b' cancels this board, 'm' main menu, 'cls' clear): "
+    } else {
+        "Board label / node id (e.g. node5), blank to skip: "
+    }
+    $label = Read-Line $labelPrompt
+    if ($AllowBack -and (Test-BackAnswer $label)) { return $script:BackSignal }
+
+    $p = @{ Port = $port; Role = $role; Topology = $Topo; Attack = $Attack; Scenario = $Scenario }
+    if (-not [string]::IsNullOrWhiteSpace($label)) {
+        if ($label -notmatch '^[A-Za-z0-9_\-]+$') {
+            Write-Host "   Label must be letters/digits/_/- only -- skipping label for this board." -ForegroundColor Yellow
+            $label = ''
+        } else {
+            $p['Label'] = $label
+        }
+    }
+    if ($Attack -eq 'blackhole' -and $role -ne 'root') { $p['BlackholeRole'] = $bhRole }
+    if ($Attack -eq 'wormhole'  -and $role -ne 'root') { $p['WormholeEnd']   = $wEnd }
+    if ($isScenarioTarget) { $p['ScenarioTarget'] = $true }
+
+    return [pscustomobject]@{
+        Port = $port; Role = $role; Label = $label; Params = $p
+        CmdText = (Format-BoardCmdText -Params $p)
+        Mac = $null; Kind = ((Get-PortList | Where-Object { $_.Port -eq $port } | Select-Object -First 1).Kind)
+    }
+}
+
 function Select-MultiplePorts {
     # Ported/trimmed from run_wizard.ps1's Select-MultiplePorts; the per-port
     # vetting below now calls the shared Test-PortSafeToTouch above instead of
@@ -918,6 +1081,88 @@ function Select-MultiplePorts {
         if (Test-PortSafeToTouch -Port $p.Port -Action $Action) { $vetted += $p }
     }
     return @($vetted)
+}
+
+# ---- location.txt on a RUNNING board (ported from run_wizard.ps1) -----------
+# Both helpers below go through tools\export_logs.py's serial dispatcher (see
+# csv_logger.c), which only answers once the board has booted, joined the mesh
+# and reached csv_logger_init(). Unlike the esptool paths above (Get-LiveBoardMac,
+# erase_flash) they do NOT work on a board that hasn't been flashed/booted yet --
+# for that, write location.txt onto the card directly with a reader.
+# Kept byte-for-byte in step with run_wizard.ps1's identical functions.
+
+function Get-SdLocation {
+    # Reads a running board's location.txt WITHOUT changing it, so a write can be
+    # shown as "Goks -> G402" instead of a blind overwrite, and skipped entirely
+    # when it would be a no-op.
+    #
+    # Returns .State, which callers must branch on rather than just reading
+    # .Value: UNKNOWN means "could not read it" (no card, or firmware older than
+    # GET_LOCATION), which is NOT the same as NONE ("read fine, the file isn't
+    # there"). Treating the two alike would report an unreadable card as empty.
+    #   OK      -> .Value is the recorded site
+    #   NONE    -> no location.txt; the board mirrors nothing to its card
+    #   INVALID -> .Value is the unrecognised raw text on the card
+    #   UNKNOWN -> could not be read; fall back to the blind-overwrite warning
+    param([string]$TargetPort)
+    Push-Location (Join-Path $base 'tools')
+    try {
+        $out = & python export_logs.py --port $TargetPort --get-location 2>&1
+        $hit = $out | Select-String -Pattern '^CURRENT_LOCATION:\s*(.+)$' | Select-Object -First 1
+        if (-not $hit) { return @{ State = 'UNKNOWN'; Value = $null; Lines = @($out) } }
+
+        $val = $hit.Matches[0].Groups[1].Value.Trim()
+        if ($val -eq 'NONE')    { return @{ State = 'NONE';    Value = $null; Lines = @($out) } }
+        if ($val -eq 'UNKNOWN') { return @{ State = 'UNKNOWN'; Value = $null; Lines = @($out) } }
+        if ($val -like 'INVALID:*') {
+            return @{ State = 'INVALID'; Value = $val.Substring(8).Trim(); Lines = @($out) }
+        }
+        return @{ State = 'OK'; Value = $val; Lines = @($out) }
+    }
+    catch { return @{ State = 'UNKNOWN'; Value = $null; Lines = @($_.Exception.Message) } }
+    finally { Pop-Location }
+}
+
+function Format-SdLocationState {
+    # One short phrase for a board's current location, for the confirm tables.
+    param($Read)
+    switch ($Read.State) {
+        'OK'      { return $Read.Value }
+        'NONE'    { return '(no location.txt - records nothing)' }
+        'INVALID' { return ("(invalid: '{0}' - records nothing)" -f $Read.Value) }
+        default   { return '(could not read)' }
+    }
+}
+
+function Set-SdLocation {
+    # Sends SET_LOCATION=<value> to an ALREADY-RUNNING board. Fixes a card an
+    # already-running board found broken (SD_STATUS_NO_LOCATION_FILE/BAD_LOCATION
+    # in its own boot log), not one that's about to be freshly flashed. Takes
+    # effect on THAT board's next boot, not this session.
+    param([string]$TargetPort, [string]$Location)
+    Push-Location (Join-Path $base 'tools')
+    try {
+        $out = & python export_logs.py --port $TargetPort --set-location $Location 2>&1
+        return @{ Ok = ($LASTEXITCODE -eq 0); Lines = @($out) }
+    }
+    catch { return @{ Ok = $false; Lines = @($_.Exception.Message) } }
+    finally { Pop-Location }
+}
+
+function Select-WriteLocation {
+    # Location picker for a WRITE, deliberately not Select-Location: there the
+    # default is harmless (it only names an export folder), here hitting Enter
+    # without meaning to would overwrite a card that was already correct, with
+    # no undo. So "cancel" IS the default, and the only way to write is to type
+    # a number. Same reasoning as run_wizard.ps1's -DefaultIndex -1 on this
+    # prompt; expressed through Read-Choice so the menu still looks like every
+    # other menu in this file.
+    param([string]$Title)
+    $locs = Get-LocationList
+    $opts = @($locs) + @('Cancel - write nothing')
+    $idx  = Read-Choice -Title $Title -Options $opts -Default $opts.Count
+    if ($idx -eq $opts.Count) { return $null }
+    return $locs[$idx - 1]
 }
 
 function Get-BuildDirSpec {
@@ -1112,6 +1357,7 @@ function Show-MainMenu {
         @{ Name = 'MAINTENANCE'; Items = @(
             @{ Action = 4; Text = 'Wipe / full-erase a board  (start empty)' }
             @{ Action = 5; Text = 'Identify a board  (read its MAC / node number)' }
+            @{ Action = 10; Text = 'Write/update location.txt on an already-running board  (over USB)' }
         ) }
         @{ Name = 'VERIFY'; Items = @(
             @{ Action = 6; Text = 'Verify a run  (paper-backed 3-sigma attack check)' }
@@ -1185,27 +1431,92 @@ if ($action -eq 2) {
     Write-Host "Settings below apply to EVERY board in this run (flash every board in a" -ForegroundColor DarkGray
     Write-Host "run with the SAME topology and SAME attack, or the shaping is wrong)." -ForegroundColor DarkGray
 
-    $topoIdx = Read-Choice -Title "Topology (every board, same)?" -Options @(
-        'tree     (default self-organising)',
-        'star     (all direct children of root)',
-        'linear   (forced chain)',
-        'partial  (physical placement)'
-    ) -Default 1
-    $topo = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+    # Run-wide settings as a step machine (see the "Run a board" flow at the
+    # bottom of this file for the pattern and why $dir exists): 'b' walks back
+    # one question at a time, and every question re-offers the answer already
+    # given rather than its factory default.
+    $topoIdx  = 1
+    $attkIdx  = 1
+    $scenario = 'none'
+    $flash    = $true
+    $wipe     = $true
+    $export   = $true
+    $clean    = $false
+    $loc      = $null
+    $topo     = 'tree'
+    $attack   = 'none'
 
-    $attkIdx = Read-Choice -Title "Attack for this run (every board, same)?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default 1
-    $attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+    $step = 0
+    $dir  = 1
+    :settings while ($step -le 7) {
+        switch ($step) {
 
-    $scenario = Select-Scenario
+            0 {
+                $r = Read-Choice -Title "Topology (every board, same)?" -Options @(
+                    'tree     (default self-organising)',
+                    'star     (all direct children of root)',
+                    'linear   (forced chain)',
+                    'partial  (physical placement)'
+                ) -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $topoIdx = $r
+                $topo = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+                $step = 1; $dir = 1; continue settings
+            }
 
-    $flash  = Read-YesNo -Question "Flash firmware on every board first?" -Default $true
-    $wipe   = Read-YesNo -Question "Wipe/erase every board BEFORE this run?" -Default $true
-    $export = Read-YesNo -Question "Export CSVs from every board when its monitor is exited?" -Default $true
-    $clean  = $false
-    $loc    = $null
-    if ($export) {
-        $loc   = Select-Location
-        $clean = Read-YesNo -Question "Wipe each board AFTER a good export?" -Default $false
+            1 {
+                $r = Read-Choice -Title "Attack for this run (every board, same)?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; $dir = -1; continue settings }
+                $attkIdx = $r
+                $attack = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+                $step = 2; $dir = 1; continue settings
+            }
+
+            2 {
+                $r = Select-Scenario -Current $scenario -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; $dir = -1; continue settings }
+                $scenario = $r
+                $step = 3; $dir = 1; continue settings
+            }
+
+            3 {
+                $r = Read-YesNo -Question "Flash firmware on every board first?" -Default $flash -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; $dir = -1; continue settings }
+                $flash = $r
+                $step = 4; $dir = 1; continue settings
+            }
+
+            4 {
+                $r = Read-YesNo -Question "Wipe/erase every board BEFORE this run?" -Default $wipe -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 3; $dir = -1; continue settings }
+                $wipe = $r
+                $step = 5; $dir = 1; continue settings
+            }
+
+            5 {
+                $r = Read-YesNo -Question "Export CSVs from every board when its monitor is exited?" -Default $export -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 4; $dir = -1; continue settings }
+                $export = $r
+                if (-not $export) { $loc = $null; $clean = $false }
+                $step = 6; $dir = 1; continue settings
+            }
+
+            6 {
+                if (-not $export) { $step += $dir; continue settings }
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 5; $dir = -1; continue settings }
+                $loc = $r
+                $step = 7; $dir = 1; continue settings
+            }
+
+            7 {
+                if (-not $export) { $step += $dir; continue settings }
+                $r = Read-YesNo -Question "Wipe each board AFTER a good export?" -Default $clean -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 6; $dir = -1; continue settings }
+                $clean = $r
+                $step = 8; $dir = 1; continue settings
+            }
+        }
     }
 
     if ($attack -eq 'wormhole') {
@@ -1215,73 +1526,24 @@ if ($action -eq 2) {
     }
 
     # ---- add boards one at a time --------------------------------------------
+    # -Analyze is assigned to the root ONLY, once the full plan is known
+    # (below) -- never asked per board, since it must land on the LAST
+    # board exported (the root) so arrivals.csv covers the whole run.
     $boards = @()
-    $haveRoot = $false
-    $haveScenarioTarget = $false
     while ($true) {
-        Write-Host ""
-        Write-Host ("--- Board {0} " -f ($boards.Count + 1)) -ForegroundColor Cyan
-        $taken = @($boards | ForEach-Object { $_.Port })
-        $port  = Select-BoardPort -Taken $taken
+        # 'b' is only offered once there's an already-added board to fall back
+        # to -- cancelling board #1 has nowhere useful to land, so that case
+        # still goes through 'm' like everything else in this file.
+        $new = Add-BoardInteractive -Topo $topo -Attack $attack -Scenario $scenario -Boards $boards -AllowBack:($boards.Count -gt 0)
+        if ($script:BackSignal -eq $new) { break }
 
-        $roleOpts = if ($haveRoot) { @('child / victim') } else { @('root', 'child / victim') }
-        $roleIdx  = Read-Choice -Title "Mesh role of THIS board?" -Options $roleOpts -Default 1
-        $role = if (-not $haveRoot -and $roleIdx -eq 1) { 'root' } else { 'child' }
-        if ($role -eq 'root') { $haveRoot = $true }
+        if ($wipe)   { $new.Params['Wipe']   = $true }
+        if ($flash)  { $new.Params['Flash']  = $true }
+        if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc }
+        if ($clean)  { $new.Params['Clean']  = $true }
+        $new.CmdText = Format-BoardCmdText -Params $new.Params
 
-        $bhRole = 'attacker'
-        $wEnd   = 'B'
-        if ($attack -eq 'blackhole' -and $role -ne 'root') {
-            $i = Read-Choice -Title "Blackhole role of THIS board?" -Options @(
-                'attacker  (relay that forwards then drops victim probes)',
-                'victim    (sends its probes to the attacker MAC)'
-            ) -Default 1
-            if ($i -eq 2) { $bhRole = 'victim' } else { $bhRole = 'attacker' }
-        }
-        if ($attack -eq 'wormhole' -and $role -ne 'root') {
-            $i = Read-Choice -Title "Wormhole tunnel end of THIS board?" -Options @(
-                'A  (exit / root-side: re-injects to root)',
-                'B  (entry / leaf-side: captures + tunnels)'
-            ) -Default 2
-            if ($i -eq 1) { $wEnd = 'A' } else { $wEnd = 'B' }
-        }
-
-        # Scenario target: exactly one child. Burst also needs a plain send path
-        # (not the attacker relay / a wormhole tunnel end) since only
-        # victim_main.c carries the burst logic -- so a blackhole ATTACKER or a
-        # wormhole A/B board is not offered the question.
-        $isScenarioTarget = $false
-        if ($role -ne 'root' -and (Test-ScenarioNeedsTarget $scenario) -and -not $haveScenarioTarget) {
-            $burstEligible = -not (($attack -eq 'blackhole' -and $bhRole -eq 'attacker') -or $attack -eq 'wormhole')
-            if ($scenario -ne 'burst' -or $burstEligible) {
-                $isScenarioTarget = Read-YesNo -Question "Is THIS board the $scenario TARGET (the one that bursts / is moved / is power-cycled)?" -Default $false
-                if ($isScenarioTarget) { $haveScenarioTarget = $true }
-            }
-        }
-
-        $label = Read-Line "Board label / node id (e.g. node5), blank to skip: "
-
-        $p = @{ Port = $port; Role = $role; Topology = $topo; Attack = $attack; Scenario = $scenario }
-        $cmdText = ".\run.ps1 -Port $port -Role $role -Topology $topo -Attack $attack -Scenario $scenario"
-        if (-not [string]::IsNullOrWhiteSpace($label)) {
-            if ($label -notmatch '^[A-Za-z0-9_\-]+$') {
-                Write-Host "   Label must be letters/digits/_/- only -- skipping label for this board." -ForegroundColor Yellow
-            } else {
-                $p['Label'] = $label; $cmdText += " -Label $label"
-            }
-        }
-        if ($attack -eq 'blackhole' -and $role -ne 'root') { $p['BlackholeRole'] = $bhRole; $cmdText += " -BlackholeRole $bhRole" }
-        if ($attack -eq 'wormhole'  -and $role -ne 'root') { $p['WormholeEnd']   = $wEnd;   $cmdText += " -WormholeEnd $wEnd" }
-        if ($isScenarioTarget) { $p['ScenarioTarget'] = $true; $cmdText += ' -ScenarioTarget' }
-        if ($wipe)  { $p['Wipe']  = $true; $cmdText += ' -Wipe' }
-        if ($flash) { $p['Flash'] = $true; $cmdText += ' -Flash' }
-        if ($export) { $p['Export'] = $true; $p['Location'] = $loc; $cmdText += " -Export -Location $loc" }
-        if ($clean) { $p['Clean'] = $true; $cmdText += ' -Clean' }
-        # -Analyze is assigned to the root ONLY, once the full plan is known
-        # (below) -- never asked per board, since it must land on the LAST
-        # board exported (the root) so arrivals.csv covers the whole run.
-
-        $boards += [pscustomobject]@{ Port = $port; Role = $role; Label = $label; Params = $p; CmdText = $cmdText; Mac = $null; Kind = ((Get-PortList | Where-Object { $_.Port -eq $port } | Select-Object -First 1).Kind) }
+        $boards += $new
 
         if (-not (Read-YesNo -Question "Add another board?" -Default $true)) { break }
     }
@@ -1381,10 +1643,12 @@ if ($action -eq 2) {
     :adjustLoop while ($true) {
         $adjIdx = Read-Choice -Title "Adjust the plan before confirming?" -Options @(
             'Edit a specific node (port/label/role/toggles/attack sub-role)',
+            'Add another board',
+            'Remove a node (added it by mistake)',
             'Change topology for this run',
             'Nothing more -- continue to confirm'
-        ) -Default 3
-        if ($adjIdx -eq 3) { break adjustLoop }
+        ) -Default 5
+        if ($adjIdx -eq 5) { break adjustLoop }
 
         if ($adjIdx -eq 1) {
             for ($i = 0; $i -lt $boards.Count; $i++) {
@@ -1395,10 +1659,42 @@ if ($action -eq 2) {
             $pickIdx = Read-Choice -Title "Which node?" -Options ($boards | ForEach-Object {
                 $lbl = if ($_.Label) { $_.Label } else { $_.Port }
                 "$lbl  ($($_.Port), $($_.Role))"
-            }) -Default 1
-            Edit-BoardInteractive -Board $boards[$pickIdx - 1] -Boards $boards -Attack $attack -Scenario $scenario
+            }) -Default 1 -AllowBack
+            if ($script:BackSignal -ne $pickIdx) {
+                Edit-BoardInteractive -Board $boards[$pickIdx - 1] -Boards $boards -Attack $attack -Scenario $scenario
+            }
         }
         elseif ($adjIdx -eq 2) {
+            $new = Add-BoardInteractive -Topo $topo -Attack $attack -Scenario $scenario -Boards $boards -AllowBack
+            if ($script:BackSignal -eq $new) {
+                Write-Host "   Cancelled -- no board added." -ForegroundColor DarkGray
+            } else {
+                if ($wipe)   { $new.Params['Wipe']   = $true }
+                if ($flash)  { $new.Params['Flash']  = $true }
+                if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc }
+                if ($clean)  { $new.Params['Clean']  = $true }
+                $new.CmdText = Format-BoardCmdText -Params $new.Params
+                $boards += $new
+            }
+        }
+        elseif ($adjIdx -eq 3) {
+            $rmOpts = @($boards | ForEach-Object {
+                $lbl = if ($_.Label) { $_.Label } else { $_.Port }
+                "$lbl  ($($_.Port), $($_.Role))"
+            })
+            $rmOpts += 'Never mind -- keep every node'
+            $rmIdx = Read-Choice -Title "Remove which node?" -Options $rmOpts -Default $rmOpts.Count
+            if ($rmIdx -le $boards.Count) {
+                $victim = $boards[$rmIdx - 1]
+                $vLbl = if ($victim.Label) { $victim.Label } else { $victim.Port }
+                if (Read-YesNo -Question "Remove $vLbl ($($victim.Port), $($victim.Role)) from this plan?" -Default $false) {
+                    $boards = @($boards | Where-Object { $_ -ne $victim })
+                    Write-Host "   Removed." -ForegroundColor Green
+                    if ($boards.Count -eq 0) { Write-Host "No boards left in the plan." -ForegroundColor Yellow; continue menu }
+                }
+            }
+        }
+        elseif ($adjIdx -eq 4) {
             $topoOpts = @('tree', 'star', 'linear', 'partial')
             $topoIdx2 = Read-Choice -Title "Topology (every board, same)?" -Options @(
                 'tree     (default self-organising)',
@@ -1594,15 +1890,41 @@ if ($action -eq 2) {
 
 # ---- Verify a run (paper-backed 3-sigma) ------------------------------------
 if ($action -eq 6) {
-    $attkIdx = Read-Choice -Title "Which attack to verify?" -Options @('auto-detect', 'blackhole', 'wormhole') -Default 1
-    $attack  = @('auto', 'blackhole', 'wormhole')[$attkIdx - 1]
-    $topoIdx = Read-Choice -Title "Topology?" -Options @('tree', 'star', 'linear', 'partial') -Default 1
-    $topo    = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
-    $loc     = Select-Location
-    $table   = Join-Path $base "analysis\$attack\$topo\$loc\feature_table.csv"
-    if ($attack -eq 'auto') { $table = Join-Path $base "analysis\blackhole\$topo\$loc\feature_table.csv" }
-    $typed   = Read-Line ("feature_table.csv path [default: {0}]: " -f $table)
-    if (-not [string]::IsNullOrWhiteSpace($typed)) { $table = $typed }
+    $attkIdx = 1
+    $topoIdx = 1
+    $loc     = $null
+    $table   = ''
+    $step = 0
+    :verify while ($step -le 3) {
+        switch ($step) {
+            0 {
+                $r = Read-Choice -Title "Which attack to verify?" -Options @('auto-detect', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $attkIdx = $r; $step = 1; continue verify
+            }
+            1 {
+                $r = Read-Choice -Title "Topology?" -Options @('tree', 'star', 'linear', 'partial') -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; continue verify }
+                $topoIdx = $r; $step = 2; continue verify
+            }
+            2 {
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; continue verify }
+                $loc = $r; $step = 3; continue verify
+            }
+            3 {
+                $attack = @('auto', 'blackhole', 'wormhole')[$attkIdx - 1]
+                $topo   = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+                $guess  = if ($attack -eq 'auto') { Join-Path $base "analysis\blackhole\$topo\$loc\feature_table.csv" }
+                          else                    { Join-Path $base "analysis\$attack\$topo\$loc\feature_table.csv" }
+                $r = Read-Line "feature_table.csv path: " -Default $guess -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; continue verify }
+                $table = if ([string]::IsNullOrWhiteSpace($r)) { $guess } else { $r }
+                $step = 4; continue verify
+            }
+        }
+    }
+    $attack = @('auto', 'blackhole', 'wormhole')[$attkIdx - 1]
     $vaArgs  = @($table)
     $cmdText = "python tools\verify_attack.py $table"
     if ($attack -ne 'auto') { $vaArgs += @('--attack', $attack); $cmdText += " --attack $attack" }
@@ -1740,32 +2062,292 @@ if ($action -eq 5) {
 
 # ---- Wipe / erase a board ---------------------------------------------------
 if ($action -eq 4) {
-    $port = Select-Port -Action 'erase it'
-    $roleIdx = Read-Choice -Title "Board role (only matters if you also re-flash)?" -Options @('child / victim', 'root') -Default 1
-    if ($roleIdx -eq 2) { $role = 'root' } else { $role = 'child' }
-    $full = Read-YesNo -Question "FULL chip erase + re-flash? (fixes 'storage full' / crash-loops)" -Default $false
-    $p = @{ Port = $port; Role = $role; Wipe = $true }
-    $cmdText = ".\run.ps1 -Port $port -Role $role -Wipe"
-    if ($full) { $p['Flash'] = $true; $cmdText += ' -Flash' }
-    if (Show-And-Confirm $cmdText) { & $run @p }
+    # Role only feeds a REFLASH (which project's firmware to flash back on) --
+    # a bare erase has nothing to reflash, so it's asked below only once $full
+    # says a reflash is actually happening, same split run_wizard.ps1 makes.
+    $modeIdx = Read-Choice -Title "Wipe how many boards?" -Options @('one board', 'SEVERAL boards at once (faster than one by one)') -Default 1 -AllowBack
+    if ($script:BackSignal -eq $modeIdx) { continue menu }
+
+    if ($modeIdx -eq 2) {
+        # Ported from run_wizard.ps1's Invoke-WipeBoards "wipe SEVERAL boards"
+        # path: bare esptool erase_flash, no role, no reflash -- a bulk wipe is
+        # for clearing boards back to blank before they go back into rotation,
+        # not for re-provisioning them.
+        $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+        if ($ports.Count -eq 0) {
+            Write-Host ""
+            Write-Host "   (No usable COM ports detected. Is anything plugged in?)" -ForegroundColor Yellow
+            continue menu
+        }
+        $picked = @(Select-MultiplePorts -Ports $ports -Action 'erase it')
+        if ($picked.Count -eq 0) { continue menu }
+
+        Write-Host ""
+        Write-Host ("This PERMANENTLY erases everything on the {0} board(s) below -- firmware," -f $picked.Count) -ForegroundColor Yellow
+        Write-Host "SD-status cache, all of it. There is no undo; each board must be reflashed" -ForegroundColor Yellow
+        Write-Host "afterward to do anything." -ForegroundColor Yellow
+        foreach ($p in $picked) { Write-Host ("   {0,-7} - {1}" -f $p.Port, $p.Description) }
+
+        $cmdText = "esptool.py --chip esp32 --port <port> erase_flash   (for each of: {0})" -f (($picked | ForEach-Object { $_.Port }) -join ', ')
+        if (-not (Show-And-Confirm $cmdText)) { continue menu }
+
+        foreach ($p in $picked) {
+            Write-Host ("`nErasing $($p.Port) (takes ~10-15s) ...") -ForegroundColor Yellow
+            & esptool.py --chip esp32 --port $p.Port erase_flash
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host ("   {0} wiped clean." -f $p.Port) -ForegroundColor Green
+                $script:IdentifiedPorts.Remove($p.Port) | Out-Null
+            } else {
+                Write-Host ("   erase_flash failed on {0} (exit {1}) -- port busy, board unplugged, or esptool not on PATH." -f $p.Port, $LASTEXITCODE) -ForegroundColor Red
+            }
+        }
+        continue menu
+    }
+
+    $port = Select-Port -Action 'erase it' -AllowBack
+    if ($script:BackSignal -eq $port) { continue menu }
+    $full = Read-YesNo -Question "FULL chip erase + re-flash afterward? (fixes 'storage full' / crash-loops)" -Default $false -AllowBack
+    if ($script:BackSignal -eq $full) { continue menu }
+
+    if ($full) {
+        $roleIdx = Read-Choice -Title "Board role (for the re-flash)?" -Options @('child / victim', 'root') -Default 1 -AllowBack
+        if ($script:BackSignal -eq $roleIdx) { continue menu }
+        if ($roleIdx -eq 2) { $role = 'root' } else { $role = 'child' }
+        $p = @{ Port = $port; Role = $role; Wipe = $true; Flash = $true }
+        $cmdText = ".\run.ps1 -Port $port -Role $role -Wipe -Flash"
+        if (Show-And-Confirm $cmdText) { & $run @p }
+        continue menu
+    }
+
+    # Bare wipe, no reflash: go straight at the chip instead of routing through
+    # run.ps1 -- run.ps1 always ends a no-Flash invocation in an interactive
+    # `idf.py monitor`, which nobody wants for a plain "make it blank" wipe.
+    Write-Host ""
+    Write-Host "This PERMANENTLY erases everything on $port -- firmware, SD-status cache, all" -ForegroundColor Yellow
+    Write-Host "of it. There is no undo; the board must be reflashed afterward to do anything." -ForegroundColor Yellow
+    $cmdText = "esptool.py --chip esp32 --port $port erase_flash"
+    if (Show-And-Confirm $cmdText) {
+        Write-Host ("`nErasing $port (takes ~10-15s) ...") -ForegroundColor Yellow
+        & esptool.py --chip esp32 --port $port erase_flash
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host ("   {0} wiped clean." -f $port) -ForegroundColor Green
+            $script:IdentifiedPorts.Remove($port) | Out-Null
+        } else {
+            Write-Host ("   erase_flash failed on {0} (exit {1}) -- port busy, board unplugged, or esptool not on PATH." -f $port, $LASTEXITCODE) -ForegroundColor Red
+        }
+    }
+    continue menu
+}
+
+# ---- Write/update location.txt on an already-running board -------------------
+# Ported from run_wizard.ps1's Invoke-SetLocationBoards (its MAINTENANCE [5]),
+# which menu.ps1 had no equivalent of at all -- the only way to fix a board's
+# site from here was to pull the card, or to switch launchers mid-session.
+#
+# A board whose card has no valid location.txt mirrors NOTHING to the card
+# (csv_logger.c), and it says so only in its own boot log, so this is normally
+# run the moment a board reports SD ENV trouble -- with the board already
+# booted, which is exactly when the pull-the-card fix is most annoying.
+#
+# Every write path here READS the card first and shows "<was> -> <now>",
+# skipping boards already sitting at the chosen site, rather than overwriting
+# blind. And the pick is always a port someone named: no "apply to all
+# enumerated ports" (see Select-MultiplePorts / Test-PortSafeToTouch).
+if ($action -eq 10) {
+    Write-Host ""
+    Write-Host "This talks to the firmware ALREADY RUNNING on the board (GET/SET_LOCATION over" -ForegroundColor DarkGray
+    Write-Host "USB), so the board must have booted and reached csv_logger_init(). It does NOT" -ForegroundColor DarkGray
+    Write-Host "help a board that was never flashed -- write location.txt onto that card with a" -ForegroundColor DarkGray
+    Write-Host "reader instead. The change takes effect on the board's NEXT boot." -ForegroundColor DarkGray
+
+    $modeIdx = Read-Choice -Title "Write a location to how many boards?" -Options @(
+        'one board',
+        'SEVERAL boards at once (same location to each -- faster than one by one)'
+    ) -Default 1 -AllowBack
+    if ($script:BackSignal -eq $modeIdx) { continue menu }
+
+    if ($modeIdx -eq 2) {
+        $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+        if ($ports.Count -eq 0) {
+            Write-Host ""
+            Write-Host "   (No usable COM ports detected -- a charge-only USB cable creates no port.)" -ForegroundColor Yellow
+            continue menu
+        }
+        Write-Host ""
+        Write-Host "Detected ports:" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $ports.Count; $i++) {
+            $macTag  = if ($script:IdentifiedPorts.ContainsKey($ports[$i].Port)) { "  [{0}]" -f $script:IdentifiedPorts[$ports[$i].Port] } else { '' }
+            $kindTag = if ($ports[$i].Kind -eq 'UNKNOWN') { '  [UNKNOWN - confirm this is really a board]' } else { '' }
+            Write-Host ("   [{0}] {1,-7} ({2}){3}{4}" -f ($i + 1), $ports[$i].Port, $ports[$i].Description, $macTag, $kindTag)
+        }
+
+        $picked = @(Select-MultiplePorts -Ports $ports -Action 'write a location to it')
+        if ($picked.Count -eq 0) { continue menu }
+
+        $loc = Select-WriteLocation -Title "Write which location to the boards you picked?"
+        if (-not $loc) { Write-Host "   Cancelled -- nothing written." -ForegroundColor DarkGray; continue menu }
+
+        # Read each board FIRST, so the confirmation shows what is actually on
+        # the card and what it would become. A board already sitting at $loc is
+        # left alone entirely -- rewriting it is a pointless card write, and
+        # listing it as "-> G402" hides that nothing needed doing.
+        Write-Host ""
+        Write-Host ("Reading each board's current location.txt ({0} board(s), a few seconds each) ..." -f $picked.Count) -ForegroundColor DarkGray
+        $plan = @()
+        foreach ($p in $picked) {
+            $cur = Get-SdLocation -TargetPort $p.Port
+            $plan += [pscustomobject]@{
+                Port    = $p.Port
+                Current = $cur
+                Skip    = ($cur.State -eq 'OK' -and $cur.Value -eq $loc)
+            }
+        }
+
+        Write-Host ""
+        $toWrite = @($plan | Where-Object { -not $_.Skip })
+        $blind   = @($plan | Where-Object { $_.Current.State -eq 'UNKNOWN' })
+        foreach ($row in $plan) {
+            $tag = if ($script:IdentifiedPorts.ContainsKey($row.Port)) { "  [{0}]" -f $script:IdentifiedPorts[$row.Port] } else { '' }
+            $was = Format-SdLocationState $row.Current
+            if ($row.Skip) {
+                Write-Host ("   {0,-7} {1,-38} already set - leaving alone{2}" -f $row.Port, $was, $tag) -ForegroundColor DarkGray
+            } else {
+                Write-Host ("   {0,-7} {1,-38} -> {2}{3}" -f $row.Port, $was, $loc, $tag)
+            }
+        }
+        if ($blind.Count -gt 0) {
+            Write-Host ""
+            Write-Host ("{0} board(s) above could not be read -- for those this is still a BLIND" -f $blind.Count) -ForegroundColor Yellow
+            Write-Host "overwrite of whatever the card holds. A board that has not booted yet, or" -ForegroundColor Yellow
+            Write-Host "is running firmware from before GET_LOCATION, cannot report its location." -ForegroundColor Yellow
+        }
+        if ($toWrite.Count -eq 0) {
+            Write-Host ""
+            Write-Host "   Every board picked is already set to $loc -- nothing to write." -ForegroundColor Green
+            continue menu
+        }
+
+        $cmdText = "python tools\export_logs.py --port <port> --set-location $loc   (for each of: {0})" -f (($toWrite | ForEach-Object { $_.Port }) -join ', ')
+        if (-not (Show-And-Confirm $cmdText)) { Write-Host "   Skipped -- nothing written." -ForegroundColor DarkGray; continue menu }
+
+        foreach ($row in $toWrite) {
+            Write-Host ("`n  {0} SET_LOCATION=$loc ..." -f $row.Port) -ForegroundColor DarkGray
+            $r = Set-SdLocation -TargetPort $row.Port -Location $loc
+            $color = if ($r.Ok) { 'Green' } else { 'Yellow' }
+            foreach ($line in $r.Lines) { Write-Host ("    " + $line) -ForegroundColor $color }
+        }
+        Write-Host ""
+        Write-Host "Reboot or reflash each board above to confirm 'SD ENV: OK' before relying on it." -ForegroundColor DarkGray
+        continue menu
+    }
+
+    $target = Select-Port -Action 'write a location to it' -AllowBack
+    if ($script:BackSignal -eq $target) { continue menu }
+    if (-not $target) { continue menu }
+
+    # Check the card BEFORE offering the menu, so the choice is made knowing
+    # what is already there. A board whose card reads NONE/INVALID is the one
+    # actually losing data (csv_logger.c mirrors nothing without a valid
+    # location), which is worth saying out loud at the moment of the fix.
+    Write-Host ""
+    Write-Host ("Reading {0}'s current location.txt (a few seconds) ..." -f $target) -ForegroundColor DarkGray
+    $cur = Get-SdLocation -TargetPort $target
+    Write-Host ""
+    switch ($cur.State) {
+        'OK'      { Write-Host ("{0} currently records to: {1}" -f $target, $cur.Value) -ForegroundColor Green }
+        'NONE'    { Write-Host ("{0} has NO location.txt -- it is writing nothing to its SD card." -f $target) -ForegroundColor Yellow }
+        'INVALID' { Write-Host ("{0} holds an unrecognised location '{1}' -- it is writing nothing to its SD card." -f $target, $cur.Value) -ForegroundColor Yellow }
+        default   { Write-Host ("{0}'s current location.txt could not be read -- anything below is a BLIND overwrite." -f $target) -ForegroundColor Yellow }
+    }
+
+    $loc = Select-WriteLocation -Title "Set $target's location to:"
+    if (-not $loc) { Write-Host "   Cancelled -- nothing written." -ForegroundColor DarkGray; continue menu }
+
+    if ($cur.State -eq 'OK' -and $cur.Value -eq $loc) {
+        Write-Host ("   {0} already records to {1} -- nothing to write." -f $target, $loc) -ForegroundColor Green
+        continue menu
+    }
+
+    # Confirm before sending rather than after, since there is no undo.
+    Write-Host ""
+    Write-Host ("   {0}: {1} -> {2}" -f $target, (Format-SdLocationState $cur), $loc) -ForegroundColor Yellow
+    $cmdText = "python tools\export_logs.py --port $target --set-location $loc"
+    if (-not (Show-And-Confirm $cmdText)) { Write-Host "   Skipped -- nothing written." -ForegroundColor DarkGray; continue menu }
+
+    Write-Host ("`n  {0} SET_LOCATION=$loc ..." -f $target) -ForegroundColor DarkGray
+    $r = Set-SdLocation -TargetPort $target -Location $loc
+    $color = if ($r.Ok) { 'Green' } else { 'Yellow' }
+    foreach ($line in $r.Lines) { Write-Host ("    " + $line) -ForegroundColor $color }
+    Write-Host "  Reboot or reflash this board to confirm 'SD ENV: OK' before relying on it." -ForegroundColor DarkGray
     continue menu
 }
 
 # ---- Export only ------------------------------------------------------------
 if ($action -eq 3) {
-    $port = Select-Port -Action 'export logs from it'
-    $roleIdx = Read-Choice -Title "Board role?" -Options @('child / victim', 'root') -Default 1
-    if ($roleIdx -eq 2) { $role = 'root' } else { $role = 'child' }
-    $topoIdx  = Read-Choice -Title "Topology this run used?" -Options @('tree', 'star', 'linear', 'partial') -Default 1
-    $topo     = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
-    $attkIdx  = Read-Choice -Title "Attack this run used?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default 1
-    $attack   = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
-    $scenario = Select-Scenario
-    $loc      = Select-Location
-    $label    = Read-Line "Board label / node id (e.g. node5), blank to skip: "
-    $repeat   = Read-Line "Repeat number (r1/r2/r3 -> 1/2/3) [default 1]: "
-    if ([string]::IsNullOrWhiteSpace($repeat)) { $repeat = '1' }
-    $delete   = Read-YesNo -Question "Wipe the board AFTER a good download?" -Default $false
+    $port     = $null
+    $roleIdx  = 1
+    $topoIdx  = 1
+    $attkIdx  = 1
+    $scenario = 'none'
+    $loc      = $null
+    $label    = ''
+    $repeat   = '1'
+    $delete   = $false
+
+    $step = 0
+    :exportOnly while ($step -le 8) {
+        switch ($step) {
+            0 {
+                $r = Select-Port -Action 'export logs from it' -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $port = $r; $step = 1; continue exportOnly
+            }
+            1 {
+                $r = Read-Choice -Title "Board role?" -Options @('child / victim', 'root') -Default $roleIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; continue exportOnly }
+                $roleIdx = $r; $step = 2; continue exportOnly
+            }
+            2 {
+                $r = Read-Choice -Title "Topology this run used?" -Options @('tree', 'star', 'linear', 'partial') -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; continue exportOnly }
+                $topoIdx = $r; $step = 3; continue exportOnly
+            }
+            3 {
+                $r = Read-Choice -Title "Attack this run used?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; continue exportOnly }
+                $attkIdx = $r; $step = 4; continue exportOnly
+            }
+            4 {
+                $r = Select-Scenario -Current $scenario -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 3; continue exportOnly }
+                $scenario = $r; $step = 5; continue exportOnly
+            }
+            5 {
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 4; continue exportOnly }
+                $loc = $r; $step = 6; continue exportOnly
+            }
+            6 {
+                $r = Read-Line "Board label / node id (e.g. node5), blank to skip: " -Default $label -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 5; continue exportOnly }
+                $label = $r; $step = 7; continue exportOnly
+            }
+            7 {
+                $r = Read-Line "Repeat number (r1/r2/r3 -> 1/2/3): " -Default $repeat -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 6; continue exportOnly }
+                $repeat = if ([string]::IsNullOrWhiteSpace($r)) { '1' } else { $r }
+                $step = 8; continue exportOnly
+            }
+            8 {
+                $r = Read-YesNo -Question "Wipe the board AFTER a good download?" -Default $delete -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 7; continue exportOnly }
+                $delete = $r; $step = 9; continue exportOnly
+            }
+        }
+    }
+    $role   = if ($roleIdx -eq 2) { 'root' } else { 'child' }
+    $topo   = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+    $attack = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
 
     $exArgs  = @('export_logs.py', '--port', $port, '--role', $role, '--topology', $topo, '--location', $loc, '--attack', $attack, '--repeat', $repeat, '--scenario', $scenario)
     $cmdText = "python tools\export_logs.py --port $port --role $role --topology $topo --location $loc --attack $attack --repeat $repeat --scenario $scenario"
@@ -1790,20 +2372,44 @@ if ($action -eq 7) {
     Write-Host "Nothing here touches a board or a COM port -- runs the M6->M8 pipeline" -ForegroundColor DarkGray
     Write-Host "(preprocess.py -> features.py -> eda.py) over an already-exported folder." -ForegroundColor DarkGray
 
-    $attkIdx = Read-Choice -Title "Which attack?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default 1
-    $attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+    $attkIdx  = 1
+    $topoIdx  = 1
+    $scenario = 'none'
+    $loc      = $null
 
-    $topoIdx = Read-Choice -Title "Topology?" -Options @(
-        'tree     (default self-organising)',
-        'star     (all direct children of root)',
-        'linear   (forced chain)',
-        'partial  (physical placement)'
-    ) -Default 1
+    $step = 0
+    :analysisOnly while ($step -le 3) {
+        switch ($step) {
+            0 {
+                $r = Read-Choice -Title "Which attack?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $attkIdx = $r; $step = 1; continue analysisOnly
+            }
+            1 {
+                $r = Read-Choice -Title "Topology?" -Options @(
+                    'tree     (default self-organising)',
+                    'star     (all direct children of root)',
+                    'linear   (forced chain)',
+                    'partial  (physical placement)'
+                ) -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; continue analysisOnly }
+                $topoIdx = $r; $step = 2; continue analysisOnly
+            }
+            2 {
+                $r = Select-Scenario -Current $scenario -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; continue analysisOnly }
+                $scenario = $r; $step = 3; continue analysisOnly
+            }
+            3 {
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; continue analysisOnly }
+                $loc = $r; $step = 4; continue analysisOnly
+            }
+        }
+    }
+    $attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
     $topo    = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
     $topoDir = if ($topo -eq 'partial') { 'partial_mesh' } else { $topo }
-
-    $scenario = Select-Scenario
-    $loc      = Select-Location
 
     $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
     $scenarioSeg = if ($scenario -and $scenario -ne 'none') { "\$scenario" } else { '' }
@@ -1892,26 +2498,54 @@ if ($action -eq 8) {
     Write-Host "Pop the card out of the board and read it with a card reader on THIS laptop." -ForegroundColor DarkGray
     Write-Host "Nothing here touches a board or a COM port." -ForegroundColor DarkGray
 
-    $attkIdx = Read-Choice -Title "What attack was this capture?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default 1
-    $attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+    $attkIdx  = 1
+    $topoIdx  = 1
+    $scenario = 'none'
+    $loc      = $null
+    $repeat   = '1'
 
-    $topoIdx = Read-Choice -Title "Topology?" -Options @(
-        'tree     (default self-organising)',
-        'star     (all direct children of root)',
-        'linear   (forced chain)',
-        'partial  (physical placement)'
-    ) -Default 1
-    $topo = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
-
-    $scenario = Select-Scenario
-    $loc = Select-Location
-
-    Write-Host ""
-    Write-Host "Every card imported with this number is filed under it, whatever each board's" -ForegroundColor DarkGray
-    Write-Host "OWN on-device run counter says -- that is what keeps one run's boards on one" -ForegroundColor DarkGray
-    Write-Host "r-number instead of root=r1 while a child lands on r21." -ForegroundColor DarkGray
-    $repeat = Read-Line "Repeat number for this card (r1/r2/r3 -> 1/2/3) [default 1]: "
-    if ([string]::IsNullOrWhiteSpace($repeat)) { $repeat = '1' }
+    $step = 0
+    :importCard while ($step -le 4) {
+        switch ($step) {
+            0 {
+                $r = Read-Choice -Title "What attack was this capture?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $attkIdx = $r; $step = 1; continue importCard
+            }
+            1 {
+                $r = Read-Choice -Title "Topology?" -Options @(
+                    'tree     (default self-organising)',
+                    'star     (all direct children of root)',
+                    'linear   (forced chain)',
+                    'partial  (physical placement)'
+                ) -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; continue importCard }
+                $topoIdx = $r; $step = 2; continue importCard
+            }
+            2 {
+                $r = Select-Scenario -Current $scenario -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; continue importCard }
+                $scenario = $r; $step = 3; continue importCard
+            }
+            3 {
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; continue importCard }
+                $loc = $r; $step = 4; continue importCard
+            }
+            4 {
+                Write-Host ""
+                Write-Host "Every card imported with this number is filed under it, whatever each board's" -ForegroundColor DarkGray
+                Write-Host "OWN on-device run counter says -- that is what keeps one run's boards on one" -ForegroundColor DarkGray
+                Write-Host "r-number instead of root=r1 while a child lands on r21." -ForegroundColor DarkGray
+                $r = Read-Line "Repeat number for this card (r1/r2/r3 -> 1/2/3): " -Default $repeat -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 3; continue importCard }
+                $repeat = if ([string]::IsNullOrWhiteSpace($r)) { '1' } else { $r }
+                $step = 5; continue importCard
+            }
+        }
+    }
+    $attack = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+    $topo   = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
 
     # Roster: auto-match a saved preset for this exact attack/topology/location -
     # that preset already lists the boards THIS run used (matched by MAC), so an
@@ -1989,79 +2623,201 @@ if ($action -eq 8) {
 }
 
 # ---- Run a board (the main flow) --------------------------------------------
-$port = Select-Port -Action 'flash it'
-$roleIdx = Read-Choice -Title "Mesh role of THIS board?" -Options @('root', 'child / victim') -Default 2
-if ($roleIdx -eq 1) { $role = 'root' } else { $role = 'child' }
+# Step machine, same shape as run_wizard.ps1's :flow loop: every answer lives
+# in a variable initialised BEFORE the loop, each step passes that variable
+# back as its own -Default, and 'b' rewinds $step instead of unwinding the
+# whole action. So going back and forward again re-offers what you already
+# picked rather than resetting to the factory default.
+#
+# $dir is what makes SKIPPED steps work in both directions: a step that
+# doesn't apply (no attack sub-role on a root board, no location when you're
+# not exporting) does `$step += $dir` rather than jumping forward, so
+# travelling backwards through it keeps going backwards instead of bouncing
+# forward again on the step it just skipped.
+$roleIdx  = 2
+$topoIdx  = 1
+$attkIdx  = 1
+$scenario = 'none'
+$bhIdx    = 1
+$wIdx     = 2
+$isScenarioTarget = $true
+$label    = ''
+$flash    = $true
+$wipe     = $true
+$export   = $true
+$analyze  = $false
+$clean    = $false
+$loc      = $null
+$port     = $null
+$role     = 'child'
+$topo     = 'tree'
+$attack   = 'none'
+$bhRole   = 'attacker'
+$wEnd     = 'B'
 
-$topoIdx = Read-Choice -Title "Topology (flash EVERY board in the run the SAME)?" -Options @(
-    'tree     (default self-organising)',
-    'star     (all direct children of root)',
-    'linear   (forced chain)',
-    'partial  (physical placement)'
-) -Default 1
-$topo = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+$step = 0
+$dir  = 1
+:flow while ($step -le 14) {
+    switch ($step) {
 
-$attkIdx = Read-Choice -Title "Attack for this run?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default 1
-$attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+        0 {
+            # Nothing earlier to land on -- 'b' here backs out of the action
+            # entirely, the same place 'm' would go.
+            $r = Select-Port -Action 'flash it' -AllowBack
+            if ($script:BackSignal -eq $r) { continue menu }
+            $port = $r
+            $step = 1; $dir = 1; continue flow
+        }
 
-$scenario = Select-Scenario
+        1 {
+            $r = Read-Choice -Title "Mesh role of THIS board?" -Options @('root', 'child / victim') -Default $roleIdx -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 0; $dir = -1; continue flow }
+            $roleIdx = $r
+            $role = if ($roleIdx -eq 1) { 'root' } else { 'child' }
+            $step = 2; $dir = 1; continue flow
+        }
 
-$bhRole = 'attacker'
-$wEnd   = 'B'
-if ($attack -eq 'blackhole' -and $role -ne 'root') {
-    $i = Read-Choice -Title "Blackhole role of THIS board?" -Options @(
-        'attacker  (relay that forwards then drops victim probes)',
-        'victim    (sends its probes to the attacker MAC)'
-    ) -Default 1
-    if ($i -eq 2) { $bhRole = 'victim' } else { $bhRole = 'attacker' }
+        2 {
+            $r = Read-Choice -Title "Topology (flash EVERY board in the run the SAME)?" -Options @(
+                'tree     (default self-organising)',
+                'star     (all direct children of root)',
+                'linear   (forced chain)',
+                'partial  (physical placement)'
+            ) -Default $topoIdx -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 1; $dir = -1; continue flow }
+            $topoIdx = $r
+            $topo = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+            $step = 3; $dir = 1; continue flow
+        }
 
-    if ($bhRole -eq 'attacker') {
-        Confirm-BlackholeAttackerMac -AttackerPort $port -AttackerLabel $port
-    } else {
-        $configuredMac = Get-ConfiguredAttackerMac
-        if ($configuredMac) {
-            Write-Host ""
-            Write-Host "   FYI: mesh_config.h BLACKHOLE_ATTACKER_MAC = $configuredMac -- this victim's" -ForegroundColor DarkGray
-            Write-Host "   probes go to that MAC. Confirm it's actually the attacker board's live MAC" -ForegroundColor DarkGray
-            Write-Host "   (menu -> Identify a board, or flash the attacker with this same menu first)." -ForegroundColor DarkGray
+        3 {
+            $r = Read-Choice -Title "Attack for this run?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 2; $dir = -1; continue flow }
+            $attkIdx = $r
+            $attack = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+            $step = 4; $dir = 1; continue flow
+        }
+
+        4 {
+            $r = Select-Scenario -Current $scenario -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 3; $dir = -1; continue flow }
+            $scenario = $r
+            $step = 5; $dir = 1; continue flow
+        }
+
+        5 {
+            if (-not ($attack -eq 'blackhole' -and $role -ne 'root')) { $step += $dir; continue flow }
+            $r = Read-Choice -Title "Blackhole role of THIS board?" -Options @(
+                'attacker  (relay that forwards then drops victim probes)',
+                'victim    (sends its probes to the attacker MAC)'
+            ) -Default $bhIdx -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 4; $dir = -1; continue flow }
+            $bhIdx  = $r
+            $bhRole = if ($bhIdx -eq 2) { 'victim' } else { 'attacker' }
+
+            if ($bhRole -eq 'attacker') {
+                Confirm-BlackholeAttackerMac -AttackerPort $port -AttackerLabel $port
+            } else {
+                $configuredMac = Get-ConfiguredAttackerMac
+                if ($configuredMac) {
+                    Write-Host ""
+                    Write-Host "   FYI: mesh_config.h BLACKHOLE_ATTACKER_MAC = $configuredMac -- this victim's" -ForegroundColor DarkGray
+                    Write-Host "   probes go to that MAC. Confirm it's actually the attacker board's live MAC" -ForegroundColor DarkGray
+                    Write-Host "   (menu -> Identify a board, or flash the attacker with this same menu first)." -ForegroundColor DarkGray
+                }
+            }
+            $step = 6; $dir = 1; continue flow
+        }
+
+        6 {
+            if (-not ($attack -eq 'wormhole' -and $role -ne 'root')) { $step += $dir; continue flow }
+            $r = Read-Choice -Title "Wormhole tunnel end of THIS board? (UART cable A<->B required)" -Options @(
+                'A  (exit / root-side: re-injects to root)',
+                'B  (entry / leaf-side: captures + tunnels)'
+            ) -Default $wIdx -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 5; $dir = -1; continue flow }
+            $wIdx = $r
+            $wEnd = if ($wIdx -eq 1) { 'A' } else { 'B' }
+            $step = 7; $dir = 1; continue flow
+        }
+
+        7 {
+            # This flow flashes ONE board per run, so there's no roster to check
+            # "exactly one target" against -- just ask whether THIS board is it.
+            # Burst also needs a plain send path (not the attacker relay / a
+            # wormhole tunnel end), since only victim_main.c carries the burst logic.
+            if (-not ($role -ne 'root' -and (Test-ScenarioNeedsTarget $scenario))) {
+                $isScenarioTarget = $false
+                $step += $dir; continue flow
+            }
+            $burstEligible = -not (($attack -eq 'blackhole' -and $bhRole -eq 'attacker') -or $attack -eq 'wormhole')
+            if ($scenario -eq 'burst' -and -not $burstEligible) {
+                Write-Host "   NOTE: an attacker/wormhole board can't carry the burst -- pick a plain victim as the target instead." -ForegroundColor Yellow
+                $isScenarioTarget = $false
+                $step += $dir; continue flow
+            }
+            $r = Read-YesNo -Question "Is THIS board the $scenario TARGET (the one that bursts / is moved / is power-cycled)?" -Default $isScenarioTarget -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 6; $dir = -1; continue flow }
+            $isScenarioTarget = $r
+            $step = 8; $dir = 1; continue flow
+        }
+
+        8 {
+            $r = Read-Line "Board label / node id (e.g. node5), blank to skip: " -Default $label -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 7; $dir = -1; continue flow }
+            $label = $r
+            $step = 9; $dir = 1; continue flow
+        }
+
+        9 {
+            $r = Read-YesNo -Question "Flash the firmware first? (needed to apply topology/attack)" -Default $flash -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 8; $dir = -1; continue flow }
+            $flash = $r
+            $step = 10; $dir = 1; continue flow
+        }
+
+        10 {
+            $r = Read-YesNo -Question "Wipe/erase board BEFORE this run (fresh, unstacked run)?" -Default $wipe -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 9; $dir = -1; continue flow }
+            $wipe = $r
+            $step = 11; $dir = 1; continue flow
+        }
+
+        11 {
+            $r = Read-YesNo -Question "Export the CSVs when you exit the monitor?" -Default $export -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 10; $dir = -1; continue flow }
+            $export = $r
+            # Answering "no" here retires every export-only answer, so a
+            # forward pass can't smuggle a stale location/analyze/clean from
+            # an earlier "yes" into the command line.
+            if (-not $export) { $loc = $null; $analyze = $false; $clean = $false }
+            $step = 12; $dir = 1; continue flow
+        }
+
+        12 {
+            if (-not $export) { $step += $dir; continue flow }
+            $r = Select-Location -Current $loc -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 11; $dir = -1; continue flow }
+            $loc = $r
+            $step = 13; $dir = 1; continue flow
+        }
+
+        13 {
+            if (-not ($export -and $role -eq 'root')) { $step += $dir; continue flow }
+            $r = Read-YesNo -Question "Auto-run analysis (M6+M7+M8) after export? (do this on the ROOT, exported LAST)" -Default $analyze -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 12; $dir = -1; continue flow }
+            $analyze = $r
+            $step = 14; $dir = 1; continue flow
+        }
+
+        14 {
+            if (-not $export) { $step += $dir; continue flow }
+            $r = Read-YesNo -Question "Wipe the board AFTER a good export?" -Default $clean -AllowBack
+            if ($script:BackSignal -eq $r) { $step = 13; $dir = -1; continue flow }
+            $clean = $r
+            $step = 15; $dir = 1; continue flow
         }
     }
-}
-if ($attack -eq 'wormhole' -and $role -ne 'root') {
-    $i = Read-Choice -Title "Wormhole tunnel end of THIS board? (UART cable A<->B required)" -Options @(
-        'A  (exit / root-side: re-injects to root)',
-        'B  (entry / leaf-side: captures + tunnels)'
-    ) -Default 2
-    if ($i -eq 1) { $wEnd = 'A' } else { $wEnd = 'B' }
-}
-
-# This flow flashes ONE board per run, so there's no roster to check "exactly
-# one target" against -- just ask whether THIS board is it. Burst also needs a
-# plain send path (not the attacker relay / a wormhole tunnel end), since only
-# victim_main.c carries the burst logic.
-$isScenarioTarget = $false
-if ($role -ne 'root' -and (Test-ScenarioNeedsTarget $scenario)) {
-    $burstEligible = -not (($attack -eq 'blackhole' -and $bhRole -eq 'attacker') -or $attack -eq 'wormhole')
-    if ($scenario -ne 'burst' -or $burstEligible) {
-        $isScenarioTarget = Read-YesNo -Question "Is THIS board the $scenario TARGET (the one that bursts / is moved / is power-cycled)?" -Default $true
-    } else {
-        Write-Host "   NOTE: an attacker/wormhole board can't carry the burst -- pick a plain victim as the target instead." -ForegroundColor Yellow
-    }
-}
-
-$label   = Read-Line "Board label / node id (e.g. node5), blank to skip: "
-$flash   = Read-YesNo -Question "Flash the firmware first? (needed to apply topology/attack)" -Default $true
-$wipe    = Read-YesNo -Question "Wipe/erase board BEFORE this run (fresh, unstacked run)?" -Default $true
-$export  = Read-YesNo -Question "Export the CSVs when you exit the monitor?" -Default $true
-$analyze = $false
-$clean   = $false
-$loc     = $null
-if ($export) {
-    $loc = Select-Location
-    if ($role -eq 'root') {
-        $analyze = Read-YesNo -Question "Auto-run analysis (M6+M7+M8) after export? (do this on the ROOT, exported LAST)" -Default $false
-    }
-    $clean = Read-YesNo -Question "Wipe the board AFTER a good export?" -Default $false
 }
 
 $p = @{ Port = $port; Role = $role; Topology = $topo; Attack = $attack; Scenario = $scenario }

@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 17, 2026 (Command Center heartbeat revived + wizard/menu per-node edit, NOT build-tested; re-run below still untouched)
+**Updated:** sep. 17, 2026 (heartbeat: instant disconnect reporting added — still NOT build-tested; re-run below untouched)
 
 ## Current focus
 **Re-running the capture matrix from empty**, and the sep. 16 15:36 attempt must itself be redone —
@@ -27,14 +27,14 @@ designed, NOT built, team decides; plan at `C:\Users\Basti\.claude\plans\mutable
 - `presets/linear-blackhole-g402.json` is GONE, not in the Recycle Bin (picker deletes with
   `-Force`). Recovery: OneDrive's **online** recycle bin. `linear-blackhole-home.json` is current.
 - **Two unreconciled panel-response tracks:** `Plan/THESIS3-PANEL-PLAN.md` (aug. 06) vs `ESP32-Environment/memory/panel-change-2026-09.md` (sep. 13). Read both first.
-- Command Center heartbeat (sep. 17) adds mesh traffic and is NOT build-tested — verify build + PDR/latency sanity before trusting the next re-run.
-- Pushed to `origin/Unified` (sep. 17) — no longer uncommitted; frozen CC/NIS16 refs still apply.
+- Command Center heartbeat (sep. 17): adds mesh traffic, UNCOMMITTED + NOT build-tested (this
+  machine's idf5.3 Python venv is broken, unrelated — MEMORY.md). A multi-hop disconnect still
+  can't report under ~21s (3 missed heartbeats); only the root's direct children get instant eviction.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- sep. 17, 2026 — **Command Center heartbeat revived** into `mesh_setup.c/.h` (reverses the sep. 14
-  "removed" decision, ARCHIVE.md). Root prints a node table (MAC/layer/role/RSSI/phase) sorted by
-  layer on change — adds mesh traffic, see Blockers. MEMORY.md.
-- sep. 17, 2026 — **Wizard/menu gained a pre-flash "adjust the plan" step**: edit a node's port/
-  label/toggles/role/attack-role, or change TOPOLOGY, before CONFIRM. Syntax-checked only. MEMORY.md.
-- sep. 17, 2026 — `menu.ps1`'s multi-board flow gained run_wizard's pre-flash summary box; both
-  front-ends' plan tables now show each board's MAC. MEMORY.md.
+- sep. 17, 2026 — **Heartbeat: instant disconnect reporting.** `CHILD_DISCONNECTED` evicts + reprints
+  the root's direct child immediately; `ROUTING_TABLE_REMOVE` forces an immediate reprint for the
+  multi-hop case (no MAC there, so it forces a PRINT but not an early EVICT). MEMORY.md.
+- sep. 17, 2026 — **Command Center heartbeat revived + fixed** into `mesh_setup.c/.h`. Table
+  reprints on change AND periodically; a stale node now logs OFFLINE and is EVICTED. Also fixed
+  `mesh_setup_is_root()` root-gating + a timer-reset bug. Final: 7000/14000/21000ms. MEMORY.md.

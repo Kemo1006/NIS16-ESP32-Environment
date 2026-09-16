@@ -396,11 +396,28 @@
  * sends a node_heartbeat_pkt_t (mesh_messages.h) to the root every
  * HEARTBEAT_INTERVAL_MS. The root aggregates the latest row per MAC into a
  * table (mesh_setup.c) and reprints it, sorted by layer, whenever a node's
- * layer/role/nickname changes — so whether the mesh is actually following
- * the built topology is visible at a glance in the console.
+ * layer/role/nickname changes, OR every HEARTBEAT_TABLE_REPRINT_MS regardless
+ * of change — the periodic reprint is what makes a disconnect visible (AGE_S
+ * climbs on the stale row) since a disconnect/reconnect by itself doesn't
+ * change any tracked field.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-#define HEARTBEAT_INTERVAL_MS    2000U
+#define HEARTBEAT_INTERVAL_MS    7000U
+
+/** How often the root reprints the table even with no field changes, so a
+ *  disconnected node's rising AGE_S (and a reconnected one's reset AGE_S) is
+ *  visible without waiting on a layer/role/nickname change.
+ *  ⚠️ The check runs on the heartbeat send loop, so the real cadence is
+ *  rounded UP to the next multiple of HEARTBEAT_INTERVAL_MS — keep this an
+ *  exact multiple of it or the observed period won't match the number set
+ *  here (10000 with a 7000 send interval would actually print every 14000). */
+#define HEARTBEAT_TABLE_REPRINT_MS  14000U
+
+/** A node is declared OFFLINE and dropped from the table after this long with
+ *  no heartbeat — so pulling a board's USB shrinks the node count instead of
+ *  leaving a row whose AGE_S climbs forever. Three missed heartbeats, so a
+ *  single dropped frame never evicts a healthy node. */
+#define HEARTBEAT_STALE_MS       (3U * HEARTBEAT_INTERVAL_MS)
 
 /** Max distinct nodes the root's heartbeat table can track. Matches
  *  MESH_ROUTE_TABLE_MAX (root + every descendant it can route to). */

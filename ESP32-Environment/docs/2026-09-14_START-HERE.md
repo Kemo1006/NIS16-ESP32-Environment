@@ -71,12 +71,13 @@ once in that window, then `.\menu.ps1` again.
 The menu can: **run a board**, **run MULTIPLE boards in parallel** (one ESP-IDF window
 per board, pre-built so they don't cold-compile at the same time, children flashed
 before the root), **export a board**, **wipe/erase a board**, **identify a board**,
-**verify a run** (paper-backed 3-sigma check). The old long form
+**write/update `location.txt` on an already-running board** (one board or several
+at once, over USB), **verify a run** (paper-backed 3-sigma check). The old long form
 (`.\run.ps1 -Port COM8 -Role root ...`) still works if you prefer it - the menu just prints
 the equivalent command so you learn it.
 
-**Saved rosters across repeats, MAC-drift verification, bulk set-location on many
-boards, or a firmware self-test**? Use `.\run_wizard.ps1` instead - it is built for
+**Saved rosters across repeats, MAC-drift verification, or a firmware self-test**?
+Use `.\run_wizard.ps1` instead - it is built for
 that maintenance workflow; `menu.ps1`'s multi-board option is the simpler on-ramp for
 just launching a run.
 

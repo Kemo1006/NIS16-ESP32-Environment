@@ -8,3 +8,4 @@
 - [Thesis citation set](thesis-citations.md) — curated papers backing every attack/verification claim (Zhukabayeva 2025, Airehrour 2018, Khan 2022, Ramírez Gómez 2019); paste-ready APA references
 - [Verification papers assessment](resources-papers-assessment.md) — why each of the 4 `Resources/reference/*.pdf` papers does or doesn't fit our blackhole/wormhole verification, and how `tools/verify_attack.py`'s 3-sigma method was chosen
 - [Windows PS1 ASCII-only rule](reference-windows-ps1-ascii.md) — why `menu.ps1`/`run_wizard.ps1` avoid non-ASCII characters (Windows PowerShell 5.1 misreads them)
+- [menu.ps1 navigation rebuild (Sept 2026)](menu-navigation-2026-09.md) — `b` back + sticky defaults via run_wizard-style step machines; the `$dir` skip rule, the `return ,$array` scalar-collapse bug, and the BackSignal `-eq` operand-order trap

@@ -8,6 +8,45 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 17, 2026 — ADDED instant disconnect reporting on top of the stale-eviction fix below, in
+  response to "can the heartbeat print instantly on disconnect instead of waiting on the stale
+  timer": (1) `MESH_EVENT_CHILD_DISCONNECTED` — the one mesh event that names a specific MAC — now
+  calls a new `heartbeat_mark_offline(mac)` which evicts that row and reprints immediately, instead
+  of waiting up to `HEARTBEAT_STALE_MS` (21 s) for the age sweep to notice. Only fires anything on
+  the root (`s_table_ready` guard) — same as every other root-only table op. (2)
+  `MESH_EVENT_ROUTING_TABLE_REMOVE` — fires for a multi-hop node dropping off deeper in the tree,
+  which `CHILD_DISCONNECTED` does NOT catch (that event only names the root's own direct children) —
+  now forces an immediate `heartbeat_table_print()` instead of waiting up to
+  `HEARTBEAT_TABLE_REPRINT_MS` (14 s) more for the periodic reprint. ⚠️ This does NOT shrink the 21 s
+  staleness floor itself for a multi-hop node — `ROUTING_TABLE_REMOVE` carries no MAC, so it can only
+  force an early PRINT of whatever the stale sweep already knows, not an early EVICT. True instant
+  detection (<1 heartbeat interval) is only possible for the root's direct children; a deeper node's
+  disconnect is still bounded below by three missed heartbeats, which is what tells a real drop apart
+  from one lost frame. Required moving `s_table_ready` up into the file's top module-private-state
+  block (was declared down in the heartbeat section) plus two early forward declarations
+  (`heartbeat_table_print`, new `heartbeat_mark_offline`), so `mesh_event_handler` — defined earlier
+  in the file — can reach them. Same file as everything else here: `mesh_setup.c`. Not build-tested
+  (attempted locally: this machine's `idf5.3_py3.14_env` Python venv is broken/missing —
+  `idf_tools.py install-python-env` needed, unrelated to this change) — same caveat as below.
+- sep. 17, 2026 — FIXED three heartbeat gaps, all found via live hardware logs across this session
+  (follows the BUILT entry below): (1) the table only reprinted on layer/role/nickname change, so a
+  plain disconnect/reconnect showed nothing even though `AGE_S` tracked it correctly — added
+  `HEARTBEAT_TABLE_REPRINT_MS`, a root-only unconditional timer reprint gated on a new
+  `s_table_ready` flag (set by `heartbeat_table_init()`) instead of `mesh_setup_is_root()`, which is
+  FALSE for this whole testbed's actual root (manual/fixed root, no router, never gets
+  `MESH_EVENT_PARENT_CONNECTED` — confirmed from a boot log reading `Root: NO`; that flag's one other
+  consumer, `heartbeat_task`'s parent-RSSI/send-direction check, was left alone since its TODS
+  self-loopback works fine). Root also self-ingests its own heartbeat locally each tick so its row
+  can't age out. (2) Change-triggered prints weren't resetting the periodic timer (uneven first gap)
+  — both paths now share one `s_last_print_us`, reset on every print. (3) A disconnected node's row
+  never left the table, only `AGE_S` climbed, so the printed node COUNT stayed wrong —
+  `heartbeat_table_print()` now sweeps for entries idle past `HEARTBEAT_STALE_MS` (3× the send
+  interval), logs `Node OFFLINE` with MAC+nickname, and evicts before printing. ⚠️
+  `HEARTBEAT_TABLE_REPRINT_MS` rounds UP to the next multiple of `HEARTBEAT_INTERVAL_MS` (check rides
+  the send loop) — keep it an exact multiple or the configured value won't match what's observed.
+  Final values after user iteration: `HEARTBEAT_INTERVAL_MS` 7000, `HEARTBEAT_TABLE_REPRINT_MS`
+  14000, `HEARTBEAT_STALE_MS` 21000 (auto-derived, 3×interval). Still NOT committed, NOT
+  build-tested — same caveat as the BUILT entry below.
 - sep. 17, 2026 — DECIDED + BUILT: Command Center's heartbeat/node-table feature is back,
   **on purpose, reversing the sep. 14, 2026 "removed, not merely disabled" merge decision**
   (see ARCHIVE.md and the sep. 13 BUILT entry below for what it replaced). Trigger: needed a live
@@ -59,12 +98,6 @@
   there (that capture's own baseline is degraded, 0.164±0.372) — i.e. it surfaces the signature
   WITHOUT fabricating one. Full rationale: `docs/issue_logs/thesis-deviate.md` **D-8**.
   ⚠️ Remaining NaN is correct, not a gap: root never originates probes (PDR undefined for it).
-- sep. 16, 2026 — ⚠️ CAPTURE QUALITY, archived unresolved: `blackhole/linear/G402/mobility` — 3 of 4
-  victims probed all run but root logged nothing from them in ANY phase (`B4BFE932FE90` changed
-  layer 4→5 mid-run; `2805A532D7B4` at layer 6). NOT the MAC bug below (that run's attacker `0c:80`
-  DID match the then-configured MAC, and one victim got through) — suspected mobility-disrupted TODS
-  relay, still untested since the 15:36 re-run was itself voided by the MAC bug. `home/mobility`
-  also exported ONLY root's CSVs — check `-Location`/`-Scenario` match on every board before export.
 - sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR
   ONLY — thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly
   to root so no child-relay position exists there (tree/linear/partial keep a child attacker; all
@@ -76,18 +109,6 @@
   `BlackholeRole=victim` (that compiles in P2P-to-attacker-MAC addressing, wrong for this variant);
   the MAC pre-flight check does not apply and must be skipped, not extended. Full plan in
   `.claude\plans\mutable-honking-spindle.md` (under the Basti user profile) — read before building.
-- sep. 16, 2026 — BUILT: run scenarios v1 (`none|burst|highload|mobility|powercycle`) in run.ps1
-  (`-Scenario`/`-ScenarioTarget`), both front-ends, presets, `run_matrix.py`, `verify_topology.py` and
-  the Python export chain — the panel's "real-world variation" ask. Build flag `-DTRAFFIC_PROFILE=1`
-  burst / `=2` highload; `none` passes NO flag, so its compile line and build dir stay byte-identical
-  to pre-scenario. Who gets it: burst → root + the ONE `-ScenarioTarget` child; highload → every
-  child; mobility/powercycle → nobody (human-performed, label-only). Burst fires `BURST_COUNT`(100)
-  probes `BURST_OFFSET_S`(60) into the attack-length window, and on a BASELINE run the root holds a
-  matching extra window so a legit burst and a burst-under-attack form a matched pair.
-  ⚠️ Export-folder rule: the scenario folder is added ONLY for a real scenario — `none` gets NO extra
-  folder (all 5 path-builders agree on this; it was the bug fixed the same night). Build-dir suffix
-  `_burst`/`_highload` is a SEPARATE concern (firmware variant, not export path).
-  ⚠️ Verified only without hardware attached — NOT bench-tested on real boards yet.
 - ⚠️ TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live
   reference for THES3 writing (vocabulary for paper Tables 4.11/4.12) — pull it back to root
   if so. See ARCHIVE.md for the doc-reorganization history.
