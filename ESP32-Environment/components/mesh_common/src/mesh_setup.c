@@ -7,8 +7,12 @@
 
 #include "mesh_setup.h"
 #include "mesh_config.h"
+#include "mesh_messages.h"
+#include "node_identity.h"
+#include "phase_listener.h"
 
 #include <string.h>
+#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -19,6 +23,7 @@
 #include "esp_event.h"
 #include "esp_mesh.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "nvs_flash.h"
 
 /* ── Module-private state ────────────────────────────────────────────────── */
@@ -378,4 +383,231 @@ static void ip_event_handler(void *arg, esp_event_base_t base,
         ESP_LOGI(TAG, "Root got IP: " IPSTR, IP2STR(&ev->ip_info.ip));
         xEventGroupSetBits(s_mesh_event_group, MESH_CONNECTED_BIT);
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Command Center heartbeat — sender (every node) + root-side node table
+ *
+ * mesh_messages.h/node_identity.h already defined the wire format
+ * (node_heartbeat_pkt_t) and a "call heartbeat_start()" note for this — it
+ * just didn't exist yet. Lives here (not a separate module) because it's
+ * fundamentally an extension of "what does mesh_setup know about the mesh's
+ * shape": log_mesh_status() above already answers "how many nodes"; this
+ * answers "which ones, at what layer" — the per-node detail needed to tell
+ * whether the connected nodes are actually following the built topology.
+ *
+ * NIS16 — CTTHES3 — Command Center
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static void heartbeat_task(void *arg)
+{
+    (void)arg;
+
+    node_heartbeat_pkt_t pkt = {
+        .magic    = HEARTBEAT_MSG_MAGIC,
+        .msg_type = MSG_TYPE_HEARTBEAT,
+    };
+    esp_read_mac(pkt.src_mac, ESP_MAC_WIFI_STA);
+    strlcpy(pkt.nickname, node_identity_nickname(), NODE_NICKNAME_LEN);
+    pkt.assigned_role  = node_identity_role();
+    pkt.export_status  = EXPORT_STATUS_IDLE;
+    pkt.export_percent = 0;
+
+    mesh_data_t mdata = {
+        .data  = (uint8_t *)&pkt,
+        .size  = sizeof(pkt),
+        .proto = MESH_PROTO_BIN,
+        .tos   = MESH_TOS_P2P,
+    };
+
+    int64_t boot_us = esp_timer_get_time();
+
+    ESP_LOGI(TAG, "Heartbeat sender running at %u ms interval.",
+             HEARTBEAT_INTERVAL_MS);
+
+    while (true) {
+        bool is_root = mesh_setup_is_root();
+
+        int8_t rssi = 0;
+        if (!is_root) {
+            uint8_t pmac[6];
+            if (mesh_setup_get_parent_mac(pmac)) {
+                int r = 0;
+                esp_wifi_sta_get_rssi(&r);
+                rssi = (int8_t)r;
+            }
+        }
+
+        pkt.parent_rssi   = rssi;
+        pkt.layer         = (uint8_t)mesh_setup_get_layer();
+        pkt.uptime_sec    = (uint32_t)((esp_timer_get_time() - boot_us) / 1000000LL);
+        pkt.current_phase = phase_listener_get_phase_id();
+
+        /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
+         * a non-root node's upward send (TODS) — see the routerless-mesh
+         * comments earlier in this file. */
+        esp_err_t err = esp_mesh_send(NULL, &mdata,
+                                      is_root ? MESH_DATA_FROMDS : MESH_DATA_TODS,
+                                      NULL, 0);
+        if (err != ESP_OK) {
+            ESP_LOGD(TAG, "Heartbeat send failed: %s", esp_err_to_name(err));
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(HEARTBEAT_INTERVAL_MS));
+    }
+}
+
+esp_err_t heartbeat_start(void)
+{
+    BaseType_t rc = xTaskCreate(heartbeat_task, "heartbeat",
+                                STACK_HEARTBEAT, NULL,
+                                TASK_PRIO_HEARTBEAT, NULL);
+    if (rc != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create heartbeat task");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+/* ── Root-side node table ────────────────────────────────────────────────── */
+
+typedef struct {
+    uint8_t  mac[6];
+    char     nickname[NODE_NICKNAME_LEN];
+    uint8_t  role;
+    uint8_t  layer;
+    int8_t   parent_rssi;
+    uint32_t uptime_sec;
+    uint8_t  current_phase;
+    int64_t  last_seen_us;
+    bool     in_use;
+} heartbeat_entry_t;
+
+static heartbeat_entry_t s_heartbeat_table[HEARTBEAT_TABLE_MAX];
+
+static void heartbeat_table_print(void)
+{
+    int idx[HEARTBEAT_TABLE_MAX];
+    int n = 0;
+    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
+        if (s_heartbeat_table[i].in_use) {
+            idx[n++] = i;
+        }
+    }
+
+    /* Insertion sort by layer (root first), then MAC for a stable order.
+     * n is at most HEARTBEAT_TABLE_MAX (~32) — O(n^2) is irrelevant here. */
+    for (int i = 1; i < n; i++) {
+        int cur = idx[i];
+        int j = i - 1;
+        while (j >= 0) {
+            heartbeat_entry_t *a = &s_heartbeat_table[idx[j]];
+            heartbeat_entry_t *b = &s_heartbeat_table[cur];
+            int cmp = (int)a->layer - (int)b->layer;
+            if (cmp == 0) {
+                cmp = memcmp(a->mac, b->mac, 6);
+            }
+            if (cmp <= 0) {
+                break;
+            }
+            idx[j + 1] = idx[j];
+            j--;
+        }
+        idx[j + 1] = cur;
+    }
+
+    int64_t now = esp_timer_get_time();
+
+    ESP_LOGI(TAG, "==================== MESH TOPOLOGY (%d node%s) ====================",
+             n, n == 1 ? "" : "s");
+    ESP_LOGI(TAG, "%-4s %-18s %-11s %-16s %-6s %-6s %-6s",
+             "LYR", "MAC", "ROLE", "NICKNAME", "RSSI", "PHASE", "AGE_S");
+    for (int i = 0; i < n; i++) {
+        heartbeat_entry_t *e = &s_heartbeat_table[idx[i]];
+        char macstr[18];
+        snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
+        uint32_t age_s = (uint32_t)((now - e->last_seen_us) / 1000000LL);
+        ESP_LOGI(TAG, "%-4u %-18s %-11s %-16s %-6d %-6u %-6lu",
+                 (unsigned)e->layer, macstr, node_role_to_str(e->role),
+                 e->nickname, (int)e->parent_rssi, (unsigned)e->current_phase,
+                 (unsigned long)age_s);
+    }
+    ESP_LOGI(TAG, "=====================================================================");
+}
+
+void heartbeat_table_init(void)
+{
+    memset(s_heartbeat_table, 0, sizeof(s_heartbeat_table));
+
+    /* Seed the root's own row directly — it never has to wait for its own
+     * heartbeat to round-trip through the mesh before it can be listed. */
+    heartbeat_entry_t *e = &s_heartbeat_table[0];
+    esp_read_mac(e->mac, ESP_MAC_WIFI_STA);
+    strlcpy(e->nickname, node_identity_nickname(), NODE_NICKNAME_LEN);
+    e->role          = node_identity_role();
+    e->layer         = (uint8_t)mesh_setup_get_layer();
+    e->parent_rssi   = 0;
+    e->uptime_sec    = 0;
+    e->current_phase = PHASE_ID_BASELINE;
+    e->last_seen_us  = esp_timer_get_time();
+    e->in_use        = true;
+
+    heartbeat_table_print();
+}
+
+bool heartbeat_ingest(const uint8_t *data, size_t len)
+{
+    if (len < sizeof(node_heartbeat_pkt_t)) {
+        return false;
+    }
+    const node_heartbeat_pkt_t *pkt = (const node_heartbeat_pkt_t *)data;
+    if (pkt->magic != HEARTBEAT_MSG_MAGIC) {
+        return false;
+    }
+
+    heartbeat_entry_t *hit = NULL;
+    int free_slot = -1;
+    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
+        if (!s_heartbeat_table[i].in_use) {
+            if (free_slot < 0) {
+                free_slot = i;
+            }
+            continue;
+        }
+        if (memcmp(s_heartbeat_table[i].mac, pkt->src_mac, 6) == 0) {
+            hit = &s_heartbeat_table[i];
+            break;
+        }
+    }
+
+    bool is_new = false;
+    if (!hit) {
+        if (free_slot < 0) {
+            ESP_LOGW(TAG, "Heartbeat table full (%d) — dropping new node " MACSTR,
+                     HEARTBEAT_TABLE_MAX, MAC2STR(pkt->src_mac));
+            return true;
+        }
+        hit = &s_heartbeat_table[free_slot];
+        memcpy(hit->mac, pkt->src_mac, 6);
+        hit->in_use = true;
+        is_new = true;
+    }
+
+    bool changed = is_new
+                || hit->layer != pkt->layer
+                || hit->role  != pkt->assigned_role
+                || strncmp(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN) != 0;
+
+    strlcpy(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN);
+    hit->role          = pkt->assigned_role;
+    hit->layer         = pkt->layer;
+    hit->parent_rssi   = pkt->parent_rssi;
+    hit->uptime_sec    = pkt->uptime_sec;
+    hit->current_phase = pkt->current_phase;
+    hit->last_seen_us  = esp_timer_get_time();
+
+    if (changed) {
+        heartbeat_table_print();
+    }
+    return true;
 }

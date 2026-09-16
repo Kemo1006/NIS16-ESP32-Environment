@@ -27,6 +27,68 @@
 - sep. 13, 2026 — BUILT: distinct `MESH CONNECTED: N node(s)` log banner in the shared `components/mesh_common/src/mesh_setup.c` (both CC/CC_JSON) — fires on parent-connect, child-connect/disconnect, and routing-table add/remove, reusing the already-called `esp_mesh_get_routing_table_size()`. NOT `CONFIG_USE_COMMAND_CENTER` — adds zero mesh traffic. Verified via 2 clean `-Wall -Wextra -Werror` builds (baseline + blackhole-victim).
 - sep. 13, 2026 — FIXED (hardware-tested), all in `run_wizard.ps1`: args were passed as `@($array)` (binds POSITIONALLY), crashing every real run into `-Port` — switched to an ordered-hashtable splat (binds by name); `$Repeat`/`$repeat` silently collided (PS names are case-insensitive) so `-Preset ... -Repeat 2` was quietly ignored; the blackhole-MAC-mismatch prompt showed `a)/b)` info bullets right before an unrelated `[y/N]` prompt, so typing `a`/`b` read as "no" and aborted every time — replaced with a real menu whose option 1 auto-patches the header.
 - sep. 13, 2026 — FOUND: `Get-Content -Raw` misdetects `mesh_config.h`'s no-BOM UTF-8 encoding on Windows PowerShell 5.1, corrupting every non-ASCII byte (the header's em-dash comments) on write-back. Caught via a before/after diff against a COPY, before it touched the real file. Fix: `[System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))`.
+- sep. 16, 2026 — DONE: `attack`/`topology`/`location`/`scenario` are now COLUMNS on every row of
+  `windowed_dataset.csv` + `feature_table.csv` (thesis-deviate **D-10**). `preprocess.py`'s new
+  `_run_context_from_path()` reads them off the input path; `features.py` does
+  `result = windowed.copy()` so they propagate free (same mechanism as D-7's `run_repeat`).
+  **Fixed a real pooling bug doing it:** `combine_all.py` read `dir_parts[2]` as location and
+  DROPPED the scenario segment, so a `mobility` and a `none` run in the SAME attack/topology/
+  location merged unrecoverably. It now prefers the columns, path-parses only for pre-D-10
+  tables, and groups by scenario. Conventions: no scenario folder ⇒ `"none"` (absence IS the
+  value), no location ⇒ `"unrecorded"`, non-export path (synthetic fixtures) ⇒ all None so unknown
+  provenance is never labelled. Parsing anchors on the LAST known attack name, so
+  `archive/<date>/exports/...` still resolves.
+- sep. 16, 2026 — DONE: analysis grid 1Hz→**10Hz** + window 5s→**1s** in `preprocess.py`
+  (thesis-deviate **D-9**), because the panel now wants ~10k rows PER RUN and the team wants 6k.
+  Rows are fixed by `nodes × (analysed_seconds ÷ WINDOW_SECONDS)` — only more nodes, longer runs or
+  smaller windows move it; at 5s windows 6k needs an 83-min run, so the window had to give. No
+  firmware change: boards ALREADY sample at 10Hz, M6 was discarding 9 of 10 samples (D-1).
+  Measured on clean `baseline/linear`: **577 → 2,894 rows/run (5.0×)**, discard rate
+  **1.0% → 0.1%** (better), `RSSI_var` 0 NaN, runtime M6 3.6s / M7 3.0s (no slowdown). Windows now
+  hold **10 samples vs 5** — more support per row, not dilution. Revert = `GRID_HZ=1`,
+  `WINDOW_SECONDS=5`, `MIN_VALID_SAMPLES=4`. ⚠️ `MAX_GRID_ROWS` had to rise 500k→5M or the tripwire
+  fires on legit 10Hz data. ⚠️ At `PROBE_INTERVAL_MS=1000` a 1s window holds ~1 probe, so per-window
+  PDR is near-binary (no information lost in the mean; just don't read one window as a fine rate).
+  **NOT done — targets need longer phases + reflash:** 6k/run ≈1,245s analysed (~22min, 1.06MB/node),
+  10k/run ≈2,075s (~36min, 1.66MB/node); SPIFFS is 0x270000 = **2.44MB** (NOT the 1.1MB in the old
+  I-017 note), so both fit. **M4 = 24 attack runs** (baseline not among them, D-5) → 24 × 2,894 ≈
+  **69k rows total even without lengthening runs.**
+- sep. 17, 2026 — FIXED + BUILT: nav/UX overhaul, `run_wizard.ps1` + `menu.ps1` (kept in sync). Both
+  gained `m` (jump to main menu, replaces Ctrl+C) on every prompt via shared `Read-Line`→throw,
+  caught once at the outer loop; self-disables past the final confirm (`$script:NavLocked`) so it
+  can't abandon a half-flashed roster. Wizard also: `b` (back) at ports/roster steps; root-here
+  toggle (skips the full multi-laptop split just to mark root remote); blackhole/wormhole menus
+  gained "attacker/tunnel is on ANOTHER laptop" — the only prior path nominated a LOCAL board,
+  reading its MAC and overwriting `mesh_config.h` wrongly; `Select-Port` now hides a port an earlier
+  board already claimed (manual entry still allows deliberate swap-mode reuse). `menu.ps1` was
+  one-shot (ran one action, exited); now loops back to its main menu, grouped by category
+  (CAPTURE/DATA/MAINTENANCE/VERIFY); `b`-plumbing added but not yet wired into its flows. Verified
+  via `-DryRun` replay (wizard) / declined-confirm replay (menu.ps1, no dry-run switch exists).
+  **Cont'd same day:** both scripts' category menus now show sequential 1-9 on screen (a new
+  `$order`/`$display` lookup translates back to the real action/modeIdx, which used to leak gaps
+  like DATA showing 1/5/8); added `cls` beside `m` (same `Read-Line` choke point, no Ctrl+C
+  needed either). `menu.ps1` gained the wizard's identify-a-port/-ALL (`board_check.py`, cached
+  in `$script:IdentifiedPorts`) and its `Test-PortSafeToTouch` gate — BLOCKED (non-ESP32) ports
+  now hidden from every `menu.ps1` port picker, UNKNOWN needs the port name typed back to
+  confirm. `b`-back STILL not wired into any `menu.ps1` flow — needs the same `$step`-machine
+  treatment as the wizard (user-approved; only the multi-board flow was scoped before the
+  session moved to other requests).
+  **Cont'd same day (bug fix):** `cls` was leaving a BLANK screen — `Read-Line`'s handler did
+  `Clear-Host; continue`, but every numbered menu (`Show-Menu`, `Show-CaptureWizardMenu` in
+  run_wizard; `Read-Choice`, `Show-MainMenu` in menu.ps1) prints its title/options ONCE, above
+  the prompt loop, so Clear-Host wiped them with nothing to put them back. Fix: `Read-Line` now
+  takes an optional `-Redraw` scriptblock; those four functions capture their own
+  print-title/options code as `$draw`, run it once up front, and pass `-Redraw $draw` so `cls`
+  replays it after clearing. Other one-off `Read-Line` prompts (port pickers, y/n confirms) were
+  NOT touched — lower priority, they only lose a line or two of context, not the whole menu.
+  **Cont'd same day (feature):** `menu.ps1`'s multi-board flow gained run_wizard's boxed pre-flash
+  summary (header + "Order (root is always last)" table + Exports/Analysis footer), replacing its
+  bare `Plan:` list (no Repeat/swap-mode lines - menu.ps1 has neither concept). Both front-ends'
+  Order tables now show each board's MAC via a new `Resolve-BoardMac`: prefers a preset's recorded
+  MAC / the `Invoke-Identify` cache / (blackhole attacker) the MAC `Confirm-BlackholeAttackerMac`
+  already read, else reads the chip live (harmless - the board is about to be flashed anyway),
+  skipped under wizard's `-SkipMacCheck`/`-DryRun` (shows `(unread)`). Useful against the
+  `BLACKHOLE_ATTACKER_MAC` mismatch bug above: the targeted MAC is now on the confirm screen itself.
 - sep. 13, 2026 — DECIDED (user): build BOTH Command Center dashboard variants in parallel workstations — Variant A (on-device ASCII) in `Thesis_workstation_CC`, Variant B (root emits JSON + `tools/command_center.py` with `rich`) in `Thesis_workstation_CC_JSON`. WHY: the deciding factor between them is COM-port exclusivity (`run.ps1` ends in `idf.py ... flash monitor`, which holds the root's port for the whole run, so Variant B needs `-NoMonitor` or a second connection), and that is easier to judge on hardware than on paper. Build order is copy-then-fork: the shared core was written once in A and copied verbatim to B, which diverges at exactly one function in `root_main.c`. Verified byte-identical afterwards (`diff -rq`) — children are interchangeable, so switching dashboards reflashes the ROOT only. Superseded for `combined`: Command Center was REMOVED entirely from this merge (see sep. 14 BUILT entry in MEMORY.md); this decision stays live only for the standalone CC/CC_JSON workstations.
 - sep. 12, 2026 — DECIDED: `ATTACK-MECHANICS.md`, `OUTPUT-VERIFICATION.md`, `NODE-INVENTORY.md`, and `linear_topology_blackhole.png/.svg` moved from workstation root into `Resources/reference/` and `Resources/figures/` (root was getting cluttered; NOT moved into `0_Resources/`, which is cross-workstation only). `Resources/INDEX.md` documents each subfolder.
 - aug. 06, 2026 — DECIDED: Thesis 2 defense docs (4 DEFENSE-SCRIPT*, 3 DEFENSE-PREP*, TERMS-GLOSSARY.md) archived to `0_Resources/archive/` — the defense is delivered. `ATTACK-MECHANICS.md`, `OUTPUT-VERIFICATION.md`, `NODE-INVENTORY.md` stayed at root at the time (superseded by the sep. 12 move above).

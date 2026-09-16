@@ -111,6 +111,7 @@ void app_main(void)
                 NULL, TASK_PRIO_PROBE_GEN,  NULL);
     xTaskCreate(telemetry_task,  "telemetry",  STACK_TELEMETRY,
                 NULL, TASK_PRIO_TELEMETRY,  NULL);
+    ESP_ERROR_CHECK(heartbeat_start());
 
     /* ── 5. Block until experiment ends ──────────────────────────────────── */
     phase_listener_wait_for_terminate();

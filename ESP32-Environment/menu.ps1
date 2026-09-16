@@ -621,6 +621,251 @@ function Select-BoardPort {
     }
 }
 
+function Format-BoardCmdText {
+    # Single source of truth for a board's run.ps1 command line, rebuilt from
+    # its Params hashtable. Used by Edit-BoardInteractive so CmdText can never
+    # drift out of sync with what will actually run after a field changes.
+    # Field order matches the add-board loop in the multi-board flow above --
+    # keep both in sync.
+    param([hashtable]$Params)
+    $cmd = ".\run.ps1 -Port $($Params.Port) -Role $($Params.Role) -Topology $($Params.Topology) -Attack $($Params.Attack) -Scenario $($Params.Scenario)"
+    if ($Params.ContainsKey('Label') -and $Params.Label) { $cmd += " -Label $($Params.Label)" }
+    if ($Params.ContainsKey('BlackholeRole'))             { $cmd += " -BlackholeRole $($Params.BlackholeRole)" }
+    if ($Params.ContainsKey('WormholeEnd'))               { $cmd += " -WormholeEnd $($Params.WormholeEnd)" }
+    if ($Params.ContainsKey('ScenarioTarget'))            { $cmd += ' -ScenarioTarget' }
+    if ($Params.ContainsKey('Wipe'))                      { $cmd += ' -Wipe' }
+    if ($Params.ContainsKey('Flash'))                     { $cmd += ' -Flash' }
+    if ($Params.ContainsKey('Export'))                    { $cmd += " -Export -Location $($Params.Location)" }
+    if ($Params.ContainsKey('Clean'))                     { $cmd += ' -Clean' }
+    if ($Params.ContainsKey('Analyze'))                   { $cmd += ' -Analyze' }
+    return $cmd
+}
+
+function Get-ReorderedBoards {
+    # Children first, root last. Re-run this any time Role could have
+    # changed (a root-swap edit), not just once after the add-board loop --
+    # everything downstream (the printed plan, per-board confirm, pre-build,
+    # spawn) reads whatever order $boards is in.
+    param($Boards)
+    $children  = @($Boards | Where-Object { $_.Role -ne 'root' })
+    $rootBoard = $Boards | Where-Object { $_.Role -eq 'root' } | Select-Object -First 1
+    $ordered = @($children)
+    if ($rootBoard) { $ordered += $rootBoard }
+    return $ordered
+}
+
+function Show-PlanWarnings {
+    # Sanity warnings (non-fatal), factored out so both the initial plan and
+    # every post-edit reprint show the same checks against current reality --
+    # including re-confirming BLACKHOLE_ATTACKER_MAC if the attacker board
+    # changed, the exact failure mode that cost a full run twice (see
+    # Confirm-BlackholeAttackerMac above).
+    param($Boards, [string]$Attack, [string]$Scenario)
+    $haveRootLocal = (@($Boards | Where-Object { $_.Role -eq 'root' })).Count -gt 0
+    if (-not $haveRootLocal) { Write-Host "`nWARNING: no ROOT board in this plan -- a mesh needs exactly one." -ForegroundColor Yellow }
+    if ($Attack -eq 'wormhole') {
+        $aCount = (@($Boards | Where-Object { $_.Params.WormholeEnd -eq 'A' })).Count
+        $bCount = (@($Boards | Where-Object { $_.Params.WormholeEnd -eq 'B' })).Count
+        if ($aCount -ne 1 -or $bCount -ne 1) { Write-Host "`nWARNING: wormhole needs exactly one A and one B tunnel end (found A=$aCount B=$bCount)." -ForegroundColor Yellow }
+    }
+    if ($Attack -eq 'blackhole') {
+        $atkBoard = $Boards | Where-Object { $_.Params.BlackholeRole -eq 'attacker' } | Select-Object -First 1
+        $atkCount = (@($Boards | Where-Object { $_.Params.BlackholeRole -eq 'attacker' })).Count
+        if ($atkCount -ne 1) {
+            Write-Host "`nWARNING: blackhole normally wants exactly one attacker board (found $atkCount)." -ForegroundColor Yellow
+        } else {
+            $atkLbl = if ($atkBoard.Label) { $atkBoard.Label } else { $atkBoard.Port }
+            Confirm-BlackholeAttackerMac -AttackerPort $atkBoard.Port -AttackerLabel $atkLbl -Board $atkBoard
+        }
+    }
+    $haveTargetLocal = (@($Boards | Where-Object { $_.Params.ScenarioTarget })).Count -gt 0
+    if ((Test-ScenarioNeedsTarget $Scenario) -and -not $haveTargetLocal) {
+        Write-Host "`nWARNING: -Scenario $Scenario needs exactly one board marked as the target (none was) -- go back and add one, or the scenario won't do anything." -ForegroundColor Yellow
+    }
+}
+
+function Edit-BoardInteractive {
+    # Per-node edit reached from the pre-flash plan summary. Always operates on
+    # ONE board the operator picked by number (never a blind apply-to-all --
+    # same hardware-safety convention as the rest of this file); every change
+    # is applied immediately and the field list redraws showing the new value,
+    # then the caller reprints the whole plan so the effect is visible before
+    # anything is confirmed/touched.
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Board,
+        [Parameter(Mandatory)]$Boards,
+        [Parameter(Mandatory)][string]$Attack,
+        [Parameter(Mandatory)][string]$Scenario
+    )
+
+    while ($true) {
+        $lbl = if ($Board.Label) { $Board.Label } else { $Board.Port }
+        Write-Host ""
+        Write-Host ("Editing node: {0}  ({1}, {2})" -f $lbl, $Board.Port, $Board.Role) -ForegroundColor Cyan
+
+        $fields = @()
+        $fields += @{ Key = 'Role';  Text = "Role               $($Board.Role)" }
+        $fields += @{ Key = 'Port';  Text = "Port               $($Board.Port)" }
+        $fields += @{ Key = 'Label'; Text = "Label              $(if ($Board.Label) { $Board.Label } else { '(none)' })" }
+        if ($Attack -eq 'blackhole' -and $Board.Role -ne 'root') {
+            $fields += @{ Key = 'BlackholeRole'; Text = "Blackhole role     $($Board.Params.BlackholeRole)" }
+        }
+        if ($Attack -eq 'wormhole' -and $Board.Role -ne 'root') {
+            $fields += @{ Key = 'WormholeEnd'; Text = "Wormhole end       $($Board.Params.WormholeEnd)" }
+        }
+        if ((Test-ScenarioNeedsTarget $Scenario) -and $Board.Role -ne 'root') {
+            $onOff = if ($Board.Params.ContainsKey('ScenarioTarget')) { 'Yes' } else { 'No' }
+            $fields += @{ Key = 'ScenarioTarget'; Text = "Scenario target    $onOff" }
+        }
+        $wipeOnOff   = if ($Board.Params.ContainsKey('Wipe'))   { 'Yes' } else { 'No' }
+        $flashOnOff  = if ($Board.Params.ContainsKey('Flash'))  { 'Yes' } else { 'No' }
+        $exportOnOff = if ($Board.Params.ContainsKey('Export')) { "Yes (-> $($Board.Params.Location))" } else { 'No' }
+        $cleanOnOff  = if ($Board.Params.ContainsKey('Clean'))  { 'Yes' } else { 'No' }
+        $fields += @{ Key = 'Wipe';   Text = "Wipe               $wipeOnOff" }
+        $fields += @{ Key = 'Flash';  Text = "Flash              $flashOnOff" }
+        $fields += @{ Key = 'Export'; Text = "Export             $exportOnOff" }
+        $fields += @{ Key = 'Clean';  Text = "Wipe after export  $cleanOnOff" }
+
+        $opts = @($fields | ForEach-Object { $_.Text })
+        $opts += 'Done editing this node'
+        $idx = Read-Choice -Title "Which field?" -Options $opts -Default $opts.Count
+        if ($idx -eq $opts.Count) { break }
+
+        switch ($fields[$idx - 1].Key) {
+            'Role' {
+                # Exactly one root, always -- so "change this board's role" is
+                # really "pick which board should be root": promoting one
+                # implicitly demotes whichever board holds it now. Mirrors the
+                # add-board loop's own root/child question, just re-run here.
+                $opts2 = @($Boards | ForEach-Object {
+                    $lbl2 = if ($_.Label) { $_.Label } else { $_.Port }
+                    $tag  = if ($_.Role -eq 'root') { '  (current root)' } else { '' }
+                    "$lbl2  ($($_.Port))$tag"
+                })
+                $curRootIdx = 1
+                for ($ri = 0; $ri -lt $Boards.Count; $ri++) { if ($Boards[$ri].Role -eq 'root') { $curRootIdx = $ri + 1 } }
+                $newRootIdx = Read-Choice -Title "Which board should be ROOT?" -Options $opts2 -Default $curRootIdx
+                $newRoot = $Boards[$newRootIdx - 1]
+
+                if ($newRoot.Role -eq 'root') {
+                    Write-Host "   Already root -- unchanged." -ForegroundColor Yellow
+                } else {
+                    $oldRoot = $Boards | Where-Object { $_.Role -eq 'root' } | Select-Object -First 1
+
+                    if ($oldRoot) {
+                        $oldRoot.Role = 'child'
+                        $oldRoot.Params['Role'] = 'child'
+                        $oldRoot.Params.Remove('Analyze') | Out-Null
+                        # Demoted board needs an attack sub-role if this run has
+                        # one -- default to the harmless side; editable afterward
+                        # via this same menu's BlackholeRole/WormholeEnd field.
+                        if ($Attack -eq 'blackhole' -and -not $oldRoot.Params.ContainsKey('BlackholeRole')) {
+                            $oldRoot.Params['BlackholeRole'] = 'victim'
+                        }
+                        if ($Attack -eq 'wormhole' -and -not $oldRoot.Params.ContainsKey('WormholeEnd')) {
+                            $oldRoot.Params['WormholeEnd'] = 'B'
+                        }
+                        $oldRoot.CmdText = Format-BoardCmdText -Params $oldRoot.Params
+                    }
+
+                    $newRoot.Role = 'root'
+                    $newRoot.Params['Role'] = 'root'
+                    $newRoot.Params.Remove('BlackholeRole')  | Out-Null
+                    $newRoot.Params.Remove('WormholeEnd')    | Out-Null
+                    $newRoot.Params.Remove('ScenarioTarget') | Out-Null
+                    if ($newRoot.Params.ContainsKey('Export')) { $newRoot.Params['Analyze'] = $true }
+                    $newRoot.CmdText = Format-BoardCmdText -Params $newRoot.Params
+
+                    $oldLbl = if ($oldRoot) { if ($oldRoot.Label) { $oldRoot.Label } else { $oldRoot.Port } } else { '(none)' }
+                    $newLbl = if ($newRoot.Label) { $newRoot.Label } else { $newRoot.Port }
+                    Write-Host ("   {0} is now ROOT; {1} is now a child." -f $newLbl, $oldLbl) -ForegroundColor Green
+                }
+                # $Board itself may have just been demoted/promoted -- its Role
+                # in the "Editing node: ..." header above updates next loop turn.
+            }
+            'Port' {
+                $taken = @($Boards | Where-Object { $_ -ne $Board } | ForEach-Object { $_.Port })
+                $new = Select-BoardPort -Taken $taken
+                if ($new) {
+                    $Board.Port = $new
+                    $Board.Params['Port'] = $new
+                    $Board.Kind = (Get-PortList | Where-Object { $_.Port -eq $new } | Select-Object -First 1).Kind
+                }
+            }
+            'Label' {
+                $new = Read-Line "New label (blank to clear): "
+                if ($new -and $new -notmatch '^[A-Za-z0-9_\-]+$') {
+                    Write-Host "   Label must be letters/digits/_/- only -- unchanged." -ForegroundColor Yellow
+                } elseif ($new) {
+                    $Board.Label = $new; $Board.Params['Label'] = $new
+                } else {
+                    $Board.Label = $null; $Board.Params.Remove('Label') | Out-Null
+                }
+            }
+            'BlackholeRole' {
+                $bhDefault = if ($Board.Params.BlackholeRole -eq 'victim') { 2 } else { 1 }
+                $i = Read-Choice -Title "Blackhole role of THIS board?" -Options @(
+                    'attacker  (relay that forwards then drops victim probes)',
+                    'victim    (sends its probes to the attacker MAC)'
+                ) -Default $bhDefault
+                $Board.Params['BlackholeRole'] = if ($i -eq 2) { 'victim' } else { 'attacker' }
+            }
+            'WormholeEnd' {
+                $wDefault = if ($Board.Params.WormholeEnd -eq 'A') { 1 } else { 2 }
+                $i = Read-Choice -Title "Wormhole tunnel end of THIS board?" -Options @(
+                    'A  (exit / root-side: re-injects to root)',
+                    'B  (entry / leaf-side: captures + tunnels)'
+                ) -Default $wDefault
+                $Board.Params['WormholeEnd'] = if ($i -eq 1) { 'A' } else { 'B' }
+            }
+            'ScenarioTarget' {
+                if ($Board.Params.ContainsKey('ScenarioTarget')) {
+                    $Board.Params.Remove('ScenarioTarget') | Out-Null
+                } else {
+                    $already = $Boards | Where-Object { $_ -ne $Board -and $_.Params.ContainsKey('ScenarioTarget') } | Select-Object -First 1
+                    if ($already) {
+                        $aLbl = if ($already.Label) { $already.Label } else { $already.Port }
+                        Write-Host ("   {0} is already the $Scenario target -- edit it first to clear that." -f $aLbl) -ForegroundColor Yellow
+                    } else {
+                        $Board.Params['ScenarioTarget'] = $true
+                    }
+                }
+            }
+            'Wipe' {
+                if ($Board.Params.ContainsKey('Wipe')) { $Board.Params.Remove('Wipe') | Out-Null } else { $Board.Params['Wipe'] = $true }
+            }
+            'Flash' {
+                if ($Board.Params.ContainsKey('Flash')) { $Board.Params.Remove('Flash') | Out-Null } else { $Board.Params['Flash'] = $true }
+            }
+            'Export' {
+                if ($Board.Params.ContainsKey('Export')) {
+                    $Board.Params.Remove('Export') | Out-Null
+                    $Board.Params.Remove('Location') | Out-Null
+                    $Board.Params.Remove('Clean') | Out-Null
+                    if ($Board.Role -eq 'root' -and $Board.Params.ContainsKey('Analyze')) {
+                        Write-Host "   Export off -- also dropping -Analyze (needs exported CSVs)." -ForegroundColor Yellow
+                        $Board.Params.Remove('Analyze') | Out-Null
+                    }
+                } else {
+                    $Board.Params['Export'] = $true
+                    $Board.Params['Location'] = Select-Location
+                    if ($Board.Role -eq 'root') { $Board.Params['Analyze'] = $true }
+                }
+            }
+            'Clean' {
+                if (-not $Board.Params.ContainsKey('Export')) {
+                    Write-Host "   Turn Export on first -- wipe-after-export needs something to export." -ForegroundColor Yellow
+                } elseif ($Board.Params.ContainsKey('Clean')) {
+                    $Board.Params.Remove('Clean') | Out-Null
+                } else {
+                    $Board.Params['Clean'] = $true
+                }
+            }
+        }
+        $Board.CmdText = Format-BoardCmdText -Params $Board.Params
+    }
+}
+
 function Select-MultiplePorts {
     # Ported/trimmed from run_wizard.ps1's Select-MultiplePorts; the per-port
     # vetting below now calls the shared Test-PortSafeToTouch above instead of
@@ -1043,26 +1288,11 @@ if ($action -eq 2) {
 
     if ($boards.Count -eq 0) { Write-Host "No boards added." -ForegroundColor Yellow; continue menu }
 
-    # Sanity warnings (non-fatal)
-    if (-not $haveRoot) { Write-Host "`nWARNING: no ROOT board in this plan -- a mesh needs exactly one." -ForegroundColor Yellow }
-    if ($attack -eq 'wormhole') {
-        $aCount = ($boards | Where-Object { $_.Params.WormholeEnd -eq 'A' }).Count
-        $bCount = ($boards | Where-Object { $_.Params.WormholeEnd -eq 'B' }).Count
-        if ($aCount -ne 1 -or $bCount -ne 1) { Write-Host "`nWARNING: wormhole needs exactly one A and one B tunnel end (found A=$aCount B=$bCount)." -ForegroundColor Yellow }
-    }
-    if ($attack -eq 'blackhole') {
-        $atkBoard = $boards | Where-Object { $_.Params.BlackholeRole -eq 'attacker' } | Select-Object -First 1
-        $atkCount = ($boards | Where-Object { $_.Params.BlackholeRole -eq 'attacker' }).Count
-        if ($atkCount -ne 1) {
-            Write-Host "`nWARNING: blackhole normally wants exactly one attacker board (found $atkCount)." -ForegroundColor Yellow
-        } else {
-            $atkLbl = if ($atkBoard.Label) { $atkBoard.Label } else { $atkBoard.Port }
-            Confirm-BlackholeAttackerMac -AttackerPort $atkBoard.Port -AttackerLabel $atkLbl -Board $atkBoard
-        }
-    }
-    if ((Test-ScenarioNeedsTarget $scenario) -and -not $haveScenarioTarget) {
-        Write-Host "`nWARNING: -Scenario $scenario needs exactly one board marked as the target (none was) -- go back and add one, or the scenario won't do anything." -ForegroundColor Yellow
-    }
+    # Sanity warnings (non-fatal) -- also re-run after any edit below that
+    # could change role/attack-sub-role/scenario-target assignments, not just
+    # once here, so a stale "exactly one attacker" warning (or its absence)
+    # never survives an edit that changed who holds that role.
+    Show-PlanWarnings -Boards $boards -Attack $attack -Scenario $scenario
 
     # -Analyze on the root, only if exporting -- and only now that we know
     # every board that was added (root must be exported LAST to see the run).
@@ -1080,11 +1310,9 @@ if ($action -eq 2) {
     # the menu to fix it). Everything below (the printed plan, the per-board
     # confirm, the pre-build progress, and the final spawn) reads from this same
     # $boards list, so root visibly builds/confirms/opens last, consistently, no
-    # matter what order it was added in.
-    $children  = @($boards | Where-Object { $_.Role -ne 'root' })
-    $rootBoard = $boards | Where-Object { $_.Role -eq 'root' } | Select-Object -First 1
-    $boards = @($children)
-    if ($rootBoard) { $boards += $rootBoard }
+    # matter what order it was added in. Also re-run after a root-swap edit
+    # below, so a newly-promoted root still sorts last.
+    $boards = Get-ReorderedBoards -Boards $boards
 
     # ---- plan table + per-board confirm (no blind apply-to-all) -------------
     # Boxed summary ported from run_wizard.ps1's pre-flash confirm (same
@@ -1092,50 +1320,104 @@ if ($action -eq 2) {
     # Exports/Analysis footer) so both front-ends show the same thing before
     # committing to a flash. menu.ps1 has no Repeat/swap-mode concept, so those
     # two header lines are omitted rather than faked.
-    Write-Host ""
-    Write-Host "------------------------------------------------------------" -ForegroundColor Green
-    Write-Host ("  Attack   : {0}" -f $attack)
-    Write-Host ("  Topology : {0}" -f $topo)
-    Write-Host ("  Scenario : {0}" -f $scenario)
-    if ($export) { Write-Host ("  Location : {0}" -f $loc) }
-    Write-Host ""
-    Write-Host "  Order (root is always last):"
-    $step = 0
-    foreach ($b in $boards) {
-        $step++
-        $lbl = if ($b.Label) { $b.Label } else { $b.Port }
-        if ($b.Role -eq 'root') {
-            $display = 'root'
-        } elseif ($attack -eq 'blackhole' -and $b.Params.BlackholeRole) {
-            $display = "blackhole $($b.Params.BlackholeRole)"
-        } elseif ($attack -eq 'wormhole' -and $b.Params.WormholeEnd) {
-            $display = "wormhole end $($b.Params.WormholeEnd)"
-        } else {
-            $display = "$attack child"
-        }
-        $tail = @()
-        if ($b.Params.Export)  { $tail += '-Export' }
-        if ($b.Params.Analyze) { $tail += '-Analyze' }
-        $tailText = $tail -join ' '
-        if ($b.Params.ScenarioTarget) { $tailText = "$tailText  << $scenario TARGET" }
-        $mac = Resolve-BoardMac -Board $b
-        $macDisp = if ($mac) { $mac } else { '(unread)' }
-        $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Params.BlackholeRole -eq 'attacker') { 'attacker' } else { 'child' }
-        $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $lbl, $display, $b.Port, $macDisp, $tailText)
-        Write-Host (Colorize-Role $line $role)
-    }
-    if ($export) {
-        $dirs = Get-RunDirs -Attack $attack -Topology $topo -Location $loc -Scenario $scenario
+    # Wrapped as a scriptblock (not just printed inline) so the edit-a-node
+    # loop just below can reprint it after each change, instead of the
+    # operator having to trust an edit "took" with no visible confirmation.
+    $printPlan = {
         Write-Host ""
-        Write-Host "  Exports  -> $($dirs.Export)"
-        Write-Host "  Analysis -> $($dirs.Analysis)"
+        Write-Host "------------------------------------------------------------" -ForegroundColor Green
+        Write-Host ("  Attack   : {0}" -f $attack)
+        Write-Host ("  Topology : {0}" -f $topo)
+        Write-Host ("  Scenario : {0}" -f $scenario)
+        if ($export) { Write-Host ("  Location : {0}" -f $loc) }
+        Write-Host ""
+        Write-Host "  Order (root is always last):"
+        $step = 0
+        foreach ($b in $boards) {
+            $step++
+            $lbl = if ($b.Label) { $b.Label } else { $b.Port }
+            if ($b.Role -eq 'root') {
+                $display = 'root'
+            } elseif ($attack -eq 'blackhole' -and $b.Params.BlackholeRole) {
+                $display = "blackhole $($b.Params.BlackholeRole)"
+            } elseif ($attack -eq 'wormhole' -and $b.Params.WormholeEnd) {
+                $display = "wormhole end $($b.Params.WormholeEnd)"
+            } else {
+                $display = "$attack child"
+            }
+            $tail = @()
+            if ($b.Params.Export)  { $tail += '-Export' }
+            if ($b.Params.Analyze) { $tail += '-Analyze' }
+            $tailText = $tail -join ' '
+            if ($b.Params.ScenarioTarget) { $tailText = "$tailText  << $scenario TARGET" }
+            $mac = Resolve-BoardMac -Board $b
+            $macDisp = if ($mac) { $mac } else { '(unread)' }
+            $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Params.BlackholeRole -eq 'attacker') { 'attacker' } else { 'child' }
+            $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $lbl, $display, $b.Port, $macDisp, $tailText)
+            Write-Host (Colorize-Role $line $role)
+        }
+        if ($export) {
+            $dirs = Get-RunDirs -Attack $attack -Topology $topo -Location $loc -Scenario $scenario
+            Write-Host ""
+            Write-Host "  Exports  -> $($dirs.Export)"
+            Write-Host "  Analysis -> $($dirs.Analysis)"
+        }
+        Write-Host "------------------------------------------------------------" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Commands:" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $boards.Count; $i++) {
+            $b = $boards[$i]
+            Write-Host ("  [{0}] {1,-6} {2}" -f ($i + 1), $b.Port, $b.CmdText) -ForegroundColor DarkGray
+        }
     }
-    Write-Host "------------------------------------------------------------" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Commands:" -ForegroundColor Cyan
-    for ($i = 0; $i -lt $boards.Count; $i++) {
-        $b = $boards[$i]
-        Write-Host ("  [{0}] {1,-6} {2}" -f ($i + 1), $b.Port, $b.CmdText) -ForegroundColor DarkGray
+    & $printPlan
+
+    # ---- optional adjustments, right after the summary (no blind apply-to-all
+    # -- see [[thesis_cc_wizard_hardware_safety]]: any node change is on ONE
+    # node the operator picked by number; a topology change is explicit and
+    # global by nature. The plan (and its warnings) is rebuilt+reprinted after
+    # every change, and nothing is touched until the per-board CONFIRM loop
+    # below runs). --------------------------------------------------------------
+    :adjustLoop while ($true) {
+        $adjIdx = Read-Choice -Title "Adjust the plan before confirming?" -Options @(
+            'Edit a specific node (port/label/role/toggles/attack sub-role)',
+            'Change topology for this run',
+            'Nothing more -- continue to confirm'
+        ) -Default 3
+        if ($adjIdx -eq 3) { break adjustLoop }
+
+        if ($adjIdx -eq 1) {
+            for ($i = 0; $i -lt $boards.Count; $i++) {
+                $b = $boards[$i]
+                $lbl = if ($b.Label) { $b.Label } else { $b.Port }
+                Write-Host ("   [{0}] {1}  ({2}, {3})" -f ($i + 1), $lbl, $b.Port, $b.Role)
+            }
+            $pickIdx = Read-Choice -Title "Which node?" -Options ($boards | ForEach-Object {
+                $lbl = if ($_.Label) { $_.Label } else { $_.Port }
+                "$lbl  ($($_.Port), $($_.Role))"
+            }) -Default 1
+            Edit-BoardInteractive -Board $boards[$pickIdx - 1] -Boards $boards -Attack $attack -Scenario $scenario
+        }
+        elseif ($adjIdx -eq 2) {
+            $topoOpts = @('tree', 'star', 'linear', 'partial')
+            $topoIdx2 = Read-Choice -Title "Topology (every board, same)?" -Options @(
+                'tree     (default self-organising)',
+                'star     (all direct children of root)',
+                'linear   (forced chain)',
+                'partial  (physical placement)'
+            ) -Default ([array]::IndexOf($topoOpts, $topo) + 1)
+            $topo = $topoOpts[$topoIdx2 - 1]
+            foreach ($b in $boards) {
+                $b.Params['Topology'] = $topo
+                $b.CmdText = Format-BoardCmdText -Params $b.Params
+            }
+        }
+
+        # A node's Role or the run's Topology may have just changed -- re-sort
+        # (root-last) and re-check invariants before showing the effect.
+        $boards = Get-ReorderedBoards -Boards $boards
+        & $printPlan
+        Show-PlanWarnings -Boards $boards -Attack $attack -Scenario $scenario
     }
 
     $confirmed = @()

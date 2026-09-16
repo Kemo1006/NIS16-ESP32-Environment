@@ -12,6 +12,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "esp_err.h"
 #include "esp_mesh.h"
@@ -70,6 +71,41 @@ bool mesh_setup_get_parent_mac(uint8_t mac[6]);
  * @brief Return true if this node is the root of the mesh.
  */
 bool mesh_setup_is_root(void);
+
+/* ── Command Center heartbeat (NIS16 — CTTHES3) ──────────────────────────── */
+
+/**
+ * @brief Start this node's heartbeat sender task.
+ *
+ * Call on EVERY node — root included — after mesh_setup_init(),
+ * node_identity_resolve() and phase_listener_start(). Sends a
+ * node_heartbeat_pkt_t (mesh_messages.h) to the root every
+ * HEARTBEAT_INTERVAL_MS carrying this node's MAC, nickname, role, mesh layer
+ * and parent RSSI.
+ */
+esp_err_t heartbeat_start(void);
+
+/**
+ * @brief Root-only: seed the node table with this node's own row.
+ *
+ * Call once on the root, after mesh_setup_init()/node_identity_resolve() and
+ * before packets can arrive (i.e. before/alongside phase_listener_start()).
+ */
+void heartbeat_table_init(void);
+
+/**
+ * @brief Root-only: feed one received mesh packet to the heartbeat table.
+ *
+ * Safe to call unconditionally from a shared packet dispatcher — this is a
+ * no-op (returns false) for anything that isn't a HEARTBEAT_MSG_MAGIC frame.
+ * Inserts/updates the sender's row; reprints the full table (sorted by
+ * layer) whenever the sender is new or its layer/role/nickname changed, so
+ * whether the connected nodes are following the built topology is visible
+ * at a glance in the console.
+ *
+ * @return true if the packet was a heartbeat frame (handled).
+ */
+bool heartbeat_ingest(const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }

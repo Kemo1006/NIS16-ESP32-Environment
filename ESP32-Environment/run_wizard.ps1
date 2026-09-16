@@ -2081,6 +2081,178 @@ function New-RunParams {
     return $h
 }
 
+function Set-AttackSubRoles {
+    # Interactive "who holds the attacker / Node A / Node B seat" picker among
+    # the non-root boards in $Roster. Shared by Edit-BoardInteractive's 'Kind'
+    # field (reassign just the seat) and its 'Role' field (a root swap needs
+    # the exact same reassignment run against the new child set, so the
+    # "exactly one attacker" / "exactly one A and one B" invariant can never
+    # be left broken by either edit). A cancelled ('b' back) pick leaves
+    # whatever the roster already had untouched.
+    param([Parameter(Mandatory)]$Roster, [Parameter(Mandatory)][string]$Attack)
+
+    $peers  = @($Roster | Where-Object { $_.Role -ne 'root' })
+    if ($peers.Count -eq 0) { return }
+    $labels = @($peers | ForEach-Object { "$($_.Label)  ($($_.Port))" })
+
+    if ($Attack -eq 'blackhole') {
+        $pickIdx = Show-Menu -Title "Which board is the BLACKHOLE ATTACKER? (exactly one)" -Options $labels -AllowBack
+        if ($pickIdx -ge 0) {
+            for ($ci = 0; $ci -lt $peers.Count; $ci++) {
+                if ($ci -eq $pickIdx) { $peers[$ci].Kind = 'attacker'; $peers[$ci].Display = 'blackhole ATTACKER' }
+                else                  { $peers[$ci].Kind = 'victim';   $peers[$ci].Display = 'blackhole victim' }
+            }
+        }
+    }
+    elseif ($Attack -eq 'wormhole') {
+        $idxA = Show-Menu -Title "Which board is WORMHOLE Node A (exit / re-injects to root)?" -Options $labels -AllowBack
+        if ($idxA -ge 0) {
+            $idxB = -1
+            while ($true) {
+                $idxB = Show-Menu -Title "Which board is WORMHOLE Node B (entry / captures + tunnels)?" -Options $labels -AllowBack
+                if ($idxB -eq -1 -or $idxB -ne $idxA) { break }
+                Write-Host "   Node B must be a different board from Node A." -ForegroundColor Yellow
+            }
+            if ($idxB -ge 0) {
+                for ($ci = 0; $ci -lt $peers.Count; $ci++) {
+                    if     ($ci -eq $idxA) { $peers[$ci].Kind = 'A'; $peers[$ci].Display = 'wormhole Node A (exit)' }
+                    elseif ($ci -eq $idxB) { $peers[$ci].Kind = 'B'; $peers[$ci].Display = 'wormhole Node B (entry)' }
+                    else                    { $peers[$ci].Kind = 'control'; $peers[$ci].Display = 'control (plain firmware)' }
+                }
+            }
+        }
+    }
+}
+
+function Edit-BoardInteractive {
+    # Per-node edit reached from the pre-flash plan summary (same purpose as
+    # menu.ps1's function of the same name; a separate implementation since the
+    # two scripts' board/roster models differ). Always operates on ONE LOCAL
+    # board from $Roster (== $runRoster -- remote/multi-laptop boards never
+    # reach it and aren't editable here). A blackhole/wormhole role change
+    # reassigns every LOCAL peer the same way step 8 above does (attacker/
+    # victim, or A/B/control), so the "exactly one attacker" / "exactly one A
+    # and one B" invariant can never be left broken by an edit. -HasRemoteAttackRole
+    # hides that field entirely when the attacker/A/B seat is on another laptop --
+    # reassigning it among local boards only would create a second one instead
+    # of moving it.
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Board,
+        [Parameter(Mandatory)]$Roster,
+        [Parameter(Mandatory)][string]$Attack,
+        [Parameter(Mandatory)][string]$Scenario,
+        [Parameter(Mandatory)][object[]]$Ports,
+        [bool]$HasRemoteAttackRole = $false
+    )
+
+    while ($true) {
+        Write-Host ""
+        Write-Host ("Editing node: {0}  ({1}, {2})" -f $Board.Label, $Board.Port, $Board.Display) -ForegroundColor Cyan
+
+        $fields = @()
+        $fields += @{ Key = 'Role';  Text = "Role               $($Board.Role)" }
+        $fields += @{ Key = 'Label'; Text = "Label              $($Board.Label)" }
+        $fields += @{ Key = 'Port';  Text = "Port               $($Board.Port)" }
+        if ($Board.Role -ne 'root' -and $Attack -in @('blackhole', 'wormhole') -and -not $HasRemoteAttackRole) {
+            $fields += @{ Key = 'Kind'; Text = "Attack role        $($Board.Display)" }
+        }
+        if ((Test-ScenarioNeedsTarget $Scenario) -and $Board.Role -ne 'root') {
+            $onOff = if ($Board.ScenarioTarget) { 'Yes' } else { 'No' }
+            $fields += @{ Key = 'ScenarioTarget'; Text = "Scenario target    $onOff" }
+        }
+
+        $opts = @($fields | ForEach-Object { $_.Text })
+        $opts += 'Done editing this node'
+        $idx = Show-Menu -Title "Which field?" -Options $opts -DefaultIndex ($opts.Count - 1)
+        if ($idx -eq -1 -or $idx -eq ($opts.Count - 1)) { break }
+
+        switch ($fields[$idx].Key) {
+            'Role' {
+                # Exactly one root, always -- so "change this board's role" is
+                # really "pick which board should be root": promoting one
+                # implicitly demotes whichever board holds it now.
+                $opts2 = @($Roster | ForEach-Object {
+                    $tag = if ($_.Role -eq 'root') { '  (current root)' } else { '' }
+                    "$($_.Label)  ($($_.Port))$tag"
+                })
+                $curRootIdx = 0
+                for ($ri = 0; $ri -lt $Roster.Count; $ri++) { if ($Roster[$ri].Role -eq 'root') { $curRootIdx = $ri } }
+                $newRootIdx = Show-Menu -Title "Which board should be ROOT?" -Options $opts2 -DefaultIndex $curRootIdx
+                if ($newRootIdx -ge 0) {
+                    $newRoot = $Roster[$newRootIdx]
+                    if ($newRoot.Role -eq 'root') {
+                        Write-Host "   Already root -- unchanged." -ForegroundColor Yellow
+                    } else {
+                        $oldRoot = $Roster | Where-Object { $_.Role -eq 'root' } | Select-Object -First 1
+                        if ($oldRoot) {
+                            $oldRoot.Role = 'child'
+                            # Safe default Kind for this attack type -- overwritten
+                            # below by Set-AttackSubRoles whenever that runs; this
+                            # is what the demoted board is left with when it
+                            # doesn't (HasRemoteAttackRole -- the seat isn't local).
+                            # 'plain' is only correct for a baseline (attack=none)
+                            # run; using it under blackhole/wormhole would build
+                            # this board as an uninvolved baseline child while root
+                            # still announces the attack phase.
+                            if     ($Attack -eq 'blackhole') { $oldRoot.Kind = 'victim';  $oldRoot.Display = 'blackhole victim' }
+                            elseif ($Attack -eq 'wormhole')  { $oldRoot.Kind = 'control'; $oldRoot.Display = 'control (plain firmware)' }
+                            else                               { $oldRoot.Kind = 'plain';   $oldRoot.Display = 'plain child' }
+                        }
+                        $newRoot.Role = 'root'
+                        $newRoot.Kind = 'root'
+                        $newRoot.Display = 'ROOT (announces the phases)'
+                        $newRoot.ScenarioTarget = $false
+
+                        $oldLbl = if ($oldRoot) { $oldRoot.Label } else { '(none)' }
+                        Write-Host ("   {0} is now ROOT; {1} is now a child." -f $newRoot.Label, $oldLbl) -ForegroundColor Green
+
+                        if ($Attack -in @('blackhole', 'wormhole') -and -not $HasRemoteAttackRole) {
+                            Write-Host "   Reassign the attack sub-role among the new child set:" -ForegroundColor DarkGray
+                            Set-AttackSubRoles -Roster $Roster -Attack $Attack
+                        }
+                    }
+                }
+            }
+            'Label' {
+                $new = Read-Line "New label > [$($Board.Label)] "
+                if ($new) {
+                    if (@($Roster | Where-Object { $_ -ne $Board } | ForEach-Object { $_.Label }) -contains $new) {
+                        Write-Host "   That label is already used by another board -- unchanged." -ForegroundColor Yellow
+                    } else {
+                        $Board.Label = $new
+                    }
+                }
+            }
+            'Port' {
+                $taken = @($Roster | Where-Object { $_ -ne $Board -and $_.Port } | ForEach-Object { $_.Port })
+                $new = Select-Port -For $Board.Label -Ports $Ports -Taken $taken
+                if ($new -and $new -ne $script:BackSignal) { $Board.Port = $new }
+            }
+            'Kind' {
+                Set-AttackSubRoles -Roster $Roster -Attack $Attack
+            }
+            'ScenarioTarget' {
+                if ($Board.ScenarioTarget) {
+                    $Board.ScenarioTarget = $false
+                    $Board.Display = $Board.Display -replace ' \+ .* TARGET$', ''
+                } else {
+                    $eligible = if ($Scenario -eq 'burst') { @($Roster | Where-Object { Test-BurstEligible $_ }) } else { @($Roster | Where-Object { $_.Role -ne 'root' }) }
+                    if ($eligible -notcontains $Board) {
+                        Write-Host "   This board can't carry the $Scenario scenario (wrong attack role for it)." -ForegroundColor Yellow
+                    } else {
+                        foreach ($c in $Roster) {
+                            $c.ScenarioTarget = $false
+                            $c.Display = $c.Display -replace ' \+ .* TARGET$', ''
+                        }
+                        $Board.ScenarioTarget = $true
+                        $Board.Display += " + $($Scenario.ToUpper()) TARGET"
+                    }
+                }
+            }
+        }
+    }
+}
+
 function Get-RunDirs {
     # The attack/topology folder names the whole pipeline agrees on. 'none' files
     # under baseline\ and 'partial' under partial_mesh\ - these MUST stay
@@ -3260,6 +3432,11 @@ $children   = @($runRoster | Where-Object { $_.Role -ne 'root' })
 
 # ------------------------------------------------- multi-laptop hand-off ----
 $remoteBoards = @($fullRoster | Where-Object { -not $_.Port })
+# Used later to gate the pre-flash edit-a-node feature's attack-role field:
+# if the attacker/A/B seat is on ANOTHER laptop, reassigning it among local
+# boards only would leave two boards holding that seat instead of one -- so
+# that field is hidden rather than risking a broken multi-laptop split.
+$hasRemoteAttackRole = (@($remoteBoards | Where-Object { $_.Kind -in @('attacker', 'A', 'B') })).Count -gt 0
 if ($remoteBoards.Count -gt 0) {
     Write-Host ""
     Write-Host "------------------------------------------------------------" -ForegroundColor Yellow
@@ -3510,52 +3687,96 @@ $cleanBuild = ($cleanAns -eq 'y' -or $cleanAns -eq 'Y')
 
 # --------------------------------------------------------- confirmation ----
 
-$plan = @()
-foreach ($b in $runRoster) {
-    $plan += [pscustomobject]@{
-        Board  = $b
-        Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario)
+# Wrapped as a scriptblock (not just run inline) so the edit-a-node loop just
+# below can rebuild $plan (Params comes from New-RunParams, a snapshot -- it
+# does NOT auto-follow a later edit to the Board it was built from) and
+# reprint the box after each change, instead of the operator having to trust
+# an edit "took" with no visible confirmation.
+$buildAndPrintPlan = {
+    $script:plan = @()
+    foreach ($b in $runRoster) {
+        $script:plan += [pscustomobject]@{
+            Board  = $b
+            Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario)
+        }
     }
-}
 
-$dirs        = Get-RunDirs -Attack $attack -Topology $topology -Location $location -Scenario $scenario
-$attackDir   = $dirs.AttackDir
-$topoDir     = $dirs.TopoDir
-$exportDir   = $dirs.Export
-$analysisDir = $dirs.Analysis
+    $script:dirs        = Get-RunDirs -Attack $attack -Topology $topology -Location $location -Scenario $scenario
+    $script:attackDir   = $dirs.AttackDir
+    $script:topoDir     = $dirs.TopoDir
+    $script:exportDir   = $dirs.Export
+    $script:analysisDir = $dirs.Analysis
 
-Write-Host ""
-Write-Host "------------------------------------------------------------" -ForegroundColor Green
-Write-Host ("  Attack   : {0}" -f $attack)
-Write-Host ("  Topology : {0}" -f $topology)
-Write-Host ("  Scenario : {0}" -f $scenario)
-Write-Host ("  Location : {0}" -f $location)
-Write-Host ("  Repeat   : {0}" -f $repeat)
-Write-Host ("  Mode     : {0}" -f $(if ($swapMode) { 'shared port - swap boards between steps' } else { 'separate ports - no swapping' }))
-if ($scenario -in @('mobility', 'powercycle')) {
-    $tgt = $plan | Where-Object { $_.Board.ScenarioTarget } | Select-Object -First 1
-    $tgtLbl = if ($tgt) { $tgt.Board.Label } else { '(none picked!)' }
-    Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
-    Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
+    Write-Host ""
+    Write-Host "------------------------------------------------------------" -ForegroundColor Green
+    Write-Host ("  Attack   : {0}" -f $attack)
+    Write-Host ("  Topology : {0}" -f $topology)
+    Write-Host ("  Scenario : {0}" -f $scenario)
+    Write-Host ("  Location : {0}" -f $location)
+    Write-Host ("  Repeat   : {0}" -f $repeat)
+    Write-Host ("  Mode     : {0}" -f $(if ($swapMode) { 'shared port - swap boards between steps' } else { 'separate ports - no swapping' }))
+    if ($scenario -in @('mobility', 'powercycle')) {
+        $tgt = $plan | Where-Object { $_.Board.ScenarioTarget } | Select-Object -First 1
+        $tgtLbl = if ($tgt) { $tgt.Board.Label } else { '(none picked!)' }
+        Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
+        Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
+    }
+    Write-Host ""
+    Write-Host "  Order (root is always last):"
+    $step = 0
+    foreach ($p in $plan) {
+        $step++
+        $tail = '-Export'
+        if ($p.Board.Role -eq 'root') { $tail = '-Analyze' }
+        if ($p.Board.ScenarioTarget) { $tail = "$tail  << $scenario TARGET" }
+        $mac = Resolve-BoardMac -Board $p.Board -SkipLiveRead:($SkipMacCheck -or $DryRun)
+        $macDisp = if ($mac) { $mac } else { '(unread)' }
+        $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $macDisp, $tail)
+        $role = if ($p.Board.Role -eq 'root') { 'root' } elseif ($p.Board.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+        Write-Host (Colorize-Role $line $role)
+    }
+    Write-Host ""
+    Write-Host "  Exports  -> $exportDir"
+    Write-Host "  Analysis -> $analysisDir"
+    Write-Host "------------------------------------------------------------" -ForegroundColor Green
 }
-Write-Host ""
-Write-Host "  Order (root is always last):"
-$step = 0
-foreach ($p in $plan) {
-    $step++
-    $tail = '-Export'
-    if ($p.Board.Role -eq 'root') { $tail = '-Analyze' }
-    if ($p.Board.ScenarioTarget) { $tail = "$tail  << $scenario TARGET" }
-    $mac = Resolve-BoardMac -Board $p.Board -SkipLiveRead:($SkipMacCheck -or $DryRun)
-    $macDisp = if ($mac) { $mac } else { '(unread)' }
-    $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $macDisp, $tail)
-    $role = if ($p.Board.Role -eq 'root') { 'root' } elseif ($p.Board.Kind -eq 'attacker') { 'attacker' } else { 'child' }
-    Write-Host (Colorize-Role $line $role)
+& $buildAndPrintPlan
+
+# ---- optional adjustments, right after the summary (no blind apply-to-all --
+# see [[thesis_cc_wizard_hardware_safety]]: any node change is on ONE node the
+# operator picked by number; a topology change is explicit and global by
+# nature. $plan is rebuilt+reprinted after every change, and nothing is
+# touched until "Proceed?" below runs). --------------------------------------
+while ($true) {
+    $adjIdx = Show-Menu -Title "Adjust the plan before confirming?" -Options @(
+        'Edit a specific node (port/label/role/scenario target/attack sub-role)',
+        'Change topology for this run',
+        'Nothing more -- continue to confirm'
+    ) -DefaultIndex 2
+    if ($adjIdx -eq 2) { break }
+
+    if ($adjIdx -eq 0) {
+        $pickIdx = Show-Menu -Title "Which node?" -Options (@($runRoster | ForEach-Object { "$($_.Label)  ($($_.Port), $($_.Display))" }))
+        if ($pickIdx -ge 0) {
+            Edit-BoardInteractive -Board $runRoster[$pickIdx] -Roster $runRoster -Attack $attack -Scenario $scenario -Ports $ports -HasRemoteAttackRole $hasRemoteAttackRole
+        }
+    }
+    elseif ($adjIdx -eq 1) {
+        $topoOpts = @('tree', 'star', 'linear', 'partial')
+        $topoIdx2 = Show-Menu -Title "Topology (every board, same)?" -Options @(
+            'tree     (default self-organising)',
+            'star     (all direct children of root)',
+            'linear   (forced chain)',
+            'partial  (physical placement)'
+        ) -DefaultIndex ([array]::IndexOf($topoOpts, $topology))
+        if ($topoIdx2 -ge 0) { $topology = $topoOpts[$topoIdx2] }
+    }
+
+    # A node's Role may have just changed -- re-sort (root last), same
+    # invariant as the original roster construction relies on downstream.
+    $runRoster = @($runRoster | Where-Object { $_.Role -ne 'root' }) + @($runRoster | Where-Object { $_.Role -eq 'root' })
+    & $buildAndPrintPlan
 }
-Write-Host ""
-Write-Host "  Exports  -> $exportDir"
-Write-Host "  Analysis -> $analysisDir"
-Write-Host "------------------------------------------------------------" -ForegroundColor Green
 
 # --------------------------------------------------------- time estimate ----
 # So you can set a phone alarm and walk away instead of watching the terminal

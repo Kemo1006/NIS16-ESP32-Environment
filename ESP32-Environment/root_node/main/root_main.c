@@ -185,6 +185,12 @@ void app_main(void)
      *       the mesh receive queue, keeping its own state consistent) ─────── */
     ESP_ERROR_CHECK(phase_listener_start());
 
+    /* ── 2b. Command Center heartbeat table — seeds the root's own row, then
+     *        accepts updates via probe_data_cb below. Every connected node's
+     *        MAC/layer/role becomes visible here, sorted by layer, as soon as
+     *        each one's first heartbeat arrives. ───────────────────────────── */
+    heartbeat_table_init();
+
     /* ── 3. Logger ───────────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_ROOT));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
@@ -192,13 +198,15 @@ void app_main(void)
     /* ── 4. Probe sink: register a handler for incoming probe packets.
      *       esp_mesh_recv() must be called from ONE task only, so instead of a
      *       competing receive loop the phase listener (the single reader) hands
-     *       us every non-phase packet via this callback. ──────────────────── */
+     *       us every non-phase packet via this callback. It also demuxes
+     *       heartbeat frames into heartbeat_ingest() — see probe_data_cb. ──── */
     phase_listener_set_data_cb(probe_data_cb);
-    ESP_LOGI(TAG, "Probe sink registered (via phase-listener dispatch).");
+    ESP_LOGI(TAG, "Probe sink + heartbeat table registered (via phase-listener dispatch).");
 
     /* ── 5. Start background tasks ───────────────────────────────────────── */
     xTaskCreate(telemetry_task,   "telemetry",   STACK_TELEMETRY,
                 NULL, TASK_PRIO_TELEMETRY,   NULL);
+    ESP_ERROR_CHECK(heartbeat_start());
 
     /* ── 6. Experiment controller (runs in its own task so app_main returns) */
     xTaskCreate(experiment_controller_task, "exp_ctrl", STACK_TELEMETRY * 2,
@@ -326,8 +334,10 @@ static void experiment_controller_task(void *arg)
  * Probe sink callback
  *
  * Invoked by the phase listener (the single esp_mesh_recv() reader) for every
- * non-phase packet. Filters for probe_pkt_t messages and logs one
- * probe-arrival CSV row per received probe.
+ * non-phase packet. Demuxes on magic (mesh_messages.h convention): heartbeat
+ * frames go to heartbeat_ingest() (Command Center node table); everything
+ * else is filtered for probe_pkt_t messages, logging one probe-arrival CSV
+ * row per received probe.
  *
  * Runs in the phase-listener task context — keep it short and non-blocking.
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -335,7 +345,9 @@ static void experiment_controller_task(void *arg)
 static void probe_data_cb(const uint8_t *data, size_t len,
                           const uint8_t from_addr[6])
 {
-    (void)from_addr;  /* src_mac travels inside the probe payload */
+    (void)from_addr;  /* src_mac travels inside the probe/heartbeat payload */
+
+    if (heartbeat_ingest(data, len)) return;
 
     if (len < sizeof(probe_pkt_t)) return;
 

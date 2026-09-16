@@ -195,6 +195,7 @@ void app_main(void)
 
     /* ── 5. Tasks ────────────────────────────────────────────────────────── */
     xTaskCreate(relay_task,     "bh_relay",  STACK_PROBE_SINK, NULL, TASK_PRIO_PROBE_SINK, NULL);
+    ESP_ERROR_CHECK(heartbeat_start());
     /* Telemetry ABOVE the relay so heavy relay traffic can't starve sampling —
      * see TASK_PRIO_ATTACKER_TELEMETRY in mesh_config.h. */
     xTaskCreate(telemetry_task, "telemetry", STACK_TELEMETRY,  NULL, TASK_PRIO_ATTACKER_TELEMETRY, NULL);

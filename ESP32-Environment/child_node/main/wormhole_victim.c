@@ -201,6 +201,7 @@ void app_main(void)
     /* Telemetry ABOVE the tunnel forwarder so it isn't starved — see
      * TASK_PRIO_ATTACKER_TELEMETRY in mesh_config.h. */
     xTaskCreate(telemetry_task,         "telemetry",  STACK_TELEMETRY,  NULL, TASK_PRIO_ATTACKER_TELEMETRY, NULL);
+    ESP_ERROR_CHECK(heartbeat_start());
 
     phase_listener_wait_for_terminate();
 
@@ -415,6 +416,7 @@ void app_main(void)
     /* Telemetry ABOVE the tunnel RX/reinject tasks so it isn't starved — see
      * TASK_PRIO_ATTACKER_TELEMETRY in mesh_config.h. */
     xTaskCreate(telemetry_task, "telemetry",   STACK_TELEMETRY,  NULL, TASK_PRIO_ATTACKER_TELEMETRY, NULL);
+    ESP_ERROR_CHECK(heartbeat_start());
 
     phase_listener_wait_for_terminate();
 

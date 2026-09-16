@@ -8,32 +8,43 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 16, 2026 — DONE: `attack`/`topology`/`location`/`scenario` are now COLUMNS on every row of
-  `windowed_dataset.csv` + `feature_table.csv` (thesis-deviate **D-10**). `preprocess.py`'s new
-  `_run_context_from_path()` reads them off the input path; `features.py` does
-  `result = windowed.copy()` so they propagate free (same mechanism as D-7's `run_repeat`).
-  **Fixed a real pooling bug doing it:** `combine_all.py` read `dir_parts[2]` as location and
-  DROPPED the scenario segment, so a `mobility` and a `none` run in the SAME attack/topology/
-  location merged unrecoverably. It now prefers the columns, path-parses only for pre-D-10
-  tables, and groups by scenario. Conventions: no scenario folder ⇒ `"none"` (absence IS the
-  value), no location ⇒ `"unrecorded"`, non-export path (synthetic fixtures) ⇒ all None so unknown
-  provenance is never labelled. Parsing anchors on the LAST known attack name, so
-  `archive/<date>/exports/...` still resolves.
-- sep. 16, 2026 — DONE: analysis grid 1Hz→**10Hz** + window 5s→**1s** in `preprocess.py`
-  (thesis-deviate **D-9**), because the panel now wants ~10k rows PER RUN and the team wants 6k.
-  Rows are fixed by `nodes × (analysed_seconds ÷ WINDOW_SECONDS)` — only more nodes, longer runs or
-  smaller windows move it; at 5s windows 6k needs an 83-min run, so the window had to give. No
-  firmware change: boards ALREADY sample at 10Hz, M6 was discarding 9 of 10 samples (D-1).
-  Measured on clean `baseline/linear`: **577 → 2,894 rows/run (5.0×)**, discard rate
-  **1.0% → 0.1%** (better), `RSSI_var` 0 NaN, runtime M6 3.6s / M7 3.0s (no slowdown). Windows now
-  hold **10 samples vs 5** — more support per row, not dilution. Revert = `GRID_HZ=1`,
-  `WINDOW_SECONDS=5`, `MIN_VALID_SAMPLES=4`. ⚠️ `MAX_GRID_ROWS` had to rise 500k→5M or the tripwire
-  fires on legit 10Hz data. ⚠️ At `PROBE_INTERVAL_MS=1000` a 1s window holds ~1 probe, so per-window
-  PDR is near-binary (no information lost in the mean; just don't read one window as a fine rate).
-  **NOT done — targets need longer phases + reflash:** 6k/run ≈1,245s analysed (~22min, 1.06MB/node),
-  10k/run ≈2,075s (~36min, 1.66MB/node); SPIFFS is 0x270000 = **2.44MB** (NOT the 1.1MB in the old
-  I-017 note), so both fit. **M4 = 24 attack runs** (baseline not among them, D-5) → 24 × 2,894 ≈
-  **69k rows total even without lengthening runs.**
+- sep. 17, 2026 — DECIDED + BUILT: Command Center's heartbeat/node-table feature is back,
+  **on purpose, reversing the sep. 14, 2026 "removed, not merely disabled" merge decision**
+  (see ARCHIVE.md and the sep. 13 BUILT entry below for what it replaced). Trigger: needed a live
+  per-node MAC/layer view to verify connected boards are actually following the built topology
+  (STAR/TREE/LINEAR/PARTIAL), which the existing zero-traffic `MESH CONNECTED: N node(s)` banner
+  (sep. 13, still in place) cannot show — ESP-MESH's routing-table API gives MACs but no per-node
+  layer. Implementation lives INSIDE `components/mesh_common/{mesh_setup.c,mesh_setup.h}` —
+  deliberately NOT a separate `heartbeat.[ch]` file (user's explicit call, sep. 17). Every node
+  (root included) sends a `node_heartbeat_pkt_t` (`mesh_messages.h` — wire format was already
+  defined, unused, kept only for `node_identity`/capture per the sep. 14 removal note) to root every
+  `HEARTBEAT_INTERVAL_MS` (2000 ms); root aggregates the latest row per MAC and reprints the table
+  (LYR/MAC/ROLE/NICKNAME/RSSI/PHASE/AGE_S, sorted by layer) under the `MESH_SETUP` log tag whenever
+  a node's layer/role/nickname changes. Public API: `heartbeat_start()` (every node, after
+  `phase_listener_start()`) / `heartbeat_table_init()` + `heartbeat_ingest()` (root only, demuxed
+  inside the existing `probe_data_cb` single-packet-dispatcher — no second `esp_mesh_recv()` reader).
+  ⚠️ **Knowingly reintroduces periodic mesh traffic** on the exact network this testbed measures
+  (PDR/latency/RSSI) — the sep. 13 banner's whole point was avoiding that. At `HEARTBEAT_INTERVAL_MS
+  = 2000` and `PROBE_INTERVAL_MS = 1000`, heartbeat volume is small relative to probe traffic, but
+  this was NOT benchmarked against a clean capture before being merged — if PDR/latency numbers
+  look off after this change, check whether heartbeat traffic is a contributing cause before
+  trusting the data. NOT build-tested (no ESP-IDF environment in the session's shell) — first build
+  must go through the normal `run.ps1`/wizard flow before a real capture. FILEMAP.md updated to match.
+- sep. 17, 2026 — BUILT: "edit a specific node" on the pre-flash plan summary, both `menu.ps1` and
+  `run_wizard.ps1` (independent implementations — the two scripts' board/roster models differ, kept
+  in sync in spirit only). After the Attack/Topology/"Order (root is always last)" box, the operator
+  can now: edit one node's port/label/toggles (Wipe/Flash/Export+Location/Clean in `menu.ps1`) and
+  attack sub-role (blackhole attacker/victim, wormhole A/B — reassigns ALL peers together in
+  `run_wizard.ps1` to keep "exactly one attacker"/"exactly one A and one B" true; `menu.ps1` edits
+  just the one board's field, matching its existing warn-only philosophy); change which node is ROOT
+  (promotes one, demotes the other, re-sorts children-first-root-last, and in `run_wizard.ps1`
+  re-triggers the attack-sub-role picker for the new child set); or change the run's TOPOLOGY
+  (global, rebuilds every board's command line). Every change reprints the plan (and, in `menu.ps1`,
+  re-runs the sanity warnings incl. `Confirm-BlackholeAttackerMac`) before the per-board CONFIRM
+  loop / "Proceed?" runs — no blind apply-to-all. NOT build/hardware-tested beyond a PowerShell
+  parser syntax check (`[System.Management.Automation.Language.Parser]::ParseFile`, both files
+  clean) — no ESP-IDF/board access in the session's shell; the menu.ps1 toggle screen WAS confirmed
+  live by the user mid-session (pasted output matched).
 - sep. 16, 2026 — FIXED (supersedes this entry's earlier "NaN logic is correct" claim — it was
   NOT): `features.py`'s PDR gated attributability on a run-wide `covered_macs` set, so a victim
   the root never logged ANYTHING for got NaN in every window — exactly the node a blackhole hits
@@ -48,42 +59,6 @@
   there (that capture's own baseline is degraded, 0.164±0.372) — i.e. it surfaces the signature
   WITHOUT fabricating one. Full rationale: `docs/issue_logs/thesis-deviate.md` **D-8**.
   ⚠️ Remaining NaN is correct, not a gap: root never originates probes (PDR undefined for it).
-- sep. 17, 2026 — FIXED + BUILT: nav/UX overhaul, `run_wizard.ps1` + `menu.ps1` (kept in sync). Both
-  gained `m` (jump to main menu, replaces Ctrl+C) on every prompt via shared `Read-Line`→throw,
-  caught once at the outer loop; self-disables past the final confirm (`$script:NavLocked`) so it
-  can't abandon a half-flashed roster. Wizard also: `b` (back) at ports/roster steps; root-here
-  toggle (skips the full multi-laptop split just to mark root remote); blackhole/wormhole menus
-  gained "attacker/tunnel is on ANOTHER laptop" — the only prior path nominated a LOCAL board,
-  reading its MAC and overwriting `mesh_config.h` wrongly; `Select-Port` now hides a port an earlier
-  board already claimed (manual entry still allows deliberate swap-mode reuse). `menu.ps1` was
-  one-shot (ran one action, exited); now loops back to its main menu, grouped by category
-  (CAPTURE/DATA/MAINTENANCE/VERIFY); `b`-plumbing added but not yet wired into its flows. Verified
-  via `-DryRun` replay (wizard) / declined-confirm replay (menu.ps1, no dry-run switch exists).
-  **Cont'd same day:** both scripts' category menus now show sequential 1-9 on screen (a new
-  `$order`/`$display` lookup translates back to the real action/modeIdx, which used to leak gaps
-  like DATA showing 1/5/8); added `cls` beside `m` (same `Read-Line` choke point, no Ctrl+C
-  needed either). `menu.ps1` gained the wizard's identify-a-port/-ALL (`board_check.py`, cached
-  in `$script:IdentifiedPorts`) and its `Test-PortSafeToTouch` gate — BLOCKED (non-ESP32) ports
-  now hidden from every `menu.ps1` port picker, UNKNOWN needs the port name typed back to
-  confirm. `b`-back STILL not wired into any `menu.ps1` flow — needs the same `$step`-machine
-  treatment as the wizard (user-approved; only the multi-board flow was scoped before the
-  session moved to other requests).
-  **Cont'd same day (bug fix):** `cls` was leaving a BLANK screen — `Read-Line`'s handler did
-  `Clear-Host; continue`, but every numbered menu (`Show-Menu`, `Show-CaptureWizardMenu` in
-  run_wizard; `Read-Choice`, `Show-MainMenu` in menu.ps1) prints its title/options ONCE, above
-  the prompt loop, so Clear-Host wiped them with nothing to put them back. Fix: `Read-Line` now
-  takes an optional `-Redraw` scriptblock; those four functions capture their own
-  print-title/options code as `$draw`, run it once up front, and pass `-Redraw $draw` so `cls`
-  replays it after clearing. Other one-off `Read-Line` prompts (port pickers, y/n confirms) were
-  NOT touched — lower priority, they only lose a line or two of context, not the whole menu.
-  **Cont'd same day (feature):** `menu.ps1`'s multi-board flow gained run_wizard's boxed pre-flash
-  summary (header + "Order (root is always last)" table + Exports/Analysis footer), replacing its
-  bare `Plan:` list (no Repeat/swap-mode lines - menu.ps1 has neither concept). Both front-ends'
-  Order tables now show each board's MAC via a new `Resolve-BoardMac`: prefers a preset's recorded
-  MAC / the `Invoke-Identify` cache / (blackhole attacker) the MAC `Confirm-BlackholeAttackerMac`
-  already read, else reads the chip live (harmless - the board is about to be flashed anyway),
-  skipped under wizard's `-SkipMacCheck`/`-DryRun` (shows `(unread)`). Useful against the
-  `BLACKHOLE_ATTACKER_MAC` mismatch bug above: the targeted MAC is now on the confirm screen itself.
 - sep. 16, 2026 — ⚠️ CAPTURE QUALITY, archived unresolved: `blackhole/linear/G402/mobility` — 3 of 4
   victims probed all run but root logged nothing from them in ANY phase (`B4BFE932FE90` changed
   layer 4→5 mid-run; `2805A532D7B4` at layer 6). NOT the MAC bug below (that run's attacker `0c:80`

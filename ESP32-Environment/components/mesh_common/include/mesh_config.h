@@ -390,6 +390,23 @@
 #define PROBE_PAYLOAD_LEN       32U
 
 /* ═══════════════════════════════════════════════════════════════════════════
+ * COMMAND CENTER — HEARTBEAT  (NIS16 — CTTHES3)
+ *
+ * Low-rate, independent of SAMPLING_INTERVAL_MS: every node (root included)
+ * sends a node_heartbeat_pkt_t (mesh_messages.h) to the root every
+ * HEARTBEAT_INTERVAL_MS. The root aggregates the latest row per MAC into a
+ * table (mesh_setup.c) and reprints it, sorted by layer, whenever a node's
+ * layer/role/nickname changes — so whether the mesh is actually following
+ * the built topology is visible at a glance in the console.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+#define HEARTBEAT_INTERVAL_MS    2000U
+
+/** Max distinct nodes the root's heartbeat table can track. Matches
+ *  MESH_ROUTE_TABLE_MAX (root + every descendant it can route to). */
+#define HEARTBEAT_TABLE_MAX      MESH_ROUTE_TABLE_MAX
+
+/* ═══════════════════════════════════════════════════════════════════════════
  * CSV LOGGER / LOCAL STORAGE
  * ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -503,12 +520,15 @@
                                           *   rate the telemetry loop (thesis Fig 4.24)
                                           *   assumes for every node. */
 #define TASK_PRIO_SERIAL_EXPORT     3    /**< Low priority — only runs post-experiment */
+#define TASK_PRIO_HEARTBEAT         4    /**< Below telemetry — a liveness/topology ping,
+                                          *   not real-time data */
 
 #define STACK_PHASE_LISTENER    6144U   /* also runs the non-phase data cb (probe sink) */
 #define STACK_TELEMETRY         4096U
 #define STACK_PROBE_GEN         4096U
 #define STACK_PROBE_SINK        4096U
 #define STACK_SERIAL_EXPORT     6144U
+#define STACK_HEARTBEAT         4096U
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * NODE IDENTIFICATION

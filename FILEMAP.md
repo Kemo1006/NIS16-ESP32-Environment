@@ -11,8 +11,11 @@
 **CC** (SD-card logging, `run_wizard.ps1`, presets, Command Center) supplied the firmware
 and tooling base; **NIS16-ESP32-Environment** (the Sept-2026 onboarding redesign) supplied
 `menu.ps1`, the dated `docs/` set, and `tools/verify_attack.py` — the panel-cited
-paper-backed attack verification. Command Center and the multi-laptop capture-split are
-**removed**, not merely disabled. Both source trees are left untouched at
+paper-backed attack verification. Command Center was **removed** at this merge (sep. 14,
+2026) then **revived sep. 17, 2026** — see MEMORY.md — as a heartbeat sender + root-side
+node table folded into `mesh_setup.c/.h` (not a separate `heartbeat.[ch]`), for live
+per-node MAC/layer verification against the built topology. The multi-laptop
+capture-split remains **removed**, not merely disabled. Both source trees are left untouched at
 `../CC/` and `../NIS16-ESP32-Environment/` — this is a from-scratch git history, not a
 `git merge` (the two trees share no commit history, only a GitHub origin).
 
@@ -73,10 +76,13 @@ combined/                             ← workstation root (this anchor)
     │                                         # resources-papers-assessment, verified pipelines
     ├── components/mesh_common/              # shared firmware: mesh setup, csv_logger,
     │   │                                     # phase_listener, node_identity, sd_status
-    │   │                                     # (heartbeat.[ch] REMOVED — Command Center gone)
+    │   │                                     # (Command Center heartbeat sender + root node
+    │   │                                     # table live IN mesh_setup.c/.h, sep. 17, 2026 —
+    │   │                                     # no separate heartbeat.[ch] file; see MEMORY.md)
     │   ├── include/  (mesh_config.h ← MESH_ID/PASSWORD/BLACKHOLE_ATTACKER_MAC, csv_logger.h,
-    │   │              mesh_setup.h, phase_listener.h, node_identity.h, sd_status.h,
-    │   │              mesh_messages.h ← MSG_TYPE_PHASE_SYNC, kept for capture)
+    │   │              mesh_setup.h ← now also heartbeat_start()/heartbeat_table_init()/
+    │   │              heartbeat_ingest(), phase_listener.h, node_identity.h, sd_status.h,
+    │   │              mesh_messages.h ← MSG_TYPE_PHASE_SYNC + node_heartbeat_pkt_t, both live)
     │   └── src/      (mesh_setup.c, csv_logger.c ← SD mirror woven in, phase_listener.c,
     │                  node_identity.c, sd_status.c)
     ├── root_node/     main/root_main.c      # ROOT firmware — timeline controller + arrivals
