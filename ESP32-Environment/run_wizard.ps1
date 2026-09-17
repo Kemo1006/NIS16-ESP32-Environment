@@ -294,6 +294,7 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
+            @{ Idx = 10; Text = 'Trim exported CSVs only (tools\trim_run.py --apply - writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
@@ -2016,6 +2017,55 @@ function Invoke-RunAnalysisOnly {
     } finally { Pop-Location }
 }
 
+function Invoke-TrimOnly {
+    # Standalone tools\trim_run.py step, kept OUT of Invoke-RunAnalysisOnly on
+    # purpose: that function's M6->M8 pipeline runs straight off $dirs.Export
+    # (the raw folder) with no trim call at all, so folding trim in there would
+    # silently change what a name-unchanged menu option does. This is its own
+    # option so trimming is a deliberate, visible step, and "Run analysis only"
+    # keeps meaning exactly what it always has.
+    #
+    # --apply only, never --in-place: trim_run.py's own default already writes
+    # trimmed COPIES into a trimmed\ subfolder and leaves the raw export
+    # byte-for-byte alone (see tools\trim_run.py's own SAFETY section) - nothing
+    # extra is needed here to keep the raw dataset intact.
+    # Mirrors menu.ps1's "Trim exported CSVs only" action - keep the two in sync.
+    Write-Host ""
+    Write-Host "Nothing here touches a board or a COM port -- runs tools\trim_run.py --apply" -ForegroundColor DarkGray
+    Write-Host "over an already-exported folder. Writes to a trimmed\ subfolder; the raw" -ForegroundColor DarkGray
+    Write-Host "export is never modified or deleted." -ForegroundColor DarkGray
+
+    $attackIdx   = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 0
+    $rAttack     = @('none', 'blackhole', 'wormhole')[$attackIdx]
+    $topoIdx     = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
+    $rTopology   = $TOPOLOGIES[$topoIdx]
+    $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
+    $rScenario   = $SCENARIOS[$scenarioIdx]
+    $locationIdx = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex 0
+    $rLocation   = $LOCATIONS[$locationIdx]
+
+    $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
+    if (-not (Test-Path $dirs.Export)) {
+        Write-Host ("`n  {0} doesn't exist -- export a board or import a card for this run first." -f $dirs.Export) -ForegroundColor Yellow
+        return
+    }
+
+    $trimmedDir = Join-Path $dirs.Export 'trimmed'
+    Write-Host ""
+    Write-Host ("Running: python tools\trim_run.py {0} --apply" -f $dirs.Export) -ForegroundColor DarkGray
+    Write-Host ("     ->  {0}" -f $trimmedDir) -ForegroundColor DarkGray
+    $goAns = Read-Line "`nRun this now? [Y/n] > "
+    if ($goAns -eq 'n' -or $goAns -eq 'N') { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
+
+    Push-Location $base
+    try {
+        python (Join-Path $base 'tools\trim_run.py') $dirs.Export --apply
+        if ($LASTEXITCODE -ne 0) { Write-Host "Trim failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
+        Write-Host ("`nDone -> {0}" -f $trimmedDir) -ForegroundColor Green
+        Write-Host "  Point 'Run analysis only' (or preprocess.py/features.py by hand) at that trimmed\ folder, not the raw export." -ForegroundColor DarkGray
+    } finally { Pop-Location }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -2922,6 +2972,7 @@ if (-not $Preset) {
         if ($modeIdx -eq 5) { Invoke-VerifyRun; continue }
         if ($modeIdx -eq 6) { Invoke-IdentifyAllBoards; continue }
         if ($modeIdx -eq 7) { Invoke-RunAnalysisOnly; continue }
+        if ($modeIdx -eq 10) { Invoke-TrimOnly; continue }
     }
 }
 
@@ -3423,6 +3474,7 @@ else {
                 Write-Host "separately in the next step, so don't count it here." -ForegroundColor DarkGray
                 Write-Host "  e.g. 3 ESP32s total (1 root + 2 children)  -> enter 2" -ForegroundColor DarkGray
                 Write-Host "       10 ESP32s total (1 root + 9 children) -> enter 9" -ForegroundColor DarkGray
+                Write-Host "       just the root, no children at all     -> enter 0" -ForegroundColor DarkGray
                 if ($multiLaptop) {
                     Write-Host "  Multi-laptop: count the FULL experiment's children, not just this laptop's." -ForegroundColor DarkGray
                 }
@@ -3437,9 +3489,9 @@ else {
                     if (Test-BackAnswer $raw) { $backCount = $true; break }
                     if (-not $raw) { break }
                     $n = 0
-                    if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le 9) {
+                    if ([int]::TryParse($raw, [ref]$n) -and $n -ge 0 -and $n -le 9) {
                         # Wormhole needs two distinct children to be the A and B tunnel ends; with
-                        # one child the Node B menu could never offer a board that isn't Node A.
+                        # one child (or none) the Node B menu could never offer a board that isn't Node A.
                         if ($attack -eq 'wormhole' -and $n -lt 2) {
                             Write-Host "  Wormhole needs at least 2 children (Node A and Node B)." -ForegroundColor Yellow
                             continue
@@ -3447,7 +3499,7 @@ else {
                         $newCount = $n
                         break
                     }
-                    Write-Host "  Enter a number from 1 to 9." -ForegroundColor Yellow
+                    Write-Host "  Enter a number from 0 to 9." -ForegroundColor Yellow
                 }
                 if ($backCount) { $step = 5; continue flow }
 

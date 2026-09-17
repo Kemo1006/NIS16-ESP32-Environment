@@ -8,6 +8,13 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 17, 2026 — BUILT in both wizards: "Trim exported CSVs only" is its OWN DATA menu option now
+  (`run_wizard.ps1` Idx 10 `Invoke-TrimOnly`, `menu.ps1` Action 11), not folded into "Run analysis
+  only" — that action's M6->M8 pipeline runs off the raw export with no trim step (it never had one).
+  Both shell out to the EXISTING `tools\trim_run.py --apply` (never `--in-place`), which already
+  writes to a `trimmed\` subfolder and leaves the raw export untouched by its own design. Also:
+  `run_wizard.ps1`'s manual-flow child-count prompt now accepts `0` for a root-only capture (was
+  `-ge 1`) — downstream code already handled an empty roster gracefully. Not hardware-tested.
 - sep. 17, 2026 — BUILT: **capture provenance** — answering "is this card's data from the firmware I
   flashed today, or left over from a run I interrupted and forgot?" An ESP32 has no RTC (boots at
   1970) and mobility/powercycle deliberately power-cycle boards, so no clock or sync-on-connect
@@ -170,6 +177,12 @@
   path is already deep, so object paths cross Windows' 250-char `CMAKE_OBJECT_PATH_MAX` and ninja
   fails inside the **bootloader** subproject, long after the app's own files compiled fine. The CMake
   warning names the path but the failure looks unrelated. Use short names (`bcc`, `cwa`, `bjs`).
+  ⚠️ **Confirmed sep. 17, 2026** on teammate Angelo Calpoporo's machine: a longer Windows username
+  lengthens `%LOCALAPPDATA%` enough that the same nested bootloader-subproject `.obj.d` path (fine on
+  a short-username machine) measured 265 chars there — over real Windows `MAX_PATH`, not just
+  `CMAKE_OBJECT_PATH_MAX`. Fix proposed, not applied: `HKLM\...\FileSystem\LongPathsEnabled=1` (needs
+  admin); no-admin fallback would need an `$env:ESP32_BUILD_ROOT` override added to `run.ps1`'s
+  hardcoded `$buildRoot` so a `subst`-shortened path works instead.
 - Non-ASCII characters (`⚠`, `—`, `…`) anywhere in a Python tool's **module docstring** when it is
   passed to `argparse` as `description` — the Windows console is cp1252, so `--help` dies with
   `UnicodeEncodeError` before printing anything. `tools/command_center.py` is deliberately ASCII-only

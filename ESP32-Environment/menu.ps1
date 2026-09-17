@@ -1539,6 +1539,7 @@ function Show-MainMenu {
         @{ Name = 'DATA'; Items = @(
             @{ Action = 3; Text = 'Export a board only  (it already ran; just pull CSVs)' }
             @{ Action = 8; Text = 'Import CSVs from a pulled SD card  (no board/COM contact)' }
+            @{ Action = 11; Text = 'Trim exported CSVs only  (trim_run.py --apply, writes trimmed/ - raw export untouched)' }
             @{ Action = 7; Text = 'Run analysis only  (M6->M8 on already-exported CSVs, no board contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
@@ -2544,6 +2545,84 @@ if ($action -eq 3) {
         Push-Location (Join-Path $base 'tools')
         try { python @exArgs } finally { Pop-Location }
     }
+    continue menu
+}
+
+# ---- Trim exported CSVs only (no board contact) ------------------------------
+# Standalone tools\trim_run.py step, deliberately its OWN action rather than
+# folded into "Run analysis only" below -- that action's M6->M8 pipeline runs
+# straight off the raw export folder with no trim call at all, so adding trim
+# there would silently change what a same-named option does. --apply only,
+# never --in-place: trim_run.py's own default already writes trimmed COPIES
+# into a trimmed\ subfolder and leaves the raw export byte-for-byte alone (see
+# tools\trim_run.py's SAFETY section) -- nothing extra needed here to keep the
+# raw dataset intact. Mirrors run_wizard.ps1's Invoke-TrimOnly - keep in sync.
+if ($action -eq 11) {
+    Write-Host ""
+    Write-Host "Nothing here touches a board or a COM port -- runs tools\trim_run.py --apply" -ForegroundColor DarkGray
+    Write-Host "over an already-exported folder. Writes to a trimmed\ subfolder; the raw" -ForegroundColor DarkGray
+    Write-Host "export is never modified or deleted." -ForegroundColor DarkGray
+
+    $attkIdx  = 1
+    $topoIdx  = 1
+    $scenario = 'none'
+    $loc      = $null
+
+    $step = 0
+    :trimOnly while ($step -le 3) {
+        switch ($step) {
+            0 {
+                $r = Read-Choice -Title "Which attack?" -Options @('none (baseline)', 'blackhole', 'wormhole') -Default $attkIdx -AllowBack
+                if ($script:BackSignal -eq $r) { continue menu }
+                $attkIdx = $r; $step = 1; continue trimOnly
+            }
+            1 {
+                $r = Read-Choice -Title "Topology?" -Options @(
+                    'tree     (default self-organising)',
+                    'star     (all direct children of root)',
+                    'linear   (forced chain)',
+                    'partial  (physical placement)'
+                ) -Default $topoIdx -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 0; continue trimOnly }
+                $topoIdx = $r; $step = 2; continue trimOnly
+            }
+            2 {
+                $r = Select-Scenario -Current $scenario -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 1; continue trimOnly }
+                $scenario = $r; $step = 3; continue trimOnly
+            }
+            3 {
+                $r = Select-Location -Current $loc -AllowBack
+                if ($script:BackSignal -eq $r) { $step = 2; continue trimOnly }
+                $loc = $r; $step = 4; continue trimOnly
+            }
+        }
+    }
+    $attack  = @('none', 'blackhole', 'wormhole')[$attkIdx - 1]
+    $topo    = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
+    $topoDir = if ($topo -eq 'partial') { 'partial_mesh' } else { $topo }
+
+    $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
+    $scenarioSeg = if ($scenario -and $scenario -ne 'none') { "\$scenario" } else { '' }
+    $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$loc$scenarioSeg"
+    $trimmedSub  = Join-Path $exportSub 'trimmed'
+
+    if (-not (Test-Path $exportSub)) {
+        Write-Host ""
+        Write-Host ("No exported CSVs in {0} -- export a board or import a card for this run first." -f $exportSub) -ForegroundColor Yellow
+        continue menu
+    }
+
+    $cmdText = "python tools\trim_run.py $exportSub --apply"
+    if (-not (Show-And-Confirm $cmdText)) { continue menu }
+
+    Push-Location $base
+    try {
+        python (Join-Path $base 'tools\trim_run.py') $exportSub --apply
+        if ($LASTEXITCODE -ne 0) { Write-Host "Trim failed (exit $LASTEXITCODE)." -ForegroundColor Red; continue menu }
+        Write-Host ("`nDone -> {0}" -f $trimmedSub) -ForegroundColor Green
+        Write-Host "  Point 'Run analysis only' (or preprocess.py/features.py by hand) at that trimmed\ folder, not the raw export." -ForegroundColor DarkGray
+    } finally { Pop-Location }
     continue menu
 }
 
