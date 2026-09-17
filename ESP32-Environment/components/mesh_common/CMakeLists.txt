@@ -5,6 +5,7 @@ idf_component_register(
         "src/csv_logger.c"
         "src/sd_status.c"
         "src/node_identity.c"
+        "src/topology_graph.c"
     INCLUDE_DIRS
         "include"
     REQUIRES

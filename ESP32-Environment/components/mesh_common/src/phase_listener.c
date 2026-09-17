@@ -13,6 +13,7 @@
 #include "phase_listener.h"
 #include "mesh_config.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -166,11 +167,15 @@ int phase_listener_broadcast(uint8_t phase_id)
                      i, esp_err_to_name(err));
         }
 
-        /* (2) Downstream copies — one unicast per node in the routing table. */
-        mesh_addr_t route[MESH_ROUTE_TABLE_MAX];
+        /* (2) Downstream copies — one unicast per node in the routing table.
+         * Sized from the live table every time (plus headroom for a node that
+         * joins between the size query and the copy), so every node gets the
+         * phase however large the mesh is. */
+        int want = esp_mesh_get_routing_table_size() + 4;
+        mesh_addr_t *route = malloc((size_t)want * sizeof(mesh_addr_t));
         int table_size = 0;
-        err = esp_mesh_get_routing_table(route, MESH_ROUTE_TABLE_MAX * 6,
-                                         &table_size);
+        err = route ? esp_mesh_get_routing_table(route, want * 6, &table_size)
+                    : ESP_ERR_NO_MEM;
         if (err != ESP_OK) {
             failed++;
             ESP_LOGW(TAG, "get_routing_table failed (iter %d): %s",
@@ -185,6 +190,7 @@ int phase_listener_broadcast(uint8_t phase_id)
                 }
             }
         }
+        free(route);
 
         vTaskDelay(pdMS_TO_TICKS(PHASE_BROADCAST_GAP_MS));
     }

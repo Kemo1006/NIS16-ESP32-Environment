@@ -56,7 +56,8 @@ esp_err_t mesh_setup_init(mesh_node_role_t role);
 void mesh_setup_get_node_id(char *buf);
 
 /**
- * @brief Return the current mesh layer of this node (0 = root).
+ * @brief Return the current mesh layer of this node as the stack reports it
+ *        (1 = root, -1 = not connected).
  *        Thread-safe; may be called after mesh_setup_init().
  */
 int mesh_setup_get_layer(void);

@@ -169,7 +169,7 @@ param(
                        # bulletproof, auto-fixes a full/crash-looping SPIFFS with
                        # no manual erase-flash. WITHOUT -Flash: light serial
                        # DELETE_LOGS (keeps firmware). Use for a fresh, unstacked run.
-    [switch]$Analyze   # after a successful export, auto-run the full analysis
+    [switch]$Analyze,  # after a successful export, auto-run the full analysis
                        # pipeline over THIS run's exports subfolder: M6
                        # (analysis/preprocess.py -> windowed_dataset.csv), M7
                        # (analysis/features.py -> feature_table.csv), AND M8
@@ -180,6 +180,11 @@ param(
                        # arrivals.csv (needed for PDR) — is present when it runs.
                        # (M8/EDA needs matplotlib/seaborn/scipy/scikit-learn; if
                        # those aren't installed it runs M6+M7 and skips M8.)
+    [switch]$BuildOnly # compile this board's exact variant into its build dir and
+                       # stop: no wipe, no flash, no monitor, no export, no port
+                       # touched. Exit code = idf.py's. Used by run_wizard.ps1's
+                       # pre-build so its builds can never drift from this file's
+                       # dir naming / -D flags.
 )
 
 $ErrorActionPreference = 'Stop'
@@ -262,7 +267,7 @@ $stale = Get-CimInstance Win32_Process -Filter "name='python.exe'" -ErrorAction 
     Where-Object { $_.ExecutablePath -like '*Espressif*' -and
                    $_.CommandLine -match "\b$portEsc\b" -and
                    $_.CommandLine -match 'idf_monitor|esp_idf_monitor|idf\.py|esptool' }
-if ($stale) {
+if ($stale -and -not $BuildOnly) {
     foreach ($p in $stale) {
         Write-Host "Freeing ${Port}: stopping stale process $($p.ProcessId) still holding it." -ForegroundColor DarkYellow
         try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch { }
@@ -283,7 +288,7 @@ if ($stale) {
 #      manual `idf.py ... erase-flash` needed.
 #    * -Wipe WITHOUT -Flash -> light serial DELETE_LOGS only (keeps the firmware;
 #      the on-device command listener runs from boot, so DELETE_LOGS is accepted).
-if ($Wipe) {
+if ($Wipe -and -not $BuildOnly) {
     if ($Flash) {
         Write-Host "Full-erasing $Port before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ..." -ForegroundColor Yellow
         $erased = $false
@@ -408,7 +413,7 @@ if ($Label) { Write-Host "Board: $Label (on $Port)" -ForegroundColor Cyan }
 # artifacts, so instead of failing we just wipe the stale one and let it
 # reconfigure from scratch — no manual fullclean needed by anyone.
 $cacheFile = Join-Path $buildDir "CMakeCache.txt"
-if ($Flash -and (Test-Path $cacheFile)) {
+if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile)) {
     $expectedHome = (Join-Path $base $proj) -replace '\\', '/'
     $cachedHomeLine = Select-String -Path $cacheFile -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=' | Select-Object -First 1
     if ($cachedHomeLine) {
@@ -418,6 +423,13 @@ if ($Flash -and (Test-Path $cacheFile)) {
             Remove-Item -Recurse -Force $buildDir
         }
     }
+}
+
+if ($BuildOnly) {
+    Write-Host "Building $Role for $Port (attack=$Attack, topology=$Topology, scenario=$Scenario, build=$buildDir) - no flash." -ForegroundColor Cyan
+    Push-Location (Join-Path $base $proj)
+    try { idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags build } finally { Pop-Location }
+    exit $LASTEXITCODE
 }
 
 # What happens after Ctrl+], for the on-screen hint.

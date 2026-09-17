@@ -193,6 +193,9 @@ function Colorize-Role {
     return "$($script:RoleAnsi[$key])$Text$script:AnsiReset"
 }
 
+$memberBoardsTool = Join-Path $base 'tools\Show-MemberBoards.ps1'
+if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
+
 function Invoke-Identify {
     # Reads the board's MAC via tools\board_check.py and names the node against
     # the project's known-board roster (same tool run_wizard.ps1 uses for its
@@ -398,7 +401,14 @@ function Select-CardFiles {
     #   Rel            = @() for ALL, or the card-relative paths picked
     #   IncludeAborted = $true if the operator confirmed aborted files
     # Mirrored in run_wizard.ps1 - keep the two in sync.
-    param([Parameter(Mandatory)]$Files)
+    #
+    # $Card is only used for the 'd' (delete straight off the card) command
+    # below - a PERMANENT filesystem delete, separate from --delete-source
+    # (which only ever removes a file AFTER the import has verified its copy
+    # landed). This lets the operator clear out junk/aborted files (e.g. the
+    # 0-row ABORTED entry in the listing) they never intend to import,
+    # without importing something first just to trigger that cleanup.
+    param([Parameter(Mandatory)]$Files, [string]$Card)
 
     # Sorted newest-build-first; unknown stamps sink to the bottom (they can
     # only be pre-stamp firmware, i.e. older than anything that has one).
@@ -452,10 +462,69 @@ function Select-CardFiles {
         if ($tries -gt 20) {
             throw "No valid card file selection after 20 attempts - aborting. (Running non-interactively?)"
         }
-        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > " -f $sorted.Count) -Redraw $draw
-        if (-not $raw) { Write-Host "   Type numbers, 'a' or 'c'." -ForegroundColor Yellow; continue }
+        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'd1,3' = delete those from the card (no import), 'c' = cancel > " -f $sorted.Count) -Redraw $draw
+        if (-not $raw) { Write-Host "   Type numbers, 'a', 'd<numbers>' or 'c'." -ForegroundColor Yellow; continue }
         $raw = $raw.Trim()
         if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
+
+        if ($raw -match '^[dD]\s*(.+)$') {
+            $spec = $Matches[1].Trim()
+            $delIdxs = @()
+            $badDel = $false
+            foreach ($tok in ($spec -split ',')) {
+                $t = $tok.Trim()
+                if (-not $t) { continue }
+                if ($t -match '^(\d+)\s*-\s*(\d+)$') {
+                    $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
+                    if ($lo -lt 1 -or $hi -gt $sorted.Count -or $lo -gt $hi) { $badDel = $true; break }
+                    $delIdxs += $lo..$hi
+                }
+                elseif ($t -match '^\d+$') {
+                    $n = [int]$t
+                    if ($n -lt 1 -or $n -gt $sorted.Count) { $badDel = $true; break }
+                    $delIdxs += $n
+                }
+                else { $badDel = $true; break }
+            }
+            if ($badDel -or $delIdxs.Count -eq 0) {
+                Write-Host ("   'd' needs numbers from 1 to {0} after it (e.g. d1,3 or d1-2)." -f $sorted.Count) -ForegroundColor Yellow
+                continue
+            }
+            $toDelete = @($delIdxs | Sort-Object -Unique | ForEach-Object { $sorted[$_ - 1] })
+
+            Write-Host ""
+            Write-Host "   DELETE from the card (PERMANENT - not the exports/ copy, the SD card file itself):" -ForegroundColor Red
+            foreach ($d in $toDelete) { Write-Host ("     {0}" -f $d.name) -ForegroundColor Red }
+            $confirm = Read-Line ("   Delete {0} file(s) from the card? [y/N] > " -f $toDelete.Count)
+            if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                Write-Host "   Cancelled - nothing deleted." -ForegroundColor DarkGray
+                continue
+            }
+
+            $deletedRel = @()
+            foreach ($d in $toDelete) {
+                if (-not $Card) {
+                    Write-Host ("     Skipped {0} - no card path known." -f $d.name) -ForegroundColor Yellow
+                    continue
+                }
+                $full = Join-Path $Card $d.rel
+                try {
+                    Remove-Item -LiteralPath $full -Force -ErrorAction Stop
+                    Write-Host ("     Deleted {0}" -f $d.name) -ForegroundColor Green
+                    $deletedRel += $d.rel
+                }
+                catch { Write-Host ("     FAILED to delete {0}: {1}" -f $d.name, $_.Exception.Message) -ForegroundColor Yellow }
+            }
+            if ($deletedRel.Count -gt 0) {
+                $sorted = @($sorted | Where-Object { $deletedRel -notcontains $_.rel })
+            }
+            if ($sorted.Count -eq 0) {
+                Write-Host "   Nothing left on this card." -ForegroundColor DarkGray
+                return $null
+            }
+            & $draw
+            continue
+        }
 
         $picked = @()
         if ($raw -eq 'a' -or $raw -eq 'A') {
@@ -1618,6 +1687,9 @@ function Show-MainMenu {
         @{ Name = 'DATA'; Items = @(
             @{ Action = 3; Text = 'Export a board only  (it already ran; just pull CSVs)' }
             @{ Action = 8; Text = 'Import CSVs from a pulled SD card  (no board/COM contact)' }
+            @{ Action = 15; Text = "Push capture data to GitHub  (raw CSVs only, never code; merges with teammates' pushes)" }
+            @{ Action = 17; Text = "Pull capture data from GitHub  (teammates' CSVs only, never code; never overwrites your files)" }
+            @{ Action = 16; Text = 'Test data sync  (3 dummy animal CSVs - proves two laptops never overwrite each other)' }
             @{ Action = 11; Text = 'Trim exported CSVs only  (trim_run.py --apply, writes trimmed/ - raw export untouched)' }
             @{ Action = 7; Text = 'Run analysis only  (M6->M8 on already-exported CSVs, no board contact)' }
         ) }
@@ -1625,6 +1697,7 @@ function Show-MainMenu {
             @{ Action = 4; Text = 'Wipe / full-erase a board  (start empty)' }
             @{ Action = 5; Text = 'Identify a board  (read its MAC / node number)' }
             @{ Action = 10; Text = 'Write/update location.txt on an already-running board  (over USB)' }
+            @{ Action = 18; Text = 'Member board list  (edit / open json / snapshots - submenu)' }
         ) }
         @{ Name = 'VERIFY'; Items = @(
             @{ Action = 6; Text = 'Verify a run  (paper-backed 3-sigma attack check)' }
@@ -1646,6 +1719,9 @@ function Show-MainMenu {
         Write-Host "============================================" -ForegroundColor Green
         Write-Host "   Combined ESP-WIFI-MESH launcher" -ForegroundColor Green
         Write-Host "============================================" -ForegroundColor Green
+        if (Get-Command Show-MemberBoards -ErrorAction SilentlyContinue) {
+            Show-MemberBoards -Path (Join-Path $base 'member_boards.json')
+        }
         foreach ($cat in $categories) {
             Write-Host ""
             Write-Host ("-- {0}" -f $cat.Name) -ForegroundColor DarkCyan
@@ -1685,6 +1761,23 @@ $script:NavLocked = $false
 $action = Show-MainMenu
 
 if ($action -eq 9) { Write-Host ""; Write-Host "Bye." -ForegroundColor DarkGray; break menu }
+
+if ($action -eq 18) {
+    :memberBoardsMenu while ($true) {
+        $sub = Read-Choice -Title "Member board list:" -Options @(
+            'Edit the member board list  (the Cal / Bas / Kyle table above, no board contact)',
+            'Open member_boards.json directly  (text editor - faster for hand edits)',
+            'Save/load a named board-list snapshot  (like a preset - incl. burst/mobility/powercycle job)'
+        ) -Default 1 -AllowBack
+        if ($script:BackSignal -eq $sub) { continue menu }
+        switch ($sub) {
+            1 { Edit-MemberBoards -Path (Join-Path $base 'member_boards.json') }
+            2 { Open-MemberBoardsFile -Path (Join-Path $base 'member_boards.json') }
+            3 { Manage-MemberBoardSnapshots -LivePath (Join-Path $base 'member_boards.json') }
+        }
+        continue memberBoardsMenu
+    }
+}
 
 # ---- Run MULTIPLE boards in parallel -----------------------------------------
 if ($action -eq 2) {
@@ -2627,6 +2720,40 @@ if ($action -eq 3) {
     continue menu
 }
 
+# ---- Push capture data to GitHub / Test data sync ----------------------------
+# tools\push_data.py does all git work in a private clone, so this folder's
+# code/staged changes/stash are never touched. Mirrors run_wizard.ps1's
+# Invoke-DataSync - keep in sync.
+if ($action -eq 15 -or $action -eq 16 -or $action -eq 17) {
+    $py = Join-Path $base 'tools\push_data.py'
+    $mode = if ($action -eq 16) { 'test' } elseif ($action -eq 17) { 'pull' } else { 'push' }
+    Write-Host ""
+    if ($mode -eq 'test') {
+        Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
+        Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
+        Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($mode -eq 'pull') {
+        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+    } else {
+        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+    }
+    Push-Location $base
+    try {
+        python $py $mode
+        if ($LASTEXITCODE -ne 0) { Write-Host "Data sync failed (exit $LASTEXITCODE) - see the message above." -ForegroundColor Red; continue menu }
+        if ($mode -eq 'test') {
+            $ans = Read-Line "`nRemove ALL test files from GitHub now? Say n if a teammate still has to run the test. [y/N] > "
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                python $py test-cleanup --yes
+                if ($LASTEXITCODE -ne 0) { Write-Host "Cleanup failed (exit $LASTEXITCODE)." -ForegroundColor Red }
+            }
+        }
+    } finally { Pop-Location }
+    continue menu
+}
+
 # ---- Trim exported CSVs only (no board contact) ------------------------------
 # Standalone tools\trim_run.py step, deliberately its OWN action rather than
 # folded into "Run analysis only" below -- that action's M6->M8 pipeline runs
@@ -2903,22 +3030,35 @@ if ($action -eq 8) {
     $roster    = ''
     $presetDir = Join-Path $base 'presets'
     if (Test-Path $presetDir) {
-        $presetMatches = @(Get-ChildItem -Path $presetDir -Filter '*.json' -File -ErrorAction SilentlyContinue |
+        # -Recurse because run_wizard.ps1 files presets one folder per member
+        # (presets\Bas\..., presets\Kyle\...). Without it this scan sees only the
+        # loose pre-split files, finds no match, and every imported CSV silently
+        # keeps the card's raw victim_NODE_<MAC> name instead of the proper
+        # child_nodeN_... one - a naming regression with no error to notice.
+        $presetMatches = @(Get-ChildItem -Path $presetDir -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue |
             Sort-Object LastWriteTime -Descending |
             ForEach-Object {
                 try { $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json } catch { $cfg = $null }
                 # Older presets predate the scenario field -- treat a missing one as 'none'.
                 $cfgScenario = if ($cfg -and $cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario } else { 'none' }
                 if ($cfg -and [string]$cfg.attack -eq $attack -and [string]$cfg.topology -eq $topo -and [string]$cfg.location -eq $loc -and $cfgScenario -eq $scenario) {
-                    [pscustomobject]@{ File = $_; Cfg = $cfg }
+                    # Owner = the member folder it sits in, falling back to the
+                    # field inside the file for one that is still unfiled.
+                    $own = Split-Path (Split-Path $_.FullName -Parent) -Leaf
+                    if ((Split-Path $_.FullName -Parent) -eq $presetDir) {
+                        $own = if ($cfg.PSObject.Properties['owner'] -and $cfg.owner) { [string]$cfg.owner } else { '(unfiled)' }
+                    }
+                    [pscustomobject]@{ File = $_; Cfg = $cfg; Owner = $own }
                 }
             })
         if ($presetMatches.Count -eq 1) {
             $roster = $presetMatches[0].File.FullName
-            Write-Host ("   Naming from preset {0} (matches {1}/{2}/{3}/{4})." -f $presetMatches[0].File.Name, $attack, $topo, $scenario, $loc) -ForegroundColor DarkGray
+            Write-Host ("   Naming from preset {0} [{1}] (matches {2}/{3}/{4}/{5})." -f $presetMatches[0].File.Name, $presetMatches[0].Owner, $attack, $topo, $scenario, $loc) -ForegroundColor DarkGray
         }
         elseif ($presetMatches.Count -gt 1) {
-            $rOpts = @($presetMatches | ForEach-Object { $_.File.Name })
+            # Every member's preset for this cell shares the same filename, so the
+            # owner has to be on the line - otherwise these are identical choices.
+            $rOpts = @($presetMatches | ForEach-Object { "{0,-30} {1}" -f $_.File.Name, $_.Owner })
             $rOpts += "No roster - keep the card's own victim_NODE_<MAC> naming"
             $rIdx  = Read-Choice -Title "Several saved presets match this attack/topology/scenario/location - name from which?" -Options $rOpts -Default 1
             if ($rIdx -le $presetMatches.Count) { $roster = $presetMatches[$rIdx - 1].File.FullName }
@@ -2967,7 +3107,7 @@ if ($action -eq 8) {
         continue menu
     }
 
-    $sel = Select-CardFiles -Files $cardFiles
+    $sel = Select-CardFiles -Files $cardFiles -Card $card
     if ($null -eq $sel) {
         Write-Host "   Cancelled -- nothing copied." -ForegroundColor DarkGray
         continue menu

@@ -28,6 +28,37 @@
 - sep. 13, 2026 — FIXED (hardware-tested), all in `run_wizard.ps1`: args were passed as `@($array)` (binds POSITIONALLY), crashing every real run into `-Port` — switched to an ordered-hashtable splat (binds by name); `$Repeat`/`$repeat` silently collided (PS names are case-insensitive) so `-Preset ... -Repeat 2` was quietly ignored; the blackhole-MAC-mismatch prompt showed `a)/b)` info bullets right before an unrelated `[y/N]` prompt, so typing `a`/`b` read as "no" and aborted every time — replaced with a real menu whose option 1 auto-patches the header.
 - sep. 13, 2026 — FOUND: `Get-Content -Raw` misdetects `mesh_config.h`'s no-BOM UTF-8 encoding on Windows PowerShell 5.1, corrupting every non-ASCII byte (the header's em-dash comments) on write-back. Caught via a before/after diff against a COPY, before it touched the real file. Fix: `[System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))`.
 - sep. 17, 2026 — `menu.ps1`'s multi-board flow gained run_wizard's pre-flash summary box; both front-ends' plan tables now show each board's MAC.
+- sep. 17, 2026 — FIXED + PUSHED (`a4f87b4`, `origin/Unified`): "Run analysis only" (both wizards)
+  always read the RAW export, ignoring `trimmed\` entirely — new `Select-AnalysisInput` (mirrored in
+  both files) now defaults to `trimmed\` when present, blocks (default: cancel) on a stale/incomplete
+  trim missing raw files, and blocks (default: cancel) when a run's ROOT has no `*_arrivals.csv` —
+  PDR/LatencyHopRatio/TunnelLatency would otherwise come out silently NaN with no warning. Verified
+  against synthetic folders (up-to-date/stale trim, missing arrivals) plus the real
+  `blackhole/linear/G402` export. Also in this push: `csv_logger.c`'s arrivals SD-mirror flush reused
+  the TELEMETRY row counter (which resets on its own cadence), so arrivals almost never flushed
+  mid-run — a root losing power before `csv_logger_close()` could lose most of its arrivals despite
+  telemetry surviving; gave arrivals their own counter. NOT build-tested at the time (`idf5.3_py3.14_env`
+  broken) — reviewed line-by-line; confirmed BUILD-CLEAN sep. 18, 2026 alongside the DELETE_SD_PATH
+  work below (child + root both compiled), still not hardware/flash-tested. Also fixed: Windows
+  PowerShell 5.1's `ConvertFrom-Json` does not enumerate a top-level JSON array, so a 2+ file SD card
+  crashed the import picker with `Cannot convert System.Object[] to System.Int32` (reported as a
+  teammate's crash; the catch block's "is python on PATH?" hint was a red herring, not the cause) —
+  fixed with `| ForEach-Object { $_ }` in `Get-CardFileList`/`Import-OneSdCard`; reproduced live in
+  PS 5.1 before shipping the fix.
+- sep. 17, 2026 — DIAGNOSED: `blackhole/linear/G402`'s exported "root" file (MAC `2805A532D7B4`)
+  isn't this run's actual root — every victim's `parent_mac` traces to `B0CBD8F33218` (the preset's
+  real root), whose SD card/arrivals were never imported. Distinct from the known stale-
+  `BLACKHOLE_ATTACKER_MAC` failure (no arrivals file exists at all here, vs. header-only there) — same
+  "PDR NaN" symptom, different cause. Fix: import `B0CBD8F33218`'s card, remove the stray
+  `2805A532D7B4` file from the export + `trimmed\`, re-trim, re-analyze. Carried forward as STATUS.md
+  "REDO blackhole/linear/G402" until actually redone.
+- sep. 17, 2026 — BUILT in both wizards: "Trim exported CSVs only" is its OWN DATA menu option now
+  (`run_wizard.ps1` Idx 10 `Invoke-TrimOnly`, `menu.ps1` Action 11), not folded into "Run analysis
+  only" — that action's M6->M8 pipeline runs off the raw export with no trim step (it never had one).
+  Both shell out to the EXISTING `tools\trim_run.py --apply` (never `--in-place`), which already
+  writes to a `trimmed\` subfolder and leaves the raw export untouched by its own design. Also:
+  `run_wizard.ps1`'s manual-flow child-count prompt now accepts `0` for a root-only capture (was
+  `-ge 1`) — downstream code already handled an empty roster gracefully. Not hardware-tested.
 - sep. 17, 2026 — **`run_wizard.ps1`**: add/remove node, save-back-to-preset, no-preset mode, 3
   live-run fixes (missing `Mac` crash, forced blackhole attacker, "Type 1-1"). Full detail: MEMORY.md.
   Rolled from STATUS.md "Recently done" sep. 17, 2026.
@@ -380,3 +411,136 @@
     look off after this change, check whether heartbeat traffic is a contributing cause before
     trusting the data. NOT build-tested (no ESP-IDF environment in the session's shell) — first build
     must go through the normal `run.ps1`/wizard flow before a real capture. FILEMAP.md updated to match.
+
+## Rolled from MEMORY.md — sep. 18, 2026 (heartbeat fixes, sep. 17)
+- sep. 17, 2026 — ADDED instant disconnect reporting on top of the stale-eviction fix below, in
+  response to "can the heartbeat print instantly on disconnect instead of waiting on the stale
+  timer": (1) `MESH_EVENT_CHILD_DISCONNECTED` — the one mesh event that names a specific MAC — now
+  calls a new `heartbeat_mark_offline(mac)` which evicts that row and reprints immediately, instead
+  of waiting up to `HEARTBEAT_STALE_MS` (21 s) for the age sweep to notice. Only fires anything on
+  the root (`s_table_ready` guard) — same as every other root-only table op. (2)
+  `MESH_EVENT_ROUTING_TABLE_REMOVE` — fires for a multi-hop node dropping off deeper in the tree,
+  which `CHILD_DISCONNECTED` does NOT catch (that event only names the root's own direct children) —
+  now forces an immediate `heartbeat_table_print()` instead of waiting up to
+  `HEARTBEAT_TABLE_REPRINT_MS` (14 s) more for the periodic reprint. ⚠️ This does NOT shrink the 21 s
+  staleness floor itself for a multi-hop node — `ROUTING_TABLE_REMOVE` carries no MAC, so it can only
+  force an early PRINT of whatever the stale sweep already knows, not an early EVICT. True instant
+  detection (<1 heartbeat interval) is only possible for the root's direct children; a deeper node's
+  disconnect is still bounded below by three missed heartbeats, which is what tells a real drop apart
+  from one lost frame. Required moving `s_table_ready` up into the file's top module-private-state
+  block (was declared down in the heartbeat section) plus two early forward declarations
+  (`heartbeat_table_print`, new `heartbeat_mark_offline`), so `mesh_event_handler` — defined earlier
+  in the file — can reach them. Same file as everything else here: `mesh_setup.c`. Not build-tested
+  (attempted locally: this machine's `idf5.3_py3.14_env` Python venv is broken/missing —
+  `idf_tools.py install-python-env` needed, unrelated to this change) — same caveat as the entry below.
+- sep. 17, 2026 — FIXED three heartbeat gaps, all found via live hardware logs across this session
+  (follows the original BUILT entry, now in ARCHIVE.md): (1) the table only reprinted on
+  layer/role/nickname change, so a plain disconnect/reconnect showed nothing even though `AGE_S`
+  tracked it correctly — added
+  `HEARTBEAT_TABLE_REPRINT_MS`, a root-only unconditional timer reprint gated on a new
+  `s_table_ready` flag (set by `heartbeat_table_init()`) instead of `mesh_setup_is_root()`, which is
+  FALSE for this whole testbed's actual root (manual/fixed root, no router, never gets
+  `MESH_EVENT_PARENT_CONNECTED` — confirmed from a boot log reading `Root: NO`; that flag's one other
+  consumer, `heartbeat_task`'s parent-RSSI/send-direction check, was left alone since its TODS
+  self-loopback works fine). Root also self-ingests its own heartbeat locally each tick so its row
+  can't age out. (2) Change-triggered prints weren't resetting the periodic timer (uneven first gap)
+  — both paths now share one `s_last_print_us`, reset on every print. (3) A disconnected node's row
+  never left the table, only `AGE_S` climbed, so the printed node COUNT stayed wrong —
+  `heartbeat_table_print()` now sweeps for entries idle past `HEARTBEAT_STALE_MS` (3× the send
+  interval), logs `Node OFFLINE` with MAC+nickname, and evicts before printing. ⚠️
+  `HEARTBEAT_TABLE_REPRINT_MS` rounds UP to the next multiple of `HEARTBEAT_INTERVAL_MS` (check rides
+  the send loop) — keep it an exact multiple or the configured value won't match what's observed.
+  Final values after user iteration: `HEARTBEAT_INTERVAL_MS` 7000, `HEARTBEAT_TABLE_REPRINT_MS`
+  14000, `HEARTBEAT_STALE_MS` 21000 (auto-derived, 3×interval). Still NOT committed, NOT
+  build-tested. Heartbeat is in `mesh_setup.c/.h`; ⚠️ it adds periodic mesh traffic to the very
+  network this testbed measures — see the original BUILT entry in ARCHIVE.md before trusting PDR/
+  latency numbers captured with it enabled.
+
+## Rolled from STATUS.md "Recently done" — sep. 18, 2026
+- sep. 17, 2026 — **"Trim exported CSVs only"** split into its own DATA menu option in both wizards
+  (was missing entirely — "Run analysis only" never trimmed); `run_wizard.ps1` child-count prompt
+  accepts `0` for a root-only capture. MEMORY.md.
+- sep. 17, 2026 — **SD-card capture provenance**: build stamp → `runs.csv` `built` + status report;
+  `import_sdcard.py --list-json`/`--files`; dated numbered file picker in both wizards. MEMORY.md.
+
+## Rolled from STATUS.md "Recently done" — sep. 18, 2026 (2nd roll)
+- sep. 17, 2026 — **Analysis pipeline hardening**, pushed `a4f87b4` (trimmed\ default, missing root
+  arrivals blocks, arrivals-flush fix, PS5.1 import-picker crash). MEMORY.md.
+
+## Rolled from MEMORY.md "Decisions" — sep. 18, 2026
+- sep. 17, 2026 — BUILT in `run_wizard.ps1` only (`menu.ps1` still has just the edit-a-node step):
+  "Adjust the plan?" gained ADD / REMOVE a node beside edit/topology; an edited preset now offers
+  "save these changes back into <preset>" as its own prompt (separate from "save as a new preset",
+  which still appears only for a from-scratch roster); and the mode menu gained "Run a capture
+  without a preset", skipping the preset picker even when presets exist. Remove refuses to drop the
+  ROOT (swap root first via that node's Role field) or to break "exactly one attacker". Three bugs
+  the user then hit on a live run, all fixed: (1) MANUAL-flow boards never carried a `Mac` field
+  (only preset-loaded ones did, via `ConvertTo-Roster`) while `Resolve-BoardMac` caches with
+  `$Board.Mac = $mac` — a PSCustomObject cannot gain a property by assignment, so the confirm table
+  threw AFTER every question was answered and AFTER the attacker-MAC gate had rewritten
+  `mesh_config.h`; pre-existing, but the new no-preset option made it the default path. Every
+  construction site now seeds `Mac = ''`, plus an `Add-Member -Force` fallback (as `Add-BoardMacs`
+  always used). (2) the blackhole role menu FORCED one child to be the attacker — with a single
+  child that was no choice at all, and it yielded an attacker with no victims, i.e. no attack
+  signature; it now always offers "None of these - they are all VICTIMS", the single-laptop twin of
+  the existing multi-laptop escape. (3) `Show-Menu` printed "Type 1-1" for a one-option menu and
+  rejected Enter; it now says "Press Enter (or type 1)" and accepts it. NOT hardware-tested.
+
+## Rolled from STATUS.md "Recently done" — sep. 18, 2026 (3rd roll)
+- sep. 18, 2026 — **Wizard tooling session** (`run_wizard.ps1`/`menu.ps1`): member board list gained
+  per-board scenario job (burst/mobility/powercycle, one holder each, shown as a tag) + named
+  snapshots like presets (new `member_boards\` folder: save/look-at/load/delete); separately,
+  run_wizard fixed burst-target and preset-scenario dead ends, and re-finds preset boards by MAC
+  after USB moves. MEMORY.md.
+
+## Rolled from MEMORY.md "Decisions" — sep. 18, 2026 (2nd roll)
+- sep. 18, 2026 — BUILT: per-board **scenario job** (burst/mobility/powercycle - the set
+  `Test-ScenarioNeedsTarget` flags in run_wizard.ps1; highload/none aren't per-board) on every add/
+  edit in the guided editor, shown as a `<< BURST TARGET`-style tag; picking a job another board
+  already holds asks to move it (mirrors run_wizard's ScenarioTarget uniqueness). Also BUILT: named
+  **snapshots** — save the current list under an attack/topology/location name (like a preset) into
+  a new `ESP32-Environment\member_boards\` folder, then look at or load one back later instead of
+  retyping (per user request); loading OVERWRITES the live file after a table preview + `[y/N]`
+  confirm. New "Save/load a named board-list snapshot" option (Idx 13/Action 14). Two real bugs
+  caught by scripted testing before shipping: `return (if(){}else{})` is invalid PowerShell
+  (statement keywords can't sit inside `()`) - would have crashed every "keep current" scenario
+  answer; and the table renderer's column padding went negative (crash) when an early row's
+  scenario tag made it wider than a later row's - fixed by reserving the widest tag's width across
+  the whole column up front. Tested: 18 + 15 scripted-answer checks against own fixtures (not the
+  live file, which keeps changing underneath) + both real launchers opened end to end.
+- sep. 18, 2026 — FIXED in `run_wizard.ps1` (uncommitted): **presets were matched to boards by COM
+  port only.** Moving boards to other USB sockets/a hub renumbers COM ports (they follow the socket),
+  and the drift fix made you pick ports by hand and then BLANKED the preset's recorded MAC. Now: new
+  `Get-LiveMacMap` + `Sync-RosterPortsByMac` read each plugged-in ESP32's MAC (reusing this session's
+  identify cache) and move every preset board to the port holding its recorded MAC, with a [Y/n]
+  preview; only unmatched boards go to the manual picker. Also catches two boards that TRADED COM
+  numbers (previously silent — each would be flashed/labelled as the other). The picker's "Verify
+  MACs now" used to overwrite a board's MAC with whatever board sat on its old port and offer to save
+  it (corrupting the preset); it now reports whose board is there and offers the MAC re-match.
+  Skipped under `-DryRun`/`-SkipMacCheck`. Matching logic tested with 14 fake-board cases in PS 5.1;
+  NOT hardware-tested — load a preset with boards on different sockets before relying on it.
+- sep. 18, 2026 — FIXED in `run_wizard.ps1` (uncommitted), from teammates' reports: (1) **no skip on
+  burst** — the manual flow's scenario-target step (burst/mobility/powercycle) dead-ended with "go
+  back" whenever no LOCAL child could carry it, even on a multi-laptop split (root-only laptop, or
+  only attacker/wormhole boards here); it now records the target as on another laptop, like the
+  blackhole/wormhole role menus already did. (2) **presets' scenario couldn't be changed** — "Adjust
+  the plan before confirming?" gained "Change scenario for this run": clears the old target, re-asks
+  for one with the same "on another laptop" escape (offered only when the roster already has remote
+  boards). `menu.ps1` checked: has neither bug (per-board yes/no questions, missing target is only a
+  warning; no presets). Parser clean, not hardware-tested.
+
+## Rolled from STATUS.md "Recently done" — sep. 18, 2026 (4th roll)
+- sep. 18, 2026 — **Main-menu declutter + SD-picker delete + per-member preset folders**
+  (uncommitted; `run_wizard.ps1`, `menu.ps1`): the 3 member-board-list main-menu entries
+  (edit / open json / snapshots) collapsed into one submenu in both launchers, freeing the main
+  menu; the SD-card import file picker gained a `d1,3` command to delete files straight off the
+  card (separate from the existing post-import `--delete-source`, which still only fires after a
+  verified copy); presets split one folder per member (`presets\Bas\`, `presets\Cal\`,
+  `presets\Kyle\` — empty until first save, git won't track them until then), with owner
+  auto-detected from the roster's MACs against `member_boards.json`, a new `my_member.txt`
+  ("whose laptop is this," set from the member-board submenu) breaking ties, and the picker
+  showing YOURS first then every other member under its own heading — solves "which preset did I
+  save for the absent member vs. mine" by construction. The pre-existing
+  `presets\linear-blackhole-none-g402.json` unresolved merge conflict (still UU, see
+  Blockers) was left untouched and still sits unfiled; resolving it is now also a precondition
+  for filing THAT preset under an owner. MEMORY.md.

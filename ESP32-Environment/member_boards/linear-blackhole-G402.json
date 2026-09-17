@@ -1,0 +1,72 @@
+{
+    "_help":  "A saved member board list - same shape as member_boards.json, plus attack/topology/location/savedAt. Load it from the snapshot menu; it OVERWRITES member_boards.json.",
+    "attack":  "blackhole",
+    "topology":  "linear",
+    "location":  "G402",
+    "savedAt":  "2026-09-18 02:11",
+    "members":  [
+                    {
+                        "name":  "Cal",
+                        "boards":  [
+                                       {
+                                           "nickname":  "ROOT",
+                                           "mac":  "B0:18",
+                                           "role":  "root",
+                                           "scenario":  ""
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Bas",
+                        "boards":  [
+                                       {
+                                           "nickname":  "attacker_5",
+                                           "mac":  "20:38",
+                                           "role":  "attacker",
+                                           "scenario":  ""
+                                       },
+                                       {
+                                           "nickname":  "child_6",
+                                           "mac":  "20:80",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       },
+                                       {
+                                           "nickname":  "child_7",
+                                           "mac":  "F4:18",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Kyle",
+                        "boards":  [
+                                       {
+                                           "nickname":  "child_8",
+                                           "mac":  "B4:90",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       },
+                                       {
+                                           "nickname":  "child_9",
+                                           "mac":  "28:B4",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       },
+                                       {
+                                           "nickname":  "child_10",
+                                           "mac":  "70:68",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       },
+                                       {
+                                           "nickname":  "child_11",
+                                           "mac":  "B4:80",
+                                           "role":  "child",
+                                           "scenario":  ""
+                                       }
+                                   ]
+                    }
+                ]
+}

@@ -205,18 +205,11 @@ def _scan(card_root):
     card is ignored — status_*.txt reports, location.txt, runs.csv itself, and
     the empty folders of the 63-folder tree the firmware creates on every boot.
 
-    Also descends into each leaf's _archive\\ subfolder, if present — csv_logger.c
-    auto-archives (never deletes) a location's prior-run mirrors, either at the
-    start of the NEXT boot (sd_archive_prior_run_mirrors()) or on demand right
-    after THIS run's own USB export confirms it (ARCHIVE_SD — see
-    csv_logger_archive_sd_now() / export_logs.py --archive-sd, implied by
-    --delete), so a run's folder isn't cluttered with old captures either way.
-    Those archived files are still real, not-yet-imported data, so they must
-    stay reachable here or a run that gets superseded before anyone runs this
-    import would become invisible to it. runs.csv (read by _read_manifest below)
-    is never archived, so the same manifest covers both the live folder and its
-    _archive\\ subfolder — boot numbers are unique per card regardless of which
-    of the two a file physically sits in.
+    Each leaf's _archive\\ subfolder is deliberately NOT read: it holds prior
+    runs csv_logger.c already moved out of the way (sd_archive_prior_run_mirrors()
+    at the next boot, or ARCHIVE_SD after a confirmed USB export), and importing
+    them again mixed old captures into a new run's exports. Copy a file out of
+    _archive\\ by hand if one is genuinely needed.
 
     manifest_entry is this file's boot's row from _read_manifest() (a dict
     with rows/uptime_s/clean), or None if the leaf has no manifest at all."""
@@ -235,11 +228,6 @@ def _scan(card_root):
                 manifest = _read_manifest(leaf)
                 for src_path, m, entry in _scan_dir(leaf, manifest):
                     yield src_path, attack_dir, topo_dir, location, m, entry
-
-                archive_leaf = os.path.join(leaf, "_archive")
-                if os.path.isdir(archive_leaf):
-                    for src_path, m, entry in _scan_dir(archive_leaf, manifest):
-                        yield src_path, attack_dir, topo_dir, location, m, entry
 
 
 def _row_count(path):

@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -81,18 +82,17 @@ static volatile uint32_t s_probes_received = 0;
  * drop any arrival whose seq_num was already logged for that source —
  * the same pattern phase_listener.c already uses for phase broadcasts.
  *
- * Sized for Milestone 3's max topology (10 nodes); trivially sufficient
- * for Milestone 1's single victim.
+ * The table grows with the number of sending nodes - no source cap. Only
+ * probe_data_cb (the phase-listener task) touches it, so no lock is needed.
  */
-#define PROBE_DEDUP_MAX_SOURCES   16
-
 typedef struct {
     uint8_t  mac[6];
     uint32_t last_seq;
-    bool     in_use;
 } probe_dedup_entry_t;
 
-static probe_dedup_entry_t s_dedup_table[PROBE_DEDUP_MAX_SOURCES];
+static probe_dedup_entry_t *s_dedup_table = NULL;
+static size_t               s_dedup_count = 0;
+static size_t               s_dedup_cap   = 0;
 
 /**
  * @brief Return true if this (mac, seq_num) was already seen and logged.
@@ -100,13 +100,7 @@ static probe_dedup_entry_t s_dedup_table[PROBE_DEDUP_MAX_SOURCES];
  */
 static bool probe_is_duplicate(const uint8_t mac[6], uint32_t seq_num)
 {
-    int free_slot = -1;
-
-    for (int i = 0; i < PROBE_DEDUP_MAX_SOURCES; i++) {
-        if (!s_dedup_table[i].in_use) {
-            if (free_slot < 0) free_slot = i;
-            continue;
-        }
+    for (size_t i = 0; i < s_dedup_count; i++) {
         if (memcmp(s_dedup_table[i].mac, mac, 6) == 0) {
             if (seq_num <= s_dedup_table[i].last_seq) {
                 return true;   /* duplicate or stale/out-of-order retry */
@@ -117,14 +111,20 @@ static bool probe_is_duplicate(const uint8_t mac[6], uint32_t seq_num)
     }
 
     /* First time seeing this source MAC — register it. */
-    if (free_slot >= 0) {
-        memcpy(s_dedup_table[free_slot].mac, mac, 6);
-        s_dedup_table[free_slot].last_seq = seq_num;
-        s_dedup_table[free_slot].in_use   = true;
-    } else {
-        ESP_LOGW(TAG, "Dedup table full (%d sources) — cannot track new MAC",
-                 PROBE_DEDUP_MAX_SOURCES);
+    if (s_dedup_count == s_dedup_cap) {
+        size_t cap = s_dedup_cap ? s_dedup_cap * 2 : 8;
+        probe_dedup_entry_t *grown = realloc(s_dedup_table, cap * sizeof(*grown));
+        if (!grown) {
+            ESP_LOGE(TAG, "Out of memory tracking probe source " MACSTR
+                          " - its duplicates won't be filtered", MAC2STR(mac));
+            return false;
+        }
+        s_dedup_table = grown;
+        s_dedup_cap   = cap;
     }
+    memcpy(s_dedup_table[s_dedup_count].mac, mac, 6);
+    s_dedup_table[s_dedup_count].last_seq = seq_num;
+    s_dedup_count++;
     return false;
 }
 
@@ -413,7 +413,7 @@ static void probe_data_cb(const uint8_t *data, size_t len,
  * Telemetry task — 1 Hz cross-layer sampler
  *
  * Implements the VICTIM_TELEMETRY_LOOP from Figure 4.24 adapted for root.
- * Root has no parent so parent_mac is all-zeros; layer is always 0.
+ * Root has no parent so parent_mac is all-zeros; the stack reports it at layer 1.
  *
  * retry_count ← s_broadcast_failures  (failed phase broadcast sends)
  * tx_count    ← s_broadcast_sends     (successful phase broadcast sends)

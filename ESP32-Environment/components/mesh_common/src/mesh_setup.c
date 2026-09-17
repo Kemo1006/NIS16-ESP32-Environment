@@ -10,12 +10,15 @@
 #include "mesh_messages.h"
 #include "node_identity.h"
 #include "phase_listener.h"
+#include "topology_graph.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -56,6 +59,7 @@ static void log_mesh_status(void);
  * of waiting on the heartbeat table's own staleness timer — see the
  * MESH_EVENT_CHILD_DISCONNECTED / MESH_EVENT_ROUTING_TABLE_REMOVE cases. */
 static void heartbeat_table_print(void);
+static void heartbeat_request_print(void);
 static void heartbeat_mark_offline(const uint8_t mac[6]);
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -118,21 +122,19 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
      *                       branch across a subset of parents instead of all
      *                       crowding the root (adaptive partial-mesh shape).
      */
-    int max_layer    = MESH_MAX_LAYER;
+    /* max_layer here is the STRUCTURE (STAR) or the stack's own ceiling
+     * (everything else) - never a board count. See mesh_config.h. */
+    int max_layer    = MESH_STACK_MAX_LAYER_TREE;
     int max_children = MESH_MAX_CHILDREN;
-    const char *topo_name;
+    const char *topo_name = topo_kind_str((topo_kind_t)MESH_TOPOLOGY);
 #if (MESH_TOPOLOGY == NIS_TOPO_STAR)
-    topo_name = "STAR";
-    max_layer = 2;                           /* root(L1) + direct children(L2) */
+    max_layer = 2;                           /* structural: center(L1) + direct nodes(L2) */
 #elif (MESH_TOPOLOGY == NIS_TOPO_LINEAR)
-    topo_name = "LINEAR";
     ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
+    max_layer    = MESH_STACK_MAX_LAYER_CHAIN;
     max_children = MESH_LINEAR_MAX_CHILDREN; /* 1 child/node → strict chain     */
 #elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
-    topo_name = "PARTIAL";
     max_children = MESH_PARTIAL_MAX_CHILDREN;/* narrowed fan-out → branched mesh */
-#else  /* NIS_TOPO_TREE */
-    topo_name = "TREE";
 #endif
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(max_layer));
     ESP_LOGI(TAG, "Topology shaping: %s (max_layer=%d, max_children=%d)",
@@ -381,9 +383,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
          * mesh notices, not up to HEARTBEAT_TABLE_REPRINT_MS later. It does
          * NOT shrink the staleness floor itself — three missed heartbeats is
          * still what tells a real drop apart from one lost frame. */
-        if (s_table_ready) {
-            heartbeat_table_print();
-        }
+        heartbeat_request_print();
         break;
 
     case MESH_EVENT_ROOT_SWITCH_REQ:
@@ -442,6 +442,19 @@ static void ip_event_handler(void *arg, esp_event_base_t base,
  * print never lands right on top of one a change just produced. */
 static int64_t s_last_print_us = 0;
 
+/* The heartbeat task does every table print that doesn't already run on a
+ * roomy stack. mesh_event_handler runs on the system event task (2304 bytes
+ * in this sdkconfig) - too small to also build the graph, render the tree
+ * and validate it - so it only asks for a print (heartbeat_request_print). */
+static TaskHandle_t s_heartbeat_task = NULL;
+
+static void heartbeat_request_print(void)
+{
+    if (s_table_ready && s_heartbeat_task) {
+        xTaskNotifyGive(s_heartbeat_task);
+    }
+}
+
 static void heartbeat_task(void *arg)
 {
     (void)arg;
@@ -468,46 +481,56 @@ static void heartbeat_task(void *arg)
     ESP_LOGI(TAG, "Heartbeat sender running at %u ms interval.",
              HEARTBEAT_INTERVAL_MS);
 
-    while (true) {
-        bool is_root = mesh_setup_is_root();
+    int64_t next_send_us = 0;
 
-        int8_t rssi = 0;
-        if (!is_root) {
-            uint8_t pmac[6];
-            if (mesh_setup_get_parent_mac(pmac)) {
+    while (true) {
+        if (esp_timer_get_time() >= next_send_us) {
+            bool is_root = mesh_setup_is_root();
+            /* The table owner is the root even when s_is_root was never set
+             * (a fixed routerless root gets no PARENT_CONNECTED event). */
+            bool no_parent = is_root || s_table_ready || esp_mesh_is_root();
+
+            int8_t rssi = 0;
+            memset(pkt.parent_mac, 0, sizeof(pkt.parent_mac));
+            if (!no_parent && mesh_setup_get_parent_mac(pkt.parent_mac)) {
                 int r = 0;
                 esp_wifi_sta_get_rssi(&r);
                 rssi = (int8_t)r;
             }
-        }
 
-        pkt.parent_rssi   = rssi;
-        pkt.layer         = (uint8_t)mesh_setup_get_layer();
-        pkt.uptime_sec    = (uint32_t)((esp_timer_get_time() - boot_us) / 1000000LL);
-        pkt.current_phase = phase_listener_get_phase_id();
+            pkt.parent_rssi   = rssi;
+            pkt.layer         = (int16_t)mesh_setup_get_layer();
+            pkt.uptime_sec    = (uint32_t)((esp_timer_get_time() - boot_us) / 1000000LL);
+            pkt.current_phase = phase_listener_get_phase_id();
 
-        /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
-         * a non-root node's upward send (TODS) — see the routerless-mesh
-         * comments earlier in this file. */
-        esp_err_t err = esp_mesh_send(NULL, &mdata,
-                                      is_root ? MESH_DATA_FROMDS : MESH_DATA_TODS,
-                                      NULL, 0);
-        if (err != ESP_OK) {
-            ESP_LOGD(TAG, "Heartbeat send failed: %s", esp_err_to_name(err));
-        }
-
-        if (s_table_ready) {
-            /* Feed our own row in locally instead of relying on the send above
-             * looping back — the root's row would otherwise age out forever. */
-            heartbeat_ingest((const uint8_t *)&pkt, sizeof(pkt));
-
-            if (esp_timer_get_time() - s_last_print_us >=
-                    (int64_t)HEARTBEAT_TABLE_REPRINT_MS * 1000) {
-                heartbeat_table_print();
+            /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
+             * a non-root node's upward send (TODS) — see the routerless-mesh
+             * comments earlier in this file. */
+            esp_err_t err = esp_mesh_send(NULL, &mdata,
+                                          is_root ? MESH_DATA_FROMDS : MESH_DATA_TODS,
+                                          NULL, 0);
+            if (err != ESP_OK) {
+                ESP_LOGD(TAG, "Heartbeat send failed: %s", esp_err_to_name(err));
             }
+
+            if (s_table_ready) {
+                /* Feed our own row in locally instead of relying on the send above
+                 * looping back — the root's row would otherwise age out forever. */
+                heartbeat_ingest((const uint8_t *)&pkt, sizeof(pkt));
+
+                if (esp_timer_get_time() - s_last_print_us >=
+                        (int64_t)HEARTBEAT_TABLE_REPRINT_MS * 1000) {
+                    heartbeat_table_print();
+                }
+            }
+            next_send_us = esp_timer_get_time() + (int64_t)HEARTBEAT_INTERVAL_MS * 1000;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(HEARTBEAT_INTERVAL_MS));
+        int64_t wait_us = next_send_us - esp_timer_get_time();
+        TickType_t wait = wait_us > 0 ? pdMS_TO_TICKS(wait_us / 1000) : 0;
+        if (ulTaskNotifyTake(pdTRUE, wait) > 0) {
+            heartbeat_table_print();
+        }
     }
 }
 
@@ -515,7 +538,7 @@ esp_err_t heartbeat_start(void)
 {
     BaseType_t rc = xTaskCreate(heartbeat_task, "heartbeat",
                                 STACK_HEARTBEAT, NULL,
-                                TASK_PRIO_HEARTBEAT, NULL);
+                                TASK_PRIO_HEARTBEAT, &s_heartbeat_task);
     if (rc != pdPASS) {
         ESP_LOGE(TAG, "Failed to create heartbeat task");
         return ESP_FAIL;
@@ -525,22 +548,113 @@ esp_err_t heartbeat_start(void)
 
 /* ── Root-side node table ────────────────────────────────────────────────── */
 
+/* Grows with the mesh - no node cap. Every access holds s_table_mutex: rows
+ * are added from the phase-listener task, evicted from the system event task,
+ * and printed from the heartbeat task, and a realloc under a concurrent reader
+ * would be a use-after-free. Recursive, because ingest prints while already
+ * holding it. */
 typedef struct {
     uint8_t  mac[6];
+    uint8_t  parent_mac[6];   /* parent's SoftAP BSSID; all-zero = no parent  */
     char     nickname[NODE_NICKNAME_LEN];
     uint8_t  role;
-    uint8_t  layer;
+    int16_t  layer;           /* as the node's OWN stack reported it           */
     int8_t   parent_rssi;
     uint32_t uptime_sec;
     uint8_t  current_phase;
     int64_t  last_seen_us;
-    bool     in_use;
+    uint8_t *seen_parents;    /* PARTIAL only: every distinct parent observed  */
+    size_t   seen_count;
 } heartbeat_entry_t;
 
-static heartbeat_entry_t s_heartbeat_table[HEARTBEAT_TABLE_MAX];
+static heartbeat_entry_t *s_nodes      = NULL;
+static size_t             s_node_count = 0;
+static size_t             s_node_cap   = 0;
+static SemaphoreHandle_t  s_table_mutex = NULL;
+
+static void table_lock(void)   { xSemaphoreTakeRecursive(s_table_mutex, portMAX_DELAY); }
+static void table_unlock(void) { xSemaphoreGiveRecursive(s_table_mutex); }
+
+static void entry_remove(size_t i)
+{
+    free(s_nodes[i].seen_parents);
+    s_nodes[i] = s_nodes[s_node_count - 1];
+    s_node_count--;
+}
+
+static heartbeat_entry_t *entry_add(const uint8_t mac[6])
+{
+    if (s_node_count == s_node_cap) {
+        size_t cap = s_node_cap ? s_node_cap * 2 : 8;
+        heartbeat_entry_t *grown = realloc(s_nodes, cap * sizeof(*grown));
+        if (!grown) {
+            return NULL;
+        }
+        s_nodes = grown;
+        s_node_cap = cap;
+    }
+    heartbeat_entry_t *e = &s_nodes[s_node_count++];
+    memset(e, 0, sizeof(*e));
+    memcpy(e->mac, mac, 6);
+    return e;
+}
+
+#if (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
+/* A partial mesh is defined by nodes having alternative parents over time, so
+ * the root remembers every distinct parent each node has reported. */
+static void entry_note_parent(heartbeat_entry_t *e)
+{
+    static const uint8_t zero[6] = {0};
+    if (memcmp(e->parent_mac, zero, 6) == 0) {
+        return;
+    }
+    for (size_t k = 0; k < e->seen_count; k++) {
+        if (memcmp(e->seen_parents + 6 * k, e->parent_mac, 6) == 0) {
+            return;
+        }
+    }
+    uint8_t *grown = realloc(e->seen_parents, 6 * (e->seen_count + 1));
+    if (!grown) {
+        return;
+    }
+    memcpy(grown + 6 * e->seen_count, e->parent_mac, 6);
+    e->seen_parents = grown;
+    e->seen_count++;
+}
+#endif
+
+/* qsort has no context argument; only ever read under s_table_mutex. */
+static const topo_graph_t *s_sort_graph = NULL;
+
+static int order_cmp(const void *pa, const void *pb)
+{
+    int a = *(const int *)pa, b = *(const int *)pb;
+    int la = s_sort_graph->layer[a] > 0 ? s_sort_graph->layer[a] : 0x7fffffff;
+    int lb = s_sort_graph->layer[b] > 0 ? s_sort_graph->layer[b] : 0x7fffffff;
+    if (la != lb) {
+        return la < lb ? -1 : 1;
+    }
+    return memcmp(s_nodes[a].mac, s_nodes[b].mac, 6);
+}
+
+/* Indentation is display-only and stops growing at 24 levels so a long chain
+ * stays readable; the printed L<n> is always the real layer. */
+static void tree_line_cb(void *ctx, int idx, int depth)
+{
+    (void)ctx;
+    const heartbeat_entry_t *e = &s_nodes[idx];
+    int indent = depth < 24 ? depth : 24;
+    ESP_LOGI(TAG, "  %*sL%-3d " MACSTR "  %-10s %s", indent * 2, "",
+             depth + 1, MAC2STR(e->mac), node_role_to_str(e->role), e->nickname);
+}
 
 static void heartbeat_table_print(void)
 {
+    if (!s_table_ready) {
+        return;
+    }
+    table_lock();
+
     int64_t now = esp_timer_get_time();
     s_last_print_us = now;
 
@@ -548,65 +662,96 @@ static void heartbeat_table_print(void)
      * actually reachable. Nothing else evicts: a mesh disconnect event only
      * names the direct child, while a node several hops down goes silent with
      * no event at all — going by "has it reported recently" catches both. */
-    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
-        heartbeat_entry_t *e = &s_heartbeat_table[i];
-        if (!e->in_use) {
-            continue;
-        }
+    for (size_t i = 0; i < s_node_count;) {
+        heartbeat_entry_t *e = &s_nodes[i];
         uint32_t age_ms = (uint32_t)((now - e->last_seen_us) / 1000LL);
         if (age_ms > HEARTBEAT_STALE_MS) {
-            char macstr[18];
-            snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
-            ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: %s (%s)",
-                     (unsigned)(age_ms / 1000U), macstr, e->nickname);
-            e->in_use = false;
+            ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: " MACSTR " (%s)",
+                     (unsigned)(age_ms / 1000U), MAC2STR(e->mac), e->nickname);
+            entry_remove(i);
+            continue;
         }
+        i++;
     }
 
-    int idx[HEARTBEAT_TABLE_MAX];
-    int n = 0;
-    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
-        if (s_heartbeat_table[i].in_use) {
-            idx[n++] = i;
-        }
+    /* Layers shown are derived from the parent links (BFS from the root the
+     * links themselves identify), not taken on trust from each row. */
+    size_t n = s_node_count;
+    topo_node_t *tn = calloc(n ? n : 1, sizeof(topo_node_t));
+    int *order = malloc((n ? n : 1) * sizeof(int));
+    topo_graph_t g;
+    if (!tn || !order) {
+        ESP_LOGE(TAG, "Out of memory drawing the topology (%u nodes)", (unsigned)n);
+        free(tn);
+        free(order);
+        table_unlock();
+        return;
     }
-
-    /* Insertion sort by layer (root first), then MAC for a stable order.
-     * n is at most HEARTBEAT_TABLE_MAX (~32) — O(n^2) is irrelevant here. */
-    for (int i = 1; i < n; i++) {
-        int cur = idx[i];
-        int j = i - 1;
-        while (j >= 0) {
-            heartbeat_entry_t *a = &s_heartbeat_table[idx[j]];
-            heartbeat_entry_t *b = &s_heartbeat_table[cur];
-            int cmp = (int)a->layer - (int)b->layer;
-            if (cmp == 0) {
-                cmp = memcmp(a->mac, b->mac, 6);
-            }
-            if (cmp <= 0) {
-                break;
-            }
-            idx[j + 1] = idx[j];
-            j--;
-        }
-        idx[j + 1] = cur;
+    for (size_t i = 0; i < n; i++) {
+        memcpy(tn[i].mac, s_nodes[i].mac, 6);
+        memcpy(tn[i].parent, s_nodes[i].parent_mac, 6);
+        tn[i].seen_parents = s_nodes[i].seen_parents;
+        tn[i].seen_count   = s_nodes[i].seen_count;
+        order[i] = (int)i;
     }
+    if (!topo_build(&g, tn, n)) {
+        ESP_LOGE(TAG, "Out of memory building the topology graph (%u nodes)", (unsigned)n);
+        free(tn);
+        free(order);
+        table_unlock();
+        return;
+    }
+    s_sort_graph = &g;
+    qsort(order, n, sizeof(int), order_cmp);
 
-    ESP_LOGI(TAG, "==================== MESH TOPOLOGY (%d node%s) ====================",
-             n, n == 1 ? "" : "s");
-    ESP_LOGI(TAG, "%-4s %-18s %-11s %-16s %-6s %-6s %-6s",
+    topo_kind_t kind = (topo_kind_t)MESH_TOPOLOGY;
+    ESP_LOGI(TAG, "============ MESH TOPOLOGY: %s, %u node%s, %d layer%s ============",
+             topo_kind_str(kind), (unsigned)n, n == 1 ? "" : "s",
+             g.max_layer, g.max_layer == 1 ? "" : "s");
+    ESP_LOGI(TAG, "%-5s %-18s %-11s %-16s %-6s %-6s %-6s",
              "LYR", "MAC", "ROLE", "NICKNAME", "RSSI", "PHASE", "AGE_S");
-    for (int i = 0; i < n; i++) {
-        heartbeat_entry_t *e = &s_heartbeat_table[idx[i]];
-        char macstr[18];
-        snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
+    bool mismatch = false;
+    for (size_t i = 0; i < n; i++) {
+        int k = order[i];
+        const heartbeat_entry_t *e = &s_nodes[k];
+        char lyr[12];
+        if (g.layer[k] > 0) {
+            bool differs = (e->layer != g.layer[k]);
+            mismatch |= differs;
+            snprintf(lyr, sizeof(lyr), "%d%s", g.layer[k], differs ? "*" : "");
+        } else {
+            snprintf(lyr, sizeof(lyr), "-");
+        }
         uint32_t age_s = (uint32_t)((now - e->last_seen_us) / 1000000LL);
-        ESP_LOGI(TAG, "%-4u %-18s %-11s %-16s %-6d %-6u %-6lu",
-                 (unsigned)e->layer, macstr, node_role_to_str(e->role),
+        ESP_LOGI(TAG, "%-5s " MACSTR "  %-11s %-16s %-6d %-6u %-6lu",
+                 lyr, MAC2STR(e->mac), node_role_to_str(e->role),
                  e->nickname, (int)e->parent_rssi, (unsigned)e->current_phase,
                  (unsigned long)age_s);
     }
+    if (mismatch) {
+        ESP_LOGI(TAG, "  * the node's own stack reported a different layer (it is re-parenting)");
+    }
+    if (n > 1 && g.root >= 0) {
+        ESP_LOGI(TAG, "---- parent/child structure ----");
+        topo_walk(&g, tree_line_cb, NULL);
+    }
+
+    char reason[192];
+    topo_status_t st = topo_validate(&g, tn, kind, reason, sizeof(reason));
+    if (st == TOPO_OK) {
+        ESP_LOGI(TAG, "TOPOLOGY CHECK: %s OK — %s", topo_kind_str(kind), reason);
+    } else if (st == TOPO_WARN) {
+        ESP_LOGW(TAG, "TOPOLOGY CHECK: %s WARN — %s", topo_kind_str(kind), reason);
+    } else {
+        ESP_LOGE(TAG, "TOPOLOGY CHECK: %s FAIL — %s", topo_kind_str(kind), reason);
+    }
     ESP_LOGI(TAG, "=====================================================================");
+
+    s_sort_graph = NULL;
+    topo_free(&g);
+    free(tn);
+    free(order);
+    table_unlock();
 }
 
 /* Instant counterpart to heartbeat_table_print()'s age-based staleness sweep
@@ -620,37 +765,41 @@ static void heartbeat_mark_offline(const uint8_t mac[6])
     if (!s_table_ready) {
         return;
     }
-    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
-        heartbeat_entry_t *e = &s_heartbeat_table[i];
-        if (!e->in_use || memcmp(e->mac, mac, 6) != 0) {
+    table_lock();
+    for (size_t i = 0; i < s_node_count; i++) {
+        if (memcmp(s_nodes[i].mac, mac, 6) != 0) {
             continue;
         }
-        char macstr[18];
-        snprintf(macstr, sizeof(macstr), MACSTR, MAC2STR(e->mac));
-        ESP_LOGW(TAG, "Node OFFLINE (child-disconnected event) — %s (%s)",
-                 macstr, e->nickname);
-        e->in_use = false;
-        heartbeat_table_print();
+        ESP_LOGW(TAG, "Node OFFLINE (child-disconnected event) — " MACSTR " (%s)",
+                 MAC2STR(s_nodes[i].mac), s_nodes[i].nickname);
+        entry_remove(i);
+        table_unlock();
+        heartbeat_request_print();
         return;
     }
+    table_unlock();
 }
 
 void heartbeat_table_init(void)
 {
-    memset(s_heartbeat_table, 0, sizeof(s_heartbeat_table));
+    s_table_mutex = xSemaphoreCreateRecursiveMutex();
+    if (!s_table_mutex) {
+        ESP_LOGE(TAG, "Could not create the node-table mutex - table disabled");
+        return;
+    }
 
     /* Seed the root's own row directly — it never has to wait for its own
      * heartbeat to round-trip through the mesh before it can be listed. */
-    heartbeat_entry_t *e = &s_heartbeat_table[0];
-    esp_read_mac(e->mac, ESP_MAC_WIFI_STA);
-    strlcpy(e->nickname, node_identity_nickname(), NODE_NICKNAME_LEN);
-    e->role          = node_identity_role();
-    e->layer         = (uint8_t)mesh_setup_get_layer();
-    e->parent_rssi   = 0;
-    e->uptime_sec    = 0;
-    e->current_phase = PHASE_ID_BASELINE;
-    e->last_seen_us  = esp_timer_get_time();
-    e->in_use        = true;
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    heartbeat_entry_t *e = entry_add(mac);
+    if (e) {
+        strlcpy(e->nickname, node_identity_nickname(), NODE_NICKNAME_LEN);
+        e->role          = node_identity_role();
+        e->layer         = (int16_t)mesh_setup_get_layer();
+        e->current_phase = PHASE_ID_BASELINE;
+        e->last_seen_us  = esp_timer_get_time();
+    }
 
     s_table_ready = true;
 
@@ -659,57 +808,67 @@ void heartbeat_table_init(void)
 
 bool heartbeat_ingest(const uint8_t *data, size_t len)
 {
-    if (len < sizeof(node_heartbeat_pkt_t)) {
+    if (len < sizeof(uint32_t)) {
         return false;
+    }
+    uint32_t magic;
+    memcpy(&magic, data, sizeof(magic));
+    if (magic == HEARTBEAT_MSG_MAGIC_V1) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            ESP_LOGW(TAG, "A board is sending the OLD heartbeat format - re-flash every "
+                          "board with this build or it won't appear in the topology.");
+        }
+        return true;
+    }
+    if (magic != HEARTBEAT_MSG_MAGIC || len < sizeof(node_heartbeat_pkt_t) || !s_table_ready) {
+        return magic == HEARTBEAT_MSG_MAGIC;
     }
     const node_heartbeat_pkt_t *pkt = (const node_heartbeat_pkt_t *)data;
-    if (pkt->magic != HEARTBEAT_MSG_MAGIC) {
-        return false;
-    }
+
+    table_lock();
 
     heartbeat_entry_t *hit = NULL;
-    int free_slot = -1;
-    for (int i = 0; i < HEARTBEAT_TABLE_MAX; i++) {
-        if (!s_heartbeat_table[i].in_use) {
-            if (free_slot < 0) {
-                free_slot = i;
-            }
-            continue;
-        }
-        if (memcmp(s_heartbeat_table[i].mac, pkt->src_mac, 6) == 0) {
-            hit = &s_heartbeat_table[i];
+    for (size_t i = 0; i < s_node_count; i++) {
+        if (memcmp(s_nodes[i].mac, pkt->src_mac, 6) == 0) {
+            hit = &s_nodes[i];
             break;
         }
     }
 
     bool is_new = false;
     if (!hit) {
-        if (free_slot < 0) {
-            ESP_LOGW(TAG, "Heartbeat table full (%d) — dropping new node " MACSTR,
-                     HEARTBEAT_TABLE_MAX, MAC2STR(pkt->src_mac));
+        hit = entry_add(pkt->src_mac);
+        if (!hit) {
+            ESP_LOGE(TAG, "Out of memory adding node " MACSTR, MAC2STR(pkt->src_mac));
+            table_unlock();
             return true;
         }
-        hit = &s_heartbeat_table[free_slot];
-        memcpy(hit->mac, pkt->src_mac, 6);
-        hit->in_use = true;
         is_new = true;
     }
 
     bool changed = is_new
                 || hit->layer != pkt->layer
+                || memcmp(hit->parent_mac, pkt->parent_mac, 6) != 0
                 || hit->role  != pkt->assigned_role
                 || strncmp(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN) != 0;
 
     strlcpy(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN);
+    memcpy(hit->parent_mac, pkt->parent_mac, 6);
     hit->role          = pkt->assigned_role;
     hit->layer         = pkt->layer;
     hit->parent_rssi   = pkt->parent_rssi;
     hit->uptime_sec    = pkt->uptime_sec;
     hit->current_phase = pkt->current_phase;
     hit->last_seen_us  = esp_timer_get_time();
+#if (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
+    entry_note_parent(hit);
+#endif
 
     if (changed) {
         heartbeat_table_print();
     }
+    table_unlock();
     return true;
 }

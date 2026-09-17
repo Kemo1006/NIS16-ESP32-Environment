@@ -35,9 +35,11 @@ import glob
 import os
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+import topology_graph  # noqa: E402  (same folder; the rules shared with the firmware)
 
 # User-facing topology names (match run.ps1/menu.ps1's -Topology vocabulary and
 # --expect's choices below). Only "partial" differs from its own exports/
@@ -253,69 +255,62 @@ def resolve_files(args, dir_is_default):
     return sorted(matches)
 
 
-# ── Tree reconstruction ─────────────────────────────────────────────────────
-def build_tree(nodes):
-    """Return (children_of[node_id] -> list, root_id, unresolved[list])."""
+# ── Structure reconstruction ────────────────────────────────────────────────
+def _resolve_parent(mac, sta_index):
+    """parent_mac (the parent's SoftAP BSSID = STA + 1) -> node_id, or None."""
+    if mac in (None, "", ZERO_MAC):
+        return None
+    try:
+        v = mac_to_int(mac)
+    except ValueError:
+        return None
+    return sta_index.get(v - 1) or sta_index.get(v)
+
+
+def build_graph(nodes):
+    """Final parent links -> topology_graph.Graph, plus every parent link seen
+    over the run (the union graph a partial mesh is judged on).
+
+    Returns (graph, union_edges, unresolved[(node_id, parent_mac)]). Layers are
+    derived from the links (BFS from the root they identify), not read from
+    the CSV's layer column."""
     sta_index = {n.sta_int: nid for nid, n in nodes.items() if n.sta_int is not None}
-    children = defaultdict(list)
-    root_id = None
-    unresolved = []
+    links, unresolved = {}, []
     for nid, n in nodes.items():
-        if n.final_parent in (None, ZERO_MAC) or n.final_layer == ROOT_LAYER:
-            if n.final_layer == ROOT_LAYER or n.role == "root":
-                root_id = nid
-            continue
-        parent_sta = mac_to_int(n.final_parent) - 1     # SoftAP -> STA
-        parent_id = sta_index.get(parent_sta)
-        if parent_id is None:
+        par = _resolve_parent(n.final_parent, sta_index)
+        if par is None and n.final_parent not in (None, "", ZERO_MAC):
             unresolved.append((nid, n.final_parent))
+            par = f"unresolved:{n.final_parent}"   # counted in graph.unresolved
+        links[nid] = par
+    union_edges = []
+    for nid, n in nodes.items():
+        for mac in {p for _, p in n.parents}:
+            par = _resolve_parent(mac, sta_index)
+            if par is not None:
+                union_edges.append((nid, par))
+    return topology_graph.build_graph(links), union_edges, unresolved
+
+
+def print_tree(graph, nodes, start=None):
+    """Depth-first, iterative (a chain can be far deeper than Python's
+    recursion limit). Shows the derived layer and flags where the node's own
+    logged layer disagrees. start = a detached fragment's top instead of the
+    root; its layers can't be derived (the link to the root is missing), so
+    only the logged ones are shown."""
+    stack = [(graph.root if start is None else start, 0)]
+    while stack:
+        nid, depth = stack.pop()
+        n = nodes[nid]
+        derived = graph.layer.get(nid)
+        if derived is None:
+            label = f"logged layer {n.final_layer}"
+        elif n.final_layer == derived:
+            label = f"layer {derived}"
         else:
-            children[parent_id].append(nid)
-    return children, root_id, unresolved
-
-
-def print_tree(children, node_id, nodes, prefix=""):
-    n = nodes[node_id]
-    role = n.role
-    print(f"{prefix}{node_id}  (layer {n.final_layer}, role {role})")
-    for i, child in enumerate(sorted(children.get(node_id, []))):
-        print_tree(children, child, nodes, prefix + "    ")
-
-
-# ── Expected-topology checks ────────────────────────────────────────────────
-def check_expected(expect, nodes, children, root_id):
-    layers = [n.final_layer for n in nodes.values() if n.final_layer is not None]
-    if not layers:
-        return ["No layer data — cannot check topology."]
-    max_layer = max(layers)
-    layer_hist = Counter(layers)
-    n_non_root = sum(1 for n in nodes.values() if n.final_layer != ROOT_LAYER)
-    notes = []
-
-    if expect == "star":
-        # All non-root nodes are direct children of root: max layer == 2.
-        if max_layer == ROOT_LAYER + 1:
-            notes.append(f"PASS star: all {n_non_root} nodes at layer {ROOT_LAYER+1} (direct children of root).")
-        else:
-            notes.append(f"WARN star: expected max layer {ROOT_LAYER+1}, got {max_layer}.")
-    elif expect == "linear":
-        # One node per layer -> a chain.
-        multi = [ly for ly, c in layer_hist.items() if c > 1]
-        if not multi and max_layer >= ROOT_LAYER + 2:
-            notes.append(f"PASS linear: one node per layer, depth {max_layer}.")
-        else:
-            notes.append(f"WARN linear: layer histogram {dict(sorted(layer_hist.items()))} "
-                         f"(want exactly one node per layer, depth >= {ROOT_LAYER+2}).")
-    elif expect == "tree":
-        if max_layer >= ROOT_LAYER + 2:
-            notes.append(f"PASS tree: multi-hop depth {max_layer} with intermediate forwarders.")
-        else:
-            notes.append(f"WARN tree: depth only {max_layer} — looks like a star, not a tree.")
-    elif expect == "partial":
-        switchers = [nid for nid, n in nodes.items() if n.parent_switches > 0]
-        notes.append(f"INFO partial: {len(switchers)} node(s) changed parent during the run "
-                     f"(multiple potential parents is expected for a partial mesh).")
-    return notes
+            label = f"layer {derived}, logged {n.final_layer}"
+        print(f"{'    ' * depth}{nid}  ({label}, role {n.role})")
+        for child in sorted(graph.children[nid], reverse=True):
+            stack.append((child, depth + 1))
 
 
 # ── Interactive mode ────────────────────────────────────────────────────────
@@ -499,14 +494,23 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s):
         print("No node rows parsed.", file=sys.stderr)
         return 2
 
-    children, root_id, unresolved = build_tree(nodes)
+    graph, union_edges, unresolved = build_graph(nodes)
 
     # ── Structure ───────────────────────────────────────────────────────────
     print("=== Reconstructed structure ===")
-    if root_id:
-        print_tree(children, root_id, nodes)
+    if graph.root is not None and not graph.cycle:
+        print(f"{graph.reachable} node(s) attached, {graph.max_layer} layer(s)")
+        print_tree(graph, nodes)
+    elif graph.cycle:
+        print("(!) Parent links form a cycle - no valid structure to draw.")
     else:
-        print("(!) No root node identified (no node at layer 1).")
+        print("(!) No root node identified (no node without a parent).")
+    if graph.detached and not graph.cycle:
+        tops = [nid for nid in graph.detached if graph.parent[nid] is None]
+        print(f"\n(!) {len(graph.detached)} node(s) not attached to the root, in "
+              f"{len(tops)} fragment(s):")
+        for top in sorted(tops):
+            print_tree(graph, nodes, start=top)
     if unresolved:
         print("\n(!) Unresolved parents (parent board not among the loaded files):")
         for nid, pmac in unresolved:
@@ -543,10 +547,15 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s):
     print()
 
     # ── Expected topology ───────────────────────────────────────────────────
+    # STAR/LINEAR are enforced by the firmware -> a violation FAILs the run.
+    # TREE/PARTIAL come from placement -> a mismatch only WARNs. See
+    # topology_graph.py for the structural rules.
+    structure_ok = True
     if expect:
         print("=== Expected-topology check ===")
-        for note in check_expected(expect, nodes, children, root_id):
-            print(f"  {note}")
+        status, reason = topology_graph.validate(expect, graph, union_edges)
+        print(f"  {status} {expect}: {reason}")
+        structure_ok = status != topology_graph.FAIL
         print()
 
     # ── Verdict ─────────────────────────────────────────────────────────────
@@ -555,7 +564,10 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s):
           f"{'YES' if all_converged else 'NO — see nodes marked ?'}")
     print(f"  Baseline re-routing free            : "
           f"{'YES' if baseline_stable else 'NO — parent/layer changed during baseline'}")
-    return 0 if (all_converged and baseline_stable) else 1
+    if expect:
+        print(f"  Structure matches {expect:<17} : "
+              f"{'YES' if structure_ok else 'NO — see the topology check above'}")
+    return 0 if (all_converged and baseline_stable and structure_ok) else 1
 
 
 def main():
@@ -581,7 +593,8 @@ def main():
                          "them regardless — this only narrows to one).")
     ap.add_argument("--files", nargs="*", help="Explicit telem CSVs (overrides --dir filters).")
     ap.add_argument("--expect", choices=TOPOLOGIES,
-                    help="Assert the intended topology and report PASS/WARN.")
+                    help="Check the structure against this topology: OK/WARN/FAIL "
+                         "(star/linear violations FAIL the run).")
     ap.add_argument("--converge-limit", type=float, default=60.0,
                     help="Convergence deadline in seconds (Milestone-3 criterion).")
     ap.add_argument("--stabilise-s", type=float, default=STABILISE_S,

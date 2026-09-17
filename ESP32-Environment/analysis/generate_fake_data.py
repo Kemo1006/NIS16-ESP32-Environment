@@ -9,20 +9,26 @@ This lets Milestone 6 be built, tested, and demoed before Milestone 1
 hardware is fully working — the pipeline only cares about the CSV shape,
 not where the rows came from.
 
-Simulates a 3-node baseline-only run (root + 2 victims) at 1 Hz for a
-configurable duration, with controllable gap injection so the
+Simulates a baseline-only run (default: star, root + 2 victims) at 1 Hz for
+a configurable duration, with controllable gap injection so the
 missing-data handling path (linear interpolation / forward-fill /
-window discard) can be exercised and verified.
+window discard) can be exercised and verified. --topology/--nodes pick the
+structure; layers and parent links come from tools/topology_graph.py, so any
+size produces a valid star/tree/linear/partial shape (root = layer 1, as the
+firmware reports it).
 """
 
 from __future__ import annotations
 
 import argparse
 import os
-import random
+import sys
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
+import topology_graph  # noqa: E402
 
 
 def generate_node_csv(
@@ -163,10 +169,12 @@ def generate_topology_switch_fixture(out_path: str, seed: int = 50):
     retry_cum = tx_cum = probes_cum = 0
 
     for t in range(40):
+        # Root is layer 1 (firmware convention): a direct child of it is
+        # layer 2, and moving under another child makes it layer 3.
         if t < 22:
-            layer, parent = 1, "1C:C3:AB:FA:54:98"
+            layer, parent = 2, "1C:C3:AB:FA:54:98"
         else:
-            layer, parent = 2, "AA:BB:CC:DD:EE:FF"
+            layer, parent = 3, "AA:BB:CC:DD:EE:FF"
 
         rssi = -55 + rng.normal(0, 1.5)
         retry_cum += rng.integers(0, 3)
@@ -211,7 +219,7 @@ def generate_pdr_fixtures(victim_path: str, arrivals_path: str, seed: int = 60):
         probes_cum += 1 if t % 2 == 0 else 0
         vrows.append({
             "timestamp_us": t * 1_000_000, "node_id": node_id, "role": "victim",
-            "layer": 1, "parent_mac": "1C:C3:AB:FA:54:98",
+            "layer": 2, "parent_mac": "1C:C3:AB:FA:54:98",
             "rssi_dbm": round(-58 + rng.normal(0, 1), 1),
             "retry_count": t, "tx_count": t * 2, "probes_count": probes_cum,
             "phase_id": 0, "gt_label": 0,
@@ -224,7 +232,7 @@ def generate_pdr_fixtures(victim_path: str, arrivals_path: str, seed: int = 60):
         if t % 2 == 0:
             arows.append({
                 "timestamp_us": t * 1_000_000, "node_id": "NODE_ROOT01",
-                "role": "root", "layer": 0, "parent_mac": "00:00:00:00:00:00",
+                "role": "root", "layer": 1, "parent_mac": "00:00:00:00:00:00",
                 "rssi_dbm": -50, "retry_count": 0, "tx_count": 0,
                 "probes_received": 1, "phase_id": 0, "gt_label": 0,
                 "src_mac": mac, "seq_num": seq, "latency_us": 5000,
@@ -266,7 +274,7 @@ def generate_blackhole_pdr_fixtures(victim_path: str, arrivals_path: str):
         probes_cum += 1
         vrows.append({
             "timestamp_us": t * 1_000_000, "node_id": node_id, "role": "victim",
-            "layer": 1, "parent_mac": "1C:C3:AB:FA:54:98", "rssi_dbm": -55,
+            "layer": 2, "parent_mac": "1C:C3:AB:FA:54:98", "rssi_dbm": -55,
             "retry_count": t, "tx_count": t, "probes_count": probes_cum,
             "phase_id": 0, "gt_label": 0,
         })
@@ -277,7 +285,7 @@ def generate_blackhole_pdr_fixtures(victim_path: str, arrivals_path: str):
     for t in range(10):  # root only hears the first half — simulated blackhole
         arows.append({
             "timestamp_us": t * 1_000_000, "node_id": "NODE_ROOT01",
-            "role": "root", "layer": 0, "parent_mac": "00:00:00:00:00:00",
+            "role": "root", "layer": 1, "parent_mac": "00:00:00:00:00:00",
             "rssi_dbm": -50, "retry_count": 0, "tx_count": 0,
             "probes_received": 1, "phase_id": 0, "gt_label": 0,
             "src_mac": mac, "seq_num": seq, "latency_us": 4000,
@@ -301,38 +309,41 @@ def main():
         "--duration", type=int, default=60,
         help="Duration in seconds for the simple baseline run (default: 60)",
     )
+    parser.add_argument(
+        "--topology", choices=topology_graph.TOPOLOGIES, default="star",
+        help="Structure of the baseline run (default: star)",
+    )
+    parser.add_argument(
+        "--nodes", type=int, default=3,
+        help="Boards in the baseline run, root included (default: 3)",
+    )
     args = parser.parse_args()
+    if args.nodes < 3:
+        parser.error("--nodes must be at least 3 (the gap fixture lives on NODE_VICTIM02)")
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    print("Generating synthetic 3-node baseline run (clean, no gaps)...")
-    generate_node_csv(
-        node_id="NODE_ROOT01", role="root", layer=0, parent_mac="00:00:00:00:00:00",
-        duration_s=args.duration, rssi_base=-50, rssi_noise=1.5,
-        out_path=os.path.join(args.output_dir, "NODE_ROOT01_RUN_001_telem.csv"),
-        seed=10,
-    )
-    generate_node_csv(
-        node_id="NODE_VICTIM01", role="victim", layer=1, parent_mac="1C:C3:AB:FA:54:98",
-        duration_s=args.duration, rssi_base=-58, rssi_noise=2.0,
-        out_path=os.path.join(args.output_dir, "NODE_VICTIM01_RUN_001_telem.csv"),
-        seed=20,
-    )
-    generate_node_csv(
-        node_id="NODE_VICTIM02", role="victim", layer=1, parent_mac="1C:C3:AB:FA:54:98",
-        duration_s=args.duration, rssi_base=-62, rssi_noise=2.5,
-        out_path=os.path.join(args.output_dir, "NODE_VICTIM02_RUN_001_telem.csv"),
-        seed=30,
-        # Inject a single 1-second gap at t=25 (should be interpolated,
-        # window kept) and a 3-second gap at t=40-42 (should trigger
-        # window discard for that window).
-        gap_indices={25, 40, 41, 42},
-    )
+    roster = topology_graph.synthetic_roster(args.topology, args.nodes, seed=10)
+    print(f"Generating synthetic {args.nodes}-node {args.topology} baseline run...")
+    for i, (node_id, role, layer, parent_mac) in enumerate(roster):
+        generate_node_csv(
+            node_id=node_id, role=role, layer=layer, parent_mac=parent_mac,
+            duration_s=args.duration,
+            rssi_base=-50 - 6 * (layer - 1) - 2 * (i % 3),
+            rssi_noise=1.5 + 0.5 * min(i, 2),
+            out_path=os.path.join(args.output_dir, f"{node_id}_RUN_001_telem.csv"),
+            seed=10 * (i + 1),
+            # NODE_VICTIM02 carries the gaps: a single 1-second gap at t=25
+            # (should be interpolated, window kept) and a 3-second gap at
+            # t=40-42 (should trigger window discard for that window).
+            gap_indices={25, 40, 41, 42} if node_id == "NODE_VICTIM02" else None,
+        )
 
     print()
     print("Generating synthetic run with an attack phase (for modal-label testing)...")
+    _, role1, layer1, parent1 = roster[1]
     generate_run_with_attack_phase(
-        node_id="NODE_VICTIM01", role="victim", layer=1, parent_mac="1C:C3:AB:FA:54:98",
+        node_id="NODE_VICTIM01", role=role1, layer=layer1, parent_mac=parent1,
         out_path=os.path.join(args.output_dir, "NODE_VICTIM01_RUN_002_telem.csv"),
         seed=40,
     )

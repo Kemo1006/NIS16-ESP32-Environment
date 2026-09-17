@@ -146,7 +146,7 @@ logged). TunnelIntensity and TunnelBytes remain attacker-keyed as specified.
 | | |
 |---|---|
 | **Milestones Form implies** | Three repeats of the *same* configuration per cell. |
-| **We do** | The **topology class** is fixed by a compile-time constraint (`MESH_TOPOLOGY` → `max_layer` / `max_children` in `mesh_setup.c:105-118`) and verified per run by `verify_topology.py`. **Which board sits at which layer is not fixed** — parents are chosen by signal strength at each boot. |
+| **We do** | The **topology class** is fixed by a compile-time constraint (`MESH_TOPOLOGY` → `max_layer` / `max_children` in `mesh_setup.c` — the structure, never a board count; since sep. 17, 2026 depth is capped only by ESP-IDF's own ceiling) and verified per run by `verify_topology.py`, which rebuilds the structure from the logged parent links (`tools/topology_graph.py`). **Which board sits at which layer is not fixed** — parents are chosen by signal strength at each boot. |
 | **Evidence** | Across `linear · wormhole` r1–r3 the Node A ↔ Node B separation was adjacent → 2 hops → 3 hops. All three still reported `PASS linear: one node per layer, depth 6`. |
 | **Why not forced** | Pinning parents would require overriding the mesh's own parent selection, which is the behaviour under study. The self-organising layer is what makes this a mesh dataset rather than a fixed-route one. |
 | **Net effect** | The attack signature is **unaffected** — 181 / 181 / 180 duplicates across repeats — because the wormhole tunnel is a physical UART wire whose behaviour does not depend on mesh distance. **Radio-path features legitimately vary between repeats** (`RSSI_Hop_Diff`, `LatencyHopRatio`, `HopStabilityDuration`). That variance is real mesh behaviour, not noise to be removed. |

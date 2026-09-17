@@ -312,12 +312,26 @@ check the `files in output : N of N` line.
 
 ## verify_topology.py
 
-Rebuilds the mesh from each node's `parent_mac` + `layer` and asserts the intended
-shape.
+Rebuilds the mesh from each node's `parent_mac` and checks it against the intended
+shape. Layers are derived from the parent links (breadth-first from the root the
+links identify), not taken from the `layer` column, and there is no layer or node
+cap — a 20-board chain is 20 layers. The rules live in `topology_graph.py`, shared
+with the root's live `TOPOLOGY CHECK` line (`components/mesh_common/src/topology_graph.c`):
+
+| `--expect` | Structural rule | On violation |
+|---|---|---|
+| `star` | every node a direct child of the center (max layer 2, any N) | **FAIL** (firmware-enforced) |
+| `linear` | every node at most one child — a chain of any length | **FAIL** (firmware-enforced) |
+| `tree` | one root, no cycles, any depth; flat (depth 2) warns | WARN (placement-driven) |
+| `partial` | nodes seen under 2+ parents over the run, not every pair linked | WARN (placement-driven) |
+
+A cycle in the parent links fails every topology. A board whose parent isn't in the
+loaded files (it didn't export) is shown as a detached fragment, not taken for the root.
 
 ```powershell
 python verify_topology.py --dir exports\baseline\linear\home\trimmed `
     --topology linear --attack none --repeat 1 --expect linear
+python -m unittest test_topology_graph      # the rules, 3..1000-node cases
 ```
 
 > ⚠️ `--topology` defaults to `star`. Without the filters it matches **zero files**

@@ -30,28 +30,26 @@
  *  your local APs are NOT using. See esp32-issues.md I-008. */
 #define MESH_CHANNEL        11
 
-/** Maximum hop depth the mesh is allowed to grow to. Root is layer 1 (ESP-MESH
- *  convention — esp_mesh_get_layer() returns 1 at the root).
+/** Layers are NOT sized from a board count. The mesh stack assigns each node
+ *  its layer (hop count from the root, root = layer 1) as it joins, so the
+ *  firmware only tells the stack which STRUCTURE to keep and otherwise lets
+ *  depth grow to the stack's own ceiling. The only numbers left are ESP-IDF's
+ *  hard limits (esp_mesh.h, esp_mesh_set_max_layer / esp_mesh_set_topology):
  *
- *  SIZING RULE — this constant is the binding constraint for LINEAR only.
- *  MESH_TOPO_CHAIN + MESH_LINEAR_MAX_CHILDREN=1 means every child consumes its
- *  own layer, so N children need depth N+1:
+ *    tree topology  (TREE, PARTIAL)  : max layer 25
+ *    chain topology (LINEAR)         : max layer 1000
  *
- *      4 children (5 boards) -> depth 5
- *      5 children (6 boards) -> depth 6   <- the current lab setup
- *      6 children (7 boards) -> depth 7
- *
- *  Raised 6 -> 7 on 2026-07-25 so the same firmware covers a 5-7 board setup
- *  without a re-flash when a board is added. At 6 the 6th child of a 7-board
- *  LINEAR run could not attach at all (no free slot below it, no layer 7) and
- *  would sit at layer -1 logging disconnected rows.
- *
- *  Harmless for the other three: STAR overrides this to 2; TREE and PARTIAL are
- *  limited by fan-out and physical range long before they reach depth 7. */
-#define MESH_MAX_LAYER      7
+ *  STAR's 2 is not a limit of this kind - it IS the star structure (center +
+ *  direct nodes), set in mesh_setup.c. A fixed MESH_MAX_LAYER (last 7) used to
+ *  cap every topology and silently kept the 8th board of a LINEAR run out.
+ *  How many layers a run actually has is derived afterwards from the parent
+ *  links (topology_graph.c on the root, tools/topology_graph.py offline). */
+#define MESH_STACK_MAX_LAYER_TREE    25
+#define MESH_STACK_MAX_LAYER_CHAIN   1000
 
-/** Default max children per node (fan-out cap). Per-topology overrides below
- *  narrow this for LINEAR (chain) and PARTIAL (constrained branching). */
+/** Default fan-out per node: the stack's own maximum (mesh_ap_cfg_t
+ *  max_connection, esp_mesh.h: "max 10"). LINEAR and PARTIAL narrow it below
+ *  because fan-out is part of THEIR structure, not a size limit. */
 #define MESH_MAX_CHILDREN   10
 
 /* ── M3 topology shaping (proposal §4.2.2) ────────────────────────────────────
@@ -104,11 +102,6 @@
  *  tree branches + deepens instead of flattening into a star. Keep >1 so a real
  *  branched partial mesh (not a chain) can form. */
 #define MESH_PARTIAL_MAX_CHILDREN  2
-
-/** Max nodes the root snapshots from the routing table when broadcasting a
- *  phase downstream. ESP-WIFI-MESH has no single broadcast primitive, so the
- *  root unicasts to every node in this table. Sized well above any topology. */
-#define MESH_ROUTE_TABLE_MAX 32
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * ROUTER / UPLINK (only used when the root bridges to an AP)
@@ -204,7 +197,7 @@
  *  boards — the attacker prints it at boot ("Set BLACKHOLE_ATTACKER_MAC ... to
  *  my STA MAC: ..."), or read it with tools/Get-EspMac.ps1. Only blackhole
  *  VICTIM builds read it; the attacker and all other builds ignore it. */
-#define BLACKHOLE_ATTACKER_MAC   {0x28, 0x05, 0xA5, 0x32, 0xD7, 0xB4} // COM11 (node2) (blackhole attacker) - 28:05:a5:32:d7:b4
+#define BLACKHOLE_ATTACKER_MAC   {0x20, 0x50, 0x0D, 0xE7, 0x1C, 0x38} // attacker_5 (blackhole attacker) - 20:50:0d:e7:1c:38
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * WORMHOLE TUNNEL  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_WORMHOLE == 2)
@@ -419,10 +412,6 @@
  *  single dropped frame never evicts a healthy node. */
 #define HEARTBEAT_STALE_MS       (3U * HEARTBEAT_INTERVAL_MS)
 
-/** Max distinct nodes the root's heartbeat table can track. Matches
- *  MESH_ROUTE_TABLE_MAX (root + every descendant it can route to). */
-#define HEARTBEAT_TABLE_MAX      MESH_ROUTE_TABLE_MAX
-
 /* ═══════════════════════════════════════════════════════════════════════════
  * CSV LOGGER / LOCAL STORAGE
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -545,7 +534,7 @@
 #define STACK_PROBE_GEN         4096U
 #define STACK_PROBE_SINK        4096U
 #define STACK_SERIAL_EXPORT     6144U
-#define STACK_HEARTBEAT         4096U
+#define STACK_HEARTBEAT         6144U   /* root: also builds, renders and checks the topology graph */
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * NODE IDENTIFICATION

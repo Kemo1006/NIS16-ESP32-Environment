@@ -9,11 +9,14 @@
 #include "mesh_config.h"
 #include "sd_status.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -334,6 +337,170 @@ esp_err_t csv_logger_archive_sd_now(void)
         sd_status_unmount();
     }
     return ESP_OK;
+}
+
+/* DELETE_SD_PATH=<rel> — the one deliberate exception to the archive-never-
+ * delete policy above: an operator-requested, PERMANENT removal of a card
+ * folder such as blackhole/linear/G402 (and everything under it). The host
+ * side (run_wizard.ps1, export_logs.py --delete-sd-path) makes the operator
+ * type the path back before sending. */
+typedef enum {
+    SD_DEL_OK,
+    SD_DEL_BAD_PATH,
+    SD_DEL_IN_USE,
+    SD_DEL_NO_CARD,
+    SD_DEL_NOT_FOUND,
+    SD_DEL_FAILED,
+} sd_delete_result_t;
+
+/* Only <attack>[/<more>...] with [A-Za-z0-9_-] segments: no "..", no absolute
+ * path, and the card root plus its location.txt / node_config.txt are
+ * unreachable because the first segment must be an attack folder. */
+static bool sd_rel_path_valid(const char *rel)
+{
+    static const char *const attack_dirs[] = { "baseline", "blackhole", "wormhole" };
+
+    size_t len = strlen(rel);
+    if (len == 0 || rel[0] == '/' || rel[len - 1] == '/') {
+        return false;
+    }
+
+    int segments = 0;
+    const char *seg = rel;
+    while (true) {
+        const char *slash = strchr(seg, '/');
+        size_t seg_len = slash ? (size_t)(slash - seg) : strlen(seg);
+        if (seg_len == 0) {
+            return false;
+        }
+        for (size_t i = 0; i < seg_len; i++) {
+            unsigned char c = (unsigned char)seg[i];
+            if (!isalnum(c) && c != '_' && c != '-') {
+                return false;
+            }
+        }
+        if (segments == 0) {
+            bool known = false;
+            for (size_t i = 0; i < sizeof(attack_dirs) / sizeof(attack_dirs[0]); i++) {
+                if (strlen(attack_dirs[i]) == seg_len &&
+                    strncasecmp(seg, attack_dirs[i], seg_len) == 0) {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known) {
+                return false;
+            }
+        }
+        segments++;
+        if (!slash) {
+            break;
+        }
+        seg = slash + 1;
+    }
+    return segments <= 5;
+}
+
+/* True if `child` is `parent` or sits somewhere below it. Case-insensitive
+ * because FAT is — "g402" and "G402" are the same folder on the card. */
+static bool sd_path_contains(const char *parent, const char *child)
+{
+    size_t n = strlen(parent);
+    return strncasecmp(parent, child, n) == 0 && (child[n] == '\0' || child[n] == '/');
+}
+
+/* One shared buffer instead of a path per recursion level: this runs on the
+ * serial export task's 6 KB stack. */
+static char s_del_path[256];
+
+/* Empties and removes the directory named by s_del_path, leaving s_del_path
+ * unchanged on return. Keeps going past a failed entry so one stuck file
+ * doesn't leave the rest of the tree behind. */
+static bool sd_remove_tree(int depth, int *files_removed)
+{
+    if (depth > 8) {
+        return false;
+    }
+    DIR *dir = opendir(s_del_path);
+    if (!dir) {
+        return false;
+    }
+
+    size_t base_len = strlen(s_del_path);
+    bool ok = true;
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != NULL) {
+        const char *name = ent->d_name;
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+            continue;
+        }
+        size_t name_len = strlen(name);
+        if (base_len + 1 + name_len >= sizeof(s_del_path)) {
+            ok = false;
+            continue;
+        }
+        s_del_path[base_len] = '/';
+        memcpy(s_del_path + base_len + 1, name, name_len + 1);
+
+        struct stat st;
+        if (stat(s_del_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+            if (!sd_remove_tree(depth + 1, files_removed)) {
+                ok = false;
+            }
+        } else if (remove(s_del_path) == 0) {
+            (*files_removed)++;
+        } else {
+            ESP_LOGW(TAG, "DELETE_SD_PATH: could not remove %s (errno %d)", s_del_path, errno);
+            ok = false;
+        }
+        s_del_path[base_len] = '\0';
+    }
+    closedir(dir);
+
+    if (ok && rmdir(s_del_path) != 0) {
+        ESP_LOGW(TAG, "DELETE_SD_PATH: could not remove folder %s (errno %d)", s_del_path, errno);
+        ok = false;
+    }
+    return ok;
+}
+
+static sd_delete_result_t sd_delete_rel_path(const char *rel, int *files_removed)
+{
+    *files_removed = 0;
+    if (!sd_rel_path_valid(rel)) {
+        return SD_DEL_BAD_PATH;
+    }
+    int n = snprintf(s_del_path, sizeof(s_del_path), "%s/%s", SD_MOUNT_POINT, rel);
+    if (n < 0 || n >= (int)sizeof(s_del_path)) {
+        return SD_DEL_BAD_PATH;
+    }
+
+    /* The export task accepts commands from boot (CSV_EXPORT_ON_INIT), so this
+     * can arrive mid-run: never pull the folder out from under open mirrors. */
+    const char *live = sd_status_run_dir();
+    if (live && sd_path_contains(s_del_path, live)) {
+        return SD_DEL_IN_USE;
+    }
+
+    bool took_mount = false;
+    if (!sd_status_ensure_mounted("DELETE_SD_PATH", &took_mount)) {
+        return SD_DEL_NO_CARD;
+    }
+
+    sd_delete_result_t result;
+    struct stat st;
+    if (stat(s_del_path, &st) != 0) {
+        result = SD_DEL_NOT_FOUND;
+    } else if (!S_ISDIR(st.st_mode)) {
+        result = SD_DEL_BAD_PATH;
+    } else {
+        result = sd_remove_tree(0, files_removed) ? SD_DEL_OK : SD_DEL_FAILED;
+    }
+
+    if (took_mount) {
+        sd_status_unmount();
+    }
+    return result;
 }
 
 /* Appends one line to <run_dir>/runs.csv — the manifest that answers "which
@@ -923,7 +1090,7 @@ static void serial_export_task(void *arg)
     }
 
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
-                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | SET_LOCATION=<value>");
+                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | SET_LOCATION=<value> | DELETE_SD_PATH=<attack>/<topology>/<location>");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -934,8 +1101,10 @@ static void serial_export_task(void *arg)
     printf("\n===========You can ctrl + ] to export the data=========\n\n");
     fflush(stdout);
 
-    char cmd_buf[32] = {0};
-    int  cmd_idx     = 0;
+    /* Sized for DELETE_SD_PATH=<attack>/<topology>/<location>/<scenario>. */
+    char cmd_buf[96]  = {0};
+    int  cmd_idx      = 0;
+    bool cmd_overflow = false;
 
     while (true) {
         uint8_t ch = 0;
@@ -950,8 +1119,13 @@ static void serial_export_task(void *arg)
         if (ch == '\n' || ch == '\r') {
             cmd_buf[cmd_idx] = '\0';
 
+            /* A truncated line is never dispatched: cut at a '/', a
+             * DELETE_SD_PATH would name the PARENT folder. */
+            if (cmd_overflow) {
+                uart_write_bytes(EXPORT_UART, "ERROR:COMMAND_TOO_LONG\n", 23);
+
             /* ── EXPORT_LOGS — stream telemetry CSV ───────────────────── */
-            if (strcmp(cmd_buf, "EXPORT_LOGS") == 0) {
+            } else if (strcmp(cmd_buf, "EXPORT_LOGS") == 0) {
                 /* Mute ALL logging for the duration of the transfer. This is the
                  * moment the host starts capturing the framed CSV, so from here
                  * on any esp_log_* output (this node's own ESP_LOGW, or the
@@ -1155,13 +1329,46 @@ static void serial_export_task(void *arg)
                     uart_write_bytes(EXPORT_UART, out, strlen(out));
                 }
                 uart_write_bytes(EXPORT_UART, "END_LIST\n", 9);
+
+            /* ── DELETE_SD_PATH=<rel> — PERMANENTLY delete a card folder,
+             * e.g. blackhole/linear/G402. See sd_delete_rel_path(). ── */
+            } else if (strncmp(cmd_buf, "DELETE_SD_PATH=", 15) == 0) {
+                const char *rel = cmd_buf + 15;
+                int removed = 0;
+                char out[48];
+                switch (sd_delete_rel_path(rel, &removed)) {
+                    case SD_DEL_OK:
+                        snprintf(out, sizeof(out), "SD_PATH_DELETED:%d\n", removed);
+                        ESP_LOGI(TAG, "DELETE_SD_PATH: deleted %s (%d file(s)).", rel, removed);
+                        break;
+                    case SD_DEL_BAD_PATH:
+                        snprintf(out, sizeof(out), "ERROR:BAD_SD_PATH\n");
+                        break;
+                    case SD_DEL_IN_USE:
+                        snprintf(out, sizeof(out), "ERROR:SD_PATH_IN_USE\n");
+                        break;
+                    case SD_DEL_NO_CARD:
+                        snprintf(out, sizeof(out), "ERROR:SD_NO_CARD\n");
+                        break;
+                    case SD_DEL_NOT_FOUND:
+                        snprintf(out, sizeof(out), "ERROR:SD_PATH_NOT_FOUND\n");
+                        break;
+                    case SD_DEL_FAILED:
+                    default:
+                        snprintf(out, sizeof(out), "ERROR:SD_DELETE_FAILED:%d\n", removed);
+                        break;
+                }
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
             }
 
             cmd_idx = 0;
+            cmd_overflow = false;
             memset(cmd_buf, 0, sizeof(cmd_buf));
 
         } else if (cmd_idx < (int)sizeof(cmd_buf) - 1) {
             cmd_buf[cmd_idx++] = (char)ch;
+        } else {
+            cmd_overflow = true;
         }
     }
 }

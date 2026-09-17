@@ -1,0 +1,543 @@
+#!/usr/bin/env python3
+"""Push capture CSVs and saved presets to GitHub - data only, never code.
+
+    python tools/push_data.py push           raw capture CSVs under tools/exports/,
+                                              then saved presets under presets/
+    python tools/push_data.py pull           fetch teammates' CSVs and presets only -
+                                              never touches code
+    python tools/push_data.py test           3 throwaway animal CSVs under sync_test/
+    python tools/push_data.py test-cleanup   remove sync_test/ from GitHub and here
+
+All git work happens in a private partial clone under %LOCALAPPDATA%\\nis16-data-sync,
+so your own folder is never stashed, checked out, merged or rebased (a
+`git pull --autostash` on a folder with uncommitted code is what broke on
+sep. 17, 2026). Each attempt rebuilds the data commit on top of the latest
+GitHub state, so two people pushing different nodes never lose each other's files:
+
+  * a file GitHub doesn't have yet            -> added
+  * run_ledger.csv / test_ledger.csv           -> rows merged, both sides kept
+  * same file, identical bytes                 -> skipped
+  * your copy is an OLDER version on GitHub    -> skipped (not a conflict)
+  * same name, different bytes                 -> BOTH kept; yours goes to
+                                                  sync_conflicts/<computer>/...
+  * already moved to archive/ on GitHub        -> not re-pushed into the live tree
+"""
+
+import argparse
+import hashlib
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent.parent
+MARKER = "nis16-data-sync"
+LEDGERS = {"run_ledger.csv", "test_ledger.csv"}
+EXPORTS = "tools/exports"
+TEST_AREA = "sync_test"
+CONFLICTS = "sync_conflicts"
+MAX_ATTEMPTS = 5
+ANIMALS = ["Dog", "Cat", "Horse", "Cow", "Goat", "Sheep", "Pig", "Chicken", "Duck",
+           "Rabbit", "Carabao", "Tarsier", "Eagle", "Turtle", "Monkey", "Deer"]
+
+
+class SyncError(Exception):
+    pass
+
+
+def git(args, cwd, check=True, stdin=None, cfg=()):
+    # autocrlf off everywhere: pushed bytes, verified bytes and locally staged
+    # bytes must be identical or the byte-exact checks below mean nothing.
+    cmd = ["git", "-c", "core.autocrlf=false", "-c", "core.safecrlf=false"]
+    for c in cfg:
+        cmd += ["-c", c]
+    p = subprocess.run(cmd + list(args), cwd=str(cwd), capture_output=True,
+                       input=stdin.encode("utf-8") if stdin is not None else None)
+    if check and p.returncode != 0:
+        raise SyncError("git {} failed:\n{}".format(
+            " ".join(args), p.stderr.decode("utf-8", "replace").strip()))
+    return p
+
+
+def text(p):
+    return p.stdout.decode("utf-8", "replace")
+
+
+def nul_list(p):
+    return [x for x in text(p).split("\0") if x]
+
+
+def ask(question, yes):
+    if yes:
+        print(question + " y (--yes)")
+        return True
+    try:
+        return input(question + " [y/N] > ").strip().lower() in ("y", "yes")
+    except EOFError:
+        return False
+
+
+def rows(data):
+    return max(len(data.splitlines()) - 1, 0)
+
+
+def tag(s):
+    return re.sub(r"[^A-Za-z0-9-]", "-", s or "unknown").strip("-") or "unknown"
+
+
+class Ctx:
+    def __init__(self, args):
+        self.yes = args.yes
+        self.branch = args.branch
+        self.root = Path(text(git(["rev-parse", "--show-toplevel"], BASE)).strip())
+        self.prefix = text(git(["rev-parse", "--show-prefix"], BASE)).strip()
+        self.url = text(git(["remote", "get-url", args.remote], BASE)).strip()
+        name = text(git(["config", "user.name"], BASE, check=False)).strip()
+        email = text(git(["config", "user.email"], BASE, check=False)).strip()
+        if not name or not email:
+            raise SyncError("git user.name / user.email are not set - run:\n"
+                            "  git config --global user.name \"Your Name\"\n"
+                            "  git config --global user.email you@example.com")
+        self.ident = ("user.name=" + name, "user.email=" + email)
+        self.computer = tag(os.environ.get("COMPUTERNAME")) + "_" + tag(os.environ.get("USERNAME"))
+        if args.sync_dir:
+            self.sync = Path(args.sync_dir)
+        else:
+            home = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".cache")
+            h = hashlib.sha1("{}|{}".format(self.url, self.root).encode()).hexdigest()[:10]
+            self.sync = Path(home) / MARKER / h
+
+
+# ------------------------------------------------------------ private clone ---
+
+def ensure_clone(ctx):
+    marker = ctx.sync / ".git" / MARKER
+    if ctx.sync.exists():
+        if not marker.exists():
+            raise SyncError("{} exists but was not made by this tool - refusing to touch it.\n"
+                            "Move it somewhere else and run again.".format(ctx.sync))
+        git(["remote", "set-url", "origin", ctx.url], ctx.sync)
+        return
+    ctx.sync.parent.mkdir(parents=True, exist_ok=True)
+    print("  First run on this computer: making a small private copy of the repo (data folders only)...")
+    git(["clone", "--quiet", "--filter=blob:none", "--no-checkout", "--single-branch",
+         "--branch", ctx.branch, ctx.url, str(ctx.sync)], ctx.sync.parent)
+    marker.write_text("created by tools/push_data.py - safe to delete\n")
+    git(["sparse-checkout", "set", "--cone",
+         ctx.prefix + EXPORTS, ctx.prefix + TEST_AREA, ctx.prefix + CONFLICTS], ctx.sync)
+
+
+def refresh(ctx):
+    git(["fetch", "--quiet", "origin",
+         "+refs/heads/{0}:refs/remotes/origin/{0}".format(ctx.branch)], ctx.sync)
+    git(["reset", "--hard", "--quiet", "origin/" + ctx.branch], ctx.sync)
+    git(["clean", "-fdq"], ctx.sync)
+
+
+def remote_tree(ctx, sub):
+    return nul_list(git(["ls-tree", "-r", "-z", "--name-only", "HEAD", "--", ctx.prefix + sub], ctx.sync))
+
+
+def push_head(ctx):
+    p = git(["push", "--porcelain", "origin", "HEAD:refs/heads/" + ctx.branch], ctx.sync, check=False)
+    if p.returncode == 0:
+        return True
+    msg = text(p) + p.stderr.decode("utf-8", "replace")
+    if re.search(r"rejected|non-fast-forward|fetch first|stale info|cannot lock ref", msg):
+        return False
+    raise SyncError("git push failed (login / network / permission - not a teammate race):\n" + msg.strip())
+
+
+def commit_checked(ctx, allowed, message, allow_delete=False):
+    p = git(["diff", "--cached", "--name-status", "-z", "--no-renames"], ctx.sync)
+    toks = nul_list(p)
+    bad = []
+    for status, path in zip(toks[0::2], toks[1::2]):
+        ok_status = status in ("A", "M") or (allow_delete and status == "D")
+        ok_path = any(path.startswith(ctx.prefix + a + "/") for a in allowed) and path.lower().endswith(".csv")
+        if not (ok_status and ok_path):
+            bad.append("{} {}".format(status, path))
+    if bad:
+        git(["reset", "-q"], ctx.sync)
+        raise SyncError("REFUSED - the commit would include something that is not capture data:\n  "
+                        + "\n  ".join(bad) + "\nNothing was pushed.")
+    if not toks:
+        return False
+    git(["commit", "-q", "-m", message], ctx.sync, cfg=ctx.ident)
+    return True
+
+
+# ----------------------------------------------------------------- planning ---
+
+def local_csvs(area):
+    p = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", area], BASE)
+    return sorted(r for r in set(nul_list(p)) if r.lower().endswith(".csv") and (BASE / r).is_file())
+
+
+def split_ledger(data):
+    t = data.decode("utf-8")
+    return t.splitlines(), ("\r\n" if "\r\n" in t else "\n")
+
+
+def merge_ledger(remote, local, archived_rows):
+    """None = headers differ (keep both files); b"" = nothing to add; else merged bytes."""
+    l_lines, l_nl = split_ledger(local)
+    if remote is None:
+        keep = l_lines[:1] + [x for x in l_lines[1:] if x.strip() and x not in archived_rows]
+        if keep == [x for x in l_lines if x.strip()]:
+            return local
+        return (l_nl.join(keep) + l_nl).encode("utf-8")
+    r_lines, r_nl = split_ledger(remote)
+    if r_lines[:1] != l_lines[:1]:
+        return None
+    have = set(r_lines)
+    add = []
+    for x in l_lines[1:]:
+        if x.strip() and x not in have and x not in archived_rows:
+            have.add(x)
+            add.append(x)
+    if not add:
+        return b""
+    return (r_nl.join(r_lines + add) + r_nl).encode("utf-8")
+
+
+def archived_on_github(ctx):
+    names = remote_tree(ctx, "archive")
+    files = {n.rsplit("/", 1)[-1] for n in names if n.lower().endswith(".csv")} - LEDGERS
+    ledger_rows = set()
+    for n in names:
+        if n.rsplit("/", 1)[-1] == "run_ledger.csv":
+            blob = git(["cat-file", "blob", "HEAD:" + n], ctx.sync).stdout
+            ledger_rows.update(split_ledger(blob)[0][1:])
+    return files, ledger_rows
+
+
+def older_version_on_github(ctx, repo_path, data):
+    blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+    p = git(["log", "--no-abbrev", "--format=", "--raw", "HEAD", "--", repo_path], ctx.sync)
+    return any(line.split()[3] == blob for line in text(p).splitlines() if line.startswith(":"))
+
+
+def conflict_path(ctx, rel, data):
+    stem, ext = os.path.splitext("{}/{}/{}".format(CONFLICTS, ctx.computer, rel))
+    for i in range(1, 100):
+        cand = ctx.prefix + stem + ("" if i == 1 else "_{}".format(i)) + ext
+        p = ctx.sync / cand
+        if not p.exists():
+            return cand
+        if p.read_bytes() == data:
+            return None
+    raise SyncError("too many conflict copies of " + rel)
+
+
+def build_plan(ctx, area):
+    archived_files, archived_rows = archived_on_github(ctx) if area == EXPORTS else (set(), set())
+    writes, notes = [], {"same": 0, "older": [], "archived": []}
+    for rel in local_csvs(area):
+        data = (BASE / rel).read_bytes()
+        repo_path = ctx.prefix + rel
+        dest = ctx.sync / repo_path
+        name = rel.rsplit("/", 1)[-1]
+        remote = dest.read_bytes() if dest.exists() else None
+
+        if name in LEDGERS:
+            merged = merge_ledger(remote, data, archived_rows)
+            if merged == b"":
+                notes["same"] += 1
+            elif merged is not None:
+                writes.append(("ledger", rel, repo_path, merged))
+                continue
+            else:
+                cpath = conflict_path(ctx, rel, data)
+                if cpath:
+                    writes.append(("conflict", rel, cpath, data))
+            continue
+
+        if remote is None:
+            if name in archived_files:
+                notes["archived"].append(rel)
+            else:
+                writes.append(("new", rel, repo_path, data))
+        elif remote == data:
+            notes["same"] += 1
+        elif older_version_on_github(ctx, repo_path, data):
+            notes["older"].append(rel)
+        else:
+            cpath = conflict_path(ctx, rel, data)
+            if cpath is None:
+                notes["same"] += 1
+            else:
+                writes.append(("conflict", rel, cpath, data))
+    return writes, notes
+
+
+def print_plan(writes, notes):
+    print("")
+    labels = {"new": "NEW", "ledger": "LEDGER (rows merged)", "conflict": "KEEP BOTH (name clash)"}
+    for kind in ("new", "ledger", "conflict"):
+        items = [w for w in writes if w[0] == kind]
+        if not items:
+            continue
+        print("  {} - {} file(s):".format(labels[kind], len(items)))
+        for _, rel, repo_path, data in items:
+            extra = "" if kind != "conflict" else "   -> saved as " + repo_path
+            print("    {}  ({} rows){}".format(rel, rows(data), extra))
+    if notes["same"]:
+        print("  already on GitHub, identical: {} file(s)".format(notes["same"]))
+    if notes["older"]:
+        print("  skipped - GitHub already has a NEWER version: {} file(s)".format(len(notes["older"])))
+        for rel in notes["older"]:
+            print("    " + rel)
+    if notes["archived"]:
+        print("  skipped - a teammate already moved these to archive/ on GitHub: {} file(s)".format(len(notes["archived"])))
+        for rel in notes["archived"]:
+            print("    " + rel)
+
+
+# ------------------------------------------------------------------ syncing ---
+
+def sync_push(ctx, area):
+    """Returns True if the push succeeded or there was nothing new, False if cancelled."""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        refresh(ctx)
+        writes, notes = build_plan(ctx, area)
+        if attempt == 1:
+            print_plan(writes, notes)
+        if not writes:
+            print("\n  Nothing new to push - GitHub already has all of your {} data.".format(area))
+            return True
+        if attempt == 1 and not ask("\nPush {} file(s) to GitHub branch '{}'?".format(len(writes), ctx.branch), ctx.yes):
+            print("  Cancelled - nothing was pushed.")
+            return False
+
+        for _, _, repo_path, data in writes:
+            dst = ctx.sync / repo_path
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(data)
+        git(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
+            stdin="\0".join(w[2] for w in writes))
+        if not commit_checked(ctx, [area, CONFLICTS],
+                              "Data: {} {} file(s) from {}".format(len(writes), area, ctx.computer)):
+            raise SyncError("planned {} file(s) but git staged nothing - nothing was pushed.".format(len(writes)))
+
+        for kind, rel, repo_path, data in writes:
+            blob = git(["cat-file", "blob", "HEAD:" + repo_path], ctx.sync).stdout
+            if blob != data or (kind != "ledger" and data != (BASE / rel).read_bytes()):
+                raise SyncError("VERIFY FAILED for {} - committed bytes differ from your file. "
+                                "Nothing was pushed.".format(rel))
+
+        if push_head(ctx):
+            print("\n  Pushed {} file(s) to GitHub ({}), byte-for-byte verified.".format(len(writes), ctx.branch))
+            return True
+        print("  A teammate pushed first - redoing on top of their data ({}/{})...".format(attempt, MAX_ATTEMPTS))
+        time.sleep(1)
+    raise SyncError("GitHub kept changing during {} attempts - try again in a minute.".format(MAX_ATTEMPTS))
+
+
+def stage_locally(rels):
+    """A later normal `git pull` refuses to overwrite untracked files even when
+    they are identical, so mark files that now match GitHub as staged here."""
+    if not rels:
+        return
+    p = git(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], BASE, check=False, stdin="\0".join(rels))
+    if p.returncode == 0:
+        print("  Staged {} data file(s) in your repo that now match GitHub, so a later "
+              "'git pull' won't refuse to overwrite them.".format(len(rels)))
+    else:
+        print("  WARNING: couldn't stage the data files in your repo ({}).\n"
+              "  A later 'git pull' may say they 'would be overwritten' - they're identical, "
+              "so moving them aside and pulling is safe.".format(p.stderr.decode("utf-8", "replace").strip()))
+
+
+def pull_back(ctx, area, yes):
+    local_archived, archived_rows = set(), set()
+    if area == EXPORTS and (BASE / "archive").is_dir():
+        for folder, _, files in os.walk(BASE / "archive"):
+            local_archived.update(files)
+            if "run_ledger.csv" in files:
+                archived_rows.update(split_ledger((Path(folder) / "run_ledger.csv").read_bytes())[0][1:])
+        archived_rows.discard("")
+
+    incoming, ledgers, skipped_archived, matching, differ = [], [], 0, [], []
+    for repo_path in remote_tree(ctx, area):
+        if not repo_path.lower().endswith(".csv"):
+            continue
+        rel = repo_path[len(ctx.prefix):]
+        name = rel.rsplit("/", 1)[-1]
+        src, dst = ctx.sync / repo_path, BASE / rel
+        if not dst.exists():
+            if name in local_archived:
+                skipped_archived += 1
+            else:
+                incoming.append(rel)
+            continue
+        remote, local = src.read_bytes(), dst.read_bytes()
+        if remote == local:
+            matching.append(rel)
+        elif name in LEDGERS:
+            r_lines, l_lines = split_ledger(remote)[0], split_ledger(local)[0]
+            if archived_rows & set(r_lines[1:]):
+                print("  ({} on GitHub still lists runs you archived - not copied)".format(rel))
+                differ.append(rel)
+            elif r_lines[:1] == l_lines[:1] and {x for x in l_lines if x.strip()} <= set(r_lines):
+                ledgers.append(rel)
+            else:
+                differ.append(rel)
+        else:
+            differ.append(rel)
+
+    if skipped_archived:
+        print("  ({} teammate file(s) not copied - you already have them under archive\\)".format(skipped_archived))
+    if incoming or ledgers:
+        print("\n  Teammates' data on GitHub that you don't have yet:")
+        for rel in incoming:
+            print("    NEW     " + rel)
+        for rel in ledgers:
+            print("    LEDGER  {} (gains their rows, none of yours removed)".format(rel))
+        if ask("Copy these into your folder? Existing capture files are never overwritten.", yes):
+            for rel in incoming:
+                dst = BASE / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                with open(dst, "xb") as f:
+                    f.write((ctx.sync / (ctx.prefix + rel)).read_bytes())
+            for rel in ledgers:
+                tmp = BASE / (rel + ".sync-tmp")
+                tmp.write_bytes((ctx.sync / (ctx.prefix + rel)).read_bytes())
+                os.replace(tmp, BASE / rel)
+            print("  Copied {} file(s).".format(len(incoming) + len(ledgers)))
+            matching += incoming + ledgers
+    else:
+        print("  You already have all of your teammates' {} data.".format(area))
+    stage_locally(matching)
+
+    if differ:
+        blocking = set(nul_list(git(["diff", "--name-only", "-z", "--relative", "HEAD", "--", area], BASE, check=False)))
+        blocking |= set(nul_list(git(["ls-files", "-z", "-o", "--exclude-standard", "--", area], BASE)))
+        differ = [r for r in differ if r in blocking]
+    if differ:
+        print("\n  HEADS UP - your copy of these differs from GitHub's, so a normal 'git pull' will")
+        print("  refuse until you move yours aside (anything unique of yours is already on GitHub,")
+        print("  under {}/{}/ for data files):".format(CONFLICTS, ctx.computer))
+        for rel in differ:
+            print("    " + rel)
+
+
+# -------------------------------------------------------------------- tests ---
+
+def make_test_files(ctx):
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    folder = BASE / TEST_AREA / ctx.computer / stamp
+    folder.mkdir(parents=True)
+    rng = random.Random()
+    for i in (1, 2, 3):
+        lines = ["Animal,Sex"] + ["{},{}".format(rng.choice(ANIMALS), rng.choice(["Female", "Male"]))
+                                  for _ in range(10)]
+        (folder / "animals_{}.csv".format(i)).write_bytes(("\n".join(lines) + "\n").encode())
+    ledger = BASE / TEST_AREA / "test_ledger.csv"
+    if not ledger.exists():
+        ledger.write_bytes(b"recorded_at,computer,folder\n")
+    with open(ledger, "ab") as f:
+        f.write("{},{},{}\n".format(datetime.now().isoformat(timespec="seconds"), ctx.computer, stamp).encode())
+    print("  Made 3 test CSVs (10 rows each, Animal + Sex) in {}".format(folder))
+    print("  and added one row to {}".format(ledger))
+
+
+def test_report(ctx):
+    per_computer = {}
+    for repo_path in remote_tree(ctx, TEST_AREA):
+        parts = repo_path[len(ctx.prefix) + len(TEST_AREA) + 1:].split("/")
+        if len(parts) == 3:
+            per_computer.setdefault(parts[0], set()).add(parts[1])
+    ledger = ctx.sync / (ctx.prefix + TEST_AREA + "/test_ledger.csv")
+    print("\n  === What GitHub has in sync_test/ right now ===")
+    for comp, runs in sorted(per_computer.items()):
+        print("    {}  - {} test run(s), {} CSV(s)".format(comp, len(runs), len(runs) * 3))
+    if ledger.exists():
+        print("  test_ledger.csv rows:")
+        for line in split_ledger(ledger.read_bytes())[0][1:]:
+            print("    " + line)
+    if len(per_computer) < 2:
+        print("\n  To prove two people don't overwrite each other: run this same test on a SECOND")
+        print("  laptop without pulling first, then run it here again - both computers should be listed.")
+    else:
+        print("\n  PASS: {} computers' data are all on GitHub side by side.".format(len(per_computer)))
+
+
+def test_cleanup(ctx):
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        refresh(ctx)
+        tracked = remote_tree(ctx, TEST_AREA)
+        if not tracked:
+            print("  GitHub has no sync_test/ files.")
+            break
+        if attempt == 1 and not ask("Delete all {} sync_test/ file(s) from GitHub (every computer's)?".format(len(tracked)), ctx.yes):
+            print("  Cancelled.")
+            return
+        git(["rm", "-r", "-q", "--", ctx.prefix + TEST_AREA], ctx.sync)
+        commit_checked(ctx, [TEST_AREA], "Data: remove sync test files", allow_delete=True)
+        if push_head(ctx):
+            print("  Removed sync_test/ from GitHub.")
+            break
+        print("  A teammate pushed first - redoing ({}/{})...".format(attempt, MAX_ATTEMPTS))
+    else:
+        raise SyncError("GitHub kept changing during {} attempts - try again in a minute.".format(MAX_ATTEMPTS))
+
+    local = BASE / TEST_AREA
+    if local.is_dir() and ask("Also delete your local {} folder?".format(local), ctx.yes):
+        shutil.rmtree(local)
+        git(["rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", TEST_AREA], BASE, check=False)
+        print("  Deleted " + str(local))
+
+
+# --------------------------------------------------------------------- main ---
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("action", choices=["push", "pull", "test", "test-cleanup"])
+    ap.add_argument("--yes", action="store_true", help="answer yes to every prompt")
+    ap.add_argument("--no-pull-back", action="store_true", help="don't offer teammates' files afterwards")
+    ap.add_argument("--branch", default="Unified")
+    ap.add_argument("--remote", default="origin", help="remote in YOUR repo whose URL is used")
+    ap.add_argument("--sync-dir", help="private clone location (default under %%LOCALAPPDATA%%)")
+    args = ap.parse_args()
+
+    try:
+        ctx = Ctx(args)
+        print("Data sync: {} -> {} (branch {})".format(ctx.computer, ctx.url, ctx.branch))
+        print("Your own folder's code, staged changes and stashes are never touched.")
+        ensure_clone(ctx)
+
+        if args.action == "test-cleanup":
+            test_cleanup(ctx)
+            return 0
+
+        if args.action == "pull":
+            refresh(ctx)
+            pull_back(ctx, EXPORTS, ctx.yes)
+            return 0
+
+        area = EXPORTS
+        if args.action == "test":
+            area = TEST_AREA
+            make_test_files(ctx)
+
+        if not sync_push(ctx, area):
+            return 0
+        if not args.no_pull_back:
+            pull_back(ctx, area, ctx.yes)
+        if args.action == "test":
+            test_report(ctx)
+        return 0
+    except SyncError as e:
+        print("\nERROR: {}".format(e))
+        print("Your code and working folder were not changed by the failed step.")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

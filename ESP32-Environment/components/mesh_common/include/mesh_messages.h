@@ -22,7 +22,11 @@ extern "C" {
 
 /* ── Magics (first 4 bytes of every payload) ─────────────────────────────── */
 
-#define HEARTBEAT_MSG_MAGIC   0x48454152U   /* "HEAR" */
+/* v2 carries parent_mac and a 16-bit layer. The v1 magic is kept only so the
+ * root can name a board that still runs the old firmware instead of silently
+ * never listing it. */
+#define HEARTBEAT_MSG_MAGIC      0x48454132U   /* "HEA2" */
+#define HEARTBEAT_MSG_MAGIC_V1   0x48454152U   /* "HEAR" - pre-parent_mac firmware */
 #define COMMAND_MSG_MAGIC     0x434D4E44U   /* "CMND" — Phase 2 */
 
 /** Nickname buffer. 24, not 16: "Node-3-Blackhole-G402" is 21 chars + NUL. */
@@ -71,7 +75,11 @@ typedef enum {
  * purpose: adding them later would change the wire format and force a reflash
  * of every board mid-campaign. Phase 1 populates them as IDLE / 0.
  *
- * 45 bytes — comfortably inside phase_listener.c's 128-byte rx_buf.
+ * parent_mac is what lets the root rebuild the actual tree (and check it
+ * against the built topology) instead of only sorting rows by layer. layer is
+ * 16-bit because a chain may be up to 1000 layers deep (mesh_config.h).
+ *
+ * 52 bytes — comfortably inside phase_listener.c's 128-byte rx_buf.
  */
 typedef struct __attribute__((packed)) {
     uint32_t magic;                        /**< HEARTBEAT_MSG_MAGIC — must be first */
@@ -80,7 +88,8 @@ typedef struct __attribute__((packed)) {
     char     nickname[NODE_NICKNAME_LEN];  /**< NUL-terminated, may be truncated    */
     uint8_t  assigned_role;                /**< node_role_t                         */
     int8_t   parent_rssi;                  /**< dBm; 0 on the root (no parent)      */
-    uint8_t  layer;                        /**< mesh tree depth                     */
+    int16_t  layer;                        /**< as the stack reports it; -1 = none  */
+    uint8_t  parent_mac[6];                /**< parent's SoftAP BSSID; 0 = no parent */
     uint32_t uptime_sec;                   /**< seconds since boot                  */
     uint8_t  current_phase;                /**< phase_listener_get_phase_id()       */
     uint8_t  export_status;                /**< export_status_t — Phase 2           */

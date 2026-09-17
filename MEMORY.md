@@ -8,98 +8,93 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 17, 2026 — FIXED + PUSHED (`a4f87b4`, `origin/Unified`): "Run analysis only" (both wizards)
-  always read the RAW export, ignoring `trimmed\` entirely — new `Select-AnalysisInput` (mirrored in
-  both files) now defaults to `trimmed\` when present, blocks (default: cancel) on a stale/incomplete
-  trim missing raw files, and blocks (default: cancel) when a run's ROOT has no `*_arrivals.csv` —
-  PDR/LatencyHopRatio/TunnelLatency would otherwise come out silently NaN with no warning. Verified
-  against synthetic folders (up-to-date/stale trim, missing arrivals) plus the real
-  `blackhole/linear/G402` export. Also in this push: `csv_logger.c`'s arrivals SD-mirror flush reused
-  the TELEMETRY row counter (which resets on its own cadence), so arrivals almost never flushed
-  mid-run — a root losing power before `csv_logger_close()` could lose most of its arrivals despite
-  telemetry surviving; gave arrivals their own counter. NOT build-tested (`idf5.3_py3.14_env` still
-  broken on this machine) — reviewed line-by-line; reflash root + one test run before trusting. Also
-  fixed: Windows PowerShell 5.1's `ConvertFrom-Json` does not enumerate a top-level JSON array, so a
-  2+ file SD card crashed the import picker with `Cannot convert System.Object[] to System.Int32`
-  (reported as a teammate's crash; the catch block's "is python on PATH?" hint was a red herring, not
-  the cause) — fixed with `| ForEach-Object { $_ }` in `Get-CardFileList`/`Import-OneSdCard`;
-  reproduced live in PS 5.1 before shipping the fix.
-- sep. 17, 2026 — DIAGNOSED: `blackhole/linear/G402`'s exported "root" file (MAC `2805A532D7B4`)
-  isn't this run's actual root — every victim's `parent_mac` traces to `B0CBD8F33218` (the preset's
-  real root), whose SD card/arrivals were never imported. Distinct from the known stale-
-  `BLACKHOLE_ATTACKER_MAC` failure (no arrivals file exists at all here, vs. header-only there) — same
-  "PDR NaN" symptom, different cause. Fix: import `B0CBD8F33218`'s card, remove the stray
-  `2805A532D7B4` file from the export + `trimmed\`, re-trim, re-analyze.
-- sep. 17, 2026 — BUILT in both wizards: "Trim exported CSVs only" is its OWN DATA menu option now
-  (`run_wizard.ps1` Idx 10 `Invoke-TrimOnly`, `menu.ps1` Action 11), not folded into "Run analysis
-  only" — that action's M6->M8 pipeline runs off the raw export with no trim step (it never had one).
-  Both shell out to the EXISTING `tools\trim_run.py --apply` (never `--in-place`), which already
-  writes to a `trimmed\` subfolder and leaves the raw export untouched by its own design. Also:
-  `run_wizard.ps1`'s manual-flow child-count prompt now accepts `0` for a root-only capture (was
-  `-ge 1`) — downstream code already handled an empty roster gracefully. Not hardware-tested.
-- sep. 17, 2026 — BUILT: **capture provenance** (build-stamp on `runs.csv`, `--list-json`/`--files`
-  numbered file picker in both wizards) — ⚠️ firmware still NOT compiled, build before trusting; full
-  writeup in ARCHIVE.md.
-- sep. 17, 2026 — BUILT in `run_wizard.ps1` only (`menu.ps1` still has just the edit-a-node step —
-  see ARCHIVE.md): "Adjust the plan?" gained ADD / REMOVE a node beside edit/topology; an edited
-  preset now offers "save these changes back into <preset>" as its own prompt (separate from "save
-  as a new preset", which still appears only for a from-scratch roster); and the mode menu gained
-  "Run a capture without a preset", skipping the preset picker even when presets exist. Remove
-  refuses to drop the ROOT (swap root first via that node's Role field) or to break "exactly one
-  attacker". Three bugs the user then hit on a live run, all fixed: (1) ⚠️ MANUAL-flow boards never
-  carried a `Mac` field (only preset-loaded ones did, via `ConvertTo-Roster`) while
-  `Resolve-BoardMac` caches with `$Board.Mac = $mac` — a PSCustomObject cannot gain a property by
-  assignment, so the confirm table threw AFTER every question was answered and AFTER the
-  attacker-MAC gate had rewritten `mesh_config.h`; pre-existing, but the new no-preset option made
-  it the default path. Every construction site now seeds `Mac = ''`, plus an `Add-Member -Force`
-  fallback (as `Add-BoardMacs` always used). (2) the blackhole role menu FORCED one child to be the
-  attacker — with a single child that was no choice at all, and it yielded an attacker with no
-  victims, i.e. no attack signature; it now always offers "None of these - they are all VICTIMS",
-  the single-laptop twin of the existing multi-laptop escape. (3) `Show-Menu` printed "Type 1-1" for
-  a one-option menu and rejected Enter; it now says "Press Enter (or type 1)" and accepts it. NOT
-  hardware-tested; parser clean.
-- sep. 17, 2026 — ADDED instant disconnect reporting on top of the stale-eviction fix below, in
-  response to "can the heartbeat print instantly on disconnect instead of waiting on the stale
-  timer": (1) `MESH_EVENT_CHILD_DISCONNECTED` — the one mesh event that names a specific MAC — now
-  calls a new `heartbeat_mark_offline(mac)` which evicts that row and reprints immediately, instead
-  of waiting up to `HEARTBEAT_STALE_MS` (21 s) for the age sweep to notice. Only fires anything on
-  the root (`s_table_ready` guard) — same as every other root-only table op. (2)
-  `MESH_EVENT_ROUTING_TABLE_REMOVE` — fires for a multi-hop node dropping off deeper in the tree,
-  which `CHILD_DISCONNECTED` does NOT catch (that event only names the root's own direct children) —
-  now forces an immediate `heartbeat_table_print()` instead of waiting up to
-  `HEARTBEAT_TABLE_REPRINT_MS` (14 s) more for the periodic reprint. ⚠️ This does NOT shrink the 21 s
-  staleness floor itself for a multi-hop node — `ROUTING_TABLE_REMOVE` carries no MAC, so it can only
-  force an early PRINT of whatever the stale sweep already knows, not an early EVICT. True instant
-  detection (<1 heartbeat interval) is only possible for the root's direct children; a deeper node's
-  disconnect is still bounded below by three missed heartbeats, which is what tells a real drop apart
-  from one lost frame. Required moving `s_table_ready` up into the file's top module-private-state
-  block (was declared down in the heartbeat section) plus two early forward declarations
-  (`heartbeat_table_print`, new `heartbeat_mark_offline`), so `mesh_event_handler` — defined earlier
-  in the file — can reach them. Same file as everything else here: `mesh_setup.c`. Not build-tested
-  (attempted locally: this machine's `idf5.3_py3.14_env` Python venv is broken/missing —
-  `idf_tools.py install-python-env` needed, unrelated to this change) — same caveat as the entry below.
-- sep. 17, 2026 — FIXED three heartbeat gaps, all found via live hardware logs across this session
-  (follows the original BUILT entry, now in ARCHIVE.md): (1) the table only reprinted on
-  layer/role/nickname change, so a plain disconnect/reconnect showed nothing even though `AGE_S`
-  tracked it correctly — added
-  `HEARTBEAT_TABLE_REPRINT_MS`, a root-only unconditional timer reprint gated on a new
-  `s_table_ready` flag (set by `heartbeat_table_init()`) instead of `mesh_setup_is_root()`, which is
-  FALSE for this whole testbed's actual root (manual/fixed root, no router, never gets
-  `MESH_EVENT_PARENT_CONNECTED` — confirmed from a boot log reading `Root: NO`; that flag's one other
-  consumer, `heartbeat_task`'s parent-RSSI/send-direction check, was left alone since its TODS
-  self-loopback works fine). Root also self-ingests its own heartbeat locally each tick so its row
-  can't age out. (2) Change-triggered prints weren't resetting the periodic timer (uneven first gap)
-  — both paths now share one `s_last_print_us`, reset on every print. (3) A disconnected node's row
-  never left the table, only `AGE_S` climbed, so the printed node COUNT stayed wrong —
-  `heartbeat_table_print()` now sweeps for entries idle past `HEARTBEAT_STALE_MS` (3× the send
-  interval), logs `Node OFFLINE` with MAC+nickname, and evicts before printing. ⚠️
-  `HEARTBEAT_TABLE_REPRINT_MS` rounds UP to the next multiple of `HEARTBEAT_INTERVAL_MS` (check rides
-  the send loop) — keep it an exact multiple or the configured value won't match what's observed.
-  Final values after user iteration: `HEARTBEAT_INTERVAL_MS` 7000, `HEARTBEAT_TABLE_REPRINT_MS`
-  14000, `HEARTBEAT_STALE_MS` 21000 (auto-derived, 3×interval). Still NOT committed, NOT
-  build-tested. Heartbeat is in `mesh_setup.c/.h`; ⚠️ it adds periodic mesh traffic to the very
-  network this testbed measures — see the original BUILT entry in ARCHIVE.md before trusting PDR/
-  latency numbers captured with it enabled.
+- sep. 18, 2026 — BUILT (`run_wizard.ps1`/`menu.ps1`, uncommitted): (1) **Main-menu declutter** — the
+  3 member-board-list entries (edit table / open json / snapshots) collapsed into one submenu in
+  BOTH launchers (`Show-Menu -AllowBack` in run_wizard, `Read-Choice -AllowBack` in menu.ps1), freeing
+  2 main-menu slots each; numbering renumbered accordingly. (2) **SD-import picker delete** —
+  `Select-CardFiles`'s "Import which?" prompt gained `d1,3`/`d1-2` to delete those numbered files
+  straight off the card (a real `Remove-Item`, red PERMANENT warning + `[y/N]`), separate from the
+  existing post-import `--delete-source` (still only fires after a verified copy) — for clearing
+  junk/ABORTED entries the operator never intends to import. (3) **Per-member preset folders** — the
+  root problem: a preset's filename already spells the experiment cell (topology-attack-scenario-
+  location), so two members' preset for the same cell collided on name, and there was no way to tell
+  whose boards a saved preset described without opening it. Presets now file under
+  `presets\<Member>\<cell>.json` (`presets\Bas\`, `presets\Cal\`, `presets\Kyle\` created, empty
+  until first save — git won't track empty dirs). `Get-PresetFiles` recurses and tags each file's
+  `.Owner` from its folder; `Save-Preset` gained an `-Owner` param (also written into the JSON itself
+  as an `owner` field, so a copied-out file still says whose it is — omitted `-Owner` keeps whatever
+  the file/folder already had, so a re-save never blanks it). New `Find-PresetOwnerByMac` guesses the
+  owner from the roster's MACs against `member_boards.json`; `my_member.txt` (new, via
+  `Get-MyMember`/`Select-MyMember`, exposed as a 4th member-board submenu item) remembers "whose
+  laptop is this" as the fallback. The save flow now asks "Whose boards is this preset for?"
+  (pre-answered by MAC, then by `my_member.txt`) BEFORE the filename prompt — this is what makes
+  saving an absent member's preset while yours already has the same cell name work without a manual
+  rename. The load picker (`Show-Menu` gained an optional `-GroupHeaders` hashtable, purely visual —
+  numbering stays one sequential run so a heading can never shift what "[3]" means) groups YOURS
+  first, then every other member with boards filed, then UNFILED last. Preset detail screen gained a
+  `Boards of: <member>` line (green if it's you) and a new "File this preset under a member" action
+  (one file at a time, no bulk auto-move — a wrong guess would misattribute someone's boards). The
+  SD-import "several presets match" pickers (both launchers) now show the owner per line, since same-
+  cell presets now share a filename; `menu.ps1`'s scan was non-recursive and would have silently
+  fallen back to raw `victim_NODE_<MAC>` naming on every import once presets moved into folders —
+  fixed to `-Recurse`. The pre-existing `presets\linear-blackhole-none-g402.json` git conflict (still
+  UU, see STATUS.md Blockers) was left untouched, still sits unfiled (its MACs resolve to Bas).
+  Tested: 21 PS-unit checks (owner detection, folder recursion, same-filename coexistence, Save-Preset
+  owner precedence, grouping order) + scripted-stdin runs of both launchers' startup and submenu.
+  NOT hardware-tested (no board touched by any of this). PS 5.1 trap hit and fixed:
+  `[ordered]@{}` has `.Contains()` but no `.ContainsKey()` — see the global
+  `powershell_menu_script_traps` memory (not this file).
+- sep. 18, 2026 — BUILT (`run_wizard.ps1` + `mesh_common`, uncommitted), 4 items. (1) Run log:
+  `[Y/n]` prompt before a capture, `Start-Transcript` over the board loop into new `run_logs\`, named
+  like a preset + timestamp; DATA menu "View a saved run log" (`Invoke-ViewRunLog`). (2)
+  `DELETE_SD_PATH=<attack>/<topology>/<location>` in `csv_logger.c` — PERMANENTLY deletes a card
+  folder (e.g. `blackhole/linear/G402`), the ONE deliberate exception to this project's
+  archive-never-delete rule, operator-requested only. Path must be `baseline|blackhole|wormhole` +
+  `[A-Za-z0-9_-]` segments (blocks `..`, absolute paths); refuses (`ERROR:SD_PATH_IN_USE`) if the
+  board is logging there now; command buffer widened 32→96B with an overflow guard (else a truncated
+  path names the PARENT folder). Host: `export_logs.py --delete-sd-path`; wizard: MAINTENANCE "Delete
+  a folder..." (`Invoke-DeleteSdFolder`), board→attack→topology/ALL→location/ALL→**`[y/N]`** (downgraded
+  from type-DELETE per explicit user request — less friction, less guard on a permanent wipe; flagged
+  not re-litigated). BUILD-CLEAN (child+root) sep. 18 — ⚠️ **NOT flashed/hardware-tested yet**. Found
+  along the way: needed `#include <unistd.h>` for `rmdir`; the wizard's script-wide `Stop` turns any
+  `python ... 2>&1` call's first stderr line into a thrown exception, dropping the rest of the output
+  (`Continue` set locally in `Invoke-DeleteSdFolder`; `Get-SdLocation`/`Set-SdLocation` still have this
+  latent bug). (3) `import_sdcard.py` no longer descends into `_archive\` (was re-importing archived
+  runs) — verified on a fake card. (4) The 3 GitHub sync menu items (see `0a356df` below) merged into
+  one DATA entry opening a submenu (`Invoke-DataSyncMenu`, "Back" default) — `run_wizard.ps1` only,
+  `menu.ps1` untouched. ⚠️ Menu `Idx` numbers shift as this file is hand-edited concurrently elsewhere
+  (OneDrive sync) — a stale-numbered scripted test this session hit "Test data sync" by accident,
+  making a local `sync_test\`; confirmed nothing reached `origin/Unified`, folder deleted — re-derive
+  live numbering before scripting wizard input.
+- sep. 18, 2026 — BUILT + **PUSHED** (`0a356df`, `origin/Unified` — the day's only pushed work): **data-only
+  GitHub sync**, `ESP32-Environment\tools\push_data.py` + one menu option each for push / pull / test
+  (menu.ps1 Action 15/17/16, shared `Invoke-DataSync`; run_wizard's 3 merged into one submenu sep. 18,
+  see today's entry above). Why: a `git pull --autostash` on a tree with uncommitted code wrecked this
+  repo sep. 17 (conflicted preset + orphaned stash, still unresolved), and teammates capture DIFFERENT
+  nodes of one run, so data must reach GitHub without anyone's half-done code. Safety: all git work happens
+  in a private blob-filtered clone under `%LOCALAPPDATA%\nis16-data-sync` — your tree is never stashed/checked-out/merged/rebased; only
+  `.csv` under `tools/exports/` (or `sync_test/`) can be staged, anything else ABORTS the commit; on
+  rejection it rebuilds the commit on newest origin and retries (5×). Rules: unseen file → added; ledgers →
+  unioned; identical or older-than-origin → skipped; same name + different bytes → BOTH kept, yours to
+  `sync_conflicts/<computer>/` (no analysis scans it); already under `archive/` on GitHub → never re-pushed
+  live. Pushed/pulled files are `git add`ed locally because a plain `git pull` REFUSES to overwrite an untracked
+  file even when byte-identical (verified). `.gitattributes` gained `merge=union` for both ledgers. Tested:
+  44-check two-laptop sim on a local bare repo (race retry, archive suppression, code untouched, `git pull`
+  still works after) + 9-check pull-only sim + a cancelled GitHub dry run. NOT proven laptop-to-laptop yet — run "Test data sync" on two machines first.
+- sep. 18, 2026 — BUILT (both wizards, uncommitted): **member board list** — a Cal / Bas / Kyle
+  table (nickname | first:last MAC | colored role) atop both main menus, replacing the whiteboard.
+  Data: `ESP32-Environment\member_boards.json` (member names FIXED in code); shared code
+  `tools\Show-MemberBoards.ps1`. Three ways to edit: "Edit the member board list" (guided add/edit/
+  remove, saves each change immediately, no BOM, never overwrites invalid JSON), "Open
+  member_boards.json directly" (launches `$env:EDITOR`/`code`/notepad, non-blocking), and named
+  snapshots (full detail rolled to ARCHIVE.md). ⚠️ The Idx/Action numbers this entry originally cited
+  are STALE as of the sep. 18 main-menu-declutter entry above — all 3 now sit inside one submenu
+  (run_wizard Idx 17, menu.ps1 Action 18), which also gained a 4th item ("Set whose laptop this is").
+  Seeded from a whiteboard photo:
+  Cal 20:38 attacker, 20:80 + F4:18 role `?`; Kyle 8/9/10/11 = B4:90/28:B4/70:C8/B4:80 children; Bas
+  none. ⚠️ `70:C8`/`28:B4` hard to read in the photo — confirm. ⚠️ Someone hand-edited the file
+  sep. 18 evening — Cal's `20:38 attacker` moved to Kyle as `child_8`, contradicting the user's
+  earlier confirmation; not reverted, flagged for the team (STATUS.md Next step 2).
 - ⚠️ Root-as-blackhole-attacker (STAR only) proposed sep. 16, NOT built — team decides first; full
   plan at `.claude\plans\mutable-honking-spindle.md` (Basti profile). Rolled to ARCHIVE.md for detail.
 

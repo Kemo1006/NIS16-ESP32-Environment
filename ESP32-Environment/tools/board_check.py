@@ -62,17 +62,24 @@ EXPECTED_FLASH = "4MB"  # partitions.csv needs the 4MB layout
 # ("Boards are identified by -Label, not by COM", LINEAR-RUNBOOK.md).
 # Old port names, kept only so the pre-2026-07-26 tables still decode:
 #   node1=COM20  node2=COM21  node3=COM22  node4=COM25  node5=COM26  node6=COM27
+# Bare node NUMBER only - no role (ROOT/ATTACKER/etc). A role here used to be a
+# fixed guess from one old campaign layout and never reflected what was actually
+# flashed: it survived a wipe, a reflash to a different role, even a full erase,
+# because it's keyed on the MAC (burned in at the factory, permanent) while the
+# role is decided by -Role/-Attack at flash time (or by nothing at all on a
+# blank board). See identify_firmware()/short_firmware_tag() below for what IS
+# live: a role read from the board's own boot banner, right now.
 KNOWN = {
-    "28:05:a5:32:d7:b4": "node1  (ROOT)",
-    "b0:cb:d8:f3:32:18": "node5  (blackhole ATTACKER / wormhole Node A)",
-    "f4:2d:c9:73:e6:18": "node6  (wormhole Node B)",
-    # ⚠️ node2/node4 UNCONFIRMED: ATTACKS-Commands.md's board table has these two
+    "28:05:a5:32:d7:b4": "node1",
+    "b0:cb:d8:f3:32:18": "node5",
+    "f4:2d:c9:73:e6:18": "node6",
+    # node2/node4 UNCONFIRMED: ATTACKS-Commands.md's board table has these two
     # MACs the other way round (its COM25 is our COM21). Nothing in the campaign
-    # depends on it — both are plain victims and all telemetry keys on the MAC —
-    # but the NAME could be swapped. Confirm once by plugging one in and reading
-    # the MAC here, then make ATTACKS-Commands.md agree.
-    "b4:bf:e9:34:ed:80": "node2  (unconfirmed, see roster note)",
-    "b4:bf:e9:32:fe:90": "node4  (unconfirmed, see roster note)",
+    # depends on it - both are plain victims and all telemetry keys on the MAC -
+    # but the NUMBER could be swapped. Confirm once by plugging one in and
+    # reading the MAC here, then make ATTACKS-Commands.md agree.
+    "b4:bf:e9:34:ed:80": "node2",
+    "b4:bf:e9:32:fe:90": "node4",
     "70:4b:ca:25:b7:68": "node3",
 }
 
@@ -343,7 +350,24 @@ def identify(mac):
             return KNOWN[alt] + "  [AP-side MAC]"
     except ValueError:
         pass
-    return "NOT in the known roster — a spare/new board"
+    return "NOT in the known roster - a spare/new board"
+
+
+def short_firmware_tag(variant, how):
+    """One short word/phrase for run_wizard.ps1's identify feature - a LIVE
+    read of what's actually running, to replace the old KNOWN-roster role
+    guess that never updated on wipe/reflash (see the KNOWN dict comment
+    above). variant/how are identify_firmware()'s own return values.
+    """
+    if variant:
+        return variant.split("(")[0].strip()
+    if how == "no output captured":
+        return "blank"
+    if how.startswith("a CHILD"):
+        return "CHILD (variant unclear - see full board_check.py output)"
+    if how.startswith("banner not in the captured window"):
+        return "unclear (banner missed - power-cycle and retry)"
+    return "unclear"
 
 
 def main():
@@ -415,7 +439,11 @@ def main():
     if variant:
         print(f"      firmware: {variant}   [{how}]")
     else:
-        print(f"      firmware: UNDETERMINED — {how}")
+        print(f"      firmware: UNDETERMINED - {how}")
+    # Machine-parseable line for run_wizard.ps1's identify feature - kept on its
+    # own line, separate from the human-readable one above, so a wording tweak
+    # to the line above can't silently break the wizard's regex.
+    print(f"      firmware-short: {short_firmware_tag(variant, how)}")
 
     usage = spiffs_usage(runtime_text)
     if usage:

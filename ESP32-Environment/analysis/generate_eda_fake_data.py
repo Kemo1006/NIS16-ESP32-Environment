@@ -31,9 +31,13 @@ on a plot regardless of whether the plotting code was correct.
 from __future__ import annotations
 
 import os
+import sys
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
+import topology_graph  # noqa: E402
 
 
 def _make_window_rows(
@@ -49,6 +53,7 @@ def _make_window_rows(
     rssi_hop_diff_range: tuple[float, float],
     parent_switch_rate_range: tuple[float, float],
     layer: int,
+    parent_mac: str,
     window_start_offset: int = 0,
 ) -> list[dict]:
     rows = []
@@ -59,7 +64,7 @@ def _make_window_rows(
             "source_file": source_file,
             "node_role": role,
             "layer": layer,
-            "parent_mac": "1C:C3:AB:FA:54:98",
+            "parent_mac": parent_mac,
             "n_samples_present": 5,
             "n_samples_expected": 5,
             "rssi_dbm_mean": rng.normal(-58, 3),
@@ -94,13 +99,15 @@ def _make_window_rows(
     return rows
 
 
-def generate_eda_dataset(output_path: str, seed: int = 100):
+def generate_eda_dataset(output_path: str, seed: int = 100, nodes: int = 3):
     """
     Builds a synthetic feature_table.csv-shaped dataset spanning 4 runs
     (mirroring M4's experimental matrix structure, though only 4 runs
     here, not the real 24+) across the three ground-truth labels:
     0=baseline, 1=blackhole, 2=wormhole. Two node roles (root, victim)
-    per run, ~12 windows per node per phase segment.
+    per run, ~12 windows per node per phase segment. Each run's layers and
+    parent links come from tools/topology_graph.py for that run's topology
+    and `nodes` boards (root = layer 1), never a fixed node-to-layer list.
     """
     rng = np.random.default_rng(seed)
     all_rows = []
@@ -108,16 +115,13 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
     run_configs = [
         ("RUN_001", "star"),
         ("RUN_002", "tree"),
-        ("RUN_003", "linear_chain"),
-        ("RUN_004", "partial_mesh"),
+        ("RUN_003", "linear"),
+        ("RUN_004", "partial"),
     ]
 
     for run_id, topology in run_configs:
-        for node_idx, (node_name, role, layer) in enumerate([
-            ("NODE_ROOT01", "root", 0),
-            ("NODE_VICTIM01", "victim", 1),
-            ("NODE_VICTIM02", "victim", 1),
-        ]):
+        roster = topology_graph.synthetic_roster(topology, nodes, seed=seed)
+        for node_idx, (node_name, role, layer, parent_mac) in enumerate(roster):
             # Real csv_logger.c node_ids are MAC-derived and stable across
             # runs (the board doesn't get a new identity each experiment);
             # only run_id changes per run. Using a fixed node_name here
@@ -135,7 +139,7 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
                 pdr_range=(0.93, 0.99),
                 rssi_hop_diff_range=(0.5, 4.0),
                 parent_switch_rate_range=(0.0, 0.02),
-                layer=layer, window_start_offset=offset,
+                layer=layer, parent_mac=parent_mac, window_start_offset=offset,
             )
             all_rows.extend(baseline_rows)
             offset += 12 * 5
@@ -155,7 +159,7 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
                         pdr_range=(0.10, 0.45),           # sharp drop, blackhole signature
                         rssi_hop_diff_range=(1.0, 5.0),   # not primarily a wormhole effect
                         parent_switch_rate_range=(0.0, 0.05),
-                        layer=layer, window_start_offset=offset,
+                        layer=layer, parent_mac=parent_mac, window_start_offset=offset,
                     )
                 else:
                     attack_rows = _make_window_rows(
@@ -164,7 +168,7 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
                         pdr_range=(0.85, 0.99),           # delivery itself isn't disrupted
                         rssi_hop_diff_range=(10.0, 22.0), # physical-logical mismatch, Section 4.3.1.4
                         parent_switch_rate_range=(0.10, 0.30),  # topology instability
-                        layer=layer, window_start_offset=offset,
+                        layer=layer, parent_mac=parent_mac, window_start_offset=offset,
                     )
             else:
                 # root: milder versions of the same shift, since root
@@ -177,7 +181,7 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
                     pdr_range=(0.90, 0.99),
                     rssi_hop_diff_range=(0.5, 4.0) if is_blackhole else (4.0, 10.0),
                     parent_switch_rate_range=(0.0, 0.03) if is_blackhole else (0.03, 0.12),
-                    layer=layer, window_start_offset=offset,
+                    layer=layer, parent_mac=parent_mac, window_start_offset=offset,
                 )
             all_rows.extend(attack_rows)
             offset += 9 * 5
@@ -190,7 +194,7 @@ def generate_eda_dataset(output_path: str, seed: int = 100):
                 pdr_range=(0.88, 0.99),
                 rssi_hop_diff_range=(0.5, 5.0),
                 parent_switch_rate_range=(0.0, 0.04),
-                layer=layer, window_start_offset=offset,
+                layer=layer, parent_mac=parent_mac, window_start_offset=offset,
             )
             all_rows.extend(cooldown_rows)
 
@@ -206,6 +210,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate larger synthetic dataset for EDA testing")
     parser.add_argument("-o", "--output", default="eda_fake_data/feature_table.csv")
+    parser.add_argument("--nodes", type=int, default=3,
+                        help="Boards per run, root included (default: 3)")
     args = parser.parse_args()
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
-    generate_eda_dataset(args.output)
+    generate_eda_dataset(args.output, nodes=args.nodes)

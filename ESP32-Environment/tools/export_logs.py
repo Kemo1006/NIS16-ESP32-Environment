@@ -636,7 +636,23 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--delete-sd-path", dest="delete_sd_path", default=None,
+                   metavar="ATTACK/TOPOLOGY/LOCATION",
+                   help="PERMANENTLY delete a folder (and everything under it) on this "
+                        "board's SD card over USB, e.g. blackhole/linear/G402. The first "
+                        "part must be baseline, blackhole or wormhole. The board refuses "
+                        "if it is logging into that folder right now. Standalone: "
+                        "exports/wipes nothing.")
     args = p.parse_args()
+
+    if args.delete_sd_path is not None:
+        args.delete_sd_path = args.delete_sd_path.strip().strip("/\\").replace("\\", "/")
+        if not re.fullmatch(r"(?i)(baseline|blackhole|wormhole)(/[A-Za-z0-9_-]+){0,4}",
+                            args.delete_sd_path):
+            print(f"ERROR: --delete-sd-path {args.delete_sd_path!r} is not <attack>[/<topology>"
+                  "[/<location>...]] (attack = baseline | blackhole | wormhole; letters, "
+                  "digits, _ and - only).", file=sys.stderr)
+            return 1
 
     try:
         # IMPORTANT: opening a serial port normally asserts DTR/RTS, which on an
@@ -782,6 +798,48 @@ def main() -> int:
                 print("   set-location command sent (no ack — older firmware without "
                       "this command). Reflash with the current firmware and retry.")
             return 0
+
+        if args.delete_sd_path:
+            print(f"-> DELETE_SD_PATH={args.delete_sd_path} ...")
+            _send_command(ser, f"DELETE_SD_PATH={args.delete_sd_path}")
+            # A folder with hundreds of CSVs over SPI at 4 MHz takes a while.
+            deadline = time.time() + 90
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line.startswith("SD_PATH_DELETED:"):
+                    count = line[len("SD_PATH_DELETED:"):]
+                    print(f"SD_DELETE_RESULT: OK {count}")
+                    print(f"   deleted {args.delete_sd_path} from the SD card ({count} file(s)).")
+                    return 0
+                if line.startswith("ERROR:"):
+                    hint = {
+                        "ERROR:BAD_SD_PATH":
+                            "the board rejected the path, or it names a file rather than a folder.",
+                        "ERROR:SD_PATH_IN_USE":
+                            "the board is logging into that folder right now. Let the run "
+                            "finish (or reboot the board with a different location) first.",
+                        "ERROR:SD_NO_CARD":
+                            "the SD card could not be mounted - reseat it and check wiring/power.",
+                        "ERROR:SD_PATH_NOT_FOUND":
+                            "that folder does not exist on this card (nothing deleted).",
+                        "ERROR:COMMAND_TOO_LONG":
+                            "the path is too long for the board's command buffer.",
+                    }.get(line)
+                    if line.startswith("ERROR:SD_DELETE_FAILED"):
+                        hint = ("some files were removed but not all - the card may be "
+                                "write-protected or failing. Re-run to retry the rest.")
+                    print(f"SD_DELETE_RESULT: {line}")
+                    print(f"   delete-sd-path FAILED: {line}", file=sys.stderr)
+                    if hint:
+                        print(f"   {hint}", file=sys.stderr)
+                    return 1
+            print("SD_DELETE_RESULT: NO_ACK")
+            print("   no ack - older firmware without DELETE_SD_PATH, or the board is not "
+                  "running. Reflash with the current firmware and retry.", file=sys.stderr)
+            return 1
 
         # --location is required for an actual export (not --list/--wipe, which
         # write nothing) unless --flat disables the topology/location nesting

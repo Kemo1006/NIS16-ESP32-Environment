@@ -1,0 +1,38 @@
+﻿{
+    "attack":  "blackhole",
+    "topology":  "linear",
+    "location":  "G402",
+    "scenario":  "none",
+    "owner":  "Bas",
+    "repeat":  1,
+    "savedAt":  "2026-09-18 03:00",
+    "boards":  [
+                   {
+                       "Label":  "attacker_5",
+                       "Port":  "COM25",
+                       "Role":  "child",
+                       "Kind":  "attacker",
+                       "Display":  "blackhole ATTACKER",
+                       "Mac":  "20:50:0d:e7:1c:38",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "child_6",
+                       "Port":  "COM15",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "child_7",
+                       "Port":  "COM20",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

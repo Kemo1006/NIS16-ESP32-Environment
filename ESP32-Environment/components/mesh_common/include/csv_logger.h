@@ -161,6 +161,8 @@ esp_err_t csv_logger_close(void);
  *   DELETE_LOGS    — deletes both files
  *   ARCHIVE_SD     — archives this boot's SD mirror CSVs (see csv_logger_archive_sd_now())
  *   LIST_FILES     — lists both file paths
+ *   DELETE_SD_PATH=<attack>/<topology>/<location> — PERMANENTLY deletes that
+ *                    SD card folder and everything under it
  */
 esp_err_t csv_logger_start_export_task(void);
 

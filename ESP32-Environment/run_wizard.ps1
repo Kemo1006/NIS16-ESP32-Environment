@@ -23,9 +23,20 @@
 
 .PARAMETER Preset
   Load a saved roster (JSON) instead of answering the menus again. Omit it and
-  the wizard lists presets\*.json for you to pick from, shows what the chosen one
-  contains - boards, ports, roles, attacker, MACs - and asks you to confirm
+  the wizard lists the saved presets for you to pick from, shows what the chosen
+  one contains - boards, ports, roles, attacker, MACs - and asks you to confirm
   before anything is flashed.
+
+  Presets are filed one folder per member: presets\<member>\<cell>.json, e.g.
+  presets\Bas\linear-blackhole-none-g402.json. The filename already spells the
+  experiment cell (topology-attack-scenario-location), so the folder is what
+  carries the one thing it cannot - WHOSE boards the roster describes. That is
+  what lets your preset and an absent member's preset for the same cell both
+  keep the plain cell name instead of one being hand-renamed. The picker lists
+  yours first, then the other members, each under its own heading, and new
+  presets are filed automatically by matching their MACs against
+  member_boards.json. Loose .json files directly under presets\ still load, and
+  show as UNFILED until you file them from the picker.
 
 .PARAMETER Repeat
   Override the preset's repeat number - the one thing that changes between r1/r2/r3.
@@ -37,7 +48,7 @@
 .EXAMPLE
   .\run_wizard.ps1 -DryRun
   .\run_wizard.ps1
-  .\run_wizard.ps1 -Preset presets\linear-blackhole.json -Repeat 2
+  .\run_wizard.ps1 -Preset presets\Bas\linear-blackhole-none-g402.json -Repeat 2
 #>
 param(
     [switch]$DryRun,
@@ -106,6 +117,9 @@ function Colorize-Role {
     $key = if ($Role -eq 'root') { 'root' } elseif ($Role -eq 'attacker') { 'attacker' } else { 'child' }
     return "$($script:RoleAnsi[$key])$Text$script:AnsiReset"
 }
+
+$memberBoardsTool = Join-Path $base 'tools\Show-MemberBoards.ps1'
+if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
 
 # ---------------------------------------------------------------- helpers ----
 
@@ -214,7 +228,12 @@ function Show-Menu {
         [string]$Title,
         [string[]]$Options,
         [int]$DefaultIndex = -1,   # -1 = no default, must choose
-        [switch]$AllowBack
+        [switch]$AllowBack,
+        # Optional index -> section heading, printed ABOVE the option at that
+        # index (e.g. @{ 0 = '-- YOURS (Bas)'; 3 = '-- Kyle' }). Purely visual:
+        # the numbering stays one sequential 1..N run over $Options, exactly as
+        # it is without headings, so a heading can never shift what "[3]" means.
+        [hashtable]$GroupHeaders
     )
     # Captured as a scriptblock (not just run inline) so it can be handed to
     # Read-Line as -Redraw: 'cls' Clear-Hosts the whole screen, and this is the
@@ -223,6 +242,10 @@ function Show-Menu {
         Write-Host ""
         Write-Host $Title -ForegroundColor Cyan
         for ($i = 0; $i -lt $Options.Count; $i++) {
+            if ($GroupHeaders -and $GroupHeaders.ContainsKey($i)) {
+                Write-Host ""
+                Write-Host ("  {0}" -f $GroupHeaders[$i]) -ForegroundColor DarkCyan
+            }
             if ($i -eq $DefaultIndex) {
                 # The default is marked right on its option line, not only in the
                 # prompt below, so scanning the list alone shows what Enter picks.
@@ -294,14 +317,18 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
+            @{ Idx = 16; Text = 'Sync capture data with GitHub (push / pull / test) - raw CSVs only, never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only (tools\trim_run.py --apply - writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
+            @{ Idx = 14; Text = 'View a saved run log (a past run''s console output, incl. any errors - no board/COM contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
             @{ Idx = 1; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
             @{ Idx = 2; Text = 'Write/update location.txt on an already-running board (over USB)' }
             @{ Idx = 3; Text = 'Firmware self-test - build + flash ONE board and check the SD/location code (no capture, no attack, no export)' }
             @{ Idx = 6; Text = 'Identify all boards (COM port + MAC, every board at once - no capture, no attack)' }
+            @{ Idx = 17; Text = 'Member board list (edit / open json / snapshots - submenu)' }
+            @{ Idx = 15; Text = 'Delete a folder from a running board''s SD card (e.g. blackhole > linear > G402 - PERMANENT, over USB)' }
         ) }
         @{ Name = 'VERIFY'; Items = @(
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
@@ -318,6 +345,9 @@ function Show-CaptureWizardMenu {
     # Same reasoning as Show-Menu's $draw: handed to Read-Line as -Redraw so
     # 'cls' can put this whole grouped listing back after Clear-Host wipes it.
     $draw = {
+        if (Get-Command Show-MemberBoards -ErrorAction SilentlyContinue) {
+            Show-MemberBoards -Path (Join-Path $base 'member_boards.json')
+        }
         Write-Host ""
         Write-Host "What do you want to do?" -ForegroundColor Cyan
         foreach ($cat in $categories) {
@@ -568,13 +598,25 @@ function Invoke-Identify {
     Write-Host "  Reading $TargetPort (this takes a few seconds) ..." -ForegroundColor DarkGray
     Push-Location (Join-Path $base 'tools')
     try {
-        $out = & python board_check.py --port $TargetPort --wait 1
+        # -wait 5 (not 1): board_check.py's own reset (during its bootloader/flash
+        # checks) happens right before this, so 5s gives its runtime listen a real
+        # shot at the boot banner - see [[wizard-prebuild-and-live-identify-2026-09]].
+        $out = & python board_check.py --port $TargetPort --wait 5
         $rc = $LASTEXITCODE
         $hit = $out | Select-String -Pattern 'MAC\s+([0-9a-fA-F:]{17})\s+->\s+(.+)$' | Select-Object -First 1
         if ($hit) {
             Write-Host ("  " + $hit.Line.Trim()) -ForegroundColor Green
             $mac  = $hit.Matches[0].Groups[1].Value
             $name = $hit.Matches[0].Groups[2].Value
+            # firmware-short is a LIVE read of what's actually running - never a
+            # roster guess. Appended only when board_check.py got far enough to
+            # print it (it can't, if the bootloader check itself failed).
+            $fwHit = $out | Select-String -Pattern 'firmware-short:\s+(.+)$' | Select-Object -First 1
+            if ($fwHit) {
+                $fwTag = $fwHit.Matches[0].Groups[1].Value.Trim()
+                Write-Host ("    firmware: {0}" -f $fwTag) -ForegroundColor Green
+                $name = "$name  ($fwTag)"
+            }
             $script:IdentifiedPorts[$TargetPort] = "$mac -> $name"
         }
         elseif ($rc -eq 2) {
@@ -1326,7 +1368,14 @@ function Select-CardFiles {
     #   Rel            = @() for ALL, or the card-relative paths picked
     #   IncludeAborted = $true if the operator confirmed aborted files
     # Mirrored in menu.ps1 - keep the two in sync.
-    param([Parameter(Mandatory)]$Files)
+    #
+    # $Card is only used for the 'd' (delete straight off the card) command
+    # below - a PERMANENT filesystem delete, separate from --delete-source
+    # (which only ever removes a file AFTER Import-OneSdCard has verified its
+    # copy landed). This lets the operator clear out junk/aborted files (e.g.
+    # the 0-row ABORTED entry in the listing) they never intend to import,
+    # without importing something first just to trigger that cleanup.
+    param([Parameter(Mandatory)]$Files, [string]$Card)
 
     # Sorted newest-build-first; unknown stamps sink to the bottom (they can
     # only be pre-stamp firmware, i.e. older than anything that has one).
@@ -1378,10 +1427,69 @@ function Select-CardFiles {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid card file selection after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > " -f $sorted.Count) -Redraw $draw
-        if (-not $raw) { Write-Host "  Type numbers, 'a' or 'c'." -ForegroundColor Yellow; continue }
+        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'd1,3' = delete those from the card (no import), 'c' = cancel > " -f $sorted.Count) -Redraw $draw
+        if (-not $raw) { Write-Host "  Type numbers, 'a', 'd<numbers>' or 'c'." -ForegroundColor Yellow; continue }
         $raw = $raw.Trim()
         if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
+
+        if ($raw -match '^[dD]\s*(.+)$') {
+            $spec = $Matches[1].Trim()
+            $delIdxs = @()
+            $badDel = $false
+            foreach ($tok in ($spec -split ',')) {
+                $t = $tok.Trim()
+                if (-not $t) { continue }
+                if ($t -match '^(\d+)\s*-\s*(\d+)$') {
+                    $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
+                    if ($lo -lt 1 -or $hi -gt $sorted.Count -or $lo -gt $hi) { $badDel = $true; break }
+                    $delIdxs += $lo..$hi
+                }
+                elseif ($t -match '^\d+$') {
+                    $n = [int]$t
+                    if ($n -lt 1 -or $n -gt $sorted.Count) { $badDel = $true; break }
+                    $delIdxs += $n
+                }
+                else { $badDel = $true; break }
+            }
+            if ($badDel -or $delIdxs.Count -eq 0) {
+                Write-Host ("  'd' needs numbers from 1 to {0} after it (e.g. d1,3 or d1-2)." -f $sorted.Count) -ForegroundColor Yellow
+                continue
+            }
+            $toDelete = @($delIdxs | Sort-Object -Unique | ForEach-Object { $sorted[$_ - 1] })
+
+            Write-Host ""
+            Write-Host "  DELETE from the card (PERMANENT - not the exports/ copy, the SD card file itself):" -ForegroundColor Red
+            foreach ($d in $toDelete) { Write-Host ("    {0}" -f $d.name) -ForegroundColor Red }
+            $confirm = Read-Line ("  Delete {0} file(s) from the card? [y/N] > " -f $toDelete.Count)
+            if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                Write-Host "  Cancelled - nothing deleted." -ForegroundColor DarkGray
+                continue
+            }
+
+            $deletedRel = @()
+            foreach ($d in $toDelete) {
+                if (-not $Card) {
+                    Write-Host ("    Skipped {0} - no card path known." -f $d.name) -ForegroundColor Yellow
+                    continue
+                }
+                $full = Join-Path $Card $d.rel
+                try {
+                    Remove-Item -LiteralPath $full -Force -ErrorAction Stop
+                    Write-Host ("    Deleted {0}" -f $d.name) -ForegroundColor Green
+                    $deletedRel += $d.rel
+                }
+                catch { Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $_.Exception.Message) -ForegroundColor Yellow }
+            }
+            if ($deletedRel.Count -gt 0) {
+                $sorted = @($sorted | Where-Object { $deletedRel -notcontains $_.rel })
+            }
+            if ($sorted.Count -eq 0) {
+                Write-Host "  Nothing left on this card." -ForegroundColor DarkGray
+                return $null
+            }
+            & $draw
+            continue
+        }
 
         $picked = @()
         if ($raw -eq 'a' -or $raw -eq 'A') {
@@ -1505,7 +1613,7 @@ function Import-OneSdCard {
             return
         }
 
-        $sel = Select-CardFiles -Files $cardFiles
+        $sel = Select-CardFiles -Files $cardFiles -Card $Card
         if ($null -eq $sel) {
             Write-Host "  Cancelled - nothing copied." -ForegroundColor DarkGray
             return
@@ -1662,11 +1770,26 @@ function Invoke-ImportSdCard {
     })
     if ($presetMatches.Count -eq 1) {
         $rosterPath = $presetMatches[0].File.FullName
-        Write-Host ("`nNaming from preset {0} (matches {1}/{2}/{3}/{4})." -f $presetMatches[0].File.Name, $attack, $topology, $scenario, $location) -ForegroundColor DarkGray
+        Write-Host ("`nNaming from preset {0} [{1}] (matches {2}/{3}/{4}/{5})." -f `
+            $presetMatches[0].File.Name, (Format-PresetOwner $presetMatches[0].File.Owner), `
+            $attack, $topology, $scenario, $location) -ForegroundColor DarkGray
     }
     elseif ($presetMatches.Count -gt 1) {
-        $rOpts = @($presetMatches | ForEach-Object { $_.File.Name })
-        $rIdx = Show-Menu -Title 'Several saved presets match this attack/topology/scenario/location - name from which?' -Options $rOpts -DefaultIndex 0
+        # With one folder per member, every member's preset for this cell has the
+        # SAME filename - so the owner has to be on the line or this is a list of
+        # identical-looking choices. Defaults to this laptop's member, which is
+        # whose card is being imported in the ordinary case.
+        $myMember = Get-MyMember
+        $rOpts = @($presetMatches | ForEach-Object {
+            $own = Format-PresetOwner $_.File.Owner
+            if ($myMember -and $_.File.Owner -eq $myMember) { "{0,-30} {1}  (you)" -f $_.File.Name, $own }
+            else { "{0,-30} {1}" -f $_.File.Name, $own }
+        })
+        $myIdx = 0
+        for ($i = 0; $i -lt $presetMatches.Count; $i++) {
+            if ($myMember -and $presetMatches[$i].File.Owner -eq $myMember) { $myIdx = $i; break }
+        }
+        $rIdx = Show-Menu -Title 'Several saved presets match this attack/topology/scenario/location - name from which?' -Options $rOpts -DefaultIndex $myIdx
         $rosterPath = $presetMatches[$rIdx].File.FullName
     }
     else {
@@ -1857,11 +1980,18 @@ function Invoke-IdentifyAllBoards {
                 $results += [pscustomobject]@{ Port = $p.Port; Mac = $null; Node = 'skipped (not confirmed)' }
                 continue
             }
-            $out = & python board_check.py --port $p.Port --wait 1
+            # -wait 5 (not 1): gives board_check.py's runtime listen a real shot at
+            # the boot banner - see [[wizard-prebuild-and-live-identify-2026-09]].
+            $out = & python board_check.py --port $p.Port --wait 5
             $hit = $out | Select-String -Pattern 'MAC\s+([0-9a-fA-F:]{17})\s+->\s+(.+)$' | Select-Object -First 1
             if ($hit) {
                 $mac  = $hit.Matches[0].Groups[1].Value.ToLower()
                 $node = $hit.Matches[0].Groups[2].Value
+                # firmware-short is a LIVE read of what's actually running - never
+                # a roster guess. Folded into $node so it flows through to the
+                # attacker-MAC cross-check table below along with everything else.
+                $fwHit = $out | Select-String -Pattern 'firmware-short:\s+(.+)$' | Select-Object -First 1
+                if ($fwHit) { $node = "$node  ($($fwHit.Matches[0].Groups[1].Value.Trim()))" }
                 $script:IdentifiedPorts[$p.Port] = "$mac -> $node"
                 Write-Host ("    MAC {0}  ->  {1}" -f $mac, $node) -ForegroundColor Green
             } else {
@@ -2146,6 +2276,57 @@ function Invoke-TrimOnly {
     } finally { Pop-Location }
 }
 
+function Invoke-DataSync {
+    # tools\push_data.py does all git work in a private clone, so this folder's
+    # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
+    # actions - keep the two in sync.
+    param([ValidateSet('push', 'pull', 'test')][string]$Mode)
+    $py = Join-Path $base 'tools\push_data.py'
+    Write-Host ""
+    if ($Mode -eq 'test') {
+        Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
+        Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
+        Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($Mode -eq 'pull') {
+        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+    } else {
+        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+    }
+    Push-Location $base
+    try {
+        python $py $Mode
+        if ($LASTEXITCODE -ne 0) { Write-Host "Data sync failed (exit $LASTEXITCODE) - see the message above." -ForegroundColor Red; return }
+        if ($Mode -eq 'test') {
+            $ans = Read-Line "`nRemove ALL test files from GitHub now? Say n if a teammate still has to run the test. [y/N] > "
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                python $py test-cleanup --yes
+                if ($LASTEXITCODE -ne 0) { Write-Host "Cleanup failed (exit $LASTEXITCODE)." -ForegroundColor Red }
+            }
+        }
+    } finally { Pop-Location }
+}
+
+function Invoke-DataSyncMenu {
+    # The three push_data.py actions live behind one main-menu entry instead of
+    # three, so the main menu stays scannable. Loops so a push can be followed by
+    # a pull without going back out to the main menu first.
+    while ($true) {
+        switch (Show-Menu -Title 'Capture data sync (GitHub) - raw CSVs only, never code:' -Options @(
+            "Push my capture data to GitHub - merges with teammates' pushes",
+            "Pull teammates' capture data from GitHub - never overwrites your files",
+            'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
+            'Back to the main menu'
+        ) -DefaultIndex 3) {
+            0 { Invoke-DataSync -Mode push }
+            1 { Invoke-DataSync -Mode pull }
+            2 { Invoke-DataSync -Mode test }
+            3 { return }
+        }
+    }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -2382,6 +2563,86 @@ function Set-SdLocation {
     }
     catch { return @{ Ok = $false; Lines = @($_.Exception.Message) } }
     finally { Pop-Location }
+}
+
+function Invoke-DeleteSdFolder {
+    # PERMANENT delete of a folder on a running board's SD card (DELETE_SD_PATH in
+    # csv_logger.c), e.g. blackhole > linear > G402. Same serial path and same
+    # "board must already be booted" requirement as Set-SdLocation. The operator
+    # has to type DELETE per folder - no bulk option on purpose.
+    $sdAttackDirs = @('baseline', 'blackhole', 'wormhole')
+    $sdTopoDirs   = @('linear', 'tree', 'star', 'partial_mesh')
+
+    while ($true) {
+        $ports = @(Get-PortList)
+        $portOpts = @($ports | ForEach-Object {
+            $tag = ''
+            if ($script:IdentifiedPorts.ContainsKey($_.Port)) { $tag = "  [{0}]" -f $script:IdentifiedPorts[$_.Port] }
+            "{0,-7} - {1}{2}{3}" -f $_.Port, $_.Description, $tag, (Format-PortKindTag $_.Kind)
+        })
+        $portOpts += 'Type a port manually'
+        $portOpts += 'Done - back to the main menu'
+
+        Write-Host ""
+        Write-Host "The board must already be booted with its SD card in (same as writing location.txt)." -ForegroundColor DarkGray
+        $pIdx = Show-Menu -Title 'Delete a folder from the SD card of which ALREADY-RUNNING board?' -Options $portOpts -DefaultIndex -1
+        if ($pIdx -eq $portOpts.Count - 1) { return }
+
+        $target = $null
+        if ($pIdx -eq $portOpts.Count - 2) {
+            $manual = Read-Line '  Port (e.g. COM20) > '
+            if ($manual) { $target = $manual.Trim().ToUpper() }
+        }
+        else { $target = $ports[$pIdx].Port }
+        if (-not $target) { continue }
+        if (-not (Test-PortSafeToTouch -Port $target -Action 'delete a folder on its SD card')) { continue }
+
+        $aIdx = Show-Menu -Title 'Attack folder:' -Options (@($sdAttackDirs) + @('Cancel')) -DefaultIndex -1
+        if ($aIdx -eq $sdAttackDirs.Count) { continue }
+        $parts = @($sdAttackDirs[$aIdx])
+
+        $tIdx = Show-Menu -Title ("Topology folder inside {0}:" -f $parts[0]) -Options (@($sdTopoDirs) + @(
+            ("ALL of {0} (delete the whole {0} folder)" -f $parts[0]), 'Cancel')) -DefaultIndex -1
+        if ($tIdx -eq $sdTopoDirs.Count + 1) { continue }
+        if ($tIdx -lt $sdTopoDirs.Count) {
+            $parts += $sdTopoDirs[$tIdx]
+
+            $lIdx = Show-Menu -Title ("Location folder inside {0}:" -f ($parts -join ' > ')) -Options (@($LOCATIONS) + @(
+                ("ALL of {0} (delete the whole {1} folder)" -f ($parts -join ' > '), $parts[1]), 'Cancel')) -DefaultIndex -1
+            if ($lIdx -eq $LOCATIONS.Count + 1) { continue }
+            if ($lIdx -lt $LOCATIONS.Count) { $parts += $LOCATIONS[$lIdx] }
+        }
+
+        $relPath = $parts -join '/'
+        Write-Host ""
+        Write-Host ("  {0}: DELETE {1}  (and everything inside it)" -f $target, ($parts -join ' > ')) -ForegroundColor Red
+        Write-Host "  This is PERMANENT - the CSVs on the card cannot be recovered afterwards." -ForegroundColor Red
+        Write-Host "  Import anything you still need from this card first." -ForegroundColor Yellow
+
+        if ($DryRun) {
+            Write-Host "`nDRY RUN - would send DELETE_SD_PATH=$relPath to $target here." -ForegroundColor Yellow
+            continue
+        }
+
+        $confirm = Read-Line "  Proceed? [y/N] > "
+        if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+            Write-Host "  Cancelled - nothing deleted." -ForegroundColor DarkGray
+            continue
+        }
+
+        Write-Host ("`n  {0} DELETE_SD_PATH={1} ..." -f $target, $relPath) -ForegroundColor DarkGray
+        Push-Location (Join-Path $base 'tools')
+        try {
+            # Under the script-wide 'Stop', PS 5.1 turns the first stderr line into
+            # an exception and drops the rest - including the failure hint.
+            $ErrorActionPreference = 'Continue'
+            $out = & python -u export_logs.py --port $target --delete-sd-path $relPath 2>&1
+            $color = if ($LASTEXITCODE -eq 0) { 'Green' } else { 'Yellow' }
+            foreach ($line in @($out)) { Write-Host ("    " + "$line") -ForegroundColor $color }
+        }
+        catch { Write-Host ("    " + $_.Exception.Message) -ForegroundColor Yellow }
+        finally { Pop-Location }
+    }
 }
 
 function New-RunParams {
@@ -2742,12 +3003,213 @@ function Get-RunDirs {
     }
 }
 
+function Get-PresetRoot { return (Join-Path $base 'presets') }
+
+function Get-PresetMemberNames {
+    # The member list member_boards.json is keyed by (Cal / Bas / Kyle), which is
+    # what the per-member preset folders are named after. Falls back to the fixed
+    # list in Show-MemberBoards.ps1 when that file is missing or unreadable, so
+    # the preset folders never depend on the roster file being present.
+    if ($script:BoardMembers) { return @($script:BoardMembers) }
+    return @('Cal', 'Bas', 'Kyle')
+}
+
+function Get-MyMemberPath { return (Join-Path $base 'my_member.txt') }
+
+function Get-MyMember {
+    # Which member THIS laptop belongs to - the only thing that cannot be
+    # derived from the files themselves, since every laptop sees the same
+    # presets\ tree. Stored in its own one-line file rather than as a key in
+    # member_boards.json, because Save-MemberBoardData rebuilds that file from
+    # _help + members only and would silently drop any extra key on the next
+    # board-list edit.
+    $p = Get-MyMemberPath
+    if (-not (Test-Path $p)) { return '' }
+    try { $v = (Get-Content -Raw -Path $p -ErrorAction Stop).Trim() } catch { return '' }
+    if ($v -and (Get-PresetMemberNames) -contains $v) { return $v }
+    return ''
+}
+
+function Set-MyMember {
+    param([string]$Name)
+    [System.IO.File]::WriteAllText((Get-MyMemberPath), $Name, (New-Object System.Text.UTF8Encoding $false))
+}
+
+function Select-MyMember {
+    # Asked once, then remembered. Returns '' if the operator backs out - callers
+    # treat that as "no owner known" rather than guessing a name.
+    param([switch]$Force)
+    $mine = Get-MyMember
+    if ($mine -and -not $Force) { return $mine }
+
+    $names = @(Get-PresetMemberNames)
+    Write-Host ""
+    Write-Host "Whose laptop is this? (used to put YOUR presets first, and to file new ones)" -ForegroundColor Cyan
+    Write-Host "  Stored in my_member.txt - change it any time from the member board list menu." -ForegroundColor DarkGray
+    $opts = @($names) + @('Skip - do not remember')
+    $idx = Show-Menu -Title 'This laptop belongs to:' -Options $opts -DefaultIndex ([Math]::Max(0, $names.IndexOf($mine)))
+    if ($idx -ge $names.Count) { return '' }
+    Set-MyMember -Name $names[$idx]
+    Write-Host ("  Remembered: {0}" -f $names[$idx]) -ForegroundColor Green
+    return $names[$idx]
+}
+
+function Get-PresetOwnerFromPath {
+    # A preset's owner is the member folder it sits in: presets\<Member>\x.json.
+    # Loose files directly under presets\ predate the split and have no owner.
+    param([string]$FullName)
+    $root = [System.IO.Path]::GetFullPath((Get-PresetRoot)).TrimEnd('\')
+    $dirName = [System.IO.Path]::GetFullPath((Split-Path $FullName -Parent)).TrimEnd('\')
+    if ($dirName -eq $root) { return '' }
+    $leaf = Split-Path $dirName -Leaf
+    if ((Get-PresetMemberNames) -contains $leaf) { return $leaf }
+    return $leaf
+}
+
 function Get-PresetFiles {
     # Newest first - the preset you used last is almost always the one you want.
-    $dir = Join-Path $base 'presets'
+    #
+    # Recurses, because presets are filed one folder per member:
+    # presets\Bas\linear-blackhole-none-g402.json. The filename already spells
+    # the experiment cell (topology-attack-scenario-location), so the ONE thing
+    # it cannot express is whose boards the roster describes - and two members'
+    # preset for the same cell collide on name. The folder carries the owner so
+    # both keep the plain cell name, instead of one being hand-renamed
+    # '...-kyle.json' and the pair becoming indistinguishable a week later.
+    #
+    # Each item gets an .Owner note property ('' for a loose pre-split file
+    # still sitting directly under presets\); everything else about the object
+    # is the FileInfo callers already use (.FullName / .Name / .LastWriteTime).
+    $dir = Get-PresetRoot
     if (-not (Test-Path $dir)) { return @() }
-    return @(Get-ChildItem -Path $dir -Filter '*.json' -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending)
+    return @(Get-ChildItem -Path $dir -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        ForEach-Object {
+            $_ | Add-Member -NotePropertyName Owner -NotePropertyValue (Get-PresetOwnerFromPath -FullName $_.FullName) -Force -PassThru
+        })
+}
+
+function Format-PresetOwner {
+    param([string]$Owner)
+    if ($Owner) { return $Owner }
+    return '(unfiled)'
+}
+
+function Find-PresetOwnerByMac {
+    # Guesses whose boards a roster describes by matching its MACs against
+    # member_boards.json. That file stores either a full MAC or just the
+    # first:last byte pair ("20:38"), and a preset stores the full MAC, so the
+    # comparison is on those two bytes - the same shortening Format-ShortMac
+    # already displays. Returns the member with the most matching boards, or ''
+    # when nothing matches (no MACs recorded yet, someone else's boards).
+    param($Roster)
+    if (-not (Get-Command Read-MemberBoardData -ErrorAction SilentlyContinue)) { return '' }
+    $data = $null
+    try { $data = Read-MemberBoardData -Path (Join-Path $base 'member_boards.json') } catch { return '' }
+    if (-not $data) { return '' }
+
+    $shorten = {
+        param([string]$Mac)
+        $m = ([string]$Mac).Trim().ToLower() -replace '[^0-9a-f]', ''
+        if ($m.Length -ge 12) { return ('{0}:{1}' -f $m.Substring(0, 2), $m.Substring(10, 2)) }
+        if ($m.Length -eq 4)  { return ('{0}:{1}' -f $m.Substring(0, 2), $m.Substring(2, 2)) }
+        return ''
+    }
+
+    $rosterMacs = @($Roster | ForEach-Object { & $shorten $_.Mac } | Where-Object { $_ })
+    if ($rosterMacs.Count -eq 0) { return '' }
+
+    $best = ''
+    $bestHits = 0
+    foreach ($name in (Get-PresetMemberNames)) {
+        # .Contains, not .ContainsKey: Read-MemberBoardData builds Members as
+        # [ordered]@{}, and OrderedDictionary has no ContainsKey on PS 5.1.
+        if (-not $data.Members.Contains($name)) { continue }
+        $their = @($data.Members[$name] | ForEach-Object { & $shorten $_.mac } | Where-Object { $_ })
+        $hits = @($rosterMacs | Where-Object { $their -contains $_ }).Count
+        if ($hits -gt $bestHits) { $bestHits = $hits; $best = $name }
+    }
+    return $best
+}
+
+function Select-PresetOwner {
+    # Whose boards is this preset for? Defaults to whatever the MACs say, then
+    # to this laptop's member - so the absent-member case (you flashing Kyle's
+    # boards) files itself correctly without you having to remember to say so.
+    param($Roster, [string]$Title = 'Whose boards is this preset for?')
+    $names = @(Get-PresetMemberNames)
+    $detected = Find-PresetOwnerByMac -Roster $Roster
+    $mine     = Get-MyMember
+    $default  = if ($detected) { $detected } elseif ($mine) { $mine } else { $names[0] }
+
+    $opts = @($names | ForEach-Object {
+        $tags = @()
+        if ($_ -eq $detected) { $tags += 'MACs match this member' }
+        if ($_ -eq $mine)     { $tags += 'this laptop' }
+        if ($tags.Count -gt 0) { "{0}  ({1})" -f $_, ($tags -join ', ') } else { $_ }
+    })
+    $opts += 'Leave unfiled (save straight into presets\)'
+
+    $idx = Show-Menu -Title $Title -Options $opts -DefaultIndex ([Math]::Max(0, $names.IndexOf($default)))
+    if ($idx -ge $names.Count) { return '' }
+    return $names[$idx]
+}
+
+function Invoke-ViewRunLog {
+    # Reads run_logs\*.log - the console transcripts a run saves when the
+    # operator says yes to "Save a full log of this run" during a capture
+    # (see the -saveRunLog block in the execute section below). Filenames use
+    # the same base as the preset that drove the run (or the topology-attack-
+    # scenario-location pattern when none was used), plus a timestamp, so a
+    # log and its preset are easy to spot as a pair. No board/COM contact.
+    $dir = Join-Path $base 'run_logs'
+    if (-not (Test-Path $dir)) {
+        Write-Host "`nNo run_logs\ folder yet - it's created the first time a run's log is saved." -ForegroundColor Yellow
+        return
+    }
+    $files = @(Get-ChildItem -Path $dir -Filter '*.log' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+    if ($files.Count -eq 0) {
+        Write-Host "`nNo saved run logs yet - run_logs\ is empty." -ForegroundColor Yellow
+        return
+    }
+
+    $opts = @($files | ForEach-Object {
+        "{0,-55} {1}  ({2:N0} KB)" -f $_.Name, $_.LastWriteTime.ToString('MMM dd HH:mm'), ($_.Length / 1KB)
+    })
+    $opts += 'Back'
+    $idx = Show-Menu -Title 'View which run log?' -Options $opts -DefaultIndex 0
+    if ($idx -eq $files.Count) { return }
+    $file = $files[$idx]
+
+    $picking = $true
+    while ($picking) {
+        switch (Show-Menu -Title "$($file.Name) - how do you want to view it?" -Options @(
+            'Print the last 100 lines here (quick look for errors)',
+            'Print the whole file here',
+            'Open the full file in Notepad',
+            'Delete this log',
+            'Back'
+        ) -DefaultIndex 0) {
+            0 {
+                Write-Host ""
+                Get-Content -Path $file.FullName -Tail 100 | ForEach-Object { Write-Host $_ }
+            }
+            1 {
+                Write-Host ""
+                Get-Content -Path $file.FullName | ForEach-Object { Write-Host $_ }
+            }
+            2 { Start-Process notepad.exe $file.FullName }
+            3 {
+                $confirm = Read-Line "  Delete $($file.Name)? [y/N] > "
+                if ($confirm -eq 'y' -or $confirm -eq 'Y') {
+                    Remove-Item -Path $file.FullName -Force
+                    Write-Host "  Deleted." -ForegroundColor Green
+                    $picking = $false
+                }
+            }
+            4 { $picking = $false }
+        }
+    }
 }
 
 function Read-PresetFile {
@@ -2783,13 +3245,26 @@ function ConvertTo-Roster {
 }
 
 function Save-Preset {
+    # $Owner is recorded in the file as well as in the folder name it lives in.
+    # The folder is what the picker groups by; the field is what survives the
+    # file being copied, emailed or pulled out of the tree, so a loose preset
+    # can still say whose boards it describes. Omitted = keep whatever the file
+    # already had (a re-save of an existing preset must not blank its owner).
     param([string]$Path, [string]$Attack, [string]$Topology, [string]$Location,
-          [int]$RepeatNum, $Roster, [string]$Scenario = 'none')
+          [int]$RepeatNum, $Roster, [string]$Scenario = 'none', [string]$Owner)
+    if (-not $PSBoundParameters.ContainsKey('Owner')) {
+        $Owner = Get-PresetOwnerFromPath -FullName $Path
+        if (-not $Owner) {
+            $existing = Read-PresetFile -Path $Path
+            if ($existing -and $existing.PSObject.Properties['owner']) { $Owner = [string]$existing.owner }
+        }
+    }
     $toSave = [pscustomobject]@{
         attack   = $Attack
         topology = $Topology
         location = $Location
         scenario = $Scenario
+        owner    = $Owner
         repeat   = $RepeatNum
         savedAt  = (Get-Date).ToString('yyyy-MM-dd HH:mm')
         boards   = @($Roster | ForEach-Object {
@@ -2828,6 +3303,110 @@ function Add-BoardMacs {
         $b | Add-Member -NotePropertyName Mac -NotePropertyValue ([string]$mac) -Force
     }
     return $got
+}
+
+function Get-LiveMacMap {
+    # port -> lowercase MAC for every plugged-in, non-BLOCKED port. Ports already
+    # read this session (identify / identify ALL) come from that cache instead
+    # of resetting the board again. Unreadable ports are left out of the map.
+    param([object[]]$Ports)
+    $map = @{}
+    foreach ($p in @($Ports | Where-Object { $_.Kind -ne 'BLOCKED' })) {
+        if ($script:IdentifiedPorts.ContainsKey($p.Port)) {
+            $cached = ($script:IdentifiedPorts[$p.Port] -split ' -> ')[0].Trim()
+            if ($cached -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') {
+                $map[$p.Port] = $cached.ToLower()
+                Write-Host ("  {0,-7} {1}  (already identified)" -f $p.Port, $map[$p.Port]) -ForegroundColor DarkGray
+                continue
+            }
+        }
+        if (-not (Test-PortSafeToTouch -Port $p.Port -Action 'reset it to read a MAC')) { continue }
+        Write-Host ("  {0,-7} reading ..." -f $p.Port) -ForegroundColor DarkGray
+        $mac = Get-BoardMac -TargetPort $p.Port
+        if ($mac) {
+            $map[$p.Port] = $mac
+            $script:IdentifiedPorts[$p.Port] = "$mac -> (MAC read only)"
+            Write-Host ("  {0,-7} {1}" -f $p.Port, $mac) -ForegroundColor Green
+        }
+        else {
+            Write-Host ("  {0,-7} could not read (busy, not an ESP32, or esptool missing)" -f $p.Port) -ForegroundColor Yellow
+        }
+    }
+    return $map
+}
+
+function Sync-RosterPortsByMac {
+    # A COM number belongs to the USB SOCKET, not the board, so moving boards to
+    # other sockets or a hub renumbers them. Every board with a recorded MAC is
+    # moved to whichever live port now reports that MAC. Returns the boards that
+    # still need a port picked by hand: no recorded MAC, MAC not found on any
+    # port, or their old port is now occupied by a different preset board.
+    # Changes $Roster in place (in memory only) and only after a [Y/n] preview.
+    param($Roster, [object[]]$Ports)
+
+    $recorded = @($Roster | Where-Object { $_.Mac -and $_.Port })
+    if ($recorded.Count -eq 0) {
+        Write-Host "  No board in this preset has a recorded MAC - ports have to be picked by hand." -ForegroundColor Yellow
+        $liveNames = @($Ports | Select-Object -ExpandProperty Port)
+        return [pscustomobject]@{ Applied = $false; Unresolved = @($Roster | Where-Object { $_.Port -and $liveNames -notcontains $_.Port }); MacMap = @{} }
+    }
+
+    Write-Host ""
+    Write-Host "Reading the MAC on each plugged-in port to find the preset's boards ..." -ForegroundColor DarkGray
+    $macMap = Get-LiveMacMap -Ports $Ports
+    $portByMac = @{}
+    foreach ($k in $macMap.Keys) { $portByMac[$macMap[$k]] = $k }
+
+    $moves = @()
+    $notFound = @()
+    foreach ($b in $recorded) {
+        $want = ([string]$b.Mac).ToLower()
+        if ($portByMac.ContainsKey($want)) {
+            if ($portByMac[$want] -ne $b.Port) {
+                $moves += [pscustomobject]@{ Board = $b; From = $b.Port; To = $portByMac[$want] }
+            }
+        }
+        else { $notFound += $b }
+    }
+
+    $matched   = @($recorded | Where-Object { $notFound -notcontains $_ })
+    $claimed   = @($matched | ForEach-Object { $portByMac[([string]$_.Mac).ToLower()] })
+    $liveNames = @($Ports | Select-Object -ExpandProperty Port)
+    # A board that wasn't matched by MAC keeps its old port only if that port is
+    # still plugged in, no matched board is moving onto it, and it doesn't
+    # provably hold a different board (a MAC was read there and it isn't this
+    # board's recorded one).
+    $unresolved = @()
+    foreach ($b in @($Roster | Where-Object { $_.Port -and $matched -notcontains $_ })) {
+        $gone     = $liveNames -notcontains $b.Port
+        $taken    = $claimed -contains $b.Port
+        $otherMac = $b.Mac -and $macMap.ContainsKey($b.Port) -and $macMap[$b.Port] -ne ([string]$b.Mac).ToLower()
+        if ($gone -or $taken -or $otherMac) { $unresolved += $b }
+    }
+
+    Write-Host ""
+    if ($moves.Count -eq 0) {
+        Write-Host "  Every board with a recorded MAC is already on the right port." -ForegroundColor Green
+    }
+    else {
+        Write-Host "  Matched by MAC:" -ForegroundColor Cyan
+        foreach ($m in $moves) {
+            Write-Host ("    {0,-8} {1,-7} -> {2,-7} ({3})" -f $m.Board.Label, $m.From, $m.To, $m.Board.Mac) -ForegroundColor Green
+        }
+    }
+    foreach ($b in $notFound) {
+        Write-Host ("    {0,-8} MAC {1} is not on any plugged-in port" -f $b.Label, $b.Mac) -ForegroundColor Yellow
+    }
+
+    if ($moves.Count -eq 0) {
+        return [pscustomobject]@{ Applied = $false; Unresolved = $unresolved; MacMap = $macMap }
+    }
+    $ans = Read-Line "`n  Use these ports? [Y/n] > "
+    if ($ans -eq 'n' -or $ans -eq 'N') {
+        return [pscustomobject]@{ Applied = $false; Unresolved = @($Roster | Where-Object { $_.Port -and $liveNames -notcontains $_.Port }); MacMap = $macMap }
+    }
+    foreach ($m in $moves) { $m.Board.Port = $m.To }
+    return [pscustomobject]@{ Applied = $true; Unresolved = $unresolved; MacMap = $macMap }
 }
 
 function Read-RepeatNumber {
@@ -2898,6 +3477,16 @@ function Show-PresetDetails {
     Write-Host ""
     Write-Host "------------------------------------------------------------" -ForegroundColor Green
     Write-Host ("  Preset   : {0}" -f (Split-Path -Leaf $Path)) -ForegroundColor Cyan
+    # Whose boards, stated before the roster itself: two members' preset for the
+    # same cell are the same filename, so this is the line that tells them apart.
+    $ownerName = Get-PresetOwnerFromPath -FullName $Path
+    if (-not $ownerName -and $Cfg.PSObject.Properties['owner']) { $ownerName = [string]$Cfg.owner }
+    $myName = Get-MyMember
+    $ownerTag = if (-not $ownerName) { '(unfiled - not in a member folder)' }
+                elseif ($myName -and $ownerName -eq $myName) { "{0}  (you)" -f $ownerName }
+                else { $ownerName }
+    $ownerColor = if (-not $ownerName) { 'Yellow' } elseif ($myName -and $ownerName -eq $myName) { 'Green' } else { 'Cyan' }
+    Write-Host ("  Boards of: {0}" -f $ownerTag) -ForegroundColor $ownerColor
     if ($Cfg.savedAt) { Write-Host ("  Saved    : {0}" -f [string]$Cfg.savedAt) -ForegroundColor DarkGray }
     Write-Host ""
     Write-Host ("  Attack   : {0}" -f $attackWord)
@@ -3053,6 +3642,29 @@ if (-not $Preset) {
         if ($modeIdx -eq 6) { Invoke-IdentifyAllBoards; continue }
         if ($modeIdx -eq 7) { Invoke-RunAnalysisOnly; continue }
         if ($modeIdx -eq 10) { Invoke-TrimOnly; continue }
+        if ($modeIdx -eq 14) { Invoke-ViewRunLog; continue }
+        if ($modeIdx -eq 15) { Invoke-DeleteSdFolder; continue }
+        if ($modeIdx -eq 17) {
+            while ($true) {
+                $whoNow = Get-MyMember
+                $whoTag = if ($whoNow) { $whoNow } else { 'not set' }
+                $sub = Show-Menu -Title "Member board list:" -Options @(
+                    'Edit the member board list (the Cal / Bas / Kyle table above - no board contact)',
+                    'Open member_boards.json directly (text editor - faster for hand edits)',
+                    'Save/load a named board-list snapshot (like a preset - who had which board, incl. burst/mobility/powercycle job)',
+                    ("Set whose laptop this is (now: {0}) - puts YOUR presets first and files new ones under you" -f $whoTag)
+                ) -DefaultIndex 0 -AllowBack
+                if ($sub -eq -1) { break }
+                switch ($sub) {
+                    0 { Edit-MemberBoards -Path (Join-Path $base 'member_boards.json') }
+                    1 { Open-MemberBoardsFile -Path (Join-Path $base 'member_boards.json') }
+                    2 { Manage-MemberBoardSnapshots -LivePath (Join-Path $base 'member_boards.json') }
+                    3 { Select-MyMember -Force | Out-Null }
+                }
+            }
+            continue
+        }
+        if ($modeIdx -eq 16) { Invoke-DataSyncMenu; continue }
     }
 }
 
@@ -3078,6 +3690,35 @@ if (-not $Preset) {
         $picking   = $true
 
         while ($picking) {
+            # Ordered YOUR member's presets first, then the other members, then
+            # anything still unfiled - nothing is hidden, because flashing an
+            # absent member's boards from their preset is a normal thing to do
+            # here and must stay one pick away. $presetFiles is re-ordered to
+            # match what is printed so index N of the menu is index N of the
+            # array, the same invariant the flat list relied on.
+            $myMember = Get-MyMember
+            $groups = New-Object System.Collections.Specialized.OrderedDictionary
+            if ($myMember) {
+                $lbl = "-- YOURS ({0})" -f $myMember
+                $groups[$lbl] = @($presetFiles | Where-Object { $_.Owner -eq $myMember })
+            }
+            foreach ($m in (Get-PresetMemberNames)) {
+                if ($myMember -and $m -eq $myMember) { continue }
+                $mine = @($presetFiles | Where-Object { $_.Owner -eq $m })
+                if ($mine.Count -gt 0) { $groups["-- $m"] = $mine }
+            }
+            $loose = @($presetFiles | Where-Object { -not $_.Owner })
+            if ($loose.Count -gt 0) { $groups['-- UNFILED (not in a member folder yet)'] = $loose }
+
+            $presetFiles = @()
+            $headers = @{}
+            foreach ($key in $groups.Keys) {
+                $items = @($groups[$key])
+                if ($items.Count -eq 0) { continue }
+                $headers[$presetFiles.Count] = $key
+                $presetFiles += $items
+            }
+
             # Show-Menu takes numbers only - there is no letter escape - so the
             # opt-out has to be the last numbered entry.
             $opts = @($presetFiles | ForEach-Object {
@@ -3093,7 +3734,7 @@ if (-not $Preset) {
             })
             $opts += 'No preset - answer the menus instead'
 
-            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0
+            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers
             if ($idx -eq $presetFiles.Count) { break }
 
             $file = $presetFiles[$idx]
@@ -3116,6 +3757,7 @@ if (-not $Preset) {
                     'Write/update location.txt on all boards'' SD cards (over USB, needs each board already running)',
                     'Fix mesh_config.h attacker MAC now (reads the attacker board, updates the build)',
                     'Show raw preset JSON (just to double-check the file itself, no board access)',
+                    'File this preset under a member (move it into presets\<member>\)',
                     'Delete this preset (e.g. an accidental duplicate)',
                     'Pick a different preset',
                     'No preset - answer the menus instead'
@@ -3126,7 +3768,15 @@ if (-not $Preset) {
                     1 {
                         Write-Host ""
                         $changed = $false
+                        $drifted = $false
+                        $pickPorts = Get-PortList
+                        $pickNames = @($pickPorts | Select-Object -ExpandProperty Port)
                         foreach ($b in $preview) {
+                            if ($pickNames -notcontains $b.Port) {
+                                Write-Host ("  {0,-8} {1,-7} not plugged in" -f $b.Label, $b.Port) -ForegroundColor Yellow
+                                if ($b.Mac) { $drifted = $true }
+                                continue
+                            }
                             # A preset stores port names, and ports get reassigned -
                             # COM7 that was node3 last week can be a receiver today.
                             if (-not (Test-PortSafeToTouch -Port $b.Port -Action 'reset it to read a MAC')) { continue }
@@ -3143,13 +3793,29 @@ if (-not $Preset) {
                                 Write-Host ("  {0,-8} {1,-7} {2}  matches" -f $b.Label, $b.Port, $got) -ForegroundColor Green
                             }
                             else {
-                                Write-Host ("  {0,-8} {1,-7} DRIFT - preset says {2}, board is {3}" -f $b.Label, $b.Port, $b.Mac, $got) -ForegroundColor Red
-                                Write-Host "           This port is not the board the preset was saved with." -ForegroundColor Red
-                                $b.Mac = $got; $changed = $true
+                                # Don't overwrite: the recorded MAC is how this board is
+                                # found again on its new port. Copying the other board's
+                                # MAC in here would make the preset lie about both.
+                                $owner = $preview | Where-Object { $_ -ne $b -and $_.Mac -eq $got } | Select-Object -First 1
+                                $who   = if ($owner) { "that is $($owner.Label)'s board" } else { 'not a board from this preset' }
+                                Write-Host ("  {0,-8} {1,-7} DRIFT - preset says {2}, port holds {3} ({4})" -f $b.Label, $b.Port, $b.Mac, $got, $who) -ForegroundColor Red
+                                $drifted = $true
+                            }
+                        }
+                        if ($drifted) {
+                            Write-Host ""
+                            Write-Host "  Boards are on different ports than the preset recorded (moved sockets / hub)." -ForegroundColor Yellow
+                            $reAns = Read-Line "  Re-match every board to its port by MAC now? [Y/n] > "
+                            if ($reAns -ne 'n' -and $reAns -ne 'N') {
+                                $sync = Sync-RosterPortsByMac -Roster $preview -Ports $pickPorts
+                                if ($sync.Applied) { $changed = $true }
+                                foreach ($u in @($sync.Unresolved)) {
+                                    Write-Host ("  {0,-8} still has no confirmed port - you'll be asked for it after 'Yes - use it'." -f $u.Label) -ForegroundColor Yellow
+                                }
                             }
                         }
                         if ($changed) {
-                            $ans = Read-Line "`n  Write these MACs back into the preset? [y/N] > "
+                            $ans = Read-Line "`n  Write these MACs/ports back into the preset? [y/N] > "
                             if ($ans -eq 'y' -or $ans -eq 'Y') {
                                 Save-Preset -Path $file.FullName -Attack ([string]$cfg.attack) `
                                     -Topology ([string]$cfg.topology) -Location ([string]$cfg.location) `
@@ -3294,6 +3960,41 @@ if (-not $Preset) {
                     }
 
                     5 {
+                        # How a preset that predates the per-member folders (or one
+                        # filed under the wrong member) gets sorted, one file at a
+                        # time and always with the operator naming the member - no
+                        # bulk auto-move, since guessing wrong here would silently
+                        # attribute one member's boards to another.
+                        $newOwner = Select-PresetOwner -Roster $preview `
+                            -Title ("File '{0}' under which member?" -f $file.Name)
+                        if (-not $newOwner) {
+                            Write-Host "  Left where it is." -ForegroundColor DarkGray
+                        }
+                        elseif ($newOwner -eq $file.Owner) {
+                            Write-Host ("  Already filed under {0}." -f $newOwner) -ForegroundColor DarkGray
+                        }
+                        else {
+                            $destDir = Join-Path (Get-PresetRoot) $newOwner
+                            if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
+                            $dest = Join-Path $destDir $file.Name
+                            if (Test-Path $dest) {
+                                Write-Host ("  {0} already has a preset called {1} - rename one of them first." -f $newOwner, $file.Name) -ForegroundColor Yellow
+                            }
+                            else {
+                                Move-Item -LiteralPath $file.FullName -Destination $dest
+                                # Re-stamp the owner recorded INSIDE the file too, so a
+                                # copy that later leaves this folder still says whose it is.
+                                Save-Preset -Path $dest -Attack ([string]$cfg.attack) `
+                                    -Topology ([string]$cfg.topology) -Location ([string]$cfg.location) `
+                                    -RepeatNum ([int]$cfg.repeat) -Roster $preview -Scenario $cfgScenario -Owner $newOwner
+                                Write-Host ("  Moved -> presets\{0}\{1}" -f $newOwner, $file.Name) -ForegroundColor Green
+                                $presetFiles = @(Get-PresetFiles)
+                                $deciding = $false
+                            }
+                        }
+                    }
+
+                    6 {
                         Write-Host ""
                         $delAns = Read-Line ("Delete '{0}' permanently? [y/N] > " -f $file.Name)
                         if ($delAns -eq 'y' -or $delAns -eq 'Y') {
@@ -3307,8 +4008,8 @@ if (-not $Preset) {
                         $deciding = $false
                     }
 
-                    6 { $deciding = $false }
-                    7 { $deciding = $false; $picking = $false }
+                    7 { $deciding = $false }
+                    8 { $deciding = $false; $picking = $false }
                 }
             }
         }
@@ -3360,9 +4061,13 @@ if ($Preset) {
     # COM numbers are assigned per USB socket, so a preset's ports can point at a
     # different board - or nothing - in a later session. Enumerating is instant
     # and touches no board, so always check; only offer the fix when it bites.
-    $livePorts = @(Get-PortList)
-    $liveNames = @($livePorts | Select-Object -ExpandProperty Port)
-    $missing   = @($roster | Where-Object { $liveNames -notcontains $_.Port })
+    $livePorts   = @(Get-PortList)
+    $liveNames   = @($livePorts | Select-Object -ExpandProperty Port)
+    $missing     = @($roster | Where-Object { $liveNames -notcontains $_.Port })
+    $haveMacs    = @($roster | Where-Object { $_.Mac }).Count -gt 0
+    $canReadMacs = $haveMacs -and -not ($DryRun -or $SkipMacCheck)
+    $remapped    = $false
+    $toPick      = @()
 
     if ($missing.Count -gt 0) {
         Write-Host ""
@@ -3370,25 +4075,83 @@ if ($Preset) {
         foreach ($m in $missing) {
             Write-Host ("  {0,-8} {1,-7} {2}" -f $m.Label, $m.Port, $m.Display) -ForegroundColor Yellow
         }
+        $toPick = $missing
+        if ($canReadMacs) {
+            Write-Host "COM numbers follow the USB socket, not the board - moving boards to other" -ForegroundColor DarkGray
+            Write-Host "sockets or a hub renumbers them. The preset recorded each board's MAC, so" -ForegroundColor DarkGray
+            Write-Host "the wizard can find which port each one is on now." -ForegroundColor DarkGray
+            $findAns = Read-Line "`nFind the boards by their recorded MAC? (reads each plugged-in ESP32 port, briefly resets it) [Y/n] > "
+            if ($findAns -ne 'n' -and $findAns -ne 'N') {
+                $sync     = Sync-RosterPortsByMac -Roster $roster -Ports $livePorts
+                $remapped = $sync.Applied
+                $toPick   = @($sync.Unresolved)
+            }
+        }
+        elseif ($haveMacs) {
+            $why = if ($DryRun) { 'dry run' } else { '-SkipMacCheck' }
+            Write-Host "Not reading boards to match them by MAC ($why) - pick the ports by hand." -ForegroundColor DarkGray
+        }
+    }
+    elseif ($canReadMacs) {
+        # Every port still exists, but on a hub or after re-plugging, two boards
+        # can trade COM numbers - nothing above would notice, and each board
+        # would be flashed and labelled as the other.
+        $chkAns = Read-Line "`nCheck each port still holds the board the preset recorded (matches by MAC, briefly resets each board)? [Y/n] > "
+        if ($chkAns -ne 'n' -and $chkAns -ne 'N') {
+            $sync     = Sync-RosterPortsByMac -Roster $roster -Ports $livePorts
+            $remapped = $sync.Applied
+            $toPick   = @($sync.Unresolved)
+        }
+    }
+
+    if ($toPick.Count -gt 0) {
+        Write-Host ""
+        Write-Host "These boards still need a port:" -ForegroundColor Yellow
+        foreach ($m in $toPick) {
+            $macTxt = if ($m.Mac) { $m.Mac } else { 'no MAC recorded' }
+            Write-Host ("  {0,-8} was {1,-7} {2}  ({3})" -f $m.Label, $m.Port, $m.Display, $macTxt) -ForegroundColor Yellow
+        }
         $fixAns = Read-Line "`nPick replacement ports for them now? [Y/n] > "
         if ($fixAns -ne 'n' -and $fixAns -ne 'N') {
-            $remapped = $false
-            foreach ($m in $missing) {
-                $newPort = Select-Port -For "$($m.Label) ($($m.Display))" -Ports $livePorts
-                if ($newPort -and $newPort -ne $m.Port) {
-                    $m.Port = $newPort
-                    $m.Mac  = ''          # a different socket may well be a different board
-                    $remapped = $true
+            $done = @()
+            foreach ($m in $toPick) {
+                # Hide ports already held by boards that are settled (not being
+                # re-picked) or were re-picked just before this one.
+                $taken = @($roster | Where-Object { $_ -ne $m -and ($toPick -notcontains $_ -or $done -contains $_) } |
+                    ForEach-Object { $_.Port })
+                $newPort = Select-Port -For "$($m.Label) ($($m.Display))" -Ports $livePorts -Taken $taken
+                $done += $m
+                if (-not $newPort -or $newPort -eq $m.Port) { continue }
+                $m.Port = $newPort
+                $remapped = $true
+
+                # Keep a MAC only when this session actually read one on the picked
+                # port (identify / the MAC match above); otherwise the board on that
+                # socket is unknown and a stale MAC would be trusted downstream.
+                $liveMac = $null
+                if ($script:IdentifiedPorts.ContainsKey($newPort)) {
+                    $c = ($script:IdentifiedPorts[$newPort] -split ' -> ')[0].Trim()
+                    if ($c -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $liveMac = $c.ToLower() }
+                }
+                if ($liveMac) {
+                    if ($m.Mac -and ([string]$m.Mac).ToLower() -ne $liveMac) {
+                        Write-Host ("   {0} holds {1}, not the {2} this preset recorded for {3} - recording the new MAC (board replaced?)." -f $newPort, $liveMac, $m.Mac, $m.Label) -ForegroundColor Yellow
+                    }
+                    $m.Mac = $liveMac
+                }
+                else {
+                    $m.Mac = ''
                 }
             }
-            if ($remapped) {
-                $ans = Read-Line "`nSave the corrected ports back into the preset? [y/N] > "
-                if ($ans -eq 'y' -or $ans -eq 'Y') {
-                    Save-Preset -Path $Preset -Attack $attack -Topology $topology `
-                        -Location $location -RepeatNum $repeat -Roster $roster -Scenario $scenario
-                    Write-Host ("  Updated -> {0}" -f (Split-Path -Leaf $Preset)) -ForegroundColor Green
-                }
-            }
+        }
+    }
+
+    if ($remapped) {
+        $ans = Read-Line "`nSave the corrected ports back into the preset? [y/N] > "
+        if ($ans -eq 'y' -or $ans -eq 'Y') {
+            Save-Preset -Path $Preset -Attack $attack -Topology $topology `
+                -Location $location -RepeatNum $repeat -Roster $roster -Scenario $scenario
+            Write-Host ("  Updated -> {0}" -f (Split-Path -Leaf $Preset)) -ForegroundColor Green
         }
     }
 
@@ -3818,6 +4581,13 @@ else {
             }
 
             9 {
+                # Strip a stale remote-target synthetic before re-picking - repeat
+                # visits via 'b' must not stack a second one. Scoped to ONLY this
+                # step's own marker (RemoteTargetSynthetic), never the generic
+                # Synthetic flag, so a remote attacker/A/B board added in step 8
+                # is never touched here.
+                $children = @($children | Where-Object { -not $_.RemoteTargetSynthetic })
+
                 # Exactly one child is the scenario's subject: the burst sender,
                 # the node moved, or the node power-cycled. Burst additionally
                 # needs a board that will actually build victim_main.c - an
@@ -3828,6 +4598,27 @@ else {
                     @($children)
                 }
                 if ($eligible.Count -eq 0) {
+                    if ($multiLaptop) {
+                        # No child on THIS laptop can carry it (root-only laptop, or
+                        # every local child here is an attacker/wormhole A/B board) -
+                        # same "not here" reasoning as the escape option below, just
+                        # reached with nothing local left to pick FROM. Record it as
+                        # remote outright instead of forcing a dead-end "go back" with
+                        # no way through - this was the "no skip option" gap: unlike
+                        # the blackhole/wormhole role menus, this step used to error
+                        # out here even when the target legitimately lives elsewhere.
+                        $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                        $children += [pscustomobject]@{
+                            Label = $remoteLabel; Port = $null; Role = 'child'; Kind = 'victim'
+                            Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
+                            Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true
+                        }
+                        Write-Host ""
+                        Write-Host ("  No child on THIS laptop can carry $scenario - remote target recorded as '{0}'." -f $remoteLabel) -ForegroundColor DarkGray
+                        Write-Host "  Tell that laptop's operator to mark their own matching board as the target when THEY run the wizard." -ForegroundColor DarkGray
+                        $step = 10
+                        continue flow
+                    }
                     Write-Host "`n  No child here can carry the burst (the attacker/wormhole A/B boards can't) -" -ForegroundColor Yellow
                     Write-Host "  go back and add a plain child, or pick a different scenario." -ForegroundColor Yellow
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
@@ -3839,6 +4630,17 @@ else {
                     $portText = if ($_.Port) { $_.Port } else { 'remote - not on this laptop' }
                     "$($_.Label)  ($portText)$tag  -  $($_.Display)"
                 })
+                # MULTI-LAPTOP SPLIT: same reasoning as the attacker/wormhole escapes
+                # above - the scenario target may be a board on a teammate's laptop,
+                # never listed here at all. Without this, "which child is the target?"
+                # forced picking one of YOUR boards even when the real target is
+                # elsewhere. Always offered when multiLaptop, so this menu is never
+                # the one place in the wizard that can't say "not here".
+                $escapeIdx = -1
+                if ($multiLaptop) {
+                    $escapeIdx = $labels.Count
+                    $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
+                }
                 $idx = Show-Menu -Title "Which child is the $scenario TARGET? (exactly one)" -Options $labels -AllowBack
                 if ($idx -eq -1) {
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
@@ -3851,8 +4653,21 @@ else {
                     $c.ScenarioTarget = $false
                     $c.Display = $c.Display -replace ' \+ .* TARGET$', ''
                 }
-                $eligible[$idx].ScenarioTarget = $true
-                $eligible[$idx].Display += " + $($scenario.ToUpper()) TARGET"
+                if ($multiLaptop -and $idx -eq $escapeIdx) {
+                    $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                    $children += [pscustomobject]@{
+                        Label = $remoteLabel; Port = $null; Role = 'child'; Kind = 'victim'
+                        Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
+                        Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true
+                    }
+                    Write-Host ""
+                    Write-Host ("  Remote $scenario target recorded as '{0}' - tell that laptop's operator to mark" -f $remoteLabel) -ForegroundColor DarkGray
+                    Write-Host "  their own matching board as the target when THEY run the wizard." -ForegroundColor DarkGray
+                }
+                else {
+                    $eligible[$idx].ScenarioTarget = $true
+                    $eligible[$idx].Display += " + $($scenario.ToUpper()) TARGET"
+                }
                 $step = 10
                 continue flow
             }
@@ -4215,8 +5030,15 @@ $buildAndPrintPlan = {
     Write-Host ("  Repeat   : {0}" -f $repeat)
     Write-Host ("  Mode     : {0}" -f $(if ($swapMode) { 'shared port - swap boards between steps' } else { 'separate ports - no swapping' }))
     if ($scenario -in @('mobility', 'powercycle')) {
+        # $plan only covers THIS laptop's own boards ($runRoster) - a target
+        # recorded remote (RemoteTargetSynthetic, see step 9's escape) is real
+        # and correctly absent from $plan, so it needs its own check here or
+        # this would wrongly print "(none picked!)" for a valid multi-laptop split.
         $tgt = $plan | Where-Object { $_.Board.ScenarioTarget } | Select-Object -First 1
-        $tgtLbl = if ($tgt) { $tgt.Board.Label } else { '(none picked!)' }
+        $remoteTgt = $fullRoster | Where-Object { $_.ScenarioTarget -and -not $_.Port } | Select-Object -First 1
+        $tgtLbl = if ($tgt) { $tgt.Board.Label }
+                  elseif ($remoteTgt) { "$($remoteTgt.Label) (on another laptop - not YOUR job)" }
+                  else { '(none picked!)' }
         Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
         Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
     }
@@ -4252,9 +5074,10 @@ while ($true) {
         'Add a node',
         'Remove a node',
         'Change topology for this run',
+        'Change scenario for this run',
         'Nothing more -- continue to confirm'
-    ) -DefaultIndex 4
-    if ($adjIdx -eq 4) { break }
+    ) -DefaultIndex 5
+    if ($adjIdx -eq 5) { break }
 
     if ($adjIdx -eq 0) {
         $pickIdx = Show-Menu -Title "Which node?" -Options (@($runRoster | ForEach-Object { "$($_.Label)  ($($_.Port), $($_.Display))" }))
@@ -4277,6 +5100,73 @@ while ($true) {
             'partial  (physical placement)'
         ) -DefaultIndex ([array]::IndexOf($topoOpts, $topology))
         if ($topoIdx2 -ge 0) { $topology = $topoOpts[$topoIdx2] }
+    }
+    elseif ($adjIdx -eq 4) {
+        # Lets a loaded preset's scenario be changed here - previously the only
+        # way to run a different scenario than what a preset was saved with was
+        # to abandon the preset and answer every menu from scratch.
+        $scenIdx2 = Show-Menu -Title "Scenario (run-to-run variation the panel asked for)?" -Options $SCENARIO_LABELS -DefaultIndex ([array]::IndexOf($SCENARIOS, $scenario))
+        if ($scenIdx2 -ge 0 -and $SCENARIOS[$scenIdx2] -ne $scenario) {
+            $scenario = $SCENARIOS[$scenIdx2]
+
+            # Any target picked for the OLD scenario belongs to that scenario, not
+            # this one - clear it (local marks and any earlier remote hand-off) so
+            # a stale " + TARGET" suffix or a leftover remote synthetic doesn't
+            # survive the switch.
+            foreach ($c in $runRoster) {
+                $c.ScenarioTarget = $false
+                $c.Display = $c.Display -replace ' \+ .* TARGET$', ''
+            }
+            $fullRoster   = @($fullRoster | Where-Object { -not $_.RemoteTargetSynthetic })
+            $remoteBoards = @($fullRoster | Where-Object { -not $_.Port })
+
+            if (Test-ScenarioNeedsTarget $scenario) {
+                $eligible = if ($scenario -eq 'burst') { @($runRoster | Where-Object { Test-BurstEligible $_ }) } else { @($runRoster | Where-Object { $_.Role -ne 'root' }) }
+
+                if ($eligible.Count -eq 0 -and $remoteBoards.Count -gt 0) {
+                    # No local node can carry it (e.g. every local child here is an
+                    # attacker/wormhole A/B board) - same "not here" escape the
+                    # manual flow's own scenario-target step offers, just reached
+                    # with nothing local left to pick FROM.
+                    $remoteLabel = Get-FreeNodeLabel -Taken @($fullRoster | ForEach-Object { $_.Label })
+                    $fullRoster += [pscustomobject]@{
+                        Label = $remoteLabel; Port = $null; Role = 'child'; Kind = 'victim'
+                        Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
+                        Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true
+                    }
+                    $remoteBoards = @($fullRoster | Where-Object { -not $_.Port })
+                    Write-Host ("   No local node can carry $scenario - remote target recorded as '{0}'." -f $remoteLabel) -ForegroundColor DarkGray
+                    Write-Host "   Tell that laptop's operator to mark their own matching board as the target when THEY run the wizard." -ForegroundColor DarkGray
+                }
+                elseif ($eligible.Count -eq 0) {
+                    Write-Host "   No node can carry the $scenario scenario - add an eligible node, or pick a different scenario." -ForegroundColor Yellow
+                }
+                else {
+                    $labels = @($eligible | ForEach-Object { "$($_.Label)  ($($_.Port))  -  $($_.Display)" })
+                    $escapeIdx = -1
+                    if ($remoteBoards.Count -gt 0) {
+                        $escapeIdx = $labels.Count
+                        $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
+                    }
+                    $tIdx = Show-Menu -Title "Which node is the $scenario TARGET? (exactly one)" -Options $labels -DefaultIndex 0
+                    if ($tIdx -ge 0 -and $tIdx -eq $escapeIdx) {
+                        $remoteLabel = Get-FreeNodeLabel -Taken @($fullRoster | ForEach-Object { $_.Label })
+                        $fullRoster += [pscustomobject]@{
+                            Label = $remoteLabel; Port = $null; Role = 'child'; Kind = 'victim'
+                            Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
+                            Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true
+                        }
+                        $remoteBoards = @($fullRoster | Where-Object { -not $_.Port })
+                        Write-Host ("   Remote $scenario target recorded as '{0}' - tell that laptop's operator to mark" -f $remoteLabel) -ForegroundColor DarkGray
+                        Write-Host "   their own matching board as the target when THEY run the wizard." -ForegroundColor DarkGray
+                    }
+                    elseif ($tIdx -ge 0) {
+                        $eligible[$tIdx].ScenarioTarget = $true
+                        $eligible[$tIdx].Display += " + $($scenario.ToUpper()) TARGET"
+                    }
+                }
+            }
+        }
     }
 
     # A node's Role may have just changed, or one was added/removed -- re-sort
@@ -4337,12 +5227,15 @@ if ($rootSec -gt 0) {
 
 # ----------------------------------------------------------- save preset ----
 
+# Scriptblock so both the plain flow and the post-pre-build menu share it.
+# -Ask:$false skips the "save?" yes/no (the operator already picked "save").
 # A loaded preset that was then edited (node added/removed/changed in the
 # "Adjust the plan?" step above) only affects THIS run unless written back -
 # offered here as its own yes/no, separate from "save as a new preset" below,
 # so a plain unedited replay is never prompted to overwrite anything.
+$savePresetFlow = { param([bool]$Ask)
 if ($Preset) {
-    $updateAns = Read-Line ("`nSave these changes back into {0}? [y/N] > " -f (Split-Path -Leaf $Preset))
+    $updateAns = if ($Ask) { Read-Line ("`nSave these changes back into {0}? [y/N] > " -f (Split-Path -Leaf $Preset)) } else { 'y' }
     if ($updateAns -eq 'y' -or $updateAns -eq 'Y') {
         if ($DryRun) {
             Write-Host "  Dry run - not reading the boards, so MACs won't be refreshed." -ForegroundColor DarkGray
@@ -4363,11 +5256,20 @@ if ($Preset) {
 }
 
 if (-not $Preset) {
-    $saveAns = Read-Line "`nSave this roster as a preset for the next repeat? [y/N] > "
+    $saveAns = if ($Ask) { Read-Line "`nSave this roster as a preset for the next repeat? [y/N] > " } else { 'y' }
     if ($saveAns -eq 'y' -or $saveAns -eq 'Y') {
-        $presetDir = Join-Path $base 'presets'
+        # Whose boards this roster is, asked BEFORE the filename: it decides the
+        # folder, which is what lets two members keep the same plain cell name
+        # (linear-blackhole-none-g402.json) instead of one having to be
+        # hand-renamed. Pre-answered from the MACs, so flashing an absent
+        # member's boards files itself under THEM without you remembering to say so.
+        $presetOwner = Select-PresetOwner -Roster $runRoster
+        $presetDir = if ($presetOwner) { Join-Path (Get-PresetRoot) $presetOwner } else { Get-PresetRoot }
         if (-not (Test-Path $presetDir)) { New-Item -ItemType Directory -Force -Path $presetDir | Out-Null }
         $suggested = "$topoDir-$attackDir-$scenario-$($location.ToLower()).json"
+        if ($presetOwner) {
+            Write-Host ("  Saving under presets\{0}\ (whose boards this roster is)." -f $presetOwner) -ForegroundColor DarkGray
+        }
         $name = Read-Line "  Filename > [$suggested] "
         if (-not $name) { $name = $suggested }
         if ($name -notmatch '\.json$') { $name = "$name.json" }
@@ -4392,10 +5294,92 @@ if (-not $Preset) {
         }
 
         Save-Preset -Path $presetPath -Attack $attack -Topology $topology `
-            -Location $location -RepeatNum $repeat -Roster $runRoster -Scenario $scenario
+            -Location $location -RepeatNum $repeat -Roster $runRoster -Scenario $scenario -Owner $presetOwner
         Write-Host "  Saved -> $presetPath" -ForegroundColor Green
         Write-Host "  Next time just run .\run_wizard.ps1 and pick it from the list." -ForegroundColor DarkGray
     }
+}
+}
+
+# ------------------------------------------------------------- pre-build ----
+# Compile every node's variant up front (children first, root last - same order
+# as the flash chain) via run.ps1 -BuildOnly, so the build dir and -D flags are
+# run.ps1's own, never a copy that can drift. Touches no board and no port, so
+# 'm' stays live and a stop afterwards leaves nothing half-flashed. Afterwards
+# the flash chain below only links/flashes (ninja no-op) instead of compiling
+# between Ctrl+] presses.
+$preBuilt = $false
+if (-not $DryRun) {
+    $pbAns = Read-Line "`nPre-build every node's firmware first? (compile only - no board touched; then pick: start the run or save the preset) [Y/n] > "
+    if ($pbAns -ne 'n' -and $pbAns -ne 'N') {
+        if ($cleanBuild) {
+            Write-Host ""
+            Write-Host "Removing build_* under $buildRoot ..." -ForegroundColor Yellow
+            Remove-Item -Recurse -Force (Join-Path $buildRoot 'child_node\build_*') -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force (Join-Path $buildRoot 'root_node\build_*')  -ErrorAction SilentlyContinue
+            $cleanBuild = $false
+        }
+
+        $buildPlan = @()
+        $seenDirs  = @{}
+        foreach ($p in $plan) {
+            $bd = Get-BoardBuildDir -Params $p.Params
+            if (-not $seenDirs.ContainsKey($bd)) { $seenDirs[$bd] = $true; $buildPlan += $p }
+        }
+
+        $failed = @()
+        $bi = 0
+        $buildWatch = [System.Diagnostics.Stopwatch]::StartNew()
+        foreach ($p in $buildPlan) {
+            $bi++
+            Write-Host ""
+            Write-Host ("=== Pre-build [{0}/{1}] {2} - {3} ===" -f $bi, $buildPlan.Count, $p.Board.Label, $p.Board.Display) -ForegroundColor Cyan
+            $buildParams = [ordered]@{}
+            foreach ($k in $p.Params.Keys) { $buildParams[$k] = $p.Params[$k] }
+            $buildParams.BuildOnly = $true
+            $global:LASTEXITCODE = 0
+            & (Join-Path $base 'run.ps1') @buildParams
+            if ($LASTEXITCODE -ne 0) { $failed += $p.Board.Label }
+        }
+        $buildWatch.Stop()
+
+        if ($failed.Count -gt 0) {
+            Write-Host ""
+            Write-Host ("BUILD FAILED for: {0}" -f ($failed -join ', ')) -ForegroundColor Red
+            Write-Host "Nothing was flashed. Fix the compile error above and re-run the wizard." -ForegroundColor Red
+            return
+        }
+        Write-Host ""
+        Write-Host ("All {0} variant(s) built in {1}." -f $buildPlan.Count, (Format-Duration ([int]$buildWatch.Elapsed.TotalSeconds))) -ForegroundColor Green
+        $preBuilt = $true
+    }
+}
+
+if ($preBuilt) {
+    # No default on purpose: options 1-2 erase and flash real boards, so Enter
+    # alone must not start that.
+    $nextIdx = Show-Menu -Title "Firmware ready. What next?" -Options @(
+        'Start the run now (wipe + flash + monitor each board, root last)',
+        'Save the preset, then start the run',
+        'Save the preset and stop here (compiled firmware stays for next time)',
+        'Stop here without saving (nothing flashed)'
+    )
+    if ($nextIdx -in @(1, 2)) { & $savePresetFlow $false }
+    if ($nextIdx -in @(2, 3)) {
+        Write-Host ""
+        Write-Host "Stopped before flashing - no board was touched." -ForegroundColor Yellow
+        Write-Host "Builds are cached per COM port: rerun on the same ports and the flash step skips compiling." -ForegroundColor DarkGray
+        if ($originalPreset) {
+            # -Preset is the "just run this" entry point, so there is no mode menu
+            # behind it to return to.
+            return
+        }
+        $bannerShown = $false
+        continue wizard
+    }
+}
+else {
+    & $savePresetFlow $true
 }
 
 if ($DryRun) {
@@ -4412,10 +5396,38 @@ if ($DryRun) {
     return
 }
 
-$go = Read-Line "`nProceed? [y/N] > "
-if ($go -ne 'y' -and $go -ne 'Y') {
-    Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
-    return
+if (-not $preBuilt) {
+    $go = Read-Line "`nProceed? [y/N] > "
+    if ($go -ne 'y' -and $go -ne 'Y') {
+        Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
+        return
+    }
+}
+
+# Full console log of this run (every board's flash/monitor output, incl. any
+# errors) - opt-in, same naming convention as a preset so the two pair up on
+# sight: <preset-base-name>_<timestamp>.log, or <topology>-<attack>-<scenario>-
+# <location>_<timestamp>.log when no preset is involved. Reviewable later from
+# the wizard's DATA menu ("View a saved run log" -> Invoke-ViewRunLog).
+$saveLogAns = Read-Line "`nSave a full log of this run (console output incl. any errors, viewable later from the wizard)? [Y/n] > "
+$saveRunLog = ($saveLogAns -ne 'n' -and $saveLogAns -ne 'N')
+$runLogPath = $null
+$transcriptStarted = $false
+if ($saveRunLog) {
+    $runLogDir = Join-Path $base 'run_logs'
+    if (-not (Test-Path $runLogDir)) { New-Item -ItemType Directory -Force -Path $runLogDir | Out-Null }
+    $logBaseName = if ($Preset) { [IO.Path]::GetFileNameWithoutExtension($Preset) } else { "$topoDir-$attackDir-$scenario-$($location.ToLower())" }
+    $runLogPath = Join-Path $runLogDir ("{0}_{1}.log" -f $logBaseName, (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
+    # Clear any stray transcript left running from an earlier aborted run before
+    # starting a fresh one - Start-Transcript errors if one is already active.
+    try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { }
+    try {
+        Start-Transcript -Path $runLogPath -ErrorAction Stop | Out-Null
+        $transcriptStarted = $true
+        Write-Host "  Logging this run -> $runLogPath" -ForegroundColor DarkGray
+    } catch {
+        Write-Host ("  Could not start the run log ({0}) - continuing without saving it." -f $_.Exception.Message) -ForegroundColor Yellow
+    }
 }
 
 # Everything above this line is answerable and reversible; below it, boards get
@@ -4443,6 +5455,10 @@ if ($children.Count -gt 0) {
     Write-Host "'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on." -ForegroundColor Yellow
 }
 
+# try/finally so the run log (if any) is always closed off - including on the
+# FAILED-child `exit 1` below, since PowerShell unwinds finally blocks on exit
+# just like any other scope exit.
+try {
 $total = $plan.Count
 $step = 0
 $runStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -4538,6 +5554,14 @@ Write-Host "src_mac should go silent during gt_label=1 rows and resume at cooldo
 if ($attack -ne 'none') {
     Write-Host ""
     Write-Host "Graded run? Record it:  python tools\run_matrix.py --autorecord" -ForegroundColor DarkGray
+}
+}
+finally {
+    if ($transcriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { }
+        Write-Host "  Run log saved -> $runLogPath" -ForegroundColor Green
+        Write-Host "  Review it later from the wizard's DATA menu -> View a saved run log." -ForegroundColor DarkGray
+    }
 }
 
 break wizard
