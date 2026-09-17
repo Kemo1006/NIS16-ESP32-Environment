@@ -550,9 +550,88 @@ function Get-CardFileList {
         $jsonLine = @($listOut | ForEach-Object { "$_" } |
             Where-Object { $_.TrimStart().StartsWith('[') }) | Select-Object -Last 1
         if (-not $jsonLine) { return @() }
-        try { return @($jsonLine | ConvertFrom-Json) } catch { return @() }
+        # PS 5.1 ConvertFrom-Json emits a JSON array as ONE Object[] item;
+        # ForEach-Object unrolls it so each file is its own element.
+        try { return @($jsonLine | ConvertFrom-Json | ForEach-Object { $_ }) } catch { return @() }
     }
     finally { Pop-Location }
+}
+
+function Get-CaptureSummary {
+    # What preprocess.py/features.py will actually load from ONE folder (both glob
+    # *.csv non-recursively). PDR, LatencyHopRatio and TunnelLatency come only from
+    # a root's *_arrivals.csv, so a folder without one yields those columns as NaN.
+    # Mirrored in run_wizard.ps1 - keep the two in sync.
+    param([string]$Dir)
+    $names = @(Get-ChildItem -Path $Dir -Filter *.csv -File -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.Name } | Where-Object { $_ -like '*_telem.csv' -or $_ -like '*_arrivals.csv' })
+    $telem        = @($names | Where-Object { $_ -like '*_telem.csv' })
+    $arrivals     = @($names | Where-Object { $_ -like '*_arrivals.csv' })
+    $arrivalHeads = @($arrivals | ForEach-Object { $_ -replace '_\d{8}_\d{6}_arrivals\.csv$', '' })
+    $rootsMissing = @($telem | Where-Object { $_ -like 'root_*' } |
+        Where-Object { ($_ -replace '_\d{8}_\d{6}_telem\.csv$', '') -notin $arrivalHeads })
+    return [pscustomobject]@{
+        Names                = $names
+        Telem                = $telem
+        Arrivals             = $arrivals
+        RootsMissingArrivals = $rootsMissing
+    }
+}
+
+function Select-AnalysisInput {
+    # Returns the folder to analyse, or $null to cancel. Prefers trimmed\ (the
+    # cleaned copies "Trim exported CSVs only" writes), refuses to use it silently
+    # when it is missing boards the raw export has, and stops before a run that
+    # would produce no PDR. Mirrors run_wizard.ps1's Select-AnalysisInput.
+    param([string]$Export)
+
+    $trimmedDir = Join-Path $Export 'trimmed'
+    $raw  = Get-CaptureSummary -Dir $Export
+    $trim = Get-CaptureSummary -Dir $trimmedDir
+    $inputDir = $Export
+    $in = $raw
+
+    if ($trim.Names.Count -gt 0) {
+        $notTrimmed = @($raw.Names | Where-Object { $_ -notin $trim.Names })
+        Write-Host ""
+        if ($notTrimmed.Count -gt 0) {
+            Write-Host ("   trimmed\ is OUT OF DATE - {0} raw file(s) have no trimmed copy:" -f $notTrimmed.Count) -ForegroundColor Yellow
+            foreach ($n in $notTrimmed) { Write-Host "     $n" -ForegroundColor Yellow }
+            Write-Host "   Analysing trimmed\ now would leave those out. Re-run 'Trim exported CSVs only' first." -ForegroundColor Yellow
+            $ans = Read-Line "   Use trimmed\ anyway (t), the raw export (r), or cancel (c)? [c] > "
+            if ($ans -eq 't' -or $ans -eq 'T') { $inputDir = $trimmedDir; $in = $trim }
+            elseif ($ans -eq 'r' -or $ans -eq 'R') { }
+            else { Write-Host "   Cancelled." -ForegroundColor DarkGray; return $null }
+        }
+        else {
+            $ans = Read-Line "   trimmed\ found. Analyse the trimmed copies (t, recommended) or the raw export (r)? [t] > "
+            if ($ans -ne 'r' -and $ans -ne 'R') { $inputDir = $trimmedDir; $in = $trim }
+        }
+    }
+    else {
+        Write-Host "`n   No trimmed\ folder - analysing the raw export. (Run 'Trim exported CSVs only' first to analyse trimmed data.)" -ForegroundColor DarkGray
+    }
+
+    if ($in.Telem.Count -eq 0) {
+        Write-Host ("`n   No *_telem.csv in {0} - nothing to analyse." -f $inputDir) -ForegroundColor Yellow
+        return $null
+    }
+
+    if ($in.Arrivals.Count -eq 0 -or $in.RootsMissingArrivals.Count -gt 0) {
+        Write-Host ""
+        if ($in.Arrivals.Count -eq 0) {
+            Write-Host ("   NO *_arrivals.csv in {0}" -f $inputDir) -ForegroundColor Red
+            Write-Host "   PDR, LatencyHopRatio and TunnelLatency will be EMPTY (NaN) for every node." -ForegroundColor Red
+        }
+        foreach ($r in $in.RootsMissingArrivals) {
+            Write-Host ("   Root capture with no matching arrivals file: {0}" -f $r) -ForegroundColor Yellow
+        }
+        Write-Host "   Only the board flashed as ROOT for this run logs arrivals. Import THAT board's SD card" -ForegroundColor DarkGray
+        Write-Host "   (or USB-export it). A root file from another board or run is not a substitute - move it out." -ForegroundColor DarkGray
+        if (-not (Read-YesNo -Question "   Continue anyway?" -Default $false)) { Write-Host "   Cancelled." -ForegroundColor DarkGray; return $null }
+    }
+
+    return $inputDir
 }
 
 # ---- blackhole attacker-MAC pre-flight (ported from run_wizard.ps1) ---------
@@ -2621,7 +2700,7 @@ if ($action -eq 11) {
         python (Join-Path $base 'tools\trim_run.py') $exportSub --apply
         if ($LASTEXITCODE -ne 0) { Write-Host "Trim failed (exit $LASTEXITCODE)." -ForegroundColor Red; continue menu }
         Write-Host ("`nDone -> {0}" -f $trimmedSub) -ForegroundColor Green
-        Write-Host "  Point 'Run analysis only' (or preprocess.py/features.py by hand) at that trimmed\ folder, not the raw export." -ForegroundColor DarkGray
+        Write-Host "  'Run analysis only' will offer this trimmed\ folder as its input." -ForegroundColor DarkGray
     } finally { Pop-Location }
     continue menu
 }
@@ -2688,6 +2767,9 @@ if ($action -eq 7) {
         continue menu
     }
 
+    $inputDir = Select-AnalysisInput -Export $exportSub
+    if (-not $inputDir) { continue menu }
+
     # Same two-tier python scan run.ps1's -Analyze uses: prefer a python with the
     # full EDA stack (matplotlib/seaborn/scipy/scikit-learn) so M6+M7+M8 all run;
     # fall back to a pandas/numpy-only one (M6+M7 only, M8 skipped with a hint)
@@ -2714,18 +2796,18 @@ if ($action -eq 7) {
     $featOut     = Join-Path $analysisSub 'feature_table.csv'
     $edaOut      = Join-Path $analysisSub 'eda_output'
 
-    $cmdText = "python analysis\preprocess.py $exportSub -o $windowedOut`n   python analysis\features.py $exportSub -o $featOut"
+    $cmdText = "python analysis\preprocess.py $inputDir -o $windowedOut`n   python analysis\features.py $inputDir -o $featOut"
     $cmdText += if ($edaPy) { "`n   python analysis\eda.py $featOut -o $edaOut" } else { "`n   (EDA/M8 skipped -- $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn)" }
     if (-not (Show-And-Confirm $cmdText)) { continue menu }
 
     Push-Location (Join-Path $base 'analysis')
     try {
         Write-Host "`nM6: preprocess.py ..." -ForegroundColor Cyan
-        & $featuresPy preprocess.py $exportSub -o $windowedOut
+        & $featuresPy preprocess.py $inputDir -o $windowedOut
         if ($LASTEXITCODE -ne 0) { Write-Host "Preprocess failed (exit $LASTEXITCODE)." -ForegroundColor Red; continue menu }
 
         Write-Host "M7: features.py ..." -ForegroundColor Cyan
-        & $featuresPy features.py $exportSub -o $featOut
+        & $featuresPy features.py $inputDir -o $featOut
         if ($LASTEXITCODE -ne 0) { Write-Host "Features step failed (exit $LASTEXITCODE)." -ForegroundColor Red; continue menu }
 
         if ($edaPy) {

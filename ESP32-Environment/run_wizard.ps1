@@ -1495,7 +1495,9 @@ function Import-OneSdCard {
             Where-Object { $_.TrimStart().StartsWith('[') }) | Select-Object -Last 1
         $cardFiles = @()
         if ($jsonLine) {
-            try { $cardFiles = @($jsonLine | ConvertFrom-Json) } catch { $cardFiles = @() }
+            # PS 5.1 ConvertFrom-Json emits a JSON array as ONE Object[] item;
+            # ForEach-Object unrolls it so each file is its own element.
+            try { $cardFiles = @($jsonLine | ConvertFrom-Json | ForEach-Object { $_ }) } catch { $cardFiles = @() }
         }
 
         if ($cardFiles.Count -eq 0) {
@@ -1930,6 +1932,84 @@ function Invoke-IdentifyAllBoards {
     }
 }
 
+function Get-CaptureSummary {
+    # What preprocess.py/features.py will actually load from ONE folder (both glob
+    # *.csv non-recursively). PDR, LatencyHopRatio and TunnelLatency come only from
+    # a root's *_arrivals.csv, so a folder without one yields those columns as NaN.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param([string]$Dir)
+    $names = @(Get-ChildItem -Path $Dir -Filter *.csv -File -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.Name } | Where-Object { $_ -like '*_telem.csv' -or $_ -like '*_arrivals.csv' })
+    $telem        = @($names | Where-Object { $_ -like '*_telem.csv' })
+    $arrivals     = @($names | Where-Object { $_ -like '*_arrivals.csv' })
+    $arrivalHeads = @($arrivals | ForEach-Object { $_ -replace '_\d{8}_\d{6}_arrivals\.csv$', '' })
+    $rootsMissing = @($telem | Where-Object { $_ -like 'root_*' } |
+        Where-Object { ($_ -replace '_\d{8}_\d{6}_telem\.csv$', '') -notin $arrivalHeads })
+    return [pscustomobject]@{
+        Names                = $names
+        Telem                = $telem
+        Arrivals             = $arrivals
+        RootsMissingArrivals = $rootsMissing
+    }
+}
+
+function Select-AnalysisInput {
+    # Returns the folder to analyse, or $null to cancel. Prefers trimmed\ (the
+    # cleaned copies Invoke-TrimOnly writes), refuses to use it silently when it
+    # is missing boards the raw export has, and stops before a run that would
+    # produce no PDR. Mirrors menu.ps1's Select-AnalysisInput - keep in sync.
+    param([string]$Export)
+
+    $trimmedDir = Join-Path $Export 'trimmed'
+    $raw  = Get-CaptureSummary -Dir $Export
+    $trim = Get-CaptureSummary -Dir $trimmedDir
+    $inputDir = $Export
+    $in = $raw
+
+    if ($trim.Names.Count -gt 0) {
+        $notTrimmed = @($raw.Names | Where-Object { $_ -notin $trim.Names })
+        Write-Host ""
+        if ($notTrimmed.Count -gt 0) {
+            Write-Host ("  trimmed\ is OUT OF DATE - {0} raw file(s) have no trimmed copy:" -f $notTrimmed.Count) -ForegroundColor Yellow
+            foreach ($n in $notTrimmed) { Write-Host "    $n" -ForegroundColor Yellow }
+            Write-Host "  Analysing trimmed\ now would leave those out. Re-run 'Trim exported CSVs only' first." -ForegroundColor Yellow
+            $ans = Read-Line "  Use trimmed\ anyway (t), the raw export (r), or cancel (c)? [c] > "
+            if ($ans -eq 't' -or $ans -eq 'T') { $inputDir = $trimmedDir; $in = $trim }
+            elseif ($ans -eq 'r' -or $ans -eq 'R') { }
+            else { Write-Host "  Cancelled." -ForegroundColor DarkGray; return $null }
+        }
+        else {
+            $ans = Read-Line "  trimmed\ found. Analyse the trimmed copies (t, recommended) or the raw export (r)? [t] > "
+            if ($ans -ne 'r' -and $ans -ne 'R') { $inputDir = $trimmedDir; $in = $trim }
+        }
+    }
+    else {
+        Write-Host "`n  No trimmed\ folder - analysing the raw export. (Run 'Trim exported CSVs only' first to analyse trimmed data.)" -ForegroundColor DarkGray
+    }
+
+    if ($in.Telem.Count -eq 0) {
+        Write-Host ("`n  No *_telem.csv in {0} - nothing to analyse." -f $inputDir) -ForegroundColor Yellow
+        return $null
+    }
+
+    if ($in.Arrivals.Count -eq 0 -or $in.RootsMissingArrivals.Count -gt 0) {
+        Write-Host ""
+        if ($in.Arrivals.Count -eq 0) {
+            Write-Host ("  NO *_arrivals.csv in {0}" -f $inputDir) -ForegroundColor Red
+            Write-Host "  PDR, LatencyHopRatio and TunnelLatency will be EMPTY (NaN) for every node." -ForegroundColor Red
+        }
+        foreach ($r in $in.RootsMissingArrivals) {
+            Write-Host ("  Root capture with no matching arrivals file: {0}" -f $r) -ForegroundColor Yellow
+        }
+        Write-Host "  Only the board flashed as ROOT for this run logs arrivals. Import THAT board's SD card" -ForegroundColor DarkGray
+        Write-Host "  (or USB-export it). A root file from another board or run is not a substitute - move it out." -ForegroundColor DarkGray
+        $cont = Read-Line "  Continue anyway? [y/N] > "
+        if ($cont -ne 'y' -and $cont -ne 'Y') { Write-Host "  Cancelled." -ForegroundColor DarkGray; return $null }
+    }
+
+    return $inputDir
+}
+
 function Invoke-RunAnalysisOnly {
     # Standalone M6->M8 pipeline (preprocess.py -> features.py -> eda.py) over an
     # already-exported (or SD-imported) folder -- the same three stages run.ps1's
@@ -1955,6 +2035,9 @@ function Invoke-RunAnalysisOnly {
         Write-Host ("`n  {0} doesn't exist -- export a board or import a card for this run first." -f $dirs.Export) -ForegroundColor Yellow
         return
     }
+
+    $inputDir = Select-AnalysisInput -Export $dirs.Export
+    if (-not $inputDir) { return }
 
     # Same two-tier python scan run.ps1's -Analyze uses: prefer a python with the
     # full EDA stack (matplotlib/seaborn/scipy/scikit-learn) so M6+M7+M8 all run;
@@ -1982,8 +2065,8 @@ function Invoke-RunAnalysisOnly {
     $edaOut      = Join-Path $dirs.Analysis 'eda_output'
 
     Write-Host ""
-    Write-Host ("Running: python analysis\preprocess.py {0} -o {1}" -f $dirs.Export, $windowedOut) -ForegroundColor DarkGray
-    Write-Host ("     ->  python analysis\features.py {0} -o {1}" -f $dirs.Export, $featOut) -ForegroundColor DarkGray
+    Write-Host ("Running: python analysis\preprocess.py {0} -o {1}" -f $inputDir, $windowedOut) -ForegroundColor DarkGray
+    Write-Host ("     ->  python analysis\features.py {0} -o {1}" -f $inputDir, $featOut) -ForegroundColor DarkGray
     if ($edaPy) {
         Write-Host ("     ->  python analysis\eda.py {0} -o {1}" -f $featOut, $edaOut) -ForegroundColor DarkGray
     } else {
@@ -1995,11 +2078,11 @@ function Invoke-RunAnalysisOnly {
     Push-Location (Join-Path $base 'analysis')
     try {
         Write-Host "`nM6: preprocess.py ..." -ForegroundColor Cyan
-        & $featuresPy preprocess.py $dirs.Export -o $windowedOut
+        & $featuresPy preprocess.py $inputDir -o $windowedOut
         if ($LASTEXITCODE -ne 0) { Write-Host "Preprocess failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
         Write-Host "M7: features.py ..." -ForegroundColor Cyan
-        & $featuresPy features.py $dirs.Export -o $featOut
+        & $featuresPy features.py $inputDir -o $featOut
         if ($LASTEXITCODE -ne 0) { Write-Host "Features step failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
         if ($edaPy) {
@@ -2018,12 +2101,9 @@ function Invoke-RunAnalysisOnly {
 }
 
 function Invoke-TrimOnly {
-    # Standalone tools\trim_run.py step, kept OUT of Invoke-RunAnalysisOnly on
-    # purpose: that function's M6->M8 pipeline runs straight off $dirs.Export
-    # (the raw folder) with no trim call at all, so folding trim in there would
-    # silently change what a name-unchanged menu option does. This is its own
-    # option so trimming is a deliberate, visible step, and "Run analysis only"
-    # keeps meaning exactly what it always has.
+    # Standalone tools\trim_run.py step, kept OUT of Invoke-RunAnalysisOnly so
+    # trimming stays a deliberate, visible step. "Run analysis only" picks up
+    # the trimmed\ folder this writes (see Select-AnalysisInput).
     #
     # --apply only, never --in-place: trim_run.py's own default already writes
     # trimmed COPIES into a trimmed\ subfolder and leaves the raw export
@@ -2062,7 +2142,7 @@ function Invoke-TrimOnly {
         python (Join-Path $base 'tools\trim_run.py') $dirs.Export --apply
         if ($LASTEXITCODE -ne 0) { Write-Host "Trim failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
         Write-Host ("`nDone -> {0}" -f $trimmedDir) -ForegroundColor Green
-        Write-Host "  Point 'Run analysis only' (or preprocess.py/features.py by hand) at that trimmed\ folder, not the raw export." -ForegroundColor DarkGray
+        Write-Host "  'Run analysis only' will offer this trimmed\ folder as its input." -ForegroundColor DarkGray
     } finally { Pop-Location }
 }
 

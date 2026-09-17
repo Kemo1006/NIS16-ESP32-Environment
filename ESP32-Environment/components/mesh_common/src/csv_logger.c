@@ -31,7 +31,10 @@ static FILE    *s_log_fp          = NULL;   /* telemetry file (all roles)   */
 static FILE    *s_arrivals_fp     = NULL;   /* probe arrivals (root only)   */
 static char     s_filepath[128]   = {0};    /* path of telemetry file       */
 static char     s_arrivals_path[128] = {0}; /* path of arrivals file        */
-static uint32_t s_row_count       = 0;     /* rows since last flush         */
+static uint32_t s_row_count       = 0;     /* telemetry rows since last flush */
+static uint32_t s_arrivals_row_count = 0;  /* arrival rows since last flush — separate
+                                             * because the telemetry path resets
+                                             * s_row_count on its own cadence */
 static uint32_t s_total_rows      = 0;     /* rows since boot, never reset by a flush —
                                              * s_row_count wraps to 0 every
                                              * LOGGER_FLUSH_RECORDS, so it can't
@@ -620,6 +623,7 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
     }
 
     s_row_count = 0;
+    s_arrivals_row_count = 0;
     s_total_rows = 0;
     ESP_LOGI(TAG, "Logger ready. Role: %s", s_role_str);
 
@@ -773,12 +777,13 @@ esp_err_t csv_logger_append_probe_arrival(
         sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
     }
 
-    /* Flush arrivals on the same cadence as telemetry. */
-    if (s_row_count >= LOGGER_FLUSH_RECORDS) {
+    s_arrivals_row_count++;
+    if (s_arrivals_row_count >= LOGGER_FLUSH_RECORDS) {
         fflush(s_arrivals_fp);
         if (s_sd_arrivals_fp) {
             fflush(s_sd_arrivals_fp);
         }
+        s_arrivals_row_count = 0;
     }
 
     return ESP_OK;
@@ -796,6 +801,7 @@ esp_err_t csv_logger_flush(void)
     if (s_sd_log_fp) fflush(s_sd_log_fp);
     if (s_sd_arrivals_fp) fflush(s_sd_arrivals_fp);
     s_row_count = 0;
+    s_arrivals_row_count = 0;
     return ESP_OK;
 }
 
