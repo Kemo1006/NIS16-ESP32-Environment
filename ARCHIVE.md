@@ -28,6 +28,42 @@
 - sep. 13, 2026 — FIXED (hardware-tested), all in `run_wizard.ps1`: args were passed as `@($array)` (binds POSITIONALLY), crashing every real run into `-Port` — switched to an ordered-hashtable splat (binds by name); `$Repeat`/`$repeat` silently collided (PS names are case-insensitive) so `-Preset ... -Repeat 2` was quietly ignored; the blackhole-MAC-mismatch prompt showed `a)/b)` info bullets right before an unrelated `[y/N]` prompt, so typing `a`/`b` read as "no" and aborted every time — replaced with a real menu whose option 1 auto-patches the header.
 - sep. 13, 2026 — FOUND: `Get-Content -Raw` misdetects `mesh_config.h`'s no-BOM UTF-8 encoding on Windows PowerShell 5.1, corrupting every non-ASCII byte (the header's em-dash comments) on write-back. Caught via a before/after diff against a COPY, before it touched the real file. Fix: `[System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))`.
 - sep. 17, 2026 — `menu.ps1`'s multi-board flow gained run_wizard's pre-flash summary box; both front-ends' plan tables now show each board's MAC.
+- sep. 17, 2026 — **`run_wizard.ps1`**: add/remove node, save-back-to-preset, no-preset mode, 3
+  live-run fixes (missing `Mac` crash, forced blackhole attacker, "Type 1-1"). Full detail: MEMORY.md.
+  Rolled from STATUS.md "Recently done" sep. 17, 2026.
+- sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR ONLY —
+  thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly to root so
+  no child-relay position exists there (tree/linear/partial keep a child attacker; wormhole
+  unchanged). Design sketch: `ROOT_BLACKHOLE_ATTACKER` flag + a drop branch in `root_main.c`'s
+  `probe_data_cb`, root's telemetry role string swapped to `"blackhole"` so `features.py` needs ZERO
+  changes; children need no firmware change. Biggest trap: pass `-DestAttack blackhole` for folder
+  placement but NOT `BlackholeRole=victim` (that compiles in P2P-to-attacker-MAC addressing, wrong
+  here); the MAC pre-flight does not apply and must be SKIPPED, not extended. Full plan (read before
+  building): `.claude\plans\mutable-honking-spindle.md`, under the Basti user profile. Rolled from
+  MEMORY.md sep. 17, 2026 (still not built as of the roll).
+- TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live reference for
+  THES3 writing (paper Tables 4.11/4.12 vocabulary) — pull it back to root if so. Rolled from
+  MEMORY.md sep. 17, 2026.
+- sep. 17, 2026 — BUILT: **capture provenance** — answering "is this card's data from the firmware I
+  flashed today, or left over from a run I interrupted and forgot?" An ESP32 has no RTC (boots at
+  1970) and mobility/powercycle deliberately power-cycle boards, so no clock or sync-on-connect
+  scheme survives; an RTC module was considered and rejected by the user. Instead every image
+  carries a BUILD STAMP: `sd_status_build_stamp()` (`sd_status.c`) reads `esp_app_desc_t`
+  .date/.time — written at LINK time, so right on every incremental build and identical on every
+  boot of one flash — normalised to "YYYY-MM-DD HH:MM:SS". Deliberately NOT raw
+  `__DATE__`/`__TIME__` in a source file: those update only when THAT file recompiles, so an
+  incremental build would report a stale date. It never touches capture CSV rows (user's constraint
+  — the dataset format is fixed): it goes to a new `built` column on `runs.csv` (`csv_logger.c`,
+  appended LAST so a card whose manifest was started by older firmware keeps its 7-column header and
+  `import_sdcard.py` recovers the 8th field positionally from DictReader's restkey) and a "Firmware
+  built:" line in `status_<node>.txt`. Needs `esp_app_format` in `mesh_common/CMakeLists.txt`. A
+  build stamp is NOT a capture time — one flash's boots all share it, so pair it with the per-folder
+  boot counter to order within a flash. `import_sdcard.py` gained `--list-json` (each file +
+  stamp/rows/clean/already-imported; stdout JSON only, warnings to stderr) and `--files`
+  (card-relative paths — the per-FILE counterpart to `--boots`); option [3] in BOTH wizards now
+  shows a numbered picker built from it, `MM / DD / YYYY HH:MM | filename`, newest build first.
+  Firmware NOT compiled as of this write (no ESP-IDF in the shell); Python + both pickers were tested
+  on a synthetic card (new / old-7-col / no-manifest / aborted) and a full list→pick→import round trip.
 - sep. 17, 2026 — Heartbeat: instant disconnect reporting, `mesh_setup.c` (full writeup in MEMORY.md's Decisions section as of this roll).
 - sep. 16, 2026 — DONE: `attack`/`topology`/`location`/`scenario` are now COLUMNS on every row of
   `windowed_dataset.csv` + `feature_table.csv` (thesis-deviate **D-10**). `preprocess.py`'s new
