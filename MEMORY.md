@@ -8,6 +8,28 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 17, 2026 — FIXED + PUSHED (`a4f87b4`, `origin/Unified`): "Run analysis only" (both wizards)
+  always read the RAW export, ignoring `trimmed\` entirely — new `Select-AnalysisInput` (mirrored in
+  both files) now defaults to `trimmed\` when present, blocks (default: cancel) on a stale/incomplete
+  trim missing raw files, and blocks (default: cancel) when a run's ROOT has no `*_arrivals.csv` —
+  PDR/LatencyHopRatio/TunnelLatency would otherwise come out silently NaN with no warning. Verified
+  against synthetic folders (up-to-date/stale trim, missing arrivals) plus the real
+  `blackhole/linear/G402` export. Also in this push: `csv_logger.c`'s arrivals SD-mirror flush reused
+  the TELEMETRY row counter (which resets on its own cadence), so arrivals almost never flushed
+  mid-run — a root losing power before `csv_logger_close()` could lose most of its arrivals despite
+  telemetry surviving; gave arrivals their own counter. NOT build-tested (`idf5.3_py3.14_env` still
+  broken on this machine) — reviewed line-by-line; reflash root + one test run before trusting. Also
+  fixed: Windows PowerShell 5.1's `ConvertFrom-Json` does not enumerate a top-level JSON array, so a
+  2+ file SD card crashed the import picker with `Cannot convert System.Object[] to System.Int32`
+  (reported as a teammate's crash; the catch block's "is python on PATH?" hint was a red herring, not
+  the cause) — fixed with `| ForEach-Object { $_ }` in `Get-CardFileList`/`Import-OneSdCard`;
+  reproduced live in PS 5.1 before shipping the fix.
+- sep. 17, 2026 — DIAGNOSED: `blackhole/linear/G402`'s exported "root" file (MAC `2805A532D7B4`)
+  isn't this run's actual root — every victim's `parent_mac` traces to `B0CBD8F33218` (the preset's
+  real root), whose SD card/arrivals were never imported. Distinct from the known stale-
+  `BLACKHOLE_ATTACKER_MAC` failure (no arrivals file exists at all here, vs. header-only there) — same
+  "PDR NaN" symptom, different cause. Fix: import `B0CBD8F33218`'s card, remove the stray
+  `2805A532D7B4` file from the export + `trimmed\`, re-trim, re-analyze.
 - sep. 17, 2026 — BUILT in both wizards: "Trim exported CSVs only" is its OWN DATA menu option now
   (`run_wizard.ps1` Idx 10 `Invoke-TrimOnly`, `menu.ps1` Action 11), not folded into "Run analysis
   only" — that action's M6->M8 pipeline runs off the raw export with no trim step (it never had one).
@@ -15,27 +37,9 @@
   writes to a `trimmed\` subfolder and leaves the raw export untouched by its own design. Also:
   `run_wizard.ps1`'s manual-flow child-count prompt now accepts `0` for a root-only capture (was
   `-ge 1`) — downstream code already handled an empty roster gracefully. Not hardware-tested.
-- sep. 17, 2026 — BUILT: **capture provenance** — answering "is this card's data from the firmware I
-  flashed today, or left over from a run I interrupted and forgot?" An ESP32 has no RTC (boots at
-  1970) and mobility/powercycle deliberately power-cycle boards, so no clock or sync-on-connect
-  scheme survives; an RTC module was considered and rejected by the user. Instead every image
-  carries a BUILD STAMP: `sd_status_build_stamp()` (`sd_status.c`) reads `esp_app_desc_t`
-  .date/.time — written at LINK time, so right on every incremental build and identical on every
-  boot of one flash — normalised to "YYYY-MM-DD HH:MM:SS". ⚠️ Deliberately NOT raw
-  `__DATE__`/`__TIME__` in a source file: those update only when THAT file recompiles, so an
-  incremental build would report a stale date. It never touches capture CSV rows (user's constraint
-  — the dataset format is fixed): it goes to a new `built` column on `runs.csv` (`csv_logger.c`,
-  appended LAST so a card whose manifest was started by older firmware keeps its 7-column header and
-  `import_sdcard.py` recovers the 8th field positionally from DictReader's restkey) and a "Firmware
-  built:" line in `status_<node>.txt`. Needs `esp_app_format` in `mesh_common/CMakeLists.txt`. ⚠️ A
-  build stamp is NOT a capture time — one flash's boots all share it, so pair it with the per-folder
-  boot counter to order within a flash. `import_sdcard.py` gained `--list-json` (each file +
-  stamp/rows/clean/already-imported; stdout JSON only, warnings to stderr) and `--files`
-  (card-relative paths — the per-FILE counterpart to `--boots`); option [3] in BOTH wizards now
-  shows a numbered picker built from it, `MM / DD / YYYY HH:MM | filename`, newest build first. ⚠️
-  Firmware NOT compiled (no ESP-IDF in the shell) — build before trusting; Python + both pickers
-  were tested on a synthetic card (new / old-7-col / no-manifest / aborted) and a full
-  list→pick→import round trip.
+- sep. 17, 2026 — BUILT: **capture provenance** (build-stamp on `runs.csv`, `--list-json`/`--files`
+  numbered file picker in both wizards) — ⚠️ firmware still NOT compiled, build before trusting; full
+  writeup in ARCHIVE.md.
 - sep. 17, 2026 — BUILT in `run_wizard.ps1` only (`menu.ps1` still has just the edit-a-node step —
   see ARCHIVE.md): "Adjust the plan?" gained ADD / REMOVE a node beside edit/topology; an edited
   preset now offers "save these changes back into <preset>" as its own prompt (separate from "save
@@ -96,17 +100,8 @@
   build-tested. Heartbeat is in `mesh_setup.c/.h`; ⚠️ it adds periodic mesh traffic to the very
   network this testbed measures — see the original BUILT entry in ARCHIVE.md before trusting PDR/
   latency numbers captured with it enabled.
-- sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR ONLY —
-  thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly to root so
-  no child-relay position exists there (tree/linear/partial keep a child attacker; wormhole
-  unchanged). Design sketch: `ROOT_BLACKHOLE_ATTACKER` flag + a drop branch in `root_main.c`'s
-  `probe_data_cb`, root's telemetry role string swapped to `"blackhole"` so `features.py` needs ZERO
-  changes; children need no firmware change. ⚠️ Biggest trap: pass `-DestAttack blackhole` for folder
-  placement but NOT `BlackholeRole=victim` (that compiles in P2P-to-attacker-MAC addressing, wrong
-  here); the MAC pre-flight does not apply and must be SKIPPED, not extended. Full plan (read before
-  building): `.claude\plans\mutable-honking-spindle.md`, under the Basti user profile.
-- ⚠️ TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live reference
-  for THES3 writing (paper Tables 4.11/4.12 vocabulary) — pull it back to root if so.
+- ⚠️ Root-as-blackhole-attacker (STAR only) proposed sep. 16, NOT built — team decides first; full
+  plan at `.claude\plans\mutable-honking-spindle.md` (Basti profile). Rolled to ARCHIVE.md for detail.
 
 ## Durable facts & constraints
 - ⚠️ **CORRECTED sep. 17, 2026** (was stale, and answers the old "no sync transport between
