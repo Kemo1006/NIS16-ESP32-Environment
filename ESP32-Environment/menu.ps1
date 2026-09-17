@@ -1618,6 +1618,9 @@ function Show-MainMenu {
         @{ Name = 'DATA'; Items = @(
             @{ Action = 3; Text = 'Export a board only  (it already ran; just pull CSVs)' }
             @{ Action = 8; Text = 'Import CSVs from a pulled SD card  (no board/COM contact)' }
+            @{ Action = 15; Text = "Push capture data to GitHub  (raw CSVs only, never code; merges with teammates' pushes)" }
+            @{ Action = 17; Text = "Pull capture data from GitHub  (teammates' CSVs only, never code; never overwrites your files)" }
+            @{ Action = 16; Text = 'Test data sync  (3 dummy animal CSVs - proves two laptops never overwrite each other)' }
             @{ Action = 11; Text = 'Trim exported CSVs only  (trim_run.py --apply, writes trimmed/ - raw export untouched)' }
             @{ Action = 7; Text = 'Run analysis only  (M6->M8 on already-exported CSVs, no board contact)' }
         ) }
@@ -2624,6 +2627,40 @@ if ($action -eq 3) {
         Push-Location (Join-Path $base 'tools')
         try { python @exArgs } finally { Pop-Location }
     }
+    continue menu
+}
+
+# ---- Push capture data to GitHub / Test data sync ----------------------------
+# tools\push_data.py does all git work in a private clone, so this folder's
+# code/staged changes/stash are never touched. Mirrors run_wizard.ps1's
+# Invoke-DataSync - keep in sync.
+if ($action -eq 15 -or $action -eq 16 -or $action -eq 17) {
+    $py = Join-Path $base 'tools\push_data.py'
+    $mode = if ($action -eq 16) { 'test' } elseif ($action -eq 17) { 'pull' } else { 'push' }
+    Write-Host ""
+    if ($mode -eq 'test') {
+        Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
+        Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
+        Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($mode -eq 'pull') {
+        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+    } else {
+        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+    }
+    Push-Location $base
+    try {
+        python $py $mode
+        if ($LASTEXITCODE -ne 0) { Write-Host "Data sync failed (exit $LASTEXITCODE) - see the message above." -ForegroundColor Red; continue menu }
+        if ($mode -eq 'test') {
+            $ans = Read-Line "`nRemove ALL test files from GitHub now? Say n if a teammate still has to run the test. [y/N] > "
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                python $py test-cleanup --yes
+                if ($LASTEXITCODE -ne 0) { Write-Host "Cleanup failed (exit $LASTEXITCODE)." -ForegroundColor Red }
+            }
+        }
+    } finally { Pop-Location }
     continue menu
 }
 

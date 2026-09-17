@@ -294,6 +294,9 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
+            @{ Idx = 16; Text = "Push capture data to GitHub - raw CSVs only, never code; merges with teammates' pushes" }
+            @{ Idx = 18; Text = "Pull capture data from GitHub - teammates' CSVs only, never code; never overwrites your files" }
+            @{ Idx = 17; Text = 'Test data sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other' }
             @{ Idx = 10; Text = 'Trim exported CSVs only (tools\trim_run.py --apply - writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
         ) }
@@ -2146,6 +2149,38 @@ function Invoke-TrimOnly {
     } finally { Pop-Location }
 }
 
+function Invoke-DataSync {
+    # tools\push_data.py does all git work in a private clone, so this folder's
+    # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
+    # actions - keep the two in sync.
+    param([ValidateSet('push', 'pull', 'test')][string]$Mode)
+    $py = Join-Path $base 'tools\push_data.py'
+    Write-Host ""
+    if ($Mode -eq 'test') {
+        Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
+        Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
+        Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($Mode -eq 'pull') {
+        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+    } else {
+        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+    }
+    Push-Location $base
+    try {
+        python $py $Mode
+        if ($LASTEXITCODE -ne 0) { Write-Host "Data sync failed (exit $LASTEXITCODE) - see the message above." -ForegroundColor Red; return }
+        if ($Mode -eq 'test') {
+            $ans = Read-Line "`nRemove ALL test files from GitHub now? Say n if a teammate still has to run the test. [y/N] > "
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                python $py test-cleanup --yes
+                if ($LASTEXITCODE -ne 0) { Write-Host "Cleanup failed (exit $LASTEXITCODE)." -ForegroundColor Red }
+            }
+        }
+    } finally { Pop-Location }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -3053,6 +3088,9 @@ if (-not $Preset) {
         if ($modeIdx -eq 6) { Invoke-IdentifyAllBoards; continue }
         if ($modeIdx -eq 7) { Invoke-RunAnalysisOnly; continue }
         if ($modeIdx -eq 10) { Invoke-TrimOnly; continue }
+        if ($modeIdx -eq 16) { Invoke-DataSync -Mode push; continue }
+        if ($modeIdx -eq 17) { Invoke-DataSync -Mode test; continue }
+        if ($modeIdx -eq 18) { Invoke-DataSync -Mode pull; continue }
     }
 }
 

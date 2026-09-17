@@ -10,6 +10,13 @@
 # `-text` disables all line-ending conversion for these paths.
 tools/exports/**/*.csv -text
 tools/exports/**/*.csv.orig -text
+sync_test/**/*.csv -text
+sync_conflicts/**/*.csv -text
+
+# Ledgers only ever gain rows; when two teammates each add runs, a normal
+# `git pull` keeps both sides' rows instead of stopping on a conflict.
+tools/exports/**/run_ledger.csv merge=union
+sync_test/test_ledger.csv merge=union
 
 # Analysis outputs are regenerated, not evidence — normal text handling is fine
 # for the CSVs, but the plots must never be touched.
