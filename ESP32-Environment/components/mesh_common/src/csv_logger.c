@@ -361,12 +361,23 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
         return;
     }
     if (need_header) {
-        fputs("boot,run,node_id,role,rows,uptime_s,event\n", f);
+        fputs("boot,run,node_id,role,rows,uptime_s,event,built\n", f);
     }
     int64_t uptime_s = (esp_timer_get_time() - s_boot_start_us) / 1000000;
-    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s\n",
+    /* "built" is sd_status_build_stamp() — the date+time THIS FIRMWARE was
+     * compiled, recorded per boot because it is the only calendar reference an
+     * RTC-less board has (see sd_status.h for why a build stamp and not a clock).
+     * It is what lets someone reading a pulled card tell today's captures from
+     * ones left over from an older flash. Last column on purpose: a card whose
+     * runs.csv was started by older firmware keeps its 7-column header, and
+     * import_sdcard.py reads the extra field back positionally in that case —
+     * appending never disturbs the fields the firmware itself parses back
+     * (sd_manifest_count_prior_runs() reads only the first two).
+     * No quoting needed: the stamp is "YYYY-MM-DD HH:MM:SS", never a comma. */
+    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s\n",
             sd_status_boot_count(), run_number, node_id, role_str,
-            (unsigned)rows, (long long)uptime_s, event);
+            (unsigned)rows, (long long)uptime_s, event,
+            sd_status_build_stamp());
     fflush(f);
     fclose(f);
 }

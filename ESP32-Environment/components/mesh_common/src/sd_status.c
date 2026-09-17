@@ -20,6 +20,7 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "driver/spi_common.h"
+#include "esp_app_desc.h"    /* sd_status_build_stamp(): the image's own build date/time */
 #include "esp_chip_info.h"
 #include "esp_idf_version.h"
 #include "esp_mac.h"
@@ -311,6 +312,48 @@ const char *sd_status_run_dir(void)
 int sd_status_boot_count(void)
 {
     return s_boot_count;
+}
+
+const char *sd_status_build_stamp(void)
+{
+    /* Built once and cached: the app descriptor is a const blob in flash, so
+     * this can never change while the image runs. Sized well past the 19 chars
+     * "YYYY-MM-DD HH:MM:SS" needs — this component builds -Wall -Wextra -Werror,
+     * and a tight buffer makes -Wformat-truncation reason about the widest int
+     * %04d could print rather than the validated range below. */
+    static char stamp[32] = {0};
+    if (stamp[0] != '\0') {
+        return stamp;
+    }
+
+    /* esp_app_desc_t.date/.time are the compiler's __DATE__/__TIME__ as the
+     * build system stamped them at LINK time — "Sep 17 2026" / "14:32:07".
+     * Taken from there rather than using __DATE__/__TIME__ here directly: a
+     * macro in this file only updates when THIS file is recompiled, so an
+     * incremental build that skips it would quietly report a stale date, which
+     * is worse than no date at all for the one job this field has. */
+    const esp_app_desc_t *desc = esp_app_get_description();
+    char mon[4] = {0};
+    int  day = 0, year = 0;
+    if (desc && sscanf(desc->date, "%3s %d %d", mon, &day, &year) == 3
+            && day >= 1 && day <= 31 && year >= 1970 && year <= 9999) {
+        /* __DATE__ spells the month, and day is space-padded ("Sep  7 2026").
+         * Normalised to YYYY-MM-DD here so every reader downstream (runs.csv ->
+         * import_sdcard.py -> the wizards' file picker) gets one sortable,
+         * locale-free shape instead of re-parsing a month name each time.
+         * The range checks above are also what keeps a garbled descriptor from
+         * producing a plausible-looking "0000-13-99". */
+        static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+        const char *hit = strstr(months, mon);
+        if (hit && ((hit - months) % 3) == 0) {
+            snprintf(stamp, sizeof(stamp), "%04d-%02d-%02d %.8s",
+                     year, (int)((hit - months) / 3) + 1, day, desc->time);
+            return stamp;
+        }
+    }
+
+    strlcpy(stamp, "unknown", sizeof(stamp));
+    return stamp;
 }
 
 void sd_status_unmount(void)
@@ -667,9 +710,10 @@ sd_status_result_t sd_status_run_boot_check(void)
         rep("[5] ENVIRONMENT\r\n"
             "  Build attack: %s\r\n"
             "  Build topology: %s\r\n"
+            "  Firmware built: %s\r\n"
             "  Recorded location: %s\r\n"
             "  Node: %s (MAC %s)\r\n\r\n",
-            atk_dir, topo_dir, s_location, node_id, node_mac_str);
+            atk_dir, topo_dir, sd_status_build_stamp(), s_location, node_id, node_mac_str);
 
         bool chosen_dir_ok = (attack_status[atk_idx] >= 0)
                           && (topo_status[atk_idx][MESH_TOPOLOGY] >= 0)

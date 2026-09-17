@@ -368,6 +368,193 @@ function Show-And-Confirm {
     return $go
 }
 
+function Format-BuildStamp {
+    # "2026-09-17 14:32:07" (csv_logger.c's runs.csv "built" column, via
+    # import_sdcard.py --list-json) -> "09 / 17 / 2026 14:32", the leftmost
+    # column of the card file picker. Fixed 20 chars wide so the "|" after it
+    # lines up down the list whether or not a given file has a stamp.
+    # Mirrored in run_wizard.ps1 - keep the two in sync.
+    param([string]$Stamp)
+    if ($Stamp -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
+        return ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+    }
+    return '(no build stamp)'
+}
+
+function Select-CardFiles {
+    # Numbered picker over everything a card holds, so an import can be "just
+    # these two files" instead of all-or-nothing.
+    #
+    # The leftmost column is the build date+time of the FIRMWARE that logged
+    # each file (see sd_status_build_stamp()). That column is the whole point:
+    # a board with no RTC cannot date its own captures, so without it a file
+    # left on the card by a session weeks ago is indistinguishable from one
+    # written ten minutes ago - which is exactly how a half-finished run that
+    # got interrupted, fixed and forgotten ends up silently re-imported as
+    # today's data. Newest stamp first, and the newest is coloured green, so
+    # "the flash I am running now" is the block at the top of the list.
+    #
+    # Returns $null to cancel, or a hashtable:
+    #   Rel            = @() for ALL, or the card-relative paths picked
+    #   IncludeAborted = $true if the operator confirmed aborted files
+    # Mirrored in run_wizard.ps1 - keep the two in sync.
+    param([Parameter(Mandatory)]$Files)
+
+    # Sorted newest-build-first; unknown stamps sink to the bottom (they can
+    # only be pre-stamp firmware, i.e. older than anything that has one).
+    $sorted = @($Files | Sort-Object `
+        @{ Expression = { if ($_.built) { $_.built } else { '' } }; Descending = $true }, `
+        @{ Expression = { '{0}/{1}/{2}' -f $_.attack, $_.topology, $_.location } }, `
+        @{ Expression = { [int]$_.boot } })
+
+    # Deliberately NOT wrapped in @(): this is compared with -eq against a
+    # scalar below, and a 1-element array on the right of -eq is the classic
+    # PowerShell footgun (it coerces rather than compares cleanly).
+    $newest = $sorted | Where-Object { $_.built } | Select-Object -First 1 -ExpandProperty built
+
+    $draw = {
+        Write-Host ""
+        Write-Host "On this card:" -ForegroundColor Cyan
+        Write-Host "  (leftmost column = when the FIRMWARE that logged the file was built - not" -ForegroundColor DarkGray
+        Write-Host "   when it ran. Every boot of one flash shares it, so it tells today's" -ForegroundColor DarkGray
+        Write-Host "   captures from ones an older flash left behind.)" -ForegroundColor DarkGray
+        Write-Host ""
+        for ($i = 0; $i -lt $sorted.Count; $i++) {
+            $f = $sorted[$i]
+            $stamp = Format-BuildStamp $f.built
+            # Green = newest firmware on this card (almost always "the one you
+            # just flashed"); yellow = an older flash left this here.
+            $stampColor = if (-not $f.built) { 'DarkGray' }
+                          elseif ($newest -and $f.built -eq $newest) { 'Green' }
+                          else { 'Yellow' }
+            Write-Host ("  [{0}] " -f ($i + 1)) -NoNewline
+            Write-Host ("{0,-20}" -f $stamp) -NoNewline -ForegroundColor $stampColor
+            Write-Host (" | {0}" -f $f.name)
+
+            $bits = @("{0}/{1}/{2}" -f $f.attack, $f.topology, $f.location)
+            $bits += "boot $($f.boot)"
+            if ($null -ne $f.run) { $bits += "run $($f.run)" }
+            $bits += "$($f.rows) rows"
+            if ($f.archived) { $bits += '_archive' }
+            $noteColor = 'DarkGray'
+            if ($f.clean -eq $false) { $bits += 'ABORTED (started, never closed cleanly)'; $noteColor = 'Yellow' }
+            if ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
+            Write-Host ("      {0}" -f ($bits -join '  |  ')) -ForegroundColor $noteColor
+        }
+    }
+    & $draw
+
+    # Bounded like the wizard's prompt loops: on a dead input stream an
+    # unbounded retry would spin printing this list until the process is killed.
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt 20) {
+            throw "No valid card file selection after 20 attempts - aborting. (Running non-interactively?)"
+        }
+        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > " -f $sorted.Count) -Redraw $draw
+        if (-not $raw) { Write-Host "   Type numbers, 'a' or 'c'." -ForegroundColor Yellow; continue }
+        $raw = $raw.Trim()
+        if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
+
+        $picked = @()
+        if ($raw -eq 'a' -or $raw -eq 'A') {
+            $picked = @($sorted)
+        }
+        else {
+            # Comma list of single numbers and/or N-M ranges.
+            $bad = $false
+            $idxs = @()
+            foreach ($tok in ($raw -split ',')) {
+                $t = $tok.Trim()
+                if (-not $t) { continue }
+                if ($t -match '^(\d+)\s*-\s*(\d+)$') {
+                    $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
+                    if ($lo -lt 1 -or $hi -gt $sorted.Count -or $lo -gt $hi) { $bad = $true; break }
+                    $idxs += $lo..$hi
+                }
+                elseif ($t -match '^\d+$') {
+                    $n = [int]$t
+                    if ($n -lt 1 -or $n -gt $sorted.Count) { $bad = $true; break }
+                    $idxs += $n
+                }
+                else { $bad = $true; break }
+            }
+            if ($bad -or $idxs.Count -eq 0) {
+                Write-Host ("   Enter numbers from 1 to {0} (e.g. 1,3 or 1-3), 'a' for all, or 'c' to cancel." -f $sorted.Count) -ForegroundColor Yellow
+                continue
+            }
+            $picked = @($idxs | Sort-Object -Unique | ForEach-Object { $sorted[$_ - 1] })
+        }
+
+        # Aborted files are skipped by default (import_sdcard.py --include-aborted)
+        # because a cut-off capture is partial data. Picking one BY NUMBER is an
+        # explicit choice though, so ask rather than silently dropping it - and
+        # if the answer is no, drop it here so the count shown is honest.
+        $aborted = @($picked | Where-Object { $_.clean -eq $false })
+        $includeAborted = $false
+        if ($aborted.Count -gt 0) {
+            Write-Host ""
+            foreach ($a in $aborted) { Write-Host ("   ABORTED: {0}" -f $a.name) -ForegroundColor Yellow }
+            $ans = Read-Line ("   {0} of the file(s) you picked never closed cleanly (power loss, a killed run) - import them anyway? [y/N] > " -f $aborted.Count)
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                $includeAborted = $true
+            }
+            else {
+                $picked = @($picked | Where-Object { $_.clean -ne $false })
+                if ($picked.Count -eq 0) {
+                    Write-Host "   Nothing left selected." -ForegroundColor DarkGray
+                    return $null
+                }
+            }
+        }
+
+        $already = @($picked | Where-Object { $_.already })
+        if ($already.Count -gt 0) {
+            Write-Host ("   NOTE: {0} of these is already in exports/ and will be skipped by the import." -f $already.Count) -ForegroundColor DarkGray
+        }
+
+        # "ALL" stays an empty Rel list rather than every path spelled out: it
+        # means "no --files filter", which is the long-standing whole-card
+        # behaviour, and keeps the command line short.
+        $isAll = ($picked.Count -eq $sorted.Count) -and ($aborted.Count -eq 0 -or $includeAborted)
+        return @{
+            Rel            = if ($isAll) { @() } else { @($picked | ForEach-Object { $_.rel }) }
+            IncludeAborted = $includeAborted
+        }
+    }
+}
+
+function Get-CardFileList {
+    # import_sdcard.py --list-json -> objects for Select-CardFiles, or $null if
+    # the scan itself failed (python missing, unreadable card). An EMPTY card is
+    # an empty array, not a failure - the caller says "nothing to import" in its
+    # own words. Mirrors the same block in run_wizard.ps1's Import-OneSdCard.
+    param([string]$Card, [string]$Repeat, [string]$Scenario, [string]$Roster)
+
+    $listArgs = @('import_sdcard.py', '--card', $Card, '--repeat', $Repeat, '--scenario', $Scenario)
+    if ($Roster) { $listArgs += @('--roster', $Roster) }
+
+    Push-Location (Join-Path $base 'tools')
+    try {
+        $listOut = & python @listArgs --list-json 2>&1
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+            $listOut | ForEach-Object { Write-Host "   $_" }
+            Write-Host ("   import_sdcard.py --list-json exited {0} (is python on PATH? run from the ESP-IDF 5.3 PowerShell)." -f $rc) -ForegroundColor Yellow
+            return $null
+        }
+        # --list-json puts the array on stdout and warnings on stderr, but 2>&1
+        # merges both into one stream here - so take the JSON line rather than
+        # the whole capture, or a roster warning would break ConvertFrom-Json.
+        $jsonLine = @($listOut | ForEach-Object { "$_" } |
+            Where-Object { $_.TrimStart().StartsWith('[') }) | Select-Object -Last 1
+        if (-not $jsonLine) { return @() }
+        try { return @($jsonLine | ConvertFrom-Json) } catch { return @() }
+    }
+    finally { Pop-Location }
+}
+
 # ---- blackhole attacker-MAC pre-flight (ported from run_wizard.ps1) ---------
 # BLACKHOLE_ATTACKER_MAC is baked into the VICTIM firmware at BUILD time. If it
 # doesn't match whichever physical board is actually wearing the "attacker"
@@ -2606,6 +2793,33 @@ if ($action -eq 8) {
     $imArgs  = @('import_sdcard.py', '--card', $card, '--repeat', $repeat, '--scenario', $scenario, '--delete-source')
     $cmdText = "python tools\import_sdcard.py --card `"$card`" --repeat $repeat --scenario $scenario --delete-source"
     if ($roster) { $imArgs += @('--roster', $roster); $cmdText += " --roster `"$roster`"" }
+
+    # What the card holds, pickable by number, before anything is copied. Each
+    # file is shown with the build date+time of the firmware that logged it -
+    # the only calendar an RTC-less board has, and the thing that separates
+    # this session's captures from ones an interrupted, half-forgotten run left
+    # behind. Mirrors run_wizard.ps1's Import-OneSdCard - keep the two in sync.
+    $cardFiles = Get-CardFileList -Card $card -Repeat $repeat -Scenario $scenario -Roster $roster
+    if ($null -eq $cardFiles) { continue menu }
+    if ($cardFiles.Count -eq 0) {
+        Write-Host "   Nothing to import from this card." -ForegroundColor DarkGray
+        continue menu
+    }
+
+    $sel = Select-CardFiles -Files $cardFiles
+    if ($null -eq $sel) {
+        Write-Host "   Cancelled -- nothing copied." -ForegroundColor DarkGray
+        continue menu
+    }
+    if ($sel.Rel.Count -gt 0) {
+        $fileList = $sel.Rel -join ','
+        $imArgs  += @('--files', $fileList)
+        $cmdText += " --files `"$fileList`""
+    }
+    if ($sel.IncludeAborted) {
+        $imArgs  += '--include-aborted'
+        $cmdText += " --include-aborted"
+    }
 
     # Preview before confirming, unlike the other actions here: with
     # --delete-source this is the step that releases the card's only copy, so

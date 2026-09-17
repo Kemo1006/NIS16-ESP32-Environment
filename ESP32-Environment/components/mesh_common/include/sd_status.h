@@ -78,6 +78,25 @@ const char *sd_status_run_dir(void);
  *  CSVs in separate files. 0 if the boot check did not reach SD_STATUS_OK. */
 int sd_status_boot_count(void);
 
+/** This FIRMWARE IMAGE's build date+time as "YYYY-MM-DD HH:MM:SS", read from
+ *  the app descriptor the build system stamps into every image (esp_app_desc.h).
+ *  Never NULL — an unparseable descriptor yields "unknown".
+ *
+ *  This is the closest thing the board has to a calendar, and the reason it
+ *  exists: an ESP32 with no RTC boots at 1970, so nothing it writes can say
+ *  WHEN it ran. A build stamp cannot say that either — but it is baked into the
+ *  binary at link time, so it is identical on every boot of this flash no matter
+ *  how many times the board is power-cycled out in the field (which the
+ *  mobility/powercycle scenarios do deliberately). That makes it the one field
+ *  that answers "is this card's data from the firmware I flashed today, or left
+ *  over from a session weeks ago?" — see csv_logger.c's runs.csv manifest, which
+ *  records it per boot, and tools/import_sdcard.py, which shows it per file.
+ *
+ *  It is a BUILD time, not a capture time: every boot of one flash reports the
+ *  same value, so pair it with sd_status_boot_count() for ordering within a
+ *  flash. */
+const char *sd_status_build_stamp(void);
+
 /** Unmount the card and release SPI3. Safe to call when nothing is mounted.
  *  csv_logger_close() calls this; nothing else normally needs to. */
 void sd_status_unmount(void);

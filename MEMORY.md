@@ -8,6 +8,45 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 17, 2026 — BUILT: **capture provenance** — answering "is this card's data from the firmware I
+  flashed today, or left over from a run I interrupted and forgot?" An ESP32 has no RTC (boots at
+  1970) and mobility/powercycle deliberately power-cycle boards, so no clock or sync-on-connect
+  scheme survives; an RTC module was considered and rejected by the user. Instead every image
+  carries a BUILD STAMP: `sd_status_build_stamp()` (`sd_status.c`) reads `esp_app_desc_t`
+  .date/.time — written at LINK time, so right on every incremental build and identical on every
+  boot of one flash — normalised to "YYYY-MM-DD HH:MM:SS". ⚠️ Deliberately NOT raw
+  `__DATE__`/`__TIME__` in a source file: those update only when THAT file recompiles, so an
+  incremental build would report a stale date. It never touches capture CSV rows (user's constraint
+  — the dataset format is fixed): it goes to a new `built` column on `runs.csv` (`csv_logger.c`,
+  appended LAST so a card whose manifest was started by older firmware keeps its 7-column header and
+  `import_sdcard.py` recovers the 8th field positionally from DictReader's restkey) and a "Firmware
+  built:" line in `status_<node>.txt`. Needs `esp_app_format` in `mesh_common/CMakeLists.txt`. ⚠️ A
+  build stamp is NOT a capture time — one flash's boots all share it, so pair it with the per-folder
+  boot counter to order within a flash. `import_sdcard.py` gained `--list-json` (each file +
+  stamp/rows/clean/already-imported; stdout JSON only, warnings to stderr) and `--files`
+  (card-relative paths — the per-FILE counterpart to `--boots`); option [3] in BOTH wizards now
+  shows a numbered picker built from it, `MM / DD / YYYY HH:MM | filename`, newest build first. ⚠️
+  Firmware NOT compiled (no ESP-IDF in the shell) — build before trusting; Python + both pickers
+  were tested on a synthetic card (new / old-7-col / no-manifest / aborted) and a full
+  list→pick→import round trip.
+- sep. 17, 2026 — BUILT in `run_wizard.ps1` only (`menu.ps1` still has just the edit-a-node step —
+  see ARCHIVE.md): "Adjust the plan?" gained ADD / REMOVE a node beside edit/topology; an edited
+  preset now offers "save these changes back into <preset>" as its own prompt (separate from "save
+  as a new preset", which still appears only for a from-scratch roster); and the mode menu gained
+  "Run a capture without a preset", skipping the preset picker even when presets exist. Remove
+  refuses to drop the ROOT (swap root first via that node's Role field) or to break "exactly one
+  attacker". Three bugs the user then hit on a live run, all fixed: (1) ⚠️ MANUAL-flow boards never
+  carried a `Mac` field (only preset-loaded ones did, via `ConvertTo-Roster`) while
+  `Resolve-BoardMac` caches with `$Board.Mac = $mac` — a PSCustomObject cannot gain a property by
+  assignment, so the confirm table threw AFTER every question was answered and AFTER the
+  attacker-MAC gate had rewritten `mesh_config.h`; pre-existing, but the new no-preset option made
+  it the default path. Every construction site now seeds `Mac = ''`, plus an `Add-Member -Force`
+  fallback (as `Add-BoardMacs` always used). (2) the blackhole role menu FORCED one child to be the
+  attacker — with a single child that was no choice at all, and it yielded an attacker with no
+  victims, i.e. no attack signature; it now always offers "None of these - they are all VICTIMS",
+  the single-laptop twin of the existing multi-laptop escape. (3) `Show-Menu` printed "Type 1-1" for
+  a one-option menu and rejected Enter; it now says "Press Enter (or type 1)" and accepts it. NOT
+  hardware-tested; parser clean.
 - sep. 17, 2026 — ADDED instant disconnect reporting on top of the stale-eviction fix below, in
   response to "can the heartbeat print instantly on disconnect instead of waiting on the stale
   timer": (1) `MESH_EVENT_CHILD_DISCONNECTED` — the one mesh event that names a specific MAC — now
@@ -27,10 +66,11 @@
   (`heartbeat_table_print`, new `heartbeat_mark_offline`), so `mesh_event_handler` — defined earlier
   in the file — can reach them. Same file as everything else here: `mesh_setup.c`. Not build-tested
   (attempted locally: this machine's `idf5.3_py3.14_env` Python venv is broken/missing —
-  `idf_tools.py install-python-env` needed, unrelated to this change) — same caveat as below.
+  `idf_tools.py install-python-env` needed, unrelated to this change) — same caveat as the entry below.
 - sep. 17, 2026 — FIXED three heartbeat gaps, all found via live hardware logs across this session
-  (follows the BUILT entry below): (1) the table only reprinted on layer/role/nickname change, so a
-  plain disconnect/reconnect showed nothing even though `AGE_S` tracked it correctly — added
+  (follows the original BUILT entry, now in ARCHIVE.md): (1) the table only reprinted on
+  layer/role/nickname change, so a plain disconnect/reconnect showed nothing even though `AGE_S`
+  tracked it correctly — added
   `HEARTBEAT_TABLE_REPRINT_MS`, a root-only unconditional timer reprint gated on a new
   `s_table_ready` flag (set by `heartbeat_table_init()`) instead of `mesh_setup_is_root()`, which is
   FALSE for this whole testbed's actual root (manual/fixed root, no router, never gets
@@ -46,72 +86,20 @@
   the send loop) — keep it an exact multiple or the configured value won't match what's observed.
   Final values after user iteration: `HEARTBEAT_INTERVAL_MS` 7000, `HEARTBEAT_TABLE_REPRINT_MS`
   14000, `HEARTBEAT_STALE_MS` 21000 (auto-derived, 3×interval). Still NOT committed, NOT
-  build-tested — same caveat as the BUILT entry below.
-- sep. 17, 2026 — DECIDED + BUILT: Command Center's heartbeat/node-table feature is back,
-  **on purpose, reversing the sep. 14, 2026 "removed, not merely disabled" merge decision**
-  (see ARCHIVE.md and the sep. 13 BUILT entry below for what it replaced). Trigger: needed a live
-  per-node MAC/layer view to verify connected boards are actually following the built topology
-  (STAR/TREE/LINEAR/PARTIAL), which the existing zero-traffic `MESH CONNECTED: N node(s)` banner
-  (sep. 13, still in place) cannot show — ESP-MESH's routing-table API gives MACs but no per-node
-  layer. Implementation lives INSIDE `components/mesh_common/{mesh_setup.c,mesh_setup.h}` —
-  deliberately NOT a separate `heartbeat.[ch]` file (user's explicit call, sep. 17). Every node
-  (root included) sends a `node_heartbeat_pkt_t` (`mesh_messages.h` — wire format was already
-  defined, unused, kept only for `node_identity`/capture per the sep. 14 removal note) to root every
-  `HEARTBEAT_INTERVAL_MS` (2000 ms); root aggregates the latest row per MAC and reprints the table
-  (LYR/MAC/ROLE/NICKNAME/RSSI/PHASE/AGE_S, sorted by layer) under the `MESH_SETUP` log tag whenever
-  a node's layer/role/nickname changes. Public API: `heartbeat_start()` (every node, after
-  `phase_listener_start()`) / `heartbeat_table_init()` + `heartbeat_ingest()` (root only, demuxed
-  inside the existing `probe_data_cb` single-packet-dispatcher — no second `esp_mesh_recv()` reader).
-  ⚠️ **Knowingly reintroduces periodic mesh traffic** on the exact network this testbed measures
-  (PDR/latency/RSSI) — the sep. 13 banner's whole point was avoiding that. At `HEARTBEAT_INTERVAL_MS
-  = 2000` and `PROBE_INTERVAL_MS = 1000`, heartbeat volume is small relative to probe traffic, but
-  this was NOT benchmarked against a clean capture before being merged — if PDR/latency numbers
-  look off after this change, check whether heartbeat traffic is a contributing cause before
-  trusting the data. NOT build-tested (no ESP-IDF environment in the session's shell) — first build
-  must go through the normal `run.ps1`/wizard flow before a real capture. FILEMAP.md updated to match.
-- sep. 17, 2026 — BUILT: "edit a specific node" on the pre-flash plan summary, both `menu.ps1` and
-  `run_wizard.ps1` (independent implementations — the two scripts' board/roster models differ, kept
-  in sync in spirit only). After the Attack/Topology/"Order (root is always last)" box, the operator
-  can now: edit one node's port/label/toggles (Wipe/Flash/Export+Location/Clean in `menu.ps1`) and
-  attack sub-role (blackhole attacker/victim, wormhole A/B — reassigns ALL peers together in
-  `run_wizard.ps1` to keep "exactly one attacker"/"exactly one A and one B" true; `menu.ps1` edits
-  just the one board's field, matching its existing warn-only philosophy); change which node is ROOT
-  (promotes one, demotes the other, re-sorts children-first-root-last, and in `run_wizard.ps1`
-  re-triggers the attack-sub-role picker for the new child set); or change the run's TOPOLOGY
-  (global, rebuilds every board's command line). Every change reprints the plan (and, in `menu.ps1`,
-  re-runs the sanity warnings incl. `Confirm-BlackholeAttackerMac`) before the per-board CONFIRM
-  loop / "Proceed?" runs — no blind apply-to-all. NOT build/hardware-tested beyond a PowerShell
-  parser syntax check (`[System.Management.Automation.Language.Parser]::ParseFile`, both files
-  clean) — no ESP-IDF/board access in the session's shell; the menu.ps1 toggle screen WAS confirmed
-  live by the user mid-session (pasted output matched).
-- sep. 16, 2026 — FIXED (supersedes this entry's earlier "NaN logic is correct" claim — it was
-  NOT): `features.py`'s PDR gated attributability on a run-wide `covered_macs` set, so a victim
-  the root never logged ANYTHING for got NaN in every window — exactly the node a blackhole hits
-  hardest. Consequence: `PDR == 0` occurred in **0 of 446 rows**; the feature could never record
-  the value it exists to detect. Now gated per-window on evidence: node transmitted
-  (`probes_count_delta > 0`) AND was associated (`layer > 0`, parent_mac non-zero) AND the window
-  is inside the root's arrival-logging span (that last one replaces the old safety against a
-  never-pulled root CSV). Also fixed a latent FALSE-POSITIVE: `0/(0+EPSILON)` returned a literal
-  `0.0` for windows where a node sent nothing — a fabricated blackhole signature. Before→after on
-  `G402/mobility`: PDR non-null 41→238, `PDR==0` 0→201, NaN 405→208; victim PDR by phase now
-  baseline 0.217 → attack 0.000 → cooldown 0.750. `verify_attack.py` still says NOT CONFIRMED
-  there (that capture's own baseline is degraded, 0.164±0.372) — i.e. it surfaces the signature
-  WITHOUT fabricating one. Full rationale: `docs/issue_logs/thesis-deviate.md` **D-8**.
-  ⚠️ Remaining NaN is correct, not a gap: root never originates probes (PDR undefined for it).
-- sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR
-  ONLY — thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly
-  to root so no child-relay position exists there (tree/linear/partial keep a child attacker; all
-  wormhole topologies unchanged). Design: `ROOT_BLACKHOLE_ATTACKER` flag (`#error`-gated to
-  star+blackhole) + a drop branch in `root_main.c`'s `probe_data_cb` (just skip
-  `csv_logger_append_probe_arrival`) + swap root's telemetry role string to `"blackhole"` so
-  `features.py`'s existing mask picks it up with ZERO analysis changes. Children need NO firmware
-  change. ⚠️ Biggest trap: pass `-DestAttack blackhole` for folder placement but NOT
-  `BlackholeRole=victim` (that compiles in P2P-to-attacker-MAC addressing, wrong for this variant);
-  the MAC pre-flight check does not apply and must be skipped, not extended. Full plan in
-  `.claude\plans\mutable-honking-spindle.md` (under the Basti user profile) — read before building.
-- ⚠️ TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live
-  reference for THES3 writing (vocabulary for paper Tables 4.11/4.12) — pull it back to root
-  if so. See ARCHIVE.md for the doc-reorganization history.
+  build-tested. Heartbeat is in `mesh_setup.c/.h`; ⚠️ it adds periodic mesh traffic to the very
+  network this testbed measures — see the original BUILT entry in ARCHIVE.md before trusting PDR/
+  latency numbers captured with it enabled.
+- sep. 16, 2026 — PROPOSED, NOT BUILT (team decides first): root-as-blackhole-attacker, STAR ONLY —
+  thesis fig 4.17 shows ROOT as the attacker in star, since every child connects directly to root so
+  no child-relay position exists there (tree/linear/partial keep a child attacker; wormhole
+  unchanged). Design sketch: `ROOT_BLACKHOLE_ATTACKER` flag + a drop branch in `root_main.c`'s
+  `probe_data_cb`, root's telemetry role string swapped to `"blackhole"` so `features.py` needs ZERO
+  changes; children need no firmware change. ⚠️ Biggest trap: pass `-DestAttack blackhole` for folder
+  placement but NOT `BlackholeRole=victim` (that compiles in P2P-to-attacker-MAC addressing, wrong
+  here); the MAC pre-flight does not apply and must be SKIPPED, not extended. Full plan (read before
+  building): `.claude\plans\mutable-honking-spindle.md`, under the Basti user profile.
+- ⚠️ TERMS-GLOSSARY.md (archived aug. 06 with the Thesis 2 defense docs) may still be live reference
+  for THES3 writing (paper Tables 4.11/4.12 vocabulary) — pull it back to root if so.
 
 ## Durable facts & constraints
 - ⚠️ **CORRECTED sep. 17, 2026** (was stale, and answers the old "no sync transport between

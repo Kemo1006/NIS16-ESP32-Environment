@@ -290,3 +290,56 @@
   ONLY for a real scenario — `none` gets NO extra folder. Build-dir suffix `_burst`/`_highload` is a
   SEPARATE concern (firmware variant, not export path). ⚠️ Verified only without hardware attached —
   NOT bench-tested on real boards as of this roll.
+- sep. 17, 2026 — Rolled from MEMORY.md Decisions (cap overflow, shipped): BUILT "edit a specific
+  node" on the pre-flash plan summary, both `menu.ps1` and `run_wizard.ps1` (independent
+  implementations — the two scripts' board/roster models differ, kept in sync in spirit only). After
+  the Attack/Topology/"Order (root is always last)" box, the operator can edit one node's
+  port/label/toggles (Wipe/Flash/Export+Location/Clean in `menu.ps1`) and attack sub-role (blackhole
+  attacker/victim, wormhole A/B — reassigns ALL peers together in `run_wizard.ps1` to keep "exactly
+  one attacker"/"exactly one A and one B" true; `menu.ps1` edits just the one board's field, matching
+  its existing warn-only philosophy); change which node is ROOT (promotes one, demotes the other,
+  re-sorts children-first-root-last, and in `run_wizard.ps1` re-triggers the attack-sub-role picker
+  for the new child set); or change the run's TOPOLOGY (global, rebuilds every board's command line).
+  Every change reprints the plan (and, in `menu.ps1`, re-runs the sanity warnings incl.
+  `Confirm-BlackholeAttackerMac`) before the per-board CONFIRM loop / "Proceed?" runs — no blind
+  apply-to-all. Extended sep. 17 in `run_wizard.ps1` only (add/remove node, no-preset mode) — see
+  MEMORY.md for the current state of that feature.
+- sep. 16, 2026 — Rolled from MEMORY.md Decisions (cap overflow, shipped): FIXED `features.py`'s PDR
+  attributability (thesis-deviate **D-8**), superseding an earlier "NaN logic is correct" claim — it
+  was NOT. PDR gated attributability on a run-wide `covered_macs` set, so a victim the root never
+  logged ANYTHING for got NaN in every window — exactly the node a blackhole hits hardest.
+  Consequence: `PDR == 0` occurred in **0 of 446 rows**; the feature could never record the value it
+  exists to detect. Now gated per-window on evidence: node transmitted (`probes_count_delta > 0`)
+  AND was associated (`layer > 0`, parent_mac non-zero) AND the window is inside the root's
+  arrival-logging span (that last one replaces the old safety against a never-pulled root CSV). Also
+  fixed a latent FALSE-POSITIVE: `0/(0+EPSILON)` returned a literal `0.0` for windows where a node
+  sent nothing — a fabricated blackhole signature. Before→after on `G402/mobility`: PDR non-null
+  41→238, `PDR==0` 0→201, NaN 405→208; victim PDR by phase now baseline 0.217 → attack 0.000 →
+  cooldown 0.750. `verify_attack.py` still says NOT CONFIRMED there (that capture's own baseline is
+  degraded, 0.164±0.372) — i.e. it surfaces the signature WITHOUT fabricating one. Remaining NaN is
+  correct, not a gap: root never originates probes (PDR undefined for it).
+- sep. 17, 2026 — Rolled from MEMORY.md Decisions (cap overflow; superseded by the two
+  heartbeat follow-up entries that remain in MEMORY.md, which describe current behaviour).
+  Original entry:
+  - sep. 17, 2026 — DECIDED + BUILT: Command Center's heartbeat/node-table feature is back,
+    **on purpose, reversing the sep. 14, 2026 "removed, not merely disabled" merge decision**
+    (see ARCHIVE.md and the sep. 13 BUILT entry below for what it replaced). Trigger: needed a live
+    per-node MAC/layer view to verify connected boards are actually following the built topology
+    (STAR/TREE/LINEAR/PARTIAL), which the existing zero-traffic `MESH CONNECTED: N node(s)` banner
+    (sep. 13, still in place) cannot show — ESP-MESH's routing-table API gives MACs but no per-node
+    layer. Implementation lives INSIDE `components/mesh_common/{mesh_setup.c,mesh_setup.h}` —
+    deliberately NOT a separate `heartbeat.[ch]` file (user's explicit call, sep. 17). Every node
+    (root included) sends a `node_heartbeat_pkt_t` (`mesh_messages.h` — wire format was already
+    defined, unused, kept only for `node_identity`/capture per the sep. 14 removal note) to root every
+    `HEARTBEAT_INTERVAL_MS` (2000 ms); root aggregates the latest row per MAC and reprints the table
+    (LYR/MAC/ROLE/NICKNAME/RSSI/PHASE/AGE_S, sorted by layer) under the `MESH_SETUP` log tag whenever
+    a node's layer/role/nickname changes. Public API: `heartbeat_start()` (every node, after
+    `phase_listener_start()`) / `heartbeat_table_init()` + `heartbeat_ingest()` (root only, demuxed
+    inside the existing `probe_data_cb` single-packet-dispatcher — no second `esp_mesh_recv()` reader).
+    ⚠️ **Knowingly reintroduces periodic mesh traffic** on the exact network this testbed measures
+    (PDR/latency/RSSI) — the sep. 13 banner's whole point was avoiding that. At `HEARTBEAT_INTERVAL_MS
+    = 2000` and `PROBE_INTERVAL_MS = 1000`, heartbeat volume is small relative to probe traffic, but
+    this was NOT benchmarked against a clean capture before being merged — if PDR/latency numbers
+    look off after this change, check whether heartbeat traffic is a contributing cause before
+    trusting the data. NOT build-tested (no ESP-IDF environment in the session's shell) — first build
+    must go through the normal `run.ps1`/wizard flow before a real capture. FILEMAP.md updated to match.

@@ -22,10 +22,20 @@ to "none", and the date is taken at import time.
 
 A single card commonly spans MULTIPLE repeats (b1..b13 across two experiment
 runs, say) and one --repeat cannot cover the whole thing correctly. Each leaf
-folder's runs.csv (written by csv_logger.c — boot,node_id,role,rows,uptime_s,
-event) says how many rows each boot logged and whether it ended cleanly, so
---boots picks the boot numbers that belong to THIS repeat and --include-aborted
-overrides the default skip of boots that never reached a clean close.
+folder's runs.csv (written by csv_logger.c — boot,run,node_id,role,rows,
+uptime_s,event,built) says how many rows each boot logged and whether it ended
+cleanly, so --boots picks the boot numbers that belong to THIS repeat and
+--include-aborted overrides the default skip of boots that never reached a
+clean close. --files does the same selection one FILE at a time.
+
+"built" is the build date+time of the firmware that logged a boot
+(sd_status_build_stamp(); see sd_status.h for why a build stamp and not a
+clock). It is the only calendar reference on a board that boots at 1970, and it
+answers the question a pulled card otherwise cannot: is this capture from the
+flash I am running now, or left over from a session I have forgotten about?
+Every boot of one flash shares it, so pair it with the boot number for ordering
+within a flash. --list-json reports it per file, which is what the wizards'
+numbered picker shows in its leftmost column.
 
 Naming is NOT reimplemented here — this calls _subdir_for() and _make_filename()
 from export_logs.py, so a card import and a USB export produce byte-identical
@@ -34,6 +44,8 @@ filenames and the two can never drift apart.
 Usage:
     python import_sdcard.py --card E:\\ --repeat 1
     python import_sdcard.py --card E:\\ --repeat 2 --boots 5,6,7 --dry-run
+    python import_sdcard.py --card E:\\ --repeat 1 --list-json
+    python import_sdcard.py --card E:\\ --repeat 1 --files "blackhole\\linear\\home\\victim_NODE_20500DE70C80_r1_b3_telem.csv"
 
 NIS16 — CTTHES3
 """
@@ -101,15 +113,46 @@ class _Args:
             setattr(self, k, v)
 
 
+def _manifest_built(row):
+    """The "built" field of one runs.csv row — sd_status_build_stamp() as
+    csv_logger.c recorded it ("YYYY-MM-DD HH:MM:SS"), or None.
+
+    Two shapes have to work. A card whose runs.csv was CREATED by firmware
+    carrying this feature has a "built" header column, and DictReader hands it
+    over by name. A card whose manifest was started by OLDER firmware keeps its
+    original 7-column header forever (the firmware only writes a header when the
+    file is new), so newer boots append an 8th field that has no name to land
+    under — DictReader collects those into row[None]. Reading it back
+    positionally there is what stops a reused card from silently losing the
+    stamp on every boot until it is reformatted."""
+    built = (row.get("built") or "").strip()
+    if not built:
+        extra = row.get(None) or []
+        if extra:
+            built = str(extra[-1]).strip()
+    # "unknown" is what the firmware writes when the app descriptor could not be
+    # parsed; it carries no more information than a missing field, so flatten
+    # the two into one "we don't know" for every reader downstream.
+    if not built or built == "unknown":
+        return None
+    return built
+
+
 def _read_manifest(leaf_dir):
     """Parses <leaf_dir>/runs.csv (written by csv_logger.c) into
-    {boot_number: {"rows": int, "uptime_s": int, "clean": bool}}.
+    {boot_number: {"rows": int, "uptime_s": int, "clean": bool, "built": str|None}}.
 
     The manifest is append-only on the firmware side: a boot appends a
     "start" row (rows=0) when its telemetry mirror opens, then a "clean" row
     with the final row count from csv_logger_close() if it gets there. A boot
     with a "start" and no "clean" was aborted — power loss, a killed run —
     and that gap in the file IS the record; nothing here second-guesses it.
+
+    "built" is the build date+time of the FIRMWARE that logged that boot (see
+    sd_status_build_stamp()). It is the same for every boot of one flash, which
+    is exactly what makes it useful: it separates "captured with the firmware I
+    flashed today" from "left on this card by a flash weeks ago", which an
+    RTC-less board can express no other way. None on older cards.
 
     Returns {} if runs.csv is absent or unreadable (older firmware predating
     the manifest, or a card the sweep already tidied down to nothing) — the
@@ -128,7 +171,13 @@ def _read_manifest(leaf_dir):
                     uptime_s = int(row["uptime_s"])
                 except (KeyError, TypeError, ValueError):
                     continue  # malformed line (e.g. a write torn by power loss) — skip it
-                entry = manifest.setdefault(boot, {"rows": 0, "uptime_s": 0, "clean": False})
+                entry = manifest.setdefault(
+                    boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None})
+                # Either row of a boot carries the stamp and both say the same
+                # thing (one flash cannot be relinked mid-run), so the first one
+                # that has it wins and a torn/missing field never clears it.
+                if entry["built"] is None:
+                    entry["built"] = _manifest_built(row)
                 if row.get("event") == "clean":
                     entry["rows"] = rows
                     entry["uptime_s"] = uptime_s
@@ -253,8 +302,12 @@ def _load_roster(path):
         with open(path, "r", encoding="utf-8-sig") as f:
             cfg = json.load(f)
     except (OSError, ValueError) as e:
+        # stderr, not stdout: --list-json's whole output must stay parseable
+        # JSON, and the wizards that drive it merge stderr into the transcript
+        # anyway, so this stays just as visible as it was.
         print(f"WARNING: could not read roster {path}: {e}\n"
-              f"         falling back to the card's own role/NODE_<MAC> naming.")
+              f"         falling back to the card's own role/NODE_<MAC> naming.",
+              file=sys.stderr)
         return {}
 
     roster = {}
@@ -294,6 +347,73 @@ def _make_unique_filename(dest_args, kind, used_this_run):
     return dest
 
 
+def _dest_args_for(m, attack_dir, topo_dir, location, roster, args):
+    """The export_logs.py argument namespace that names ONE card file's
+    destination.
+
+    Shared by the copy loop and --list-json on purpose: the filename the picker
+    shows an operator has to be the filename the copy actually writes, and the
+    only way to guarantee that is for both to go through this one call."""
+    # Card-supplied identity first; a --roster match upgrades it to the same
+    # label/role a USB export of this board would have used.
+    node_key = m.group("node").replace("NODE_", "").upper()
+    known = roster.get(node_key) or {}
+    return _Args(
+        role=known.get("role") or m.group("role"),
+        # sanitised to NODE-AABB.. by _make_filename when unmatched
+        label=known.get("label") or m.group("node"),
+        topology=_TOPOLOGY_FROM_DIR[topo_dir],
+        attack=_ATTACK_FROM_DIR[attack_dir],
+        attack_dir=attack_dir,       # keeps a baseline-flashed control victim
+                                     # in the attack folder it was captured in
+        location=location,
+        repeat=args.repeat,
+        outdir=args.outdir,
+        scenario=args.scenario,
+    )
+
+
+def _describe(src, attack_dir, topo_dir, location, m, entry, roster, args):
+    """One --list-json entry: everything a picker needs to show a file and hand
+    it back for import.
+
+    "built" is the headline field — the build date+time of the firmware that
+    logged this boot (csv_logger.c's runs.csv "built" column). A board with no
+    RTC cannot date its own captures, so this is what tells an operator whether
+    a file on the card belongs to the flash they are running now or to a session
+    they have since forgotten about. None on cards written before the stamp
+    existed, which reads as "unknown", never as "old".
+
+    "rel" is the identifier: pass it straight back in --files to import exactly
+    this file."""
+    rows = _row_count(src)
+    dest = export_logs._make_filename(
+        _dest_args_for(m, attack_dir, topo_dir, location, roster, args),
+        m.group("kind"))
+    return {
+        "rel": os.path.relpath(src, args.card),
+        "name": os.path.basename(src),
+        "attack": attack_dir,
+        "topology": topo_dir,
+        "location": location,
+        "role": m.group("role"),
+        "node": m.group("node"),
+        "boot": int(m.group("boot")),
+        "run": int(m.group("run")) if m.group("run") else None,
+        "kind": m.group("kind"),
+        "rows": rows,
+        # None = no manifest for this boot at all ("unknown"); False = the
+        # manifest positively says it started and never closed cleanly.
+        "clean": None if entry is None else bool(entry["clean"]),
+        "built": (entry or {}).get("built"),
+        # The name it was already imported under, if an identical capture (same
+        # identity AND row count) is sitting in exports/ — so the picker can say
+        # so before the operator picks it again.
+        "already": _already_imported(dest, rows),
+        "archived": os.path.basename(os.path.dirname(src)) == "_archive",
+    }
+
+
 def main():
     p = argparse.ArgumentParser(
         description="Copy a pulled SD card's CSVs into exports/.",
@@ -321,6 +441,20 @@ def main():
                         "the whole invocation, so this is how you import just the "
                         "boots that belong to the repeat you're naming. Omit to "
                         "import every boot found (the old, whole-card behaviour).")
+    p.add_argument("--files", default=None,
+                   help="Comma-separated card-relative paths to import (exactly "
+                        "as --list-json reports them in each entry's \"rel\"). "
+                        "Where --boots selects whole boots, this selects "
+                        "individual files, which is what the wizards' numbered "
+                        "picker hands back. Omit to import everything found.")
+    p.add_argument("--list-json", action="store_true",
+                   help="Print one JSON array describing every importable file "
+                        "on the card - rel path, boot/run, rows, clean/aborted, "
+                        "the firmware build stamp, and whether an identical "
+                        "capture is already in exports/ - then exit without "
+                        "copying anything. This is what run_wizard.ps1 and "
+                        "menu.ps1 build their numbered file picker from. stdout "
+                        "is JSON and nothing else; warnings go to stderr.")
     p.add_argument("--include-aborted", action="store_true",
                    help="Also import boots whose runs.csv shows a 'start' with no "
                         "matching 'clean' (power loss, a killed run). Skipped by "
@@ -352,15 +486,36 @@ def main():
         except ValueError:
             return f"ERROR: --boots must be comma-separated integers, got: {args.boots}"
 
+    # Compared case- and separator-normalised: these come back from a picker in
+    # PowerShell, and a card path spelled blackhole\linear\home\x.csv must match
+    # the same file scanned as blackhole/linear/home/x.csv.
+    wanted_files = None
+    if args.files:
+        wanted_files = {os.path.normcase(os.path.normpath(f.strip()))
+                        for f in args.files.split(",") if f.strip()}
+        if not wanted_files:
+            return f"ERROR: --files was given but named nothing: {args.files}"
+
     found = list(_scan(args.card))
+    roster = _load_roster(args.roster) if args.roster else {}
+
+    # Listing runs before the "nothing found" error below: an empty card is a
+    # legitimate answer to "what is on here?" ([] and exit 0), not a failure —
+    # the caller wants to say "nothing to import" in its own words rather than
+    # surface a traceback-shaped error for a card that is simply already clear.
+    if args.list_json:
+        print(json.dumps([
+            _describe(src, attack_dir, topo_dir, location, m, entry, roster, args)
+            for src, attack_dir, topo_dir, location, m, entry in found
+        ]))
+        return 0
+
     if not found:
         return (f"ERROR: no run CSVs found under {args.card}.\n"
                 "  Expected <attack>/<topology>/<location>/<role>_NODE_..._b<n>_telem.csv\n"
                 "  An empty 63-folder tree with no CSVs means the boards ran before\n"
                 "  the SD mirror existed, or location.txt was missing/unrecognised —\n"
                 "  check the status_NODE_*.txt report or LOCATION_MISSING.txt on the card.")
-
-    roster = _load_roster(args.roster) if args.roster else {}
 
     copied = skipped = filtered_out = aborted_skipped = 0
     deleted = delete_failed = 0
@@ -374,6 +529,12 @@ def main():
             continue
 
         rel = os.path.relpath(src, args.card)
+
+        # --files is the picker's counterpart to --boots: same "not for this
+        # invocation" outcome, one file at a time instead of a whole boot.
+        if wanted_files is not None and os.path.normcase(os.path.normpath(rel)) not in wanted_files:
+            filtered_out += 1
+            continue
 
         # run is None on a card written before the run-counter feature existed
         # (no "_r<N>_" segment in the filename) — shown only when present.
@@ -390,28 +551,14 @@ def main():
             aborted_skipped += 1
             continue
 
-        # Card-supplied identity first; a --roster match upgrades it to the
-        # same label/role a USB export of this board would have used.
-        node_key = m.group("node").replace("NODE_", "").upper()
-        known = roster.get(node_key) or {}
-        dest_args = _Args(
-            role=known.get("role") or m.group("role"),
-            # sanitised to NODE-AABB.. by _make_filename when unmatched
-            label=known.get("label") or m.group("node"),
-            topology=_TOPOLOGY_FROM_DIR[topo_dir],
-            attack=_ATTACK_FROM_DIR[attack_dir],
-            attack_dir=attack_dir,       # keeps a baseline-flashed control victim
-                                         # in the attack folder it was captured in
-            location=location,
-            repeat=args.repeat,
-            outdir=args.outdir,
-            scenario=args.scenario,
-        )
+        dest_args = _dest_args_for(m, attack_dir, topo_dir, location, roster, args)
         rows = _row_count(src)
         status = f", {run_tag.rstrip(', ')}" if run_tag else ""
         if entry is not None:
             status += (f", manifest: {entry['rows']} rows / {entry['uptime_s']}s, "
                        f"{'clean' if entry['clean'] else 'ABORTED'}")
+            if entry["built"]:
+                status += f", built {entry['built']}"
 
         dest = _make_unique_filename(dest_args, m.group("kind"), used_this_run)
 
@@ -451,7 +598,9 @@ def main():
     print()
     tail = []
     if filtered_out:
-        tail.append(f"{filtered_out} outside --boots")
+        which = "/".join(f for f, on in (("--boots", wanted_boots is not None),
+                                         ("--files", wanted_files is not None)) if on)
+        tail.append(f"{filtered_out} outside {which}")
     if aborted_skipped:
         tail.append(f"{aborted_skipped} aborted")
     if skipped:

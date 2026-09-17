@@ -251,19 +251,29 @@ function Show-Menu {
         # advertised here (and on the other hand-written prompts) so it is
         # discoverable rather than a hidden keyword.
         $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'm' main menu, 'cls' clear" }
+        # A one-option menu read as "type 1-1", which looks like a typo for a
+        # range, and Enter was rejected there even though there was nothing else
+        # it could have meant. Both are spelled for the single-option case.
+        $range = if ($Options.Count -eq 1) { "1" } else { "1-$($Options.Count)" }
         $hint = if ($DefaultIndex -ge 0) {
-            "Press Enter to keep [$($DefaultIndex + 1)], or type 1-$($Options.Count) for another option$navHint > "
+            "Press Enter to keep [$($DefaultIndex + 1)], or type $range for another option$navHint > "
+        } elseif ($Options.Count -eq 1) {
+            "Press Enter (or type 1) - only one choice here$navHint > "
         } else {
-            "Type 1-$($Options.Count)$navHint > "
+            "Type $range$navHint > "
         }
         $raw = Read-Line $hint -Redraw $draw
         if ($AllowBack -and (Test-BackAnswer $raw)) { return -1 }
         if (-not $raw -and $DefaultIndex -ge 0) { return $DefaultIndex }
+        # Enter on a single-option menu takes the only option - there is no other
+        # answer it could resolve to, so demanding the keystroke was pure friction.
+        if (-not $raw -and $Options.Count -eq 1) { return 0 }
         $n = 0
         if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $Options.Count) {
             return ($n - 1)
         }
-        Write-Host "  Enter a number from 1 to $($Options.Count)." -ForegroundColor Yellow
+        if ($Options.Count -eq 1) { Write-Host "  Enter 1 (the only option)." -ForegroundColor Yellow }
+        else { Write-Host "  Enter a number from 1 to $($Options.Count)." -ForegroundColor Yellow }
     }
 }
 
@@ -274,12 +284,13 @@ function Show-CaptureWizardMenu {
     # the two launchers' option sets differ). Each item carries its REAL 0-based
     # modeIdx (what the `if ($modeIdx -eq N)` checks at the call site expect
     # back), but the NUMBER PRINTED ON SCREEN is a separate, always-sequential
-    # 1..9 position in display order - $order/$display below is the lookup
+    # 1..10 position in display order - $order/$display below is the lookup
     # between the two, so "[3]" always means "the 3rd line on screen" even
     # though DATA's first item is modeIdx 4 and MAINTENANCE's is modeIdx 1.
     $categories = @(
         @{ Name = 'CAPTURE'; Items = @(
             @{ Idx = 0; Text = 'Run a capture (attack/baseline + topology - the normal flow)' }
+            @{ Idx = 9; Text = 'Run a capture without a preset (skip the preset picker - answer the menus, like menu.ps1)' }
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
@@ -331,11 +342,11 @@ function Show-CaptureWizardMenu {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid selection for 'What do you want to do?' after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $raw = Read-Line "Press Enter to keep [1], or type 1-9 for another option, 'm' main menu, 'cls' clear > " -Redraw $draw
+        $raw = Read-Line "Press Enter to keep [1], or type 1-$($order.Count) for another option, 'm' main menu, 'cls' clear > " -Redraw $draw
         if (-not $raw) { return 0 }
         $n = 0
         if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $order.Count) { return $order[$n - 1] }
-        Write-Host "  Enter a number from 1 to 9." -ForegroundColor Yellow
+        Write-Host ("  Enter a number from 1 to {0}." -f $order.Count) -ForegroundColor Yellow
     }
 }
 
@@ -1284,13 +1295,167 @@ function Get-SdCardCandidates {
     return $out
 }
 
+function Format-BuildStamp {
+    # "2026-09-17 14:32:07" (csv_logger.c's runs.csv "built" column, via
+    # import_sdcard.py --list-json) -> "09 / 17 / 2026 14:32", the leftmost
+    # column of the card file picker. Fixed 20 chars wide so the "|" after it
+    # lines up down the list whether or not a given file has a stamp.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param([string]$Stamp)
+    if ($Stamp -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
+        return ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+    }
+    return '(no build stamp)'
+}
+
+function Select-CardFiles {
+    # Numbered picker over everything a card holds, so an import can be "just
+    # these two files" instead of all-or-nothing.
+    #
+    # The leftmost column is the build date+time of the FIRMWARE that logged
+    # each file (see sd_status_build_stamp()). That column is the whole point:
+    # a board with no RTC cannot date its own captures, so without it a file
+    # left on the card by a session weeks ago is indistinguishable from one
+    # written ten minutes ago - which is exactly how a half-finished run that
+    # got interrupted, fixed and forgotten ends up silently re-imported as
+    # today's data. Newest stamp first, and the newest is coloured green, so
+    # "the flash I am running now" is the block at the top of the list.
+    #
+    # Returns $null to cancel, or a hashtable:
+    #   Rel            = @() for ALL, or the card-relative paths picked
+    #   IncludeAborted = $true if the operator confirmed aborted files
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param([Parameter(Mandatory)]$Files)
+
+    # Sorted newest-build-first; unknown stamps sink to the bottom (they can
+    # only be pre-stamp firmware, i.e. older than anything that has one).
+    $sorted = @($Files | Sort-Object `
+        @{ Expression = { if ($_.built) { $_.built } else { '' } }; Descending = $true }, `
+        @{ Expression = { '{0}/{1}/{2}' -f $_.attack, $_.topology, $_.location } }, `
+        @{ Expression = { [int]$_.boot } })
+
+    # Deliberately NOT wrapped in @(): this is compared with -eq against a
+    # scalar below, and a 1-element array on the right of -eq is the classic
+    # PowerShell footgun (it coerces rather than compares cleanly).
+    $newest = $sorted | Where-Object { $_.built } | Select-Object -First 1 -ExpandProperty built
+
+    $draw = {
+        Write-Host ""
+        Write-Host "On this card:" -ForegroundColor Cyan
+        Write-Host "  (leftmost column = when the FIRMWARE that logged the file was built - not" -ForegroundColor DarkGray
+        Write-Host "   when it ran. Every boot of one flash shares it, so it tells today's" -ForegroundColor DarkGray
+        Write-Host "   captures from ones an older flash left behind.)" -ForegroundColor DarkGray
+        Write-Host ""
+        for ($i = 0; $i -lt $sorted.Count; $i++) {
+            $f = $sorted[$i]
+            $stamp = Format-BuildStamp $f.built
+            # Green = newest firmware on this card (almost always "the one you
+            # just flashed"); yellow = an older flash left this here.
+            $stampColor = if (-not $f.built) { 'DarkGray' }
+                          elseif ($newest -and $f.built -eq $newest) { 'Green' }
+                          else { 'Yellow' }
+            Write-Host ("  [{0}] " -f ($i + 1)) -NoNewline
+            Write-Host ("{0,-20}" -f $stamp) -NoNewline -ForegroundColor $stampColor
+            Write-Host (" | {0}" -f $f.name)
+
+            $bits = @("{0}/{1}/{2}" -f $f.attack, $f.topology, $f.location)
+            $bits += "boot $($f.boot)"
+            if ($null -ne $f.run) { $bits += "run $($f.run)" }
+            $bits += "$($f.rows) rows"
+            if ($f.archived) { $bits += '_archive' }
+            $noteColor = 'DarkGray'
+            if ($f.clean -eq $false) { $bits += 'ABORTED (started, never closed cleanly)'; $noteColor = 'Yellow' }
+            if ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
+            Write-Host ("      {0}" -f ($bits -join '  |  ')) -ForegroundColor $noteColor
+        }
+    }
+    & $draw
+
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt $script:MaxPromptTries) {
+            throw "No valid card file selection after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
+        }
+        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > " -f $sorted.Count) -Redraw $draw
+        if (-not $raw) { Write-Host "  Type numbers, 'a' or 'c'." -ForegroundColor Yellow; continue }
+        $raw = $raw.Trim()
+        if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
+
+        $picked = @()
+        if ($raw -eq 'a' -or $raw -eq 'A') {
+            $picked = @($sorted)
+        }
+        else {
+            # Comma list of single numbers and/or N-M ranges.
+            $bad = $false
+            $idxs = @()
+            foreach ($tok in ($raw -split ',')) {
+                $t = $tok.Trim()
+                if (-not $t) { continue }
+                if ($t -match '^(\d+)\s*-\s*(\d+)$') {
+                    $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
+                    if ($lo -lt 1 -or $hi -gt $sorted.Count -or $lo -gt $hi) { $bad = $true; break }
+                    $idxs += $lo..$hi
+                }
+                elseif ($t -match '^\d+$') {
+                    $n = [int]$t
+                    if ($n -lt 1 -or $n -gt $sorted.Count) { $bad = $true; break }
+                    $idxs += $n
+                }
+                else { $bad = $true; break }
+            }
+            if ($bad -or $idxs.Count -eq 0) {
+                Write-Host ("  Enter numbers from 1 to {0} (e.g. 1,3 or 1-3), 'a' for all, or 'c' to cancel." -f $sorted.Count) -ForegroundColor Yellow
+                continue
+            }
+            $picked = @($idxs | Sort-Object -Unique | ForEach-Object { $sorted[$_ - 1] })
+        }
+
+        # Aborted files are skipped by default (import_sdcard.py --include-aborted)
+        # because a cut-off capture is partial data. Picking one BY NUMBER is an
+        # explicit choice though, so ask rather than silently dropping it - and
+        # if the answer is no, drop it here so the count shown is honest.
+        $aborted = @($picked | Where-Object { $_.clean -eq $false })
+        $includeAborted = $false
+        if ($aborted.Count -gt 0) {
+            Write-Host ""
+            foreach ($a in $aborted) { Write-Host ("  ABORTED: {0}" -f $a.name) -ForegroundColor Yellow }
+            $ans = Read-Line ("  {0} of the file(s) you picked never closed cleanly (power loss, a killed run) - import them anyway? [y/N] > " -f $aborted.Count)
+            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                $includeAborted = $true
+            }
+            else {
+                $picked = @($picked | Where-Object { $_.clean -ne $false })
+                if ($picked.Count -eq 0) {
+                    Write-Host "  Nothing left selected." -ForegroundColor DarkGray
+                    return $null
+                }
+            }
+        }
+
+        $already = @($picked | Where-Object { $_.already })
+        if ($already.Count -gt 0) {
+            Write-Host ("  NOTE: {0} of these is already in exports/ and will be skipped by the import." -f $already.Count) -ForegroundColor DarkGray
+        }
+
+        # "ALL" stays an empty Rel list rather than every path spelled out: it
+        # means "no --files filter", which is the long-standing whole-card
+        # behaviour, and keeps the command line short.
+        $isAll = ($picked.Count -eq $sorted.Count) -and ($aborted.Count -eq 0 -or $includeAborted)
+        return @{
+            Rel            = if ($isAll) { @() } else { @($picked | ForEach-Object { $_.rel }) }
+            IncludeAborted = $includeAborted
+        }
+    }
+}
+
 function Import-OneSdCard {
-    # Runs tools\import_sdcard.py DRY RUN first and shows exactly what it found,
-    # then asks before it actually copies anything - the same "preview, then
-    # confirm" shape as the rest of the wizard, applied to the one write this
-    # whole SD-import flow makes. A card import only ever copies (never moves
-    # or deletes from the card - see the script's own header), so the worst
-    # case of a wrong pick is a wasted scan, not lost data.
+    # Lists what the card holds (import_sdcard.py --list-json) and lets the
+    # operator pick files by number, then runs a DRY RUN of exactly that
+    # selection and shows what it found, then asks before it actually copies
+    # anything - the same "preview, then confirm" shape as the rest of the
+    # wizard, applied to the one write this whole SD-import flow makes.
     param([string]$Card, [int]$Repeat, [string]$Boots, [switch]$IncludeAborted,
           [string]$Roster, [switch]$DeleteSource, [string]$ExpectPrefix, [string]$Scenario = 'none')
 
@@ -1309,6 +1474,42 @@ function Import-OneSdCard {
     Write-Host ("Scanning {0} (repeat {1}) ..." -f $Card, $Repeat) -ForegroundColor DarkGray
     Push-Location (Join-Path $base 'tools')
     try {
+        # What's on the card, before anything is selected or copied. Separate
+        # from the dry run below on purpose: this is the pick-by-number list
+        # (with each file's firmware build date), the dry run is the preview of
+        # the copy the selection produces.
+        $listArgs = @('import_sdcard.py', '--card', $Card, '--repeat', $Repeat, '--scenario', $Scenario)
+        if ($Roster) { $listArgs += @('--roster', $Roster) }
+        $listOut = & python @listArgs --list-json 2>&1
+        $rc = $LASTEXITCODE
+        if ($rc -ne 0) {
+            $listOut | ForEach-Object { Write-Host "  $_" }
+            Write-Host ("  import_sdcard.py --list-json exited {0} (python/pyserial missing? run from the ESP-IDF 5.3 PowerShell)." -f $rc) -ForegroundColor Yellow
+            return
+        }
+        # --list-json puts the array on stdout and warnings on stderr, but 2>&1
+        # merges both into one stream here - so take the JSON line rather than
+        # the whole capture, or a roster warning would break ConvertFrom-Json.
+        $jsonLine = @($listOut | ForEach-Object { "$_" } |
+            Where-Object { $_.TrimStart().StartsWith('[') }) | Select-Object -Last 1
+        $cardFiles = @()
+        if ($jsonLine) {
+            try { $cardFiles = @($jsonLine | ConvertFrom-Json) } catch { $cardFiles = @() }
+        }
+
+        if ($cardFiles.Count -eq 0) {
+            Write-Host "  Nothing to import from here." -ForegroundColor DarkGray
+            return
+        }
+
+        $sel = Select-CardFiles -Files $cardFiles
+        if ($null -eq $sel) {
+            Write-Host "  Cancelled - nothing copied." -ForegroundColor DarkGray
+            return
+        }
+        if ($sel.Rel.Count -gt 0) { $pyArgs += @('--files', ($sel.Rel -join ',')) }
+        if ($sel.IncludeAborted -and $pyArgs -notcontains '--include-aborted') { $pyArgs += '--include-aborted' }
+
         $dryOut = & python @pyArgs --dry-run 2>&1
         $rc = $LASTEXITCODE
         $dryOut | ForEach-Object { Write-Host "  $_" }
@@ -1976,7 +2177,17 @@ function Resolve-BoardMac {
     }
     if ($SkipLiveRead) { return $null }
     $mac = Get-BoardMac -TargetPort $Board.Port
-    if ($mac) { $Board.Mac = $mac }
+    if ($mac) {
+        # Caching is a convenience; it must never be able to END A RUN. A
+        # PSCustomObject cannot gain a property by assignment, so a board built
+        # without a Mac field threw here - at the confirm table, i.e. AFTER every
+        # question was answered and after the attacker-MAC gate had already
+        # rewritten mesh_config.h. Every construction site now seeds Mac = '',
+        # and this stays defensive so re-introducing that gap costs a re-read
+        # instead of the whole session.
+        if ($Board.PSObject.Properties['Mac']) { $Board.Mac = $mac }
+        else { $Board | Add-Member -NotePropertyName Mac -NotePropertyValue $mac -Force }
+    }
     return $mac
 }
 
@@ -2251,6 +2462,126 @@ function Edit-BoardInteractive {
             }
         }
     }
+}
+
+function Add-BoardInteractive {
+    # Counterpart to Remove-BoardInteractive, reached from the same pre-flash
+    # "Adjust the plan?" menu - see [[thesis_cc_wizard_hardware_safety]], same
+    # "one explicit node at a time" convention as Edit-BoardInteractive. Picks
+    # a port the same way the original manual roster builder does
+    # (Select-Port, -Taken hides ports already in $Roster). $Roster is a
+    # fixed-size PowerShell array, so this can't append in place - it returns
+    # the updated roster (a NEW array) and the caller reassigns $runRoster
+    # with it, same contract as Remove-BoardInteractive.
+    param(
+        [Parameter(Mandatory)]$Roster,
+        [Parameter(Mandatory)][string]$Attack,
+        [Parameter(Mandatory)][object[]]$Ports
+    )
+
+    $taken     = @($Roster | Where-Object { $_.Port } | ForEach-Object { $_.Port })
+    $suggested = Get-FreeNodeLabel -Taken @($Roster | ForEach-Object { $_.Label })
+    $raw = Read-Line "New node label > [$suggested] (or 'b' back) "
+    if (Test-BackAnswer $raw) { return $Roster }
+    $label = if (-not $raw) { $suggested } else { $raw.Trim() }
+    if (@($Roster | ForEach-Object { $_.Label }) -contains $label) {
+        Write-Host "   '$label' is already taken - node not added." -ForegroundColor Yellow
+        return $Roster
+    }
+
+    $port = Select-Port -For $label -Ports $Ports -AllowBack -Taken $taken
+    if ($port -eq $script:BackSignal) { return $Roster }
+
+    # New nodes join as the "uninvolved" seat for this attack (plain victim /
+    # control) rather than attacker/A/B - promoting straight to a sub-role that
+    # must stay unique is what the confirm below is for, not the default.
+    $kind = 'plain'; $display = 'plain child'
+    if ($Attack -eq 'blackhole') { $kind = 'victim'; $display = 'blackhole victim' }
+    elseif ($Attack -eq 'wormhole') { $kind = 'control'; $display = 'control (plain firmware)' }
+
+    $newBoard = [pscustomobject]@{
+        Label = $label; Port = $port; Role = 'child'; Kind = $kind
+        Display = $display; ScenarioTarget = $false
+        Mac = ''   # same field set as every other board - Resolve-BoardMac writes here
+    }
+    Write-Host ("   Added {0} on {1} ({2})." -f $label, $port, $display) -ForegroundColor Green
+
+    $updated = @($Roster) + $newBoard
+    if ($Attack -in @('blackhole', 'wormhole')) {
+        $ans = Read-Line "   Make this node the attack sub-role instead (reassign attacker/A/B)? [y/N] > "
+        if ($ans -eq 'y' -or $ans -eq 'Y') { Set-AttackSubRoles -Roster $updated -Attack $Attack }
+    }
+    return $updated
+}
+
+function Remove-BoardInteractive {
+    # Counterpart to Add-BoardInteractive. Refuses to remove the ROOT outright
+    # (see Edit-BoardInteractive's 'Role' field for the deliberate way to hand
+    # root to another board first) and refuses a removal that would break the
+    # "exactly one attacker" / "exactly one A and one B" invariant a blackhole/
+    # wormhole run depends on downstream. Returns the updated roster (a NEW
+    # array, same reason as Add-BoardInteractive) or the original $Roster
+    # unchanged if the operator backs out or the removal is refused.
+    param(
+        [Parameter(Mandatory)]$Roster,
+        [Parameter(Mandatory)][string]$Attack,
+        [Parameter(Mandatory)][string]$Scenario
+    )
+
+    if (@($Roster).Count -le 1) {
+        Write-Host "   Only one node left - nothing to remove." -ForegroundColor Yellow
+        return $Roster
+    }
+
+    $opts = @($Roster | ForEach-Object { "$($_.Label)  ($($_.Port), $($_.Display))" })
+    $idx = Show-Menu -Title "Remove which node?" -Options $opts -AllowBack
+    if ($idx -eq -1) { return $Roster }
+
+    $victim = $Roster[$idx]
+    if ($victim.Role -eq 'root') {
+        Write-Host "   Can't remove the ROOT directly - edit that node's Role to hand root to another board first, then remove it." -ForegroundColor Yellow
+        return $Roster
+    }
+
+    $remaining         = @($Roster | Where-Object { $_ -ne $victim })
+    $remainingChildren = @($remaining | Where-Object { $_.Role -ne 'root' })
+
+    if ($Attack -eq 'blackhole' -and $remainingChildren.Count -lt 2) {
+        Write-Host "   Blackhole needs at least one attacker AND one victim - removing $($victim.Label) would leave too few children. Not removed." -ForegroundColor Yellow
+        return $Roster
+    }
+    if ($Attack -eq 'wormhole' -and $remainingChildren.Count -lt 2) {
+        Write-Host "   Wormhole needs both a Node A AND a Node B - removing $($victim.Label) would leave too few children. Not removed." -ForegroundColor Yellow
+        return $Roster
+    }
+
+    $ans = Read-Line ("   Remove {0} ({1})? [y/N] > " -f $victim.Label, $victim.Port)
+    if ($ans -ne 'y' -and $ans -ne 'Y') { return $Roster }
+
+    $wasSubRole = $victim.Kind -in @('attacker', 'A', 'B')
+    $wasTarget  = [bool]$victim.ScenarioTarget
+    Write-Host ("   Removed {0}." -f $victim.Label) -ForegroundColor Green
+
+    if ($wasSubRole -and $Attack -in @('blackhole', 'wormhole')) {
+        Write-Host "   That node held the attack sub-role - reassign it among what's left:" -ForegroundColor DarkGray
+        Set-AttackSubRoles -Roster $remaining -Attack $Attack
+    }
+
+    if ($wasTarget -and (Test-ScenarioNeedsTarget $Scenario)) {
+        $eligible = if ($Scenario -eq 'burst') { @($remainingChildren | Where-Object { Test-BurstEligible $_ }) } else { @($remainingChildren) }
+        if ($eligible.Count -eq 0) {
+            Write-Host "   That node was the $Scenario target and no remaining child can carry it - pick a different scenario, or add a node before confirming." -ForegroundColor Yellow
+        } else {
+            $labels = @($eligible | ForEach-Object { "$($_.Label)  ($($_.Port))  -  $($_.Display)" })
+            $tIdx = Show-Menu -Title "Which node is now the $Scenario TARGET? (exactly one)" -Options $labels -DefaultIndex 0
+            if ($tIdx -ge 0) {
+                $eligible[$tIdx].ScenarioTarget = $true
+                $eligible[$tIdx].Display += " + $($Scenario.ToUpper()) TARGET"
+            }
+        }
+    }
+
+    return $remaining
 }
 
 function Get-RunDirs {
@@ -2552,13 +2883,16 @@ $attack = ''; $topology = ''; $location = ''; $repeat = 1; $scenario = 'none'
 $roster = @()
 
 # ------------------------------------------------------------ preset picker ----
-# Runs only when no -Preset was given AND at least one preset exists, so both
-# `-Preset <path>` and a tree with no presets\ folder behave exactly as before.
-# On commit it sets $Preset to a FULL path (Test-Path below resolves against the
-# caller's CWD, not $base) and falls through to the loader.
+# Runs only when no -Preset was given AND at least one preset exists AND the
+# mode menu's "without a preset" option wasn't the one picked, so `-Preset
+# <path>`, a tree with no presets\ folder, and that mode option all behave
+# the same way: straight to the manual menus below. On commit it sets $Preset
+# to a FULL path (Test-Path below resolves against the caller's CWD, not
+# $base) and falls through to the loader.
 
 $presetFromPicker = $false
 $bannerShown      = $false
+$forceManual      = $false
 
 # -Preset on the command line means "just run this, non-interactively" - the mode
 # menu only shows up when nothing was passed, same condition as the preset picker.
@@ -2580,6 +2914,7 @@ if (-not $Preset) {
 
         if ($modeIdx -eq 8) { Write-Host ""; Write-Host "Bye - nothing was flashed." -ForegroundColor DarkGray; exit 0 }
         if ($modeIdx -eq 0) { break }
+        if ($modeIdx -eq 9) { $forceManual = $true; break }
         if ($modeIdx -eq 1) { Invoke-WipeBoards; continue }
         if ($modeIdx -eq 2) { Invoke-SetLocationBoards; continue }
         if ($modeIdx -eq 3) { Invoke-FirmwareSelfTest; continue }
@@ -2599,7 +2934,7 @@ $backToPresetPicker = $false
 :restart while ($true) {
 
 if (-not $Preset) {
-    $presetFiles = @(Get-PresetFiles)
+    $presetFiles = if ($forceManual) { @() } else { @(Get-PresetFiles) }
     if ($presetFiles.Count -gt 0) {
         if (-not $bannerShown) {
             Write-Host ""
@@ -3189,6 +3524,13 @@ else {
                     Kind           = 'plain'
                     Display        = 'plain child'
                     ScenarioTarget = $false
+                    # Empty, but PRESENT: Resolve-BoardMac caches a fresh read
+                    # back onto this field, and a PSCustomObject cannot gain a
+                    # property by assignment. Every board built here has to
+                    # carry the same fields ConvertTo-Roster gives a board
+                    # loaded from a preset, or the two paths diverge and
+                    # whichever one lacks a field dies the moment it is written.
+                    Mac            = ''
                 }
                 $i++
                 continue flow
@@ -3214,12 +3556,33 @@ else {
                     # only way through was to nominate one of YOUR victims as the
                     # attacker - which then sent the pre-flight gate off to read that
                     # board's MAC and rewrite mesh_config.h to the wrong value.
+                    #
+                    # The single-laptop escape below exists for the same reason, one
+                    # step further: this menu USED to force one of the children to be
+                    # the attacker, so a roster whose children are all VICTIMS was
+                    # unreachable - with exactly one child the "choice" was no choice
+                    # at all, and picking it produced an attacker with no victims,
+                    # which the pre-flash warnings then (correctly) called a capture
+                    # with no attack signature. Every child is a victim by default in
+                    # a blackhole run; which ONE is the attacker is the exception, and
+                    # "none of them" has to be sayable. A roster with no attacker is
+                    # already a supported, warned-about state further down (see the
+                    # "local victim(s) present but no attacker anywhere" warning).
+                    $escapeIdx = $children.Count
                     if ($multiLaptop) { $labels += 'None of these - the ATTACKER is on ANOTHER laptop' }
+                    else              { $labels += 'None of these - they are all VICTIMS (no attacker in this run)' }
 
                     $idx = Show-Menu -Title 'Which child is the BLACKHOLE ATTACKER? (exactly one)' -Options $labels -AllowBack
                     if ($idx -eq -1) { Undo-LastChild; $step = 7; continue flow }
 
-                    if ($multiLaptop -and $idx -eq $children.Count) {
+                    if (-not $multiLaptop -and $idx -eq $escapeIdx) {
+                        foreach ($c in $children) { $c.Kind = 'victim'; $c.Display = 'blackhole victim' }
+                        Write-Host ""
+                        Write-Host "  No attacker in this roster - every child is a victim. The capture will" -ForegroundColor Yellow
+                        Write-Host "  carry NO attack signature unless an attacker joins this mesh from" -ForegroundColor Yellow
+                        Write-Host "  somewhere else; you'll be warned again before anything is flashed." -ForegroundColor Yellow
+                    }
+                    elseif ($multiLaptop -and $idx -eq $escapeIdx) {
                         $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
                         $children += [pscustomobject]@{
                             Label          = $remoteLabel
@@ -3228,6 +3591,7 @@ else {
                             Kind           = 'attacker'
                             Display        = 'blackhole ATTACKER (other laptop)'
                             ScenarioTarget = $false
+                            Mac            = ''   # same field set as every other board - see the child above
                             Synthetic      = $true
                         }
                         foreach ($c in $children) {
@@ -3277,11 +3641,13 @@ else {
                         $labelB = Get-FreeNodeLabel -Taken (@($taken) + $labelA)
                         $children += [pscustomobject]@{
                             Label = $labelA; Port = $null; Role = 'child'; Kind = 'A'
-                            Display = 'wormhole Node A (other laptop)'; ScenarioTarget = $false; Synthetic = $true
+                            Display = 'wormhole Node A (other laptop)'; ScenarioTarget = $false
+                            Mac = ''; Synthetic = $true
                         }
                         $children += [pscustomobject]@{
                             Label = $labelB; Port = $null; Role = 'child'; Kind = 'B'
-                            Display = 'wormhole Node B (other laptop)'; ScenarioTarget = $false; Synthetic = $true
+                            Display = 'wormhole Node B (other laptop)'; ScenarioTarget = $false
+                            Mac = ''; Synthetic = $true
                         }
                         foreach ($c in $children) {
                             if ($c.Kind -notin @('A', 'B')) { $c.Kind = 'control'; $c.Display = 'control (plain firmware)' }
@@ -3418,6 +3784,7 @@ else {
             Kind           = 'root'
             Display        = 'ROOT (announces the phases)'
             ScenarioTarget = $false
+            Mac            = ''   # same field set as every other board - see the child above
         })
     }
 }
@@ -3750,10 +4117,12 @@ $buildAndPrintPlan = {
 while ($true) {
     $adjIdx = Show-Menu -Title "Adjust the plan before confirming?" -Options @(
         'Edit a specific node (port/label/role/scenario target/attack sub-role)',
+        'Add a node',
+        'Remove a node',
         'Change topology for this run',
         'Nothing more -- continue to confirm'
-    ) -DefaultIndex 2
-    if ($adjIdx -eq 2) { break }
+    ) -DefaultIndex 4
+    if ($adjIdx -eq 4) { break }
 
     if ($adjIdx -eq 0) {
         $pickIdx = Show-Menu -Title "Which node?" -Options (@($runRoster | ForEach-Object { "$($_.Label)  ($($_.Port), $($_.Display))" }))
@@ -3762,6 +4131,12 @@ while ($true) {
         }
     }
     elseif ($adjIdx -eq 1) {
+        $runRoster = Add-BoardInteractive -Roster $runRoster -Attack $attack -Ports $ports
+    }
+    elseif ($adjIdx -eq 2) {
+        $runRoster = Remove-BoardInteractive -Roster $runRoster -Attack $attack -Scenario $scenario
+    }
+    elseif ($adjIdx -eq 3) {
         $topoOpts = @('tree', 'star', 'linear', 'partial')
         $topoIdx2 = Show-Menu -Title "Topology (every board, same)?" -Options @(
             'tree     (default self-organising)',
@@ -3772,8 +4147,9 @@ while ($true) {
         if ($topoIdx2 -ge 0) { $topology = $topoOpts[$topoIdx2] }
     }
 
-    # A node's Role may have just changed -- re-sort (root last), same
-    # invariant as the original roster construction relies on downstream.
+    # A node's Role may have just changed, or one was added/removed -- re-sort
+    # (root last), same invariant as the original roster construction relies
+    # on downstream.
     $runRoster = @($runRoster | Where-Object { $_.Role -ne 'root' }) + @($runRoster | Where-Object { $_.Role -eq 'root' })
     & $buildAndPrintPlan
 }
@@ -3828,6 +4204,31 @@ if ($rootSec -gt 0) {
 }
 
 # ----------------------------------------------------------- save preset ----
+
+# A loaded preset that was then edited (node added/removed/changed in the
+# "Adjust the plan?" step above) only affects THIS run unless written back -
+# offered here as its own yes/no, separate from "save as a new preset" below,
+# so a plain unedited replay is never prompted to overwrite anything.
+if ($Preset) {
+    $updateAns = Read-Line ("`nSave these changes back into {0}? [y/N] > " -f (Split-Path -Leaf $Preset))
+    if ($updateAns -eq 'y' -or $updateAns -eq 'Y') {
+        if ($DryRun) {
+            Write-Host "  Dry run - not reading the boards, so MACs won't be refreshed." -ForegroundColor DarkGray
+        }
+        else {
+            $macAns = Read-Line "  Refresh each board's MAC in the preset? (reads each board, ~2s each) [Y/n] > "
+            if ($macAns -ne 'n' -and $macAns -ne 'N') {
+                Write-Host ""
+                # $runRoster only - a preset saves THIS laptop's own boards; a
+                # multi-laptop split's remote boards have no port to read anyway.
+                Add-BoardMacs -Roster $runRoster -Known $macsRead | Out-Null
+            }
+        }
+        Save-Preset -Path $Preset -Attack $attack -Topology $topology `
+            -Location $location -RepeatNum $repeat -Roster $runRoster -Scenario $scenario
+        Write-Host ("  Updated -> {0}" -f $Preset) -ForegroundColor Green
+    }
+}
 
 if (-not $Preset) {
     $saveAns = Read-Line "`nSave this roster as a preset for the next repeat? [y/N] > "

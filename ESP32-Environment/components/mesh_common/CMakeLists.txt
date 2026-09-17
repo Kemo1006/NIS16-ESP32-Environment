@@ -14,6 +14,7 @@ idf_component_register(
         esp_event
         spiffs
         fatfs      # sd_status.c: esp_vfs_fat.h / sdmmc mount (SD card status report)
+        esp_app_format  # sd_status.c: esp_app_desc.h (the image's own build date/time)
         driver
         freertos
         esp_timer
