@@ -968,6 +968,25 @@ function Invoke-FirmwareSelfTest {
     $portTag  = ($port -replace '[^A-Za-z0-9]', '')
     $buildDir = Join-Path $buildRoot "$proj\build_${role}_none_tree_$portTag"
 
+    # Same self-heal run.ps1 does before it builds/flashes: a build dir can be left
+    # pointing at a different repo path (moved/re-cloned) or half-configured by an
+    # interrupted build (Ctrl+Break, killed idf.py) -- either way idf.py's
+    # generated sdkconfig.h/build.ninja is broken and every rebuild just reuses the
+    # same broken tree. This call goes straight to idf.py (not through run.ps1), so
+    # it needs its own copy of the same check.
+    $cacheFile = Join-Path $buildDir "CMakeCache.txt"
+    if (Test-Path $cacheFile) {
+        $expectedHome   = (Join-Path $base $proj) -replace '\\', '/'
+        $cachedHomeLine = Select-String -Path $cacheFile -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=' | Select-Object -First 1
+        $pathMismatch   = $cachedHomeLine -and (($cachedHomeLine.Line -split '=', 2)[1]).TrimEnd('/') -ne $expectedHome.TrimEnd('/')
+        $sdkconfigH     = Join-Path $buildDir "config\sdkconfig.h"
+        $sdkconfigOk    = (Test-Path $sdkconfigH) -and (Select-String -Path $sdkconfigH -Pattern '^#define CONFIG_IDF_TARGET_ESP32\b' -Quiet)
+        if ($pathMismatch -or -not $sdkconfigOk) {
+            Write-Host "Stale build dir '$buildDir' is misconfigured (moved repo or interrupted build) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
+            Remove-Item -Recurse -Force $buildDir
+        }
+    }
+
     Write-Host ""
     Write-Host "------------------------------------------------------------" -ForegroundColor Green
     Write-Host "  FIRMWARE SELF-TEST - no capture, no attack, no export" -ForegroundColor Green
@@ -2280,13 +2299,21 @@ function Invoke-DataSync {
     # tools\push_data.py does all git work in a private clone, so this folder's
     # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
     # actions - keep the two in sync.
-    param([ValidateSet('push', 'pull', 'test')][string]$Mode)
+    param([ValidateSet('push', 'pull', 'test')][string]$Mode, [ValidateSet('exports', 'presets')][string]$Area = 'exports')
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
     if ($Mode -eq 'test') {
         Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
         Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
         Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($Area -eq 'presets') {
+        if ($Mode -eq 'pull') {
+            Write-Host "Copies teammates' saved presets from GitHub into presets\<them>\ (never code). Lists them" -ForegroundColor DarkGray
+            Write-Host "and asks first; a preset you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+        } else {
+            Write-Host "Pushes your saved presets under presets\<you>\ (never code, never capture data)." -ForegroundColor DarkGray
+            Write-Host "Shows what will go up and asks before pushing, then offers teammates' new presets." -ForegroundColor DarkGray
+        }
     } elseif ($Mode -eq 'pull') {
         Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
         Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
@@ -2296,7 +2323,7 @@ function Invoke-DataSync {
     }
     Push-Location $base
     try {
-        python $py $Mode
+        python $py $Mode --area $Area
         if ($LASTEXITCODE -ne 0) { Write-Host "Data sync failed (exit $LASTEXITCODE) - see the message above." -ForegroundColor Red; return }
         if ($Mode -eq 'test') {
             $ans = Read-Line "`nRemove ALL test files from GitHub now? Say n if a teammate still has to run the test. [y/N] > "
@@ -2309,20 +2336,22 @@ function Invoke-DataSync {
 }
 
 function Invoke-DataSyncMenu {
-    # The three push_data.py actions live behind one main-menu entry instead of
-    # three, so the main menu stays scannable. Loops so a push can be followed by
-    # a pull without going back out to the main menu first.
+    # The push_data.py actions live behind one main-menu entry instead of several,
+    # so the main menu stays scannable. Loops so a push can be followed by a pull
+    # (or a presets upload) without going back out to the main menu first.
     while ($true) {
-        switch (Show-Menu -Title 'Capture data sync (GitHub) - raw CSVs only, never code:' -Options @(
+        switch (Show-Menu -Title 'Capture data sync (GitHub) - raw CSVs and presets only, never code:' -Options @(
             "Push my capture data to GitHub - merges with teammates' pushes",
             "Pull teammates' capture data from GitHub - never overwrites your files",
+            "Upload my saved presets to GitHub - shares presets\<you>\*.json, fetches teammates' new ones back too",
             'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
             'Back to the main menu'
-        ) -DefaultIndex 3) {
-            0 { Invoke-DataSync -Mode push }
-            1 { Invoke-DataSync -Mode pull }
-            2 { Invoke-DataSync -Mode test }
-            3 { return }
+        ) -DefaultIndex 4) {
+            0 { Invoke-DataSync -Mode push -Area exports }
+            1 { Invoke-DataSync -Mode pull -Area exports }
+            2 { Invoke-DataSync -Mode push -Area presets }
+            3 { Invoke-DataSync -Mode test }
+            4 { return }
         }
     }
 }

@@ -28,6 +28,42 @@
 - sep. 13, 2026 — FIXED (hardware-tested), all in `run_wizard.ps1`: args were passed as `@($array)` (binds POSITIONALLY), crashing every real run into `-Port` — switched to an ordered-hashtable splat (binds by name); `$Repeat`/`$repeat` silently collided (PS names are case-insensitive) so `-Preset ... -Repeat 2` was quietly ignored; the blackhole-MAC-mismatch prompt showed `a)/b)` info bullets right before an unrelated `[y/N]` prompt, so typing `a`/`b` read as "no" and aborted every time — replaced with a real menu whose option 1 auto-patches the header.
 - sep. 13, 2026 — FOUND: `Get-Content -Raw` misdetects `mesh_config.h`'s no-BOM UTF-8 encoding on Windows PowerShell 5.1, corrupting every non-ASCII byte (the header's em-dash comments) on write-back. Caught via a before/after diff against a COPY, before it touched the real file. Fix: `[System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))`.
 - sep. 17, 2026 — `menu.ps1`'s multi-board flow gained run_wizard's pre-flash summary box; both front-ends' plan tables now show each board's MAC.
+- sep. 18, 2026 — BUILT (`run_wizard.ps1`/`menu.ps1`, uncommitted at the time): (1) **Main-menu declutter** — the
+  3 member-board-list entries (edit table / open json / snapshots) collapsed into one submenu in
+  BOTH launchers (`Show-Menu -AllowBack` in run_wizard, `Read-Choice -AllowBack` in menu.ps1), freeing
+  2 main-menu slots each; numbering renumbered accordingly. (2) **SD-import picker delete** —
+  `Select-CardFiles`'s "Import which?" prompt gained `d1,3`/`d1-2` to delete those numbered files
+  straight off the card (a real `Remove-Item`, red PERMANENT warning + `[y/N]`), separate from the
+  existing post-import `--delete-source` (still only fires after a verified copy) — for clearing
+  junk/ABORTED entries the operator never intends to import. (3) **Per-member preset folders** — the
+  root problem: a preset's filename already spells the experiment cell (topology-attack-scenario-
+  location), so two members' preset for the same cell collided on name, and there was no way to tell
+  whose boards a saved preset described without opening it. Presets now file under
+  `presets\<Member>\<cell>.json` (`presets\Bas\`, `presets\Cal\`, `presets\Kyle\` created, empty
+  until first save — git won't track empty dirs). `Get-PresetFiles` recurses and tags each file's
+  `.Owner` from its folder; `Save-Preset` gained an `-Owner` param (also written into the JSON itself
+  as an `owner` field, so a copied-out file still says whose it is — omitted `-Owner` keeps whatever
+  the file/folder already had, so a re-save never blanks it). New `Find-PresetOwnerByMac` guesses the
+  owner from the roster's MACs against `member_boards.json`; `my_member.txt` (new, via
+  `Get-MyMember`/`Select-MyMember`, exposed as a 4th member-board submenu item) remembers "whose
+  laptop is this" as the fallback. The save flow now asks "Whose boards is this preset for?"
+  (pre-answered by MAC, then by `my_member.txt`) BEFORE the filename prompt — this is what makes
+  saving an absent member's preset while yours already has the same cell name work without a manual
+  rename. The load picker (`Show-Menu` gained an optional `-GroupHeaders` hashtable, purely visual —
+  numbering stays one sequential run so a heading can never shift what "[3]" means) groups YOURS
+  first, then every other member with boards filed, then UNFILED last. Preset detail screen gained a
+  `Boards of: <member>` line (green if it's you) and a new "File this preset under a member" action
+  (one file at a time, no bulk auto-move — a wrong guess would misattribute someone's boards). The
+  SD-import "several presets match" pickers (both launchers) now show the owner per line, since same-
+  cell presets now share a filename; `menu.ps1`'s scan was non-recursive and would have silently
+  fallen back to raw `victim_NODE_<MAC>` naming on every import once presets moved into folders —
+  fixed to `-Recurse`. The pre-existing `presets\linear-blackhole-none-g402.json` git conflict was
+  RESOLVED sep. 18, 2026 when pushing to origin (see MEMORY.md "sep. 17 conflict" note): the flat path
+  was superseded by `presets\Bas\linear-blackhole-none-g402.json` and removed. Tested: 21 PS-unit
+  checks (owner detection, folder recursion, same-filename coexistence, Save-Preset owner precedence,
+  grouping order) + scripted-stdin runs of both launchers' startup and submenu. NOT hardware-tested
+  (no board touched by any of this). PS 5.1 trap hit and fixed: `[ordered]@{}` has `.Contains()` but
+  no `.ContainsKey()` — see the global `powershell_menu_script_traps` memory (not this file).
 - sep. 17, 2026 — FIXED + PUSHED (`a4f87b4`, `origin/Unified`): "Run analysis only" (both wizards)
   always read the RAW export, ignoring `trimmed\` entirely — new `Select-AnalysisInput` (mirrored in
   both files) now defaults to `trimmed\` when present, blocks (default: cancel) on a stale/incomplete

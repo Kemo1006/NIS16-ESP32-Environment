@@ -8,42 +8,30 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 18, 2026 — BUILT (`run_wizard.ps1`/`menu.ps1`, uncommitted): (1) **Main-menu declutter** — the
-  3 member-board-list entries (edit table / open json / snapshots) collapsed into one submenu in
-  BOTH launchers (`Show-Menu -AllowBack` in run_wizard, `Read-Choice -AllowBack` in menu.ps1), freeing
-  2 main-menu slots each; numbering renumbered accordingly. (2) **SD-import picker delete** —
-  `Select-CardFiles`'s "Import which?" prompt gained `d1,3`/`d1-2` to delete those numbered files
-  straight off the card (a real `Remove-Item`, red PERMANENT warning + `[y/N]`), separate from the
-  existing post-import `--delete-source` (still only fires after a verified copy) — for clearing
-  junk/ABORTED entries the operator never intends to import. (3) **Per-member preset folders** — the
-  root problem: a preset's filename already spells the experiment cell (topology-attack-scenario-
-  location), so two members' preset for the same cell collided on name, and there was no way to tell
-  whose boards a saved preset described without opening it. Presets now file under
-  `presets\<Member>\<cell>.json` (`presets\Bas\`, `presets\Cal\`, `presets\Kyle\` created, empty
-  until first save — git won't track empty dirs). `Get-PresetFiles` recurses and tags each file's
-  `.Owner` from its folder; `Save-Preset` gained an `-Owner` param (also written into the JSON itself
-  as an `owner` field, so a copied-out file still says whose it is — omitted `-Owner` keeps whatever
-  the file/folder already had, so a re-save never blanks it). New `Find-PresetOwnerByMac` guesses the
-  owner from the roster's MACs against `member_boards.json`; `my_member.txt` (new, via
-  `Get-MyMember`/`Select-MyMember`, exposed as a 4th member-board submenu item) remembers "whose
-  laptop is this" as the fallback. The save flow now asks "Whose boards is this preset for?"
-  (pre-answered by MAC, then by `my_member.txt`) BEFORE the filename prompt — this is what makes
-  saving an absent member's preset while yours already has the same cell name work without a manual
-  rename. The load picker (`Show-Menu` gained an optional `-GroupHeaders` hashtable, purely visual —
-  numbering stays one sequential run so a heading can never shift what "[3]" means) groups YOURS
-  first, then every other member with boards filed, then UNFILED last. Preset detail screen gained a
-  `Boards of: <member>` line (green if it's you) and a new "File this preset under a member" action
-  (one file at a time, no bulk auto-move — a wrong guess would misattribute someone's boards). The
-  SD-import "several presets match" pickers (both launchers) now show the owner per line, since same-
-  cell presets now share a filename; `menu.ps1`'s scan was non-recursive and would have silently
-  fallen back to raw `victim_NODE_<MAC>` naming on every import once presets moved into folders —
-  fixed to `-Recurse`. The pre-existing `presets\linear-blackhole-none-g402.json` git conflict (still
-  UU, see STATUS.md Blockers) was left untouched, still sits unfiled (its MACs resolve to Bas).
-  Tested: 21 PS-unit checks (owner detection, folder recursion, same-filename coexistence, Save-Preset
-  owner precedence, grouping order) + scripted-stdin runs of both launchers' startup and submenu.
-  NOT hardware-tested (no board touched by any of this). PS 5.1 trap hit and fixed:
-  `[ordered]@{}` has `.Contains()` but no `.ContainsKey()` — see the global
-  `powershell_menu_script_traps` memory (not this file).
+- sep. 18, 2026 — **PUSHED** the whole day's sep. 18 tooling batch to `origin/Unified` (`1cf76e3`):
+  topology graph, mesh layer-cap fix, CC heartbeat, per-member presets (full detail in ARCHIVE.md),
+  run-log/SD-delete tooling, member board list. Resolved the sep. 17 index conflict on
+  `presets\linear-blackhole-none-g402.json` by removing it (superseded by `presets\Bas\...json`,
+  already staged) and merging in the 3 data-sync commits (`0a356df` etc.) pushed from a separate
+  clean clone. Also merged `run.ps1`/`push_data.py` conflicts by keeping the newer local versions
+  (menu already collapsed to one submenu; docstring already covering presets).
+- sep. 18, 2026 — BUILT (`run.ps1` + `run_wizard.ps1`'s `Invoke-FirmwareSelfTest`, uncommitted):
+  auto-detect + wipe a half-configured build dir. Symptom that triggered this: an interrupted
+  `idf.py`/Ctrl+Break can leave `CMakeCache.txt`/`build.ninja` written but the generated
+  `config\sdkconfig.h` without `CONFIG_IDF_TARGET_ESP32` — esp-idf's `soc_caps.h` then can't
+  determine the ECO version and `sha_hal.c` fails with `SHA_TYPE`/`SHA1` undeclared, a plain rebuild
+  just reusing the same broken tree forever. Same remedy as the existing wrong-repo-path self-heal in
+  `run.ps1`: detect, `Remove-Item -Recurse -Force`, let it reconfigure. Scope explicitly limited to
+  `run.ps1`/`run_wizard.ps1` per user request — `menu.ps1`'s own separate pre-build `idf.py` call
+  still has NO self-heal of any kind.
+- sep. 18, 2026 — BUILT (`tools\push_data.py` + `run_wizard.ps1`, uncommitted): data sync now
+  actually covers saved presets, not just capture CSVs — `push_data.py`'s docstring had claimed
+  presets support since it was written, but the code was 100% CSV-hardcoded. New `--area
+  {exports,presets}` flag (default exports); presets area syncs `.json` under `presets\<owner>\`
+  using the exact same byte-diff/conflict-keep-both/ledger-skip machinery, no new logic needed.
+  Wizard menu gained "Upload my saved presets to GitHub" (`Invoke-DataSync -Area presets`), same
+  push-then-auto-pull-back UX as the existing CSV push. `menu.ps1`'s separate, still-unmerged
+  data-sync menu NOT touched — out of the user-specified scope both times this was requested.
 - sep. 18, 2026 — BUILT (`run_wizard.ps1` + `mesh_common`, uncommitted), 4 items. (1) Run log:
   `[Y/n]` prompt before a capture, `Start-Transcript` over the board loop into new `run_logs\`, named
   like a preset + timestamp; DATA menu "View a saved run log" (`Invoke-ViewRunLog`). (2)
@@ -140,6 +128,19 @@
   header-only, instead of silently returning None like a legitimately absent root log.
   Rejected as too risky pre-campaign: having the attacker announce its MAC over the mesh
   (untested protocol change days before 24 runs).
+- ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture** (first diagnosed
+  sep. 18, 2026, mid `blackhole/linear/G402`). Symptom: boot count climbing every ~2s in the SD env
+  report, `rst:0x3 (SW_RESET)`, UART output garbled mid-line (abrupt uncontrolled reset, NOT a clean
+  `esp_restart()` call anywhere in app code), always right as WiFi/mesh radio powers up (`sta +
+  softAP` dual-radio start — the single highest current-draw moment of boot). Diagnosis: power
+  brownout, not firmware — the ROOT runs BOTH softAP+STA (a child only runs STA, draws less), and
+  `root_node/sdkconfig`'s brownout detector sits at its most sensitive default
+  (`CONFIG_ESP32_BROWNOUT_DET_LVL_SEL_0`, ~2.7V trip). RULED OUT as the cause: the same-session
+  `MESH_STACK_MAX_LAYER_CHAIN=1000` change — `mesh_setup.c:139`'s `esp_mesh_set_max_layer(1000)` call
+  succeeds every time (its own log line prints cleanly right after it, before the crash point). Fix:
+  root directly into a laptop USB port, never a hub shared with other boards; known-good short cable.
+  If a CHILD loops too under the same setup, it's the shared power source, not root's dual-radio
+  draw specifically — re-diagnose before assuming this same cause.
 - ⚠️ WORMHOLE's equivalent run-killer is DIFFERENT — it has **no MAC at all** (the tunnel is a
   physical wired UART1 link between the two endpoint boards; `mesh_config.h:243` says so outright,
   and wormhole victims send plain TODS since the P2P-to-a-MAC path is `BLACKHOLE_VICTIM_TARGET`

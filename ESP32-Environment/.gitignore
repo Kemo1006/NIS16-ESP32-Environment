@@ -19,10 +19,14 @@ cmake-build-*/
 # needs them on GitHub (see commits 69e6057 / 8200955, "for team visibility").
 # ~6 MB for the whole current matrix. What we do NOT track:
 #
-#   _archive/     superseded runs kept only for provenance (~46 MB)
+#   _archive/     superseded runs kept only for provenance (~46 MB). preprocess.py
+#                 writes one per LEAF folder, so this needs **, not a bare prefix.
+#   archive/      the same thing hand-made; the team's real archive lives at
+#                 <repo>/archive/<date>_<label>/ and is tracked normally.
 #   trimmed/      derived from raw by trim_run.py; regenerate, don't store
 #   manifest.json rewritten by validate_integrity.py on every run
-tools/exports/_archive/
+tools/exports/**/_archive/
+tools/exports/**/archive/
 tools/exports/**/trimmed/
 tools/exports/**/manifest.json
 
