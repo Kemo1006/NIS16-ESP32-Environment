@@ -644,8 +644,8 @@ static void tree_line_cb(void *ctx, int idx, int depth)
     (void)ctx;
     const heartbeat_entry_t *e = &s_nodes[idx];
     int indent = depth < 24 ? depth : 24;
-    ESP_LOGI(TAG, "  %*sL%-3d " MACSTR "  %-10s %s", indent * 2, "",
-             depth + 1, MAC2STR(e->mac), node_role_to_str(e->role), e->nickname);
+    ESP_LOGI(TAG, "  %*sL%-3d " MACSTR "  %-10s", indent * 2, "",
+             depth + 1, MAC2STR(e->mac), node_role_to_str(e->role));
 }
 
 static void heartbeat_table_print(void)
@@ -666,8 +666,8 @@ static void heartbeat_table_print(void)
         heartbeat_entry_t *e = &s_nodes[i];
         uint32_t age_ms = (uint32_t)((now - e->last_seen_us) / 1000LL);
         if (age_ms > HEARTBEAT_STALE_MS) {
-            ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: " MACSTR " (%s)",
-                     (unsigned)(age_ms / 1000U), MAC2STR(e->mac), e->nickname);
+            ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: " MACSTR,
+                     (unsigned)(age_ms / 1000U), MAC2STR(e->mac));
             entry_remove(i);
             continue;
         }
@@ -708,8 +708,8 @@ static void heartbeat_table_print(void)
     ESP_LOGI(TAG, "============ MESH TOPOLOGY: %s, %u node%s, %d layer%s ============",
              topo_kind_str(kind), (unsigned)n, n == 1 ? "" : "s",
              g.max_layer, g.max_layer == 1 ? "" : "s");
-    ESP_LOGI(TAG, "%-5s %-18s %-11s %-16s %-6s %-6s %-6s",
-             "LYR", "MAC", "ROLE", "NICKNAME", "RSSI", "PHASE", "AGE_S");
+    ESP_LOGI(TAG, "%-5s %-18s %-11s %-6s %-6s %-6s",
+             "LYR", "MAC", "ROLE", "RSSI", "PHASE", "AGE_S");
     bool mismatch = false;
     for (size_t i = 0; i < n; i++) {
         int k = order[i];
@@ -723,9 +723,9 @@ static void heartbeat_table_print(void)
             snprintf(lyr, sizeof(lyr), "-");
         }
         uint32_t age_s = (uint32_t)((now - e->last_seen_us) / 1000000LL);
-        ESP_LOGI(TAG, "%-5s " MACSTR "  %-11s %-16s %-6d %-6u %-6lu",
+        ESP_LOGI(TAG, "%-5s " MACSTR "  %-11s %-6d %-6u %-6lu",
                  lyr, MAC2STR(e->mac), node_role_to_str(e->role),
-                 e->nickname, (int)e->parent_rssi, (unsigned)e->current_phase,
+                 (int)e->parent_rssi, (unsigned)e->current_phase,
                  (unsigned long)age_s);
     }
     if (mismatch) {
@@ -770,8 +770,8 @@ static void heartbeat_mark_offline(const uint8_t mac[6])
         if (memcmp(s_nodes[i].mac, mac, 6) != 0) {
             continue;
         }
-        ESP_LOGW(TAG, "Node OFFLINE (child-disconnected event) — " MACSTR " (%s)",
-                 MAC2STR(s_nodes[i].mac), s_nodes[i].nickname);
+        ESP_LOGW(TAG, "Node OFFLINE (child-disconnected event) — " MACSTR,
+                 MAC2STR(s_nodes[i].mac));
         entry_remove(i);
         table_unlock();
         heartbeat_request_print();
