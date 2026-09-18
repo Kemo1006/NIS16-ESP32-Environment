@@ -425,6 +425,19 @@ if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile)) {
     }
 }
 
+# Self-heal a build dir left half-configured by an interrupted build (Ctrl+Break,
+# a killed idf.py, etc.). Symptom: CMakeCache.txt/build.ninja exist but the
+# generated config\sdkconfig.h never got CONFIG_IDF_TARGET_ESP32 written into it,
+# so esp-idf's soc_caps.h can't determine the ECO version and sha_hal.c fails with
+# "SHA_TYPE"/"SHA1" undeclared -- a plain rebuild just reuses the same broken tree
+# forever. Same remedy as the path-mismatch case above: wipe and let it reconfigure.
+$sdkconfigH  = Join-Path $buildDir "config\sdkconfig.h"
+$sdkconfigOk = (Test-Path $sdkconfigH) -and (Select-String -Path $sdkconfigH -Pattern '^#define CONFIG_IDF_TARGET_ESP32\b' -Quiet)
+if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile) -and -not $sdkconfigOk) {
+    Write-Host "Stale build dir '$buildDir' has an incomplete sdkconfig.h (interrupted build?) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
+    Remove-Item -Recurse -Force $buildDir
+}
+
 if ($BuildOnly) {
     Write-Host "Building $Role for $Port (attack=$Attack, topology=$Topology, scenario=$Scenario, build=$buildDir) - no flash." -ForegroundColor Cyan
     Push-Location (Join-Path $base $proj)
