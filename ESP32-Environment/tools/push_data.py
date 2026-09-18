@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Push capture CSVs and saved presets to GitHub - data only, never code.
+"""Push capture CSVs or saved presets to GitHub - data only, never code.
 
-    python tools/push_data.py push           raw capture CSVs under tools/exports/,
-                                              then saved presets under presets/
-    python tools/push_data.py pull           fetch teammates' CSVs and presets only -
-                                              never touches code
-    python tools/push_data.py test           3 throwaway animal CSVs under sync_test/
-    python tools/push_data.py test-cleanup   remove sync_test/ from GitHub and here
+    python tools/push_data.py push                    raw capture CSVs under tools/exports/
+    python tools/push_data.py push --area presets      your saved presets under presets/<you>/
+    python tools/push_data.py pull                     fetch teammates' CSVs - never touches code
+    python tools/push_data.py pull --area presets      fetch teammates' presets - never touches code
+    python tools/push_data.py test                     3 throwaway animal CSVs under sync_test/
+    python tools/push_data.py test-cleanup             remove sync_test/ from GitHub and here
+
+--area applies to push/pull only (default: exports); test/test-cleanup always use sync_test/.
 
 All git work happens in a private partial clone under %LOCALAPPDATA%\\nis16-data-sync,
 so your own folder is never stashed, checked out, merged or rebased (a
@@ -21,6 +23,7 @@ GitHub state, so two people pushing different nodes never lose each other's file
   * same name, different bytes                 -> BOTH kept; yours goes to
                                                   sync_conflicts/<computer>/...
   * already moved to archive/ on GitHub        -> not re-pushed into the live tree
+  * inside an archive/ or _archive/ folder     -> never pushed; superseded capture
 """
 
 import argparse
@@ -40,8 +43,14 @@ MARKER = "nis16-data-sync"
 LEDGERS = {"run_ledger.csv", "test_ledger.csv"}
 EXPORTS = "tools/exports"
 TEST_AREA = "sync_test"
+PRESETS = "presets"
 CONFLICTS = "sync_conflicts"
 MAX_ATTEMPTS = 5
+AREA_EXT = {EXPORTS: ".csv", TEST_AREA: ".csv", PRESETS: ".json"}
+# Folders that mean "superseded capture, not live data". .gitignore already covers
+# these, but a file committed before that rule existed stays --cached and would
+# still be pushed into the live tree, so the sync path re-checks them by name.
+ARCHIVE_DIRS = {"archive", "_archive"}
 ANIMALS = ["Dog", "Cat", "Horse", "Cow", "Goat", "Sheep", "Pig", "Chicken", "Duck",
            "Rabbit", "Carabao", "Tarsier", "Eagle", "Turtle", "Monkey", "Deer"]
 
@@ -129,7 +138,7 @@ def ensure_clone(ctx):
          "--branch", ctx.branch, ctx.url, str(ctx.sync)], ctx.sync.parent)
     marker.write_text("created by tools/push_data.py - safe to delete\n")
     git(["sparse-checkout", "set", "--cone",
-         ctx.prefix + EXPORTS, ctx.prefix + TEST_AREA, ctx.prefix + CONFLICTS], ctx.sync)
+         ctx.prefix + EXPORTS, ctx.prefix + TEST_AREA, ctx.prefix + PRESETS, ctx.prefix + CONFLICTS], ctx.sync)
 
 
 def refresh(ctx):
@@ -153,13 +162,13 @@ def push_head(ctx):
     raise SyncError("git push failed (login / network / permission - not a teammate race):\n" + msg.strip())
 
 
-def commit_checked(ctx, allowed, message, allow_delete=False):
+def commit_checked(ctx, allowed, message, ext, allow_delete=False):
     p = git(["diff", "--cached", "--name-status", "-z", "--no-renames"], ctx.sync)
     toks = nul_list(p)
     bad = []
     for status, path in zip(toks[0::2], toks[1::2]):
         ok_status = status in ("A", "M") or (allow_delete and status == "D")
-        ok_path = any(path.startswith(ctx.prefix + a + "/") for a in allowed) and path.lower().endswith(".csv")
+        ok_path = any(path.startswith(ctx.prefix + a + "/") for a in allowed) and path.lower().endswith(ext)
         if not (ok_status and ok_path):
             bad.append("{} {}".format(status, path))
     if bad:
@@ -174,9 +183,13 @@ def commit_checked(ctx, allowed, message, allow_delete=False):
 
 # ----------------------------------------------------------------- planning ---
 
-def local_csvs(area):
+def local_files(area, ext):
     p = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", area], BASE)
-    return sorted(r for r in set(nul_list(p)) if r.lower().endswith(".csv") and (BASE / r).is_file())
+    return sorted(r for r in set(nul_list(p)) if r.lower().endswith(ext) and (BASE / r).is_file())
+
+
+def in_archive(rel):
+    return any(part in ARCHIVE_DIRS for part in rel.split("/")[:-1])
 
 
 def split_ledger(data):
@@ -237,8 +250,11 @@ def conflict_path(ctx, rel, data):
 
 def build_plan(ctx, area):
     archived_files, archived_rows = archived_on_github(ctx) if area == EXPORTS else (set(), set())
-    writes, notes = [], {"same": 0, "older": [], "archived": []}
-    for rel in local_csvs(area):
+    writes, notes = [], {"same": 0, "older": [], "archived": [], "in_archive": []}
+    for rel in local_files(area, AREA_EXT[area]):
+        if in_archive(rel):
+            notes["in_archive"].append(rel)
+            continue
         data = (BASE / rel).read_bytes()
         repo_path = ctx.prefix + rel
         dest = ctx.sync / repo_path
@@ -297,6 +313,13 @@ def print_plan(writes, notes):
         print("  skipped - a teammate already moved these to archive/ on GitHub: {} file(s)".format(len(notes["archived"])))
         for rel in notes["archived"]:
             print("    " + rel)
+    if notes["in_archive"]:
+        print("  skipped - superseded captures sitting in an archive folder, not live "
+              "data: {} file(s)".format(len(notes["in_archive"])))
+        for rel in notes["in_archive"]:
+            print("    " + rel)
+        print("    To share these anyway, move them under archive\\<date>_<label>\\exports\\ "
+              "at the\n    repo root and commit them normally - this tool only syncs live captures.")
 
 
 # ------------------------------------------------------------------ syncing ---
@@ -322,7 +345,8 @@ def sync_push(ctx, area):
         git(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
             stdin="\0".join(w[2] for w in writes))
         if not commit_checked(ctx, [area, CONFLICTS],
-                              "Data: {} {} file(s) from {}".format(len(writes), area, ctx.computer)):
+                              "Data: {} {} file(s) from {}".format(len(writes), area, ctx.computer),
+                              AREA_EXT[area]):
             raise SyncError("planned {} file(s) but git staged nothing - nothing was pushed.".format(len(writes)))
 
         for kind, rel, repo_path, data in writes:
@@ -364,10 +388,16 @@ def pull_back(ctx, area, yes):
         archived_rows.discard("")
 
     incoming, ledgers, skipped_archived, matching, differ = [], [], 0, [], []
+    skipped_nested = 0
     for repo_path in remote_tree(ctx, area):
-        if not repo_path.lower().endswith(".csv"):
+        if not repo_path.lower().endswith(AREA_EXT[area]):
             continue
         rel = repo_path[len(ctx.prefix):]
+        # A teammate on an older copy of this tool could have pushed their local
+        # archive folder into the live tree; don't seed it back into ours.
+        if in_archive(rel):
+            skipped_nested += 1
+            continue
         name = rel.rsplit("/", 1)[-1]
         src, dst = ctx.sync / repo_path, BASE / rel
         if not dst.exists():
@@ -393,6 +423,8 @@ def pull_back(ctx, area, yes):
 
     if skipped_archived:
         print("  ({} teammate file(s) not copied - you already have them under archive\\)".format(skipped_archived))
+    if skipped_nested:
+        print("  ({} file(s) on GitHub sit in an archive folder - superseded, not copied)".format(skipped_nested))
     if incoming or ledgers:
         print("\n  Teammates' data on GitHub that you don't have yet:")
         for rel in incoming:
@@ -479,7 +511,7 @@ def test_cleanup(ctx):
             print("  Cancelled.")
             return
         git(["rm", "-r", "-q", "--", ctx.prefix + TEST_AREA], ctx.sync)
-        commit_checked(ctx, [TEST_AREA], "Data: remove sync test files", allow_delete=True)
+        commit_checked(ctx, [TEST_AREA], "Data: remove sync test files", AREA_EXT[TEST_AREA], allow_delete=True)
         if push_head(ctx):
             print("  Removed sync_test/ from GitHub.")
             break
@@ -499,6 +531,9 @@ def test_cleanup(ctx):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("action", choices=["push", "pull", "test", "test-cleanup"])
+    ap.add_argument("--area", choices=["exports", "presets"], default="exports",
+                     help="what push/pull syncs: capture CSVs under tools/exports (default) "
+                          "or your saved presets under presets/<you>/. Ignored by test/test-cleanup.")
     ap.add_argument("--yes", action="store_true", help="answer yes to every prompt")
     ap.add_argument("--no-pull-back", action="store_true", help="don't offer teammates' files afterwards")
     ap.add_argument("--branch", default="Unified")
@@ -516,12 +551,13 @@ def main():
             test_cleanup(ctx)
             return 0
 
+        area = PRESETS if args.area == "presets" else EXPORTS
+
         if args.action == "pull":
             refresh(ctx)
-            pull_back(ctx, EXPORTS, ctx.yes)
+            pull_back(ctx, area, ctx.yes)
             return 0
 
-        area = EXPORTS
         if args.action == "test":
             area = TEST_AREA
             make_test_files(ctx)
