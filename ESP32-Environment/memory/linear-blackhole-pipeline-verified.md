@@ -24,7 +24,10 @@ PASSed, depth-6 chain, attacker COM26 at layer 3 with victims behind it):
   (forwarding stopped) while `retry_count` climbed **+723** (all received probes
   dropped); baseline `tx` delta was +2083.
 - Root `arrivals`: **1921** during normal, **0** during the attack window.
-- `feature_table`: **PDR 0.70→0.47**, **RetryRate 0.013→0.166** by window label.
+- `feature_table`: ~~**PDR 0.70→0.47**~~, **RetryRate 0.013→0.166** by window label.
+  ⚠️ **The PDR figures here are wrong** — see [[pdr-seq-join-fix-2026-09]]. PDR was
+  joined on time windows across boards that share no clock. Recomputed by sequence
+  number, this era's baseline delivery was **0.994–1.000**, not 0.70.
 - Features 16/16 present, 13 populated as of 2026-07-26; 3 all-NaN
   (`TunnelIntensity`, `TunnelBytes`, `TunnelLatency`) — wormhole-only, correct here.
   `LatencyHopRatio` and `TunnelLatency` are no longer permanently NaN: both are now
@@ -33,10 +36,17 @@ PASSed, depth-6 chain, attacker COM26 at layer 3 with victims behind it):
 
 **Close-node caveats (why final data needs the spread-out room layout)** — same
 root cause as [[wormhole-working-state]]: mesh convergence was slow/twitchy (COM22
-took 118 s to converge vs the <60 s Milestone-3 target, 1 baseline parent-switch),
-and baseline PDR was only ~0.70 with modest attack separation (0.70 vs 0.47).
+took 118 s to converge vs the <60 s Milestone-3 target, 1 baseline parent-switch).
+~~and baseline PDR was only ~0.70 with modest attack separation (0.70 vs 0.47).~~
 **How to apply:** for the real dataset, spread boards across the 4 rooms (and/or
-lower TX power) so baseline converges cleanly and PDR separation widens.
+lower TX power) so baseline converges cleanly.
+
+⚠️ **The PDR half of this caveat was a misdiagnosis** (corrected 2026-09-18, see
+[[pdr-seq-join-fix-2026-09]]). Weak PDR was never caused by close-node placement —
+it was the unsynchronised-clock join bug. The archived 2026-07-25 *baseline* run
+recomputes to **1.000 / 1.000 / 1.000 / 0.994 / 0.994** per node. Spreading the
+boards out remains worthwhile for realism and mesh depth; it will not "widen PDR
+separation", because there was never a PDR problem to widen.
 
 **Tooling gotchas learned:** (1) `validate_integrity.py` / `verify_topology.py`
 default their export dir to `exports` **relative to CWD** — run them from `tools\`

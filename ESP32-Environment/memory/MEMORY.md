@@ -2,6 +2,7 @@
 
 - [Wormhole working state](wormhole-working-state.md) — wormhole confirmed working on COM26/COM27; mesh instability still degrades signature separation
 - [Linear-blackhole pipeline verified](linear-blackhole-pipeline-verified.md) — full capture→export→M6→M7→M8 works end-to-end (2026-07-25 desk test); COM22 added; close-node caveats for final run
+- [PDR seq-number join fix (Sept 2026)](pdr-seq-join-fix-2026-09.md) — boards share no clock, so the time-keyed PDR join reported 0.079 on a run whose true baseline is 0.965; now joined on `seq_num`, verdict 2/2 primary. Also debunks the July "close-node weak PDR" diagnosis
 - [Latency features recovered](latency-features-recovered.md) — arrivals `latency_us` carries an unsynchronised-clock offset that cancels under subtraction; unblocked LatencyHopRatio + TunnelLatency without firmware changes
 - [Panel-mandated redesign (Sept 2026)](panel-change-2026-09.md) — the CTTHES panel's 8 required fixes (variance, realistic scenario, cited verification, SD card, tooling, new schedule); all prior runs redone/archived
 - [Run scenarios v1 (Sept 2026)](run-scenarios-2026-09.md) — `none|burst|highload|mobility|powercycle` in both front-ends, answering panel item 2 (variance); code-verified, not yet bench-tested on hardware
@@ -11,3 +12,4 @@
 - [menu.ps1 navigation rebuild (Sept 2026)](menu-navigation-2026-09.md) — `b` back + sticky defaults via run_wizard-style step machines; the `$dir` skip rule, the `return ,$array` scalar-collapse bug, and the BackSignal `-eq` operand-order trap
 - [Wizard pre-build + live identify (Sept 2026)](wizard-prebuild-and-live-identify-2026-09.md) — `run.ps1 -BuildOnly` + post-build menu skip the Ctrl+]/n dance; dropped board_check.py's hardcoded ROOT/ATTACKER roster labels for a live boot-banner read
 - [Dynamic topology layers (Sept 2026)](dynamic-topology-layers-2026-09.md) — removed MESH_MAX_LAYER=7 and every fixed node-count table; layers now BFS-derived, shared C/Python rule set (topology_graph.c/.py); not bench-tested, every board needs re-flash (heartbeat wire format changed)
+- [Dataset audit (sep. 18, 2026)](dataset-audit-2026-09-18.md) — G402 folders mixed 6 runs under `r1`; `rssi 0`/`phase 0` placeholders contaminate labels & RSSI_Hop_Diff; `tools/audit_dataset.py` proves run membership by seq_num, never clock

@@ -309,117 +309,164 @@ def compute_pdr_features(
 
     PDR = probes_received_at_root_from_this_victim / probes_sent_by_victim
 
-    Per the thesis ("root counts received probes by tracking unique
-    sequence numbers embedded in each probe") and the milestones form's
-    implementation note ("PDR ... require[s] joining each node's outgoing
-    log with the root's probe-arrival log on (src_node_id, sequence_number)"),
-    this is necessarily a join across two different files:
+    JOIN KEY: (node, sequence number) — NOT (node, time window). This is the
+    join the milestones form specifies ("joining each node's outgoing log with
+    the root's probe-arrival log on (src_node_id, sequence_number)"), and it is
+    the only one this testbed can support. Every board keeps its own
+    boot-relative esp_timer clock, nothing disciplines them to a common origin,
+    and preprocess.rebase_time() rebases each node to its OWN first sample.
+    Measured on blackhole/linear/G402, the three victims' clocks sat -56 s,
+    +359 s and +361 s from the root's — the root's arrivals log reports an
+    impossible NEGATIVE one-way latency for one of them — i.e. window offsets
+    of 69, 347 and 346 windows. Keying the join on window_start therefore
+    compared each victim's probes against a slice of the root's log minutes
+    away and returned a baseline PDR of 0.079 on a run whose true baseline PDR
+    is 0.94-1.00. Sequence numbers carry no clock, so they cross the node
+    boundary intact.
 
-      - probes_SENT:     this victim's own probes_count_delta (windowed)
-      - probes_RECEIVED: count of DISTINCT seq_num values in the root's
-                          *_arrivals.csv where src_mac matches this
-                          victim's MAC, falling in the same window
+    RECONSTRUCTING THE SEQUENCE NUMBER. victim_main.c advances the probe's
+    seq_num on every send ATTEMPT (`pkt.seq_num = ++seq`) but only advances
+    probes_count on success, counting a failure into retry_count instead. So at
+    any instant  seq == probes_count + retry_count.  That is why this needs the
+    counters' ABSOLUTE values at the window edges (probes_count_first/_last,
+    retry_count_first/_last, emitted by preprocess.build_windows) and not their
+    deltas. Verified on G402: 703 probes + 1 retry = 704 = the highest seq_num
+    the root logged from that victim.
 
-    The arrivals file only has src_mac (not src_node_id directly), so
-    this function needs a node_id -> MAC lookup. We build that lookup
-    from `windowed` itself: M6 carries parent_mac (the node's own
-    upstream link) but NOT the node's own MAC. Practically, node_id
-    encodes the MAC already (NODE_<MAC> per build_node_id() in
-    mesh_setup.c), so we parse it back out rather than requiring a
-    separate mapping file.
+    A window's probes therefore occupy seq range (seq_first, seq_last], and:
+      numerator   = how many of THOSE sequence numbers the root logged
+      denominator = probes_count_delta — successful sends only. A probe that
+                    esp_mesh_send rejected never reached the air, so it is not
+                    a delivery failure; its sequence number simply never
+                    arrives, which keeps the ratio <= 1 on its own.
 
-    If no *_arrivals.csv file is found in arrivals_dir (e.g. only
-    telemetry CSVs were provided, or this is a synthetic-data test run
-    without a root), PDR is NaN for every row rather than silently 0 —
-    a missing root log is a data-availability problem, not a delivery
-    failure, and those two situations should never look the same in
-    the output.
+    If no *_arrivals.csv file is found in arrivals_dir (e.g. only telemetry
+    CSVs were provided, or this is a synthetic-data test run without a root),
+    PDR is NaN for every row rather than silently 0 — a missing root log is a
+    data-availability problem, not a delivery failure, and those two situations
+    should never look the same in the output.
 
-    ATTRIBUTION RULE (revised sep. 16, 2026 — see thesis-deviate.md D-8).
-    A window gets a real PDR (including 0.0) only when all three hold:
+    ATTRIBUTION RULE. A window gets a real PDR (including 0.0) only when all
+    five hold:
 
-      1. the node actually TRANSMITTED that window (probes_count_delta > 0).
-         A 0/0 ratio is undefined, so it must be NaN — never 0.0. The old
-         code divided by (0 + EPSILON) and produced a literal 0.0, which
-         is indistinguishable from a total delivery failure and is exactly
-         how a false blackhole signature gets manufactured.
-      2. the node held a real mesh ASSOCIATION that window (layer > 0 and a
+      1. node_role == "victim". The blackhole ATTACKER emits probes of its own
+         which the root never logs in ANY phase, so counting it as a victim
+         added 298 all-zero baseline rows on G402 and dragged the baseline
+         under the sanity floor. Relay behaviour is measured by
+         ForwardingRatio, not by PDR.
+      2. the node actually TRANSMITTED that window (probes_count_delta > 0).
+         A 0/0 ratio is undefined, so it must be NaN — never 0.0. Dividing by
+         (0 + EPSILON) yields a literal 0.0, indistinguishable from total
+         delivery failure, and is exactly how a false blackhole signature gets
+         manufactured.
+      3. the node held a real mesh ASSOCIATION that window (layer > 0 and a
          non-zero parent_mac). A detached node's undelivered probes are a
          connectivity artefact, not a forwarding failure.
-      3. the window falls inside the root's own arrival-LOGGING SPAN, proving
-         the root was alive and recording at that time. This is what keeps a
-         missing/never-pulled root CSV from reading as delivery failure.
+      4. neither counter RESET mid-window. A reboot restarts seq numbering, so
+         the reconstructed range would address the wrong probes entirely.
+      5. the root was RUNNING in that window's PHASE. Phase ids come from the
+         root's own mesh-wide broadcast, so they are the one cross-node
+         reference needing no clock — which is what the old arrival-span check
+         was reaching for and could not reach correctly. A phase the root
+         never logged is a phase we have no delivery evidence for.
 
-    Where all three hold and the root logged nothing from this node, that is
-    a genuine PDR of 0 — the blackhole signature this feature exists to
-    detect. The previous implementation gated on a run-wide `covered_macs`
-    set instead, so a victim the root NEVER heard from (precisely the node a
-    blackhole hits hardest) was written off as NaN, making PDR=0 unreachable
-    for the worst-affected nodes.
+    Where all five hold and the root logged none of the window's sequence
+    numbers, that is a genuine PDR of 0 — the blackhole signature this feature
+    exists to detect.
     """
-    out = pd.DataFrame(index=windowed.index, columns=["PDR"], dtype=float)
+    out = pd.DataFrame(index=windowed.index)
     out["PDR"] = np.nan
+    out["_pdr_clipped"] = False
 
-    arrivals_rebased = load_arrivals(arrivals_dir)
-    if arrivals_rebased is None:
+    arrivals = load_arrivals(arrivals_dir)
+    if arrivals is None:
         return out  # no root log available — leave PDR as NaN, not 0
 
-    node_id_to_mac = node_id_to_mac_norm
+    if "node_role" not in windowed.columns:
+        warnings.warn(
+            "[features] windowed dataset has no node_role column, so victim rows "
+            "cannot be told apart from the blackhole attacker's (whose probes the "
+            "root never logs). PDR left NaN rather than reported for the wrong "
+            "nodes.",
+            stacklevel=2,
+        )
+        return out
 
-    # Received count: distinct seq_num per (src_mac, window_start).
-    received = (
-        arrivals_rebased
-        .groupby(["_src_mac_norm", "window_start"])["seq_num"]
-        .nunique()
-        .rename("probes_received_window")
-        .reset_index()
-    )
+    edge_cols = ["probes_count_first", "probes_count_last",
+                 "retry_count_first", "retry_count_last"]
+    missing = [c for c in edge_cols if c not in windowed.columns]
+    if missing:
+        raise ValueError(
+            f"windowed dataset is missing {missing}. PDR joins the root's "
+            f"arrivals log on probe SEQUENCE NUMBER (the boards share no clock, "
+            f"so a window-keyed join is not possible), and reconstructing a "
+            f"window's sequence range needs the absolute counter values at its "
+            f"edges, not just the deltas. This table came from an older "
+            f"preprocess.py. Rebuild it:  python analysis/preprocess.py ...  "
+            f"then re-run features.py."
+        )
 
-    # The root's arrival-logging SPAN. Outside it we have no evidence the root
-    # was even recording, so an absence of arrivals says nothing about delivery
-    # (condition 3 in the docstring's attribution rule).
-    root_log_start = arrivals_rebased["window_start"].min()
-    root_log_end = arrivals_rebased["window_start"].max()
+    # Every sequence number the root logged, per source MAC. No timestamps
+    # involved anywhere — that is the whole point.
+    recv_by_mac = {
+        mac: set(pd.to_numeric(g["seq_num"], errors="coerce").dropna().astype(int))
+        for mac, g in arrivals.groupby("_src_mac_norm")
+    }
 
-    windowed_local = windowed.copy()
-    windowed_local["_node_mac_norm"] = windowed_local["node_id"].apply(node_id_to_mac)
+    # Phases the root itself logged (condition 5). Phase ids arrive by mesh
+    # broadcast, so they are comparable across nodes without a shared clock.
+    # Absent root telemetry we cannot make this check at all, and an arrivals
+    # file is itself evidence the root ran, so fall through rather than NaN
+    # every row.
+    root_phases = None
+    if "window_phase_id" in windowed.columns:
+        rp = windowed.loc[windowed["node_role"] == "root", "window_phase_id"].dropna()
+        if not rp.empty:
+            root_phases = set(rp)
 
-    merged = windowed_local.merge(
-        received,
-        left_on=["_node_mac_norm", "window_start"],
-        right_on=["_src_mac_norm", "window_start"],
-        how="left",
-    )
+    probes_sent = pd.to_numeric(windowed["probes_count_delta"], errors="coerce")
+    seq_first = (pd.to_numeric(windowed["probes_count_first"], errors="coerce")
+                 + pd.to_numeric(windowed["retry_count_first"], errors="coerce"))
+    seq_last = (pd.to_numeric(windowed["probes_count_last"], errors="coerce")
+                + pd.to_numeric(windowed["retry_count_last"], errors="coerce"))
 
-    probes_sent = merged["probes_count_delta"]
-    probes_recv = merged["probes_received_window"]
-
-    # 1. Did this node actually transmit this window? 0/0 is undefined, not 0.0.
+    is_victim = windowed["node_role"] == "victim"
     transmitted = probes_sent.fillna(0) > 0
+    parent = windowed["parent_mac"].fillna(NO_PARENT_MAC).astype(str).str.upper()
+    associated = (windowed["layer"].fillna(-1) > 0) & (parent != NO_PARENT_MAC)
 
-    # 2. Was it really attached to the mesh? layer -1 / all-zero parent = detached.
-    parent = merged["parent_mac"].fillna(NO_PARENT_MAC).astype(str).str.upper()
-    associated = (merged["layer"].fillna(-1) > 0) & (parent != NO_PARENT_MAC)
+    def _reset_flag(col):
+        if col not in windowed.columns:
+            return pd.Series(False, index=windowed.index)
+        return windowed[col].fillna(False).astype(bool)
 
-    # 3. Was the root demonstrably logging at that moment?
-    root_logging = merged["window_start"].between(root_log_start, root_log_end)
+    no_reset = ~(_reset_flag("probes_count_reset_detected")
+                 | _reset_flag("retry_count_reset_detected"))
+    seq_known = seq_first.notna() & seq_last.notna()
+    if root_phases is None:
+        root_running = pd.Series(True, index=windowed.index)
+    else:
+        root_running = windowed["window_phase_id"].isin(root_phases)
 
-    attributable = transmitted & associated & root_logging
+    attributable = (is_victim & transmitted & associated
+                    & no_reset & seq_known & root_running)
 
-    # Where the window IS attributable, "no arrivals row" means the root received
-    # nothing from this node — a real delivery failure, so zero, not NaN.
-    probes_recv_filled = probes_recv.fillna(0.0)
+    macs = windowed["node_id"].apply(node_id_to_mac_norm)
+    pdr = pd.Series(np.nan, index=windowed.index, dtype=float)
+    for idx in windowed.index[attributable]:
+        got = recv_by_mac.get(macs.at[idx])
+        if not got:
+            # Root logged nothing at all from this victim. Every other guard
+            # passed, so that is a real total delivery failure, not missing data.
+            pdr.at[idx] = 0.0
+            continue
+        lo, hi = int(seq_first.at[idx]), int(seq_last.at[idx])
+        pdr.at[idx] = sum(1 for s in range(lo + 1, hi + 1) if s in got) / probes_sent.at[idx]
 
-    pdr = probes_recv_filled / (probes_sent + EPSILON)
-    pdr = pdr.where(attributable, np.nan)
-    # PDR cannot exceed 1.0 in a correct dataset; clip defensively in case
-    # of probe retransmission double-counting at the application layer,
-    # and surface that as worth investigating rather than silently passing
-    # through.
-    pdr_clipped = pdr.clip(upper=1.0)
-
-    out = pd.DataFrame(index=windowed.index)
-    out["PDR"] = pdr_clipped.values
+    # PDR cannot exceed 1.0 in a correct dataset; clip defensively in case of
+    # probe retransmission double-counting at the application layer, and
+    # surface that as worth investigating rather than silently passing through.
+    out["PDR"] = pdr.clip(upper=1.0).values
     out["_pdr_clipped"] = (pdr > 1.0).fillna(False).values
 
     return out

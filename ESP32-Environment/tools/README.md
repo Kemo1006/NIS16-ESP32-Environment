@@ -316,7 +316,7 @@ Rebuilds the mesh from each node's `parent_mac` and checks it against the intend
 shape. Layers are derived from the parent links (breadth-first from the root the
 links identify), not taken from the `layer` column, and there is no layer or node
 cap — a 20-board chain is 20 layers. The rules live in `topology_graph.py`, shared
-with the root's live `TOPOLOGY CHECK` line (`components/mesh_common/src/topology_graph.c`):
+with the root's live topology table `STATUS` / `DETAIL` lines (`components/mesh_common/src/topology_graph.c`):
 
 | `--expect` | Structural rule | On violation |
 |---|---|---|
@@ -364,6 +364,21 @@ Input is M7's `feature_table.csv` (needs the `Label` column: 0=baseline, 1=black
 `CONFIRMED` / `NOT CONFIRMED` / `INCONCLUSIVE` verdict, with exit codes 0/1/2 so it
 can gate a script. See `memory/panel-change-2026-09.md` and
 `memory/thesis-citations.md` for the full citation basis.
+
+---
+
+## audit_dataset.py
+
+Read-only audit of a set of export folders. Groups files into runs **without a
+clock** (root telem/arrivals by final counter; victims by `seq_num`; attackers by
+cooldown forward count, marked weak), then writes a cleaned, additive copy:
+`run_manifest.csv`, `clean_telemetry.csv`, `clean_arrivals.csv`,
+`pdr_by_segment.csv`, `topology_snapshots.csv`. Raw files are never modified.
+Findings and the column dictionary: `docs/DATASET-AUDIT-2026-09-18.md`.
+
+```powershell
+python audit_dataset.py exports\blackhole\linear\G402 --out ..\analysis\dataset_audit_<date> --location G402
+```
 
 ---
 

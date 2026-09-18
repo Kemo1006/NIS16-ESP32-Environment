@@ -49,7 +49,8 @@ packet now carries `parent_mac` (was missing entirely - previously the root
 only knew EACH node's OWN reported layer, never the actual tree shape) and a
 16-bit layer; magic bumped so an old-firmware board is named in a warning
 instead of silently misread. Root's console table now prints the real
-derived tree + a `TOPOLOGY CHECK: <topo> OK/WARN/FAIL — reason` line, built
+derived tree + `STATUS : OK/WARN/FAIL` and `DETAIL : reason` lines (was a
+`TOPOLOGY CHECK:` line before the sep. 18, 2026 protocol-dump reformat), built
 from the same topology_graph.c the tests exercise.
 
 **Python**: `verify_topology.py` rebuilds the graph via `topology_graph.py`

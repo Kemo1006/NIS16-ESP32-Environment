@@ -637,15 +637,88 @@ static int order_cmp(const void *pa, const void *pb)
     return memcmp(s_nodes[a].mac, s_nodes[b].mac, 6);
 }
 
-/* Indentation is display-only and stops growing at 24 levels so a long chain
- * stays readable; the printed L<n> is always the real layer. */
+/* ── Table rendering ─────────────────────────────────────────────────────────
+ * Protocol-dump style: fixed columns, uppercase MACs, hex identifiers/counters
+ * (layer, phase ID, node/layer counts), decimal for measurements (RSSI dBm,
+ * age in seconds). No width is fixed in advance - every column is sized from
+ * the rows being printed, so 8 nodes and 1000 nodes both stay aligned. */
+
+#define MACSTR_UC  "%02X:%02X:%02X:%02X:%02X:%02X"
+#define MAC_NONE   "--:--:--:--:--:--"
+#define MAC_W      17
+
+/* Hex digits needed for v, at least 2 so small values read as 0x01 / L01. */
+static int hex_width(unsigned v)
+{
+    int d = 1;
+    while (v >>= 4) {
+        d++;
+    }
+    return d < 2 ? 2 : d;
+}
+
+static const char *phase_id_str(uint8_t id)
+{
+    switch (id) {
+    case PHASE_ID_BASELINE:  return "BASELINE";
+    case PHASE_ID_BLACKHOLE: return "BLACKHOLE";
+    case PHASE_ID_WORMHOLE:  return "WORMHOLE";
+    case PHASE_ID_COOLDOWN:  return "COOLDOWN";
+    case PHASE_ID_TERMINATE: return "TERMINATE";
+    default:                 return "UNKNOWN";
+    }
+}
+
+/* "L0A", or "L--" (same width) for a node not reachable from the root. */
+static void fmt_layer(char *buf, size_t len, int layer, int lyr_w)
+{
+    if (layer > 0) {
+        snprintf(buf, len, "L%0*X", lyr_w, (unsigned)layer);
+    } else {
+        snprintf(buf, len, "L%.*s", lyr_w, "--------");
+    }
+}
+
+static void log_rule(char ch, int width)
+{
+    char line[161];
+    if (width > (int)sizeof(line) - 1) {
+        width = (int)sizeof(line) - 1;
+    }
+    memset(line, ch, (size_t)width);
+    line[width] = '\0';
+    ESP_LOGI(TAG, "%s", line);
+}
+
+typedef struct {
+    const topo_graph_t *g;
+    int lyr_w;     /* hex digits in the layer ID  */
+    int role_w;
+    int cnt_w;     /* hex digits in counters      */
+} tree_fmt_t;
+
+/* One row per node in depth-first order from the root, so each node follows
+ * its parent. UPLINK names the resolved parent and DN its child count, which
+ * states the structure explicitly instead of by indentation. The printed
+ * layer is always the real one (depth + 1). */
 static void tree_line_cb(void *ctx, int idx, int depth)
 {
-    (void)ctx;
+    const tree_fmt_t *f = (const tree_fmt_t *)ctx;
     const heartbeat_entry_t *e = &s_nodes[idx];
-    int indent = depth < 24 ? depth : 24;
-    ESP_LOGI(TAG, "  %*sL%-3d " MACSTR "  %-10s", indent * 2, "",
-             depth + 1, MAC2STR(e->mac), node_role_to_str(e->role));
+    char lyr[16];
+    fmt_layer(lyr, sizeof(lyr), depth + 1, f->lyr_w);
+    int p = f->g->parent[idx];
+    char uplink[MAC_W + 1];
+    if (p >= 0) {
+        const uint8_t *m = s_nodes[p].mac;
+        snprintf(uplink, sizeof(uplink), MACSTR_UC, MAC2STR(m));
+    } else {
+        strlcpy(uplink, MAC_NONE, sizeof(uplink));
+    }
+    ESP_LOGI(TAG, " %-*s  " MACSTR_UC "  %-*s  %s  0x%0*X",
+             f->lyr_w + 2, lyr, MAC2STR(e->mac),
+             f->role_w, node_role_to_str(e->role),
+             uplink, f->cnt_w, (unsigned)f->g->child_count[idx]);
 }
 
 static void heartbeat_table_print(void)
@@ -705,47 +778,103 @@ static void heartbeat_table_print(void)
     qsort(order, n, sizeof(int), order_cmp);
 
     topo_kind_t kind = (topo_kind_t)MESH_TOPOLOGY;
-    ESP_LOGI(TAG, "============ MESH TOPOLOGY: %s, %u node%s, %d layer%s ============",
-             topo_kind_str(kind), (unsigned)n, n == 1 ? "" : "s",
-             g.max_layer, g.max_layer == 1 ? "" : "s");
-    ESP_LOGI(TAG, "%-5s %-18s %-11s %-6s %-6s %-6s",
-             "LYR", "MAC", "ROLE", "RSSI", "PHASE", "AGE_S");
+    char reason[192];
+    topo_status_t st = topo_validate(&g, tn, kind, reason, sizeof(reason));
+
+    /* Column widths, sized from this print's actual rows. */
+    int lyr_w  = hex_width(g.max_layer > 0 ? (unsigned)g.max_layer : 0);
+    int cnt_w  = hex_width((unsigned)(n > (size_t)g.max_layer ? n : (size_t)g.max_layer));
+    int role_w = (int)strlen("ROLE");
+    int rssi_w = (int)strlen("RSSI");
+    int ph_w   = 0;
+    int age_w  = (int)strlen("AGE(s)");
+    char num[16];
+    for (size_t i = 0; i < n; i++) {
+        const heartbeat_entry_t *e = &s_nodes[i];
+        int w = (int)strlen(node_role_to_str(e->role));
+        role_w = w > role_w ? w : role_w;
+        w = snprintf(num, sizeof(num), "%d", (int)e->parent_rssi);
+        rssi_w = w > rssi_w ? w : rssi_w;
+        w = (int)strlen(phase_id_str(e->current_phase));
+        ph_w = w > ph_w ? w : ph_w;
+        w = snprintf(num, sizeof(num), "%lu",
+                     (unsigned long)((now - e->last_seen_us) / 1000000LL));
+        age_w = w > age_w ? w : age_w;
+    }
+    /* PHASE cell = "0xNN NAME" */
+    int phase_w = 4 + 1 + ph_w;
+    if (phase_w < (int)strlen("PHASE")) {
+        phase_w = (int)strlen("PHASE");
+    }
+    int lyr_col = lyr_w + 2;   /* 'L' + digits + mismatch flag */
+    int row_w = 1 + lyr_col + 2 + MAC_W + 2 + role_w + 2 + rssi_w + 2 + phase_w + 2 + age_w;
+    int tree_w = 1 + lyr_col + 2 + MAC_W + 2 + role_w + 2 + MAC_W + 2 + 2 + cnt_w;
+    int rule_w = row_w > tree_w ? row_w : tree_w;
+
+    log_rule('=', rule_w);
+    ESP_LOGI(TAG, " MESH TOPOLOGY");
+    ESP_LOGI(TAG, " TYPE        : %s", topo_kind_str(kind));
+    ESP_LOGI(TAG, " NODE COUNT  : 0x%0*X (%u)", cnt_w, (unsigned)n, (unsigned)n);
+    ESP_LOGI(TAG, " LAYER COUNT : 0x%0*X (%d)", cnt_w, (unsigned)g.max_layer, g.max_layer);
+    ESP_LOGI(TAG, " REACHABLE   : 0x%0*X (%d)", cnt_w, (unsigned)g.reachable, g.reachable);
+    if (st == TOPO_OK) {
+        ESP_LOGI(TAG, " STATUS      : %s", topo_status_str(st));
+    } else if (st == TOPO_WARN) {
+        ESP_LOGW(TAG, " STATUS      : %s", topo_status_str(st));
+    } else {
+        ESP_LOGE(TAG, " STATUS      : %s", topo_status_str(st));
+    }
+    ESP_LOGI(TAG, " DETAIL      : %s", reason);
+    log_rule('-', rule_w);
+
+    ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %*s  %-*s  %*s",
+             lyr_col, "LYR", MAC_W, "MAC ADDRESS", role_w, "ROLE",
+             rssi_w, "RSSI", phase_w, "PHASE", age_w, "AGE(s)");
     bool mismatch = false;
+    bool no_rssi  = false;
     for (size_t i = 0; i < n; i++) {
         int k = order[i];
         const heartbeat_entry_t *e = &s_nodes[k];
-        char lyr[12];
-        if (g.layer[k] > 0) {
-            bool differs = (e->layer != g.layer[k]);
-            mismatch |= differs;
-            snprintf(lyr, sizeof(lyr), "%d%s", g.layer[k], differs ? "*" : "");
-        } else {
-            snprintf(lyr, sizeof(lyr), "-");
+        char lyr[16];
+        fmt_layer(lyr, sizeof(lyr), g.layer[k], lyr_w);
+        if (g.layer[k] > 0 && e->layer != g.layer[k]) {
+            mismatch = true;
+            strlcat(lyr, "*", sizeof(lyr));
         }
+        /* The sender reports 0 when it has no parent link to measure
+         * (the root) - that is "no reading", not 0 dBm. */
+        char rssi[8];
+        if (e->parent_rssi == 0) {
+            strlcpy(rssi, "n/a", sizeof(rssi));
+            no_rssi = true;
+        } else {
+            snprintf(rssi, sizeof(rssi), "%d", (int)e->parent_rssi);
+        }
+        char phase[24];
+        snprintf(phase, sizeof(phase), "0x%02X %s",
+                 (unsigned)e->current_phase, phase_id_str(e->current_phase));
         uint32_t age_s = (uint32_t)((now - e->last_seen_us) / 1000000LL);
-        ESP_LOGI(TAG, "%-5s " MACSTR "  %-11s %-6d %-6u %-6lu",
-                 lyr, MAC2STR(e->mac), node_role_to_str(e->role),
-                 (int)e->parent_rssi, (unsigned)e->current_phase,
-                 (unsigned long)age_s);
+        ESP_LOGI(TAG, " %-*s  " MACSTR_UC "  %-*s  %*s  %-*s  %*lu",
+                 lyr_col, lyr, MAC2STR(e->mac),
+                 role_w, node_role_to_str(e->role),
+                 rssi_w, rssi, phase_w, phase, age_w, (unsigned long)age_s);
     }
     if (mismatch) {
-        ESP_LOGI(TAG, "  * the node's own stack reported a different layer (it is re-parenting)");
+        ESP_LOGI(TAG, " * node's own stack reports a different layer (re-parenting)");
+    }
+    if (no_rssi) {
+        ESP_LOGI(TAG, " n/a = no parent link to measure (root)");
     }
     if (n > 1 && g.root >= 0) {
-        ESP_LOGI(TAG, "---- parent/child structure ----");
-        topo_walk(&g, tree_line_cb, NULL);
+        log_rule('-', rule_w);
+        ESP_LOGI(TAG, " PARENT/CHILD STRUCTURE (depth-first from root)");
+        ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %-*s  %s",
+                 lyr_col, "LYR", MAC_W, "MAC ADDRESS", role_w, "ROLE",
+                 MAC_W, "UPLINK", "DN");
+        tree_fmt_t f = { .g = &g, .lyr_w = lyr_w, .role_w = role_w, .cnt_w = cnt_w };
+        topo_walk(&g, tree_line_cb, &f);
     }
-
-    char reason[192];
-    topo_status_t st = topo_validate(&g, tn, kind, reason, sizeof(reason));
-    if (st == TOPO_OK) {
-        ESP_LOGI(TAG, "TOPOLOGY CHECK: %s OK — %s", topo_kind_str(kind), reason);
-    } else if (st == TOPO_WARN) {
-        ESP_LOGW(TAG, "TOPOLOGY CHECK: %s WARN — %s", topo_kind_str(kind), reason);
-    } else {
-        ESP_LOGE(TAG, "TOPOLOGY CHECK: %s FAIL — %s", topo_kind_str(kind), reason);
-    }
-    ESP_LOGI(TAG, "=====================================================================");
+    log_rule('=', rule_w);
 
     s_sort_graph = NULL;
     topo_free(&g);

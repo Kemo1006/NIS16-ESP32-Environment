@@ -789,6 +789,14 @@ def build_windows(
                 row[f"{col}_delta"] = np.nan
                 row[f"{col}_reset_detected"] = False
 
+            # The counter's ABSOLUTE value at each window edge, not just the
+            # delta. PDR joins the root's arrivals log on probe sequence number
+            # (the boards share no clock, so a time-keyed join is impossible);
+            # reconstructing which sequence numbers a window covers needs the
+            # true counter values here. See features.compute_pdr_features.
+            row[f"{col}_first"] = vals.iloc[0] if len(vals) else np.nan
+            row[f"{col}_last"] = vals.iloc[-1] if len(vals) else np.nan
+
         # Event counts: total events in window. layer_change_count and
         # parent_switch counts are derived in Milestone 7 from the raw
         # layer/parent_mac sequence; this pipeline carries the raw

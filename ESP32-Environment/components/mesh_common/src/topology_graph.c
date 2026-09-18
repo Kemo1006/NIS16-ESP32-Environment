@@ -33,7 +33,7 @@ static bool mac_is_zero(const uint8_t *m)
 
 static void mac_str(const uint8_t *m, char *out)
 {
-    snprintf(out, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+    snprintf(out, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
              m[0], m[1], m[2], m[3], m[4], m[5]);
 }
 
