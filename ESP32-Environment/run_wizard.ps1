@@ -4107,6 +4107,15 @@ if ($Preset) {
     # different board - or nothing - in a later session. Enumerating is instant
     # and touches no board, so always check; only offer the fix when it bites.
     $livePorts   = @(Get-PortList)
+    # The manual (non-preset) branch below sets this at its own "how many
+    # child boards" step; a preset skips that step entirely, so without this
+    # $ports stays unset (-> $null) all the way to the post-summary "Adjust
+    # the plan" loop, where Add-BoardInteractive's Mandatory -Ports parameter
+    # then rejects the null outright ("Cannot bind argument to parameter
+    # 'Ports' because it is null") and Edit-BoardInteractive's port picker
+    # silently shows no ports at all - a preset-driven run could never add or
+    # edit a node. Same live snapshot the port-drift fix below already uses.
+    $ports       = $livePorts
     $liveNames   = @($livePorts | Select-Object -ExpandProperty Port)
     $missing     = @($roster | Where-Object { $liveNames -notcontains $_.Port })
     $haveMacs    = @($roster | Where-Object { $_.Mac }).Count -gt 0
@@ -5188,11 +5197,17 @@ while ($true) {
                 }
                 else {
                     $labels = @($eligible | ForEach-Object { "$($_.Label)  ($($_.Port))  -  $($_.Display)" })
-                    $escapeIdx = -1
-                    if ($remoteBoards.Count -gt 0) {
-                        $escapeIdx = $labels.Count
-                        $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
-                    }
+                    # Always offered, never gated on $remoteBoards (a pre-existing
+                    # remote marker) or $multiLaptop (unset here - that flag is only
+                    # ever answered by the manual flow's own multi-laptop question,
+                    # which a preset-driven run skips entirely). Picking it is always
+                    # an explicit operator choice (DefaultIndex stays on a real board,
+                    # never this one), so there's no risk of silently fabricating a
+                    # phantom board - same "never a dead end" rule the manual flow's
+                    # own equivalent menus already follow (see the multiLaptop escapes
+                    # above, e.g. around line 4685).
+                    $escapeIdx = $labels.Count
+                    $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
                     $tIdx = Show-Menu -Title "Which node is the $scenario TARGET? (exactly one)" -Options $labels -DefaultIndex 0
                     if ($tIdx -ge 0 -and $tIdx -eq $escapeIdx) {
                         $remoteLabel = Get-FreeNodeLabel -Taken @($fullRoster | ForEach-Object { $_.Label })
