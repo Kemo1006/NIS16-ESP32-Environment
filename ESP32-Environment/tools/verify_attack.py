@@ -185,6 +185,19 @@ def _fmt_z(z):
     return f"{z:7.2f}"
 
 
+# Short, fixed-width verdict flags for the table. Verbose notes (citations,
+# thresholds, raw context) never go in the cell - they're collected and
+# printed as numbered footnotes below the table instead, so a long note on
+# one row can't shift every column after it.
+STATUS_FLAG = {
+    "PASS": "PASS",
+    "FAIL": "FAIL",
+    "INVALID-BASE": "EXCLUDED",
+    "INCONCLUSIVE": "INCONCL",
+    "SKIP": "SKIP",
+}
+
+
 def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     label = ATTACK_LABEL[attack]
     raw_lab = pd.to_numeric(df["Label"], errors="coerce")
@@ -201,13 +214,14 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     print(f"    aggregation: {agg_note}")
     print(f"    3-sigma normal-vs-attack test (Zhukabayeva et al. 2025)\n")
     header = (f"  {'feature':<20}{'tier':<10}{'baseline mu+-sd (n)':<26}"
-              f"{'attack mean (n)':<18}{'z':>8}  verdict")
+              f"{'attack mean (n)':<18}{'z':>7}  {'verdict':<13}ref")
     print(header)
     print("  " + "-" * (len(header) - 2))
 
     primary_pass = 0
     primary_total = 0
     primary_excluded = 0
+    footnotes = []  # (marker, feature, note) - printed below the table, not in-cell
     for feat, direction, tier in SIGNATURES[attack]:
         if feat not in df.columns:
             print(f"  {feat:<20}{tier:<10}(column missing)")
@@ -233,14 +247,24 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         am_s = "n/a" if math.isnan(r["attack_mean"]) else f"{r['attack_mean']:.3f}"
         atk_s = f"{am_s} ({r['n_attack']})"
         arrow = "v" if direction == "down" else "^"
-        note = f" - {r['note']}" if r["note"] else ""
+
+        ref = ""
+        if r["note"]:
+            footnotes.append((len(footnotes) + 1, feat, r["note"]))
+            ref = f"[{footnotes[-1][0]}]"
+        flag = STATUS_FLAG.get(r["status"], r["status"])
+        verdict_s = f"{flag} [{arrow}]"
         print(f"  {feat:<20}{tier:<10}{base_s:<26}{atk_s:<18}{_fmt_z(r['z'])}  "
-              f"{r['status']} ({arrow}){note}")
+              f"{verdict_s:<13}{ref}")
 
     conclusive = primary_total > 0
     confirmed = conclusive and primary_pass > 0
     excluded_note = (f" {primary_excluded} primary feature(s) excluded on an invalid "
-                     f"baseline - see above." if primary_excluded else "")
+                     f"baseline - see notes below." if primary_excluded else "")
+    if footnotes:
+        print("\n  NOTES:")
+        for marker, feat, note in footnotes:
+            print(f"  [{marker}] {feat}: {note}")
     print()
     if confirmed:
         print(f"  VERDICT: {attack.upper()} CONFIRMED  "
