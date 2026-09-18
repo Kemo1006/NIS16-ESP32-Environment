@@ -3184,6 +3184,20 @@ function Select-PresetOwner {
     return $names[$idx]
 }
 
+# ESP-IDF's monitor colorizes I/W/E log-level tags with ANSI SGR escapes
+# (ESC[0;32m ... ESC[0m). Start-Transcript can capture those bytes verbatim
+# depending on the machine/terminal that ran the capture, and replaying them
+# through Write-Host on a console without VT processing turns them into
+# mojibake fragments (stray box characters with a trailing "32m") instead of
+# the plain readable text ESP-IDF prints. Strips them for DISPLAY only - the
+# .log file on disk is never touched.
+$script:AnsiEscapeRegex = [regex]::new([char]27 + '\[[0-9;]*[a-zA-Z]')
+function Remove-AnsiEscapes {
+    param([string]$Line)
+    if ($null -eq $Line) { return $Line }
+    return $script:AnsiEscapeRegex.Replace($Line, '')
+}
+
 function Invoke-ViewRunLog {
     # Reads run_logs\*.log - the console transcripts a run saves when the
     # operator says yes to "Save a full log of this run" during a capture
@@ -3221,11 +3235,13 @@ function Invoke-ViewRunLog {
         ) -DefaultIndex 0) {
             0 {
                 Write-Host ""
-                Get-Content -Path $file.FullName -Tail 100 | ForEach-Object { Write-Host $_ }
+                Get-Content -Path $file.FullName -Tail 100 -Encoding UTF8 |
+                    ForEach-Object { Write-Host (Remove-AnsiEscapes $_) }
             }
             1 {
                 Write-Host ""
-                Get-Content -Path $file.FullName | ForEach-Object { Write-Host $_ }
+                Get-Content -Path $file.FullName -Encoding UTF8 |
+                    ForEach-Object { Write-Host (Remove-AnsiEscapes $_) }
             }
             2 { Start-Process notepad.exe $file.FullName }
             3 {
