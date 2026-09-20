@@ -8,50 +8,53 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 20, 2026 — ⚠️ **CORRECTION, and it matters: "only ONE cell has data" and "ZERO wormhole captures
+  exist" were BOTH WRONG** (they were in STATUS.md and MEMORY.md and I repeated them). New
+  `tools/inventory_cells.py` scans live **and archived** exports against the M4/M5 criteria and finds
+  **18 runs, 8 COMPLETE, 5 attack×topology cells with data — all 5 having at least one complete run —
+  and 2 locations (G402 + home).** **Wormhole captures DO exist**: linear r2/r3, star r1/r2/r3,
+  partial_mesh r1. So Table 3.5 is not unvalidated, it is un-**analysed**, and the 6 wormhole runs are
+  the cheapest route to M7's "no feature uniformly NaN" — no new capture needed.
+  **Root cause of the error: `archive.ps1` MOVES captures out of `tools/exports/`, and everyone
+  (including every tool) was only ever looking at `tools/exports/`.** Archived runs are real data.
+  ⚠️ Team judgement call, NOT mine: those 6 wormhole runs come from the sep. 16 pre-restart snapshot
+  (schema v1, pre-F1/F3). Mechanically complete; whether pre-restart data counts toward M4 is yours to
+  decide. Re-run the inventory any time with `python tools/inventory_cells.py`.
 - sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
-  `recv_count,forward_count,drop_count`; v1's 11 are unchanged and in place, and `validate_integrity.py`
-  accepts BOTH widths (we cannot re-capture sep. 18). **Point of F3: `retry_count` means ONE thing on every
-  role again** (failed sends). It used to carry the attacker's DROP count — why `RetryRate` went 0.0033→0.9991
-  on that one board while victims went to 0.0000. Proof: on a synthetic v2 capture `RetryRate` now reads
-  0.000→0.000 on the attacker while ForwardingRatio still gives BLACKHOLE CONFIRMED.
-  Semantics on every role: recv = accepted FOR RELAY, forward = passed on, drop = accepted and not passed on.
-  ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** — recv>0 with forward=0 would score the root
-  `ForwardingRatio = 0.0` every window, making the node that MEASURES the attack read as the one committing it.
-- sep. 20, 2026 — **⚠️ `PDR` ALONE SCORES 0.9987 vs a 0.7031 majority** (`analysis/leakage.py`, G402). So
-  **excluding leaking features does NOT answer the panel's 2:40-4:50 objection.** PDR is not leakage — it is
-  the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable by
-  construction**, and no feature choice repairs that. Only attack-parameter variation does, which collides with
-  R-B (§1.4.1 excludes selective forwarding; a partial drop rate IS selective forwarding). **Adviser decides.**
-  `eda.py` prints this on every pass so it cannot be forgotten.
-- sep. 20, 2026 — ⛔ **THE ONE REMAINING DECISION IS C7 OPTION 1** (`Plan/THESIS3-MEMBER-HOWTO.md` §1 C7).
-  F3 killed the retry_count OVERLOAD but not the ROLE GATE: honest nodes send TODS, so recv=0 and
-  ForwardingRatio stays attacker-only. Option 1 = every node relays to its parent explicitly; it also makes
-  attacker POSITION topologically meaningful. **Its stated cost ("existing runs become non-comparable") is
-  near zero RIGHT NOW** — one cell exists and needs re-capture anyway — **and rises with every run captured.**
-- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255.** A node that has not heard a broadcast now
-  RECORDS that instead of claiming baseline, so the sep. 18 failure (root 100–551 s late ⇒ 38% falsely
-  baseline) cannot recur silently. ⚠️ **Host handling is NOT optional**: 255 is non-zero, so the phase-exit
-  anchor would otherwise treat a node's FIRST window as its exit and shift every `t_anchor_s` — plausible and
-  totally wrong. Handled in `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`. Verified by
-  `analysis/test_segments.py` (20 checks): **v1 and v2 produce IDENTICAL segments.** No pytest here — run it
-  directly: `python test_segments.py`.
-- sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (`blackhole_target.c`, NVS `nis16`/`bh_mac`, compiled
-  `BLACKHOLE_ATTACKER_MAC` as fallback). `export_logs.py --set/--get/--clear-attacker-mac`. **Takes effect on
-  the NEXT boot — power-cycle the victim.** Makes "vary the attacker position" affordable: it used to cost a
-  re-flash of every victim. Rejects all-zero/broadcast/multicast (those reproduce the silent failure).
-- sep. 20, 2026 — **P5 `analysis/leakage.py` is the ONE place deciding what a model may see**, with a written
-  reason per exclusion (an undocumented exclusion list looks like cherry-picking). Out: FR/Consistency/IED
-  (role-gated; Consistency ≡ |FR−1| to 1.1e-16, IED = recv×|1−FR| ⇒ 3 columns, ONE measurement), RetryRate,
-  the 3 Tunnel features. This is **C7 Option 3** — no re-capture, no firmware risk. Writes `leakage_audit.csv`.
-- sep. 20, 2026 — `analyze.ps1 -Verify` now runs **three exit-code-checked gates** (integrity → topology →
-  attack). It previously ran only `verify_attack.py` and ignored even that code. A NOT-CONFIRMED on a capture
-  that failed an earlier gate is now **INCONCLUSIVE, not a negative result**.
+  `recv_count,forward_count,drop_count`; v1's 11 unchanged and in place; `validate_integrity.py` accepts
+  BOTH. **Point: `retry_count` means ONE thing on every role again** — it used to carry the attacker's DROP
+  count (why `RetryRate` went 0.0033→0.9991 on that board alone). recv = accepted FOR RELAY, forward =
+  passed on, drop = accepted and not passed on. ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** —
+  recv>0 with forward=0 would score the root ForwardingRatio 0.0, making the node that MEASURES the attack
+  read as the one committing it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
+- sep. 20, 2026 — **⚠️ `PDR` ALONE SCORES 0.9987 vs a 0.7031 majority** (`analysis/leakage.py`, G402) ⇒
+  **excluding leaking features does NOT answer the panel's 2:40-4:50 objection.** PDR is not leakage — it
+  is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
+  by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
+  selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
+- sep. 20, 2026 — ⛔ **C7 OPTION 1 — APPROVED BY THE USER sep. 20, NOT YET IMPLEMENTED.** F3 killed the
+  retry_count overload but not the ROLE GATE: honest nodes send TODS, so recv=0 and ForwardingRatio stays
+  attacker-only. Option 1 = every node relays to its parent explicitly (P2P to `mesh_setup_get_parent_mac()`,
+  always upward so no loops); it also makes attacker POSITION topologically meaningful and makes
+  `BLACKHOLE_ATTACKER_MAC` targeting obsolete. Cost ('existing runs non-comparable') is lowest NOW.
+- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255.** A node that has not heard a broadcast
+  RECORDS that instead of claiming baseline. ⚠️ **Host handling is NOT optional**: 255 is non-zero, so the
+  phase-exit anchor would otherwise treat a node's FIRST window as its exit. Handled in
+  `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
+  **v1 and v2 give IDENTICAL segments**. Run `python test_segments.py` (no pytest here). Why: mesh_config.h.
+- sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (NVS, compiled constant as fallback);
+  `export_logs.py --set/--get/--clear-attacker-mac`. **Takes effect on the NEXT boot — power-cycle the
+  victim.** Full rationale in `components/mesh_common/include/blackhole_target.h`.
+- sep. 20, 2026 — **P5 `analysis/leakage.py` is the ONE place deciding what a model may see**, with a
+  written reason per exclusion. Out: FR/Consistency/IED (role-gated; 3 columns, ONE measurement),
+  RetryRate, the 3 Tunnel features. **C7 Option 3.** Writes `leakage_audit.csv` every pass.
+- sep. 20, 2026 — `analyze.ps1 -Verify` runs **three exit-code-checked gates** (integrity → topology →
+  attack); a NOT-CONFIRMED after a failed gate reads **INCONCLUSIVE, not a negative result**.
 - sep. 20, 2026 — `member_boards.json` had **child_8/child_10 transposed** (child_8 listed B4:90, actually
   70:68). Corrected against the boards' own telemetry — the export filename carries the nickname the board
   reports for itself and column 2 its MAC, so the boards are ground truth. Every other entry verified.
-- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md` written**: per-role meaning of every column, **no column holds an
-  802.11 MAC retry**, RSSI-is-per-link, root-is-layer-1. The cheap half of "rename honestly" — renaming costs
-  a re-capture, writing down what they contain costs nothing. **Read before writing schema text in the paper.**
+- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md` written** — per-role meaning of every column, **no column
+  holds an 802.11 MAC retry**, RSSI-is-per-link, root-is-layer-1. **Read it before writing schema text.**
 - sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; the sources are ALREADY in our bibliography.**
   **Khan et al. (2022), Sustainability 14(24):16630** is not just our platform cite — its ESP32+ESP-MESH
   air-quality nodes sit **"at a different location on a COLLEGE CAMPUS"**. The campus environmental-
@@ -84,18 +87,13 @@
   implement an IDS and excludes Sybil (§1.4.1). Risk R1 CLOSED. Two attacks only: blackhole + wormhole.
   ⚠️ The user's prompt template still says "our thesis is focused on intrusion detection" — template
   residue, do not act on it.
-- sep. 20, 2026 — **Five pre-fix diagnostics are in ARCHIVE.md** (M8-on-4-of-16-features; the two tools that
-  already detect early-boot contamination, now WIRED as gates; the WINDOW_SECONDS 5-vs-1 bug; the leakage
-  measurements; the evidence the attack always worked). Still load-bearing:
-  (a) ⚠️ **re-run M6→M7 on ANY cell analysed before sep. 20** — WINDOW_SECONDS hit every table built since D-9.
-  (b) **Quotable proof the blackhole worked:** root arrivals **6.07/s baseline → 0/s attack → 6.01/s cooldown**
-      (99% recovery); attacker forwarded 2605/2600 baseline vs **1/1020** attack; ~182 contiguous missing seq
-      per victim = `PHASE_ATTACK_S`.
+- sep. 20, 2026 — **Five pre-fix diagnostics in ARCHIVE.md.** Still load-bearing:
+  (a) ⚠️ **re-run M6→M7 on ANY cell analysed before sep. 20** (the WINDOW_SECONDS bug hit every table since D-9).
+  (b) **Quotable proof the blackhole worked:** root arrivals **6.07/s baseline → 0/s attack → 6.01/s cooldown**;
+      attacker forwarded 2605/2600 baseline vs **1/1020** attack; ~182 contiguous missing seq per victim.
   (c) **Table 3.4's predicted victim-retransmission increase is a pre-registered MISS — REPORT it, do NOT edit
-      the table** (§3.3.1.2 explains why: link-layer ACKs still succeed). A declared miss is a finding; a table
-      edited to match results is misconduct.
-  (d) `combine_all.py:52-55` ships `attack_type` + `node_role` as plain-text label equivalents — excluded by
-      `leakage.py` METADATA_COLUMNS, but still present in the CSV.
+      the table** (§3.3.1.2 explains why). A declared miss is a finding; an edited table is misconduct.
+  (d) `combine_all.py:52-55` ships `attack_type`+`node_role` as label equivalents (excluded by `leakage.py`).
 - sep. 20, 2026 — Scope evidence: "TinyTrust"/"TinyML"/"intrusion detection system" appear ZERO times in the
   approved proposal or this repo (grep); the abstract says "Rather than implementing a real-time IDS".
 - sep. 20, 2026 — **Attacker placement is not topological.** Valid chain of 8, but the attacker sits at
