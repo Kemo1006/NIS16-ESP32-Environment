@@ -299,8 +299,16 @@ function Invoke-Validate {
     # ---- Gate 2: topology convergence + structure (M3) ---------------------
     Write-Host ""
     Write-Host ("--- Gate 2/3: topology -- {0}" -f $label) -ForegroundColor Cyan
-    $topoArgs = @('--dir', $exportsRoot, '--topology', $Target.Topology,
-                  '--attack', $Target.Attack, '--expect', $Target.Topology)
+    # verify_topology.py takes the CLI topology NAME ('partial'); analyze.ps1 works
+    # in FOLDER names ('partial_mesh'). The two differ for exactly one topology, and
+    # passing the folder name straight through makes argparse reject it with
+    # "invalid choice: 'partial_mesh'" and exit 2 — which this function would then
+    # read as a topology FAILURE on every partial_mesh cell. Translate here, at the
+    # boundary, rather than widening verify_topology.py's choices: its own
+    # TOPOLOGY_DIRNAMES map is the one definition of this correspondence.
+    $topoName = if ($Target.Topology -eq 'partial_mesh') { 'partial' } else { $Target.Topology }
+    $topoArgs = @('--dir', $exportsRoot, '--topology', $topoName,
+                  '--attack', $Target.Attack, '--expect', $topoName)
     if ($Target.Location) { $topoArgs += @('--location', $Target.Location) }
     if ($Target.Scenario) { $topoArgs += @('--scenario', $Target.Scenario) }
     python (Join-Path $root 'tools\verify_topology.py') @topoArgs

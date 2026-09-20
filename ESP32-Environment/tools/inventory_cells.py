@@ -195,6 +195,121 @@ def judge(run, sample_interval_ms):
     return verdict, reasons, stats
 
 
+
+# ---------------------------------------------------------------------------
+# Campaign plan (CTTHES3) — 4 locations x 4 topologies x 2 attacks x 4 scenarios
+# ---------------------------------------------------------------------------
+# The team's design: in ONE location, per topology, 4 blackhole runs and 4
+# wormhole runs, each run using a DIFFERENT scenario. That is what answers the
+# panel's "r1-r3 are identical" comment (12:45-16:00) — the repeats stop being
+# repeats and become conditions.
+#
+# TWO THINGS THAT DESIGN MUST NOT MISS, both decided by the firmware, not by us:
+#
+#  1. HIGHLOAD is whole-run. mesh_config.h sets PROBE_INTERVAL_MS to
+#     HIGHLOAD_PROBE_INTERVAL_MS (250 ms, 4x) for the ENTIRE run, so phase 0 of a
+#     highload attack run is already 300 s of *benign traffic under high load*
+#     and phase 1 is the same load under attack. That within-run contrast IS the
+#     panel's "distinguish high utilisation from malicious flooding" (44:30), and
+#     it needs no extra run. Same nodes, same room, same RF — a better control
+#     than a separate benign run could be.
+#
+#  2. BURST is attack-window-only, so it does NOT get that for free. One child
+#     fires BURST_COUNT probes BURST_OFFSET_S into the attack-length window. On
+#     an attack run that burst coincides with the attack; without a matched
+#     BENIGN burst run there is nothing to compare it against, and "legitimate
+#     burst" and "burst during an attack" are perfectly confounded — exactly the
+#     bias the panel described. mesh_config.h says so outright: the root built
+#     with this flag "also holds an attack-length PHASE_ID_BASELINE window on a
+#     baseline run so the burst lands at the same offset in the matched pair".
+#     run.ps1's own header shows the pair as two command blocks.
+#
+#     => every (location, topology) that runs a burst ATTACK also needs ONE
+#        baseline burst run. It is shared between blackhole and wormhole, so the
+#        cost is 1 extra run per (location, topology), not 2.
+#
+# MOBILITY and POWERCYCLE are human scenarios (no firmware flag) — label-only.
+PLAN_LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
+PLAN_TOPOLOGIES = ["linear", "star", "tree", "partial_mesh"]
+PLAN_ATTACKS = ["blackhole", "wormhole"]
+PLAN_SCENARIOS = ["none", "highload", "burst", "mobility"]
+
+# Scenarios whose attack runs require a matched benign run at the same scenario.
+PAIRED_SCENARIOS = {"burst"}
+
+
+def build_plan():
+    """Every run the campaign calls for, as (attack, topology, location, scenario)."""
+    planned = []
+    for loc in PLAN_LOCATIONS:
+        for topo in PLAN_TOPOLOGIES:
+            for scn in PLAN_SCENARIOS:
+                for atk in PLAN_ATTACKS:
+                    planned.append((atk, topo, loc, scn))
+                if scn in PAIRED_SCENARIOS:
+                    planned.append(("baseline", topo, loc, scn))
+    return planned
+
+
+def report_plan(rows):
+    """Target matrix vs what is actually captured."""
+    planned = build_plan()
+    have = {(r["attack"], r["topology"],
+             r["location"] if r["location"] != "-" else "",
+             r["scenario"] if r["scenario"] != "-" else "none")
+            for r in rows if r["verdict"] == "COMPLETE"}
+
+    done, missing = [], []
+    for atk, topo, loc, scn in planned:
+        if (atk, topo, loc, scn) in have:
+            done.append((atk, topo, loc, scn))
+        else:
+            missing.append((atk, topo, loc, scn))
+
+    print()
+    print("=" * 118)
+    print("  CAMPAIGN PLAN  —  "
+          f"{len(PLAN_LOCATIONS)} locations x {len(PLAN_TOPOLOGIES)} topologies x "
+          f"{len(PLAN_ATTACKS)} attacks x {len(PLAN_SCENARIOS)} scenarios")
+    print("=" * 118)
+    print(f"  scenarios : {', '.join(PLAN_SCENARIOS)}")
+    print(f"  + {len([p for p in planned if p[0] == 'baseline'])} matched BENIGN runs "
+          f"for the paired scenario(s): {', '.join(sorted(PAIRED_SCENARIOS))}")
+    print(f"  planned runs : {len(planned)}")
+    print(f"  complete     : {len(done)}")
+    print(f"  remaining    : {len(missing)}")
+    print()
+
+    # Per-location remaining, so a session at one site has a shopping list.
+    per_loc = defaultdict(int)
+    for _atk, _topo, loc, _scn in missing:
+        per_loc[loc] += 1
+    print("  remaining per location:")
+    for loc in PLAN_LOCATIONS:
+        print(f"    {loc:<16}{per_loc.get(loc, 0):>4}")
+
+    # Run-time budget. One run is the phase timeline; the rest is flashing,
+    # placement and export, which in practice dominates.
+    run_s = 60 + 300 + 180 + 120
+    print()
+    print(f"  one run's phase timeline : {run_s} s ({run_s/60:.0f} min)")
+    print(f"  capture time only        : {len(missing) * run_s / 3600:.1f} h")
+    print(f"  realistic w/ setup+export: {len(missing) * 35 / 60:.1f} h "
+          f"(at ~35 min/run for an 8-board rig)")
+    print()
+    print("  PANEL, 'you do not need to run each test for a full hour':")
+    win = 1
+    per_run_windows = (run_s // win) * 8
+    print(f"    at 10 Hz x 8 nodes a single run already yields ~{per_run_windows:,} "
+          f"one-second windows.")
+    print(f"    {len(planned)} runs => ~{len(planned) * per_run_windows:,} windows, "
+          f"vs the 10k the panel mentioned.")
+    print("    You are ~2 orders of magnitude past 10k. Shortening PHASE_BASELINE_S")
+    print("    (300 s) is the cheapest way to buy back campaign hours without")
+    print("    losing statistical power — the panel explicitly invited this.")
+    print("=" * 118)
+    print()
+
 def main():
     ap = argparse.ArgumentParser(
         description="Inventory every experimental cell against the M4/M5 criteria.")
@@ -208,6 +323,9 @@ def main():
                     help="Firmware sampling interval AT CAPTURE TIME. Captures are not "
                          "self-describing; older ones need 1000 or 200.")
     ap.add_argument("--csv", default=None, help="Also write the table here.")
+    ap.add_argument("--plan", action="store_true",
+                    help="Also print the campaign matrix (4 locations x 4 topologies "
+                         "x 2 attacks x 4 scenarios) and what is still missing.")
     args = ap.parse_args()
 
     sources = []
@@ -275,6 +393,9 @@ def main():
     print("  tools/exports/ so the next run starts clean; it does not discard it.")
     print("  Re-analyse one with:  .\\analyze.ps1   (point it at that folder's exports/)")
     print()
+
+    if args.plan:
+        report_plan(rows)
 
     if args.csv:
         with open(args.csv, "w", newline="", encoding="utf-8") as fh:
