@@ -814,3 +814,72 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
       edited to match results is misconduct.
   (d) `combine_all.py:52-55` ships `attack_type` + `node_role` as plain-text label equivalents — excluded by
       `leakage.py` METADATA_COLUMNS, but still present in the CSV.
+
+- **THESIS 3 DRIVER — `Paper/Improvements.pdf`** (CTTHES2 panel comments, received ~aug. 2026). 8 timestamped rows → 7 distinct problems: single-feature decidability, no attack parameter variation, redundant r1–r3, one environment only, no declared IoT scenario, no attack provenance/validation, uncharacterised benign baseline. Full analysis + response plan: `Plan/THESIS3-PANEL-PLAN.md`.
+
+- **Attack-validation framing (panel P6):** blackhole/wormhole are defined by adversary BEHAVIOUR, not protocol — so LEACH/AODV/RPL datasets are valid comparison points and sources need NOT be ESP32-specific. Validate by *definitional conformance* (criteria from Karlof & Wagner / Hu-Perrig-Johnson vs. what we implement, failures declared), then match signature SHAPE not absolute values. Tables drafted in plan §5.1.
+
+- Two conformance gaps to declare, not hide: (a) our blackhole is a **placed relay**, it does not *attract* traffic by false route advertisement — hence the paper's name "Forwarding Suppression (Blackhole)"; (b) our wormhole produces duplicate arrivals but whether parent selection re-forms around the fake link is unproven — hence "Topology Distortion (**Wormhole-Inspired**)". The paper's own functional naming (§4.2.1.2/4.2.1.3, Tables 4.6/4.7) already makes the narrower, defensible claim — lead with it.
+
+- sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; the sources are ALREADY in our bibliography.**
+  **Khan et al. (2022), Sustainability 14(24):16630** is not just our platform cite — its ESP32+ESP-MESH
+  air-quality nodes sit **"at a different location on a COLLEGE CAMPUS"**. The campus environmental-
+  monitoring scenario IS the published use case of our own protocol. Verified sep. 20 vs the MDPI record.
+  Cite these numbers: **reporting interval every 2 minutes per node**; **baseline PDR > 97%, loss < 1.8%** —
+  and note our corrected baseline **0.998±0.025 lands inside their range** (a validation result).
+  Zhukabayeva 2025 (Technologies 13(8):348) = routing attacks on a smart-BUILDING environmental WSN + the
+  3-sigma method. ⚠️ its "4-storey office building / linear topology" detail in
+  `memory/resources-papers-assessment.md` came from a teammate's full-text read, NOT confirmable from the
+  abstract — **re-verify against the PDF before publishing it.** Karlof & Wagner (2003) = the
+  "target deployment" cite the panel asked for (damage scales with traffic aggregated at the attacker's
+  position ⇒ near-sink/intermediate/edge is justified). ⇒ **The gap is NOT literature — it is (a) a measured
+  floor plan per topology and (b) a declared traffic profile.** That fully answers panel 9:10-12:00.
+
+- sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00).** Every dependent variable is
+  network-layer (forwarded?, arrived?, RSSI, retries, hops) and **none depends on the payload bytes** — a
+  blackhole drops a frame carrying a real 28.4 °C exactly as it drops a synthetic one. So: network
+  behaviour **MUST be real** (it is); sensor VALUES **may be synthetic**; timing / payload size / message
+  mix must be **realistic and cited** (Khan's 120 s); placement, distances, RF context must be **real AND
+  RECORDED** (real but undocumented today — the actual gap). Simulating loss/RSSI/retries is what WOULD
+  break validity, and we don't. The paper needs ONE paragraph stating what was measured vs generated — a
+  stated synthesis is a methodology note, an unstated one is a finding against us.
+  ⚠️ Do NOT naively slow the probe to 120 s: PDR resolution is probes-per-window and it would become
+  unmeasurable. Keep the 1 Hz probe as the declared **measurement instrument** (like a ping sweep) and
+  layer 120 s application telemetry on top as a second message type.
+
+- ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture** (first diagnosed
+  sep. 18, 2026, mid `blackhole/linear/G402`). Symptom: boot count climbing every ~2s in the SD env
+  report, `rst:0x3 (SW_RESET)`, UART output garbled mid-line (abrupt uncontrolled reset, NOT a clean
+  `esp_restart()` call anywhere in app code), always right as WiFi/mesh radio powers up (`sta +
+  softAP` dual-radio start — the single highest current-draw moment of boot). Diagnosis: power
+  brownout, not firmware — the ROOT runs BOTH softAP+STA (a child only runs STA, draws less), and
+  `root_node/sdkconfig`'s brownout detector sits at its most sensitive default
+  (`CONFIG_ESP32_BROWNOUT_DET_LVL_SEL_0`, ~2.7V trip). RULED OUT as the cause: the same-session
+  `MESH_STACK_MAX_LAYER_CHAIN=1000` change — `mesh_setup.c:139`'s `esp_mesh_set_max_layer(1000)` call
+  succeeds every time (its own log line prints cleanly right after it, before the crash point). Fix:
+  root directly into a laptop USB port, never a hub shared with other boards; known-good short cable.
+  If a CHILD loops too under the same setup, it's the shared power source, not root's dual-radio
+  draw specifically — re-diagnose before assuming this same cause.
+
+- ⚠️ WORMHOLE's equivalent run-killer is DIFFERENT — it has **no MAC at all** (the tunnel is a
+  physical wired UART1 link between the two endpoint boards; `mesh_config.h:243` says so outright,
+  and wormhole victims send plain TODS since the P2P-to-a-MAC path is `BLACKHOLE_VICTIM_TARGET`
+  only). Its silent failure is a dead/mis-wired cable: TunnelIntensity/TunnelBytes/TunnelLatency
+  come out empty while both boards look healthy. ⚠️ Node B CANNOT detect this — `uart_write_bytes()`
+  succeeds into an unterminated line, so B's "Tunnelled" counter climbs regardless; only Node A can
+  prove a frame crossed. Guard added sep. 16 on Node A: if `s_tunnel_received == 0` at terminate it
+  prints a TUNNEL CARRIED NOTHING banner (check B-TX→A-RX + COMMON GROUND; `uart_link_test` is the
+  bring-up project).
+
+- sep. 20, 2026 — ⚠️ **CORRECTION, and it matters: "only ONE cell has data" and "ZERO wormhole captures
+  exist" were BOTH WRONG** (they were in STATUS.md and MEMORY.md and I repeated them). New
+  `tools/inventory_cells.py` scans live **and archived** exports against the M4/M5 criteria and finds
+  **18 runs, 8 COMPLETE, 5 attack×topology cells with data — all 5 having at least one complete run —
+  and 2 locations (G402 + home).** **Wormhole captures DO exist**: linear r2/r3, star r1/r2/r3,
+  partial_mesh r1. So Table 3.5 is not unvalidated, it is un-**analysed**, and the 6 wormhole runs are
+  the cheapest route to M7's "no feature uniformly NaN" — no new capture needed.
+  **Root cause of the error: `archive.ps1` MOVES captures out of `tools/exports/`, and everyone
+  (including every tool) was only ever looking at `tools/exports/`.** Archived runs are real data.
+  ⚠️ Team judgement call, NOT mine: those 6 wormhole runs come from the sep. 16 pre-restart snapshot
+  (schema v1, pre-F1/F3). Mechanically complete; whether pre-restart data counts toward M4 is yours to
+  decide. Re-run the inventory any time with `python tools/inventory_cells.py`.
