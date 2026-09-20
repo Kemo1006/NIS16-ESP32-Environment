@@ -118,17 +118,58 @@
  * These match Table 4.1 in the thesis exactly.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Phase durations ──────────────────────────────────────────────────────────
+ *
+ * Overridable from the build, exactly like ACTIVE_ATTACK / MESH_TOPOLOGY /
+ * TRAFFIC_PROFILE:
+ *
+ *     idf.py -DPHASE_BASELINE_S=180 build
+ *
+ * They used to be bare #defines, so shortening a run meant editing this header
+ * and remembering to put it back. Since every scenario already forces a rebuild
+ * (TRAFFIC_PROFILE is a compile-time flag), making these -D-settable costs
+ * nothing and turns run length into a per-run parameter.
+ *
+ * WHY YOU WOULD WANT TO. CTTHES2 panel: "you do not necessarily need to run each
+ * test for a full hour. Instead, consider running smaller intervals with more
+ * variations." At 10 Hz across 8 nodes ONE run already yields ~5,280 one-second
+ * windows, so a 4x4x4 campaign produces ~760,000 — roughly two orders of
+ * magnitude past the 10k the panel referred to. Baseline is the cheapest phase
+ * to cut: PHASE_BASELINE_S 300 -> 180 removes 2 minutes from every run in the
+ * matrix while still leaving ~1,440 baseline windows per run.
+ *
+ * ⚠️ ONLY THE ROOT'S VALUES MATTER for the timeline — the root announces every
+ * phase transition and the children just follow (root_main.c's
+ * experiment_controller_task). But build the WHOLE fleet with the same values
+ * anyway: PHASE_BASELINE_S is also compiled into preprocess.py's expectations
+ * (mirrored there as a module constant) and into the burst scenario's
+ * BURST_OFFSET_S bound-check below.
+ *
+ * ⚠️ Changing these changes what "baseline" means between runs. Captures made
+ * with different phase lengths are still comparable window-for-window, but the
+ * number of baseline windows per run differs — say so in the methodology rather
+ * than letting a reader assume every run was identical.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
 /** Stabilisation window before Phase 0 starts (mesh formation, not logged). */
+#ifndef PHASE_STABILISE_S
 #define PHASE_STABILISE_S   60U
+#endif
 
 /** Phase 0 — Baseline: normal operation, no manipulation. */
+#ifndef PHASE_BASELINE_S
 #define PHASE_BASELINE_S    300U       /* 5 minutes */
+#endif
 
 /** Phase 1/2 — Manipulation window (blackhole or wormhole). */
+#ifndef PHASE_ATTACK_S
 #define PHASE_ATTACK_S      180U       /* 3 minutes */
+#endif
 
 /** Phase 3 — Cooldown: manipulation off, network stabilises. */
+#ifndef PHASE_COOLDOWN_S
 #define PHASE_COOLDOWN_S    120U       /* 2 minutes */
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * PHASE IDs  (broadcast in control messages)
