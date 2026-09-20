@@ -665,6 +665,11 @@ static const char *phase_id_str(uint8_t id)
     case PHASE_ID_WORMHOLE:  return "WORMHOLE";
     case PHASE_ID_COOLDOWN:  return "COOLDOWN";
     case PHASE_ID_TERMINATE: return "TERMINATE";
+    /* Distinct from UNKNOWN on purpose: UNSET is an expected, correct state
+     * (no phase broadcast heard yet), and on the live heartbeat table it is
+     * the fastest way to see that a node is up but the root is not driving it
+     * yet. UNKNOWN stays for a genuinely out-of-range value. */
+    case PHASE_ID_UNSET:     return "UNSET";
     default:                 return "UNKNOWN";
     }
 }
@@ -926,7 +931,9 @@ void heartbeat_table_init(void)
         strlcpy(e->nickname, node_identity_nickname(), NODE_NICKNAME_LEN);
         e->role          = node_identity_role();
         e->layer         = (int16_t)mesh_setup_get_layer();
-        e->current_phase = PHASE_ID_BASELINE;
+        /* The root has not announced anything yet at this point, so seeding
+         * BASELINE here would show a phase it never broadcast. */
+        e->current_phase = PHASE_ID_UNSET;
         e->last_seen_us  = esp_timer_get_time();
     }
 

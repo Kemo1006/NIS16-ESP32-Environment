@@ -72,6 +72,50 @@ MAX_INTERP_GAP_SAMPLES = 2          # "gap of 1-2 consecutive missing samples".
                                     # at 10 Hz this interpolates at most 0.2 s,
                                     # i.e. strictly LESS synthetic data than the
                                     # 2 s it covered at 1 Hz.
+# Phase-0 is overloaded THREE ways by the firmware (see DATASET-AUDIT-2026-09-18
+# finding A1 #6): a genuine baseline phase, the root's PHASE_STABILISE_S window,
+# and "this node has not heard any phase broadcast yet" — phase_listener.c:35
+# initialises s_phase_id/s_gt_label to BASELINE. A node powered up before the
+# root therefore logs phase 0 / gt_label 0 while probing a mesh that has no root
+# in it, and those windows are indistinguishable from real baseline.
+#
+# assign_segments() separates them using the ONE cross-node reference that needs
+# no shared clock: each node's own FIRST EXIT from phase 0, which is a mesh
+# broadcast every node receives. Working backwards from it, the last
+# PHASE_BASELINE_S of phase 0 is the real baseline; anything earlier is
+# pre_baseline and is EXCLUDED from the labelled dataset (window_label = NaN).
+# Must match PHASE_BASELINE_S in components/mesh_common/include/mesh_config.h.
+PHASE_BASELINE_S = 300
+
+# F1 (firmware, 2026-09-20): from this capture onward the board RECORDS the
+# "not heard a phase broadcast yet" state instead of logging it as phase 0.
+# Must match PHASE_ID_UNSET / GT_LABEL_UNSET in mesh_config.h.
+#
+# Handling it is not optional once the firmware emits it: 255 is non-zero, so
+# the phase-exit anchor below would treat the node's very FIRST window as its
+# exit from phase 0 and shift every t_anchor_s by the whole pre-root period.
+# The result would look plausible and be wrong. Both schemas therefore run
+# through the same rules, with 255 mapped to pre_baseline explicitly.
+PHASE_ID_UNSET = 255
+GT_LABEL_UNSET = 255
+
+SEGMENT_PRE_BASELINE = "pre_baseline"
+SEGMENT_BASELINE = "baseline"
+SEGMENT_ATTACK = "attack"
+SEGMENT_COOLDOWN = "cooldown"
+SEGMENT_REBROADCAST = "baseline_rebroadcast"   # phase 0 seen again after an exit
+SEGMENT_NO_PHASE = "no_phase_seen"             # node never left phase 0 at all
+
+# Segments that carry a usable ground-truth label. Everything else gets
+# window_label = NaN so it can never enter a benign or attack population.
+LABELLED_SEGMENTS = (SEGMENT_BASELINE, SEGMENT_ATTACK, SEGMENT_COOLDOWN)
+
+# rssi_dbm == 0 is the firmware's uninitialised placeholder, not a reading:
+# esp_wifi_sta_get_rssi() leaves the 0 initialiser when the node has no parent
+# link, and it is 0 on every root row. Audit finding A1 #7 measured it on
+# exactly 1 of 146,310 joined non-root rows, i.e. it is never a real value.
+RSSI_PLACEHOLDER = 0
+
 EPSILON = 1e-6                      # Equation 4.2 divide-by-zero guard
 MAX_SESSION_SECONDS = 24 * 3600    # 86400 — captures run for minutes, so a
                                    # per-node relative time beyond a full day
@@ -103,6 +147,14 @@ CUMULATIVE_COLUMNS = (
     "tx_count",
     "probes_count",
     "probes_received",
+    # F3 (telemetry schema v2). Absent from every capture up to and including
+    # 2026-09-18; every loop over this tuple skips columns the file does not
+    # have, so listing them here is a no-op on v1 data and picks them up
+    # automatically on v2. features.compute_forwarding_features() already
+    # prefers recv_count_delta/forward_count_delta when they exist.
+    "recv_count",
+    "forward_count",
+    "drop_count",
 )
 
 # Columns that are CONTINUOUS metrics — aggregated as mean/var/min/max
@@ -126,6 +178,9 @@ NUMERIC_COLUMNS = (
     "timestamp_us", "layer", "rssi_dbm",
     "retry_count", "tx_count", "probes_count",
     "phase_id", "gt_label",
+    # F3 schema v2 — skipped when absent (see the loop at _coerce_and_drop_
+    # malformed), so v1 captures are unaffected.
+    "recv_count", "forward_count", "drop_count",
 )
 
 
@@ -149,6 +204,9 @@ class PreprocessReport:
     windows_discarded_gap: int = 0
     windows_kept: int = 0
     per_node_window_counts: dict[str, int] = field(default_factory=dict)
+    rssi_placeholders_blanked: int = 0
+    segment_counts: dict[str, int] = field(default_factory=dict)
+    nodes_without_phase_exit: list[str] = field(default_factory=list)
 
     def discard_fraction(self) -> float:
         if self.windows_total == 0:
@@ -171,7 +229,22 @@ class PreprocessReport:
             f"  Windows discarded (gap>2s): {self.windows_discarded_gap}",
             f"  Windows kept:               {self.windows_kept}",
             f"  Discard fraction:           {self.discard_fraction():.1%}",
+            f"  RSSI placeholders blanked:  {self.rssi_placeholders_blanked} "
+            f"(rssi_dbm == 0 -> missing; audit A1 #7)",
         ]
+        if self.segment_counts:
+            lines.append("  Windows per segment (pre_baseline is EXCLUDED, "
+                         "window_label = NaN):")
+            for seg in (SEGMENT_PRE_BASELINE, SEGMENT_BASELINE, SEGMENT_ATTACK,
+                        SEGMENT_COOLDOWN, SEGMENT_REBROADCAST, SEGMENT_NO_PHASE):
+                if seg in self.segment_counts:
+                    excl = "" if seg in LABELLED_SEGMENTS else "   [excluded]"
+                    lines.append(f"    {seg:<22} {self.segment_counts[seg]}{excl}")
+        if self.nodes_without_phase_exit:
+            lines.append(f"  [WARN] {len(self.nodes_without_phase_exit)} node(s) never "
+                         f"left phase 0 — no baseline can be attributed to them:")
+            for n in self.nodes_without_phase_exit:
+                lines.append(f"    {n}")
         if self.files_skipped:
             lines.append(f"  Skipped files: {self.files_skipped}")
         if self.unimported_card_files:
@@ -509,6 +582,18 @@ def _coerce_and_drop_malformed(
         report.rows_dropped_malformed += n_bad
         coerced = coerced.loc[~bad_mask].reset_index(drop=True)
 
+    # rssi_dbm == 0 is the "no parent link" placeholder, not a measurement
+    # (audit A1 #7). Left in, it is averaged into RSSI_mean and compared against
+    # a per-layer baseline median that is itself 0, manufacturing an
+    # RSSI_Hop_Diff of exactly 0. Blank it so the normal missing-value path
+    # handles it and it can never masquerade as a -0 dBm reading.
+    if "rssi_dbm" in coerced.columns:
+        placeholder = coerced["rssi_dbm"] == RSSI_PLACEHOLDER
+        n_placeholder = int(placeholder.sum())
+        if n_placeholder:
+            report.rssi_placeholders_blanked += n_placeholder
+            coerced.loc[placeholder, "rssi_dbm"] = np.nan
+
     return coerced
 
 
@@ -819,6 +904,105 @@ def build_windows(
     return windowed
 
 
+def assign_segments(
+    windowed: pd.DataFrame, report: PreprocessReport
+) -> pd.DataFrame:
+    """
+    Separate the three meanings of phase 0 and void the label on the two that
+    are not a baseline. Implements audit fix C6 (DATASET-AUDIT-2026-09-18,
+    finding A1 #6); see the PHASE_BASELINE_S comment block at the top of this
+    module for why phase 0 is ambiguous in the first place.
+
+    ANCHOR. Each node's own FIRST EXIT from phase 0 — the window where
+    window_phase_id first becomes non-zero. That transition is driven by a mesh
+    broadcast from the root, so every node observes the same event, which makes
+    it the one cross-node reference point that needs no shared clock (the boards
+    never synchronise theirs). Times are expressed relative to it as
+    ``t_anchor_s``, which is negative before the exit and zero at it.
+
+    RULES, per node:
+      phase 0, t_anchor_s <  -PHASE_BASELINE_S  -> pre_baseline  (EXCLUDED)
+      phase 0, -PHASE_BASELINE_S <= t < 0       -> baseline
+      phase 1 or 2                              -> attack
+      phase 3                                   -> cooldown
+      phase 0, t_anchor_s >= 0                  -> baseline_rebroadcast (EXCLUDED)
+      never exits phase 0                       -> no_phase_seen        (EXCLUDED)
+
+    Excluded segments keep every measured value — nothing is deleted — but get
+    ``window_label = NaN`` so they cannot be counted into the benign class or
+    the attack class by anything downstream. That is the whole point: a node
+    probing a mesh the root has not joined yet is not "normal operation", and
+    pooling it into the reference distribution is what made the 3-sigma
+    verification arithmetically unable to detect even a perfect attack.
+
+    WHY THE ANCHOR MUST BE THE PHASE EXIT, not the root's boot or its first
+    logged arrival. On the 2026-09-18 G402 capture the attacker flushes its
+    queued relay backlog the instant the root appears — 117 forwarded in a
+    window where it received 6, ForwardingRatio 19.5 — and that single window
+    carries most of the baseline variance. It sits at t_anchor_s = -361, i.e.
+    61 s before the real baseline opens, so this rule excludes it; a cutoff
+    anchored on the root's boot would keep it and ForwardingRatio would still
+    fail (measured z = -2.78). Verified on that capture.
+    """
+    if windowed.empty:
+        return windowed
+
+    out = windowed.copy()
+    out["t_anchor_s"] = np.nan
+    out["segment"] = SEGMENT_NO_PHASE
+
+    phase = pd.to_numeric(out["window_phase_id"], errors="coerce")
+
+    # PHASE_ID_UNSET is "no broadcast heard yet" — the same condition phase 0
+    # used to hide, now stated by the firmware. It is emphatically NOT a phase
+    # exit, so it is excluded from the anchor test below and mapped straight to
+    # pre_baseline. On v1 captures this mask is simply all-False and every rule
+    # behaves exactly as before, which is what keeps the two schemas comparable.
+    is_unset = phase.eq(PHASE_ID_UNSET)
+
+    for (node_id, source_file), idx in out.groupby(
+        ["node_id", "source_file"], sort=False
+    ).groups.items():
+        rows = out.loc[idx]
+        exited = (phase.loc[idx].ne(0) & phase.loc[idx].notna()
+                  & ~is_unset.loc[idx])
+        if not exited.any():
+            report.nodes_without_phase_exit.append(f"{node_id} ({source_file})")
+            continue
+
+        anchor = rows.loc[exited, "window_start"].min()
+        t = rows["window_start"] - anchor
+        out.loc[idx, "t_anchor_s"] = t
+
+        p = phase.loc[idx]
+        seg = pd.Series(SEGMENT_NO_PHASE, index=idx, dtype=object)
+        seg[p.isin([1, 2])] = SEGMENT_ATTACK
+        seg[p == 3] = SEGMENT_COOLDOWN
+        is_zero = p == 0
+        seg[is_zero & (t >= 0)] = SEGMENT_REBROADCAST
+        seg[is_zero & (t < 0)] = SEGMENT_BASELINE
+        seg[is_zero & (t < -PHASE_BASELINE_S)] = SEGMENT_PRE_BASELINE
+        # Applied LAST so it wins outright: an explicitly-unset phase is never
+        # baseline, whatever t_anchor_s says about it.
+        seg[is_unset.loc[idx]] = SEGMENT_PRE_BASELINE
+        out.loc[idx, "segment"] = seg
+
+    # Void the label everywhere the segment is not a real experimental phase.
+    unlabelled = ~out["segment"].isin(LABELLED_SEGMENTS)
+    out.loc[unlabelled, "window_label"] = np.nan
+
+    # Belt and braces: GT_LABEL_UNSET must never survive as a class value, even
+    # if some future segment rule accidentally admits it. 255 entering a label
+    # column is the single most expensive failure this module can produce — it
+    # is numerically valid, sorts as "the biggest class", and nothing
+    # downstream would question it.
+    out.loc[pd.to_numeric(out["window_label"], errors="coerce")
+            .eq(GT_LABEL_UNSET), "window_label"] = np.nan
+
+    report.segment_counts = out["segment"].value_counts().to_dict()
+    return out
+
+
 def _max_consecutive_true(flags: np.ndarray) -> int:
     """Length of the longest run of True values in a boolean array."""
     if flags.size == 0:
@@ -857,6 +1041,7 @@ def run_pipeline(
     rebased = rebase_timestamps(raw)
     filled = handle_missing_values(rebased, report)
     windowed = build_windows(filled, report, _run_context_from_path(input_dir))
+    windowed = assign_segments(windowed, report)
 
     return windowed, report, filled
 

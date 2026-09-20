@@ -636,6 +636,25 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--set-attacker-mac", dest="set_attacker_mac", default=None,
+                   metavar="AA:BB:CC:DD:EE:FF",
+                   help="F2: point this blackhole VICTIM board at a different "
+                        "attacker, without recompiling it. Stored in NVS and "
+                        "read at boot, so it takes effect on the NEXT power "
+                        "cycle. This is what makes 'vary the attacker position' "
+                        "affordable: previously the attacker MAC was a #define "
+                        "and moving it meant re-flashing every victim.")
+    p.add_argument("--get-attacker-mac", dest="get_attacker_mac",
+                   action="store_true",
+                   help="Report the attacker MAC this board will target, and "
+                        "whether it came from NVS or the compiled default. Run "
+                        "this on every victim before a blackhole run — a stale "
+                        "value fails SILENTLY (zero root arrivals, PDR and "
+                        "ForwardingRatio 100%% NaN, every board looking fine).")
+    p.add_argument("--clear-attacker-mac", dest="clear_attacker_mac",
+                   action="store_true",
+                   help="Drop the NVS override so BLACKHOLE_ATTACKER_MAC from "
+                        "mesh_config.h applies again on the next boot.")
     p.add_argument("--delete-sd-path", dest="delete_sd_path", default=None,
                    metavar="ATTACK/TOPOLOGY/LOCATION",
                    help="PERMANENTLY delete a folder (and everything under it) on this "
@@ -749,6 +768,87 @@ def main() -> int:
                 print("   no ack — this board is running firmware from before "
                       "GET_LOCATION existed. Reflash it to read locations back.",
                       file=sys.stderr)
+                return 1
+            return 0
+
+        # ── F2: attacker-MAC commands ───────────────────────────────────────
+        # Same ack-wait shape as --set-location below. Firmware from before F2
+        # simply never acks, which is reported as such rather than as a success.
+        if args.get_attacker_mac:
+            _send_command(ser, "GET_ATTACKER_MAC")
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line.startswith("ATTACKER_MAC:"):
+                    print(f"ATTACKER_MAC: {line[len('ATTACKER_MAC:'):].strip()}")
+                    return 0
+                if line.startswith("ERROR:"):
+                    print(f"   get-attacker-mac FAILED: {line}", file=sys.stderr)
+                    return 1
+            print("ATTACKER_MAC: UNKNOWN")
+            print("   no ack — firmware from before F2. Reflash to read it back.",
+                  file=sys.stderr)
+            return 1
+
+        if args.clear_attacker_mac:
+            print("-> CLEAR_ATTACKER_MAC ...")
+            _send_command(ser, "CLEAR_ATTACKER_MAC")
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line == "ATTACKER_MAC_CLEARED":
+                    print("   override cleared — the compiled "
+                          "BLACKHOLE_ATTACKER_MAC applies on the next boot.")
+                    return 0
+                if line.startswith("ERROR:"):
+                    print(f"   clear-attacker-mac FAILED: {line}", file=sys.stderr)
+                    return 1
+            print("   no ack — firmware from before F2.", file=sys.stderr)
+            return 1
+
+        if args.set_attacker_mac:
+            print(f"-> SET_ATTACKER_MAC={args.set_attacker_mac} ...")
+            _send_command(ser, f"SET_ATTACKER_MAC={args.set_attacker_mac}")
+            deadline = time.time() + 5
+            acked = False
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line == "ATTACKER_MAC_SET":
+                    print(f"   target set to {args.set_attacker_mac} — takes "
+                          f"effect on next boot. POWER-CYCLE this board before "
+                          f"the run, or it will still probe the old address.")
+                    acked = True
+                    break
+                if line.startswith("ERROR:"):
+                    hint = {
+                        "ERROR:BAD_MAC":
+                            f"the board rejected {args.set_attacker_mac!r}. It "
+                            f"needs six hex bytes (aa:bb:cc:dd:ee:ff), and "
+                            f"refuses all-zero, broadcast and multicast "
+                            f"addresses because those reproduce exactly the "
+                            f"silent-failure mode this flag exists to prevent. "
+                            f"Nothing was written.",
+                        "ERROR:MAC_WRITE_FAILED":
+                            "NVS would not take the write. The board is still "
+                            "targeting whatever it targeted before — re-read it "
+                            "with --get-attacker-mac.",
+                    }.get(line)
+                    print(f"   set-attacker-mac FAILED: {line}", file=sys.stderr)
+                    if hint:
+                        print(f"   {hint}", file=sys.stderr)
+                    return 1
+            if not acked:
+                print("   no ack — firmware from before F2. Reflash with the "
+                      "current firmware and retry.")
                 return 1
             return 0
 

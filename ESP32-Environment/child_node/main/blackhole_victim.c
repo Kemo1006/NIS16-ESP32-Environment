@@ -52,6 +52,7 @@
 #include "csv_logger.h"
 #include "sd_status.h"
 #include "node_identity.h"
+#include "blackhole_target.h"
 #include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
@@ -72,10 +73,22 @@ static char     s_node_id[NODE_ID_LEN] = {0};
 static char     s_run_id[RUN_ID_LEN]   = {0};
 static uint8_t  s_self_mac[6]          = {0};
 
-/* Relay counters */
-static volatile uint32_t s_probes_received  = 0;  /* from victims             */
-static volatile uint32_t s_probes_forwarded = 0;  /* to root (non-attack)     */
-static volatile uint32_t s_probes_dropped   = 0;  /* during attack + fails    */
+/* Relay counters.
+ *
+ * s_probes_dropped is an OUTCOME counter: every frame accepted for relay and
+ * not passed on, whatever the cause (deliberate attack drop, queue overflow,
+ * or a failed send). s_forward_failures is a CAUSE counter, incremented only
+ * by the failed-send path, and it is what now feeds the retry_count column.
+ *
+ * A failed forward therefore increments BOTH, on purpose: the frame did not get
+ * passed on (an outcome) AND a send call failed (a cause). Keeping them
+ * separate is the point of F3 — it lets drop_count answer "what did this relay
+ * do to the traffic" without retry_count having to mean something different on
+ * this board than on every other one. */
+static volatile uint32_t s_probes_received  = 0;  /* accepted for relay       */
+static volatile uint32_t s_probes_forwarded = 0;  /* passed on to the root    */
+static volatile uint32_t s_probes_dropped   = 0;  /* accepted, not passed on  */
+static volatile uint32_t s_forward_failures = 0;  /* esp_mesh_send() errors   */
 
 /* Queue of received victim probes awaiting the forward/drop decision. Sized
  * generously (was 32) so a transient slow-mesh burst — e.g. the attacker
@@ -159,22 +172,33 @@ void app_main(void)
      * so the fix is always to re-flash them (the wizard patches mesh_config.h
      * for you, but only when you actually build/flash through it). */
     {
-        const uint8_t configured[6] = BLACKHOLE_ATTACKER_MAC;
+        /* F2: check the EFFECTIVE target (NVS override if one is set, else the
+         * compiled constant) — checking the compiled constant alone would now
+         * warn about a mismatch the victims have already been told to ignore,
+         * and stay silent about a bad NVS value that actually would break the
+         * run. The attacker resolves it the same way a victim does, so this
+         * compares like with like. */
+        uint8_t configured[6] = {0};
+        bh_target_source_t src = blackhole_target_get(configured);
         if (memcmp(configured, s_self_mac, 6) != 0) {
             ESP_LOGE(TAG, "***********************************************************");
-            ESP_LOGE(TAG, "*** BLACKHOLE_ATTACKER_MAC MISMATCH — RUN WILL BE EMPTY ***");
+            ESP_LOGE(TAG, "***   ATTACKER MAC MISMATCH  —  RUN WILL BE EMPTY        ***");
             ESP_LOGE(TAG, "***********************************************************");
-            ESP_LOGE(TAG, "  compiled BLACKHOLE_ATTACKER_MAC : " MACSTR, MAC2STR(configured));
+            ESP_LOGE(TAG, "  effective target MAC (%-8s): " MACSTR,
+                     blackhole_target_source_str(src), MAC2STR(configured));
             ESP_LOGE(TAG, "  my actual STA MAC (the attacker): " MACSTR, MAC2STR(s_self_mac));
             ESP_LOGE(TAG, "  Victims are targeting a board that is NOT this one, so their");
             ESP_LOGE(TAG, "  probes reach nobody. Root will log ZERO arrivals and PDR +");
             ESP_LOGE(TAG, "  ForwardingRatio will be entirely NaN.");
-            ESP_LOGE(TAG, "  FIX: point BLACKHOLE_ATTACKER_MAC at " MACSTR " and RE-FLASH",
-                     MAC2STR(s_self_mac));
-            ESP_LOGE(TAG, "       every victim board, then re-run. ABORT THIS RUN NOW.");
+            ESP_LOGE(TAG, "  FIX (no re-flash): send each victim over serial");
+            ESP_LOGE(TAG, "       SET_ATTACKER_MAC=" MACSTR, MAC2STR(s_self_mac));
+            ESP_LOGE(TAG, "       then power-cycle them. run.ps1 -AttackerMac does this for you.");
+            ESP_LOGE(TAG, "  FIX (old way): point BLACKHOLE_ATTACKER_MAC at that MAC and");
+            ESP_LOGE(TAG, "       re-flash every victim board. ABORT THIS RUN NOW.");
             ESP_LOGE(TAG, "***********************************************************");
         } else {
-            ESP_LOGI(TAG, "BLACKHOLE_ATTACKER_MAC matches this board — victims will reach me.");
+            ESP_LOGI(TAG, "Attacker MAC (%s) matches this board — victims will reach me.",
+                     blackhole_target_source_str(src));
         }
     }
 
@@ -252,7 +276,10 @@ static void relay_task(void *arg)
                 ESP_LOGD(TAG, "Forwarded victim probe seq=%lu to root",
                          (unsigned long)pkt.seq_num);
             } else {
+                /* Both counters: the frame was not passed on (drop_count) AND
+                 * a send call failed (retry_count). See their declarations. */
                 s_probes_dropped++;
+                s_forward_failures++;
                 ESP_LOGW(TAG, "Forward failed seq=%lu: %s",
                          (unsigned long)pkt.seq_num, esp_err_to_name(err));
             }
@@ -319,6 +346,7 @@ static void telemetry_task(void *arg)
         uint32_t received  = s_probes_received;
         uint32_t forwarded = s_probes_forwarded;
         uint32_t dropped   = s_probes_dropped;
+        uint32_t send_fail = s_forward_failures;
 
         csv_logger_append_telemetry(
             ts,
@@ -327,11 +355,25 @@ static void telemetry_task(void *arg)
             layer,
             pmac,
             rssi,
-            dropped,       /* retry_count  = probes dropped                */
-            forwarded,     /* tx_count     = probes forwarded to root      */
-            received,      /* probes_count = probes received from victims  */
+            /* F3: retry_count is now send FAILURES only, the same meaning it
+             * carries on every other role. It used to be handed `dropped`, so
+             * the attacker's deliberate drops were filed in a MAC-sounding
+             * column — the leak that made RetryRate go 0.0033 -> 0.9991 on this
+             * one board while every victim went to 0.0000, and the concrete
+             * form of the panel's single-feature objection. The drops now have
+             * their own column below, where they read as what they are:
+             * attacker-side ground truth, not a measurement of the network. */
+            send_fail,     /* retry_count  = failed esp_mesh_send() calls   */
+            forwarded,     /* tx_count     = probes forwarded to root       */
+            received,      /* probes_count = probes received from victims   */
             phase_listener_get_phase_id(),
-            phase_listener_get_label()
+            phase_listener_get_label(),
+            /* F3 relay counters — same meaning as on every other role. This
+             * board genuinely IS a relay, so unlike a victim its values are
+             * real: recv > 0 is what makes ForwardingRatio defined here. */
+            received,      /* recv_count    = frames accepted for relay     */
+            forwarded,     /* forward_count = frames passed on              */
+            dropped        /* drop_count    = accepted and not passed on    */
         );
 
 #if ATTACKER_TELEM_INSTRUMENT

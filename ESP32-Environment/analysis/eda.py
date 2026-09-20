@@ -86,6 +86,13 @@ from sklearn.preprocessing import StandardScaler
 
 sns.set_theme(style="whitegrid")
 
+# Host-side leakage guard. leakage.py owns the single definition of which
+# columns a MODEL may see; this module only consumes it. See its docstring for
+# the panel comment (2:40-4:50) that made it necessary. Imported by path
+# because eda.py is run as a script from analyze.ps1, not as a package module.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import leakage  # noqa: E402
+
 # The 16 Table 4.11 feature names, in the order the thesis presents them.
 # Used to decide which columns count as "features" for stats/correlation/
 # PCA purposes, as opposed to identity/metadata columns like node_id.
@@ -411,6 +418,7 @@ def plot_time_series(
 
 def compute_correlations(
     df: pd.DataFrame,
+    exclude_leaking: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
     """
     Pearson and Spearman correlation matrices across the 16 Table 4.11
@@ -420,8 +428,17 @@ def compute_correlations(
     All-NaN columns are excluded automatically (correlation is undefined
     on them) — returns the two matrices plus the list of columns that
     were excluded and why, so the exclusion is never silent.
+
+    exclude_leaking (default True) additionally drops the label-equivalent
+    columns listed in leakage.LEAKING_COLUMNS. Correlating a feature against
+    the attack's own switch measures the switch, not a cross-layer
+    relationship: ConsistencyScore is |ForwardingRatio - 1| to 1.1e-16, so
+    leaving both in manufactures a perfect correlation that says nothing about
+    the network. Pass False for the attacker-side diagnostic view.
     """
     candidate_cols = [c for c in FEATURE_COLUMNS if c in df.columns]
+    if exclude_leaking:
+        candidate_cols = [c for c in candidate_cols if c not in leakage.LEAKING_COLUMNS]
     excluded = _detect_allnan_columns(df, candidate_cols)
     usable_cols = [c for c in candidate_cols if c not in excluded]
 
@@ -477,6 +494,7 @@ def run_dimensionality_reduction(
     tsne_perplexity: float | None = None,
     random_state: int = 42,
     max_nan_fraction: float = 0.5,
+    exclude_leaking: bool = True,
 ) -> dict:
     """
     Z-score standardizes the feature columns (Equation 4.18), then runs
@@ -530,6 +548,18 @@ def run_dimensionality_reduction(
     function below) has everything needed to label the output honestly.
     """
     candidate_cols = [c for c in FEATURE_COLUMNS if c in df.columns]
+
+    # Leakage guard (default on). A projection computed over the attack's own
+    # switch separates the classes perfectly and proves nothing: the separation
+    # is the switch being on. Dropping these columns is what makes the
+    # projection a statement about network behaviour. leakage.py holds the list
+    # and the reason for each entry. Pass exclude_leaking=False for the
+    # attacker-side diagnostic view.
+    leaking_excluded = (
+        [c for c in candidate_cols if c in leakage.LEAKING_COLUMNS]
+        if exclude_leaking else []
+    )
+
     allnan_excluded = _detect_allnan_columns(df, candidate_cols)
 
     tunnel_cols = [c for c in candidate_cols if c.startswith("Tunnel")]
@@ -543,7 +573,8 @@ def run_dimensionality_reduction(
         if c not in allnan_excluded and df[c].isna().mean() > max_nan_fraction
     ]
 
-    excluded = sorted(set(allnan_excluded) | set(tunnel_excluded) | set(sparse_excluded))
+    excluded = sorted(set(allnan_excluded) | set(tunnel_excluded)
+                      | set(sparse_excluded) | set(leaking_excluded))
     usable_cols = [c for c in candidate_cols if c not in excluded]
 
     label_col = "Label" if "Label" in df.columns else "window_label"
@@ -936,6 +967,52 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     tunnel_path, tunnel_result = plot_tunnel_end_projection(df, output_dir)
     summary["tunnel_end_projection_plot"] = tunnel_path
     summary["tunnel_end_projection"] = tunnel_result
+
+    # 6. Leakage audit — the panel's 2:40-4:50 objection, answered numerically.
+    #
+    # Runs on EVERY analysis pass rather than on request, because the failure
+    # mode it catches is silent: a feature table that a model separates
+    # perfectly looks like a good result until someone asks which column did
+    # it. Writing the number next to every column each time means the answer
+    # is already on disk when that question is asked. Columns kept out of the
+    # model still get audited, so the report shows what was excluded AND what
+    # excluding it was worth.
+    try:
+        audit = leakage.single_feature_decidability(df)
+        audit_path = os.path.join(output_dir, "leakage_audit.csv")
+        audit.to_csv(audit_path, index=False)
+        summary["leakage_audit"] = audit_path
+
+        allowed, excluded_map = leakage.split_columns(df)
+        summary["model_feature_allowlist"] = allowed
+        summary["leakage_excluded_columns"] = sorted(excluded_map)
+
+        leakage.print_decidability_report(
+            audit, os.path.dirname(feature_table_path) or feature_table_path)
+
+        # A column still allowed into the model that on its own reproduces the
+        # label is the panel's objection surviving the fix. Say so here rather
+        # than leaving it to be discovered in the CSV.
+        survivors = audit[(~audit["excluded"])
+                          & (audit["lift_over_majority"] > 0.15)]
+        if len(survivors):
+            print("    WARNING: these columns are model inputs AND decide the "
+                  "label on their own:")
+            for _, r in survivors.iterrows():
+                print("      {:<22} {:.4f} vs {:.4f} majority".format(
+                    r["feature"], r["threshold_accuracy"],
+                    r["majority_baseline"]))
+            print("    Excluding features cannot fix this: a 100% drop rate in "
+                  "a fixed attack window")
+            print("    is separable by construction. It needs attack-parameter "
+                  "variation (panel 12:45-16:00).")
+            summary["leakage_survivors"] = survivors["feature"].tolist()
+    except (KeyError, ValueError) as exc:
+        # An unlabelled or single-class table is a legitimate state (a pure
+        # baseline run has no attack windows), not an error worth aborting the
+        # whole EDA pass for.
+        print(f"  (leakage audit skipped: {exc})")
+        summary["leakage_audit"] = None
 
     summary["orphan_plots"] = _find_orphan_timeseries(df, output_dir)
 

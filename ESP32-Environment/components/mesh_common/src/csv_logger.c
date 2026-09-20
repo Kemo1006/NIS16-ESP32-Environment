@@ -8,6 +8,7 @@
 #include "csv_logger.h"
 #include "mesh_config.h"
 #include "sd_status.h"
+#include "blackhole_target.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -106,10 +107,15 @@ static volatile bool s_export_in_progress = false;
 
 /* ── CSV headers ─────────────────────────────────────────────────────────── */
 
+/* Schema v2 (F3). The first 11 fields and their order are schema v1, untouched,
+ * so a positional reader of an older capture is unaffected; the three relay
+ * counters are appended. See csv_logger.h for what they mean and why they had
+ * to exist. */
 static const char *TELEMETRY_HEADER =
     "timestamp_us,node_id,role,layer,parent_mac,"
     "rssi_dbm,retry_count,tx_count,probes_count,"
-    "phase_id,gt_label\n";
+    "phase_id,gt_label,"
+    "recv_count,forward_count,drop_count\n";
 
 static const char *PROBE_ARRIVAL_HEADER =
     "timestamp_us,node_id,role,layer,parent_mac,"
@@ -821,7 +827,10 @@ esp_err_t csv_logger_append_telemetry(
     uint32_t    tx_count,
     uint32_t    probes_count,
     uint8_t     phase_id,
-    uint8_t     gt_label)
+    uint8_t     gt_label,
+    uint32_t    recv_count,
+    uint32_t    forward_count,
+    uint32_t    drop_count)
 {
     if (!s_log_fp) return ESP_ERR_INVALID_STATE;
 
@@ -835,7 +844,7 @@ esp_err_t csv_logger_append_telemetry(
      * two copies are identical row for row and either can be used as the run. */
     char row[LOGGER_BUF_SIZE];
     int n = snprintf(row, sizeof(row),
-        "%lld,%s,%s,%d,%s,%d,%lu,%lu,%lu,%u,%u\n",
+        "%lld,%s,%s,%d,%s,%d,%lu,%lu,%lu,%u,%u,%lu,%lu,%lu\n",
         (long long)timestamp_us,
         node_id,
         role_str,
@@ -846,7 +855,10 @@ esp_err_t csv_logger_append_telemetry(
         (unsigned long)tx_count,
         (unsigned long)probes_count,
         (unsigned)phase_id,
-        (unsigned)gt_label
+        (unsigned)gt_label,
+        (unsigned long)recv_count,
+        (unsigned long)forward_count,
+        (unsigned long)drop_count
     );
 
     if (n < 0 || n >= (int)sizeof(row)) {
@@ -1090,7 +1102,9 @@ static void serial_export_task(void *arg)
     }
 
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
-                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | SET_LOCATION=<value> | DELETE_SD_PATH=<attack>/<topology>/<location>");
+                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | SET_LOCATION=<value> | GET_LOCATION | "
+                  "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
+                  "DELETE_SD_PATH=<attack>/<topology>/<location>");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -1318,6 +1332,48 @@ static void serial_export_task(void *arg)
                         break;
                 }
                 uart_write_bytes(EXPORT_UART, out, strlen(out));
+
+            /* ── SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> / GET_ATTACKER_MAC /
+             * CLEAR_ATTACKER_MAC — F2. Retarget a blackhole VICTIM over the
+             * same USB link already used to flash and export, instead of
+             * recompiling it.
+             *
+             * Before this, the attacker's MAC existed only as a #define baked
+             * into every victim binary, so moving the attacker one hop meant
+             * re-flashing the whole fleet. That cost is why r1-r3 differ only
+             * in RF noise, and why the panel's "different position of the
+             * attackers" (12:45-16:00) was never attempted. Reading the value
+             * at boot instead makes attacker position a RUN PARAMETER.
+             *
+             * Applies on the NEXT boot: victim_main.c resolves the target once
+             * before its probe loop starts, so a board cannot change target
+             * mid-phase and split one run across two topologies. ── */
+            } else if (strncmp(cmd_buf, "SET_ATTACKER_MAC=", 17) == 0) {
+                uint8_t mac[6];
+                if (!blackhole_target_parse(cmd_buf + 17, mac)) {
+                    uart_write_bytes(EXPORT_UART, "ERROR:BAD_MAC\n", 14);
+                } else if (blackhole_target_set(mac) == ESP_OK) {
+                    uart_write_bytes(EXPORT_UART, "ATTACKER_MAC_SET\n", 17);
+                } else {
+                    uart_write_bytes(EXPORT_UART, "ERROR:MAC_WRITE_FAILED\n", 23);
+                }
+
+            } else if (strcmp(cmd_buf, "GET_ATTACKER_MAC") == 0) {
+                uint8_t mac[6] = {0};
+                bh_target_source_t src = blackhole_target_get(mac);
+                char out[64];
+                snprintf(out, sizeof(out),
+                         "ATTACKER_MAC:%02x:%02x:%02x:%02x:%02x:%02x (%s)\n",
+                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+                         blackhole_target_source_str(src));
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
+
+            } else if (strcmp(cmd_buf, "CLEAR_ATTACKER_MAC") == 0) {
+                if (blackhole_target_clear() == ESP_OK) {
+                    uart_write_bytes(EXPORT_UART, "ATTACKER_MAC_CLEARED\n", 21);
+                } else {
+                    uart_write_bytes(EXPORT_UART, "ERROR:MAC_CLEAR_FAILED\n", 23);
+                }
 
             /* ── LIST_FILES — print both file paths ──────────────────── */
             } else if (strcmp(cmd_buf, "LIST_FILES") == 0) {

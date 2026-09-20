@@ -2,32 +2,30 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 18, 2026 — the day's tooling batch (topology graph, mesh layer-cap fix, CC heartbeat, per-member presets, run-log/SD-delete, data sync) PUSHED to `origin/Unified` (`1cf76e3`), resolving the sep. 17 conflict. Since then (uncommitted): a build-dir self-heal fix (`run.ps1`/`run_wizard.ps1`) and a presets-upload sync feature (`push_data.py`/`run_wizard.ps1`). Mid-session: root node hit a reboot loop during a live `blackhole/linear/G402` capture — diagnosed as a power brownout, NOT a firmware bug; that attempt is void.
+**Updated:** sep. 20, 2026 — **F1 + F2 + F3 + P5 APPLIED, ALL SIX FIRMWARE VARIANTS BUILD CLEAN under `-Wall -Wextra -Werror` (ESP-IDF 5.5.4).** Telemetry is now **schema v2 (14 cols)**: v1's 11 unchanged and in place, plus `recv_count,forward_count,drop_count`. `retry_count` means ONE thing on every role again. **UNCOMMITTED** (together with the sep. 20 P1/P2/P3 analysis fixes). Audit report Rev 2: https://claude.ai/artifact/RGB3RTXvfK7yzK9erEFNzE
 
 ## Current focus
-**Re-running the capture matrix from empty**; `blackhole/linear/G402` now has at least THREE void attempts (two pre-existing + today's brownout loop) — worth checking whether the earlier two share the same root cause before the next try.
-PENDING: root-as-blackhole-attacker for STAR — `.claude\plans\mutable-honking-spindle.md`, team decides.
+Every host-side and firmware fix that does not need a design decision is now in. What remains is (a) ONE decision — C7 Option 1 — and (b) capture: only one experimental cell has data and zero wormhole runs exist.
 
 ## Next step
-1. **Fix the root's power before the next capture attempt** — direct laptop USB port (never a shared hub), known-good short cable. Root cause is a brownout during WiFi/mesh radio startup, not code — see Blockers + MEMORY.md.
-2. **Commit today's uncommitted code**: build-dir self-heal fix (`run.ps1`, `run_wizard.ps1`) and presets-upload sync (`tools\push_data.py`, `run_wizard.ps1`) — neither has been exercised against a real corrupted build dir / a real GitHub push yet.
-3. **Prove the data sync laptop-to-laptop** before real captures: "Sync capture data with GitHub" → Test, here, then on a teammate's WITHOUT pulling first → both computers must be listed; `y` cleans up.
-4. **Reflash + hardware-test `DELETE_SD_PATH`** (`run_wizard.ps1` "Delete a folder from a running board's SD card") — build-clean, never flashed. Same reflash carries the sep. 17 arrivals-flush-counter fix.
-5. **Fill `member_boards.json`**: roles for Cal's 20:80 / F4:18, Bas's boards, confirm Kyle's `70:C8` + `28:B4` (photo hard to read); Cal's `20:38 attacker` was hand-moved to Kyle as `child_8` sep. 18 evening — confirm intentional.
-6. **Team decision:** root-as-attacker plan, then restart the re-run: M4 = 24 attack runs (no baseline, D-5) ≈ 12k rows; protect QUALITY over 10k.
+1. **Commit** the whole sep. 20 batch (P1/P2/P3 + F1/F2/F3/P5). Nothing is committed yet.
+2. ⛔ **DECIDE C7 Option 1** (`Plan/THESIS3-MEMBER-HOWTO.md` §1 C7) — the one blocker left, adviser-facing. F3 removed the `retry_count` OVERLOAD but honest nodes still report `recv=0/forward=0/drop=0`, because they send `MESH_DATA_TODS` and the mesh stack relays below the app layer — so `ForwardingRatio` is still defined only on the attacker. Making every node relay to its parent explicitly fixes that AND makes attacker position genuinely topological, but it changes the traffic model and makes the sep. 18 capture non-comparable. **That cost is near zero right now** (1 cell, which needs re-capture anyway) and rises with every run captured. Decide BEFORE the campaign, not after.
+3. **Re-flash every board** — schema v2, F1 and F2 all need it. Then re-capture G402 as the first v2 run.
+4. **Then the campaign** — 38-run matrix, §14 of the report. **Block G first** (high-legitimate-load benign vs high-load-under-attack): cheapest direct answer to "benign and malicious scenarios are identical".
+5. Carried: commit the build-dir self-heal + presets-upload work; prove data sync laptop-to-laptop; reflash + hardware-test `DELETE_SD_PATH`.
 
 ## Blockers / open questions
-- **SD-card picker shows only `C:\`/`S:\`, no `D:\`** (`run_wizard.ps1`'s import flow, `Get-SdCardCandidates`) —
-  checked live via both `Get-PSDrive` AND `[System.IO.DriveInfo]::GetDrives()`, both agree no `D:\`
-  (or any removable drive) currently exists at the OS level — not a script bug, script reports Windows
-  accurately. Waiting on user to confirm whether File Explorer also shows nothing for the reader
-  (points at card/reader/driver) vs. shows a drive the script somehow still misses (would be a real bug).
-- ⚠️⚠️ **ROOT REBOOT-LOOP (brownout) — verify the root's power before EVERY capture from now on.** sep. 18, 2026: boot count climbing every ~2s, `rst:0x3 SW_RESET`, garbled UART (abrupt reset) right as WiFi/mesh radio powers up. Root runs dual-radio (softAP+STA; children don't) plus a brownout detector at its most sensitive default — full diagnosis in MEMORY.md. Confirmed NOT caused by the same-session `MESH_STACK_MAX_LAYER_CHAIN=1000` change.
-- **Angelo Calpoporo's bootloader build fails** on Windows `MAX_PATH` (265 chars) — needs admin answer: registry `LongPathsEnabled` vs. an `$env:ESP32_BUILD_ROOT` override.
-- `mesh_config.h` `BLACKHOLE_ATTACKER_MAC` → `20:50:0d:e7:1c:38`; **uncommitted on purpose**. `menu.ps1` still has its own unmerged 3-item data-sync menu and wasn't given the presets-upload option either — both times scoped to `run_wizard.ps1` only per explicit request, port over if desired.
+- ⚠️⚠️ **ROOT POWER — verify before EVERY capture.** Direct laptop USB port, never a shared hub; known-good short cable. F1 now makes a root-joined-late run *self-identifying* in the data instead of silently poisoning the baseline, and `analyze.ps1 -Verify` gates on it — but it still ruins the run. Prevention is still manual.
+- ⚠️ **PDR alone scores 0.9987 vs a 0.7031 majority baseline** (new, measured by `leakage.py` this session). Excluding leaking features does NOT fix this: a **100% drop rate in a fixed 180 s window is separable by construction**. Only attack-parameter variation fixes it — which collides with scope conflict R-B (§1.4.1 excludes grayhole/selective forwarding, and a partial drop rate IS selective forwarding). **Adviser decides.** Safest reading stays: the panel asked for different attacker POSITIONS, not different drop rates.
+- ⚠️ **Only ONE experimental cell has data**, `tools/exports/run_ledger.csv` is header-only, zero wormhole captures exist ⇒ Table 3.5 entirely unvalidated. M4 needs ≥24 runs; CTTHES3 wants ≥5 repeats per combination.
+- ⚠️ **Attacker placement is not topological** — layer 7 of an 8-node chain, 5 of 6 victims UPSTREAM. F2 makes moving it cheap (no re-flash); C7 Option 1 would make position actually *mean* something.
 - **Two unreconciled panel tracks:** `Plan/THESIS3-PANEL-PLAN.md` (aug. 06) vs `ESP32-Environment/memory/panel-change-2026-09.md` (sep. 13).
+- **Scope amendments R-A / R-B still unwritten** — §1.4.1's "controlled indoor environment" contradicts the DLSU-campus decision.
+- **SD-card picker shows only `C:\`/`S:\`, no `D:\`** — not a script bug; waiting on the user re File Explorer.
+- **Angelo Calpoporo's bootloader build fails** on Windows `MAX_PATH` — needs an admin answer (`LongPathsEnabled` vs an `$env:ESP32_BUILD_ROOT` override). ⚠️ Note: the sep. 20 builds on this machine SUCCEEDED with short `-B` names (`bh1`,`bv1`,`wa1`,`wb1`,`rb1`,`rn1`) — short build-dir names are the working mitigation.
+- `mesh_config.h` `BLACKHOLE_ATTACKER_MAC` → `20:50:0d:e7:1c:38`; still the compiled fallback, now overridable at runtime (F2).
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- sep. 18, 2026 — **Pushed** the sep. 18 tooling batch to `origin/Unified` (`1cf76e3`), resolving the sep. 17 index conflict (stale `presets/linear-blackhole-none-g402.json` superseded by `presets/Bas/...`). MEMORY.md; ARCHIVE.md.
-- sep. 18, 2026 — **Build-dir self-heal fix** (uncommitted, `run.ps1`/`run_wizard.ps1`): auto-detect + wipe a build dir left half-configured by an interrupted `idf.py`. MEMORY.md.
-- sep. 18, 2026 — **Presets upload/sync** (uncommitted, `tools\push_data.py`/`run_wizard.ps1`): data sync now covers saved presets, not just capture CSVs. MEMORY.md.
+- sep. 20, 2026 — **F1/F2/F3/P5 applied + verified.** F1 `PHASE_ID_UNSET`; F2 runtime attacker MAC (NVS + 3 serial cmds + 3 `export_logs.py` flags); F3 schema v2 relay counters, de-overloading `retry_count`; P5 `analysis/leakage.py` + `eda.py` wiring; 3 gates in `analyze.ps1`; `member_boards.json` child_8/child_10 swap corrected; `docs/DATA-DICTIONARY.md` written. **Verified:** v1 `windowed_dataset.csv` + `feature_table.csv` byte-identical (no regression); 20/20 `test_segments.py`; synthetic v2 capture end-to-end → attacker FR 1.0/0.0/1.0, root and victims correctly NaN, BLACKHOLE CONFIRMED; 6/6 firmware builds clean.
+- sep. 20, 2026 — **APPLIED P1/P2/P3.** P1 `preprocess.assign_segments()`; P2 `features.py` WINDOW_SECONDS import; P3 `verify_attack.py` INFEASIBLE/dispersion-ceiling/ratio-of-sums. `verify_attack.py` → BLACKHOLE CONFIRMED, exit 0.
+- sep. 20, 2026 — **Full-pipeline audit + independent re-verification**: root cause of the blackhole FAIL, the `WINDOW_SECONDS` bug, measured leakage numbers.

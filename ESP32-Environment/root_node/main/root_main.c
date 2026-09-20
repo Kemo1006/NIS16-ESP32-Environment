@@ -455,7 +455,24 @@ static void telemetry_task(void *arg)
             tx_snap,
             probes_snap,
             phase_listener_get_phase_id(),
-            phase_listener_get_label()
+            phase_listener_get_label(),
+            /* F3 relay counters. recv_count is defined as "frames received
+             * FOR RELAY" — and the root is the traffic's DESTINATION, not a
+             * relay. Every probe that reaches it is consumed and logged to
+             * arrivals.csv; none is ever passed on.
+             *
+             * So all three are 0 here, and specifically recv_count must NOT be
+             * the arrival count. Setting it to probes_snap would give the root
+             * recv > 0 with forward == 0, and features.compute_forwarding_
+             * features() would compute ForwardingRatio = 0.0 for it — making
+             * the node that MEASURES the attack look like the node COMMITTING
+             * it, in every baseline window of every run.
+             *
+             * The arrival count is not lost: it is probes_count on this row,
+             * and arrivals.csv holds one row per probe. */
+            0,             /* recv_count    = the sink relays nothing       */
+            0,             /* forward_count = the sink forwards nothing     */
+            0              /* drop_count    = the sink drops nothing        */
         );
 
         ESP_LOGD(TAG,

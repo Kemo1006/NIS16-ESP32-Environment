@@ -82,7 +82,19 @@ import numpy as np
 import pandas as pd
 
 EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
-WINDOW_SECONDS = 5  # must match preprocess.py's WINDOW_SECONDS
+
+# IMPORTED, never redeclared. This was a literal 5 while preprocess.py used 1
+# (deviation D-9), and the two must agree: compute_topology_stability_features()
+# and compute_physical_layer_features() build their own window_start on this
+# grid and then merge onto the windowed table by window_start, so a mismatch
+# silently drops every row whose window_start is not a multiple of the larger
+# value. Measured on the 2026-09-18 G402 capture: ParentSwitchRate,
+# LayerChangeCount, HopStabilityDuration and RSSI_stability were 79.9% NaN and
+# LatencyHopRatio 92.5% NaN, with 100% of the survivors sitting on
+# window_start % 5 == 0 — a merge-key artefact, not a property of the data.
+# It also made eda.py drop 12 of 16 features from PCA/t-SNE.
+# Importing it makes divergence impossible.
+from preprocess import WINDOW_SECONDS  # noqa: E402
 
 # Wire size of one wormhole tunnel frame, for TunnelBytes. Mirrors
 # sizeof(tunnel_pkt_t) in wormhole_victim.c: __attribute__((packed)) struct of
@@ -146,11 +158,33 @@ def compute_forwarding_features(windowed: pd.DataFrame) -> pd.DataFrame:
     out["IngressEgressDelta"] = np.nan
     out["ConsistencyScore"] = np.nan
 
-    # Preferred path: a future firmware that logs dedicated recv/forward columns.
+    # Preferred path: telemetry schema v2 (F3) logs dedicated relay counters.
+    #
+    # recv_count is "frames received FOR RELAY", so a node that does not relay
+    # reports 0 and stays NaN here — which is the correct undefined, not a
+    # forwarding ratio of zero. That distinction is load-bearing: the ROOT
+    # receives every probe in the run but relays none of them, so if it ever
+    # reported its arrivals as recv_count it would score ForwardingRatio = 0.0
+    # in every window and the measurement node would look like the attacker.
+    # root_main.c reports 0/0/0 for exactly this reason.
     if "recv_count_delta" in windowed.columns and "forward_count_delta" in windowed.columns:
         recv = windowed["recv_count_delta"]
         fwd = windowed["forward_count_delta"]
         ratio = (fwd / (recv + EPSILON)).where(recv > 0, np.nan)
+
+        # A pure relay cannot emit more than it accepted. A ratio above 1 means
+        # a queued backlog flushed across a window boundary (measured at 19.5 on
+        # the 2026-09-18 capture, where it carried most of the baseline
+        # variance), not that forwarding improved. Flag it rather than letting
+        # it inflate the baseline spread the 3-sigma test divides by.
+        impossible = ratio > 1.0 + 1e-9
+        if impossible.any():
+            print(f"[features] WARNING: {int(impossible.sum())} window(s) have "
+                  f"ForwardingRatio > 1 (max {ratio.max():.2f}). A relay cannot "
+                  f"forward more than it received; this is a queue flush across "
+                  f"a window edge. Check segment assignment before trusting the "
+                  f"baseline distribution.")
+
         out["ForwardingRatio"] = ratio
         out["IngressEgressDelta"] = (recv - fwd).abs()
         out["ConsistencyScore"] = (ratio - 1.0).abs()

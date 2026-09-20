@@ -41,16 +41,49 @@ import sys
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Telemetry schema v1 — the original 11 columns (every capture up to and
+# including 2026-09-18).
 TELEM_HEADER = [
     "timestamp_us", "node_id", "role", "layer", "parent_mac",
     "rssi_dbm", "retry_count", "tx_count", "probes_count",
     "phase_id", "gt_label",
 ]
+
+# Telemetry schema v2 — F3. Adds three RELAY counters that mean the same thing
+# on every role, so retry_count stops being overloaded as the blackhole
+# attacker's private drop counter (see docs/DATA-DICTIONARY.md and
+# analysis/leakage.py). Appended at the END rather than grouped with the other
+# counters on purpose: arrivals.csv is built positionally from TELEM_HEADER[:9]
+# below, and any reader that indexes by position keeps working unchanged.
+TELEM_HEADER_V2 = TELEM_HEADER + ["recv_count", "forward_count", "drop_count"]
+
 ARRIVALS_HEADER = TELEM_HEADER[:9] + ["phase_id", "gt_label", "src_mac", "seq_num", "latency_us"]
 # probes_count is named probes_received in arrivals.csv (same position/meaning)
 ARRIVALS_HEADER[8] = "probes_received"
 
+# Both telemetry schemas are accepted: v1 captures stay validatable forever (we
+# cannot re-capture 2026-09-18), and a v2 capture must not be reported as a
+# schema FAIL just for carrying the columns the panel asked for.
 EXPECTED_HEADERS = {"telem": TELEM_HEADER, "arrivals": ARRIVALS_HEADER}
+ACCEPTED_HEADERS = {
+    "telem": [TELEM_HEADER, TELEM_HEADER_V2],
+    "arrivals": [ARRIVALS_HEADER],
+}
+
+
+def _read_header(path):
+    """The CSV's own header row, or None if it cannot be read.
+
+    Needed because telemetry now has two accepted schemas, so checks must
+    resolve column positions against the file in hand rather than against a
+    canonical list.
+    """
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            first = fh.readline().strip()
+    except OSError:
+        return None
+    return first.split(",") if first else None
 
 # Table 4.1 phase durations (seconds) — fixed by the proposal, independent of
 # sampling rate. Phase 0 (baseline) legitimately runs high: telemetry sampling
@@ -69,7 +102,8 @@ PHASE_DURATION_S = {0: 300, 1: 180, 2: 180, 3: 120}
 # anything older than the current default, or phase-coverage checks will be
 # judged against the wrong expected row counts.
 DEFAULT_SAMPLE_INTERVAL_MS = 100
-PHASE_NAMES = {0: "baseline", 1: "blackhole", 2: "wormhole", 3: "cooldown", 4: "terminate"}
+PHASE_NAMES = {0: "baseline", 1: "blackhole", 2: "wormhole", 3: "cooldown",
+               4: "terminate", 255: "unset (no broadcast heard yet)"}
 ATTACK_TO_PHASE = {"blackhole": 1, "wormhole": 2}
 
 UNDER_TOLERANCE = 0.5   # < 50% of nominal duration's rows -> suspected truncation
@@ -100,6 +134,16 @@ ATTACK_SIGNATURE = {"blackhole": "drop", "wormhole": "duplicate"}
 # benign (0), the two attack phases carry their attack code. M8's baseline-vs-
 # attack separation depends on this column being correct, so validate it.
 PHASE_TO_LABEL = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0}
+
+# F1 (mesh_config.h PHASE_ID_UNSET / GT_LABEL_UNSET). A node that has not yet
+# heard a phase broadcast records 255/255. That is a CORRECT, expected state on
+# schema-v2 captures, not a corrupt row: every run begins with one, because the
+# boards boot before the root announces anything. It must pair 255 with 255 —
+# a 255 phase carrying a real label, or a real phase carrying label 255, means
+# something wrote the two fields independently and IS a fault worth reporting.
+PHASE_ID_UNSET = 255
+GT_LABEL_UNSET = 255
+PHASE_TO_LABEL[PHASE_ID_UNSET] = GT_LABEL_UNSET
 # Fraction of correctly-sized rows whose gt_label may disagree with the phase→
 # label map before it's treated as a real mislabel (not a 1-row phase boundary).
 LABEL_MISMATCH_FAIL_FRACTION = 0.01
@@ -177,10 +221,11 @@ def _check_schema_and_monotonicity(path, kind, report):
         return [], {}
 
     header = lines[0].split(",")
-    expected = EXPECTED_HEADERS[kind]
-    if header != expected:
+    accepted = ACCEPTED_HEADERS[kind]
+    if header not in accepted:
+        names = " or ".join(str(len(h)) for h in accepted)
         report.fail(
-            f"schema mismatch: expected {len(expected)} cols {expected}, "
+            f"schema mismatch: expected {names} cols, one of {accepted}, "
             f"got {len(header)} cols {header}"
         )
 
@@ -630,13 +675,21 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms):
 
         rows, phase_counts = _check_schema_and_monotonicity(path, kind, report)
         if rows:
-            _check_role_consistency(rows, EXPECTED_HEADERS[kind], meta, report)
-            _check_label_integrity(rows, EXPECTED_HEADERS[kind], report)
-            _check_sample_coverage(rows, EXPECTED_HEADERS[kind], kind,
+            # Use the file's OWN header, not the canonical one: telemetry has
+            # two accepted schemas (v1 = 11 cols, v2 = 14 with the F3 relay
+            # counters), and every check below resolves columns by name via
+            # header.index(). Passing the canonical v1 list for a v2 file
+            # happens to work only because v2 is a strict suffix extension —
+            # which is exactly the kind of accident that breaks the next time
+            # a column is inserted rather than appended.
+            actual_header = _read_header(path) or EXPECTED_HEADERS[kind]
+            _check_role_consistency(rows, actual_header, meta, report)
+            _check_label_integrity(rows, actual_header, report)
+            _check_sample_coverage(rows, actual_header, kind,
                                    sample_interval_ms, report)
             if meta:
                 if kind == "arrivals":
-                    _check_arrivals_coverage(rows, EXPECTED_HEADERS[kind],
+                    _check_arrivals_coverage(rows, actual_header,
                                              meta["attack"], report)
                 else:
                     _check_phase_coverage(phase_counts, meta["attack"], kind,

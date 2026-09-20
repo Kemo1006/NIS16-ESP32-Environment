@@ -25,18 +25,38 @@ PROBE_INTERVAL_MS = 1000, i.e. ~1 probe per window:
     argued this "costs no information - the mean over 5x as many windows carries
     the same evidence", which is true of the MEAN and false of the VARIANCE, and
     the 3-sigma test divides by exactly that variance. Measured on
-    blackhole/linear/G402: the sharpest blackhole a testbed can produce
-    (ForwardingRatio 1.0 -> 0.0 in 180/180 attack windows) scored only z = -2.25
-    unpooled, because one baseline window at 8.0 carried 84% of the baseline
-    variance. Pooled back to Table 4.10's 5 s: mu 0.997 -> 0.985 (unchanged) but
-    sd 0.442 -> 0.162, giving z = -6.10. The dataset itself is NOT re-windowed;
-    D-9's row count is untouched. Only the statistic is computed on blocks.
+    blackhole/linear/G402: a ratio measured over ~1 probe is a Bernoulli draw,
+    so the per-window variance is dominated by sampling noise rather than by the
+    network. The dataset itself is NOT re-windowed; D-9's row count is untouched.
+    Only the statistic is computed on blocks.
+
+    CORRECTION (2026-09-20): an earlier version of this note claimed pooling
+    alone lifted ForwardingRatio to z = -6.10. Re-measured on the same capture,
+    pooling gives z = -2.55, not -6.10 - pooling was never sufficient, because
+    the baseline it pooled was contaminated (see below). Do not quote -6.10.
 
   - BASELINE FLOOR (BASELINE_FLOOR). Khan et al. (2022) measured PDR > 97% /
     loss < 1.8% on an ESP-MESH deployment. A baseline an order of magnitude below
     that is a broken measurement, not a quiet network, and an attack tested
     against it is meaningless. Such a feature is reported INVALID-BASE and left
     out of the verdict rather than silently counted as "no collapse detected".
+
+  - FEASIBILITY CEILING. Both primary features are bounded below at 0, so the
+    most negative z obtainable is (mu - 0) / sd of the baseline. On the
+    2026-09-18 G402 capture that ceiling was 2.55 for ForwardingRatio and 1.21
+    for PDR, and the observed z values were exactly -2.55 and -1.21: the attack
+    was at 100% of its maximum possible effect and the test still said FAIL. A
+    FAIL that a perfect attack cannot avoid is not a measurement of the attack,
+    so such a feature is now reported INFEASIBLE and left out of the verdict.
+    The root cause was upstream - ~30% of the "baseline" rows were windows in
+    which the victims were probing a mesh the root had not joined yet, scored a
+    genuine PDR of 0 - and is fixed in preprocess.assign_segments(). This guard
+    exists so the same class of failure can never again be read as evidence
+    that an attack did not happen.
+
+  - RATIO-OF-SUMS for rate features (RATIO_OF_SUMS). Mean-of-ratios weights a
+    window that saw 6 packets the same as one that saw 117, which let a single
+    queue-flush window (ForwardingRatio 19.5) dominate the baseline variance.
 
 Unlike validate_integrity.py (schema/coverage) and verify_topology.py (structure),
 this checks that the ATTACK ITSELF is real and matches the published expectation -
@@ -75,7 +95,31 @@ DEFAULT_BLOCK_WINDOWS = 5
 # Khan et al. (2022) measured PDR > 0.97 on ESP-MESH; 0.50 is deliberately far
 # below that, so this fires only on a measurement that is plainly broken rather
 # than on a merely lossy run.
-BASELINE_FLOOR = {"PDR": 0.50}
+BASELINE_FLOOR = {"PDR": 0.90, "ForwardingRatio": 0.90}
+
+# A bounded ratio whose baseline standard deviation exceeds this fraction of its
+# own mean is not a quiet network being measured well - it is a broken
+# measurement. On the 2026-09-18 G402 capture ForwardingRatio's baseline was
+# 0.994 +- 0.390 (sd/mu = 0.39) with a median of exactly 1.000: 549 of 601
+# windows sat at 1.0 and the dispersion came from pre-root-join zeros and one
+# queue-flush window at 19.5. Nothing about that distribution describes normal
+# forwarding, and a 3-sigma test against it is meaningless.
+BASELINE_DISPERSION_CEILING = {"PDR": 0.15, "ForwardingRatio": 0.15}
+
+# Upper bound of each feature, where one physically exists. Used to compute the
+# best z an 'up' feature could possibly reach. A ratio has a ceiling of 1.0;
+# a count or a delta does not, so it is absent here and no feasibility bound is
+# claimed for it.
+FEATURE_UPPER_BOUND = {"PDR": 1.0, "ForwardingRatio": 1.0, "ConsistencyScore": 1.0}
+
+# Features that are RATES (a numerator counted over a denominator) rather than
+# free-standing measurements. For these the mean of per-window ratios is a
+# biased, outlier-dominated estimator; the correct statistic over a block is the
+# ratio of the summed numerator to the summed denominator. Maps
+# feature -> (numerator column, denominator column) in the feature table.
+RATIO_OF_SUMS = {
+    "ForwardingRatio": ("tx_count_delta", "probes_count_delta"),
+}
 
 # (feature, direction, tier)
 #   direction 'down' = the attack pushes the feature BELOW baseline; 'up' = above.
@@ -86,7 +130,18 @@ SIGNATURES = {
         ("PDR",                "down", "primary"),    # end-to-end delivery collapses
         ("ConsistencyScore",   "up",   "secondary"),  # |FR - 1| rises
         ("IngressEgressDelta", "up",   "secondary"),  # packets absorbed
-        ("RetryRate",          "up",   "secondary"),  # victims retry
+        # NOT "victims retry". Measured on 2026-09-18 G402: victim RetryRate
+        # FALLS 0.0008 -> 0.0000 during the attack, because the attacker is
+        # alive and still ACKing at the link layer, so the sender never learns
+        # of the loss - exactly as the paper's own S3.3.1.2 predicts. The only
+        # row that moves is the ATTACKER's, and only because blackhole_victim.c
+        # overloads retry_count as its drop counter (0.003 -> 0.999). That makes
+        # this feature the attack's own switch, not a MAC-layer observable, so
+        # its PASS is a LEAK, not evidence. Kept only to keep reporting paper
+        # Table 3.4's pre-registered prediction (which MISSES - report that,
+        # do not edit the table). Remove once the firmware logs a dedicated
+        # drop_count and retry_count means MAC-layer failure on every role.
+        ("RetryRate",          "up",   "secondary"),  # LEAKY - see note above
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
@@ -97,8 +152,13 @@ SIGNATURES = {
 }
 
 
-def stat_verdict(baseline, attack, direction, sigma):
-    """3-sigma test for one feature: is the attack-phase mean > sigma from baseline?"""
+def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0.0):
+    """3-sigma test for one feature: is the attack-phase mean > sigma from baseline?
+
+    `feature` and `lower_bound` drive the feasibility ceiling described inline
+    below; they default to a generic non-negative quantity, which is what every
+    feature in SIGNATURES actually is.
+    """
     b = pd.to_numeric(baseline, errors="coerce").dropna()
     a = pd.to_numeric(attack, errors="coerce").dropna()
     res = {"n_base": len(b), "n_attack": len(a), "mu": np.nan, "sd": np.nan,
@@ -139,6 +199,33 @@ def stat_verdict(baseline, attack, direction, sigma):
     else:
         res["frac_beyond"] = float((a > hi).mean())
         res["status"] = "PASS" if z >= sigma else "FAIL"
+
+    # FEASIBILITY. A FAIL must mean "the attack did not move this feature". It
+    # must never also mean "this test could not have detected it". Both features
+    # are bounded, so there is a hard limit on how far the mean can travel:
+    #   down-feature bounded below at `lower`: max |z| = (mu - lower) / sd
+    #   up-feature   bounded above at `upper`: max  z  = (upper - mu) / sd
+    # If that ceiling is under sigma, no attack of any strength could pass, and
+    # reporting FAIL would be reporting the baseline's dispersion as evidence
+    # about the attack. Measured on the 2026-09-18 G402 capture before the
+    # preprocess fix: ForwardingRatio's ceiling was 2.55 and it scored exactly
+    # -2.55; PDR's was 1.21 and it scored exactly -1.21. Both were at 100% of
+    # the strongest effect a blackhole can produce and still "failed".
+    if res["status"] == "FAIL":
+        if direction == "down":
+            max_z = (mu - lower_bound) / sd
+        else:
+            upper = FEATURE_UPPER_BOUND.get(feature)
+            max_z = (upper - mu) / sd if upper is not None else float("inf")
+        if max_z < sigma:
+            res["status"] = "INFEASIBLE"
+            res["note"] = (
+                f"the attack drove this feature to {am:.4f}, but against a "
+                f"baseline of {mu:.3f}+-{sd:.3f} the largest |z| ATTAINABLE is "
+                f"{max_z:.2f} < {sigma:g} - no attack of any strength could have "
+                f"passed. This is a statement about the baseline's dispersion, "
+                f"not about the attack; excluded from the verdict"
+            )
     return res
 
 
@@ -160,9 +247,35 @@ def block_aggregate(df, feats, block):
     present = [f for f in feats if f in df.columns]
     d = df.copy()
     d["_block"] = pd.to_numeric(d["window_start"], errors="coerce") // block
-    pooled = (d.groupby(["node_id", "Label", "_block"], as_index=False)[present]
-                .mean())
-    return pooled, f"{block} windows per point (Table 4.10 window = 5)"
+    keys = ["node_id", "Label", "_block"]
+    pooled = d.groupby(keys, as_index=False)[present].mean()
+
+    # RATE features get ratio-of-sums, not mean-of-ratios. Averaging per-window
+    # ratios weights a window that saw 6 packets the same as one that saw 117,
+    # so a single queue flush at the moment the root joins (117 forwarded / 6
+    # received -> ForwardingRatio 19.5) dominates the baseline variance that the
+    # 3-sigma test then divides by. Summing the numerator and denominator across
+    # the block first is the standard estimator for a rate and is immune to it.
+    notes = []
+    for feat, (num_col, den_col) in RATIO_OF_SUMS.items():
+        if feat not in pooled.columns:
+            continue
+        if num_col not in d.columns or den_col not in d.columns:
+            continue
+        sums = d.groupby(keys, as_index=False)[[num_col, den_col]].sum()
+        den = pd.to_numeric(sums[den_col], errors="coerce")
+        num = pd.to_numeric(sums[num_col], errors="coerce")
+        ratio = (num / den).where(den > 0, np.nan)
+        merged = pooled.merge(sums[keys].assign(_ros=ratio), on=keys, how="left")
+        # Only replace where the feature was already defined for that block, so
+        # ratio-of-sums never invents a value on a role that has no relay data.
+        pooled[feat] = merged["_ros"].where(pooled[feat].notna(), np.nan).values
+        notes.append(feat)
+
+    note = f"{block} windows per point (Table 4.10 window = 5)"
+    if notes:
+        note += f"; ratio-of-sums for {', '.join(notes)}"
+    return pooled, note
 
 
 def detect_attacks(df):
@@ -193,6 +306,7 @@ STATUS_FLAG = {
     "PASS": "PASS",
     "FAIL": "FAIL",
     "INVALID-BASE": "EXCLUDED",
+    "INFEASIBLE": "INFEASIBLE",
     "INCONCLUSIVE": "INCONCL",
     "SKIP": "SKIP",
 }
@@ -226,7 +340,8 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         if feat not in df.columns:
             print(f"  {feat:<20}{tier:<10}(column missing)")
             continue
-        r = stat_verdict(df.loc[base_mask, feat], df.loc[atk_mask, feat], direction, sigma)
+        r = stat_verdict(df.loc[base_mask, feat], df.loc[atk_mask, feat],
+                         direction, sigma, feature=feat)
 
         # A feature whose own baseline is broken cannot say anything about the
         # attack; counting its FAIL would read as evidence of no attack.
@@ -236,11 +351,20 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
             r["note"] = (f"baseline mean {r['mu']:.3f} < {floor:g}; Khan et al. (2022) "
                          f"measured PDR > 0.97 on ESP-MESH, so this baseline is a "
                          f"broken measurement, not a quiet network - excluded")
+        ceiling = BASELINE_DISPERSION_CEILING.get(feat)
+        if (ceiling is not None and r["status"] not in ("INVALID-BASE", "SKIP")
+                and not math.isnan(r["mu"]) and not math.isnan(r["sd"])
+                and r["mu"] > 0 and (r["sd"] / r["mu"]) > ceiling):
+            r["status"] = "INVALID-BASE"
+            r["note"] = (f"baseline {r['mu']:.3f}+-{r['sd']:.3f} has sd/mu = "
+                         f"{r['sd'] / r['mu']:.2f} > {ceiling:g} on a bounded ratio; "
+                         f"that is a broken measurement, not normal operation "
+                         f"(check for pre_baseline contamination) - excluded")
 
         if tier == "primary" and r["status"] in ("PASS", "FAIL"):
             primary_total += 1
             primary_pass += 1 if r["status"] == "PASS" else 0
-        elif tier == "primary" and r["status"] == "INVALID-BASE":
+        elif tier == "primary" and r["status"] in ("INVALID-BASE", "INFEASIBLE"):
             primary_excluded += 1
         mu_s = "n/a" if math.isnan(r["mu"]) else f"{r['mu']:.3f}+-{r['sd']:.3f}"
         base_s = f"{mu_s} ({r['n_base']})"

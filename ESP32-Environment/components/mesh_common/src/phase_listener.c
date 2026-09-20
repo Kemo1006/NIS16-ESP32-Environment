@@ -31,8 +31,16 @@ static const char *TAG = "PHASE_LISTENER";
 
 /* Shared state — always accessed under s_phase_mutex. */
 static SemaphoreHandle_t s_phase_mutex   = NULL;
-static uint8_t           s_phase_id      = PHASE_ID_BASELINE;
-static uint8_t           s_gt_label      = GT_LABEL_BASELINE;
+
+/* F1: start UNSET, not BASELINE. A node that has not yet heard a phase
+ * broadcast does not know what the network is doing, and must not claim to.
+ * These two initialisers used to read PHASE_ID_BASELINE / GT_LABEL_BASELINE,
+ * which is what let 38% of the 2026-09-18 G402 capture record itself as
+ * baseline while the root was not even in the mesh. See mesh_config.h
+ * PHASE_ID_UNSET for the full incident. The first real broadcast overwrites
+ * both below; until then every logged row is honestly marked unknown. */
+static uint8_t           s_phase_id      = PHASE_ID_UNSET;
+static uint8_t           s_gt_label      = GT_LABEL_UNSET;
 static uint32_t          s_last_seq      = 0;
 
 /* Termination signal. */

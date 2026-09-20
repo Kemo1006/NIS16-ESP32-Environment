@@ -140,11 +140,44 @@
 #define PHASE_ID_COOLDOWN       3
 #define PHASE_ID_TERMINATE      4
 
+/* ── F1 — "I have not heard a phase broadcast yet" ────────────────────────────
+ *
+ * NOT a phase the root ever announces. It is the value a node logs from boot
+ * until the first phase broadcast reaches it, and it exists because the
+ * alternative silently corrupts the dataset.
+ *
+ * What went wrong without it (2026-09-18, blackhole/linear/G402): the root
+ * brownout-looped and joined the mesh 100-551 s AFTER the victims. Those
+ * victims were already probing and already logging. phase_listener.c
+ * initialised its state to PHASE_ID_BASELINE / GT_LABEL_BASELINE, so every one
+ * of those rows was recorded as ordinary baseline. 2,945 of 7,704 windows
+ * (38%) were victims probing a mesh with no root in it, scored as a genuine
+ * PDR of 0, and pooled into the baseline distribution that the 3-sigma test
+ * measures the attack against. The result was a false "attack NOT CONFIRMED"
+ * on a capture where the attack had worked perfectly.
+ *
+ * preprocess.assign_segments() now infers that window host-side, but inference
+ * can only work from symptoms. This makes the board RECORD it, so the
+ * condition is a fact in the data rather than something a later tool has to
+ * deduce — and so it can never again be mistaken for baseline by anything that
+ * reads the CSV directly.
+ *
+ * 255 is chosen so the column stays uint8 and any reader that does not know
+ * about this value gets an obviously-invalid phase rather than a plausible
+ * wrong one. Both host schemas treat it as "not a real phase".
+ */
+#define PHASE_ID_UNSET          255
+
 /* Ground-truth labels embedded in every CSV row (Table 4.8). */
 #define GT_LABEL_BASELINE       0
 #define GT_LABEL_BLACKHOLE      1
 #define GT_LABEL_WORMHOLE       2
 /* Cooldown and Terminate both map to label 0 (normal) per Table 4.1. */
+
+/** Companion to PHASE_ID_UNSET: the row has no ground truth, because the node
+ *  did not yet know what the network was doing. Excluded from the labelled
+ *  dataset host-side (window_label = NaN), never counted as class 0. */
+#define GT_LABEL_UNSET          255
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * ATTACK SELECTION  (Milestone 2)

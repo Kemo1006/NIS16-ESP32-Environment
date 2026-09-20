@@ -33,6 +33,7 @@
 #include "csv_logger.h"
 #include "sd_status.h"
 #include "node_identity.h"
+#include "blackhole_target.h"
 #include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
@@ -234,12 +235,19 @@ static void probe_gen_task(void *arg)
     /* Blackhole run (this board built with -DBLACKHOLE_ROLE=1): address probes
      * to the ATTACKER's MAC (P2P) instead of the root, so the attacker relays
      * them (baseline) or drops them (attack) — thesis §4.2.1.2 C / Milestone 2.
-     * BLACKHOLE_ATTACKER_MAC must be the attacker board's STA MAC. */
-    static const uint8_t s_attacker_mac[6] = BLACKHOLE_ATTACKER_MAC;
+     *
+     * F2: resolved at RUNTIME (NVS first, compiled constant as fallback) rather
+     * than baked in, so moving the attacker no longer means re-flashing every
+     * victim board. That re-flash cost is precisely what made the panel's
+     * "different position of the attackers" request (12:45-16:00) unaffordable.
+     * Read ONCE here, before the probe loop starts, so the destination cannot
+     * change midway through a phase. See blackhole_target.h. */
+    uint8_t s_attacker_mac[6] = {0};
+    bh_target_source_t bh_src = blackhole_target_get(s_attacker_mac);
     mesh_addr_t bh_dest = {0};
     memcpy(bh_dest.addr, s_attacker_mac, 6);
-    ESP_LOGI(TAG, "Blackhole victim mode: probes -> attacker " MACSTR,
-             MAC2STR(s_attacker_mac));
+    ESP_LOGI(TAG, "Blackhole victim mode: probes -> attacker " MACSTR " (%s)",
+             MAC2STR(s_attacker_mac), blackhole_target_source_str(bh_src));
 #endif
 
     uint32_t seq = 0;
@@ -384,7 +392,15 @@ static void telemetry_task(void *arg)
             tx_snap,
             probes_snap,
             phase_listener_get_phase_id(),
-            phase_listener_get_label()
+            phase_listener_get_label(),
+            /* F3 relay counters. An honest victim ORIGINATES traffic and never
+             * relays any: it sends with MESH_DATA_TODS, so the mesh stack moves
+             * transit frames below the application layer and this code cannot
+             * observe them even in principle. 0/0/0 is therefore the truthful
+             * value, and it is NOT interchangeable with "relayed nothing" —
+             * features.py must leave ForwardingRatio undefined here (recv == 0),
+             * not compute 0/0. See csv_logger.h F3 and C7 Option 1. */
+            0, 0, 0
         );
 
         ESP_LOGD(TAG,

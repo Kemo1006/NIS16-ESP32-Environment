@@ -92,13 +92,46 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
 /* ── Telemetry row (all roles) ───────────────────────────────────────────── */
 
 /**
- * @brief Append one 11-column cross-layer telemetry row.
+ * @brief Append one 14-column cross-layer telemetry row (schema v2).
  *
  * Columns:
  *   timestamp_us, node_id, role, layer, parent_mac,
- *   rssi_dbm, retry_count, tx_count, probes_count, phase_id, gt_label
+ *   rssi_dbm, retry_count, tx_count, probes_count, phase_id, gt_label,
+ *   recv_count, forward_count, drop_count
  *
- * probes_count = cumulative probes sent (victim) or received (root).
+ * The first 11 are schema v1, unchanged and in the same positions, so any
+ * positional reader of a v1 capture still works. tools/validate_integrity.py
+ * accepts both widths.
+ *
+ * ── F3: why the last three exist ─────────────────────────────────────────
+ * The first eight columns mean DIFFERENT THINGS depending on which board wrote
+ * the row (see docs/DATA-DICTIONARY.md for the full table). The damaging case
+ * was retry_count: on a victim it counts failed esp_mesh_send() calls, but on
+ * the blackhole attacker it was overloaded to count the packets that node
+ * deliberately DROPPED. That made the derived RetryRate feature go 0.0033 ->
+ * 0.9991 on the attacker while victims went 0.0008 -> 0.0000 — i.e. the one
+ * feature that "detected" the attack was the attack's own control variable
+ * wearing a MAC-layer name. It is the CTTHES2 panel's single-feature-
+ * decidability objection (2:40-4:50), in the schema.
+ *
+ * These three mean the SAME THING on every role, always:
+ *   recv_count    — frames received from another node FOR RELAY
+ *                   (not frames this node originated)
+ *   forward_count — frames passed on toward their destination
+ *   drop_count    — frames received for relay and NOT passed on
+ *
+ * With them present, retry_count reverts to one meaning everywhere (send
+ * failures), and ForwardingRatio becomes forward_count/recv_count for any node
+ * that relays.
+ *
+ * ⚠️ A node that does not relay reports 0/0/0, which is the honest answer and
+ * NOT the same as "forwarded nothing". Honest victims send with
+ * MESH_DATA_TODS, so the mesh stack relays below the application layer and
+ * their app code never sees transit traffic. Getting a populated
+ * ForwardingRatio distribution across honest nodes needs Option 1 of
+ * Plan/THESIS3-MEMBER-HOWTO.md §1 C7 (every node relaying explicitly to its
+ * parent), which changes the traffic model. F3 alone removes the OVERLOAD; it
+ * does not by itself remove the role gate.
  */
 esp_err_t csv_logger_append_telemetry(
     int64_t     timestamp_us,
@@ -111,7 +144,10 @@ esp_err_t csv_logger_append_telemetry(
     uint32_t    tx_count,
     uint32_t    probes_count,
     uint8_t     phase_id,
-    uint8_t     gt_label
+    uint8_t     gt_label,
+    uint32_t    recv_count,
+    uint32_t    forward_count,
+    uint32_t    drop_count
 );
 
 /* ── Probe-arrival row (root only) ───────────────────────────────────────── */

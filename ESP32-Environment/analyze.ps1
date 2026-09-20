@@ -257,17 +257,96 @@ function Invoke-Analyze {
 function Invoke-Validate {
     param($Target)
 
+    # Three gates, in dependency order, each checked by EXIT CODE.
+    #
+    # Before 2026-09-20 this function ran verify_attack.py alone and ignored its
+    # exit code entirely, while validate_integrity.py and verify_topology.py were
+    # never called from here at all. That is how the 2026-09-18 G402 capture got
+    # all the way to a feature table and an "attack NOT CONFIRMED" verdict before
+    # anyone found the real cause: the root had brownout-looped and joined the
+    # mesh 100-551 s AFTER the victims, so ~38% of the rows labelled "baseline"
+    # were victims probing a mesh with no root in it.
+    #
+    # Both of the tools that were not being called ALREADY DETECT that exact
+    # condition, and did at the time:
+    #   * validate_integrity.py WARNs "phase 0 has 2.76-2.95x expected rows" on
+    #     precisely the five nodes that booted early.
+    #   * verify_topology.py reports "Converged within 60s: NO" for the same five.
+    # The information was on screen and unactioned. Checking $LASTEXITCODE is the
+    # whole fix.
+    #
+    # Gate 1 (integrity) and gate 2 (topology) are reported but do NOT stop gate 3:
+    # a WARN-level capture is still worth verifying, and stopping would hide the
+    # attack verdict that tells you whether the run is salvageable. What they do
+    # is make the run's status explicit in the summary at the end, so a
+    # contaminated capture can never again read as a clean negative result.
+
+    $label = Get-TargetLabel $Target
+    $srcDir = $Target.Dir
     $features = Join-Path (Get-OutDir $Target) 'feature_table.csv'
-    if (-not (Test-Path $features)) {
-        Write-Host ("No feature_table.csv for {0} yet -- analyze it first." -f (Get-TargetLabel $Target)) -ForegroundColor Yellow
-        return
+
+    $status = [ordered]@{ Integrity = 'skipped'; Topology = 'skipped'; Attack = 'skipped' }
+
+    # ---- Gate 1: capture integrity (M5) -----------------------------------
+    Write-Host ""
+    Write-Host ("--- Gate 1/3: capture integrity -- {0}" -f $label) -ForegroundColor Cyan
+    python (Join-Path $root 'tools\validate_integrity.py') $srcDir
+    $status.Integrity = if ($LASTEXITCODE -eq 0) { 'PASS' } else { 'FAIL' }
+    if ($status.Integrity -eq 'FAIL') {
+        Write-Host "  Gate 1 FAILED -- this capture has integrity errors, not just warnings." -ForegroundColor Red
     }
+
+    # ---- Gate 2: topology convergence + structure (M3) ---------------------
+    Write-Host ""
+    Write-Host ("--- Gate 2/3: topology -- {0}" -f $label) -ForegroundColor Cyan
+    $topoArgs = @('--dir', $exportsRoot, '--topology', $Target.Topology,
+                  '--attack', $Target.Attack, '--expect', $Target.Topology)
+    if ($Target.Location) { $topoArgs += @('--location', $Target.Location) }
+    if ($Target.Scenario) { $topoArgs += @('--scenario', $Target.Scenario) }
+    python (Join-Path $root 'tools\verify_topology.py') @topoArgs
+    $status.Topology = if ($LASTEXITCODE -eq 0) { 'PASS' } else { 'FAIL' }
+    if ($status.Topology -eq 'FAIL') {
+        Write-Host "  Gate 2 FAILED -- late convergence or baseline re-routing." -ForegroundColor Red
+        Write-Host "  'Converged within 60s: NO' usually means a node was probing before" -ForegroundColor Yellow
+        Write-Host "  the root joined. Check the root's power (see STATUS.md blockers)." -ForegroundColor Yellow
+    }
+
+    # ---- Gate 3: paper-backed attack verification (3-sigma) ----------------
+    Write-Host ""
+    Write-Host ("--- Gate 3/3: attack signature -- {0}" -f $label) -ForegroundColor Cyan
     if ($Target.Attack -eq 'baseline') {
         Write-Host "Baseline runs have no attack to verify (that's the point) -- skipping." -ForegroundColor DarkGray
-        return
+        $status.Attack = 'n/a'
+    }
+    elseif (-not (Test-Path $features)) {
+        Write-Host ("No feature_table.csv for {0} yet -- analyze it first." -f $label) -ForegroundColor Yellow
+    }
+    else {
+        python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack
+        $status.Attack = if ($LASTEXITCODE -eq 0) { 'CONFIRMED' } else { 'NOT CONFIRMED' }
+    }
+
+    # ---- Combined verdict --------------------------------------------------
+    # The ordering matters: a NOT-CONFIRMED verdict on a capture that failed
+    # gate 1 or 2 is not evidence about the attack, and saying so here is the
+    # difference between "the attack did not work" and "we cannot tell yet".
+    Write-Host ""
+    Write-Host ("=== Validation summary -- {0}" -f $label) -ForegroundColor Cyan
+    Write-Host ("    integrity : {0}" -f $status.Integrity)
+    Write-Host ("    topology  : {0}" -f $status.Topology)
+    Write-Host ("    attack    : {0}" -f $status.Attack)
+
+    $gatesOk = ($status.Integrity -eq 'PASS') -and ($status.Topology -eq 'PASS')
+    if (-not $gatesOk -and $status.Attack -eq 'NOT CONFIRMED') {
+        Write-Host ""
+        Write-Host "    This run is INCONCLUSIVE, not a negative result." -ForegroundColor Yellow
+        Write-Host "    A capture that fails integrity or topology cannot support a claim" -ForegroundColor Yellow
+        Write-Host "    about whether the attack worked. Fix the capture and re-run before" -ForegroundColor Yellow
+        Write-Host "    reporting this as 'no signature detected'." -ForegroundColor Yellow
     }
     Write-Host ""
-    python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack
+
+    return $status
 }
 
 # -------------------------------------------------------------------- menu ---

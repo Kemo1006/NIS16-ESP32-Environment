@@ -522,10 +522,27 @@ static void telemetry_task(void *arg)
         uint32_t retry_col  = s_probes_tunneled;   /* attack-phase tunnel count */
         uint32_t tx_col     = s_probes_to_root;    /* direct sends (baseline)   */
         uint32_t probes_col = s_probes_generated;
+        /* F3 relay counters. Node B ORIGINATES its probes and relays nothing
+         * it received from the mesh — the tunnel is an egress path for its own
+         * traffic, not transit. Reporting recv=0 keeps ForwardingRatio
+         * undefined here, which is correct: B has no ingress to compare an
+         * egress against. Its tunnel activity is measured by the Tunnel*
+         * features, which are role-gated and excluded from model inputs
+         * (analysis/leakage.py) for exactly that reason. */
+        uint32_t recv_col   = 0;
+        uint32_t fwd_col    = 0;
+        uint32_t drop_col   = 0;
 #else
         uint32_t retry_col  = s_reinject_fail;
         uint32_t tx_col     = s_probes_reinjected; /* re-injected to root       */
         uint32_t probes_col = s_tunnel_received;   /* received from B           */
+        /* Node A is a genuine relay: it accepts frames over the UART tunnel and
+         * re-injects them into the mesh. recv/forward/drop therefore have the
+         * same meaning here as on the blackhole attacker, and a failed
+         * re-injection counts as both a drop (outcome) and a retry (cause). */
+        uint32_t recv_col   = s_tunnel_received;
+        uint32_t fwd_col    = s_probes_reinjected;
+        uint32_t drop_col   = s_reinject_fail;
 #endif
 
         csv_logger_append_telemetry(
@@ -539,7 +556,10 @@ static void telemetry_task(void *arg)
             tx_col,
             probes_col,
             phase_listener_get_phase_id(),
-            phase_listener_get_label()
+            phase_listener_get_label(),
+            recv_col,
+            fwd_col,
+            drop_col
         );
 
         ESP_LOGD(TAG, "Sample: ts=%lld rssi=%d layer=%d phase=%u label=%u "

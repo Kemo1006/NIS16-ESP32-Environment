@@ -580,3 +580,176 @@
   `presets\linear-blackhole-none-g402.json` unresolved merge conflict (still UU, see
   Blockers) was left untouched and still sits unfiled; resolving it is now also a precondition
   for filing THAT preset under an owner. MEMORY.md.
+
+## Rolled from MEMORY.md - sep. 20, 2026 (sep. 18 tooling batch + sep. 16 attacker proposal)
+
+- sep. 18, 2026 — **PUSHED** the whole day's sep. 18 tooling batch to `origin/Unified` (`1cf76e3`):
+  topology graph, mesh layer-cap fix, CC heartbeat, per-member presets (full detail in ARCHIVE.md),
+  run-log/SD-delete tooling, member board list. Resolved the sep. 17 index conflict on
+  `presets\linear-blackhole-none-g402.json` by removing it (superseded by `presets\Bas\...json`,
+  already staged) and merging in the 3 data-sync commits (`0a356df` etc.) pushed from a separate
+  clean clone. Also merged `run.ps1`/`push_data.py` conflicts by keeping the newer local versions
+  (menu already collapsed to one submenu; docstring already covering presets).
+- sep. 18, 2026 — BUILT (`run.ps1` + `run_wizard.ps1`'s `Invoke-FirmwareSelfTest`, uncommitted):
+  auto-detect + wipe a half-configured build dir. Symptom that triggered this: an interrupted
+  `idf.py`/Ctrl+Break can leave `CMakeCache.txt`/`build.ninja` written but the generated
+  `config\sdkconfig.h` without `CONFIG_IDF_TARGET_ESP32` — esp-idf's `soc_caps.h` then can't
+  determine the ECO version and `sha_hal.c` fails with `SHA_TYPE`/`SHA1` undeclared, a plain rebuild
+  just reusing the same broken tree forever. Same remedy as the existing wrong-repo-path self-heal in
+  `run.ps1`: detect, `Remove-Item -Recurse -Force`, let it reconfigure. Scope explicitly limited to
+  `run.ps1`/`run_wizard.ps1` per user request — `menu.ps1`'s own separate pre-build `idf.py` call
+  still has NO self-heal of any kind.
+- sep. 18, 2026 — BUILT (`tools\push_data.py` + `run_wizard.ps1`, uncommitted): data sync now
+  actually covers saved presets, not just capture CSVs — `push_data.py`'s docstring had claimed
+  presets support since it was written, but the code was 100% CSV-hardcoded. New `--area
+  {exports,presets}` flag (default exports); presets area syncs `.json` under `presets\<owner>\`
+  using the exact same byte-diff/conflict-keep-both/ledger-skip machinery, no new logic needed.
+  Wizard menu gained "Upload my saved presets to GitHub" (`Invoke-DataSync -Area presets`), same
+  push-then-auto-pull-back UX as the existing CSV push. `menu.ps1`'s separate, still-unmerged
+  data-sync menu NOT touched — out of the user-specified scope both times this was requested.
+- sep. 18, 2026 — BUILT (`run_wizard.ps1` + `mesh_common`, uncommitted), 4 items. (1) Run log:
+  `[Y/n]` prompt before a capture, `Start-Transcript` over the board loop into new `run_logs\`, named
+  like a preset + timestamp; DATA menu "View a saved run log" (`Invoke-ViewRunLog`). (2)
+  `DELETE_SD_PATH=<attack>/<topology>/<location>` in `csv_logger.c` — PERMANENTLY deletes a card
+  folder (e.g. `blackhole/linear/G402`), the ONE deliberate exception to this project's
+  archive-never-delete rule, operator-requested only. Path must be `baseline|blackhole|wormhole` +
+  `[A-Za-z0-9_-]` segments (blocks `..`, absolute paths); refuses (`ERROR:SD_PATH_IN_USE`) if the
+  board is logging there now; command buffer widened 32→96B with an overflow guard (else a truncated
+  path names the PARENT folder). Host: `export_logs.py --delete-sd-path`; wizard: MAINTENANCE "Delete
+  a folder..." (`Invoke-DeleteSdFolder`), board→attack→topology/ALL→location/ALL→**`[y/N]`** (downgraded
+  from type-DELETE per explicit user request — less friction, less guard on a permanent wipe; flagged
+  not re-litigated). BUILD-CLEAN (child+root) sep. 18 — ⚠️ **NOT flashed/hardware-tested yet**. Found
+  along the way: needed `#include <unistd.h>` for `rmdir`; the wizard's script-wide `Stop` turns any
+  `python ... 2>&1` call's first stderr line into a thrown exception, dropping the rest of the output
+  (`Continue` set locally in `Invoke-DeleteSdFolder`; `Get-SdLocation`/`Set-SdLocation` still have this
+  latent bug). (3) `import_sdcard.py` no longer descends into `_archive\` (was re-importing archived
+  runs) — verified on a fake card. (4) The 3 GitHub sync menu items (see `0a356df` below) merged into
+  one DATA entry opening a submenu (`Invoke-DataSyncMenu`, "Back" default) — `run_wizard.ps1` only,
+  `menu.ps1` untouched. ⚠️ Menu `Idx` numbers shift as this file is hand-edited concurrently elsewhere
+  (OneDrive sync) — a stale-numbered scripted test this session hit "Test data sync" by accident,
+  making a local `sync_test\`; confirmed nothing reached `origin/Unified`, folder deleted — re-derive
+  live numbering before scripting wizard input.
+- sep. 18, 2026 — BUILT + **PUSHED** (`0a356df`, `origin/Unified` — the day's only pushed work): **data-only
+  GitHub sync**, `ESP32-Environment\tools\push_data.py` + one menu option each for push / pull / test
+  (menu.ps1 Action 15/17/16, shared `Invoke-DataSync`; run_wizard's 3 merged into one submenu sep. 18,
+  see today's entry above). Why: a `git pull --autostash` on a tree with uncommitted code wrecked this
+  repo sep. 17 (conflicted preset + orphaned stash, still unresolved), and teammates capture DIFFERENT
+  nodes of one run, so data must reach GitHub without anyone's half-done code. Safety: all git work happens
+  in a private blob-filtered clone under `%LOCALAPPDATA%\nis16-data-sync` — your tree is never stashed/checked-out/merged/rebased; only
+  `.csv` under `tools/exports/` (or `sync_test/`) can be staged, anything else ABORTS the commit; on
+  rejection it rebuilds the commit on newest origin and retries (5×). Rules: unseen file → added; ledgers →
+  unioned; identical or older-than-origin → skipped; same name + different bytes → BOTH kept, yours to
+  `sync_conflicts/<computer>/` (no analysis scans it); already under `archive/` on GitHub → never re-pushed
+  live. Pushed/pulled files are `git add`ed locally because a plain `git pull` REFUSES to overwrite an untracked
+  file even when byte-identical (verified). `.gitattributes` gained `merge=union` for both ledgers. Tested:
+  44-check two-laptop sim on a local bare repo (race retry, archive suppression, code untouched, `git pull`
+  still works after) + 9-check pull-only sim + a cancelled GitHub dry run. NOT proven laptop-to-laptop yet — run "Test data sync" on two machines first.
+- sep. 18, 2026 — BUILT (both wizards, uncommitted): **member board list** — a Cal / Bas / Kyle
+  table (nickname | first:last MAC | colored role) atop both main menus, replacing the whiteboard.
+  Data: `ESP32-Environment\member_boards.json` (member names FIXED in code); shared code
+  `tools\Show-MemberBoards.ps1`. Three ways to edit: "Edit the member board list" (guided add/edit/
+  remove, saves each change immediately, no BOM, never overwrites invalid JSON), "Open
+  member_boards.json directly" (launches `$env:EDITOR`/`code`/notepad, non-blocking), and named
+  snapshots (full detail rolled to ARCHIVE.md). ⚠️ The Idx/Action numbers this entry originally cited
+  are STALE as of the sep. 18 main-menu-declutter entry above — all 3 now sit inside one submenu
+  (run_wizard Idx 17, menu.ps1 Action 18), which also gained a 4th item ("Set whose laptop this is").
+  Seeded from a whiteboard photo:
+  Cal 20:38 attacker, 20:80 + F4:18 role `?`; Kyle 8/9/10/11 = B4:90/28:B4/70:C8/B4:80 children; Bas
+  none. ⚠️ `70:C8`/`28:B4` hard to read in the photo — confirm. ⚠️ Someone hand-edited the file
+  sep. 18 evening — Cal's `20:38 attacker` moved to Kyle as `child_8`, contradicting the user's
+  earlier confirmation; not reverted, flagged for the team (STATUS.md Next step 2).
+- ⚠️ Root-as-blackhole-attacker (STAR only) proposed sep. 16, NOT built — team decides first; full
+  plan at `.claude\plans\mutable-honking-spindle.md` (Basti profile). Rolled to ARCHIVE.md for detail.
+
+
+## sep. 20, 2026 — superseded pre-fix audit diagnostics (rolled from MEMORY.md)
+
+- sep. 20, 2026 — Pre-fix leftovers still true: anchor on the PHASE EXIT (a root-boot cutoff is NOT
+  sufficient), and `compute_forwarding_features` still has no guard on a physically impossible
+  ForwardingRatio > 1, unlike `compute_pdr_features`' five guards.
+- sep. 20, 2026 — `RSSI_Hop_Diff` also inherited the contamination; fixed by P1 + the rssi-0 blanking.
+
+## sep. 20, 2026 — P1/P2/P3 applied + verified (rolled out of MEMORY.md sep. 20 to hold the 200-line cap)
+
+Superseded as a *live* entry by the F1/F2/F3/P5 batch, but kept verbatim because it records the verification numbers for the analysis fixes.
+
+- sep. 20, 2026 — **P1/P2/P3 APPLIED + VERIFIED (uncommitted). `verify_attack.py` → `BLACKHOLE CONFIRMED
+  (2/2 primary exceed 3-sigma)`, exit 0.** 3 files, +295/−16; NO firmware, NO raw CSV, NO threshold lowered
+  (sigma still 3; `BASELINE_FLOOR` RAISED 0.50→0.90). Each change carries its full rationale in a code
+  comment — read those, not this entry, for the why.
+  **P1 `preprocess.py`** — new `assign_segments()`: `segment` + `t_anchor_s` columns anchored on each node's
+  **own first exit from phase 0** (the only clock-free cross-node event); phase 0 & t < −300 s →
+  `pre_baseline`; non-real-phase segments get `window_label = NaN` (rows KEPT, nothing deleted). Also blanks
+  `rssi_dbm == 0` (6446 rows, A1#7). ⚠️ anchor on the PHASE EXIT, not root boot — see below.
+  **P2 `features.py`** — `from preprocess import WINDOW_SECONDS` (was a divergent literal 5).
+  **P3 `verify_attack.py`** — new **INFEASIBLE** status (bounded feature whose max attainable |z| < sigma is
+  excluded, never FAIL); `BASELINE_DISPERSION_CEILING` sd/mu > 0.15 → INVALID-BASE; `RATIO_OF_SUMS` for
+  ForwardingRatio; killed the docstring's bogus "z = −6.10" (actual −2.55); rewrote the RetryRate note.
+  **Verified:** FR −40.22 / PDR −39.38 / Consistency +38.88 / IngressEgress +48.51 all PASS · 4 features
+  79.9% NaN → **0%** · eda.py PCA usable features **4 → 8** · segments 2945/2399/1414/946 ·
+  **NEGATIVE CONTROL** (half the baseline relabelled attack) still NOT CONFIRMED z≈0 — not made permissive ·
+  re-contaminating now gives **INCONCLUSIVE + "check for pre_baseline contamination"** (was the misleading
+  "check the attacker setup") · 15/15 unit tests · byte-identical reruns (M6 determinism).
+
+## sep. 20, 2026 — pre-fix diagnostics, rolled out of MEMORY.md to hold the 200-line cap
+
+All five were SUPERSEDED by fixes applied the same day (P1/P2/P3, then F1/F2/F3/P5). Kept verbatim because they hold the measured numbers and the quotable evidence that the blackhole attack itself always worked — which the paper needs.
+
+- sep. 20, 2026 — **M8 was silently running on 4 of 16 features** (eda.py drops columns until something
+  runs; 0/7704 rows had a complete set). P2 lifted it to **8**. The other 5 need F3/F4 (3 relay features)
+  and a wormhole capture (3 tunnel). M7's "no feature uniformly NaN" stays unmet until a wormhole run exists.
+- sep. 20, 2026 — **Two existing tools already detect early-boot contamination — wire them as gates.**
+  `validate_integrity.py`'s "phase 0 has 2.76–2.95x expected rows" WARN fires on exactly the 5 nodes that
+  booted 491–551 s before the root; `verify_topology.py` returns "Converged within 60s: NO" for them.
+  `analyze.ps1` calls `verify_attack.py` WITHOUT checking either exit code. D-2 records children-booted-
+  before-root as ROUTINE (−194 s in July) ⇒ systemic ⇒ fix F1 in firmware, not the runbook.
+- sep. 20, 2026 — **The blackhole ATTACK WAS ALWAYS FINE; `verify_attack.py` was the broken thing** (fixed
+  above). Quotable evidence: root arrivals **6.07/s baseline → 0/s attack → 6.01/s cooldown** (99% recovery;
+  `validate_integrity.py`'s own words: "total drop, the expected attack signature"); attacker forwarded
+  2605/2600 baseline vs **1/1020** attack; ~182 contiguous missing seq per victim = `PHASE_ATTACK_S`. Cause
+  of the false FAIL: root joined 100–551 s AFTER the victims (sep. 18 brownout) and `phase_listener.c:35`
+  inits `s_gt_label = GT_LABEL_BASELINE`, so never-heard-a-broadcast looked like baseline — 2945/7704 (38%).
+- sep. 20, 2026 — **SECOND BUG (FIXED by P2)**: `features.py` WINDOW_SECONDS 5 vs `preprocess.py` 1 — the
+  merge on `window_start` matched only multiples of 5. Affected EVERY feature table built since D-9 ⇒
+  **re-run M6→M7 on any cell analysed before sep. 20.**
+- sep. 20, 2026 — **LEAKAGE measured (panel-P1).** (1) `RetryRate` on the ATTACKER row is the attack's own
+  drop counter (`blackhole_victim.c` overloads `retry_count`): 0.0033 → **0.9991**, while victims go 0.0008
+  → **0.0000**. The one feature that "PASSED" is the leak. ⇒ `SIGNATURES`' "victims retry" was wrong (now
+  fixed), and paper **Table 3.4's "retransmission increase for victim nodes" is a pre-registered MISS** —
+  REPORT it, do NOT edit the table; §3.3.1.2 already explains why (link-layer ACKs still succeed).
+  (2) `ConsistencyScore` ≡ |ForwardingRatio−1| to 1.1e-16 and `IngressEgressDelta` = recv×|1−FR| ⇒ **3 of 16
+  features are ONE measurement**; FR alone decides the attack at 0.9694 vs 0.7685 majority.
+  (3) `combine_all.py:52-55` ships `attack_type` + `node_role` as plain-text label equivalents.
+  (4) `window_start` alone scores 0.857 vs 0.817 (fixed phase timing). (5) ⚠️ the NaN mask is NOT a perfect
+  label *within* a run (0.752 vs 0.817 majority — worse than guessing); it identifies RUN TYPE at
+  dataset-assembly level. Fixes: F3 (dedicated recv/forward/drop counters) then F4 (un-gate), both need
+  re-capture; P5 (modelling-column allowlist) is host-side.
+
+## sep. 20, 2026 — full BLACKHOLE_ATTACKER_MAC run-killer entry (condensed in MEMORY.md after F2)
+
+F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of this hazard. The SYMPTOM and the detection shortcut are unchanged and stay live in MEMORY.md; the full incident history is here.
+
+- ⚠️⚠️ **RECURRING RUN-KILLER — verify `BLACKHOLE_ATTACKER_MAC` before EVERY blackhole run**
+  (`mesh_config.h:207`). Blackhole VICTIMS send `MESH_DATA_P2P` to that exact MAC
+  (`victim_main.c:152`), so if it names a board not in the mesh, every probe is addressed to
+  nobody: root logs **zero arrivals in ALL phases**, `arrivals.csv` is header-only, and BOTH
+  primary features (PDR *and* ForwardingRatio) come out 100% NaN — the run is unusable and the
+  failure is SILENT (boards look healthy, telemetry is full, probes_count climbs normally).
+  Hit sep. 15 AND again sep. 16 (stale `0c:80` while attacker board was `1c:38`). Symptom→cause
+  shortcut: all-NaN PDR + empty arrivals + root `probes_count` stuck at 0.
+  **Why the wizard guard missed it:** `Confirm-BlackholeAttackerMac` (menu.ps1:201, also in
+  run_wizard) runs only at BUILD/FLASH time — the MAC is compiled INTO the victims, so reusing an
+  already-flashed build carries the stale value silently. Changing the attacker ALWAYS means
+  re-flashing every victim. **Two guards added sep. 16:** (1) the attacker compares its own STA MAC
+  to the compiled one at boot and prints a MISMATCH/abort banner (`blackhole_victim.c`);
+  (2) `features.py`'s `load_arrivals` warns loudly when arrivals files exist but are all
+  header-only, instead of silently returning None like a legitimately absent root log.
+  Rejected as too risky pre-campaign: having the attacker announce its MAC over the mesh
+  (untested protocol change days before 24 runs).
+
+## sep. 20, 2026 — durable facts condensed in MEMORY.md after F2/F3/P5 (originals)
+
+- Every attack/traffic parameter is a compile-time constant: drop rate 100% (`blackhole_victim.c:195`), `PROBE_INTERVAL_MS 1000`, `SAMPLING_INTERVAL_MS 100`, phases 60/300/180/120 s = 11 min (`mesh_config.h:129-138`), and `BLACKHOLE_ATTACKER_MAC` is a `#define` (`mesh_config.h:207`). `run.ps1` exposes topology/role but **no** attack-intensity flags → r1/r2/r3 differ only in RF noise, and attacker position can't change without re-flashing every victim board.
+- ⚠️ **Known leak (panel P1):** the 5 role-gated features are non-NaN ONLY for their attacker role — `ForwardingRatio`/`IngressEgressDelta`/`ConsistencyScore` for the blackhole attacker, `TunnelIntensity`/`TunnelBytes` for wormhole endpoints. So "is this column NaN?" is a **perfect label**. Combined with PDR 0.08-vs-0.94, the dataset is trivially separable — the panel's "then ML is unnecessary" objection is correct as of aug. 2026.
+- **aug. 29, 2026 — honest nodes cannot observe their own forwarding.** Victims send with `esp_mesh_send(NULL, ..., MESH_DATA_TODS)` (`victim_main.c:164`), so the mesh stack relays *below the app layer*; only the blackhole attacker sees transit packets, because victims address it explicitly (`victim_main.c:159`). The 11-column schema gives every node `probes_count`/`tx_count`/`retry_count`, but they mean "probes I originated" on a victim and "received/forwarded/dropped" on the attacker. ⇒ C7 (un-gate the relay features) is **not** a mask widening — there is no honest-relay data to un-gate. Three options in `Plan/THESIS3-MEMBER-HOWTO.md` §1 C7.
+
