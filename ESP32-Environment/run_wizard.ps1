@@ -332,6 +332,7 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'VERIFY'; Items = @(
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
+            @{ Idx = 18; Text = 'Campaign progress checklist - which runs are DONE, scanned from the folders (no board/COM contact)' }
         ) }
     )
     $exitIdx = 8
@@ -1910,6 +1911,47 @@ function Invoke-ImportSdCard {
         $again = Read-Line "`nImport another card for this same run? [y/N] > "
         if ($again -ne 'y' -and $again -ne 'Y') { break cardFlow }
     }
+}
+
+function Invoke-CampaignChecklist {
+    # Tick-box progress table for the whole campaign, scanned from the folders.
+    #
+    # WHY IT SCANS INSTEAD OF TRACKING
+    #   A hand-maintained checklist drifts the moment someone forgets to update
+    #   it, and run_ledger.csv has sat header-only for weeks proving exactly
+    #   that. This ticks a box because the CSVs are on disk AND pass the
+    #   milestone criteria (root telemetry + non-empty arrivals + >= 3 children
+    #   + every node >= 95% coverage), so the table cannot claim a run you do
+    #   not actually have.
+    #
+    #   It also scans archive\*\exports\, because archive.ps1 MOVES captures out
+    #   of tools\exports\ - which is how "zero wormhole captures" got written
+    #   down while six complete wormhole runs were sitting in the archive.
+    #
+    # A capture that exists but FAILS a criterion stays unticked on purpose: it
+    # has to be redone, so showing it as done would be worse than showing nothing.
+    # Run the plain inventory to see WHY a given run failed.
+
+    Write-Host ""
+    Write-Host "=== Campaign progress checklist ===" -ForegroundColor Cyan
+    Write-Host "Scanning tools\exports\ and archive\*\exports\ ..." -ForegroundColor DarkGray
+
+    $repeats = 1
+    $ans = Read-Host "Planned repeats per cell? (1 = 128 attack runs, 4 = 512) [1]"
+    if ($ans -and $ans.Trim() -match '^\d+$') { $repeats = [int]$ans.Trim() }
+
+    Push-Location $base
+    try {
+        python (Join-Path $base 'tools\inventory_cells.py') --checklist --repeats $repeats
+        Write-Host ""
+        if ((Read-YesNo -Question "Also show the full per-run inventory (with the reason each incomplete run failed)?" -Default $false)) {
+            python (Join-Path $base 'tools\inventory_cells.py') --plan --repeats $repeats
+        }
+    }
+    finally { Pop-Location }
+
+    Write-Host ""
+    Read-Host "Press Enter to return to the menu" | Out-Null
 }
 
 function Invoke-VerifyRun {
@@ -3689,6 +3731,7 @@ if (-not $Preset) {
         if ($modeIdx -eq 10) { Invoke-TrimOnly; continue }
         if ($modeIdx -eq 14) { Invoke-ViewRunLog; continue }
         if ($modeIdx -eq 15) { Invoke-DeleteSdFolder; continue }
+        if ($modeIdx -eq 18) { Invoke-CampaignChecklist; continue }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember

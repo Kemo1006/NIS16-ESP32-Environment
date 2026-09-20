@@ -251,20 +251,29 @@ def build_plan():
     return planned
 
 
-def report_plan(rows):
+def report_plan(rows, repeats=1):
     """Target matrix vs what is actually captured."""
-    planned = build_plan()
+    planned = [p for p in build_plan() for _ in range(repeats)]
+    have_n = defaultdict(int)
+    for r in rows:
+        if r["verdict"] == "COMPLETE":
+            have_n[(r["attack"], r["topology"],
+                    r["location"] if r["location"] != "-" else "",
+                    r["scenario"] if r["scenario"] != "-" else "none")] += 1
     have = {(r["attack"], r["topology"],
              r["location"] if r["location"] != "-" else "",
              r["scenario"] if r["scenario"] != "-" else "none")
             for r in rows if r["verdict"] == "COMPLETE"}
 
+    # Count against the per-cell tally so N repeats need N captures, not one.
+    remaining_need = defaultdict(int)
+    for cellk in planned:
+        remaining_need[cellk] += 1
     done, missing = [], []
-    for atk, topo, loc, scn in planned:
-        if (atk, topo, loc, scn) in have:
-            done.append((atk, topo, loc, scn))
-        else:
-            missing.append((atk, topo, loc, scn))
+    for cellk, need in remaining_need.items():
+        got = min(have_n.get(cellk, 0), need)
+        done.extend([cellk] * got)
+        missing.extend([cellk] * (need - got))
 
     print()
     print("=" * 118)
@@ -273,6 +282,7 @@ def report_plan(rows):
           f"{len(PLAN_ATTACKS)} attacks x {len(PLAN_SCENARIOS)} scenarios")
     print("=" * 118)
     print(f"  scenarios : {', '.join(PLAN_SCENARIOS)}")
+    print(f"  repeats per cell : {repeats}")
     print(f"  + {len([p for p in planned if p[0] == 'baseline'])} matched BENIGN runs "
           f"for the paired scenario(s): {', '.join(sorted(PAIRED_SCENARIOS))}")
     print(f"  planned runs : {len(planned)}")
@@ -310,6 +320,74 @@ def report_plan(rows):
     print("=" * 118)
     print()
 
+
+def report_checklist(rows, repeats=1):
+    """Tick-box progress table, grouped by location then topology.
+
+    This is what run_wizard.ps1's "Campaign progress" option renders. It reads
+    the SAME scan as the inventory above, so the checklist can never drift from
+    what is actually on disk - the box is ticked because the files exist and
+    pass the M4/M5 criteria, not because someone remembered doing the run.
+
+    A run counts only if it is COMPLETE (root telemetry + non-empty arrivals +
+    >= 3 children + every node >= 95% coverage). A capture that exists but fails
+    a criterion stays unticked on purpose: it has to be redone, so showing it as
+    done would be worse than showing nothing.
+    """
+    have = defaultdict(int)
+    for r in rows:
+        if r["verdict"] != "COMPLETE":
+            continue
+        key = (r["attack"], r["topology"],
+               r["location"] if r["location"] != "-" else "",
+               r["scenario"] if r["scenario"] != "-" else "none")
+        have[key] += 1
+
+    def cell(atk, topo, loc, scn):
+        n = have.get((atk, topo, loc, scn), 0)
+        if repeats > 1:
+            return f"{n}/{repeats}".center(9)
+        return ("   [x]   " if n else "   [ ]   ")
+
+    total_done = total_planned = 0
+    print()
+    print("=" * 96)
+    print(f"  CAMPAIGN PROGRESS   ({'x' if repeats == 1 else str(repeats) + ' repeats'} "
+          f"per cell)   [x] = complete run on disk")
+    print("=" * 96)
+
+    for loc in PLAN_LOCATIONS:
+        print()
+        print(f"  -- {loc} " + "-" * (88 - len(loc)))
+        print(f"    {'topology':<15}{'scenario':<12}{'blackhole':^11}{'wormhole':^11}{'benign':^11}")
+        for topo in PLAN_TOPOLOGIES:
+            for scn in PLAN_SCENARIOS:
+                bh = cell("blackhole", topo, loc, scn)
+                wh = cell("wormhole", topo, loc, scn)
+                total_planned += 2 * repeats
+                total_done += (have.get(("blackhole", topo, loc, scn), 0)
+                               + have.get(("wormhole", topo, loc, scn), 0))
+                if scn in PAIRED_SCENARIOS:
+                    bn = cell("baseline", topo, loc, scn)
+                    total_planned += repeats
+                    total_done += have.get(("baseline", topo, loc, scn), 0)
+                else:
+                    # No separate benign run needed: for a whole-run scenario the
+                    # attack run's own phase 0 IS the benign control under the same
+                    # condition. Only the attack-window-only scenarios need a pair.
+                    bn = "   n/a   "
+                print(f"    {topo:<15}{scn:<12}{bh:^11}{wh:^11}{bn:^11}")
+
+    print()
+    print("=" * 96)
+    print(f"  complete: {total_done} / {total_planned} planned runs")
+    print("  n/a in the benign column = the attack run's own phase 0 is the control")
+    print("     (highload is whole-run; none/mobility carry no extra traffic).")
+    print("     burst fires only inside the attack window, so it needs a matched")
+    print("     benign run or legitimate-burst and burst-under-attack are confounded.")
+    print("=" * 96)
+    print()
+
 def main():
     ap = argparse.ArgumentParser(
         description="Inventory every experimental cell against the M4/M5 criteria.")
@@ -323,6 +401,12 @@ def main():
                     help="Firmware sampling interval AT CAPTURE TIME. Captures are not "
                          "self-describing; older ones need 1000 or 200.")
     ap.add_argument("--csv", default=None, help="Also write the table here.")
+    ap.add_argument("--checklist", action="store_true",
+                    help="Print the tick-box campaign progress table (what "
+                         "run_wizard.ps1's Campaign progress option shows).")
+    ap.add_argument("--repeats", type=int, default=1,
+                    help="Planned repeats per (location, topology, attack, scenario) "
+                         "cell. 1 => 128 attack runs; 4 => 512. See --plan.")
     ap.add_argument("--plan", action="store_true",
                     help="Also print the campaign matrix (4 locations x 4 topologies "
                          "x 2 attacks x 4 scenarios) and what is still missing.")
@@ -394,8 +478,11 @@ def main():
     print("  Re-analyse one with:  .\\analyze.ps1   (point it at that folder's exports/)")
     print()
 
+    if args.checklist:
+        report_checklist(rows, args.repeats)
+
     if args.plan:
-        report_plan(rows)
+        report_plan(rows, args.repeats)
 
     if args.csv:
         with open(args.csv, "w", newline="", encoding="utf-8") as fh:
