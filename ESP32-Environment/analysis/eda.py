@@ -98,7 +98,7 @@ import leakage  # noqa: E402
 # PCA purposes, as opposed to identity/metadata columns like node_id.
 FEATURE_COLUMNS = [
     "ForwardingRatio", "IngressEgressDelta", "RetryRate", "PDR",
-    "ParentSwitchRate", "LayerChangeCount", "HopStabilityDuration",
+    "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
     "RSSI_mean", "RSSI_var", "RSSI_stability",
     "RSSI_Hop_Diff", "LatencyHopRatio", "ConsistencyScore",
     "TunnelIntensity", "TunnelBytes", "TunnelLatency",
@@ -113,7 +113,7 @@ LAYER_GROUPS = {
     "MAC": ["RetryRate"],
     "Network": [
         "ForwardingRatio", "IngressEgressDelta", "PDR",
-        "ParentSwitchRate", "LayerChangeCount", "HopStabilityDuration",
+        "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
     ],
 }
 

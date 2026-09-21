@@ -318,7 +318,7 @@ function Show-CaptureWizardMenu {
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
             @{ Idx = 16; Text = 'Sync capture data with GitHub (push / pull / test) - raw CSVs only, never code' }
-            @{ Idx = 10; Text = 'Trim exported CSVs only (tools\trim_run.py --apply - writes trimmed/ copies, raw export untouched)' }
+            @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
             @{ Idx = 14; Text = 'View a saved run log (a past run''s console output, incl. any errors - no board/COM contact)' }
         ) }
@@ -333,6 +333,7 @@ function Show-CaptureWizardMenu {
         @{ Name = 'VERIFY'; Items = @(
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
             @{ Idx = 18; Text = 'Campaign progress checklist - which runs are DONE, scanned from the folders (no board/COM contact)' }
+            @{ Idx = 19; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
         ) }
     )
     $exitIdx = 8
@@ -1913,6 +1914,48 @@ function Invoke-ImportSdCard {
     }
 }
 
+function Invoke-ShowTopologyStructure {
+    # Prints the MESH TOPOLOGY / parent-child table for an ALREADY-CAPTURED run,
+    # rebuilt from its CSVs (tools\verify_topology.py --structure).
+    #
+    # WHY THIS IS A MENU ITEM
+    #   The firmware prints this same banner over serial while a run is live, but
+    #   that scrolls past and is not in the dataset - you cannot show it to a
+    #   panel afterwards, and you cannot get it at all for an archived run. This
+    #   rebuilds it from the exported CSVs, so any run ever captured can be
+    #   printed on demand and pasted into the paper.
+    #
+    #   It also answers a review question directly: "show which one is parent mac
+    #   address and child mac address". The UPLINK column IS the parent; every
+    #   other MAC on a row is that node's own. The raw CSV's parent_mac is the
+    #   parent's SoftAP BSSID (its STA MAC + 1), which is why reading the CSV by
+    #   eye never lines up - this resolves it for you.
+    Write-Host ""
+    Write-Host "Nothing here touches a board or a COM port -- rebuilds the topology from" -ForegroundColor DarkGray
+    Write-Host "an already-exported run's CSVs. UPLINK = that node's PARENT." -ForegroundColor DarkGray
+
+    $attackIdx = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 1
+    $sAttack   = @('none', 'blackhole', 'wormhole')[$attackIdx]
+    $topoIdx   = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
+    $sTopology = $TOPOLOGIES[$topoIdx]
+    $sLocation = Read-Line "Location (blank = search every location) > "
+
+    # verify_topology.py takes the CLI topology name ('partial'); the wizard's
+    # $TOPOLOGIES list already uses that vocabulary, so no translation needed
+    # here - unlike analyze.ps1, which works in FOLDER names (partial_mesh).
+    $vtArgs = @('--dir', (Join-Path $base 'tools\exports'),
+                '--topology', $sTopology, '--attack', $sAttack,
+                '--expect', $sTopology, '--structure')
+    if ($sLocation) { $vtArgs += @('--location', $sLocation) }
+
+    Push-Location (Join-Path $base 'tools')
+    try { python (Join-Path $base 'tools\verify_topology.py') @vtArgs }
+    finally { Pop-Location }
+
+    Write-Host ""
+    Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
 function Invoke-CampaignChecklist {
     # Tick-box progress table for the whole campaign, scanned from the folders.
     #
@@ -2305,6 +2348,15 @@ function Invoke-TrimOnly {
     Write-Host "Nothing here touches a board or a COM port -- runs tools\trim_run.py --apply" -ForegroundColor DarkGray
     Write-Host "over an already-exported folder. Writes to a trimmed\ subfolder; the raw" -ForegroundColor DarkGray
     Write-Host "export is never modified or deleted." -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "SMART TRIM (sep. 21, 2026): one exported CSV can hold several boot" -ForegroundColor DarkGray
+    Write-Host "sessions - flashing, the real run, and the export power-cycle. It used to" -ForegroundColor DarkGray
+    Write-Host "keep the LONGEST one, which silently kept the junk whenever a board was" -ForegroundColor DarkGray
+    Write-Host "left plugged in longer than a short or aborted run lasted. It now keeps" -ForegroundColor DarkGray
+    Write-Host "the session that actually shows a PHASE PROGRESSION (baseline -> attack ->" -ForegroundColor DarkGray
+    Write-Host "cooldown -> terminate); an idle session logs PHASE_ID_UNSET and is rejected" -ForegroundColor DarkGray
+    Write-Host "outright. Each session is printed WITH the reasons for its score, so read" -ForegroundColor DarkGray
+    Write-Host "the report - it will also warn you if TWO sessions look like real runs." -ForegroundColor DarkGray
 
     $attackIdx   = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 0
     $rAttack     = @('none', 'blackhole', 'wormhole')[$attackIdx]
@@ -3732,6 +3784,7 @@ if (-not $Preset) {
         if ($modeIdx -eq 14) { Invoke-ViewRunLog; continue }
         if ($modeIdx -eq 15) { Invoke-DeleteSdFolder; continue }
         if ($modeIdx -eq 18) { Invoke-CampaignChecklist; continue }
+        if ($modeIdx -eq 19) { Invoke-ShowTopologyStructure; continue }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember

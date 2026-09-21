@@ -89,7 +89,7 @@ def _make_window_rows(
             "TunnelBytes": np.nan,            # attacker-only
             "TunnelLatency": np.nan,          # attacker-only
             "ParentSwitchRate": max(0, rng.uniform(*parent_switch_rate_range)),
-            "LayerChangeCount": rng.poisson(0.1) if label == 0 else rng.poisson(0.6),
+            "HopChangeCount": rng.poisson(0.1) if label == 0 else rng.poisson(0.6),
             "HopStabilityDuration": rng.uniform(3.5, 5.0) if label == 0 else rng.uniform(1.0, 4.0),
             "RSSI_stability": rng.uniform(3.5, 5.0),
             "PDR": float(np.clip(rng.uniform(*pdr_range), 0, 1)),

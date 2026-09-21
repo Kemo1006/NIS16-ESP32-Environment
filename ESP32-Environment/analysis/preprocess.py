@@ -764,6 +764,32 @@ def handle_missing_values(df: pd.DataFrame, report: PreprocessReport) -> pd.Data
 # Step 4 — Window aggregation (Table 4.10)
 # ─────────────────────────────────────────────────────────────────────────
 
+def _layer_to_hop(layer):
+    """ESP-WIFI-MESH `layer` -> hop count from the root.
+
+    WHY THIS EXISTS (adviser feedback, sep. 21, 2026): panel members read the
+    column name `layer` as an OSI layer. It is not — ESP-WIFI-MESH's `layer` is
+    a node's depth in the mesh TREE, and the mesh runs below IP entirely. `hop`
+    is the standard networking word for that and carries no OSI baggage, so the
+    analysis and the paper lead with it. `layer` is kept alongside it as the raw
+    value the firmware reported, so nothing loses traceability.
+
+    ⚠️ THE OFF-BY-ONE IS THE WHOLE POINT, don't "simplify" this away:
+    Espressif numbers the ROOT as layer 1 (mesh_setup.c, "center(L1)"), so a
+    direct child of the root is layer 2 — but it is **1 hop** from the root, and
+    the root is **0 hops** from itself. A straight rename of the column, keeping
+    the values, would have every hop count off by one and would read as "the
+    root is 1 hop from itself", which is wrong and a panel would catch it.
+
+    layer == -1 is the firmware's "no parent right now" sentinel, NOT a real
+    depth — it must become NaN, never -2.
+    """
+    val = pd.to_numeric(layer, errors="coerce")
+    if pd.isna(val) or val < 1:
+        return np.nan
+    return val - 1
+
+
 def _modal_label(series: pd.Series):
     """
     Modal phase-label assignment per window. pandas mode() can return
@@ -836,6 +862,9 @@ def build_windows(
             "run_repeat": _repeat_from_filename(source_file),
             "node_role": wdf["role"].mode().iloc[0] if not wdf["role"].mode().empty else wdf["role"].iloc[0],
             "layer": wdf["layer"].mode().iloc[0] if "layer" in wdf and not wdf["layer"].mode().empty else np.nan,
+            "hop": _layer_to_hop(
+                wdf["layer"].mode().iloc[0]
+                if "layer" in wdf and not wdf["layer"].mode().empty else np.nan),
             "parent_mac": wdf["parent_mac"].iloc[-1] if "parent_mac" in wdf else None,
             "n_samples_present": int(n_present),
             "n_samples_expected": EXPECTED_SAMPLES_PER_WINDOW,
@@ -1030,7 +1059,7 @@ def run_pipeline(
     Milestone 6 itself only needs the first two — the windowed output is
     the M6 deliverable. The long-format table exists for Milestone 7,
     which needs the raw per-sample (layer, parent_mac) SEQUENCE to detect
-    transitions (ParentSwitchRate, LayerChangeCount, HopStabilityDuration)
+    transitions (ParentSwitchRate, HopChangeCount, HopStabilityDuration)
     — information that is necessarily lost once samples are collapsed to
     one modal value per 5-second window. Returning it here avoids
     re-running steps 1-3 a second time inside the M7 module.

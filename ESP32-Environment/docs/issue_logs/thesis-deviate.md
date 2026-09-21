@@ -232,3 +232,16 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
   run. Per run type: baseline 10/16 populated, blackhole 13/16, wormhole 13/16 — and
   **16/16 across the combined matrix**, since every feature is populated by at least one
   run type.
+## D-11 · `layer` → `hop`: renamed feature, new derived column, values unchanged
+
+| | |
+|---|---|
+| **Context** | Panel and adviser feedback (sep. 21, 2026) — reviewers read the column name `layer` as an **OSI layer**. It is not. ESP-WIFI-MESH's `layer` is a node's depth in the mesh **tree**, and the mesh runs *below IP entirely*, so there is no OSI layer 3 involved at any point. Adviser (Sir Greg) asked directly: *"change layer to hop"*; a second reviewer independently asked to *"make it 'topology layer' instead of LAYERS (OSI MODEL)"*. Two reviewers, same confusion, unprompted — so the name was the problem, not the reader. |
+| **Why it mattered** | This is a naming defect with a real cost: every time it is misread, the reader believes the dataset contains network-layer (IP) data that it does not contain, which makes the whole cross-layer framing look overclaimed. `docs/DATA-DICTIONARY.md` §3 had already flagged the same issue independently. |
+| **We do** | (1) `preprocess.py` emits a new derived column **`hop`** = `layer − 1`, alongside the raw `layer`, which is kept untouched for traceability to what the firmware actually reported. (2) Table 4.11's feature `LayerChangeCount` is renamed **`HopChangeCount`**. (3) Analysis and docs lead with hop; `layer` survives only as the raw firmware value. |
+| **⚠️ The off-by-one is the whole point** | Espressif numbers the **root as layer 1** (`mesh_setup.c`, "center(L1)"), so a direct child of the root is layer 2 — but it is **1 hop** from the root, and the root is **0 hops** from itself. A straight rename keeping the values would have made every hop count wrong by one and would read as *"the root is 1 hop from itself"*. `_layer_to_hop()` carries this reasoning in its docstring so it cannot be "simplified" away later. `layer == -1` (the firmware's no-parent sentinel) maps to **NaN**, never −2. |
+| **Feature VALUES are unchanged** | `HopChangeCount` counts *changes* in depth. A count of changes is unaffected by whether depth is expressed as layer (root = 1) or hop (root = 0), because the two differ by a constant. **Only the name moved — no number in any feature table changed.** Verified: pipeline re-run produced identical values under the new name. |
+| **Verified** | Real capture (`blackhole/linear/G402`): root layer 1 → hop 0; attacker layer 7 → hop 6; all 65 rows with `layer == -1` → `hop` NaN. `HopChangeCount` present, `LayerChangeCount` absent, `layer` retained. Full pipeline M6→M7→M8 green; `verify_attack.py` still BLACKHOLE CONFIRMED; 20/20 `test_segments.py`. |
+| **Net effect on the thesis** | One column added (`hop`), one feature renamed. Table 4.11 must show `HopChangeCount`. No feature value, window count, or label changes anywhere. Dated issue logs (`2026-07-*.md`) deliberately keep the old name — they are a historical record of what was true then, not current documentation. |
+
+---

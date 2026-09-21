@@ -178,7 +178,7 @@ baseline/wormhole runs where it stays near 1.0).
 1s and 3s gaps (tests the interpolate-vs-discard logic), a run with a
 real phase transition (tests modal-label assignment), a node with a
 mid-window layer/parent switch (tests `ParentSwitchRate`/
-`LayerChangeCount`/`HopStabilityDuration`), and two matched
+`HopChangeCount`/`HopStabilityDuration`), and two matched
 victim/root pairs — one where every probe arrives, one simulating a
 blackhole drop (tests PDR's coverage-vs-zero distinction described
 above).

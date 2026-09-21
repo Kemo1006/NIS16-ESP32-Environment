@@ -59,7 +59,7 @@ import pandas as pd
 # reverse, so this is the definition and eda.py's is the alias.
 TABLE_4_11_FEATURES = [
     "ForwardingRatio", "IngressEgressDelta", "RetryRate", "PDR",
-    "ParentSwitchRate", "LayerChangeCount", "HopStabilityDuration",
+    "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
     "RSSI_mean", "RSSI_var", "RSSI_stability",
     "RSSI_Hop_Diff", "LatencyHopRatio", "ConsistencyScore",
     "TunnelIntensity", "TunnelBytes", "TunnelLatency",

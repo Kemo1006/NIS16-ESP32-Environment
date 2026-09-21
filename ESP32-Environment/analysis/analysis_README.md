@@ -145,7 +145,7 @@ requires this be reported as a dataset quality metric.
 
 Of the 16 features, **11 are real numbers computed from data the
 firmware already logs**: `RetryRate`, `PDR`, `ParentSwitchRate`,
-`LayerChangeCount`, `HopStabilityDuration`, `RSSI_mean`, `RSSI_var`,
+`HopChangeCount`, `HopStabilityDuration`, `RSSI_mean`, `RSSI_var`,
 `RSSI_stability`, `RSSI_Hop_Diff`, plus the two raw `RSSI_mean`/`RSSI_var`
 M6 already computed (just renamed to match Table 4.12's column names).
 

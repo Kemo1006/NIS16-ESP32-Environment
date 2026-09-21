@@ -29,14 +29,38 @@ preprocessing pipeline:
     1 Hz grid, and the dedup step may keep the disconnected sample instead of
     the real one.
 
-HOW IT DECIDES WHAT THE RUN IS
+HOW IT DECIDES WHAT THE RUN IS  (rewritten 2026-09-21 — was "keep the longest")
 ──────────────────────────────
 esp_timer_get_time() resets to ~0 on every boot, so a timestamp going BACKWARDS
-is an unambiguous session boundary. We split there and keep the LONGEST
-segment. For a real capture the experiment (~8-11 min) dwarfs a flash-monitor
-session (~30 s) and an export session (seconds to a couple of minutes), so
-"longest" is a safe proxy for "the run". The report prints every segment so you
-can confirm that before trusting it.
+is an unambiguous session boundary. We split there — that part is unchanged.
+
+Choosing among the segments used to be "keep the LONGEST", on the assumption
+that the experiment (~8-11 min) always dwarfs a flash-monitor session (~30 s)
+and an export session. That assumption fails in the two cases that actually
+cost you a capture:
+
+  * a board left plugged in after the run logs an export session that can
+    outlast a short or ABORTED run — "longest" then keeps the junk and throws
+    the experiment away;
+  * a run cut short by power loss loses to any long idle session.
+
+So segments are now SCORED on whether they look like an experiment, not on
+size. The real run has a property no idle session has: the root drives it
+through a PHASE PROGRESSION (baseline -> attack -> cooldown -> terminate). An
+idle session never hears a phase broadcast at all, and since F1 that is
+explicit in the data — those rows carry PHASE_ID_UNSET (255) instead of
+masquerading as phase 0 — so an idle session is positively identifiable rather
+than merely shorter.
+
+Scoring (see _score_segment): contains an attack phase +50, reaches TERMINATE
++25, >=2 distinct phases +25; all-PHASE_ID_UNSET -100, >90% layer=-1 -50. Size
+contributes at most ~1.0 as a pure tiebreaker, so no amount of idle logging can
+outweigh real evidence of a run. Verified on a synthetic file where a 400-row
+real run correctly beat a 3000-row idle session (+102.6 vs -146.5).
+
+The report prints every segment WITH the reasons behind its score, so the
+decision is auditable rather than trusted. Two segments that both look like
+real runs, or none that does, are flagged loudly instead of silently resolved.
 
 SAFETY
 ──────
@@ -77,6 +101,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import math
 import os
 import re
 import shutil
@@ -188,6 +213,145 @@ def _segments(body):
     return [(cuts[i], cuts[i + 1]) for i in range(len(cuts) - 1)]
 
 
+# ── Smart segment scoring ───────────────────────────────────────────────────
+# Phase ids, mirroring mesh_config.h. 255 = PHASE_ID_UNSET (F1): the node was up
+# and logging but had never heard a phase broadcast, i.e. no root was driving
+# it. That is the signature of a flash-monitor or export session.
+_PHASE_TERMINATE, _PHASE_UNSET = 4, 255
+_REAL_PHASES = {0, 1, 2, 3, 4}
+_ATTACK_PHASES = {1, 2}
+
+
+def _col_index(header, name):
+    """Column position of `name` in the header line, or None."""
+    if not header:
+        return None
+    cols = [c.strip() for c in header.strip().split(",")]
+    return cols.index(name) if name in cols else None
+
+
+def _segment_profile(header, body, a, b):
+    """What KIND of session is body[a:b]? Returns a dict used for scoring.
+
+    WHY THIS REPLACED "KEEP THE LONGEST" (2026-09-21)
+    -------------------------------------------------
+    Length was only ever a PROXY for "this is the experiment". It breaks in the
+    two cases that actually cost you a capture:
+
+      * a board left plugged in after the run logs an export session that can
+        easily outlast a short or aborted run - the trimmer would then keep the
+        junk and throw the experiment away;
+      * a run cut short by power loss loses to any long idle session.
+
+    The real run has a property no idle session has: the root drives it through
+    a PHASE PROGRESSION (baseline -> attack -> cooldown -> terminate). An idle
+    session sees no phase broadcasts at all. Since F1 that is unambiguous in the
+    data - those rows carry PHASE_ID_UNSET (255) instead of masquerading as
+    phase 0 - so an idle session is now positively identifiable rather than
+    merely "shorter".
+    """
+    ph_i = _col_index(header, "phase_id")
+    ly_i = _col_index(header, "layer")
+    rows = b - a
+    phases, n_unset, n_disconnected, n_phase_parsed = set(), 0, 0, 0
+
+    for _ts, raw in body[a:b]:
+        f = raw.rstrip("\r\n").split(",")
+        if ph_i is not None and ph_i < len(f):
+            try:
+                p = int(f[ph_i])
+            except ValueError:
+                p = None
+            if p is not None:
+                n_phase_parsed += 1
+                if p == _PHASE_UNSET:
+                    n_unset += 1
+                elif p in _REAL_PHASES:
+                    phases.add(p)
+        if ly_i is not None and ly_i < len(f):
+            try:
+                if int(f[ly_i]) == -1:
+                    n_disconnected += 1
+            except ValueError:
+                pass
+
+    span = (body[b - 1][0] - body[a][0]) / 1e6 if rows else 0.0
+    return {
+        "rows": rows,
+        "span": span,
+        "has_attack": bool(phases & _ATTACK_PHASES),
+        "has_terminate": _PHASE_TERMINATE in phases,
+        "n_distinct_real_phases": len(phases),
+        "frac_unset": (n_unset / n_phase_parsed) if n_phase_parsed else 0.0,
+        "frac_disconnected": (n_disconnected / rows) if rows else 0.0,
+        "phase_readable": ph_i is not None,
+    }
+
+
+def _score_segment(prof):
+    """Rank a session by how much it looks like THE EXPERIMENT. Higher wins.
+
+    Length is deliberately demoted to a tiebreaker (at most ~1.0 via a log
+    term) so no amount of idle logging can outweigh real evidence of a phase
+    progression.
+    """
+    reasons = []
+    if not prof["phase_readable"]:
+        # No phase_id column to reason about (unexpected schema) - fall back to
+        # the old size-based behaviour rather than guessing, and say so.
+        return math.log10(max(prof["rows"], 1)), ["no phase_id column; ranked by size only"]
+
+    score = 0.0
+    if prof["frac_unset"] > 0.99:
+        score -= 100.0
+        reasons.append("never heard a phase broadcast (PHASE_ID_UNSET throughout)"
+                       " -> idle/export session, not the run")
+    if prof["frac_disconnected"] > 0.9:
+        score -= 50.0
+        reasons.append(f"{prof['frac_disconnected']:.0%} of rows have layer=-1"
+                       f" (no parent) -> disconnected session")
+    if prof["has_attack"]:
+        score += 50.0
+        reasons.append("contains an ATTACK phase")
+    if prof["has_terminate"]:
+        score += 25.0
+        reasons.append("reaches TERMINATE (run ended cleanly)")
+    if prof["n_distinct_real_phases"] >= 2:
+        score += 25.0
+        reasons.append(f"{prof['n_distinct_real_phases']} distinct phases"
+                       f" -> a real phase progression")
+    elif prof["n_distinct_real_phases"] == 1 and prof["frac_unset"] <= 0.99:
+        score += 5.0
+        reasons.append("only one phase seen -> possibly a truncated run")
+
+    score += math.log10(max(prof["rows"], 1))   # tiebreaker only
+    return score, reasons
+
+
+def _pick_best(header, body, segs):
+    """Choose the experiment segment. Returns (best, profiles, scores, warn)."""
+    profs = [_segment_profile(header, body, a, b) for (a, b) in segs]
+    scores = [_score_segment(p)[0] for p in profs]
+    best_i = max(range(len(segs)), key=lambda i: scores[i])
+
+    warn = None
+    # Two segments that BOTH look like real runs means one file holds two
+    # experiments. Silently keeping one discards a whole capture, so surface it
+    # instead of resolving it with a coin-flip on length.
+    rivals = [i for i, p in enumerate(profs)
+              if i != best_i and p["has_attack"] and scores[i] > 0]
+    if rivals and profs[best_i]["has_attack"]:
+        warn = ("MORE THAN ONE session looks like a real run (sessions "
+                + ", ".join(str(i + 1) for i in sorted([best_i] + rivals))
+                + "). This file probably holds two experiments - split it by hand"
+                  " instead of trusting this choice.")
+    elif scores[best_i] < 0:
+        warn = ("NO session looks like an experiment - no phase progression in any"
+                " of them. Keeping the least-bad one, but check the board actually"
+                " ran with a root present.")
+    return segs[best_i], profs, scores, warn
+
+
 def process(path, apply_changes, in_place, out_dir):
     header, body, skipped, schema_note = _read(path)
     name = os.path.basename(path)
@@ -196,7 +360,7 @@ def process(path, apply_changes, in_place, out_dir):
         return None
 
     segs = _segments(body)
-    best = max(segs, key=lambda ab: ab[1] - ab[0])
+    best, profs, scores, warn = _pick_best(header, body, segs)
 
     print(f"  {name}")
     if schema_note:
@@ -204,9 +368,14 @@ def process(path, apply_changes, in_place, out_dir):
     print(f"      {len(body)} data rows, {len(segs)} boot session(s)"
           + (f", {skipped} unparsable line(s) dropped" if skipped else ""))
     for i, (a, b) in enumerate(segs):
-        span = (body[b - 1][0] - body[a][0]) / 1e6
-        tag = "  <-- KEEPING (longest)" if (a, b) == best else ""
-        print(f"        session {i+1}: rows {b-a:>6}  span {span:>8.1f}s{tag}")
+        p = profs[i]
+        tag = "  <-- KEEPING" if (a, b) == best else ""
+        print(f"        session {i+1}: rows {b-a:>6}  span {p['span']:>8.1f}s"
+              f"  score {scores[i]:>7.1f}{tag}")
+        for r in _score_segment(p)[1]:
+            print(f"            - {r}")
+    if warn:
+        print(f"      [!] {warn}")
 
     a, b = best
     dropped = len(body) - (b - a)

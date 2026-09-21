@@ -291,6 +291,75 @@ def build_graph(nodes):
     return topology_graph.build_graph(links), union_edges, unresolved
 
 
+def print_structure_banner(graph, nodes, expect=None):
+    """The MESH_SETUP topology banner, rebuilt from the CAPTURED CSVs.
+
+    WHY THIS EXISTS
+    ---------------
+    The firmware already prints this table over serial while a run is live
+    (mesh_setup.c). That is useful at the bench and useless afterwards: it
+    scrolls past, it is not in the dataset, and a panel cannot be shown it.
+    This renders the same view from the exported CSVs, so the structure of any
+    run - including archived ones from months ago - can be printed on demand
+    and pasted into the paper.
+
+    It also answers two questions asked directly in review:
+
+      * "show which one is parent mac address and child mac address" - the
+        UPLINK column is the PARENT of the node on that row. Every other MAC in
+        the table is a node's own (child-side) STA MAC.
+      * "if you look at the data you will know it's linear topology without
+        needing visuals" (adviser, 8:15-9:45) - that is exactly what this is:
+        the topology, read out of the data, with no diagram required.
+
+    ⚠️ HOP, not LAYER. Espressif numbers the root layer 1; this prints HOP
+    (root = 0), because the panel read "layer" as an OSI layer and it is not -
+    see preprocess._layer_to_hop. The raw layer is still what the CSV carries.
+    """
+    order = []
+    stack = [(graph.root, 0)]
+    seen = set()
+    while stack:
+        nid, depth = stack.pop()
+        if nid is None or nid in seen:
+            continue
+        seen.add(nid)
+        order.append((nid, depth))
+        kids = sorted([k for k, p in graph.parent.items() if p == nid], reverse=True)
+        stack.extend((k, depth + 1) for k in kids)
+
+    def mac_of(nid):
+        v = node_id_to_sta_int(nid)
+        return int_to_mac(v) if v is not None else "??:??:??:??:??:??"
+
+    n_reach = len(order)
+    print()
+    print("=" * 69)
+    print(" MESH TOPOLOGY  (rebuilt from captured CSVs)")
+    print(f" TYPE        : {(expect or 'unspecified').upper()}")
+    print(f" NODE COUNT  : {len(nodes)}")
+    print(f" HOP DEPTH   : {max((d for _n, d in order), default=0)}"
+          f"   (root = hop 0)")
+    print(f" REACHABLE   : {n_reach} of {len(nodes)}")
+    print("-" * 69)
+    print(" HOP   MAC ADDRESS        ROLE       UPLINK (= ITS PARENT)")
+    for nid, depth in order:
+        n = nodes[nid]
+        par = graph.parent.get(nid)
+        uplink = "--:--:--:--:--:--  (root, no parent)" if par is None else mac_of(par)
+        print(f" H{depth:02d}   {mac_of(nid)}  {str(n.role).upper():<10} {uplink}")
+
+    missing = [nid for nid in nodes if nid not in seen]
+    for nid in missing:
+        n = nodes[nid]
+        print(f" ???   {mac_of(nid)}  {str(n.role).upper():<10} NOT REACHABLE FROM ROOT")
+    print("-" * 69)
+    print(" UPLINK is the node's PARENT. All other MACs are the node's own.")
+    print(" Note: in the raw CSV, parent_mac is the parent's SoftAP BSSID,")
+    print(" which is its STA MAC + 1. Resolved here already.")
+    print("=" * 69)
+
+
 def print_tree(graph, nodes, start=None):
     """Depth-first, iterative (a chain can be far deeper than Python's
     recursion limit). Shows the derived layer and flags where the node's own
@@ -482,7 +551,7 @@ def interactive_run(args):
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
-def analyze_and_print(paths, expect, converge_limit, stabilise_s):
+def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=False):
     """Load, reconstruct, and report on exactly one run. Returns 0/1/2."""
     print(f"Loaded {len(paths)} telemetry file(s):")
     for p in paths:
@@ -495,6 +564,12 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s):
         return 2
 
     graph, union_edges, unresolved = build_graph(nodes)
+
+    # Printed FIRST when asked: it is the thing a reader wants to see, and
+    # it stands on its own without the milestone verdict underneath it.
+    if structure:
+        print_structure_banner(graph, nodes, expect)
+
 
     # ── Structure ───────────────────────────────────────────────────────────
     print("=== Reconstructed structure ===")
@@ -592,6 +667,11 @@ def main():
                          "scenario under --location (the recursive walk finds "
                          "them regardless — this only narrows to one).")
     ap.add_argument("--files", nargs="*", help="Explicit telem CSVs (overrides --dir filters).")
+    ap.add_argument("--structure", action="store_true",
+                    help="Print the MESH TOPOLOGY / parent-child structure banner "
+                         "rebuilt from the captured CSVs (the same view the firmware "
+                         "prints over serial during a live run, but for any run, "
+                         "including archived ones). UPLINK = that node's parent.")
     ap.add_argument("--expect", choices=TOPOLOGIES,
                     help="Check the structure against this topology: OK/WARN/FAIL "
                          "(star/linear violations FAIL the run).")
@@ -637,7 +717,8 @@ def main():
             print(f"\n(no *_telem.csv files exist anywhere under {args.dir} at all)", file=sys.stderr)
         return 2
 
-    return analyze_and_print(paths, args.expect, args.converge_limit, args.stabilise_s)
+    return analyze_and_print(paths, args.expect, args.converge_limit,
+                             args.stabilise_s, structure=args.structure)
 
 
 if __name__ == "__main__":

@@ -89,7 +89,7 @@ EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 # grid and then merge onto the windowed table by window_start, so a mismatch
 # silently drops every row whose window_start is not a multiple of the larger
 # value. Measured on the 2026-09-18 G402 capture: ParentSwitchRate,
-# LayerChangeCount, HopStabilityDuration and RSSI_stability were 79.9% NaN and
+# HopChangeCount, HopStabilityDuration and RSSI_stability were 79.9% NaN and
 # LatencyHopRatio 92.5% NaN, with 100% of the survivors sitting on
 # window_start % 5 == 0 — a merge-key artefact, not a property of the data.
 # It also made eda.py drop 12 of 16 features from PCA/t-SNE.
@@ -669,7 +669,7 @@ def compute_topology_stability_features(
     filled_long: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    ParentSwitchRate, LayerChangeCount, HopStabilityDuration.
+    ParentSwitchRate, HopChangeCount, HopStabilityDuration.
 
     These three CANNOT be computed from windowed (M6's output) alone,
     because windowing collapses each window down to a single modal
@@ -682,8 +682,13 @@ def compute_topology_stability_features(
     ParentSwitchRate (Eq 4.6): count of parent_mac changes within the
     window / window duration in seconds.
 
-    LayerChangeCount (Eq 4.7): count of layer value changes within the
-    window (raw count, not rate — matches the equation as named).
+    HopChangeCount (Eq 4.7): count of tree-depth changes within the window
+    (raw count, not rate — matches the equation as named).
+    ⚠️ Renamed from LayerChangeCount, sep. 21, 2026, on adviser feedback: the
+    panel read "Layer" as an OSI layer. The VALUE is unchanged — this counts
+    CHANGES in depth, and a count of changes is unaffected by whether depth is
+    expressed as Espressif's layer (root = 1) or as hops (root = 0), since the
+    two differ by a constant. Only the name moved. Logged as D-11.
 
     HopStabilityDuration (Eq 4.8): longest continuous run, in seconds,
     during which BOTH layer and parent_mac stayed constant, scanning
@@ -732,7 +737,7 @@ def compute_topology_stability_features(
             "source_file": source_file,
             "window_start": grp["window_start"].iloc[0],
             "ParentSwitchRate": parent_switch_rate,
-            "LayerChangeCount": n_layer_changes,
+            "HopChangeCount": n_layer_changes,
             "HopStabilityDuration": hop_stability_duration,
         })
 
@@ -1029,7 +1034,7 @@ def main():
     nan_counts = {}
     for col in [
         "ForwardingRatio", "IngressEgressDelta", "RetryRate", "PDR",
-        "ParentSwitchRate", "LayerChangeCount", "HopStabilityDuration",
+        "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
         "RSSI_mean", "RSSI_var", "RSSI_stability",
         "RSSI_Hop_Diff", "LatencyHopRatio", "ConsistencyScore",
         "TunnelIntensity", "TunnelBytes", "TunnelLatency",
