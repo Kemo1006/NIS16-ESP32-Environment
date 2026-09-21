@@ -2411,7 +2411,7 @@ if ($action -eq 5) {
     $matches = @($readOk | Where-Object { $_.Mac -eq $configured })
 
     if ($matches.Count -eq 1) {
-        Write-Host ("   MATCH -- {0} ({1}) is the configured attacker. Victim boards will reach it." -f $matches[0].Port, $matches[0].Node) -ForegroundColor Green
+        Write-Host ("   MATCH -- {0} ({1}) is the recorded attacker." -f $matches[0].Port, $matches[0].Node) -ForegroundColor Green
         continue menu
     }
     if ($matches.Count -gt 1) {
@@ -2423,12 +2423,16 @@ if ($action -eq 5) {
         continue menu
     }
 
-    Write-Host "   NO MATCH among the board(s) just read -- none of these is the configured attacker." -ForegroundColor Red
-    Write-Host "   Victim probes targeting $configured will find nothing in the mesh and vanish for the" -ForegroundColor Red
-    Write-Host "   WHOLE run (baseline included), with every blackhole feature coming out all-NaN." -ForegroundColor Red
+    # Bookkeeping only since C7 Option 1 (D-12) - victims never address the
+    # attacker by MAC any more. See the fuller note on the other copy of this
+    # check earlier in this file.
+    Write-Host "   NO MATCH (bookkeeping only, NOT a run-killer any more)." -ForegroundColor Yellow
+    Write-Host "   None of the board(s) just read is the one recorded as attacker ($configured)." -ForegroundColor Yellow
+    Write-Host "   Victims send to their parent and the attacker drops whatever transits it, so the" -ForegroundColor DarkGray
+    Write-Host "   capture is unaffected. Worth updating so the records match reality." -ForegroundColor DarkGray
     $fixOpts = @($readOk | ForEach-Object { "$($_.Port)  ($($_.Mac))  $($_.Node)" })
     $fixOpts += 'Leave as-is'
-    $fixIdx = Read-Choice -Title "Point BLACKHOLE_ATTACKER_MAC at one of the boards just read instead?" -Options $fixOpts -Default $fixOpts.Count
+    $fixIdx = Read-Choice -Title "Update the recorded BLACKHOLE_ATTACKER_MAC to one of these boards?" -Options $fixOpts -Default $fixOpts.Count
     if ($fixIdx -le $readOk.Count) {
         $target = $readOk[$fixIdx - 1]
         if (Set-ConfiguredAttackerMac -Mac $target.Mac -PortLabel $target.Port) {

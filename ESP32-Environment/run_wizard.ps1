@@ -2120,12 +2120,22 @@ function Invoke-IdentifyAllBoards {
         Write-Host (Colorize-Role $line $role)
     }
 
-    # ---- cross-check against the compiled blackhole attacker MAC ------------
-    # BLACKHOLE_ATTACKER_MAC is baked into VICTIM firmware at BUILD time -- if it
-    # doesn't match whichever board is actually wearing the attacker role right
-    # now, every victim probe addresses a MAC nothing in the mesh holds and the
-    # whole run logs zero arrivals with no error pointing at why. This reads the
-    # boards just identified against that compiled value before any flashing.
+    # ---- cross-check against the recorded blackhole attacker MAC ------------
+    # SEVERITY DOWNGRADED by C7 Option 1 (D-12), sep. 21 2026.
+    #
+    # BEFORE: BLACKHOLE_ATTACKER_MAC was baked into VICTIM firmware at build time,
+    # so if it did not match whichever board was actually wearing the attacker
+    # role, every victim probe addressed a MAC nothing in the mesh held -- the
+    # whole run logged zero arrivals with no error pointing at why. That cost two
+    # full runs (2026-09-15/16, see archive/2026-09-16_bad-attacker-mac/).
+    #
+    # NOW: victims send to their PARENT hop-by-hop and the attacker drops whatever
+    # transits it because of WHERE IT SITS in the tree. It is never addressed by
+    # MAC, so a stale value here CANNOT break a capture any more -- it only means
+    # the recorded attacker label disagrees with the board actually attacking.
+    # Still worth fixing for accurate records, which is why the check stays; but
+    # it must NOT read like an alarm. Telling someone their run will be empty when
+    # it will not is how a perfectly good capture gets aborted for no reason.
     Write-Host ""
     if (-not $configured) {
         Write-Host "  (Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h -- skipping attacker cross-check.)" -ForegroundColor DarkGray
@@ -2136,7 +2146,7 @@ function Invoke-IdentifyAllBoards {
     $matches = @($readOk | Where-Object { $_.Mac -eq $configured })
 
     if ($matches.Count -eq 1) {
-        Write-Host ("  MATCH -- {0} ({1}) is the configured attacker. Victim boards will reach it." -f $matches[0].Port, $matches[0].Node) -ForegroundColor Green
+        Write-Host ("  MATCH -- {0} ({1}) is the recorded attacker." -f $matches[0].Port, $matches[0].Node) -ForegroundColor Green
         return
     }
     if ($matches.Count -gt 1) {
@@ -2148,12 +2158,14 @@ function Invoke-IdentifyAllBoards {
         return
     }
 
-    Write-Host "  NO MATCH among the boards just read -- none of these is the configured attacker." -ForegroundColor Red
-    Write-Host "  Victim probes targeting $configured will find nothing in the mesh and vanish for the" -ForegroundColor Red
-    Write-Host "  WHOLE run (baseline included), with every blackhole feature coming out all-NaN." -ForegroundColor Red
+    Write-Host "  NO MATCH (bookkeeping only, NOT a run-killer any more)." -ForegroundColor Yellow
+    Write-Host "  None of the boards just read is the one recorded as attacker ($configured)." -ForegroundColor Yellow
+    Write-Host "  Since C7 Option 1 victims no longer address the attacker by MAC -- they send to" -ForegroundColor DarkGray
+    Write-Host "  their parent, and the attacker drops whatever passes through it. Your capture will" -ForegroundColor DarkGray
+    Write-Host "  be FINE either way. Worth updating so the recorded attacker matches reality." -ForegroundColor DarkGray
     $fixOpts = @($readOk | ForEach-Object { "$($_.Port)  ($($_.Mac))  $($_.Node)" })
     $fixOpts += 'Leave as-is'
-    $fixIdx = Show-Menu -Title 'Point BLACKHOLE_ATTACKER_MAC at one of the boards just read instead?' -Options $fixOpts -DefaultIndex ($fixOpts.Count - 1)
+    $fixIdx = Show-Menu -Title 'Update the recorded BLACKHOLE_ATTACKER_MAC to one of these boards?' -Options $fixOpts -DefaultIndex ($fixOpts.Count - 1)
     if ($fixIdx -lt $readOk.Count) {
         $target = $readOk[$fixIdx]
         if (Set-ConfiguredAttackerMac -Mac $target.Mac -PortLabel $target.Port) {
@@ -2162,7 +2174,7 @@ function Invoke-IdentifyAllBoards {
             Write-Host "  Could not write mesh_config.h -- fix it by hand before flashing victims." -ForegroundColor Red
         }
     } else {
-        Write-Host "  Left as-is -- victim boards will still target the wrong MAC until this is fixed." -ForegroundColor Yellow
+        Write-Host "  Left as-is -- the capture is unaffected; only the recorded attacker label is stale." -ForegroundColor DarkGray
     }
 }
 
@@ -3652,6 +3664,22 @@ function Show-PresetDetails {
     # naming a different attacker produces a clean run with no attack signature.
     if ([string]$Cfg.attack -eq 'blackhole') {
         $att = $Roster | Where-Object { $_.Kind -eq 'attacker' } | Select-Object -First 1
+        # ⚠️ NEW FAILURE MODE SINCE C7 OPTION 1 (D-12) - PLACEMENT, not wiring.
+        # The attacker used to intercept traffic because victims were compiled to
+        # address its MAC, so where it physically sat was irrelevant. Now it only
+        # ever sees traffic that actually TRANSITS it, so an attacker placed at
+        # the far end of a chain (or as a leaf) intercepts nothing and the run
+        # produces no attack signature - with every board looking perfectly
+        # healthy. This cannot be checked from the roster (placement is physical),
+        # so it is stated here, before flashing, where it can still be acted on.
+        Write-Host ""
+        Write-Host "PLACEMENT MATTERS NOW (C7 Option 1):" -ForegroundColor Cyan
+        Write-Host "  The attacker only drops traffic that PASSES THROUGH it. Put it BETWEEN the" -ForegroundColor Cyan
+        Write-Host "  victims and the root - near the root (hop 1-2) is safest. An attacker at the" -ForegroundColor Cyan
+        Write-Host "  far end of a chain, or as a leaf, intercepts nothing and the run will show NO" -ForegroundColor Cyan
+        Write-Host "  attack even though every board looks healthy." -ForegroundColor Cyan
+        Write-Host "  Check after the run: toolserify_topology.py ... --structure" -ForegroundColor DarkGray
+
         $wantMac = Get-ConfiguredAttackerMac
         Write-Host ""
         if (-not $att) {
@@ -5031,16 +5059,16 @@ if ($attack -eq 'blackhole') {
         if ($victimCount -gt 0) {
             Write-Host ""
             Write-Host "WARNING: local victim(s) present but no attacker anywhere in the roster." -ForegroundColor Red
-            Write-Host "Nothing will address probes to an attacker, so there is no blackhole to" -ForegroundColor Red
-            Write-Host "observe and the capture carries no attack signature." -ForegroundColor Red
+            Write-Host "No node will drop transiting traffic, so there is no blackhole to observe" -ForegroundColor Red
+            Write-Host "and the capture carries no attack signature." -ForegroundColor Red
         }
     }
     else {
         if ($victimCount -eq 0) {
             Write-Host ""
             Write-Host "WARNING: this roster has an attacker but NO victims." -ForegroundColor Red
-            Write-Host "Nothing will address probes to the attacker, so there is no blackhole to" -ForegroundColor Red
-            Write-Host "observe and the capture carries no attack signature." -ForegroundColor Red
+            Write-Host "No probes will be generated, so nothing transits the attacker and there is" -ForegroundColor Red
+            Write-Host "no blackhole to observe - the capture carries no attack signature." -ForegroundColor Red
         }
 
         $wantMac = Get-ConfiguredAttackerMac
