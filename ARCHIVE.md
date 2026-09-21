@@ -969,3 +969,42 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   --property python --idf-path <path>` returns the STRING "null", not an error. Fix in use:
   `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime (never hardcode it —
   a reinstall changes it).
+
+- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (added after the
+  team said the numbers were unreadable). Covers: ratios are percentages with the % removed
+  (0.001 = 0.1%, and **NaN ≠ 0** — NaN means "nothing to measure here", 0.001 means "measured, almost
+  nothing got through"); RSSI dBm is negative and **closer to zero = stronger** (0 is the no-parent
+  placeholder, not a perfect signal); `*_delta` = how much a counter rose in THAT window, not a
+  running total; `mu ± sd` = average ± normal wobble; **`z` = how many wobbles away from normal**
+  (worked arithmetic: 1.001 ÷ 0.025 ≈ 40), threshold 3 from Zhukabayeva 2025 so the bar isn't
+  self-serving; `(n)` = sample count. Also two by-eye sanity checks: `forwarded ÷ received` must
+  equal ForwardingRatio, and `received` ≈ victims-upstream × probe rate.
+
+- sep. 21, 2026 — **`layer` → `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` →
+  **`HopChangeCount`**; raw `layer` kept. ⚠️ **Off-by-one is the point** — Espressif numbers the root
+  layer 1, so a plain rename would read "the root is 1 hop from itself"; `layer == -1` → NaN, never
+  -2. Feature VALUES unchanged (offset-invariant); verified zero shared values moved over 7704 rows.
+  Dated `2026-07-*` issue logs keep the old name deliberately: historical record.
+
+- sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
+  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are now FALSE and would cause good captures to
+  be aborted; downgraded in `menu.ps1` + the attacker boot banner. Dead `BLACKHOLE_VICTIM_TARGET`
+  removed. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
+
+- sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
+  length. Old rule kept a long idle/export session over a short or aborted real run. Proven: 400-row
+  real run (+102.6) beat a 3000-row idle session (-146.5). Warns when two sessions look real, or none.
+
+- ⚠️ **WORMHOLE's run-killer is DIFFERENT — it has NO MAC at all**: the tunnel is a physical wired UART1
+  link between the two endpoint boards, so its silent failure is a dead/mis-wired cable (Tunnel* features
+  empty, both boards look healthy). ⚠️ **Node B CANNOT detect this** — `uart_write_bytes()` succeeds into
+  an unterminated line, so B's counter climbs regardless; only Node A can prove a frame crossed. Guard on
+  Node A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner (check B-TX→A-RX +
+  COMMON GROUND; `uart_link_test` is the bring-up project).
+
+- Long `idf.py -B <dir>` build-directory names in this repo (e.g. `build_cc_verify`) — the workstation path is
+  already deep, so object paths cross Windows' `MAX_PATH`/`CMAKE_OBJECT_PATH_MAX` and ninja fails inside the
+  **bootloader** subproject, long after the app's own files compiled fine; the failure looks unrelated.
+  ⚠️ Worse on a machine with a longer username (measured 265 chars on Angelo Calpoporo's, sep. 17).
+  ✅ **Mitigation CONFIRMED WORKING sep. 20** on that same machine: short `-B` names build all 6 variants
+  clean (`bh1`,`bv1`,`wa1`,`wb1`,`rb1`,`rn1`). Unapplied alternative: `LongPathsEnabled=1` (needs admin).

@@ -12,6 +12,124 @@ time three weeks later.
 
 ---
 
+## 0. HOW TO READ THE NUMBERS (read this first)
+
+Every number in this file is one of six kinds. Once you know which kind you are looking at, the
+tables below read themselves.
+
+### 0.1 Ratios — numbers between 0 and 1
+
+`PDR`, `ForwardingRatio`, `RetryRate`, `ConsistencyScore`.
+
+**Think of them as percentages with the % sign removed.** `0.999` = 99.9%. `0.001` = 0.1%.
+
+| You see | It means |
+|---|---|
+| `1.000` | 100% — everything got through |
+| `0.999` | 99.9% — essentially perfect, one probe in a thousand lost |
+| `0.500` | half |
+| `0.001` | 0.1% — essentially **nothing** got through |
+| `NaN` | **not a number** = this could not be measured here. **Not zero.** See §5 |
+
+⚠️ **`0.001` and `NaN` mean completely different things.** `0.001` = "we measured it, and almost
+nothing got through" (that's the attack). `NaN` = "there was nothing to measure here at all."
+
+**`PDR`** = Packet Delivery Ratio = *of the probes a victim sent, what fraction reached the root?*
+**`ForwardingRatio`** = *of the probes a node received to pass on, what fraction did it actually
+pass on?* A node forwarding honestly ≈ **1.0**. A node dropping everything ≈ **0.0**.
+
+> Why `ForwardingRatio` sometimes reads slightly **above** 1.0 (e.g. `1.005`): a probe can arrive in
+> one 1-second window and get forwarded in the next, so a window can forward *slightly more than it
+> received*. Anything up to ~1.05 is normal timing jitter. Values like **19.5** are not — that is a
+> queue flushing, and `features.py` now warns about it.
+
+### 0.2 Signal strength — the negative numbers (dBm)
+
+`RSSI_mean` is around **−68**. Negative is normal and correct — that is just how radio strength is
+written.
+
+**Closer to zero = stronger.** Think of it like temperature below freezing: −10 °C is warmer than
+−40 °C.
+
+| Value | Meaning |
+|---|---|
+| −30 dBm | very strong (right next to each other) |
+| **−68 dBm** | **normal for our boards across a room** |
+| −85 dBm | weak, starting to struggle |
+| −95 dBm | basically unusable |
+
+⚠️ A value of **exactly `0`** is *not* a perfect signal — it is impossible. It is the firmware's
+"I have no parent" placeholder, which is why the pipeline blanks it to `NaN`.
+
+### 0.3 Per-window counts — "5.67" probes?!
+
+`probes_count_delta`, `tx_count_delta`, `recv_count_delta`.
+
+These are **averages per 1-second window**, so decimals are expected. `5.67` doesn't mean two-thirds
+of a probe — it means *"across all the windows we measured, the typical window carried about 5.67
+probes."* Six victims each sending ~1 probe/second ≈ 5.7 arriving per second. That checks out.
+
+**`delta` means "how much this counter went UP during this window"**, not its running total. The
+boards count cumulatively from boot (1, 2, 3, … 4000). The analysis subtracts to get the per-window
+change, because "how many in *this* second" is what matters.
+
+### 0.4 `mu ± sd` — the average and how much it wobbles
+
+Written in the verifier output as `1.002+-0.025`.
+
+- **`mu`** (the Greek letter mu, µ) = **the average**. Here: 1.002.
+- **`sd`** = **standard deviation** = **how much the number normally bounces around** that average.
+  Here: 0.025.
+
+So `1.002 ± 0.025` means: *"normally this sits at about 1.00, and it's routine for it to wander
+0.025 either side."* Roughly 2 out of every 3 windows land inside 0.977–1.027.
+
+**A small `sd` means the measurement is stable and trustworthy.** A large one means it was already
+jumping around wildly, and it becomes very hard to prove *anything* stood out.
+
+### 0.5 `z` — the most important number, explained properly
+
+You'll see `z = -40.22`. **This is the number that decides whether the attack is real**, so it's
+worth understanding.
+
+> **`z` answers one question: "how many `sd`s away from normal is this?"**
+
+Using the real numbers: baseline `ForwardingRatio` is `1.002 ± 0.025`. During the attack it's
+`0.001`. How far is that?
+
+```
+   1.002 - 0.001  =  1.001     ← how far the attack value moved
+   1.001 ÷ 0.025  ≈  40        ← how many "normal wobbles" that distance is
+   →  z = -40     (negative just means it went DOWN)
+```
+
+**Interpretation:**
+
+| z | Meaning |
+|---|---|
+| 0 to 1 | completely ordinary, indistinguishable from normal |
+| 2 | slightly unusual |
+| **3** | **our threshold** — unusual enough to call it real (from Zhukabayeva et al. 2025) |
+| 10 | extremely far outside normal |
+| **40** | **astronomically far outside normal** |
+
+So `z = -40.22` means: *during the attack, forwarding dropped to a level roughly **40 times further
+from normal than its usual wobble**.* That's not a subtle statistical effect — it's the difference
+between "a bit quiet today" and "the road has vanished."
+
+**Why we use 3 and not something else:** it's the threshold from the paper our method is based on
+(Zhukabayeva 2025), so we're not inventing a bar that happens to flatter our results. Our values
+being ~40 instead of barely 3 is what makes the finding safe.
+
+### 0.6 `(n)` — the sample count
+
+`1.002+-0.025 (86)` — the `(86)` is **how many measurements that average came from**.
+
+**Bigger is more trustworthy.** An average from 500 windows is far more reliable than one from 5.
+If you ever see an `n` in single digits, be suspicious of the conclusion drawn from it.
+
+---
+
 ## 1. The 60-second check (do this before unplugging anything)
 
 ```powershell
@@ -73,9 +191,35 @@ attacker near the root** (H01–H02), so most victims' traffic must transit it.
 | **attack** | **5.64** | **0.006** | **0.001** |
 | cooldown | 4.83 | 4.81 | 0.998 |
 
-**Read that middle row carefully — it is the whole attack.** The attacker kept *receiving* ~5.6
-probes per window and forwarded **essentially none**. It was not offline, not jammed, not
-disconnected. It received and discarded. That is a blackhole.
+**Read that middle row carefully — it is the whole attack, in three numbers.**
+
+> **received 5.64** — probes were still arriving at the attacker every second. It was **not**
+> offline, **not** jammed, **not** disconnected. The network was working fine.
+>
+> **forwarded 0.006** — of those ~5.6 probes per second, it passed on about **1 in a thousand**.
+>
+> **ratio 0.001** — that is `0.006 ÷ 5.64`, i.e. **0.1% forwarded, 99.9% silently discarded.**
+
+Compare to the row above it: baseline received 5.67 and forwarded 5.69 — **everything it got, it
+passed on.** Then cooldown: 4.83 in, 4.81 out — **back to normal again.**
+
+That on/off/on pattern, from a node that stayed connected the whole time, is what a blackhole *is*.
+A crashed or unplugged board would show **received = 0** — no traffic reaching it at all. This board
+kept receiving and chose not to forward.
+
+### How to sanity-check these numbers yourself
+
+Two arithmetic checks you can do by eye, which catch most bad captures:
+
+1. **`forwarded ÷ received` should equal `ForwardingRatio`.**
+   Baseline: `5.69 ÷ 5.67 = 1.004` ✅ matches the 1.005 shown.
+   Attack: `0.006 ÷ 5.64 = 0.001` ✅ matches.
+   *If these don't match, something is wrong with the feature computation.*
+
+2. **`received` should roughly equal (number of victims upstream) × (probes per second).**
+   Six victims at 1 probe/s ≈ 5.7/s ✅ matches the ~5.6–5.7 observed.
+   *If `received` is far lower than your victim count, traffic isn't reaching the attacker — check
+   its placement (see §2).*
 
 ### 🔮 EXPECTED after C7 + re-flash (the new, important change)
 
@@ -107,8 +251,22 @@ check that boards were actually re-flashed.
   VERDICT: BLACKHOLE CONFIRMED  (2/2 primary signatures exceed 3-sigma)
 ```
 
-**What to look for:** both *primary* features PASS with |z| far beyond 3. A z of −40 means the attack
-window sits forty standard deviations away from that run's own baseline — not a subtle effect.
+**Reading this table line by line** (using `ForwardingRatio`):
+
+| Column | Value | What it's telling you |
+|---|---|---|
+| `tier` | `primary` | This is one of the two features the verdict depends on. `secondary` ones are supporting evidence only |
+| `baseline mu+-sd (n)` | `1.002+-0.025 (86)` | Normally 1.002, wobbling ±0.025, measured over 86 windows |
+| `attack mean (n)` | `0.001 (37)` | During the attack it was 0.001, over 37 windows |
+| `z` | `-40.22` | That's **40 wobbles** below normal. Negative = it went **down** |
+| `verdict` | `PASS [v]` | Beyond the 3σ threshold. `[v]` = we expected it to go DOWN, and it did |
+
+**What to look for:** both *primary* features PASS with |z| far beyond 3. `PDR` and
+`ForwardingRatio` at −39 and −40 are not a marginal result — the pattern is unmistakable.
+
+⚠️ **A PASS on `RetryRate` is NOT good news** (pre-C7 data): that feature was reading the attacker's
+own drop counter, so it "detected" the attack by looking at the attack's own switch. That's the
+leakage F3 fixed — see §5 and `analysis/leakage.py`.
 
 **If you instead see:**
 

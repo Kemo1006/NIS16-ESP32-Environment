@@ -8,6 +8,11 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (the team could
+  not read them). Key points: **NaN ≠ 0** (NaN = nothing to measure; 0.001 = measured, almost nothing
+  got through); RSSI dBm negative, **closer to zero = stronger**, and `0` is the no-parent
+  placeholder; `*_delta` = rise in THAT window; **`z` = how many normal wobbles from normal**
+  (1.001 ÷ 0.025 ≈ 40), threshold 3 from Zhukabayeva 2025 so the bar isn't self-serving.
 - sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.**
   Shared `probe_relay.{h,c}`; victims send to their PARENT (`MESH_DATA_P2P`); **the attacker runs the
   SAME relay and differs by ONE boolean callback**. ⚠️ **This IMPLEMENTS the paper** (§3.1.3.2
@@ -23,17 +28,15 @@
   counts how many `node_role`s carry each relay column: pre-C7 (1 role) excludes, post-C7 (>=2)
   re-admits. Both generations coexist for months. Before/after score = deliverable E2.
 - sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
-  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are now FALSE and would cause good captures to
-  be aborted; downgraded in `menu.ps1` + the attacker boot banner. Dead `BLACKHOLE_VICTIM_TARGET`
-  removed. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
+  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are FALSE now and would abort good captures;
+  downgraded in `run_wizard.ps1` (the launcher in use), BOTH copies in `menu.ps1`, and the attacker
+  boot banner. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
 - sep. 21, 2026 — **`layer` → `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` →
-  **`HopChangeCount`**; raw `layer` kept. ⚠️ **Off-by-one is the point** — Espressif numbers the root
-  layer 1, so a plain rename would read "the root is 1 hop from itself"; `layer == -1` → NaN, never
-  -2. Feature VALUES unchanged (offset-invariant); verified zero shared values moved over 7704 rows.
-  Dated `2026-07-*` issue logs keep the old name deliberately: historical record.
+  **`HopChangeCount`**; raw `layer` kept. ⚠️ **Off-by-one is the point** (Espressif roots at layer 1);
+  `layer == -1` → NaN, never -2. Feature VALUES unchanged — verified zero shared values moved.
 - sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
-  length. Old rule kept a long idle/export session over a short or aborted real run. Proven: 400-row
-  real run (+102.6) beat a 3000-row idle session (-146.5). Warns when two sessions look real, or none.
+  length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
+  run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
 - sep. 21, 2026 — **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (also
   in `run_wizard.ps1` → VERIFY); works on ARCHIVED runs, unlike the serial banner. ⚠️ **`node_id` is
   the STA MAC but `parent_mac` is the parent's SoftAP BSSID = STA + 1** — joining them directly
@@ -162,12 +165,10 @@
   detector sits at the most sensitive default. Fix: root DIRECTLY into a laptop USB port, never a shared
   hub; known-good short cable. RULED OUT: the `MESH_STACK_MAX_LAYER_CHAIN` change. If a CHILD loops too,
   it's the shared supply, not root dual-radio draw. Full diagnosis in ARCHIVE.md.
-- ⚠️ **WORMHOLE's run-killer is DIFFERENT — it has NO MAC at all**: the tunnel is a physical wired UART1
-  link between the two endpoint boards, so its silent failure is a dead/mis-wired cable (Tunnel* features
-  empty, both boards look healthy). ⚠️ **Node B CANNOT detect this** — `uart_write_bytes()` succeeds into
-  an unterminated line, so B's counter climbs regardless; only Node A can prove a frame crossed. Guard on
-  Node A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner (check B-TX→A-RX +
-  COMMON GROUND; `uart_link_test` is the bring-up project).
+- ⚠️ **WORMHOLE's run-killer: the tunnel is a WIRED UART link, so its silent failure is a dead cable**
+  (Tunnel* features empty, both boards look healthy). ⚠️ **Node B CANNOT detect it** —
+  `uart_write_bytes()` succeeds into an unterminated line; only Node A can prove a frame crossed.
+  Guard on A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner.
 
 
 ## Failed approaches — do not retry
@@ -178,12 +179,10 @@
   FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process.
   Dot-sourcing with no `-IdfId` also fails silently (`idf-env config get` returns the STRING "null").
   Fix in use: `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime.
-- Long `idf.py -B <dir>` build-directory names in this repo (e.g. `build_cc_verify`) — the workstation path is
-  already deep, so object paths cross Windows' `MAX_PATH`/`CMAKE_OBJECT_PATH_MAX` and ninja fails inside the
-  **bootloader** subproject, long after the app's own files compiled fine; the failure looks unrelated.
-  ⚠️ Worse on a machine with a longer username (measured 265 chars on Angelo Calpoporo's, sep. 17).
-  ✅ **Mitigation CONFIRMED WORKING sep. 20** on that same machine: short `-B` names build all 6 variants
-  clean (`bh1`,`bv1`,`wa1`,`wb1`,`rb1`,`rn1`). Unapplied alternative: `LongPathsEnabled=1` (needs admin).
+- Long `idf.py -B <dir>` build-directory names — deep workstation paths push object paths past
+  Windows `MAX_PATH`; ninja fails inside the **bootloader** subproject long after the app compiled,
+  and the error looks unrelated. ✅ **Mitigation CONFIRMED**: short `-B` names (`bh1`,`o1a`,`vfy`)
+  build all 7 variants clean on this machine. Unapplied alternative: `LongPathsEnabled=1` (admin).
 - Non-ASCII characters (`⚠`, `—`, `…`) in a Python tool's **module docstring** when it is passed to `argparse`
   as `description` — the Windows console is cp1252, so `--help` dies with `UnicodeEncodeError` before printing
   anything. `tools/command_center.py` is deliberately ASCII-only and calls
