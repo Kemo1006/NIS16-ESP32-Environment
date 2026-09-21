@@ -438,5 +438,60 @@ you already know before it matters.
 
 ---
 
+## 9. Using this to validate the blackhole and wormhole SPECIFICALLY
+
+`docs/ATTACK-VALIDATION.md` already proves both attacks conform to their published definitions —
+but every bit of evidence there comes from the boards' **own CSV logs**. A board reporting on
+itself is still one witness. Wireshark is a **second, independent** witness that doesn't depend on
+any board telling the truth about itself. This section shows exactly which filter proves which
+claim, matching the criteria tables in `ATTACK-VALIDATION.md` one-for-one.
+
+**Do this on a run that includes all three phases** — baseline, attack, cooldown — so you can
+compare "before" against "during" against "after," not just look at one snapshot.
+
+### 9.1 Validating the BLACKHOLE
+
+| Claim from `ATTACK-VALIDATION.md` | Filter | What you should see |
+|---|---|---|
+| Attacker **receives** the packets (not radio jamming) | `wlan.da == 20:50:0d:e7:1c:38` | Frames arriving **in every phase**, including during the attack — proves it's receiving, not being jammed off the air |
+| Attacker **drops instead of forwarding** — the core claim | `wlan.sa == 20:50:0d:e7:1c:38 && wlan.da == b0:cb:d8:f3:32:18` | Frames present in baseline **and** cooldown, then **a gap** for the whole attack-phase window. **This is the single most convincing screenshot in your whole thesis** — apply **Statistics → I/O Graph** to this exact filter and watch the line fall to zero and climb back |
+| Attacker **stays protocol-compliant** — still a live mesh member | `wlan.addr == 20:50:0d:e7:1c:38` (drop the `da`/`sa` restriction) | Traffic from the attacker continues throughout the attack window — it's still associated, still sending/receiving management frames, just not forwarding victim probes. If it went completely silent instead, that would mean something different happened (a crash, not a blackhole) |
+| **Independent check of Table 3.4's "increased retries" prediction** | `wlan.fc.retry == 1 && (wlan.addr in {victim MACs from §5})` | Should stay near-zero through the attack window. This corroborates the pre-registered MISS in `ATTACK-VALIDATION.md` §2.2 using **real 802.11 header data**, not the application-layer `retry_count` column — a stronger, independent form of the same finding |
+
+### 9.2 Validating the WORMHOLE — read the limit first
+
+⚠️ **Be honest about what Wireshark can and can't show here.** The actual A↔B tunnel is a
+**physical wired UART cable** between the two boards (`mesh_config.h`), not a Wi-Fi transmission —
+Wireshark is a radio-frequency tool, so **it cannot see the tunnel itself, at all, ever.** What it
+*can* see is the Wi-Fi-side evidence of what the tunnel causes:
+
+⚠️ **Node A's and Node B's MAC are NOT the same as the §5 table's roles.** Which physical board
+plays "root", "attacker", "wormhole_a" or "wormhole_b" depends on which firmware it was flashed
+with **for that specific run** — the same board can be root in one capture and a wormhole endpoint
+in the next. Don't reuse the §5 table's blackhole-run MACs here. For the wormhole run you're
+validating, get the real values from that run's own CSVs (the `node_id` column, `role` column says
+`wormhole_a` / `wormhole_b`) or `run_wizard.ps1 → Identify all boards` at the time of that capture.
+*(For reference — the archived 2026-09-16 wormhole/linear r2 and r3 runs analysed in
+`ATTACK-VALIDATION.md` used `NODE_B0CBD8F33218` = wormhole_a and `NODE_F42DC973E618` = wormhole_b —
+the SAME two physical boards that played ROOT and child_7 in the later G402 blackhole capture. That
+is exactly the "same board, different role" case this warning is about.)*
+
+| Claim from `ATTACK-VALIDATION.md` | Filter | What you should see |
+|---|---|---|
+| Node B stops sending its probes directly (it's tunnelling them over the wire instead) | `wlan.sa == <Node B's MAC>` — compare baseline phase vs. wormhole phase | B's direct Wi-Fi transmissions should **drop noticeably** during the wormhole phase vs. its own baseline rate — it's routing its traffic through the wire now, not the air |
+| Node A **re-injects** the tunnelled probes on B's behalf | `wlan.sa == <Node A's MAC> && wlan.da == b0:cb:d8:f3:32:18` — compare the same two phases | Node A's traffic toward the root should be **higher** during the wormhole phase than its own baseline rate — the extra volume is B's re-injected probes |
+| **Independent check of the "topology does NOT distort" finding** — the actual headline result in `ATTACK-VALIDATION.md` §2 | `wlan.fc.type == 0`, watch the **Info** column for "Association Request/Response" or "Reassociation…" | You should see **zero** new association/reassociation events during the wormhole phase. Beacons and associations are **unencrypted**, so this confirms — from OUTSIDE any board's own self-report — that no node actually re-parented during the attack. This is the strongest possible corroboration of that result, because it comes from a source that couldn't be fooled even if a board's telemetry were lying |
+
+### 9.3 What to put in the paper
+
+A screenshot of the blackhole's **I/O Graph drop** (§9.1, row 2) next to the CSV-derived
+`ForwardingRatio` collapse (`ATTACK-VALIDATION.md` §1) is two independent measurements of the same
+event, agreeing. That pairing — one from the attacker's own telemetry, one from a witness that
+doesn't trust the attacker at all — is exactly what turns "we measured an effect" into "we verified
+an effect," and it's the strongest form of evidence this thesis can produce.
+
+---
+
 **Related:** `docs/DATA-DICTIONARY.md` (what your CSV columns really contain) ·
-`docs/ATTACK-VALIDATION.md` (how the attacks are validated against literature)
+`docs/ATTACK-VALIDATION.md` (how the attacks are validated against literature; §9 above adds
+independent packet-capture corroboration to those same claims)
