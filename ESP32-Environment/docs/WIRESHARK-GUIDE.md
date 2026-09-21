@@ -136,42 +136,56 @@ file in Wireshark.
 
 ### Path C — macOS (fastest if you have a Mac)
 
-Macs are usually the easy case: **older Intel Macs** support monitor mode reliably, and Wireshark's
-own menus can turn it on — no Terminal needed.
+**Updated sep. 21, 2026 after checking current reports — the earlier "Apple Silicon is broken"
+framing in this guide was too pessimistic. It usually DOES work; there's just one specific step
+people miss.** Sources at the bottom of this section.
 
-⚠️ **Apple Silicon (M1/M2/M3/…) is the one exception, and it's a real, widely-reported problem —
-not a rare edge case.** Since Apple moved to their own chips, monitor mode on the built-in Wi-Fi has
-been unreliable: the checkbox may be there and appear to work while actually capturing nothing
-useful, or the old `airport` command may not work at all on some macOS versions. This is a known
-limitation across many M1/M2 Macs, not something specific to your machine. **The only way to know
-for sure is to try the practice capture in §7.2 and see if real rows show up** — don't assume either
-way. If it doesn't work, skip straight to the fallback options in the table above (USB adapter or
-the ESP32-as-sniffer path) rather than losing time debugging an M1's monitor mode.
+**The #1 thing that breaks monitor-mode capture on ANY modern Mac (Intel or Apple Silicon), and is
+the actual cause almost every time someone sees an empty capture:**
+
+> ⚠️ **Disconnect the Mac from Wi-Fi entirely (click the Wi-Fi icon → Wi-Fi Off, or forget the
+> network) BEFORE you turn on Monitor Mode in Wireshark.** If the Mac stays joined to a network
+> while you enable monitor mode, capture silently returns nothing useful — no error, it just
+> doesn't work. This is a documented, common issue, not something specific to your machine or your
+> chip. Turn Wi-Fi back on afterward if you need internet again.
 
 **Click-only method:**
 
 1. Install Wireshark on the Mac if it isn't already: [wireshark.org/download.html](https://www.wireshark.org/download.html)
-2. Open Wireshark. On the start screen you'll see a list of interfaces (Wi-Fi, Loopback, etc.)
-3. Click the **little gear/cog icon** next to **Wi-Fi** (or: menu bar → **Capture → Options…**)
-4. In the row for **Wi-Fi: en0**, tick the box under the column labelled **Monitor Mode**
-5. Still in that same Options window, click **Wi-Fi: en0** once to select it, then close the window
-6. Click the blue shark-fin ▶ button (top-left) to start capturing
-7. **Walk near your boards, with the mesh already powered on and running**
-8. Let it run for ~20–30 seconds
-9. Click the red ⏹ square to stop
-10. **File → Save As…** → save it somewhere you'll remember, ending in `.pcapng`
+2. **Turn the Mac's Wi-Fi OFF** (menu bar Wi-Fi icon → Turn Wi-Fi Off) — see the box above
+3. Open Wireshark. On the start screen you'll see a list of interfaces (Wi-Fi, Loopback, etc.)
+4. Click the **little gear/cog icon** next to **Wi-Fi** (or: menu bar → **Capture → Options…**)
+5. In the row for **Wi-Fi: en0**, tick the box under the column labelled **Monitor Mode**
+6. Still in that same Options window, click **Wi-Fi: en0** once to select it, then close the window
+7. Click the blue shark-fin ▶ button (top-left) to start capturing
+8. **Walk near your boards, with the mesh already powered on and running**
+9. Let it run for ~20–30 seconds
+10. Click the red ⏹ square to stop
+11. **File → Save As…** → save it somewhere you'll remember, ending in `.pcapng`
 
-**If step 4 has no "Monitor Mode" column at all** (some macOS versions hide it), use the Terminal
-fallback instead:
-```bash
-sudo /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport \
-     en0 sniff 11
-```
-Writes a `.cap` into `/tmp/airportSniffXXXX.cap`. Stop with Ctrl-C, then open that file from inside
-Wireshark with **File → Open**.
+**If step 5 has no "Monitor Mode" column at all, OR you ticked it and step 9 still shows nothing,
+use Apple's own built-in sniffer instead** — it has reliably supported monitor mode across both
+Intel and Apple Silicon Macs even as Apple's command-line tools changed underneath it:
 
-⚠️ Either way, **you must be physically near the ESP32 boards while capturing** — Wi-Fi doesn't
-reach very far, and Wireshark can only hear frames that reach the Mac's own antenna.
+1. **Option-click** the Wi-Fi icon in the menu bar (hold Option, then click)
+2. Choose **"Open Wireless Diagnostics…"**
+3. In the menu bar (while Wireless Diagnostics is the active app): **Window → Sniffer**
+4. Pick channel **11**, click **Start**
+5. Let it run ~20–30 s near your boards, click **Stop**
+6. It saves a `.wcap`/`.pcap` file to your Desktop — open that file directly in Wireshark
+
+⚠️ **Do NOT use the old `airport` Terminal command** shown in older Wireshark tutorials online —
+**Apple permanently removed it in macOS Sonoma 14.4** (early 2024). If your Mac is on Sonoma 14.4+
+or newer, that command will simply fail with "command not found." Use the Wireless Diagnostics
+Sniffer above instead; it's Apple's maintained replacement path.
+
+⚠️ Whichever method you use, **you must be physically near the ESP32 boards while capturing** —
+Wi-Fi doesn't reach very far, and the Mac can only hear frames that reach its own antenna.
+
+**Sources checked sep. 21, 2026:**
+[Wireshark Q&A — "Can no longer capture traffic on M1"](https://ask.wireshark.org/question/26479/can-no-longer-capture-traffic-on-m1/) ·
+[Intuitibits — "Goodbye, airport!"](https://www.intuitibits.com/2024/03/14/goodbye-airport/) ·
+[nuxx.net — command-line monitor mode on Sonoma](https://nuxx.net/blog/2023/10/20/command-line-802-11-monitor-mode-on-macos-sonoma-14-0/)
 
 ### Path B — Linux
 
@@ -306,7 +320,7 @@ it just records **everything in the air on that channel**, like a microphone in 
 of your boards is talking on the same channel (11), so one Mac sitting near the boards hears **all
 of them at once.** You do not need a Mac per board, per role, or per topology.
 
-The only physical requirement is **range** — see step 7 below.
+The only physical requirement is **range** — see step 8 below.
 
 ### 7.1 One-time setup (do this once, ever)
 
@@ -320,20 +334,22 @@ The only physical requirement is **range** — see step 7 below.
 **Goal: prove you can see your own boards. Nothing else matters yet.**
 
 1. ☐ Power on your ESP32 mesh (root + at least 2–3 children) and let it form — wait **~60 seconds**
-2. ☐ Open Wireshark on the Mac
-3. ☐ Click the **gear icon ⚙** next to **Wi-Fi** in the interface list
+2. ☐ **Turn the Mac's Wi-Fi OFF** (menu bar Wi-Fi icon) — see §4 Path C for why this step matters
+3. ☐ Open Wireshark on the Mac
+4. ☐ Click the **gear icon ⚙** next to **Wi-Fi** in the interface list
    *(or: menu bar → **Capture → Options…**)*
-4. ☐ Find the row **Wi-Fi: en0** → tick the **Monitor Mode** checkbox
-   *(if there's no such checkbox, see the Terminal fallback in §4 Path C)*
-5. ☐ Close that dialog, select **Wi-Fi: en0**, click the blue **shark-fin ▶** button
-6. ☐ **Carry the Mac to within a few metres of the boards** — Wi-Fi range is short, closer is safer
-7. ☐ Let it run **~30 seconds**
-8. ☐ Click the red **⏹ stop** square
-9. ☐ In the filter bar, type your root's MAC and press Enter:
-   ```
-   wlan.addr == b0:cb:d8:f3:32:18
-   ```
-10. ☐ **Rows appear?** ✅ You're done — you can see your mesh. Move to §7.3.
+5. ☐ Find the row **Wi-Fi: en0** → tick the **Monitor Mode** checkbox
+   *(no such checkbox, or ticked it and still nothing in step 11? use the Wireless Diagnostics
+   Sniffer fallback in §4 Path C instead — NOT the old `airport` command, which Apple removed)*
+6. ☐ Close that dialog, select **Wi-Fi: en0**, click the blue **shark-fin ▶** button
+7. ☐ **Carry the Mac to within a few metres of the boards** — Wi-Fi range is short, closer is safer
+8. ☐ Let it run **~30 seconds**
+9. ☐ Click the red **⏹ stop** square
+10. ☐ In the filter bar, type your root's MAC and press Enter:
+    ```
+    wlan.addr == b0:cb:d8:f3:32:18
+    ```
+11. ☐ **Rows appear?** ✅ You're done — you can see your mesh. Move to §7.3.
     **Nothing appears?** See Troubleshooting below.
 
 ### 7.3 Capturing a REAL run (once the practice capture worked)
@@ -341,7 +357,8 @@ The only physical requirement is **range** — see step 7 below.
 Do this **alongside** a normal `run.ps1` / `run_wizard.ps1` capture — the Mac runs the whole time
 your boards do, start to finish. It doesn't slow anything down or interfere with the mesh.
 
-1. ☐ **Start the Mac capture FIRST** (steps 3–5 above), then start your normal board run
+1. ☐ **Start the Mac capture FIRST** (§7.2 steps 2–6: Wi-Fi off, open Wireshark, tick Monitor Mode,
+   start), then start your normal board run
    *(capturing a few extra seconds of "nothing yet" at the start is harmless; missing the start of
    the real run is not — always start the Mac first)*
 2. ☐ Stay within range of the boards for the whole run (an 11-minute run = an 11-minute walk-along,
@@ -387,14 +404,15 @@ practice capture first, confirm you can see your boards, THEN attach it to a rea
 separation is the whole point of §7.2 — it turns "did the Wireshark part work?" into a yes/no answer
 you already know before it matters.
 
-### Troubleshooting — nothing showed up in step 10
+### Troubleshooting — nothing showed up in step 11
 
 | Check | Fix |
 |---|---|
 | Was Monitor Mode actually ticked? | Reopen Capture Options, confirm the checkbox — it doesn't always stay ticked between sessions |
 | Are the boards even powered and mesh-formed? | Wait the full 60 s; check a board's own serial log for "Phase update" |
 | Were you close enough? | Move within a few metres; Wi-Fi range indoors is shorter than you'd expect |
-| Right channel? | Your mesh is **channel 11**. If using the Terminal fallback, confirm `sniff 11` (not another number) |
+| Right channel? | Your mesh is **channel 11**. If using Wireless Diagnostics Sniffer, confirm you picked channel 11 (not another number) |
+| Still on Wi-Fi while capturing? | **Turn the Mac's Wi-Fi off before starting monitor mode** — this is the #1 cause of an empty capture on modern macOS, see §4 Path C |
 | Typo'd the MAC filter? | Copy-paste from §5's table — a single wrong hex digit filters out everything |
 
 ---
