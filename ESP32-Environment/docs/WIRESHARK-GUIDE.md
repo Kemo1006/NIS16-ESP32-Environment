@@ -258,19 +258,105 @@ backfill or imply otherwise.
 
 ---
 
-## 7. Your first 20 minutes
+## 7. Full MacBook walkthrough — step by step
 
-1. ☐ Find a machine that can do monitor mode (Mac = easiest; else flash a spare ESP32)
-2. ☐ **Set channel 11**
-3. ☐ Start capturing
-4. ☐ Power up the mesh and let it form (~60 s)
-5. ☐ Stop. Open in Wireshark
-6. ☐ Apply filter #1 — do you see your boards? **If yes, everything else is detail**
-7. ☐ Try **Statistics → Conversations**, sort by frames
-8. ☐ Save the `.pcap` next to that run's CSVs
+### Do you need more than one MacBook?
 
-Do not try to capture a full 11-minute attack run on attempt one. **Prove you can see your own
-boards first.** That is the whole first session, and it is a real milestone.
+**No. One is enough.** Wireshark on the Mac isn't listening for "its own" traffic — in monitor mode
+it just records **everything in the air on that channel**, like a microphone in the room. Every one
+of your boards is talking on the same channel (11), so one Mac sitting near the boards hears **all
+of them at once.** You do not need a Mac per board, per role, or per topology.
+
+The only physical requirement is **range** — see step 7 below.
+
+### 7.1 One-time setup (do this once, ever)
+
+1. ☐ Install Wireshark on the Mac: [wireshark.org/download.html](https://www.wireshark.org/download.html)
+   (free — download the `.dmg`, drag Wireshark into Applications)
+2. ☐ Open Wireshark once, just to let macOS finish its first-run setup
+3. ☐ Have this file's board MAC table (§5) open on a phone or second screen — you'll paste from it
+
+### 7.2 A practice capture (do this BEFORE your first real run)
+
+**Goal: prove you can see your own boards. Nothing else matters yet.**
+
+1. ☐ Power on your ESP32 mesh (root + at least 2–3 children) and let it form — wait **~60 seconds**
+2. ☐ Open Wireshark on the Mac
+3. ☐ Click the **gear icon ⚙** next to **Wi-Fi** in the interface list
+   *(or: menu bar → **Capture → Options…**)*
+4. ☐ Find the row **Wi-Fi: en0** → tick the **Monitor Mode** checkbox
+   *(if there's no such checkbox, see the Terminal fallback in §4 Path C)*
+5. ☐ Close that dialog, select **Wi-Fi: en0**, click the blue **shark-fin ▶** button
+6. ☐ **Carry the Mac to within a few metres of the boards** — Wi-Fi range is short, closer is safer
+7. ☐ Let it run **~30 seconds**
+8. ☐ Click the red **⏹ stop** square
+9. ☐ In the filter bar, type your root's MAC and press Enter:
+   ```
+   wlan.addr == b0:cb:d8:f3:32:18
+   ```
+10. ☐ **Rows appear?** ✅ You're done — you can see your mesh. Move to §7.3.
+    **Nothing appears?** See Troubleshooting below.
+
+### 7.3 Capturing a REAL run (once the practice capture worked)
+
+Do this **alongside** a normal `run.ps1` / `run_wizard.ps1` capture — the Mac runs the whole time
+your boards do, start to finish. It doesn't slow anything down or interfere with the mesh.
+
+1. ☐ **Start the Mac capture FIRST** (steps 3–5 above), then start your normal board run
+   *(capturing a few extra seconds of "nothing yet" at the start is harmless; missing the start of
+   the real run is not — always start the Mac first)*
+2. ☐ Stay within range of the boards for the whole run (an 11-minute run = an 11-minute walk-along,
+   or just sit near the rig)
+3. ☐ Once your boards finish (root announces TERMINATE, exports happen as normal), **stop the Mac
+   capture a few seconds after**, same over-capture-a-little rule as the start
+4. ☐ **File → Save As…**
+
+### 7.4 Naming the file (so it can be matched to its CSVs later)
+
+Your CSV exports already follow a strict pattern (`tools/validate_integrity.py` `FILENAME_RE`):
+
+```
+<role>_<nick>_<topology>_<attack>_r<repeat>_<date>_<time>_<telem|arrivals>.csv
+```
+
+Name the pcap the same way, with `pcap` as the kind, so anyone can tell at a glance which run it
+belongs to:
+
+```
+pcap_<topology>_<attack>_r<repeat>_<date>_<time>.pcapng
+
+  e.g.  pcap_linear_blackhole_r1_20260921_143000.pcapng
+```
+
+Save it into the **same folder** as that run's CSVs:
+```
+tools/exports/<attack>/<topology>/<location>/
+```
+so `pcap_linear_blackhole_r1_20260921_143000.pcapng` sits right next to
+`root_ROOT_linear_blackhole_r1_20260921_143010_telem.csv` — same run, same folder, obvious pairing.
+
+### 7.5 After saving — confirm the whole run is in there
+
+1. ☐ Reopen the saved file (or it's still open)
+2. ☐ **Statistics → Capture File Properties** — check the duration roughly matches the run length
+   (~11 min for a full baseline→attack→cooldown run)
+3. ☐ Apply filter #4 from §5 (attacker → root) and check **Statistics → I/O Graph** — you should see
+   the line **drop during the attack window and recover during cooldown**. That graph is your proof.
+
+**Do not attempt a full 11-minute real run on your very FIRST try with the Mac.** Do the §7.2
+practice capture first, confirm you can see your boards, THEN attach it to a real run. That
+separation is the whole point of §7.2 — it turns "did the Wireshark part work?" into a yes/no answer
+you already know before it matters.
+
+### Troubleshooting — nothing showed up in step 10
+
+| Check | Fix |
+|---|---|
+| Was Monitor Mode actually ticked? | Reopen Capture Options, confirm the checkbox — it doesn't always stay ticked between sessions |
+| Are the boards even powered and mesh-formed? | Wait the full 60 s; check a board's own serial log for "Phase update" |
+| Were you close enough? | Move within a few metres; Wi-Fi range indoors is shorter than you'd expect |
+| Right channel? | Your mesh is **channel 11**. If using the Terminal fallback, confirm `sniff 11` (not another number) |
+| Typo'd the MAC filter? | Copy-paste from §5's table — a single wrong hex digit filters out everything |
 
 ---
 
