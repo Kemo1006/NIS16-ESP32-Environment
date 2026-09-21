@@ -7,15 +7,20 @@
 #                        exit) / =1 (B, entry). Default end is A if unspecified.
 if(DEFINED ACTIVE_ATTACK AND ACTIVE_ATTACK EQUAL 1)
     # Blackhole (relay model): role 0 = attacker relay (blackhole_victim.c),
-    # role 1 = a victim that addresses the attacker's MAC (victim_main.c built
-    # with BLACKHOLE_VICTIM_TARGET). Default role 0 if unspecified.
+    # role 1 = an ordinary victim (victim_main.c). Default role 0 if unspecified.
+    #
+    # Since C7 Option 1 (D-12) a blackhole VICTIM is byte-for-byte a normal
+    # victim: it sends to its PARENT hop-by-hop like every other node and no
+    # longer needs to know the attacker exists. BLACKHOLE_ROLE still matters
+    # because it selects WHICH SOURCE FILE is built (attacker relay vs victim) -
+    # it just no longer changes how the victim addresses its probes.
     if(NOT DEFINED BLACKHOLE_ROLE)
         set(BLACKHOLE_ROLE 0)
     endif()
     if(BLACKHOLE_ROLE EQUAL 1)
         set(VICTIM_SRC "victim_main.c")
         message(STATUS "child_node: building BLACKHOLE VICTIM "
-                       "(ACTIVE_ATTACK=1, BLACKHOLE_ROLE=1, targets attacker MAC)")
+                       "(ACTIVE_ATTACK=1, BLACKHOLE_ROLE=1)")
     else()
         set(VICTIM_SRC "blackhole_victim.c")
         message(STATUS "child_node: building BLACKHOLE ATTACKER relay "
@@ -52,13 +57,12 @@ if(DEFINED WORMHOLE_END)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE WORMHOLE_END=${WORMHOLE_END})
 endif()
 
-# Blackhole VICTIM (ACTIVE_ATTACK=1, BLACKHOLE_ROLE=1): tell victim_main.c to
-# address its probes to the attacker's MAC (BLACKHOLE_ATTACKER_MAC) instead of
-# the root. The attacker relay build (role 0) and all other builds omit this.
-if(DEFINED ACTIVE_ATTACK AND ACTIVE_ATTACK EQUAL 1
-   AND DEFINED BLACKHOLE_ROLE AND BLACKHOLE_ROLE EQUAL 1)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE BLACKHOLE_VICTIM_TARGET=1)
-endif()
+# BLACKHOLE_VICTIM_TARGET was removed by C7 Option 1 (D-12). It used to tell
+# victim_main.c to address its probes to BLACKHOLE_ATTACKER_MAC instead of the
+# root. Victims now send to their PARENT hop-by-hop and the attacker intercepts
+# whatever transits it because of WHERE IT SITS, so nothing consumes that define
+# any more. Deliberately not left defined-but-unused: a stale flag that still
+# appears in the build output reads as if the old targeting were still active.
 
 # Run scenario / traffic profile (run.ps1 -Scenario). Scoped to THIS component:
 # the victim sources are the only consumers (mesh_config.h derives

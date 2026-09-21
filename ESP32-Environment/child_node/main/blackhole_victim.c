@@ -163,23 +163,21 @@ void app_main(void)
         uint8_t configured[6] = {0};
         bh_target_source_t src = blackhole_target_get(configured);
         if (memcmp(configured, s_self_mac, 6) != 0) {
-            ESP_LOGE(TAG, "***********************************************************");
-            ESP_LOGE(TAG, "***   ATTACKER MAC MISMATCH  —  RUN WILL BE EMPTY        ***");
-            ESP_LOGE(TAG, "***********************************************************");
-            ESP_LOGE(TAG, "  effective target MAC (%-8s): " MACSTR,
+            ESP_LOGW(TAG, "***********************************************************");
+            ESP_LOGW(TAG, "*** attacker MAC bookkeeping mismatch (NOT a run-killer) ***");
+            ESP_LOGW(TAG, "***********************************************************");
+            ESP_LOGW(TAG, "  recorded attacker MAC (%-8s): " MACSTR,
                      blackhole_target_source_str(src), MAC2STR(configured));
-            ESP_LOGE(TAG, "  my actual STA MAC (the attacker): " MACSTR, MAC2STR(s_self_mac));
-            ESP_LOGE(TAG, "  Victims are targeting a board that is NOT this one, so their");
-            ESP_LOGE(TAG, "  probes reach nobody. Root will log ZERO arrivals and PDR +");
-            ESP_LOGE(TAG, "  ForwardingRatio will be entirely NaN.");
-            ESP_LOGE(TAG, "  FIX (no re-flash): send each victim over serial");
-            ESP_LOGE(TAG, "       SET_ATTACKER_MAC=" MACSTR, MAC2STR(s_self_mac));
-            ESP_LOGE(TAG, "       then power-cycle them. run.ps1 -AttackerMac does this for you.");
-            ESP_LOGE(TAG, "  FIX (old way): point BLACKHOLE_ATTACKER_MAC at that MAC and");
-            ESP_LOGE(TAG, "       re-flash every victim board. ABORT THIS RUN NOW.");
-            ESP_LOGE(TAG, "***********************************************************");
+            ESP_LOGW(TAG, "  my actual STA MAC (this board) : " MACSTR, MAC2STR(s_self_mac));
+            ESP_LOGW(TAG, "  Since C7 Option 1 (D-12) victims do NOT address the attacker by");
+            ESP_LOGW(TAG, "  MAC any more - they send to their parent, and I drop whatever");
+            ESP_LOGW(TAG, "  transits me because of WHERE I SIT in the tree. So this run is");
+            ESP_LOGW(TAG, "  FINE. Only the recorded label is stale.");
+            ESP_LOGW(TAG, "  Tidy it with: export_logs.py --port COMxx --set-attacker-mac " MACSTR,
+                     MAC2STR(s_self_mac));
+            ESP_LOGW(TAG, "***********************************************************");
         } else {
-            ESP_LOGI(TAG, "Attacker MAC (%s) matches this board — victims will reach me.",
+            ESP_LOGI(TAG, "Attacker MAC (%s) matches this board.",
                      blackhole_target_source_str(src));
         }
     }

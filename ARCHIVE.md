@@ -883,3 +883,89 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   ⚠️ Team judgement call, NOT mine: those 6 wormhole runs come from the sep. 16 pre-restart snapshot
   (schema v1, pre-F1/F3). Mechanically complete; whether pre-restart data counts toward M4 is yours to
   decide. Re-run the inventory any time with `python tools/inventory_cells.py`.
+
+- sep. 20, 2026 — **P5 `analysis/leakage.py` is the ONE place deciding what a model may see**, with a
+  written reason per exclusion. Out: FR/Consistency/IED (role-gated; 3 columns, ONE measurement),
+  RetryRate, the 3 Tunnel features. **C7 Option 3.** Writes `leakage_audit.csv` every pass.
+
+- sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (NVS, compiled constant as fallback);
+  `export_logs.py --set/--get/--clear-attacker-mac`. **Takes effect on the NEXT boot — power-cycle the
+  victim.** Full rationale in `components/mesh_common/include/blackhole_target.h`.
+
+- **aug. 29, 2026 — honest nodes cannot observe their own forwarding.** Victims send `esp_mesh_send(NULL, ..., MESH_DATA_TODS)`, so the mesh stack relays *below the app layer* and only the blackhole attacker sees transit packets (victims address it explicitly). ⇒ un-gating the relay features is **not** a mask widening — there is no honest-relay data to un-gate, and F3's dedicated counters do not create any. That is what C7 Option 1 exists to change. Per-role column meanings: `docs/DATA-DICTIONARY.md`. Full text in ARCHIVE.md.
+
+- ⚠️ **Known leak (panel P1), now ENFORCED in code:** the role-gated features are non-NaN only for their attacker role, so "is this column NaN?" is a perfect label. `analysis/leakage.py` excludes them from model inputs and documents why per column. ⚠️ **But see the PDR 0.9987 entry above — exclusion is not sufficient.** Full pre-fix text in ARCHIVE.md.
+
+- ⚠️⚠️ **RECURRING RUN-KILLER — verify the attacker MAC before EVERY blackhole run.** Blackhole victims send
+  `MESH_DATA_P2P` to one exact MAC (`victim_main.c`), so if it names a board not in the mesh every probe is
+  addressed to nobody. **The failure is SILENT**: boards look healthy and `probes_count` climbs normally, but
+  the root logs ZERO arrivals in ALL phases, `arrivals.csv` is header-only, and BOTH primary features (PDR and
+  ForwardingRatio) come out 100% NaN. Cost a full run on sep. 15 AND again on sep. 16. Symptom→cause shortcut:
+  **all-NaN PDR + empty arrivals + root `probes_count` stuck at 0.**
+  **Since F2 (sep. 20) the check and the fix are cheap:** `export_logs.py --port COMxx --get-attacker-mac` on
+  each victim, and `--set-attacker-mac <mac>` + power-cycle to correct it — NO re-flash. Two older guards
+  still stand: the attacker compares its own STA MAC to the effective target at boot and prints an abort
+  banner, and `features.py`'s `load_arrivals` warns loudly when arrivals files exist but are all header-only.
+  ⚠️ The compiled `BLACKHOLE_ATTACKER_MAC` is still the FALLBACK, and `Confirm-BlackholeAttackerMac`
+  (menu.ps1:201) still only runs at BUILD/FLASH time — so a victim with no NVS override and a stale compiled
+  value fails exactly as before. Full incident history in ARCHIVE.md.
+
+- sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; sources ALREADY in our bibliography.**
+  **Khan et al. (2022), Sustainability 14(24):16630** — its ESP32+ESP-MESH air-quality nodes sit **"at a
+  different location on a COLLEGE CAMPUS"**, i.e. the campus environmental-monitoring scenario IS the
+  published use case of our own protocol. Cite: **120 s reporting interval**; **baseline PDR >97%, loss
+  <1.8%** — our corrected **0.998±0.025 lands inside their range** (a validation result). Karlof & Wagner
+  (2003) = the "target deployment" cite. ⇒ **The gap is NOT literature — it is (a) a measured floor plan
+  per topology and (b) a declared traffic profile.** ⚠️ Zhukabayeva's "4-storey office building" detail is
+  from a teammate's full-text read, NOT the abstract — re-verify vs the PDF before publishing it.
+
+- sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00).** Every dependent variable is
+  network-layer (forwarded? arrived? RSSI, retries, hops) and **none depends on payload bytes** — a
+  blackhole drops a frame carrying 28.4 °C exactly as it drops a synthetic one. So: network behaviour
+  **MUST be real** (it is); sensor VALUES **may be synthetic**; timing/size/mix must be **cited**;
+  placement and RF context must be **real AND RECORDED** (real but undocumented today — the actual gap).
+  The paper needs ONE paragraph stating measured vs generated. ⚠️ Do NOT slow the probe to 120 s — PDR
+  resolution is probes-per-window. Keep 1 Hz as the declared measurement instrument.
+
+- sep. 20, 2026 — **Five pre-fix diagnostics in ARCHIVE.md.** Still load-bearing:
+  (a) ⚠️ **re-run M6→M7 on ANY cell analysed before sep. 20** (the WINDOW_SECONDS bug hit every table since D-9).
+  (b) **Quotable proof the blackhole worked:** root arrivals **6.07/s baseline → 0/s attack → 6.01/s cooldown**;
+      attacker forwarded 2605/2600 baseline vs **1/1020** attack; ~182 contiguous missing seq per victim.
+  (c) **Table 3.4's predicted victim-retransmission increase is a pre-registered MISS — REPORT it, do NOT edit
+      the table** (§3.3.1.2 explains why). A declared miss is a finding; an edited table is misconduct.
+  (d) `combine_all.py:52-55` ships `attack_type`+`node_role` as label equivalents (excluded by `leakage.py`).
+
+- sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
+  `recv_count,forward_count,drop_count`; v1's 11 unchanged and in place; `validate_integrity.py` accepts
+  BOTH. **Point: `retry_count` means ONE thing on every role again** — it used to carry the attacker's DROP
+  count (why `RetryRate` went 0.0033→0.9991 on that board alone). recv = accepted FOR RELAY, forward =
+  passed on, drop = accepted and not passed on. ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** —
+  recv>0 with forward=0 would score the root ForwardingRatio 0.0, making the node that MEASURES the attack
+  read as the one committing it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
+
+- sep. 21, 2026 — **`leakage.py` is DATASET-AWARE, not hardcoded.** `relay_features_are_gated(df)`
+  counts how many `node_role`s carry each relay column: pre-C7 (1 role) excludes them, post-C7 (>=2)
+  re-admits them. Both firmware generations coexist for months. Before/after score = deliverable E2.
+
+- sep. 21, 2026 — **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against
+  verified source. Key: the MAC is `esp_read_mac(ESP_MAC_WIFI_STA)`, an **eFuse read** — the CP210x
+  USB bridge has no MAC and cannot be the source; RSSI is read from the driver, not computed by us;
+  PDR/LatencyHopRatio going NaN during the attack are **results, not gaps**.
+
+- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.**
+  Shared `probe_relay.{h,c}`; victims send to their PARENT (`MESH_DATA_P2P`); **the attacker runs the
+  SAME relay and differs by ONE boolean callback**. Both wormhole ends relay; UART tunnel untouched.
+  ⚠️ **This IMPLEMENTS the paper — the old TODS behaviour was the deviation**: §3.1.3.2 mandates
+  recv/send with MESH_DATA_P2P, and Table 4.2 already specified recv/forward/drop counters.
+  ⛔ **CONFLICTS WITH THE SIGNED MILESTONE FORM** ("victims address probes directly to the attacker's
+  MAC"). Every milestone CRITERION still passes; only the mechanism changed, and the form's own
+  "behavioral equivalent of" concedes the old model was a substitute. **Adviser sign-off required.**
+  Fixes panel 2:40-4:50 at the root and makes attacker POSITION a real variable (12:45-16:00).
+  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale: D-12.
+
+- Spawning a build/flash window as plain `powershell.exe` — `idf.py`/`esptool.py` are POWERSHELL
+  FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process
+  (only env vars do). Dot-sourcing it with no `-IdfId` also fails silently: `idf-env config get
+  --property python --idf-path <path>` returns the STRING "null", not an error. Fix in use:
+  `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime (never hardcode it —
+  a reinstall changes it).

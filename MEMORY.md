@@ -8,23 +8,40 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 20, 2026 — **WORMHOLE VALIDATED FROM DATA, AND HALF OF IT IS A DECLARED MISS.** Measured on the
-  previously-unanalysed `archive/2026-09-16_pre-restart/exports/wormhole/linear` r2 AND r3:
-  **(a) replay signature CONFIRMED** — 181 duplicated `(src_mac,seq_num)` arrivals in the attack phase,
-  **0** in baseline, **0** in cooldown, on exactly ONE MAC (Node B, F4:2D:C9:73:E6:18). **Identical 181 in
-  both runs**; 181 ≈ `PHASE_ATTACK_S` 180 s × 1 probe/s.
-  **(b) topology distortion DOES NOT HAPPEN** — **0 parent switches, 0 layer changes** during the wormhole
-  phase in both runs (all churn — 10 in r2, 7 in r3 — is baseline mesh formation). Cause: ESP-WIFI-MESH's
-  parent selection runs BELOW the application layer, so an app-layer replay tunnel has nothing to deform.
-  ⇒ **Table 3.5 is a pre-registered MISS, exactly like Table 3.4's victim-retransmission prediction.
-  REPORT both, do NOT edit either table.** Positive framing for the results chapter: *duplicate arrivals
-  and topology distortion are SEPARABLE effects in ESP-WIFI-MESH; only the first is reachable without
-  touching the routing layer.* This **vindicates the paper's own "Wormhole-Inspired" naming.**
-  Full conformance tables + reproduce commands: `ESP32-Environment/docs/ATTACK-VALIDATION.md`.
-- sep. 20, 2026 — **Phase durations are now `-D`-overridable** (`#ifndef`-guarded in mesh_config.h), like
-  ACTIVE_ATTACK/MESH_TOPOLOGY/TRAFFIC_PROFILE: `idf.py -DPHASE_BASELINE_S=180`. Every scenario already
-  forces a rebuild, so this is free. ⚠️ Only the ROOT's values drive the timeline, but build the whole
-  fleet the same — `preprocess.py` mirrors `PHASE_BASELINE_S` and burst's `BURST_OFFSET_S` bound-checks it.
+- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.**
+  Shared `probe_relay.{h,c}`; victims send to their PARENT (`MESH_DATA_P2P`); **the attacker runs the
+  SAME relay and differs by ONE boolean callback**. ⚠️ **This IMPLEMENTS the paper** (§3.1.3.2
+  mandates it; Table 4.2 already specified the counters) — **the old TODS behaviour was the
+  deviation**. ⛔ **CONFLICTS WITH THE SIGNED MILESTONE FORM; adviser sign-off required** — every
+  milestone CRITERION still passes, only the mechanism changed. Fixes panel 2:40-4:50 at the root.
+  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale + the conflict: D-12.
+- sep. 21, 2026 — ⚠️ **TRAP THAT WOULD HAVE SILENTLY KILLED EVERY WORMHOLE RUN.** The relay first
+  forwarded only `PROBE_MAGIC`; Node A's duplicate carries `PROBE_MAGIC_WORMHOLE`, so every
+  intermediate relay would have dropped it and wormhole runs would have looked clean. Both magics now
+  relay. **Any future change to the relay's accept-filter must re-check this.**
+- sep. 21, 2026 — **`leakage.py` is DATASET-AWARE, not hardcoded.** `relay_features_are_gated(df)`
+  counts how many `node_role`s carry each relay column: pre-C7 (1 role) excludes, post-C7 (>=2)
+  re-admits. Both generations coexist for months. Before/after score = deliverable E2.
+- sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
+  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are now FALSE and would cause good captures to
+  be aborted; downgraded in `menu.ps1` + the attacker boot banner. Dead `BLACKHOLE_VICTIM_TARGET`
+  removed. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
+- sep. 21, 2026 — **`layer` → `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` →
+  **`HopChangeCount`**; raw `layer` kept. ⚠️ **Off-by-one is the point** — Espressif numbers the root
+  layer 1, so a plain rename would read "the root is 1 hop from itself"; `layer == -1` → NaN, never
+  -2. Feature VALUES unchanged (offset-invariant); verified zero shared values moved over 7704 rows.
+  Dated `2026-07-*` issue logs keep the old name deliberately: historical record.
+- sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
+  length. Old rule kept a long idle/export session over a short or aborted real run. Proven: 400-row
+  real run (+102.6) beat a 3000-row idle session (-146.5). Warns when two sessions look real, or none.
+- sep. 21, 2026 — **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (also
+  in `run_wizard.ps1` → VERIFY); works on ARCHIVED runs, unlike the serial banner. ⚠️ **`node_id` is
+  the STA MAC but `parent_mac` is the parent's SoftAP BSSID = STA + 1** — joining them directly
+  matches NOTHING and looks like a disconnected mesh. Confirmed on all 7 non-root nodes.
+- sep. 21, 2026 — **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against
+  verified source. Key: the MAC is `esp_read_mac(ESP_MAC_WIFI_STA)`, an **eFuse read** — the CP210x
+  USB bridge has no MAC at all; RSSI is read from the driver; PDR/LatencyHopRatio NaN during the
+  attack are **results, not gaps**.
 - sep. 20, 2026 — ⚠️ **CORRECTION: "only ONE cell has data" and "ZERO wormhole captures exist" were BOTH
   WRONG** (recorded in STATUS+MEMORY, and I repeated them). `tools/inventory_cells.py` scans live **and
   archived** exports: **18 runs, 8 COMPLETE, 5 attack×topology cells (all with a complete run), 2
@@ -32,12 +49,11 @@
   `archive.ps1` MOVES captures out of `tools/exports/`, and every tool only looked there.** ⚠️ Team call:
   those 6 wormhole runs are pre-restart (schema v1) — mechanically complete; whether they count is yours.
 - sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
-  `recv_count,forward_count,drop_count`; v1's 11 unchanged and in place; `validate_integrity.py` accepts
-  BOTH. **Point: `retry_count` means ONE thing on every role again** — it used to carry the attacker's DROP
-  count (why `RetryRate` went 0.0033→0.9991 on that board alone). recv = accepted FOR RELAY, forward =
-  passed on, drop = accepted and not passed on. ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** —
-  recv>0 with forward=0 would score the root ForwardingRatio 0.0, making the node that MEASURES the attack
-  read as the one committing it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
+  `recv_count,forward_count,drop_count`; v1's 11 unchanged; `validate_integrity.py` accepts BOTH.
+  Point: `retry_count` means ONE thing on every role again (it used to carry the attacker's DROP
+  count). ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** — recv>0 with forward=0 would score
+  the root ForwardingRatio 0.0, making the node that MEASURES the attack read as the one committing
+  it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
 - sep. 20, 2026 — **⚠️ `PDR` ALONE SCORES 0.9987 vs a 0.7031 majority** (`analysis/leakage.py`, G402) ⇒
   **excluding leaking features does NOT answer the panel's 2:40-4:50 objection.** PDR is not leakage — it
   is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
@@ -54,11 +70,11 @@
   `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
   **v1 and v2 give IDENTICAL segments**. Run `python test_segments.py` (no pytest here). Why: mesh_config.h.
 - sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (NVS, compiled constant as fallback);
-  `export_logs.py --set/--get/--clear-attacker-mac`. **Takes effect on the NEXT boot — power-cycle the
-  victim.** Full rationale in `components/mesh_common/include/blackhole_target.h`.
-- sep. 20, 2026 — **P5 `analysis/leakage.py` is the ONE place deciding what a model may see**, with a
-  written reason per exclusion. Out: FR/Consistency/IED (role-gated; 3 columns, ONE measurement),
-  RetryRate, the 3 Tunnel features. **C7 Option 3.** Writes `leakage_audit.csv` every pass.
+  `export_logs.py --set/--get/--clear-attacker-mac`; takes effect on the NEXT boot. ⚠️ Since C7
+  Option 1 this is **bookkeeping only** — victims no longer target the attacker by MAC at all.
+- sep. 20, 2026 — **P5 `analysis/leakage.py`** = C7 Option 3 (exclude role-gated features from model
+  inputs, with a written reason per column). **Superseded in part by C7 Option 1** — see the sep. 21
+  dataset-aware entry above; full original text in ARCHIVE.md.
 - sep. 20, 2026 — `analyze.ps1 -Verify` runs **three exit-code-checked gates** (integrity → topology →
   attack); a NOT-CONFIRMED after a failed gate reads **INCONCLUSIVE, not a negative result**.
 - sep. 20, 2026 — `member_boards.json` had **child_8/child_10 transposed** (child_8 listed B4:90, actually
@@ -67,20 +83,16 @@
 - sep. 20, 2026 — **`docs/DATA-DICTIONARY.md` written** — per-role meaning of every column, **no column
   holds an 802.11 MAC retry**, RSSI-is-per-link, root-is-layer-1. **Read it before writing schema text.**
 - sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; sources ALREADY in our bibliography.**
-  **Khan et al. (2022), Sustainability 14(24):16630** — its ESP32+ESP-MESH air-quality nodes sit **"at a
-  different location on a COLLEGE CAMPUS"**, i.e. the campus environmental-monitoring scenario IS the
-  published use case of our own protocol. Cite: **120 s reporting interval**; **baseline PDR >97%, loss
-  <1.8%** — our corrected **0.998±0.025 lands inside their range** (a validation result). Karlof & Wagner
-  (2003) = the "target deployment" cite. ⇒ **The gap is NOT literature — it is (a) a measured floor plan
-  per topology and (b) a declared traffic profile.** ⚠️ Zhukabayeva's "4-storey office building" detail is
-  from a teammate's full-text read, NOT the abstract — re-verify vs the PDF before publishing it.
+  **Khan et al. (2022), Sustainability 14(24):16630** — its ESP32+ESP-MESH air-quality nodes sit "at a
+  different location on a COLLEGE CAMPUS". Cite: 120 s reporting interval; baseline PDR >97%, loss
+  <1.8% — our corrected 0.998±0.025 lands INSIDE their range (a validation result). Karlof & Wagner
+  (2003) = the "target deployment" cite. ⇒ **The gap is a measured floor plan + a declared traffic
+  profile, NOT literature.** ⚠️ Zhukabayeva's "4-storey office building" detail is unverified.
 - sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00).** Every dependent variable is
-  network-layer (forwarded? arrived? RSSI, retries, hops) and **none depends on payload bytes** — a
-  blackhole drops a frame carrying 28.4 °C exactly as it drops a synthetic one. So: network behaviour
-  **MUST be real** (it is); sensor VALUES **may be synthetic**; timing/size/mix must be **cited**;
-  placement and RF context must be **real AND RECORDED** (real but undocumented today — the actual gap).
-  The paper needs ONE paragraph stating measured vs generated. ⚠️ Do NOT slow the probe to 120 s — PDR
-  resolution is probes-per-window. Keep 1 Hz as the declared measurement instrument.
+  network-layer and none depends on payload bytes ⇒ network behaviour MUST be real (it is); sensor
+  VALUES may be synthetic; placement/RF context must be real AND RECORDED (the actual gap). The paper
+  needs ONE paragraph stating measured vs generated. ⚠️ Do NOT slow the probe to 120 s — PDR
+  resolution is probes-per-window; keep 1 Hz as the declared measurement instrument.
 - sep. 20, 2026 — **P1/P2/P3 (analysis fixes) applied + verified — full entry in ARCHIVE.md.**
   Sigma is still 3; `BASELINE_FLOOR` was RAISED 0.50→0.90. Rationale lives in each code comment.
 - sep. 20, 2026 — **SCOPE SETTLED by the user: "TinyTrust / Collaborative TinyML IDS" is DROPPED** — it came
@@ -89,13 +101,11 @@
   implement an IDS and excludes Sybil (§1.4.1). Risk R1 CLOSED. Two attacks only: blackhole + wormhole.
   ⚠️ The user's prompt template still says "our thesis is focused on intrusion detection" — template
   residue, do not act on it.
-- sep. 20, 2026 — **Five pre-fix diagnostics in ARCHIVE.md.** Still load-bearing:
-  (a) ⚠️ **re-run M6→M7 on ANY cell analysed before sep. 20** (the WINDOW_SECONDS bug hit every table since D-9).
-  (b) **Quotable proof the blackhole worked:** root arrivals **6.07/s baseline → 0/s attack → 6.01/s cooldown**;
-      attacker forwarded 2605/2600 baseline vs **1/1020** attack; ~182 contiguous missing seq per victim.
-  (c) **Table 3.4's predicted victim-retransmission increase is a pre-registered MISS — REPORT it, do NOT edit
-      the table** (§3.3.1.2 explains why). A declared miss is a finding; an edited table is misconduct.
-  (d) `combine_all.py:52-55` ships `attack_type`+`node_role` as label equivalents (excluded by `leakage.py`).
+- sep. 20, 2026 — **Five pre-fix diagnostics in ARCHIVE.md.** Still load-bearing: (a) ⚠️ **re-run
+  M6→M7 on ANY cell analysed before sep. 20** (WINDOW_SECONDS bug hit every table since D-9);
+  (b) **quotable proof the blackhole worked** — root arrivals **6.07/s → 0/s → 6.01/s**, attacker
+  forwarded 2605/2600 baseline vs **1/1020** attack; (c) **Table 3.4's predicted victim-retransmission
+  increase is a pre-registered MISS — REPORT it, do NOT edit the table** (§3.3.1.2 explains why).
 - sep. 20, 2026 — Scope evidence: "TinyTrust"/"TinyML"/"intrusion detection system" appear ZERO times in the
   approved proposal or this repo (grep); the abstract says "Rather than implementing a real-time IDS".
 - sep. 20, 2026 — **Attacker placement is not topological.** Valid chain of 8, but the attacker sits at
@@ -115,13 +125,17 @@
 - Mesh identity is shared across every board: `MESH_ID {0xAB,0xCD,0xEF,0x01,0x23,0x45}`, `MESH_PASSWORD "MeshSecure2026!"` in `components/mesh_common/include/mesh_config.h` — never change between flashing root and victims.
 - The FOLDER you build from decides the role, not the COM port: `root_node/` → root, `child_node/` → victim.
 - Blackhole signature (M2): attack-window PDR ~0.08 vs 0.94 benign, ForwardingRatio ~0.02, root logs zero arrivals. Wormhole signature: duplicated `(src_mac, seq_num)` arrivals (×2 on the tunnelled node).
-- **aug. 29, 2026 — honest nodes cannot observe their own forwarding.** Victims send `esp_mesh_send(NULL, ..., MESH_DATA_TODS)`, so the mesh stack relays *below the app layer* and only the blackhole attacker sees transit packets (victims address it explicitly). ⇒ un-gating the relay features is **not** a mask widening — there is no honest-relay data to un-gate, and F3's dedicated counters do not create any. That is what C7 Option 1 exists to change. Per-role column meanings: `docs/DATA-DICTIONARY.md`. Full text in ARCHIVE.md.
+- **aug. 29, 2026 — honest nodes cannot observe their own forwarding** (MESH_DATA_TODS => the stack
+  relayed below the app layer). ✅ **SOLVED sep. 21 by C7 Option 1 (D-12)** — every node now relays
+  explicitly and reports real recv/forward/drop. Kept for the why; full text in ARCHIVE.md.
 - Feature coverage is run-type-dependent: baseline 10/16, blackhole 13/16, wormhole 13/16, **combined matrix 16/16**. "No feature uniformly NaN" is a claim about the assembled dataset, not any single run.
 - **THESIS 3 DRIVER — `Paper/Improvements.pdf`** (CTTHES2 panel comments, ~aug. 2026). 8 timestamped rows
   → 7 problems: single-feature decidability, no attack parameter variation, redundant r1–r3, one
   environment, no declared IoT scenario, no attack provenance, uncharacterised benign baseline. Plan:
   `Plan/THESIS3-PANEL-PLAN.md`. Attack-provenance answer is DONE: `docs/ATTACK-VALIDATION.md`.
-- ⚠️ **Known leak (panel P1), now ENFORCED in code:** the role-gated features are non-NaN only for their attacker role, so "is this column NaN?" is a perfect label. `analysis/leakage.py` excludes them from model inputs and documents why per column. ⚠️ **But see the PDR 0.9987 entry above — exclusion is not sufficient.** Full pre-fix text in ARCHIVE.md.
+- ⚠️ **Known leak (panel P1)** — role-gated features made "is this NaN?" a perfect label.
+  ✅ **Root cause removed by C7 Option 1**; `leakage.py` now decides per dataset. ⚠️ PDR's 0.9987
+  single-feature score is a SEPARATE problem and still open (see the sep. 20 entry).
 - ⚠️ **Paper-scope conflict R-A:** paper §1.4.1 + abstract commit to a *"controlled indoor environment"*. The DLSU-campus decision deliberately relaxes that — must be amended in §1.4.1/abstract and logged in `thesis-deviate.md` as D-5, not slipped in.
 - ⚠️ **Paper-scope conflict R-B:** paper §1.4.1 explicitly EXCLUDES *"grayhole, Sybil, or selective forwarding"* from the threat model. Partial/probabilistic drop rates ARE selective forwarding — so the obvious fix for the panel's "vary the attacks" comment collides with approved scope. Safest reading: the panel asked for different **attacker positions**, not different drop rates. Adviser decides (plan §7 R-B).
 - ✅ **Already have a pre-registered attack signature (panel P6):** paper **§3.4.4 + Tables 3.4/3.5** state the expected observables for blackhole and wormhole, written at proposal time before any capture. Quote as-published; NEVER edit them to match results. §3.3.1.1/§3.3.2.1 hold the theory citations.
@@ -138,19 +152,10 @@
 - I-017 recurring hazard: children left powered through a run's later phases overfill SPIFFS (~1.1 MB) and
   become unreadable on export → carry each child back UNPLUGGED; `board_check.py --port COMxx --wait 75`
   before a run (≥50% SPIFFS → wipe+flash first).
-- ⚠️⚠️ **RECURRING RUN-KILLER — verify the attacker MAC before EVERY blackhole run.** Blackhole victims send
-  `MESH_DATA_P2P` to one exact MAC (`victim_main.c`), so if it names a board not in the mesh every probe is
-  addressed to nobody. **The failure is SILENT**: boards look healthy and `probes_count` climbs normally, but
-  the root logs ZERO arrivals in ALL phases, `arrivals.csv` is header-only, and BOTH primary features (PDR and
-  ForwardingRatio) come out 100% NaN. Cost a full run on sep. 15 AND again on sep. 16. Symptom→cause shortcut:
-  **all-NaN PDR + empty arrivals + root `probes_count` stuck at 0.**
-  **Since F2 (sep. 20) the check and the fix are cheap:** `export_logs.py --port COMxx --get-attacker-mac` on
-  each victim, and `--set-attacker-mac <mac>` + power-cycle to correct it — NO re-flash. Two older guards
-  still stand: the attacker compares its own STA MAC to the effective target at boot and prints an abort
-  banner, and `features.py`'s `load_arrivals` warns loudly when arrivals files exist but are all header-only.
-  ⚠️ The compiled `BLACKHOLE_ATTACKER_MAC` is still the FALLBACK, and `Confirm-BlackholeAttackerMac`
-  (menu.ps1:201) still only runs at BUILD/FLASH time — so a victim with no NVS override and a stale compiled
-  value fails exactly as before. Full incident history in ARCHIVE.md.
+- ✅ **The old "verify the attacker MAC before EVERY blackhole run" run-killer is RETIRED** by C7
+  Option 1 — victims no longer address the attacker by MAC, so a stale value is bookkeeping only.
+  Its symptom (all-NaN PDR + empty arrivals + root probes_count stuck at 0) can now only mean
+  something else, so do NOT reach for that diagnosis first. Full historical entry in ARCHIVE.md.
 - ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture.** Symptom: boot count
   climbing every ~2 s, `rst:0x3 (SW_RESET)`, UART garbled mid-line, always as the radio powers up. Cause:
   **power brownout, not firmware** — the ROOT runs softAP+STA (a child runs STA only) and its brownout
@@ -170,11 +175,9 @@
   defines merge into ONE arg (`-DACTIVE_ATTACK="1 -DMESH_TOPOLOGY=2"` → build failure). Use a plain
   variable and `@flags`. `build_all_variants.ps1:47-53` documents the same gotcha.
 - Spawning a build/flash window as plain `powershell.exe` — `idf.py`/`esptool.py` are POWERSHELL
-  FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process
-  (only env vars do). Dot-sourcing it with no `-IdfId` also fails silently: `idf-env config get
-  --property python --idf-path <path>` returns the STRING "null", not an error. Fix in use:
-  `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime (never hardcode it —
-  a reinstall changes it).
+  FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process.
+  Dot-sourcing with no `-IdfId` also fails silently (`idf-env config get` returns the STRING "null").
+  Fix in use: `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime.
 - Long `idf.py -B <dir>` build-directory names in this repo (e.g. `build_cc_verify`) — the workstation path is
   already deep, so object paths cross Windows' `MAX_PATH`/`CMAKE_OBJECT_PATH_MAX` and ninja fails inside the
   **bootloader** subproject, long after the app's own files compiled fine; the failure looks unrelated.

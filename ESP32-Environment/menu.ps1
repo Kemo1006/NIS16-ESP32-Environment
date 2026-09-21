@@ -704,14 +704,25 @@ function Select-AnalysisInput {
 }
 
 # ---- blackhole attacker-MAC pre-flight (ported from run_wizard.ps1) ---------
-# BLACKHOLE_ATTACKER_MAC is baked into the VICTIM firmware at BUILD time. If it
-# doesn't match whichever physical board is actually wearing the "attacker"
-# role right now (boards get swapped between COM ports/roles across sessions),
-# every victim probe gets addressed to a MAC nothing in the mesh holds -- it
-# never routes anywhere, so the ROOT logs ZERO arrivals for the ENTIRE run
-# (baseline included, not just the attack phase) and every blackhole feature
-# (ForwardingRatio/PDR/ConsistencyScore) comes out all-NaN with no error to
-# point at why. This check catches that BEFORE any flashing happens.
+# HISTORY, because the severity of this check changed and the old reasoning is
+# still worth knowing:
+#
+# BEFORE C7 Option 1 (D-12) this was a RUN-KILLER. BLACKHOLE_ATTACKER_MAC was
+# baked into the VICTIM firmware at build time, so if it did not match whichever
+# physical board was actually wearing the "attacker" role, every victim probe was
+# addressed to a MAC nothing in the mesh held. It never routed anywhere, the ROOT
+# logged ZERO arrivals for the ENTIRE run (baseline included), and every
+# blackhole feature came out all-NaN with no error pointing at why. That cost two
+# full runs (2026-09-15, 2026-09-16 -- see archive/2026-09-16_bad-attacker-mac/).
+#
+# SINCE C7 Option 1 it is BOOKKEEPING ONLY. Victims send to their PARENT
+# hop-by-hop; the attacker drops whatever transits it because of WHERE IT SITS in
+# the tree, and never needs to be addressed by MAC. A stale value here no longer
+# affects the capture at all -- it only means the recorded attacker label does
+# not match the board actually doing the attacking. Still worth fixing (accurate
+# records), which is why the check stays, but it must NOT read like an alarm:
+# telling someone their run will be empty when it will not is how a perfectly
+# good capture gets aborted for no reason.
 
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
@@ -819,26 +830,37 @@ function Confirm-BlackholeAttackerMac {
         return
     }
     if ($live -eq $want) {
-        Write-Host "   OK -- $AttackerPort ($live) matches mesh_config.h. Victims will reach this board." -ForegroundColor Green
+        Write-Host "   OK -- $AttackerPort ($live) matches mesh_config.h." -ForegroundColor Green
         return
     }
 
+    # SEVERITY DOWNGRADED by C7 Option 1 (D-12). This used to be a run-killer:
+    # victims were compiled to address BLACKHOLE_ATTACKER_MAC, so a stale value
+    # meant every probe went to a board that was not there -- zero root arrivals
+    # for the WHOLE run, every blackhole feature all-NaN, and no clue why.
+    #
+    # Victims now send to their PARENT hop-by-hop and the attacker intercepts
+    # whatever transits it because of WHERE IT SITS in the tree. A stale MAC here
+    # no longer breaks anything about the capture. It is now only a BOOKKEEPING
+    # mismatch -- the label on the board vs the board actually acting as attacker.
+    # Kept as a warning, not an alarm: telling someone their run will be empty
+    # when it will not is how good captures get aborted for no reason.
     $lbl = if ($AttackerLabel) { $AttackerLabel } else { $AttackerPort }
     Write-Host ""
-    Write-Host "   MISMATCH: mesh_config.h BLACKHOLE_ATTACKER_MAC = $want" -ForegroundColor Red
-    Write-Host "              but $AttackerPort's actual live MAC  = $live" -ForegroundColor Red
-    Write-Host "   Victim probes are compiled to target $want. With nothing in the mesh at that" -ForegroundColor Red
-    Write-Host "   address they get 'no route found' and vanish for the WHOLE run (baseline" -ForegroundColor Red
-    Write-Host "   included, not just the attack phase) -- root logs zero arrivals and every" -ForegroundColor Red
-    Write-Host "   blackhole feature comes out all-NaN, with nothing to point at why." -ForegroundColor Red
-    if (Read-YesNo -Question "   Fix mesh_config.h now (point BLACKHOLE_ATTACKER_MAC at $live)?" -Default $true) {
+    Write-Host "   MISMATCH (bookkeeping only, NOT a run-killer any more):" -ForegroundColor Yellow
+    Write-Host "     mesh_config.h BLACKHOLE_ATTACKER_MAC = $want" -ForegroundColor Yellow
+    Write-Host "     $AttackerPort's actual live MAC        = $live" -ForegroundColor Yellow
+    Write-Host "   Since C7 Option 1 victims no longer address the attacker by MAC -- they send" -ForegroundColor DarkGray
+    Write-Host "   to their parent and the attacker drops whatever passes through it. Your capture" -ForegroundColor DarkGray
+    Write-Host "   will be FINE either way. Worth fixing so the recorded attacker matches reality." -ForegroundColor DarkGray
+    if (Read-YesNo -Question "   Update mesh_config.h to $live (recommended, for accurate records)?" -Default $true) {
         if (Set-ConfiguredAttackerMac -Mac $live -PortLabel $lbl) {
             Write-Host "   Fixed -- mesh_config.h now targets $live. The next build will pick it up." -ForegroundColor Green
         } else {
             Write-Host "   Could not write mesh_config.h -- fix it by hand before flashing the victim(s)." -ForegroundColor Red
         }
     } else {
-        Write-Host "   Left as-is -- victim boards will still target the wrong MAC until this is fixed." -ForegroundColor Yellow
+        Write-Host "   Left as-is -- the capture is unaffected; only the recorded attacker label is stale." -ForegroundColor DarkGray
     }
 }
 
@@ -2415,7 +2437,7 @@ if ($action -eq 5) {
             Write-Host "   Could not write mesh_config.h -- fix it by hand before flashing victims." -ForegroundColor Red
         }
     } else {
-        Write-Host "   Left as-is -- victim boards will still target the wrong MAC until this is fixed." -ForegroundColor Yellow
+        Write-Host "   Left as-is -- the capture is unaffected; only the recorded attacker label is stale." -ForegroundColor DarkGray
     }
     continue menu
 }
