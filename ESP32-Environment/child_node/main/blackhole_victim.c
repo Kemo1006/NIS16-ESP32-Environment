@@ -53,79 +53,61 @@
 #include "sd_status.h"
 #include "node_identity.h"
 #include "blackhole_target.h"
+#include "probe_relay.h"
 #include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
 static const char *TAG = "BLACKHOLE";
 
-/* ── Probe wire format (must match root_main.c) ─────────────────────────── */
-#define PROBE_MAGIC     0x50524F42U   /* "PROB" */
-
-typedef struct __attribute__((packed)) {
-    uint32_t magic;
-    uint32_t seq_num;
-    int64_t  send_ts_us;
-    uint8_t  src_mac[6];
-} probe_pkt_t;
+/* Probe wire format + the relay itself now come from probe_relay.h (C7 Option
+ * 1). This file used to own a private copy of both. */
 
 /* ── Shared state ─────────────────────────────────────────────────────────── */
 static char     s_node_id[NODE_ID_LEN] = {0};
 static char     s_run_id[RUN_ID_LEN]   = {0};
 static uint8_t  s_self_mac[6]          = {0};
 
-/* Relay counters.
+/* C7 Option 1: the relay, its queue, its counters and its task all moved to
+ * components/mesh_common/src/probe_relay.c, which every node now runs. THIS
+ * FILE'S ONLY REMAINING DIFFERENCE FROM AN HONEST NODE IS THE FUNCTION BELOW.
  *
- * s_probes_dropped is an OUTCOME counter: every frame accepted for relay and
- * not passed on, whatever the cause (deliberate attack drop, queue overflow,
- * or a failed send). s_forward_failures is a CAUSE counter, incremented only
- * by the failed-send path, and it is what now feeds the retry_count column.
- *
- * A failed forward therefore increments BOTH, on purpose: the frame did not get
- * passed on (an outcome) AND a send call failed (a cause). Keeping them
- * separate is the point of F3 — it lets drop_count answer "what did this relay
- * do to the traffic" without retry_count having to mean something different on
- * this board than on every other one. */
-static volatile uint32_t s_probes_received  = 0;  /* accepted for relay       */
-static volatile uint32_t s_probes_forwarded = 0;  /* passed on to the root    */
-static volatile uint32_t s_probes_dropped   = 0;  /* accepted, not passed on  */
-static volatile uint32_t s_forward_failures = 0;  /* esp_mesh_send() errors   */
-
-/* Queue of received victim probes awaiting the forward/drop decision. Sized
- * generously (was 32) so a transient slow-mesh burst — e.g. the attacker
- * briefly re-scanning for its parent — doesn't overflow and force congestion
- * drops that would muddy the forwarded/dropped counters during baseline/cooldown.
- * If you still see "Relay queue full" spam, the attacker's link to the root is
- * too weak: move it closer to the root. */
-static QueueHandle_t s_relay_queue = NULL;
-#define RELAY_QUEUE_SIZE 128
+ * That is the point, and it is worth stating in the paper: the attacker is
+ * byte-for-byte an ordinary relay except for a single boolean decision. There
+ * is no separate attack path, no special addressing, no control-plane change -
+ * exactly the "stays protocol-compliant at PHY/MAC" criterion in
+ * docs/ATTACK-VALIDATION.md, now true by construction rather than by argument.
+ */
 
 /* ── Forward declarations ─────────────────────────────────────────────────── */
-static void relay_task(void *arg);
 static void telemetry_task(void *arg);
 static void build_run_id(char *buf, size_t len);
 
-/*
- * Data callback (runs in the phase-listener task context — the single
- * esp_mesh_recv reader). Every non-phase packet lands here; we keep only probe
- * packets (which the victims addressed to our MAC), copy them out, and hand
- * them to the relay task. Kept short + non-blocking per the cb contract.
+/**
+ * The entire blackhole. Returns false to DROP, true to forward.
+ *
+ * Suppression is active exactly while the root is announcing PHASE_ID_BLACKHOLE
+ * - paper Table 4.2's `suppression_active` flag, which is set when phase 1 is
+ * received and cleared at phase 3. probe_relay.c counts the dropped packet in
+ * drop_count (Table 4.2's `drop_counter`); nothing else about this node's
+ * behaviour changes.
  */
+static bool blackhole_forward_decision(const probe_pkt_t *pkt)
+{
+    if (phase_listener_get_phase_id() == PHASE_ID_BLACKHOLE) {
+        ESP_LOGD(TAG, "BLACKHOLE: dropping probe seq=%lu",
+                 (unsigned long)pkt->seq_num);
+        return false;
+    }
+    return true;
+}
+
+/* Runs in the phase-listener task (the single esp_mesh_recv reader). Identical
+ * to the honest victim's callback - the divergence is the decision hook above. */
 static void attacker_recv_cb(const uint8_t *data, size_t len,
                              const uint8_t from_addr[6])
 {
-    (void)from_addr;   /* the victim's MAC travels inside the probe payload */
-    if (len < sizeof(probe_pkt_t)) return;
-
-    const probe_pkt_t *pkt = (const probe_pkt_t *)data;
-    if (pkt->magic != PROBE_MAGIC) return;
-
-    s_probes_received++;
-    probe_pkt_t copy = *pkt;
-    if (s_relay_queue && xQueueSend(s_relay_queue, &copy, 0) != pdTRUE) {
-        ESP_LOGW(TAG, "Relay queue full — dropping victim probe seq=%lu",
-                 (unsigned long)copy.seq_num);
-        s_probes_dropped++;
-    }
+    (void)from_addr;
+    probe_relay_ingest(data, len);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -202,23 +184,18 @@ void app_main(void)
         }
     }
 
-    /* ── 2. Relay queue ──────────────────────────────────────────────────── */
-    s_relay_queue = xQueueCreate(RELAY_QUEUE_SIZE, sizeof(probe_pkt_t));
-    if (!s_relay_queue) {
-        ESP_LOGE(TAG, "Failed to create relay queue");
-        return;
-    }
-
-    /* ── 3. Phase listener + receive victim probes via its data dispatch ──── */
+    /* ── 2. Phase listener + the SHARED relay, with our drop hook ────────── */
     ESP_ERROR_CHECK(phase_listener_start());
+    /* Same relay every honest node runs; the only difference is the decision
+     * callback. See blackhole_forward_decision() above. */
+    ESP_ERROR_CHECK(probe_relay_start(blackhole_forward_decision));
     phase_listener_set_data_cb(attacker_recv_cb);
 
     /* ── 4. Logger ───────────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_VICTIM));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
-    /* ── 5. Tasks ────────────────────────────────────────────────────────── */
-    xTaskCreate(relay_task,     "bh_relay",  STACK_PROBE_SINK, NULL, TASK_PRIO_PROBE_SINK, NULL);
+    /* ── 5. Tasks (the relay task is started by probe_relay_start above) ─── */
     ESP_ERROR_CHECK(heartbeat_start());
     /* Telemetry ABOVE the relay so heavy relay traffic can't starve sampling —
      * see TASK_PRIO_ATTACKER_TELEMETRY in mesh_config.h. */
@@ -229,62 +206,12 @@ void app_main(void)
 
     /* ── 7. Finalise ─────────────────────────────────────────────────────── */
     ESP_LOGI(TAG, "Experiment complete. Received: %lu  Forwarded: %lu  Dropped: %lu",
-             (unsigned long)s_probes_received,
-             (unsigned long)s_probes_forwarded,
-             (unsigned long)s_probes_dropped);
+             (unsigned long)probe_relay_recv_count(),
+             (unsigned long)probe_relay_forward_count(),
+             (unsigned long)probe_relay_drop_count());
     csv_logger_flush();
     csv_logger_close();
     csv_logger_start_export_task();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
- * Relay task
- *
- * For each probe received from a victim: forward it to the root
- * (baseline/cooldown) or DROP it (attack phase = PHASE_ID_BLACKHOLE). The probe
- * payload is forwarded verbatim, so the root logs it with the VICTIM's src_mac —
- * during the attack the root simply stops seeing that victim's probes.
- * ═══════════════════════════════════════════════════════════════════════════ */
-
-static void relay_task(void *arg)
-{
-    probe_pkt_t pkt;
-    mesh_data_t mdata = {
-        .data  = (uint8_t *)&pkt,
-        .size  = sizeof(pkt),
-        .proto = MESH_PROTO_BIN,
-        .tos   = MESH_TOS_P2P,
-    };
-
-    ESP_LOGI(TAG, "Relay task running.");
-
-    while (true) {
-        if (xQueueReceive(s_relay_queue, &pkt, portMAX_DELAY) != pdTRUE) {
-            continue;
-        }
-
-        if (phase_listener_get_phase_id() == PHASE_ID_BLACKHOLE) {
-            /* ── BLACKHOLE: silently drop the victim's probe ─────────────── */
-            s_probes_dropped++;
-            ESP_LOGD(TAG, "BLACKHOLE: dropped victim probe seq=%lu",
-                     (unsigned long)pkt.seq_num);
-        } else {
-            /* ── Normal relay: forward to root (NULL + TODS = "to root") ──── */
-            esp_err_t err = esp_mesh_send(NULL, &mdata, MESH_DATA_TODS, NULL, 0);
-            if (err == ESP_OK) {
-                s_probes_forwarded++;
-                ESP_LOGD(TAG, "Forwarded victim probe seq=%lu to root",
-                         (unsigned long)pkt.seq_num);
-            } else {
-                /* Both counters: the frame was not passed on (drop_count) AND
-                 * a send call failed (retry_count). See their declarations. */
-                s_probes_dropped++;
-                s_forward_failures++;
-                ESP_LOGW(TAG, "Forward failed seq=%lu: %s",
-                         (unsigned long)pkt.seq_num, esp_err_to_name(err));
-            }
-        }
-    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -343,10 +270,12 @@ static void telemetry_task(void *arg)
         int64_t after_mesh = esp_timer_get_time();
 #endif
 
-        uint32_t received  = s_probes_received;
-        uint32_t forwarded = s_probes_forwarded;
-        uint32_t dropped   = s_probes_dropped;
-        uint32_t send_fail = s_forward_failures;
+        /* All four now come from the shared relay (probe_relay.c), which is
+         * the same code every honest node runs. */
+        uint32_t received  = probe_relay_recv_count();
+        uint32_t forwarded = probe_relay_forward_count();
+        uint32_t dropped   = probe_relay_drop_count();
+        uint32_t send_fail = probe_relay_send_fail_count();
 
         csv_logger_append_telemetry(
             ts,

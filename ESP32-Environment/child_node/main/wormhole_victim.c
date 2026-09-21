@@ -73,6 +73,7 @@
 #include "csv_logger.h"
 #include "sd_status.h"
 #include "node_identity.h"
+#include "probe_relay.h"
 #include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
@@ -86,19 +87,9 @@ static const char *TAG = "WORMHOLE_A";
 #define WH_MESH_ROLE  MESH_ROLE_ATCK_WA
 #endif
 
-/* ── Probe wire format (must match root_main.c) ──────────────────────────── */
-#define PROBE_MAGIC          0x50524F42U   /* "PROB" — normal probe            */
-/* Second magic that Node A stamps on the tunnel-reinjected ("fast") copy so
- * the root recognises it as the wormhole duplicate and does NOT de-dup it
- * against B's normal copy. Must match root_main.c. ("PROW") */
-#define PROBE_MAGIC_WORMHOLE 0x50524F57U
-
-typedef struct __attribute__((packed)) {
-    uint32_t magic;
-    uint32_t seq_num;
-    int64_t  send_ts_us;
-    uint8_t  src_mac[6];
-} probe_pkt_t;
+/* Probe wire format and BOTH magics (PROBE_MAGIC, PROBE_MAGIC_WORMHOLE) now
+ * come from probe_relay.h, shared with every other role. The tunnel format
+ * below is still private to this file - it never leaves the UART wire. */
 
 /* ── Tunnel wire format (A<->B UART link only — thesis Figure 4.9) ────────── */
 typedef struct __attribute__((packed)) {
@@ -118,6 +109,18 @@ static uint8_t  s_self_mac[6]          = {0};
 /* ── Forward declarations ─────────────────────────────────────────────────── */
 static void telemetry_task(void *arg);
 static void build_run_id(char *buf, size_t len);
+
+/* C7 Option 1: both wormhole ends are ALSO ordinary relays for everyone else's
+ * traffic. This is not optional - a wormhole node sitting mid-chain that did
+ * not forward transit probes would silently swallow everything from the nodes
+ * below it, producing a BLACKHOLE signature inside a WORMHOLE run. Forwards
+ * both PROBE_MAGIC and PROBE_MAGIC_WORMHOLE (see probe_relay.h). */
+static void wh_recv_cb(const uint8_t *data, size_t len,
+                       const uint8_t from_addr[6])
+{
+    (void)from_addr;
+    probe_relay_ingest(data, len);
+}
 
 /*
  * Shared by both ends: bring up the physical UART1 link used as the wormhole's
@@ -193,6 +196,11 @@ void app_main(void)
     }
 
     ESP_ERROR_CHECK(phase_listener_start());
+    /* Honest relay (NULL decision): a wormhole endpoint never drops other
+     * nodes' traffic - its manipulation is DUPLICATION via the UART tunnel,
+     * not suppression. */
+    ESP_ERROR_CHECK(probe_relay_start(NULL));
+    phase_listener_set_data_cb(wh_recv_cb);
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_VICTIM));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
@@ -271,9 +279,11 @@ static void tunnel_forwarder_task(void *arg)
          * This is the normal "slow" copy the root receives in every phase.
          * During the attack it becomes the first of the two duplicate
          * arrivals (the tunnel copy from A is the second). */
+        /* C7 Option 1: hop by hop to our parent, like every other node. The
+         * probe still reaches the root - it is just carried and COUNTED by each
+         * node on the way, instead of the stack moving it invisibly. */
         root_data.data = (uint8_t *)&pkt;
-        esp_err_t err = esp_mesh_send(NULL, &root_data,
-                                      MESH_DATA_TODS, NULL, 0);
+        esp_err_t err = probe_relay_send_own(&pkt);
         if (err == ESP_OK) {
             s_probes_to_root++;
         } else {
@@ -408,6 +418,11 @@ void app_main(void)
     }
 
     ESP_ERROR_CHECK(phase_listener_start());
+    /* Honest relay (NULL decision): a wormhole endpoint never drops other
+     * nodes' traffic - its manipulation is DUPLICATION via the UART tunnel,
+     * not suppression. */
+    ESP_ERROR_CHECK(probe_relay_start(NULL));
+    phase_listener_set_data_cb(wh_recv_cb);
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_VICTIM));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
@@ -481,7 +496,12 @@ static void reinject_task(void *arg)
          * of de-duping it against B's normal copy. src_mac and seq_num stay B's,
          * so the two rows correlate — same probe, two latencies. */
         pkt.magic = PROBE_MAGIC_WORMHOLE;
-        esp_err_t err = esp_mesh_send(NULL, &mdata, MESH_DATA_TODS, NULL, 0);
+        /* C7 Option 1: re-inject via our parent, hop by hop. This still meets
+         * the Milestone Form's "re-injects toward root via the legitimate mesh
+         * path" - more literally than before, since it now traverses the real
+         * forwarding path rather than being handed to the stack. Every relay in
+         * between forwards PROBE_MAGIC_WORMHOLE (see probe_relay.h). */
+        esp_err_t err = probe_relay_send_own(&pkt);
         if (err == ESP_OK) {
             s_probes_reinjected++;
             ESP_LOGD(TAG, "Re-injected probe src=" MACSTR " seq=%lu",
@@ -529,9 +549,12 @@ static void telemetry_task(void *arg)
          * egress against. Its tunnel activity is measured by the Tunnel*
          * features, which are role-gated and excluded from model inputs
          * (analysis/leakage.py) for exactly that reason. */
-        uint32_t recv_col   = 0;
-        uint32_t fwd_col    = 0;
-        uint32_t drop_col   = 0;
+        /* C7 Option 1: real mesh-relay counters. Node B's TUNNEL activity is a
+         * separate thing and is still reported via retry_col above, which is
+         * what the Tunnel* features read. */
+        uint32_t recv_col   = probe_relay_recv_count();
+        uint32_t fwd_col    = probe_relay_forward_count();
+        uint32_t drop_col   = probe_relay_drop_count();
 #else
         uint32_t retry_col  = s_reinject_fail;
         uint32_t tx_col     = s_probes_reinjected; /* re-injected to root       */
@@ -540,9 +563,14 @@ static void telemetry_task(void *arg)
          * re-injects them into the mesh. recv/forward/drop therefore have the
          * same meaning here as on the blackhole attacker, and a failed
          * re-injection counts as both a drop (outcome) and a retry (cause). */
-        uint32_t recv_col   = s_tunnel_received;
-        uint32_t fwd_col    = s_probes_reinjected;
-        uint32_t drop_col   = s_reinject_fail;
+        /* C7 Option 1: recv/forward/drop now mean MESH RELAY on every role,
+         * identically. Node A's tunnel-specific counts (received over UART,
+         * re-injected) stay in probes_col/tx_col above, where the Tunnel*
+         * features read them - keeping the two measurements separate is what
+         * stops the relay columns meaning something different on this board. */
+        uint32_t recv_col   = probe_relay_recv_count();
+        uint32_t fwd_col    = probe_relay_forward_count();
+        uint32_t drop_col   = probe_relay_drop_count();
 #endif
 
         csv_logger_append_telemetry(

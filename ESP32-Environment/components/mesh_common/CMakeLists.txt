@@ -7,6 +7,7 @@ idf_component_register(
         "src/node_identity.c"
         "src/topology_graph.c"
         "src/blackhole_target.c"
+        "src/probe_relay.c"
     INCLUDE_DIRS
         "include"
     REQUIRES

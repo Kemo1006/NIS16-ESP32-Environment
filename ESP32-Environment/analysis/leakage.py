@@ -33,11 +33,22 @@ Quoting that plan: "If those columns only ever exist for the attacker, using
 them as model features IS the leakage. Removing them is a real fix, not a
 retreat."
 
-Options 1 (app-layer relay for every node, so honest nodes produce real
-forwarding counts) and 2 (infer forwarding from root arrivals + topology) are
-NOT implemented here; both need a firmware change and recapture, and Option 1
-invalidates every existing run. When Option 1 lands, delete the three relay
-entries from LEAKING_COLUMNS below -- nothing else needs touching.
+UPDATE 2026-09-21: OPTION 1 HAS NOW LANDED in firmware (see thesis-deviate D-12
+and components/mesh_common/src/probe_relay.c). Every node relays at the
+application layer and reports real recv/forward/drop, so on captures taken with
+that firmware the three relay features are NO LONGER role-gated.
+
+Rather than delete those entries, the decision is now made PER DATASET by
+relay_features_are_gated() below: it asks how many node_roles actually carry
+values for the column. Pre-C7 captures still exclude them (they really are
+single-role); post-C7 captures allow them (the attacker is an outlier in a
+populated distribution instead of the only value present). Both kinds of capture
+will coexist in this project for months, so hardcoding either answer would be
+wrong for half the data.
+
+The before/after delta in single-feature accuracy across those two firmwares is
+deliverable E2 -- the evidence that the panel's objection was fixed, not argued
+with.
 
 WHAT THIS FILE DOES NOT DO
 --------------------------
@@ -149,6 +160,59 @@ METADATA_COLUMNS: dict[str, str] = {
 }
 
 
+# Columns excluded ONLY because one firmware generation could not measure them
+# on honest nodes. C7 Option 1 changed that, so whether they leak is now a
+# property OF THE DATA, not a fact about the project — and must be decided per
+# dataset rather than hardcoded.
+_RELAY_GATED_BEFORE_C7 = ("ForwardingRatio", "IngressEgressDelta", "ConsistencyScore")
+
+# A column counts as genuinely multi-role once this many distinct node_roles
+# carry values for it. Two is enough: the whole defect was "exactly one role has
+# this column", so any second role breaks the is-it-NaN-identifies-the-attacker
+# shortcut.
+_MIN_ROLES_TO_CLEAR = 2
+
+
+def relay_features_are_gated(df: pd.DataFrame) -> bool:
+    """Do the relay features still exist on only ONE node role in THIS dataset?
+
+    WHY THIS IS MEASURED, NOT ASSUMED
+    ---------------------------------
+    Before C7 Option 1, honest nodes sent with MESH_DATA_TODS: the mesh stack
+    relayed below the application layer, so no honest node could observe its own
+    forwarding and ForwardingRatio existed only on the blackhole attacker. "Is
+    this column NaN?" therefore identified the attacker, which is leakage.
+
+    After C7 Option 1 every node relays explicitly and reports real
+    recv/forward/drop, so the column is populated across many roles and the
+    shortcut is gone — the attacker becomes an OUTLIER in a real distribution
+    instead of the only value present.
+
+    Both kinds of capture will coexist in this project for a while, so hardcoding
+    either answer would be wrong for half the data. This asks the dataset.
+
+    Returns True when the features are still single-role (exclude them), False
+    when several roles carry them (they are legitimate model inputs).
+    """
+    if "node_role" not in df.columns:
+        return True     # cannot tell -> assume the unsafe case
+    for col in _RELAY_GATED_BEFORE_C7:
+        if col in df.columns:
+            roles = df.loc[df[col].notna(), "node_role"].nunique()
+            if roles >= _MIN_ROLES_TO_CLEAR:
+                return False
+    return True
+
+
+def leaking_columns_for(df: pd.DataFrame) -> dict[str, str]:
+    """LEAKING_COLUMNS adjusted for what this particular dataset can support."""
+    out = dict(LEAKING_COLUMNS)
+    if not relay_features_are_gated(df):
+        for col in _RELAY_GATED_BEFORE_C7:
+            out.pop(col, None)
+    return out
+
+
 def model_feature_allowlist(features: list[str] | None = None) -> list[str]:
     """The Table 4.11 features a clustering model is allowed to see."""
     source = TABLE_4_11_FEATURES if features is None else features
@@ -168,9 +232,10 @@ def split_columns(
     source = TABLE_4_11_FEATURES if candidates is None else candidates
     present = [c for c in source if c in df.columns]
 
+    leaking = leaking_columns_for(df)
     allowed, excluded = [], {}
     for col in present:
-        reason = LEAKING_COLUMNS.get(col) or METADATA_COLUMNS.get(col)
+        reason = leaking.get(col) or METADATA_COLUMNS.get(col)
         if reason:
             excluded[col] = reason
         else:
@@ -231,6 +296,7 @@ def single_feature_decidability(
     source = TABLE_4_11_FEATURES if candidates is None else candidates
     present = [c for c in source if c in df.columns]
 
+    leaking = leaking_columns_for(df)
     labels = df[label_col]
     labelled = labels.notna()
     if not labelled.any():
@@ -255,7 +321,7 @@ def single_feature_decidability(
             rows.append({
                 "feature": col, "threshold_accuracy": float("nan"),
                 "nan_accuracy": nan_acc, "coverage": float(usable.mean()),
-                "excluded": col in LEAKING_COLUMNS,
+                "excluded": col in leaking,
             })
             continue
 
@@ -284,7 +350,7 @@ def single_feature_decidability(
         rows.append({
             "feature": col, "threshold_accuracy": best,
             "nan_accuracy": nan_acc, "coverage": float(usable.mean()),
-            "excluded": col in LEAKING_COLUMNS,
+            "excluded": col in leaking,
         })
 
     out = pd.DataFrame(rows)

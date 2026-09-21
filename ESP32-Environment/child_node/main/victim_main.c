@@ -34,20 +34,16 @@
 #include "sd_status.h"
 #include "node_identity.h"
 #include "blackhole_target.h"
+#include "probe_relay.h"
 #include "nvs.h"
 
 /* ── Module tag ──────────────────────────────────────────────────────────── */
 static const char *TAG = "VICTIM_MAIN";
 
-/* ── Probe wire format (must match root_main.c exactly) ──────────────────── */
-#define PROBE_MAGIC     0x50524F42U   /* "PROB" */
-
-typedef struct __attribute__((packed)) {
-    uint32_t magic;
-    uint32_t seq_num;
-    int64_t  send_ts_us;
-    uint8_t  src_mac[6];
-} probe_pkt_t;
+/* Probe wire format and the relay itself now live in probe_relay.h/.c, shared
+ * by every role. It used to be copy-pasted into this file, blackhole_victim.c,
+ * wormhole_victim.c and root_main.c independently — four copies of one wire
+ * format that had to be kept byte-identical by hand. */
 
 /* ── Shared state ─────────────────────────────────────────────────────────── */
 static char     s_node_id[NODE_ID_LEN] = {0};
@@ -63,13 +59,23 @@ static volatile uint32_t s_tx_count    = 0;
 
 /* ── Forward declarations ─────────────────────────────────────────────────── */
 static void probe_gen_task(void *arg);
+
+/* Runs in the phase-listener task (the single esp_mesh_recv reader). Every
+ * non-phase packet lands here; probe_relay_ingest keeps probes and ignores
+ * anything else, so passing everything through is safe. Kept short and
+ * non-blocking per the data-callback contract. */
+static void victim_recv_cb(const uint8_t *data, size_t len,
+                           const uint8_t from_addr[6])
+{
+    (void)from_addr;   /* the originator travels inside the probe payload */
+    probe_relay_ingest(data, len);
+}
+
 static void telemetry_task(void *arg);
 static void build_run_id(char *buf, size_t len);
 #if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_BURST)
-static bool send_probe(probe_pkt_t *pkt, mesh_data_t *mdata,
-                       const mesh_addr_t *bh_dest, uint32_t *seq);
-static void fire_burst(probe_pkt_t *pkt, mesh_data_t *mdata,
-                       const mesh_addr_t *bh_dest, uint32_t *seq);
+static bool send_probe(probe_pkt_t *pkt, uint32_t *seq);
+static void fire_burst(probe_pkt_t *pkt, uint32_t *seq);
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -100,8 +106,16 @@ void app_main(void)
     build_run_id(s_run_id, sizeof(s_run_id));
     ESP_LOGI(TAG, "Node ID: %s   Run ID: %s", s_node_id, s_run_id);
 
-    /* ── 2. Phase listener ───────────────────────────────────────────────── */
+    /* ── 2. Phase listener + hop-by-hop relay ────────────────────────────── */
     ESP_ERROR_CHECK(phase_listener_start());
+
+    /* C7 Option 1: an honest node is now a RELAY as well as a source. It
+     * forwards every probe its children send up toward the root, and counts
+     * what it carries — which is what finally makes ForwardingRatio a real
+     * distribution across all nodes instead of a single attacker-only value.
+     * NULL decision = always forward (only the blackhole installs a hook). */
+    ESP_ERROR_CHECK(probe_relay_start(NULL));
+    phase_listener_set_data_cb(victim_recv_cb);
 
     /* ── 3. Logger ───────────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_VICTIM));
@@ -142,20 +156,15 @@ void app_main(void)
  * doesn't just fail outright — see BURST_GAP_MS / BURST_QUEUE_RETRY in
  * mesh_config.h. Returns true on success; failures still count into
  * s_retry_count, same as the normal loop. */
-static bool send_probe(probe_pkt_t *pkt, mesh_data_t *mdata,
-                       const mesh_addr_t *bh_dest, uint32_t *seq)
+static bool send_probe(probe_pkt_t *pkt, uint32_t *seq)
 {
     pkt->seq_num    = ++(*seq);
     pkt->send_ts_us = esp_timer_get_time();
 
     esp_err_t err;
     for (int attempt = 0; ; attempt++) {
-#if defined(BLACKHOLE_VICTIM_TARGET)
-        err = esp_mesh_send(bh_dest, mdata, MESH_DATA_P2P, NULL, 0);
-#else
-        (void)bh_dest;
-        err = esp_mesh_send(NULL, mdata, MESH_DATA_TODS, NULL, 0);
-#endif
+        /* C7 Option 1: to our parent, hop by hop (paper 3.1.3.2). */
+        err = probe_relay_send_own(pkt);
         if (err != ESP_ERR_MESH_QUEUE_FULL || attempt >= BURST_QUEUE_RETRY) {
             break;
         }
@@ -175,8 +184,7 @@ static bool send_probe(probe_pkt_t *pkt, mesh_data_t *mdata,
 
 /* Fire BURST_COUNT probes back-to-back (BURST_GAP_MS apart). One-shot — called
  * exactly once per boot, when the attack-length window opens. */
-static void fire_burst(probe_pkt_t *pkt, mesh_data_t *mdata,
-                       const mesh_addr_t *bh_dest, uint32_t *seq)
+static void fire_burst(probe_pkt_t *pkt, uint32_t *seq)
 {
     uint32_t first_seq = *seq + 1;
     uint32_t ok        = 0;
@@ -186,7 +194,7 @@ static void fire_burst(probe_pkt_t *pkt, mesh_data_t *mdata,
              BURST_COUNT, (unsigned long)first_seq, BURST_GAP_MS);
 
     for (uint32_t n = 0; n < BURST_COUNT; n++) {
-        if (send_probe(pkt, mdata, bh_dest, seq)) {
+        if (send_probe(pkt, seq)) {
             ok++;
         }
         vTaskDelay(pdMS_TO_TICKS(BURST_GAP_MS));
@@ -224,40 +232,23 @@ static void probe_gen_task(void *arg)
     };
     memcpy(pkt.src_mac, s_self_mac, 6);
 
-    mesh_data_t mdata = {
-        .data  = (uint8_t *)&pkt,
-        .size  = sizeof(pkt),
-        .proto = MESH_PROTO_BIN,
-        .tos   = MESH_TOS_P2P,
-    };
-
-#if defined(BLACKHOLE_VICTIM_TARGET)
-    /* Blackhole run (this board built with -DBLACKHOLE_ROLE=1): address probes
-     * to the ATTACKER's MAC (P2P) instead of the root, so the attacker relays
-     * them (baseline) or drops them (attack) — thesis §4.2.1.2 C / Milestone 2.
+    /* C7 Option 1: no per-destination setup here any more.
      *
-     * F2: resolved at RUNTIME (NVS first, compiled constant as fallback) rather
-     * than baked in, so moving the attacker no longer means re-flashing every
-     * victim board. That re-flash cost is precisely what made the panel's
-     * "different position of the attackers" request (12:45-16:00) unaffordable.
-     * Read ONCE here, before the probe loop starts, so the destination cannot
-     * change midway through a phase. See blackhole_target.h. */
-    uint8_t s_attacker_mac[6] = {0};
-    bh_target_source_t bh_src = blackhole_target_get(s_attacker_mac);
-    mesh_addr_t bh_dest = {0};
-    memcpy(bh_dest.addr, s_attacker_mac, 6);
-    ESP_LOGI(TAG, "Blackhole victim mode: probes -> attacker " MACSTR " (%s)",
-             MAC2STR(s_attacker_mac), blackhole_target_source_str(bh_src));
-#endif
+     * This board used to build either a root-bound MESH_DATA_TODS send or, on a
+     * blackhole victim build, a P2P send addressed to the attacker's MAC. Both
+     * are gone: every probe now goes to THIS node's parent and is relayed hop by
+     * hop (probe_relay_send_own), which is what paper Section 3.1.3.2's
+     * "Forwarding Discipline" specifies.
+     *
+     * Consequence worth stating plainly: a victim no longer needs to know the
+     * attacker exists. The attacker intercepts traffic because of WHERE IT SITS
+     * in the tree, not because victims were compiled to address it - so
+     * BLACKHOLE_ATTACKER_MAC is no longer load-bearing for targeting, and
+     * attacker POSITION becomes a real experimental variable. */
 
     uint32_t seq = 0;
 
 #if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_BURST)
-#if defined(BLACKHOLE_VICTIM_TARGET)
-    const mesh_addr_t *bh_dest_p = &bh_dest;
-#else
-    const mesh_addr_t *bh_dest_p = NULL;
-#endif
     /* Window detection: a "window" is either an announced attack phase
      * (blackhole/wormhole run) or the 2nd accepted phase broadcast (baseline
      * run — root_main.c's burst branch re-announces PHASE_ID_BASELINE so this
@@ -276,17 +267,17 @@ static void probe_gen_task(void *arg)
         pkt.seq_num      = ++seq;
         pkt.send_ts_us   = esp_timer_get_time();
 
-#if defined(BLACKHOLE_VICTIM_TARGET)
-        /* Send to the attacker (P2P), which forwards to root or drops. */
-        esp_err_t err = esp_mesh_send(&bh_dest, &mdata,
-                                      MESH_DATA_P2P,
-                                      NULL, 0);
-#else
-        /* Normal victim: send straight to the root. */
-        esp_err_t err = esp_mesh_send(NULL, &mdata,
-                                      MESH_DATA_TODS,
-                                      NULL, 0);
-#endif
+        /* C7 Option 1: send to OUR PARENT, hop by hop, and let every node on
+         * the path relay it upward. This is paper Section 3.1.3.2's mandated
+         * "Forwarding Discipline" (MESH_DATA_P2P), which the previous
+         * MESH_DATA_TODS call did not satisfy — the stack relayed below the
+         * app layer, so no intermediate node could observe its own forwarding.
+         *
+         * Note there is no longer a BLACKHOLE_VICTIM_TARGET branch here. The
+         * attacker no longer has to be addressed by MAC to intercept anything:
+         * it intercepts whatever passes through it because of WHERE IT SITS in
+         * the tree. That is what makes attacker position a real variable. */
+        esp_err_t err = probe_relay_send_own(&pkt);
         if (err == ESP_OK) {
             s_probes_sent++;
             s_tx_count++;
@@ -330,7 +321,7 @@ static void probe_gen_task(void *arg)
                 }
             } else if (esp_timer_get_time() - window_t0_us >=
                        (int64_t)BURST_OFFSET_S * 1000000LL) {
-                fire_burst(&pkt, &mdata, bh_dest_p, &seq);
+                fire_burst(&pkt, &seq);
                 burst_done = true;
             }
         }
@@ -393,14 +384,22 @@ static void telemetry_task(void *arg)
             probes_snap,
             phase_listener_get_phase_id(),
             phase_listener_get_label(),
-            /* F3 relay counters. An honest victim ORIGINATES traffic and never
-             * relays any: it sends with MESH_DATA_TODS, so the mesh stack moves
-             * transit frames below the application layer and this code cannot
-             * observe them even in principle. 0/0/0 is therefore the truthful
-             * value, and it is NOT interchangeable with "relayed nothing" —
-             * features.py must leave ForwardingRatio undefined here (recv == 0),
-             * not compute 0/0. See csv_logger.h F3 and C7 Option 1. */
-            0, 0, 0
+            /* F3 relay counters — REAL now, not 0/0/0.
+             *
+             * Before C7 Option 1 an honest victim genuinely could not observe
+             * its own forwarding: MESH_DATA_TODS meant the stack relayed below
+             * the application layer. It now relays explicitly to its parent, so
+             * these are measured values, and a node that carries transit
+             * traffic reports recv > 0 like any other relay. That is what turns
+             * ForwardingRatio from an attacker-only column into a distribution.
+             *
+             * A LEAF still reports 0/0/0 - correctly: it has no children, so
+             * nothing transits it. That is an honest zero, and features.py
+             * leaves ForwardingRatio undefined there (recv == 0) rather than
+             * computing 0/0. */
+            probe_relay_recv_count(),
+            probe_relay_forward_count(),
+            probe_relay_drop_count()
         );
 
         ESP_LOGD(TAG,
