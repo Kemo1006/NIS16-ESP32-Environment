@@ -136,8 +136,17 @@ file in Wireshark.
 
 ### Path C — macOS (fastest if you have a Mac)
 
-Macs are the easy case: the built-in Wi-Fi chip supports monitor mode, and Wireshark's own menus
-can turn it on — no Terminal needed.
+Macs are usually the easy case: **older Intel Macs** support monitor mode reliably, and Wireshark's
+own menus can turn it on — no Terminal needed.
+
+⚠️ **Apple Silicon (M1/M2/M3/…) is the one exception, and it's a real, widely-reported problem —
+not a rare edge case.** Since Apple moved to their own chips, monitor mode on the built-in Wi-Fi has
+been unreliable: the checkbox may be there and appear to work while actually capturing nothing
+useful, or the old `airport` command may not work at all on some macOS versions. This is a known
+limitation across many M1/M2 Macs, not something specific to your machine. **The only way to know
+for sure is to try the practice capture in §7.2 and see if real rows show up** — don't assume either
+way. If it doesn't work, skip straight to the fallback options in the table above (USB adapter or
+the ESP32-as-sniffer path) rather than losing time debugging an M1's monitor mode.
 
 **Click-only method:**
 
