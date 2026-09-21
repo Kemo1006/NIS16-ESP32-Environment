@@ -250,9 +250,17 @@ step 1–3 above; nothing needs re-flashing or re-targeting.
 
 ### The five filters that matter
 
-**1. Only my mesh** (drop the whole campus's Wi-Fi):
+**1. Only my mesh — ALL 8 boards** (drop the whole campus's/library's Wi-Fi in one go):
 ```
-wlan.addr == b0:cb:d8:f3:32:18 || wlan.addr == 20:50:0d:e7:1c:38
+wlan.addr in {b0:cb:d8:f3:32:18, 20:50:0d:e7:1c:38, 20:50:0d:e7:0c:80, f4:2d:c9:73:e6:18,
+              70:4b:ca:25:b7:68, 28:05:a5:32:d7:b4, b4:bf:e9:32:fe:90, b4:bf:e9:34:ed:80}
+```
+*(Wireshark's `in {}` accepts a set of addresses in one filter — much cleaner than chaining 8
+`||`s. Type it as one line; wrapped here only for page width.)*
+
+**Just checking ONE board** (e.g. the practice capture, or isolating one victim):
+```
+wlan.addr == b0:cb:d8:f3:32:18
 ```
 
 **2. ⭐ Real MAC retransmissions** — the thing your dataset does not have:
