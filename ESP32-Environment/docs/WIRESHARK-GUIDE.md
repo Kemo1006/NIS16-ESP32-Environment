@@ -204,6 +204,36 @@ the top is the **display filter**. Type, press Enter.
 | child_10 | `b4:bf:e9:32:fe:90` |
 | child_11 | `b4:bf:e9:34:ed:80` |
 
+**Where this table came from — and when it goes stale:** every MAC above was read directly from
+each board's own telemetry (the `node_id` column every board writes into its own CSV), cross-checked
+against `mesh_config.h`'s compiled `BLACKHOLE_ATTACKER_MAC` and `member_boards.json`. An ESP32's MAC
+is burned into the chip and doesn't change on reflash — **but if you ever physically swap which
+board is root or which is the attacker, this table is wrong for that board**, and any Wireshark
+filter using the old MAC will silently show nothing for it.
+
+**If you swap boards, do this before your next capture:**
+1. `run_wizard.ps1` → **"Identify all boards"** — prints the live COM port + MAC for every board
+2. Update `member_boards.json` (the wizard's member-list submenu does this for you)
+3. Update the filters you're using in Wireshark with the new MAC(s)
+
+⚠️ **Swapping the ATTACKER specifically is the dangerous one, not just for Wireshark.** Victims are
+built with the attacker's MAC compiled in (`BLACKHOLE_ATTACKER_MAC`). Swap in a different physical
+board as the attacker without updating that, and every victim addresses probes to a board that isn't
+there any more — the root logs **zero arrivals in every phase**, PDR and ForwardingRatio come out
+**100% NaN**, and every board still looks perfectly healthy. This exact failure cost two full runs
+before it was diagnosed (sep. 15, sep. 16).
+**Since F2 you don't need to re-flash to fix it** — on each victim, run:
+```
+python tools\export_logs.py --port COMxx --set-attacker-mac <new attacker MAC>
+```
+then power-cycle that victim. The attacker board itself also prints a loud MISMATCH banner at boot
+if a victim is still targeting the wrong MAC, so a stale target is hard to miss once you look.
+
+**Swapping the ROOT is comparatively harmless.** Victims never address the root by a fixed MAC —
+they send with `MESH_DATA_TODS` ("route this to whoever the mesh currently has as root"), which the
+mesh stack resolves automatically. A different physical root board just means a different MAC in
+step 1–3 above; nothing needs re-flashing or re-targeting.
+
 ### The five filters that matter
 
 **1. Only my mesh** (drop the whole campus's Wi-Fi):
