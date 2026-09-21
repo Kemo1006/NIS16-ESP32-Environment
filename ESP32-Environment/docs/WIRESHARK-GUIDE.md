@@ -136,13 +136,33 @@ file in Wireshark.
 
 ### Path C — macOS (fastest if you have a Mac)
 
+Macs are the easy case: the built-in Wi-Fi chip supports monitor mode, and Wireshark's own menus
+can turn it on — no Terminal needed.
+
+**Click-only method:**
+
+1. Install Wireshark on the Mac if it isn't already: [wireshark.org/download.html](https://www.wireshark.org/download.html)
+2. Open Wireshark. On the start screen you'll see a list of interfaces (Wi-Fi, Loopback, etc.)
+3. Click the **little gear/cog icon** next to **Wi-Fi** (or: menu bar → **Capture → Options…**)
+4. In the row for **Wi-Fi: en0**, tick the box under the column labelled **Monitor Mode**
+5. Still in that same Options window, click **Wi-Fi: en0** once to select it, then close the window
+6. Click the blue shark-fin ▶ button (top-left) to start capturing
+7. **Walk near your boards, with the mesh already powered on and running**
+8. Let it run for ~20–30 seconds
+9. Click the red ⏹ square to stop
+10. **File → Save As…** → save it somewhere you'll remember, ending in `.pcapng`
+
+**If step 4 has no "Monitor Mode" column at all** (some macOS versions hide it), use the Terminal
+fallback instead:
 ```bash
 sudo /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport \
      en0 sniff 11
 ```
+Writes a `.cap` into `/tmp/airportSniffXXXX.cap`. Stop with Ctrl-C, then open that file from inside
+Wireshark with **File → Open**.
 
-Writes a `.cap` into `/tmp/airportSniffXXXX.cap`. Stop with Ctrl-C, open in Wireshark. **Done — 30
-seconds of work, no firmware.**
+⚠️ Either way, **you must be physically near the ESP32 boards while capturing** — Wi-Fi doesn't
+reach very far, and Wireshark can only hear frames that reach the Mac's own antenna.
 
 ### Path B — Linux
 
