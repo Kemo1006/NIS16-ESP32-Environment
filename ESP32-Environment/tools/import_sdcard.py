@@ -41,11 +41,35 @@ Naming is NOT reimplemented here — this calls _subdir_for() and _make_filename
 from export_logs.py, so a card import and a USB export produce byte-identical
 filenames and the two can never drift apart.
 
+TWO SOURCES, ONE PIPELINE
+-------------------------
+The card can be read either way, and everything after the read is shared:
+
+    --card E:\\      the card is OUT of the board, in a reader on this laptop
+    --port COM7      the card is STILL IN the board; it is read over USB using
+                     the firmware's LIST_SD / EXPORT_SD_PATH commands
+
+--port exists because pulling a card to see what is on it is the step that
+loses cards, bends holders, and reboots a board mid-campaign. Both modes produce
+the same --list-json shape, the same filenames and the same exports/ layout, so
+the wizard's file picker is one piece of code that does not care which was used.
+
+The two are not quite equals in one respect, and the difference is deliberate.
+Over USB a file's row count comes from the leaf's runs.csv manifest rather than
+from counting the file, because counting means streaming every byte off a 4 MHz
+SPI card before the operator sees a single line (see sd_list_card() in
+csv_logger.c). A file whose manifest is missing reports rows as None —
+"unknown", never 0. The true count is learned when the file is actually
+imported, and a disagreement with the manifest is reported, since that is the
+signature of a capture cut short.
+
 Usage:
     python import_sdcard.py --card E:\\ --repeat 1
     python import_sdcard.py --card E:\\ --repeat 2 --boots 5,6,7 --dry-run
     python import_sdcard.py --card E:\\ --repeat 1 --list-json
     python import_sdcard.py --card E:\\ --repeat 1 --files "blackhole\\linear\\home\\victim_NODE_20500DE70C80_r1_b3_telem.csv"
+    python import_sdcard.py --port COM7 --repeat 1 --list-json
+    python import_sdcard.py --port COM7 --repeat 1 --files "blackhole/linear/home/victim_NODE_20500DE70C80_r1_b3_telem.csv"
 
 NIS16 — CTTHES3
 """
@@ -159,33 +183,42 @@ def _read_manifest(leaf_dir):
     caller treats an absent entry as "unknown", never as "aborted"; a card
     with no manifest at all must keep importing exactly as it always has."""
     path = os.path.join(leaf_dir, "runs.csv")
-    manifest = {}
     if not os.path.isfile(path):
-        return manifest
+        return {}
     try:
         with open(path, "r", encoding="utf-8", errors="replace", newline="") as f:
-            for row in csv.DictReader(f):
-                try:
-                    boot = int(row["boot"])
-                    rows = int(row["rows"])
-                    uptime_s = int(row["uptime_s"])
-                except (KeyError, TypeError, ValueError):
-                    continue  # malformed line (e.g. a write torn by power loss) — skip it
-                entry = manifest.setdefault(
-                    boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None})
-                # Either row of a boot carries the stamp and both say the same
-                # thing (one flash cannot be relinked mid-run), so the first one
-                # that has it wins and a torn/missing field never clears it.
-                if entry["built"] is None:
-                    entry["built"] = _manifest_built(row)
-                if row.get("event") == "clean":
-                    entry["rows"] = rows
-                    entry["uptime_s"] = uptime_s
-                    entry["clean"] = True
-                elif not entry["clean"]:
-                    entry["uptime_s"] = uptime_s
+            return _parse_manifest_lines(f)
     except OSError:
-        pass
+        return {}
+
+
+def _parse_manifest_lines(lines):
+    """The parsing half of _read_manifest(), over any iterable of runs.csv text
+    lines. Split out so the --port path can feed it the manifest the firmware
+    streamed over USB (SDMAN: lines from LIST_SD) and get an identical result —
+    one parser, so the two sources can never disagree about what 'aborted'
+    means."""
+    manifest = {}
+    for row in csv.DictReader(lines):
+        try:
+            boot = int(row["boot"])
+            rows = int(row["rows"])
+            uptime_s = int(row["uptime_s"])
+        except (KeyError, TypeError, ValueError):
+            continue  # malformed line (e.g. a write torn by power loss) — skip it
+        entry = manifest.setdefault(
+            boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None})
+        # Either row of a boot carries the stamp and both say the same
+        # thing (one flash cannot be relinked mid-run), so the first one
+        # that has it wins and a torn/missing field never clears it.
+        if entry["built"] is None:
+            entry["built"] = _manifest_built(row)
+        if row.get("event") == "clean":
+            entry["rows"] = rows
+            entry["uptime_s"] = uptime_s
+            entry["clean"] = True
+        elif not entry["clean"]:
+            entry["uptime_s"] = uptime_s
     return manifest
 
 
@@ -235,7 +268,214 @@ def _row_count(path):
         return max(sum(1 for _ in f) - 1, 0)  # minus the header
 
 
-def _already_imported(dest, rows):
+# ── Card sources ────────────────────────────────────────────────────────────
+# Everything below the source is shared: the same filtering, the same naming,
+# the same duplicate rules, the same output. A source only has to answer three
+# questions — what is on the card, how many rows is this file, and give me its
+# contents — so adding a third way to reach a card later stays cheap.
+
+class _MountedCard:
+    """--card: the card is in a reader on this laptop."""
+
+    kind = "card"
+
+    def __init__(self, root):
+        self.root = root
+        self.label = root
+        self.can_delete = True
+
+    def entries(self):
+        for src, attack_dir, topo_dir, location, m, entry in _scan(self.root):
+            yield os.path.relpath(src, self.root), attack_dir, topo_dir, location, m, entry
+
+    def _abs(self, rel):
+        return os.path.join(self.root, rel)
+
+    def rows(self, rel, entry):
+        return _row_count(self._abs(rel))
+
+    def size(self, rel):
+        try:
+            return os.path.getsize(self._abs(rel))
+        except OSError:
+            return -1
+
+    def live(self, rel):
+        # A card in a reader has no board writing to it, by definition.
+        return False
+
+    def copy_to(self, rel, dest):
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copy2(self._abs(rel), dest)
+        return _row_count(dest)
+
+    def delete(self, rel):
+        os.remove(self._abs(rel))
+
+    def close(self):
+        pass
+
+
+class _BoardCard:
+    """--port: the card is still in the board, read over USB serial.
+
+    One serial connection is held open for the whole invocation: LIST_SD once,
+    then one EXPORT_SD_PATH per file the caller actually wants. The port is
+    opened exactly the way export_logs.py opens it (DTR/RTS deasserted) so
+    connecting does not reset the board and kill its export task."""
+
+    def __init__(self, port):
+        self.port = port
+        self.label = f"{port} (card in the board)"
+        self.can_delete = False   # DELETE_SD_PATH removes FOLDERS, not files
+        self._ser = export_logs._open_port(port)
+        self._files = {}      # rel -> size in bytes
+        self._live = set()    # rel paths the board still has OPEN right now
+        self._manifests = {}  # leaf_rel -> parsed manifest
+        self._scan_board()
+
+    def _scan_board(self):
+        """Issue LIST_SD and parse the SDLIST_BEGIN/SDLEAF/SDMAN/SDFILE frame."""
+        export_logs._drain(self._ser)
+        export_logs._send_command(self._ser, "LIST_SD")
+        deadline = time.time() + _BOARD_LIST_TIMEOUT_S
+        started = False
+        leaf = None
+        man_lines = {}
+        while time.time() < deadline:
+            raw = self._ser.readline()
+            if not raw:
+                continue
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
+            if line.startswith("ERROR:"):
+                raise RuntimeError(f"board refused LIST_SD: {line}")
+            if line == "SDLIST_BEGIN":
+                started = True
+                continue
+            if line == "SDLIST_END":
+                break
+            if not started:
+                continue  # boot chatter before the frame opened
+            deadline = time.time() + _BOARD_LIST_TIMEOUT_S  # progress — extend
+            if line.startswith("SDLEAF:"):
+                leaf = line[len("SDLEAF:"):].strip()
+                man_lines.setdefault(leaf, [])
+            elif line.startswith("SDMAN:") and leaf:
+                man_lines[leaf].append(line[len("SDMAN:"):])
+            elif line.startswith("SDFILE:") and leaf:
+                # SDFILE:<name>|<bytes>|<live>   (live added sep. 22, 2026)
+                # Older firmware sends only <name>|<bytes>, and older still just
+                # <name>. Parse from the RIGHT so a filename containing "|" can
+                # never eat the numeric fields, and default live to 0 = unknown
+                # rather than guessing a run is in progress.
+                body = line[len("SDFILE:"):]
+                parts = body.split("|")
+                name, size, live = body, "-1", "0"
+                if len(parts) >= 3:
+                    name, size, live = "|".join(parts[:-2]), parts[-2], parts[-1]
+                elif len(parts) == 2:
+                    name, size = parts[0], parts[1]
+                try:
+                    size_i = int(size)
+                except ValueError:
+                    size_i = -1
+                rel = f"{leaf}/{name}"
+                self._files[rel] = size_i
+                if live.strip() == "1":
+                    self._live.add(rel)
+        else:
+            raise RuntimeError(
+                "board never finished LIST_SD (no SDLIST_END). Old firmware "
+                "without LIST_SD, or idf.py monitor still holding the port?")
+        if not started:
+            raise RuntimeError(
+                "board did not answer LIST_SD. Reflash it — this needs the "
+                "firmware that added LIST_SD/EXPORT_SD_PATH.")
+        for leaf_rel, lines in man_lines.items():
+            self._manifests[leaf_rel] = _parse_manifest_lines(lines)
+
+    def entries(self):
+        for rel in sorted(self._files):
+            leaf_rel, _, name = rel.rpartition("/")
+            m = _CARD_FILE.match(name)
+            if not m:
+                continue
+            parts = leaf_rel.split("/")
+            if len(parts) != 3:
+                continue
+            attack_dir, topo_dir, location = parts
+            if attack_dir not in _ATTACK_FROM_DIR or topo_dir not in _TOPOLOGY_FROM_DIR:
+                continue
+            manifest = self._manifests.get(leaf_rel) or {}
+            entry = manifest.get(int(m.group("boot"))) if manifest else None
+            yield rel, attack_dir, topo_dir, location, m, entry
+
+    def rows(self, rel, entry):
+        """Manifest rows, or None for "unknown" — see the module docstring for
+        why this does not count the file. None for an ABORTED boot too: its
+        manifest never received a final count, so 0 there would be a lie.
+
+        None for an ARRIVALS file as well, whatever the manifest holds.
+        runs.csv's "rows" column is the TELEMETRY count for that boot
+        (csv_logger_close() reports s_total_rows); a root's arrivals.csv shares
+        the boot, and therefore the manifest row, while counting a completely
+        different thing. Handing that number back would print a telemetry count
+        beside an arrivals file in the picker, and — worse — give
+        _already_imported() a disambiguator that can never match the file's real
+        count, so re-importing a root over USB copied a duplicate every time
+        instead of skipping it. "Unknown" is the honest answer, and it makes
+        _already_imported() fall back to its identity-only match, which does
+        catch the duplicate. The mounted-card path is unaffected: it counts the
+        file itself. The same telem/arrivals conflation is guarded at the
+        manifest-mismatch check in the import loop — keep the two in step."""
+        if entry is None or not entry["clean"]:
+            return None
+        m = _CARD_FILE.match(os.path.basename(rel))
+        if m and m.group("kind") != "telem":
+            return None
+        return entry["rows"]
+
+    def size(self, rel):
+        return self._files.get(rel, -1)
+
+    def live(self, rel):
+        """True if the board still has this file OPEN — a run in progress.
+        See sd_is_live_mirror() in csv_logger.c for why this is not the same
+        thing as "aborted", even though runs.csv cannot tell them apart."""
+        return rel in self._live
+
+    def copy_to(self, rel, dest):
+        rows, err, _tries = export_logs._capture_with_retries(
+            self._ser, f"EXPORT_SD_PATH={rel}")
+        if err:
+            raise RuntimeError(err)
+        if not rows:
+            raise RuntimeError("board streamed no rows")
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        export_logs._save(rows, dest)
+        return _row_count(dest)
+
+    def delete(self, rel):
+        raise RuntimeError(
+            "--delete-source is not available over --port: the firmware's "
+            "DELETE_SD_PATH removes whole folders, never single files. Pull the "
+            "card, or use the wizard's 'delete a folder from the card' option.")
+
+    def close(self):
+        try:
+            self._ser.close()
+        except Exception:
+            pass
+
+
+# LIST_SD walks up to 48 leaf folders and reads a manifest in each, so the
+# first line can be slow to arrive; the timeout restarts on every line received.
+_BOARD_LIST_TIMEOUT_S = 30
+
+
+def _already_imported(dest, rows):   # noqa: D401 — docstring below is the spec
     """Returns the matching filename if a capture with the same run identity
     (role, node, topology, attack, repeat, kind) AND the same row count
     already sits in the destination folder — i.e. this exact capture was
@@ -255,13 +495,23 @@ def _already_imported(dest, rows):
     match with a DIFFERENT row count is a different boot that happens to
     share a repeat number (let it through as an additional file —
     preprocess.py already concatenates every file in a leaf folder for one
-    node, so this is more data for that repeat, not a corruption risk)."""
+    node, so this is more data for that repeat, not a corruption risk).
+
+    rows may be None when the row count is not known yet — the --port path,
+    where counting a file would mean streaming it off the card first (see the
+    module docstring). The disambiguator is then unavailable, so this falls back
+    to an IDENTITY-only match and the caller is told it is a likely, not
+    certain, duplicate. Erring toward "you have probably already got this"
+    matches the mounted-card behaviour for the operator, and the file is still
+    importable by naming it explicitly in --files."""
     folder, name = os.path.split(dest)
     if not os.path.isdir(folder):
         return None
     head, _date, _time, kind = name.rsplit("_", 3)
     for existing in sorted(os.listdir(folder)):
         if existing.startswith(head + "_") and existing.endswith("_" + kind):
+            if rows is None:
+                return existing
             if _row_count(os.path.join(folder, existing)) == rows:
                 return existing
     return None
@@ -361,7 +611,7 @@ def _dest_args_for(m, attack_dir, topo_dir, location, roster, args):
     )
 
 
-def _describe(src, attack_dir, topo_dir, location, m, entry, roster, args):
+def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, args):
     """One --list-json entry: everything a picker needs to show a file and hand
     it back for import.
 
@@ -373,14 +623,25 @@ def _describe(src, attack_dir, topo_dir, location, m, entry, roster, args):
     existed, which reads as "unknown", never as "old".
 
     "rel" is the identifier: pass it straight back in --files to import exactly
-    this file."""
-    rows = _row_count(src)
+    this file.
+
+    "rows" is None when the source cannot answer cheaply (the --port path — see
+    the module docstring). A picker must render that as "unknown", never as 0:
+    0 rows is a real and meaningful state on this project (it is what a
+    reset-interrupted capture used to look like before the fsync fix in
+    csv_logger.c) and the two must not be confused.
+
+    "bytes" is -1 when unknown. It is the --port path's stand-in for a row
+    count: it always comes back, and a file whose size is plainly too small is
+    the same warning sign a row count would have been."""
+    rows = source.rows(rel, entry)
+    size = source.size(rel) if hasattr(source, "size") else -1
     dest = export_logs._make_filename(
         _dest_args_for(m, attack_dir, topo_dir, location, roster, args),
         m.group("kind"))
     return {
-        "rel": os.path.relpath(src, args.card),
-        "name": os.path.basename(src),
+        "rel": rel,
+        "name": os.path.basename(rel),
         "attack": attack_dir,
         "topology": topo_dir,
         "location": location,
@@ -390,6 +651,13 @@ def _describe(src, attack_dir, topo_dir, location, m, entry, roster, args):
         "run": int(m.group("run")) if m.group("run") else None,
         "kind": m.group("kind"),
         "rows": rows,
+        "bytes": size,
+        # True = the board is writing to this file RIGHT NOW (run in progress).
+        # Distinct from clean=False, which cannot tell "still going" from "died".
+        "live": source.live(rel) if hasattr(source, "live") else False,
+        # Where this listing came from, so a picker can label itself and can
+        # explain WHY rows may be unknown without guessing.
+        "source": getattr(source, "kind", "card"),
         # None = no manifest for this boot at all ("unknown"); False = the
         # manifest positively says it started and never closed cleanly.
         "clean": None if entry is None else bool(entry["clean"]),
@@ -398,7 +666,7 @@ def _describe(src, attack_dir, topo_dir, location, m, entry, roster, args):
         # identity AND row count) is sitting in exports/ — so the picker can say
         # so before the operator picks it again.
         "already": _already_imported(dest, rows),
-        "archived": os.path.basename(os.path.dirname(src)) == "_archive",
+        "archived": os.path.basename(os.path.dirname(rel)) == "_archive",
     }
 
 
@@ -407,9 +675,16 @@ def main():
         description="Copy a pulled SD card's CSVs into exports/.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--card", required=True,
-                   help=r"Card root, e.g. E:\ — the folder holding baseline/, "
-                        r"blackhole/, wormhole/.")
+    src = p.add_mutually_exclusive_group(required=True)
+    src.add_argument("--card", default=None,
+                     help=r"Card root, e.g. E:\ — the folder holding baseline/, "
+                          r"blackhole/, wormhole/. Use this when the card has "
+                          r"been pulled and put in a reader.")
+    src.add_argument("--port", default=None,
+                     help="Serial port of a RUNNING board, e.g. COM7 — read its "
+                          "SD card over USB instead, leaving the card in place. "
+                          "Needs firmware with LIST_SD/EXPORT_SD_PATH. Close "
+                          "idf.py monitor first; the port can only be held once.")
     p.add_argument("--repeat", required=True, type=int,
                    help="Repeat number for this run. The board cannot know it; "
                         "it must match the run_ledger.csv entry.")
@@ -464,27 +739,63 @@ def main():
                    help="Show what would be copied and exit.")
     args = p.parse_args()
 
-    if not os.path.isdir(args.card):
+    if args.card and not os.path.isdir(args.card):
         return f"ERROR: --card path not found: {args.card}"
+    if args.port and args.delete_source:
+        return ("ERROR: --delete-source cannot be used with --port. The "
+                "firmware can only delete whole card FOLDERS (DELETE_SD_PATH), "
+                "never single files, so there is no safe per-file removal over "
+                "USB. Pull the card if you need to free it.")
 
-    wanted_boots = None
-    if args.boots:
-        try:
-            wanted_boots = {int(b) for b in args.boots.split(",") if b.strip()}
-        except ValueError:
-            return f"ERROR: --boots must be comma-separated integers, got: {args.boots}"
+    try:
+        source = _MountedCard(args.card) if args.card else _BoardCard(args.port)
+    except Exception as e:                       # serial, or a board that can't list
+        return f"ERROR: could not read the card: {e}"
 
-    # Compared case- and separator-normalised: these come back from a picker in
-    # PowerShell, and a card path spelled blackhole\linear\home\x.csv must match
-    # the same file scanned as blackhole/linear/home/x.csv.
-    wanted_files = None
-    if args.files:
-        wanted_files = {os.path.normcase(os.path.normpath(f.strip()))
-                        for f in args.files.split(",") if f.strip()}
-        if not wanted_files:
-            return f"ERROR: --files was given but named nothing: {args.files}"
+    try:
+        return _run(source, args)
+    finally:
+        source.close()
 
-    found = list(_scan(args.card))
+
+def _parsed_boots(args):
+    """A set of boot numbers, None for "every boot", or an ERROR string."""
+    if not args.boots:
+        return None
+    try:
+        return {int(b) for b in args.boots.split(",") if b.strip()}
+    except ValueError:
+        return f"ERROR: --boots must be comma-separated integers, got: {args.boots}"
+
+
+def _parsed_files(args):
+    """A set of normalised card-relative paths, None for "every file", or an
+    ERROR string.
+
+    Compared case- and separator-normalised: these come back from a picker in
+    PowerShell, and a card path spelled blackhole\\linear\\home\\x.csv must match
+    the same file listed as blackhole/linear/home/x.csv — which is exactly what
+    the --port path reports, since the firmware speaks in forward slashes."""
+    if not args.files:
+        return None
+    wanted = {os.path.normcase(os.path.normpath(f.strip()))
+              for f in args.files.split(",") if f.strip()}
+    if not wanted:
+        return f"ERROR: --files was given but named nothing: {args.files}"
+    return wanted
+
+
+def _run(source, args):
+    """Everything from here down is source-agnostic — see the module docstring.
+    Split out of main() only so the caller can guarantee source.close()."""
+    wanted_boots = _parsed_boots(args)
+    wanted_files = _parsed_files(args)
+    if isinstance(wanted_boots, str):
+        return wanted_boots
+    if isinstance(wanted_files, str):
+        return wanted_files
+
+    found = list(source.entries())
     roster = _load_roster(args.roster) if args.roster else {}
 
     # Listing runs before the "nothing found" error below: an empty card is a
@@ -493,8 +804,8 @@ def main():
     # surface a traceback-shaped error for a card that is simply already clear.
     if args.list_json:
         print(json.dumps([
-            _describe(src, attack_dir, topo_dir, location, m, entry, roster, args)
-            for src, attack_dir, topo_dir, location, m, entry in found
+            _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, args)
+            for rel, attack_dir, topo_dir, location, m, entry in found
         ]))
         return 0
 
@@ -505,18 +816,16 @@ def main():
                 "  the SD mirror existed, or location.txt was missing/unrecognised —\n"
                 "  check the status_NODE_*.txt report or LOCATION_MISSING.txt on the card.")
 
-    copied = skipped = filtered_out = aborted_skipped = 0
+    copied = skipped = filtered_out = aborted_skipped = failed = live_skipped = 0
     deleted = delete_failed = 0
     used_this_run = set()  # see _make_unique_filename() — guards against a
                             # same-second destination collision across boots
-    for src, attack_dir, topo_dir, location, m, entry in found:
+    for rel, attack_dir, topo_dir, location, m, entry in found:
         boot = int(m.group("boot"))
 
         if wanted_boots is not None and boot not in wanted_boots:
             filtered_out += 1
             continue
-
-        rel = os.path.relpath(src, args.card)
 
         # --files is the picker's counterpart to --boots: same "not for this
         # invocation" outcome, one file at a time instead of a whole boot.
@@ -532,6 +841,20 @@ def main():
         # or a manifest-less card) — "unknown", not "aborted", and imported as
         # before. entry["clean"] is False only when we POSITIVELY know this
         # boot's manifest shows a start with no matching clean.
+        # A file the board still has OPEN is NOT aborted — the run simply has not
+        # finished. Importing it now yields a truncated capture that looks like a
+        # real one, so this is refused outright rather than hidden behind
+        # --include-aborted, which exists for genuinely dead runs — a different
+        # thing. Let the run reach TERMINATE, then export.
+        if hasattr(source, "live") and source.live(rel):
+            print(f"  SKIP  {rel}")
+            print(f"        {run_tag}boot {boot} is STILL BEING WRITTEN"
+                  f" - this board is mid-run.")
+            print( "        Let it reach TERMINATE (or reset it), then export."
+                   " Importing now captures a partial run that looks complete.")
+            live_skipped += 1
+            continue
+
         if entry is not None and not entry["clean"] and not args.include_aborted:
             print(f"  SKIP  {rel}\n"
                   f"        {run_tag}boot {boot} ABORTED (runs.csv: started, never "
@@ -540,7 +863,11 @@ def main():
             continue
 
         dest_args = _dest_args_for(m, attack_dir, topo_dir, location, roster, args)
-        rows = _row_count(src)
+        # None over --port (see the module docstring): reported as "?" rather
+        # than 0, because 0 rows is a real state on this project and the two
+        # must never look the same in the operator's output.
+        rows = source.rows(rel, entry)
+        rows_txt = "?" if rows is None else str(rows)
         status = f", {run_tag.rstrip(', ')}" if run_tag else ""
         if entry is not None:
             status += (f", manifest: {entry['rows']} rows / {entry['uptime_s']}s, "
@@ -557,12 +884,36 @@ def main():
             continue
 
         print(f"  {'WOULD COPY' if args.dry_run else 'COPY'}  {rel}  "
-              f"({rows} rows{status})\n        -> {os.path.relpath(dest, args.outdir)}")
+              f"({rows_txt} rows{status})\n        -> {os.path.relpath(dest, args.outdir)}")
         if not args.dry_run:
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            shutil.copy2(src, dest)   # copy first, always: the card copy is only
-                                      # released below, and only once verified
+            # copy_to() copies a mounted card's file, or streams it off the
+            # board over USB — either way the source is untouched and only
+            # released below, and only once verified.
+            try:
+                written = source.copy_to(rel, dest)
+            except Exception as e:
+                failed += 1
+                print(f"        FAILED: {e}")
+                continue
             copied += 1
+
+            # Over --port the MANIFEST's row count was all we had until now;
+            # this is the first moment the real one is known. A mismatch means
+            # the file on the card disagrees with what the firmware recorded for
+            # that boot — a capture cut short, or a manifest written for a file
+            # that kept growing. Worth saying out loud: it is the same shape as
+            # the zero-rows failure the fsync fix in csv_logger.c addresses.
+            # ONLY meaningful for telemetry: runs.csv's "rows" column is the
+            # TELEMETRY row count for that boot (csv_logger_close() reports
+            # s_total_rows). A root's arrivals.csv shares the same boot and so
+            # the same manifest row, but counts a completely different thing —
+            # comparing the two would fire a bogus "mismatch" on every single
+            # root export and teach the operator to ignore a real warning.
+            is_telem = m.group("kind") == "telem"
+            if is_telem and rows is not None and written != rows:
+                print(f"        NOTE: got {written} rows, manifest said {rows}")
+            elif is_telem and rows is None:
+                print(f"        {written} rows (no manifest to compare against)")
 
             # --delete-source frees a reused card so last month's captures can't
             # be dragged into an exports folder again (the failure this whole
@@ -572,13 +923,14 @@ def main():
             # leaves the card file exactly where it was and says so.
             if args.delete_source:
                 try:
-                    if os.path.isfile(dest) and _row_count(dest) == rows:
-                        os.remove(src)
+                    if os.path.isfile(dest) and written > 0 and (
+                            rows is None or written == rows):
+                        source.delete(rel)
                         deleted += 1
                     else:
                         delete_failed += 1
                         print(f"        KEPT on card: copy did not verify "
-                              f"(expected {rows} rows)")
+                              f"(expected {rows_txt} rows, got {written})")
                 except OSError as e:
                     delete_failed += 1
                     print(f"        KEPT on card: {e}")
@@ -589,21 +941,28 @@ def main():
         which = "/".join(f for f, on in (("--boots", wanted_boots is not None),
                                          ("--files", wanted_files is not None)) if on)
         tail.append(f"{filtered_out} outside {which}")
+    if live_skipped:
+        tail.append(f"{live_skipped} STILL RUNNING")
     if aborted_skipped:
         tail.append(f"{aborted_skipped} aborted")
     if skipped:
         tail.append(f"{skipped} already imported")
+    if failed:
+        tail.append(f"{failed} FAILED")
     tail_str = (" (" + ", ".join(tail) + ")") if tail else ""
     if args.dry_run:
         print(f"Dry run: {len(found)} file(s) found{tail_str}.")
     else:
-        print(f"Imported {copied} file(s) into {args.outdir}{tail_str}.")
+        print(f"Imported {copied} file(s) from {source.label} "
+              f"into {args.outdir}{tail_str}.")
         if args.delete_source:
             print(f"Removed {deleted} verified file(s) from the card"
                   + (f"; {delete_failed} kept (did not verify)." if delete_failed else "."))
         else:
             print("The card was not modified - erase it only after you have checked "
                   "the imported rows.")
+    if failed:
+        return 1
     return 0
 
 

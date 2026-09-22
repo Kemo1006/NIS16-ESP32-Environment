@@ -1008,3 +1008,142 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   ⚠️ Worse on a machine with a longer username (measured 265 chars on Angelo Calpoporo's, sep. 17).
   ✅ **Mitigation CONFIRMED WORKING sep. 20** on that same machine: short `-B` names build all 6 variants
   clean (`bh1`,`bv1`,`wa1`,`wb1`,`rb1`,`rn1`). Unapplied alternative: `LongPathsEnabled=1` (needs admin).
+
+## Rolled from MEMORY.md — sep. 22, 2026 (cap pressure; both entries are CLOSED)
+
+- sep. 20, 2026 — **SCOPE SETTLED by the user: "TinyTrust / Collaborative TinyML IDS" is DROPPED** — it came
+  from an externally-suggested (ChatGPT) prompt template, not the adviser or panel. The thesis is and stays
+  *Cross-Layer Dataset Design and Exploratory Analysis of ESP32-Based ESP-WIFI-MESH Network*, which does NOT
+  implement an IDS and excludes Sybil (§1.4.1). Risk R1 CLOSED. Two attacks only: blackhole + wormhole.
+  ⚠️ The user's prompt template still says "our thesis is focused on intrusion detection" — template
+  residue, do not act on it.
+- sep. 20, 2026 — Scope evidence: "TinyTrust"/"TinyML"/"intrusion detection system" appear ZERO times in the
+  approved proposal or this repo (grep); the abstract says "Rather than implementing a real-time IDS".
+- sep. 20, 2026 — **Attacker placement is not topological.** Valid chain of 8, but the attacker sits at
+  **layer 7 of 8** — ONE victim downstream, five UPSTREAM, so those five send probes DOWN the chain and it
+  relays them back UP. The attack works; the traffic pattern is not one a real forwarding adversary produces.
+  The panel's "deployment appears random", made concrete. F2 (done) makes moving it cheap; **C7 Option 1 is
+  what would make position actually mean something.** (C7 Option 1 shipped sep. 21 as D-12.)
+- sep. 20, 2026 — **Five pre-fix diagnostics** (full text was already here); the three load-bearing parts
+  were carried forward into MEMORY.md as a compact pointer on sep. 22.
+
+## Rolled from MEMORY.md — sep. 22, 2026 (cap pressure; compact pointers left behind)
+
+- sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; sources ALREADY in our bibliography.**
+  **Khan et al. (2022), Sustainability 14(24):16630** — its ESP32+ESP-MESH air-quality nodes sit "at a
+  different location on a COLLEGE CAMPUS". Cite: 120 s reporting interval; baseline PDR >97%, loss
+  <1.8% — our corrected 0.998±0.025 lands INSIDE their range (a validation result). Karlof & Wagner
+  (2003) = the "target deployment" cite. ⇒ **The gap is a measured floor plan + a declared traffic
+  profile, NOT literature.** ⚠️ Zhukabayeva's "4-storey office building" detail is unverified.
+- sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00).** Every dependent variable is
+  network-layer and none depends on payload bytes ⇒ network behaviour MUST be real (it is); sensor
+  VALUES may be synthetic; placement/RF context must be real AND RECORDED (the actual gap). The paper
+  needs ONE paragraph stating measured vs generated. ⚠️ Do NOT slow the probe to 120 s — PDR
+  resolution is probes-per-window; keep 1 Hz as the declared measurement instrument.
+- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255.** A node that has not heard a broadcast
+  RECORDS that instead of claiming baseline. ⚠️ **Host handling is NOT optional**: 255 is non-zero, so the
+  phase-exit anchor would otherwise treat a node's FIRST window as its exit. Handled in
+  `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
+  **v1 and v2 give IDENTICAL segments**. Run `python test_segments.py` (no pytest here). Why: mesh_config.h.
+- sep. 20, 2026 — `member_boards.json` had **child_8/child_10 transposed** (child_8 listed B4:90, actually
+  70:68). Corrected against the boards' own telemetry — the export filename carries the nickname the board
+  reports for itself and column 2 its MAC, so the boards are ground truth. Every other entry verified.
+- sep. 20, 2026 — **P5 `analysis/leakage.py`** = C7 Option 3 (exclude role-gated features from model
+  inputs, with a written reason per column). **Superseded in part by C7 Option 1** — see the sep. 21
+  dataset-aware entry above; full original text in ARCHIVE.md.
+- sep. 20, 2026 — Audit report Rev 3: https://claude.ai/artifact/RGB3RTXvfK7yzK9erEFNzE · the sep. 18 tooling batch + the sep. 16 root-as-blackhole-attacker proposal are in ARCHIVE.md; live threads carried in STATUS.md.
+
+## Rolled from MEMORY.md — sep. 22, 2026 (drive move pushed the cap)
+
+- sep. 20, 2026 — **Pre-fix diagnostics (full text in ARCHIVE.md).** Load-bearing: (a) ⚠️ **re-run M6→M7 on
+  ANY cell analysed before sep. 20** (WINDOW_SECONDS bug); (b) **quotable blackhole proof** — root arrivals
+  **6.07/s → 0/s → 6.01/s**, attacker forwarded 2605/2600 baseline vs **1/1020** attack; (c) **Table 3.4's
+  predicted victim-retransmission increase is a pre-registered MISS — REPORT it, do NOT edit the table.**
+- sep. 20, 2026 — **Testbed scenario is EVIDENCE-BACKED, sources already in our bibliography** (Khan
+  et al. 2022, Sustainability 14(24):16630 — campus ESP32+ESP-MESH, baseline PDR >97%; our 0.998±0.025
+  lands inside it). ⇒ **The gap is a measured floor plan + declared traffic profile, NOT literature.**
+  Full cites in ARCHIVE.md.
+- sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00):** network behaviour MUST be real (it is),
+  sensor VALUES may be synthetic, placement/RF context must be real AND RECORDED. ⚠️ Do NOT slow the probe
+  to 120 s — keep 1 Hz as the declared measurement instrument. Full entry in ARCHIVE.md.
+- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255** — a node that heard no broadcast RECORDS
+  that instead of claiming baseline. ⚠️ **Host handling is NOT optional** (255 is non-zero). Handled in
+  `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
+  v1/v2 give IDENTICAL segments (`python test_segments.py`, no pytest here). Full entry in ARCHIVE.md.
+- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (the team could
+  not read them). Key points: **NaN ≠ 0** (NaN = nothing to measure; 0.001 = measured, almost nothing
+  got through); RSSI dBm negative, **closer to zero = stronger**, and `0` is the no-parent
+  placeholder; `*_delta` = rise in THAT window; **`z` = how many normal wobbles from normal**
+  (1.001 ÷ 0.025 ≈ 40), threshold 3 from Zhukabayeva 2025 so the bar isn't self-serving.
+- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not from counting the file.** Picker shows
+  **`rows unknown (<size>)`**; **`?` NEVER renders as `0`** — 0 rows is a REAL state (what D-13 looked like).
+  Mismatch on import prints `NOTE: got N rows, manifest said M` = a capture cut short.
+- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.**
+  Shared `probe_relay.{h,c}`; victims send to their PARENT (`MESH_DATA_P2P`); **the attacker runs the
+  SAME relay and differs by ONE boolean callback**. ⚠️ **This IMPLEMENTS the paper** (§3.1.3.2
+  mandates it; Table 4.2 already specified the counters) — **the old TODS behaviour was the
+  deviation**. ⛔ **CONFLICTS WITH THE SIGNED MILESTONE FORM; adviser sign-off required** — every
+  milestone CRITERION still passes, only the mechanism changed. Fixes panel 2:40-4:50 at the root.
+  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale + the conflict: D-12.
+
+## Rolled from MEMORY.md — sep. 22, 2026 (trim-fix entry pushed the cap)
+
+
+## Rolled from MEMORY.md — sep. 22, 2026 (resolved sep. 20 reference entries)
+
+- sep. 20, 2026 — `analyze.ps1 -Verify` = **three exit-code-checked gates** (integrity → topology → attack);
+  NOT-CONFIRMED after a failed gate reads **INCONCLUSIVE, not a negative result**.
+- sep. 20, 2026 — `member_boards.json` child_8/child_10 were **transposed**; corrected against the boards'
+  own telemetry (**the boards are ground truth**). Every other entry verified. Details in ARCHIVE.md.
+- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md`**: per-role meaning of every column; **no column holds an
+  802.11 MAC retry**. **Read it before writing schema text.**
+- sep. 20, 2026 — **Testbed scenario EVIDENCE-BACKED** (Khan 2022, Sustainability 14(24):16630 — campus
+  ESP-MESH, PDR >97%; ours 0.998±0.025 sits inside). ⇒ gap is a floor plan + traffic profile, NOT literature.
+- sep. 20, 2026 — **"Realistic data" resolved:** network behaviour real, sensor VALUES may be synthetic,
+  placement/RF RECORDED. ⚠️ Do NOT slow the probe to 120 s — 1 Hz is the declared instrument.
+- sep. 20, 2026 — **P1/P2/P3 analysis fixes applied + verified (ARCHIVE.md).** Sigma still 3;
+  `BASELINE_FLOOR` RAISED 0.50→0.90. Audit report Rev 3 link is in ARCHIVE.md.
+- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255**; a node hearing no broadcast RECORDS that,
+  never "baseline". ⚠️ Host handling NOT optional. `analysis/test_segments.py` proves v1/v2 identical.
+- sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (NVS; `export_logs.py --set/--get/--clear-
+  attacker-mac`, next boot). ⚠️ Since C7 Option 1 this is **bookkeeping only** — victims no longer target it.
+- sep. 20, 2026 — **P5 `analysis/leakage.py`** = C7 Option 3 (exclude role-gated features, reason per
+  column). **Superseded in part by C7 Option 1** — see the sep. 21 dataset-aware entry above.
+
+## Rolled from STATUS.md — sep. 22, 2026 (cap pressure)
+
+- sep. 21, 2026 — **C7 Option 1 (D-12)** + `probe_relay.{h,c}`; `leakage.py` dataset-aware.
+  (full D-12 detail already in ARCHIVE.md and docs/issue_logs/thesis-deviate.md.)
+
+## Rolled from MEMORY.md - sep. 22, 2026 (export-fix batch needed room)
+
+- sep. 20, 2026 — **Resolved sep. 20 reference entries moved to ARCHIVE.md**: `analyze.ps1 -Verify`'s three
+  exit-code gates (a NOT-CONFIRMED after a failed gate = **INCONCLUSIVE, not negative**), the
+  `member_boards.json` child_8/child_10 transposition (**boards are ground truth**),
+  `docs/DATA-DICTIONARY.md` (**read before writing schema text**), the evidence-backed testbed
+  scenario, the "realistic data" resolution (⚠️ keep the probe at **1 Hz**), and P1/P2/P3
+  (sigma still 3; `BASELINE_FLOOR` raised 0.50→0.90).
+- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file.** Picker shows
+  **`rows unknown (<size>)`**; **`?` NEVER renders as `0`**. Import mismatch prints `NOTE: got N rows, manifest said M`.
+- sep. 22, 2026 — **`--delete-source` REFUSED with `--port`**: `DELETE_SD_PATH` removes FOLDERS, not files; the picker's `d` is hidden in board mode.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (line cap)
+Pointer entries; the full text they point to is already elsewhere in this file. Kept for their
+still-load-bearing annotations.
+
+- sep. 20, 2026 — **F1 `=255` / F2 runtime attacker-MAC / P5 `leakage.py`** — full entries in ARCHIVE.md.
+  Still load-bearing: F1's 255 sentinel means host handling is **NOT optional**; F2 is **bookkeeping only**
+  since C7 Option 1; P5 is partly superseded by C7 Option 1.
+- sep. 20, 2026 — **Settled sep. 20 reference entries are in ARCHIVE.md** (analyze.ps1 -Verify gates =
+  INCONCLUSIVE not negative; member_boards transposition; DATA-DICTIONARY; testbed evidence; keep probe
+  at **1 Hz**; P1/P2/P3 sigma 3, BASELINE_FLOOR 0.90).
+
+- sep. 20, 2026 — **SCOPE SETTLED, risk R1 CLOSED: no IDS, no TinyML, no Sybil** — two attacks only
+  (blackhole + wormhole). ⚠️ The user's prompt template still says "our thesis is focused on intrusion
+  detection" — template residue, do NOT act on it. Full entry + grep evidence in ARCHIVE.md.
+- sep. 20, 2026 — **Pre-fix diagnostics (ARCHIVE.md).** (a) ⚠️ re-run M6→M7 on ANY cell analysed before
+  sep. 20; (b) blackhole proof: root arrivals **6.07/s → 0/s → 6.01/s**, attacker **1/1020** vs 2605/2600;
+  (c) Table 3.4's victim-retransmission rise is a pre-registered **MISS — REPORT it, don't edit the table.**
+- sep. 20, 2026 — ⚠️ **Attacker PLACEMENT still matters post-C7:** an attacker at the far end of a chain
+  intercepts nothing, because it only drops what transits it. Full entry in ARCHIVE.md; the operational
+  warning lives in `run_wizard.ps1` and `docs/EXPECTED-RESULTS.md`.

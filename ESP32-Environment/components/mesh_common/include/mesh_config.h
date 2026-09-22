@@ -502,6 +502,26 @@
 /** Flush to flash after this many records (thesis spec: every 10). */
 #define LOGGER_FLUSH_RECORDS    10U
 
+/** Milliseconds between fsync()s of the SD-card mirror files.
+ *
+ *  fflush() is NOT enough to make a mirrored row survive a reset. It pushes the
+ *  stdio buffer through FatFs's f_write(), which allocates clusters and writes
+ *  the data — but the file's DIRECTORY ENTRY (its recorded size) is only updated
+ *  by f_sync()/f_close(), i.e. by fsync() or fclose() on the host side of the
+ *  VFS. A board that browns out, is reset, or has its card pulled before
+ *  csv_logger_close() runs therefore leaves a card file whose directory entry
+ *  still says 0 bytes: the rows are physically on the card but unreachable, and
+ *  every host-side tool counts the file as ZERO ROWS. That is the "sometimes we
+ *  get 0 rows off the SD card" failure — see sd_mirror_sync() in csv_logger.c.
+ *
+ *  Deliberately TIME-based, not row-based: the analysis grid has already moved
+ *  1 Hz -> 10 Hz once (D-9), and a row-count cadence silently changes meaning
+ *  with it. Deliberately COARSER than LOGGER_FLUSH_RECORDS: each sync costs a
+ *  FAT + directory write on a 4 MHz SPI card, and the logger's hot path has
+ *  starved telemetry before when per-row flush cost grew (I-016/I-017). 5 s
+ *  bounds worst-case loss to ~5 s of rows instead of the whole run. */
+#define LOGGER_SD_SYNC_INTERVAL_MS  5000
+
 /** Maximum CSV file size per run before log rotation (bytes). Not currently
  *  enforced by csv_logger.c (no rotation logic implemented) — this is
  *  aspirational sizing only. Raised alongside the 20 Hz sampling change

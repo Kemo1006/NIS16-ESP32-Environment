@@ -196,7 +196,21 @@ esp_err_t csv_logger_close(void);
  *   EXPORT_ARRIVALS — streams the arrivals CSV (root only)
  *   DELETE_LOGS    — deletes both files
  *   ARCHIVE_SD     — archives this boot's SD mirror CSVs (see csv_logger_archive_sd_now())
- *   LIST_FILES     — lists both file paths
+ *   LIST_FILES     — lists both live file paths, each with its size and row
+ *                    count: FILE:<path>|<bytes>|<rows>
+ *   LIST_SD        — READ-ONLY listing of the whole SD card, so a laptop can
+ *                    see what the card holds WITHOUT the card being pulled.
+ *                    Framed SDLIST_BEGIN / SDLEAF: / SDMAN: / SDFILE: /
+ *                    SDLIST_END; reports sizes, never row counts (see
+ *                    sd_list_card() for why).
+ *                    SDFILE:<name>|<bytes>|<live>  — <live> is 1 when THIS boot
+ *                    still has that file open, i.e. the run is in progress. It
+ *                    exists because runs.csv cannot tell "still running" from
+ *                    "aborted" (neither has a clean row), and calling a live
+ *                    capture ABORTED sent operators chasing a fault that was
+ *                    not there. See sd_is_live_mirror()
+ *   EXPORT_SD_PATH=<attack>/<topology>/<location>/<file.csv> — streams one
+ *                    file off the CARD, framed exactly like EXPORT_LOGS
  *   DELETE_SD_PATH=<attack>/<topology>/<location> — PERMANENTLY deletes that
  *                    SD card folder and everything under it
  */

@@ -67,6 +67,12 @@ static char  s_sd_arrivals_path[192] = {0};
 static bool  s_sd_log_failed      = false;  /* latched: don't retry every row */
 static bool  s_sd_arrivals_failed = false;
 
+/* esp_timer_get_time() at the last sd_mirror_sync_due(). 0 = never synced this
+ * boot, which makes the first call sync immediately — that is deliberate: it
+ * gets a NON-ZERO size into the directory entry as early as possible, so even a
+ * run that dies seconds in leaves a card file the host can still read. */
+static int64_t s_sd_last_sync_us = 0;
+
 /* sd_status_run_dir() goes NULL the moment csv_logger_close() unmounts the
  * card (sd_status_unmount() clears its own s_run_dir along with it) — but
  * csv_logger_archive_sd_now() runs from the serial export task, AFTER close()
@@ -509,6 +515,240 @@ static sd_delete_result_t sd_delete_rel_path(const char *rel, int *files_removed
     return result;
 }
 
+/* ── LIST_SD / EXPORT_SD_PATH — reading the card over USB ─────────────────
+ *
+ * These exist so the "export straight off the board" path in run_wizard.ps1 can
+ * show the SAME file list the pulled-card path shows, without anyone unseating
+ * a card. They are strictly READ-ONLY; the one destructive card command remains
+ * DELETE_SD_PATH above.
+ *
+ * Note what LIST_SD deliberately does NOT do: count rows. Counting means
+ * reading every byte of every file, and a full 800 KB telemetry file off a
+ * 4 MHz SPI card takes seconds — times every file on the card, that is minutes
+ * of listing before the operator sees anything. Instead it reports each file's
+ * SIZE (free, from stat()) and streams each leaf's runs.csv manifest verbatim,
+ * which already carries the per-boot row count the firmware recorded. The host
+ * joins the two by boot number using the same parsing it already uses for a
+ * mounted card, and learns the TRUE row count when it actually streams a file —
+ * at which point a disagreement with the manifest is itself a useful signal
+ * (a truncated or reset-interrupted capture). */
+
+/* Size in bytes and DATA-row count (header excluded) of a file, for the
+ * LIST_FILES reply. Either output is -1 if the file cannot be read at all, and
+ * rows is -1 rather than 0 for an unreadable file so the host can tell "empty"
+ * from "unknown" — the same distinction the card listing draws. */
+static void spiffs_file_stats(const char *path, long *bytes, long *rows)
+{
+    *bytes = -1;
+    *rows  = -1;
+    if (!path || path[0] == '\0') {
+        return;
+    }
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        *bytes = (long)st.st_size;
+    }
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        return;
+    }
+    /* Block reads, not fgetc(): a full telemetry file is ~800 KB and this now
+     * sits on the interactive path (the wizard's picker waits on it), so the
+     * per-character call overhead is worth avoiding. 512 B keeps it off the
+     * export task's 6 KB stack. */
+    static char buf[512];
+    long lines = 0;
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        for (size_t i = 0; i < n; i++) {
+            if (buf[i] == '\n') {
+                lines++;
+            }
+        }
+        vTaskDelay(1);   /* one yield per block keeps the watchdog fed */
+    }
+    fclose(fp);
+    *rows = lines > 0 ? lines - 1 : 0;   /* minus the header */
+}
+
+/* Like sd_rel_path_valid(), but for a FILE rather than a folder: the final
+ * segment may additionally contain '.' so a CSV filename passes. Every other
+ * rule — attack folder first, no "..", no absolute path, depth cap — is
+ * unchanged, so the card root and its location.txt stay unreachable. */
+static bool sd_rel_file_valid(const char *rel)
+{
+    const char *last_slash = strrchr(rel, '/');
+    if (!last_slash || last_slash[1] == '\0') {
+        return false;   /* a bare filename has no attack folder in front of it */
+    }
+    /* Validate the folder part with the existing rules. */
+    char folder[192];
+    size_t folder_len = (size_t)(last_slash - rel);
+    if (folder_len == 0 || folder_len >= sizeof(folder)) {
+        return false;
+    }
+    memcpy(folder, rel, folder_len);
+    folder[folder_len] = '\0';
+    if (!sd_rel_path_valid(folder)) {
+        return false;
+    }
+    /* Then the filename itself: alnum, '_', '-' and '.' only. */
+    for (const char *p = last_slash + 1; *p; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (!isalnum(c) && c != '_' && c != '-' && c != '.') {
+            return false;
+        }
+    }
+    return strstr(rel, "..") == NULL;
+}
+
+/* Shared path buffer for the listing walk — the export task's stack is 6 KB,
+ * so this stays static rather than one buffer per recursion level. */
+static char s_list_path[256];
+
+/* snprintf() returns the length it WOULD have written, which is larger than the
+ * buffer when the text was truncated — handing that straight to
+ * uart_write_bytes() would read off the end. Every framed line below goes
+ * through here so a long filename can never turn into an over-read. */
+static void uart_emit(const char *buf, int n, size_t cap)
+{
+    if (n < 0) {
+        return;
+    }
+    if ((size_t)n >= cap) {
+        n = (int)cap - 1;   /* truncated: send exactly what landed in the buffer */
+    }
+    uart_write_bytes(EXPORT_UART, buf, n);
+}
+
+/* True if `full_path` is one of the TWO mirror files this boot currently has
+ * open (s_sd_log_path / s_sd_arrivals_path). Case-insensitive: FAT is.
+ *
+ * This is what tells "a run happening RIGHT NOW, mid-experiment" apart from "a
+ * run that genuinely died". Both look identical in runs.csv — neither has a
+ * "clean" row, because csv_logger_close() only writes one at TERMINATE. Without
+ * this check, listing the card of a board that is simply still running labels
+ * every file "ABORTED (started, never closed cleanly)" — the wrong claim:
+ * nothing went wrong, the experiment just has not finished yet. */
+static bool sd_is_live_mirror(const char *full_path)
+{
+    return (s_sd_log_path[0] != '\0' && strcasecmp(full_path, s_sd_log_path) == 0) ||
+           (s_sd_arrivals_path[0] != '\0' && strcasecmp(full_path, s_sd_arrivals_path) == 0);
+}
+
+/* Streams one leaf folder: its runs.csv manifest verbatim, then every CSV
+ * capture file in it with its size. `leaf_rel` is the card-relative folder. */
+static void sd_list_leaf(const char *leaf_rel)
+{
+    char out[320];
+    DIR *dir = opendir(s_list_path);
+    if (!dir) {
+        return;
+    }
+    size_t base_len = strlen(s_list_path);
+
+    /* Does this leaf hold anything at all? Only announce it if so — the
+     * firmware creates the whole 63-folder tree on every boot, and listing 60
+     * empty folders would bury the handful that matter. */
+    bool announced = false;
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != NULL) {
+        const char *name = ent->d_name;
+        if (name[0] == '.') {
+            continue;
+        }
+        size_t name_len = strlen(name);
+        if (base_len + 1 + name_len >= sizeof(s_list_path)) {
+            continue;
+        }
+        s_list_path[base_len] = '/';
+        memcpy(s_list_path + base_len + 1, name, name_len + 1);
+
+        struct stat st;
+        bool is_file = (stat(s_list_path, &st) == 0 && !S_ISDIR(st.st_mode));
+        s_list_path[base_len] = '\0';
+        if (!is_file) {
+            continue;   /* _archive/ and friends are not walked — same rule as the importer */
+        }
+
+        if (!announced) {
+            uart_emit(out, snprintf(out, sizeof(out), "SDLEAF:%s\n", leaf_rel), sizeof(out));
+            announced = true;
+        }
+
+        if (strcasecmp(name, "runs.csv") == 0) {
+            /* Stream the manifest verbatim, one SDMAN: line per CSV line
+             * (header included) — the host re-parses it with exactly the code
+             * it uses on a mounted card. */
+            s_list_path[base_len] = '/';
+            memcpy(s_list_path + base_len + 1, name, name_len + 1);
+            FILE *mf = fopen(s_list_path, "r");
+            s_list_path[base_len] = '\0';
+            if (mf) {
+                char line[192];
+                while (fgets(line, sizeof(line), mf)) {
+                    line[strcspn(line, "\r\n")] = '\0';
+                    if (line[0] == '\0') {
+                        continue;
+                    }
+                    uart_emit(out, snprintf(out, sizeof(out), "SDMAN:%s\n", line), sizeof(out));
+                }
+                fclose(mf);
+            }
+            continue;
+        }
+
+        /* Third field: 1 = this boot still has the file OPEN (a run in
+         * progress), 0 = closed, or left behind by an earlier boot. The host
+         * uses it to say "STILL RUNNING" instead of falsely crying "ABORTED". */
+        s_list_path[base_len] = '/';
+        memcpy(s_list_path + base_len + 1, name, name_len + 1);
+        int live = sd_is_live_mirror(s_list_path) ? 1 : 0;
+        s_list_path[base_len] = '\0';
+        uart_emit(out, snprintf(out, sizeof(out), "SDFILE:%s|%ld|%d\n",
+                                name, (long)st.st_size, live), sizeof(out));
+    }
+    closedir(dir);
+}
+
+/* Walks <attack>/<topology>/<location> exactly as tools\import_sdcard.py's
+ * _scan() walks a mounted card, so both paths see the same set of files. */
+static void sd_list_card(void)
+{
+    static const char *const attack_dirs[] = { "baseline", "blackhole", "wormhole" };
+    static const char *const topo_dirs[]   = { "star", "tree", "linear", "partial_mesh" };
+    /* Must stay in step with LOCATIONS in tools\export_logs.py and
+     * SD_LOCATION_* in mesh_config.h — the card's folder names are these. */
+    static const char *const loc_dirs[]    = { "home", "G402", "DLSU_Library", "Goks" };
+
+    char leaf_rel[128];
+    for (size_t a = 0; a < sizeof(attack_dirs) / sizeof(attack_dirs[0]); a++) {
+        for (size_t t = 0; t < sizeof(topo_dirs) / sizeof(topo_dirs[0]); t++) {
+            for (size_t l = 0; l < sizeof(loc_dirs) / sizeof(loc_dirs[0]); l++) {
+                int rn = snprintf(leaf_rel, sizeof(leaf_rel), "%s/%s/%s",
+                                  attack_dirs[a], topo_dirs[t], loc_dirs[l]);
+                if (rn < 0 || rn >= (int)sizeof(leaf_rel)) {
+                    continue;
+                }
+                int pn = snprintf(s_list_path, sizeof(s_list_path), "%s/%s",
+                                  SD_MOUNT_POINT, leaf_rel);
+                if (pn < 0 || pn >= (int)sizeof(s_list_path)) {
+                    continue;
+                }
+                struct stat st;
+                if (stat(s_list_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+                    continue;
+                }
+                sd_list_leaf(leaf_rel);
+                /* Feed the watchdog between leaves — 48 of them with a manifest
+                 * read each is long enough to matter. */
+                uart_wait_tx_done(EXPORT_UART, pdMS_TO_TICKS(100));
+                vTaskDelay(1);
+            }
+        }
+    }
+}
+
 /* Appends one line to <run_dir>/runs.csv — the manifest that answers "which
  * boot was which experiment repeat", since the firmware has no other way to
  * record that (see file header). Writes the header first if the file is new
@@ -686,6 +926,45 @@ static void sd_mirror_drop(FILE **fp, const char *what)
         fclose(*fp);
         *fp = NULL;
     }
+}
+
+/* Push one mirror file all the way down to the card, directory entry included.
+ *
+ * fflush() only empties the stdio buffer into FatFs; fsync() is what reaches
+ * f_sync() through ESP-IDF's FAT VFS and rewrites the directory entry with the
+ * file's real size. Without it a card pulled mid-run reads back as 0 bytes /
+ * 0 rows on the laptop even though the data was written — see
+ * LOGGER_SD_SYNC_INTERVAL_MS in mesh_config.h for the full story.
+ *
+ * Best-effort by design: a failed sync is logged and ignored, never allowed to
+ * disturb SPIFFS logging, exactly like every other mirror operation. */
+static void sd_mirror_sync(FILE *fp, const char *what)
+{
+    if (!fp) {
+        return;
+    }
+    fflush(fp);
+    if (fsync(fileno(fp)) != 0) {
+        ESP_LOGW(TAG, "SD %s fsync failed (errno %d) — rows may not survive a reset.",
+                 what, errno);
+    }
+}
+
+/* Rate-limited sync of both mirrors, called from the row-append hot path.
+ * Time-based so it keeps the same meaning whatever the sampling rate is. */
+static void sd_mirror_sync_due(void)
+{
+    if (!s_sd_log_fp && !s_sd_arrivals_fp) {
+        return;
+    }
+    int64_t now = esp_timer_get_time();
+    if (s_sd_last_sync_us != 0 &&
+        (now - s_sd_last_sync_us) < (int64_t)LOGGER_SD_SYNC_INTERVAL_MS * 1000) {
+        return;
+    }
+    s_sd_last_sync_us = now;
+    sd_mirror_sync(s_sd_log_fp, "telemetry");
+    sd_mirror_sync(s_sd_arrivals_fp, "arrivals");
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -884,6 +1163,9 @@ esp_err_t csv_logger_append_telemetry(
         if (s_sd_log_fp) {
             fflush(s_sd_log_fp);
         }
+        /* fflush() above does not update the card's directory entry, so on its
+         * own it leaves a reset-interrupted run reading back as 0 rows. */
+        sd_mirror_sync_due();
         s_row_count = 0;
     }
 
@@ -962,6 +1244,7 @@ esp_err_t csv_logger_append_probe_arrival(
         if (s_sd_arrivals_fp) {
             fflush(s_sd_arrivals_fp);
         }
+        sd_mirror_sync_due();   /* see the telemetry path — fflush is not durable */
         s_arrivals_row_count = 0;
     }
 
@@ -977,8 +1260,13 @@ esp_err_t csv_logger_flush(void)
     if (!s_log_fp) return ESP_ERR_INVALID_STATE;
     fflush(s_log_fp);
     if (s_arrivals_fp) fflush(s_arrivals_fp);
-    if (s_sd_log_fp) fflush(s_sd_log_fp);
-    if (s_sd_arrivals_fp) fflush(s_sd_arrivals_fp);
+    /* An explicit flush is a phase boundary (the node mains call it when a run
+     * phase ends), not a hot-path tick — so the mirrors are synced
+     * UNCONDITIONALLY here, bypassing the LOGGER_SD_SYNC_INTERVAL_MS rate limit.
+     * These are exactly the checkpoints worth paying a card write for. */
+    sd_mirror_sync(s_sd_log_fp, "telemetry");
+    sd_mirror_sync(s_sd_arrivals_fp, "arrivals");
+    s_sd_last_sync_us = esp_timer_get_time();
     s_row_count = 0;
     s_arrivals_row_count = 0;
     return ESP_OK;
@@ -1023,6 +1311,10 @@ esp_err_t csv_logger_close(void)
         fclose(s_sd_arrivals_fp);
         s_sd_arrivals_fp = NULL;
     }
+    /* fclose() above reaches f_close(), which writes the directory entry — so
+     * a cleanly closed mirror never needs the fsync path. Reset the rate-limit
+     * clock so a re-init in the same boot syncs immediately again. */
+    s_sd_last_sync_us = 0;
     if (sd_status_run_dir()) {
         /* Cache the path BEFORE unmounting — sd_status_unmount() clears
          * sd_status.c's own copy along with the mount, but ARCHIVE_SD (see
@@ -1102,7 +1394,8 @@ static void serial_export_task(void *arg)
     }
 
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
-                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | SET_LOCATION=<value> | GET_LOCATION | "
+                  "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
+                  "EXPORT_SD_PATH=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
                   "DELETE_SD_PATH=<attack>/<topology>/<location>");
 
@@ -1300,6 +1593,9 @@ static void serial_export_task(void *arg)
                     case SD_LOC_WRITE_NO_CARD:
                         uart_write_bytes(EXPORT_UART, "ERROR:LOCATION_NO_CARD\n", 23);
                         break;
+                    case SD_LOC_WRITE_STALE_MOUNT:
+                        uart_write_bytes(EXPORT_UART, "ERROR:LOCATION_STALE_MOUNT\n", 27);
+                        break;
                     case SD_LOC_WRITE_IO_FAILED:
                     default:
                         uart_write_bytes(EXPORT_UART, "ERROR:LOCATION_WRITE_FAILED\n", 28);
@@ -1375,16 +1671,90 @@ static void serial_export_task(void *arg)
                     uart_write_bytes(EXPORT_UART, "ERROR:MAC_CLEAR_FAILED\n", 23);
                 }
 
-            /* ── LIST_FILES — print both file paths ──────────────────── */
+            /* ── LIST_FILES — the two LIVE files this boot is writing ──
+             * Now reports size and row count too (FILE:<path>|<bytes>|<rows>),
+             * so the wizard's "export from the board" picker can show what it
+             * is about to pull instead of two bare paths. Counting rows is
+             * affordable here and only here: these are SPIFFS files on internal
+             * flash and there are exactly two of them — see the LIST_SD comment
+             * for why the CARD listing refuses to do the same thing. A host that
+             * predates the extra fields still matches on the "FILE:" prefix. */
             } else if (strcmp(cmd_buf, "LIST_FILES") == 0) {
-                char out[160];
-                snprintf(out, sizeof(out), "FILE:%s\n", s_filepath);
+                char out[200];
+                long bytes; long rows;
+                spiffs_file_stats(s_filepath, &bytes, &rows);
+                snprintf(out, sizeof(out), "FILE:%s|%ld|%ld\n", s_filepath, bytes, rows);
                 uart_write_bytes(EXPORT_UART, out, strlen(out));
                 if (s_arrivals_path[0] != '\0') {
-                    snprintf(out, sizeof(out), "FILE:%s\n", s_arrivals_path);
+                    spiffs_file_stats(s_arrivals_path, &bytes, &rows);
+                    snprintf(out, sizeof(out), "FILE:%s|%ld|%ld\n",
+                             s_arrivals_path, bytes, rows);
                     uart_write_bytes(EXPORT_UART, out, strlen(out));
                 }
                 uart_write_bytes(EXPORT_UART, "END_LIST\n", 9);
+
+            /* ── LIST_SD — read-only listing of the whole card over USB ──
+             * The "export from the board" counterpart to pulling the card and
+             * running import_sdcard.py --list-json. See sd_list_card(). */
+            } else if (strcmp(cmd_buf, "LIST_SD") == 0) {
+                bool took_mount = false;
+                if (!sd_status_ensure_mounted("LIST_SD", &took_mount)) {
+                    uart_write_bytes(EXPORT_UART, "ERROR:SD_NO_CARD\n", 17);
+                } else {
+                    uart_write_bytes(EXPORT_UART, "SDLIST_BEGIN\n", 13);
+                    sd_list_card();
+                    uart_write_bytes(EXPORT_UART, "SDLIST_END\n", 11);
+                    if (took_mount) {
+                        sd_status_unmount();
+                    }
+                }
+
+            /* ── EXPORT_SD_PATH=<rel> — stream one file off the CARD ────
+             * Same READY_TO_SEND/END_OF_FILE framing as EXPORT_LOGS, so the
+             * host reuses its existing capture path byte for byte. Read-only:
+             * deleting a card path is still DELETE_SD_PATH's job alone. */
+            } else if (strncmp(cmd_buf, "EXPORT_SD_PATH=", 15) == 0) {
+                const char *rel = cmd_buf + 15;
+                if (!sd_rel_file_valid(rel)) {
+                    uart_write_bytes(EXPORT_UART, "ERROR:BAD_SD_PATH\n", 18);
+                } else {
+                    bool took_mount = false;
+                    if (!sd_status_ensure_mounted("EXPORT_SD_PATH", &took_mount)) {
+                        uart_write_bytes(EXPORT_UART, "ERROR:SD_NO_CARD\n", 17);
+                    } else {
+                        /* Mute logging for the transfer — see EXPORT_LOGS. */
+                        esp_log_level_set("*", ESP_LOG_NONE);
+                        s_export_in_progress = true;
+                        snprintf(s_list_path, sizeof(s_list_path), "%s/%s",
+                                 SD_MOUNT_POINT, rel);
+                        FILE *fp = fopen(s_list_path, "r");
+                        if (!fp) {
+                            uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
+                        } else {
+                            fseek(fp, 0, SEEK_END);
+                            long fsize = ftell(fp);
+                            fseek(fp, 0, SEEK_SET);
+                            char ready[40];
+                            int rlen = snprintf(ready, sizeof(ready),
+                                                "READY_TO_SEND:%ld\n", fsize);
+                            uart_write_bytes(EXPORT_UART, ready, rlen);
+                            char line[256];
+                            uint32_t streamed = 0;
+                            while (fgets(line, sizeof(line), fp)) {
+                                uart_write_bytes(EXPORT_UART, line, strlen(line));
+                                if ((++streamed & 0x3F) == 0) {
+                                    uart_wait_tx_done(EXPORT_UART, pdMS_TO_TICKS(100));
+                                    vTaskDelay(1);
+                                }
+                            }
+                            fclose(fp);
+                            uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
+                        }
+                        if (took_mount) {
+                            sd_status_unmount();
+                        }
+                    }
+                }
 
             /* ── DELETE_SD_PATH=<rel> — PERMANENTLY delete a card folder,
              * e.g. blackhole/linear/G402. See sd_delete_rel_path(). ── */

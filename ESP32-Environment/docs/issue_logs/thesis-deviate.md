@@ -262,3 +262,17 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Net effect on the thesis** | **Existing captures are NOT comparable to post-C7 captures** — the traffic model differs. With one complete cell captured and a re-capture already required for schema v2, the cost of doing this now is near zero and rises with every run. Table 4.5's per-role column semantics must be updated; Table 4.2's counters are now literally implemented. |
 
 ---
+## D-13 · SD mirror is `fsync()`ed: the "0 rows off the card" failure
+
+| | |
+|---|---|
+| **Context** | Operators reported that exporting from a pulled SD card *sometimes* produced a file with **zero rows**, with no pattern anyone could pin down. The data was not recoverable and the run had to be redone. |
+| **Root cause** | `csv_logger.c` mirrored every telemetry row to the card and flushed with `fflush()` alone — it never called `fsync()`. On ESP-IDF's FAT VFS, `fflush()` only pushes the stdio buffer through `f_write()`: clusters are allocated and the bytes are written, but the file's **directory entry — its recorded size — is updated only by `f_sync()`/`f_close()`**. Any boot that did not reach `csv_logger_close()` (brownout, reset, card pulled live, a killed run) therefore left a card file whose directory entry still read **0 bytes**. The rows were physically on the card but unreachable, so every host tool counted the file as empty. |
+| **Why it hid so long** | The failure needs an *unclean* ending, so clean runs were always fine and the bug looked random. The project had already met this mechanism's sibling and fixed only that half: the comment at `csv_logger.c:57-63` explains that an *eager* `fopen()` left 0-byte files behind, which is the same directory-entry lag seen from the other side. |
+| **We do** | `sd_mirror_sync()` now does `fflush()` **plus** `fsync(fileno(fp))` on both mirrors. It is called on a rate limit (`LOGGER_SD_SYNC_INTERVAL_MS`, default **5000 ms**) from the row-append path, and **unconditionally** from `csv_logger_flush()`, which the node mains already call at phase boundaries. Worst-case loss goes from *the whole run* to *the last ~5 s*. |
+| **Why time-based, not row-based** | The analysis grid has already moved 1 Hz → 10 Hz once (D-9); a row-count cadence silently changes meaning with the sampling rate. It is also deliberately **coarser** than `LOGGER_FLUSH_RECORDS` (10): each sync costs a FAT + directory write on a 4 MHz SPI card, and per-row flush cost has starved this logger before (I-016/I-017). |
+| **⚠️ Effect on EXISTING captures** | This does not repair anything already on a card. A pre-fix capture that ended uncleanly is still unrecoverable by normal means, and a pre-fix card file reading 0 rows should be treated as **lost**, not as "the node logged nothing" — those are different claims and only the second one is evidence. Post-fix, a 0-row file genuinely means nothing was logged. |
+| **New cross-check** | Importing now compares the streamed row count against the leaf's `runs.csv` manifest and prints `NOTE: got N rows, manifest said M` on a disagreement — the signature of a capture cut short. |
+| **Status** | Firmware **compiles clean**; **NOT yet validated on hardware** — it needs a board, a mid-run reset, and a card read back. Do that before trusting it in the campaign. |
+
+---

@@ -15,12 +15,15 @@
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
+#include <time.h>        /* sd_status_seed_clock_from_build(): mktime/struct tm */
+#include <sys/time.h>    /* settimeofday() - see the same function */
 #include <sys/stat.h>
 
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "driver/spi_common.h"
 #include "esp_app_desc.h"    /* sd_status_build_stamp(): the image's own build date/time */
+#include "esp_timer.h"   /* esp_timer_get_time(): uptime added to the build stamp */
 #include "esp_chip_info.h"
 #include "esp_idf_version.h"
 #include "esp_mac.h"
@@ -356,6 +359,58 @@ const char *sd_status_build_stamp(void)
     return stamp;
 }
 
+/* Give the system clock a plausible wall-clock time, derived from the
+ * firmware BUILD timestamp plus how long this boot has been up.
+ *
+ * WHY: this board has no RTC and never reaches an NTP server, so time(NULL)
+ * starts at the 1970 epoch. ESP-IDF's get_fattime() (components/fatfs/
+ * diskio/diskio.c) feeds time(NULL) straight into every FAT directory entry
+ * and clamps anything before 1980 — which is why EVERY file this board has
+ * ever written shows "01/01/1980" in Windows Explorer, and why a card full
+ * of captures cannot be sorted or dated by hand at all.
+ *
+ * Seeding the clock here fixes that for free: FatFs keeps calling the same
+ * get_fattime(), it just finally gets a sane answer, so telem/arrivals CSVs,
+ * runs.csv and location.txt all land with a real date.
+ *
+ * ACCURACY, stated honestly: this is BUILD time + uptime, not true wall
+ * clock. A board flashed and run straight away is accurate to within the
+ * flash+boot gap; a board reflashed days later and left powered will drift
+ * by however long it sat. It is a dating aid, NOT a measurement — anything
+ * that must be exact still uses the boot counter and runs.csv, which are
+ * monotonic and do not depend on a clock at all. */
+void sd_status_seed_clock_from_build(void)
+{
+    const char *stamp = sd_status_build_stamp();   /* "YYYY-MM-DD HH:MM:SS" */
+    struct tm tmv = {0};
+    if (sscanf(stamp, "%d-%d-%d %d:%d:%d",
+               &tmv.tm_year, &tmv.tm_mon, &tmv.tm_mday,
+               &tmv.tm_hour, &tmv.tm_min, &tmv.tm_sec) != 6) {
+        ESP_LOGW(TAG, "clock seed: build stamp unparseable (\"%s\") - files will date to 1980.",
+                 stamp);
+        return;
+    }
+    tmv.tm_year -= 1900;
+    tmv.tm_mon  -= 1;
+    tmv.tm_isdst = -1;
+    time_t built = mktime(&tmv);
+    if (built == (time_t)-1) {
+        ESP_LOGW(TAG, "clock seed: mktime failed - files will date to 1980.");
+        return;
+    }
+    /* Add uptime so two files written minutes apart do not share a timestamp. */
+    struct timeval tv = {
+        .tv_sec  = built + (time_t)(esp_timer_get_time() / 1000000),
+        .tv_usec = 0,
+    };
+    if (settimeofday(&tv, NULL) != 0) {
+        ESP_LOGW(TAG, "clock seed: settimeofday failed (errno %d).", errno);
+        return;
+    }
+    ESP_LOGI(TAG, "clock seeded from build stamp %s - SD files will carry a real date.",
+             stamp);
+}
+
 void sd_status_unmount(void)
 {
     if (!s_card) {
@@ -515,6 +570,53 @@ sd_loc_write_t sd_status_write_location(const char *value)
                  SD_LOCATION_FILE, errno, strerror(errno));
     }
 
+
+    /* HOT-SWAP RECOVERY. A failed write on a mount we did NOT take means we
+     * borrowed the cached one from the boot check — and the overwhelmingly
+     * common reason that mount suddenly refuses writes is that the card was
+     * physically pulled and reinserted while this board kept running.
+     * mount_for_location_op() returns early on `s_card != NULL` and cannot
+     * notice, so every later SET_LOCATION fails until the board reboots.
+     *
+     * Only safe to rebuild when NO capture is in flight. sd_status_run_dir()
+     * is non-NULL for the whole of a run, and csv_logger.c is holding mirror
+     * FILE* handles against this very mount — unmounting under those would
+     * end the SD mirror mid-experiment (see mount_for_location_op's comment).
+     * So mid-run we do not touch it; we report STALE_MOUNT and let the
+     * operator reboot, which is the only correct move anyway: a card pulled
+     * mid-capture has already lost that run.
+     *
+     * Between runs — which is when the wizard's "write location.txt" option
+     * is actually used — the retry below fixes the swap outright. */
+    if (!ok && !took_mount && sd_status_run_dir() == NULL) {
+        ESP_LOGW(TAG, "SET_LOCATION: cached mount refused the write - card was likely"
+                      " removed and reinserted. Rebuilding the mount and retrying.");
+        sd_status_unmount();            /* drop the stale handle + free SPI3 */
+        bool retook = false;
+        if (mount_for_location_op("SET_LOCATION(remount)", &retook)) {
+            errno = 0;
+            FILE *f2 = fopen(SD_LOCATION_FILE, "w");
+            if (f2) {
+                ok = (fprintf(f2, "%s\n", canonical) >= 0);
+                fclose(f2);
+            } else {
+                ESP_LOGE(TAG, "SET_LOCATION: still cannot open %s after remount:"
+                              " errno=%d (%s)", SD_LOCATION_FILE, errno, strerror(errno));
+            }
+            if (retook) {
+                sd_status_unmount();
+            }
+            if (ok) {
+                ESP_LOGI(TAG, "SET_LOCATION: recovered after remount.");
+            }
+        }
+    }
+    else if (!ok && !took_mount) {
+        /* Capture in flight - refuse to rebuild the mount under it. */
+        ESP_LOGE(TAG, "SET_LOCATION: cached mount refused the write while a capture is"
+                      " running. Reboot this board; the card was pulled mid-run.");
+        return SD_LOC_WRITE_STALE_MOUNT;
+    }
     if (took_mount) {
         sd_status_unmount();  /* frees SPI3 + clears s_card from the temp mount above */
     }
@@ -528,6 +630,10 @@ sd_loc_write_t sd_status_write_location(const char *value)
 
 sd_status_result_t sd_status_run_boot_check(void)
 {
+    /* Before ANY file is created this boot: without it every SD directory
+     * entry written below is stamped 1980 (see the function comment). */
+    sd_status_seed_clock_from_build();
+
     s_report_len = 0;
     s_report[0] = '\0';
     s_report_path[0] = '\0';

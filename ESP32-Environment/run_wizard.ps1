@@ -316,7 +316,7 @@ function Show-CaptureWizardMenu {
             @{ Idx = 9; Text = 'Run a capture without a preset (skip the preset picker - answer the menus, like menu.ps1)' }
         ) }
         @{ Name = 'DATA'; Items = @(
-            @{ Idx = 4; Text = 'Import CSVs from a pulled SD card - one board, or several at once (no board/COM contact)' }
+            @{ Idx = 4; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
             @{ Idx = 16; Text = 'Sync capture data with GitHub (push / pull / test) - raw CSVs only, never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
@@ -681,7 +681,13 @@ function Select-Port {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid port chosen for $For after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $shown = @($Ports | Where-Object { $Taken -notcontains $_.Port })
+        # The `$_` guard matters: piping a $null $Ports (a caller that forgot
+        # -Ports, or genuinely no ports) yields ONE iteration with $_ = $null,
+        # whose .Port is also $null, which the -notcontains test happily passes.
+        # $shown then holds a single null, Count reports 1, and the render loop
+        # below dereferences $shown[0].Port into ContainsKey($null), which throws
+        # "Key cannot be null" instead of printing "no COM ports detected".
+        $shown = @($Ports | Where-Object { $_ -and $Taken -notcontains $_.Port })
         Write-Host ""
         Write-Host "Select port for $For :" -ForegroundColor Cyan
         if ($shown.Count -eq 0) {
@@ -1372,6 +1378,17 @@ function Format-BuildStamp {
     return '(no build stamp)'
 }
 
+function Format-ByteSize {
+    # Bytes -> "812 B" / "43.2 KB" / "1.19 MB", for the file picker's size
+    # column. Only used where a row count is unavailable (the over-USB listing),
+    # so it has to be readable at a glance rather than exact.
+    param([Parameter(Mandatory)][long]$Bytes)
+    if ($Bytes -lt 0)       { return 'size unknown' }
+    if ($Bytes -lt 1024)    { return ("{0} B" -f $Bytes) }
+    if ($Bytes -lt 1048576) { return ("{0:N1} KB" -f ($Bytes / 1024)) }
+    return ("{0:N2} MB" -f ($Bytes / 1048576))
+}
+
 function Select-CardFiles {
     # Numbered picker over everything a card holds, so an import can be "just
     # these two files" instead of all-or-nothing.
@@ -1396,7 +1413,11 @@ function Select-CardFiles {
     # copy landed). This lets the operator clear out junk/aborted files (e.g.
     # the 0-row ABORTED entry in the listing) they never intend to import,
     # without importing something first just to trigger that cleanup.
-    param([Parameter(Mandatory)]$Files, [string]$Card)
+    # -NoDelete hides the 'd' (delete off the card) command. Set when the card
+    # is being read THROUGH a board over USB: the firmware's DELETE_SD_PATH
+    # removes whole folders, never single files, so there is no per-file delete
+    # to offer there and pretending otherwise would be a dead end.
+    param([Parameter(Mandatory)]$Files, [string]$Card, [switch]$NoDelete)
 
     # Sorted newest-build-first; unknown stamps sink to the bottom (they can
     # only be pre-stamp firmware, i.e. older than anything that has one).
@@ -1432,10 +1453,31 @@ function Select-CardFiles {
             $bits = @("{0}/{1}/{2}" -f $f.attack, $f.topology, $f.location)
             $bits += "boot $($f.boot)"
             if ($null -ne $f.run) { $bits += "run $($f.run)" }
-            $bits += "$($f.rows) rows"
+            # $null = the source could not answer cheaply (the over-USB path,
+            # where counting means streaming the file off the card first). It
+            # must NOT render as "0 rows": 0 is a real, meaningful state here -
+            # it is what a reset-interrupted capture looked like before the
+            # fsync fix - and conflating the two would hide exactly the failure
+            # this listing exists to surface. Show the byte size instead, which
+            # always comes back and answers the same question well enough.
+            if ($null -eq $f.rows) {
+                $sizeTxt = if ($null -ne $f.bytes -and $f.bytes -ge 0) { Format-ByteSize $f.bytes } else { 'size unknown' }
+                $bits += "rows unknown ($sizeTxt)"
+            } else {
+                $bits += "$($f.rows) rows"
+                if ($f.rows -eq 0) { $bits += 'EMPTY - nothing was flushed to the card' }
+            }
             if ($f.archived) { $bits += '_archive' }
             $noteColor = 'DarkGray'
-            if ($f.clean -eq $false) { $bits += 'ABORTED (started, never closed cleanly)'; $noteColor = 'Yellow' }
+            # live wins over clean=false: a run in progress is NOT an aborted one.
+            if ($f.live -eq $true) {
+                $bits += 'STILL RUNNING (board is mid-run - do not import yet)'
+                $noteColor = 'Yellow'
+            }
+            elseif ($f.clean -eq $false) {
+                $bits += 'ABORTED (started, never closed cleanly)'
+                $noteColor = 'Yellow'
+            }
             if ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
             Write-Host ("      {0}" -f ($bits -join '  |  ')) -ForegroundColor $noteColor
         }
@@ -1448,11 +1490,22 @@ function Select-CardFiles {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid card file selection after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $raw = Read-Line ("`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'd1,3' = delete those from the card (no import), 'c' = cancel > " -f $sorted.Count) -Redraw $draw
+        $prompt = if ($NoDelete) {
+            "`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > "
+        } else {
+            "`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'd1,3' = delete those from the card (no import), 'c' = cancel > "
+        }
+        $raw = Read-Line ($prompt -f $sorted.Count) -Redraw $draw
         if (-not $raw) { Write-Host "  Type numbers, 'a', 'd<numbers>' or 'c'." -ForegroundColor Yellow; continue }
         $raw = $raw.Trim()
         if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
 
+        if ($raw -match '^[dD]\s*(.+)$' -and $NoDelete) {
+            Write-Host "  Deleting single files is not possible over USB - the board can only delete whole" -ForegroundColor Yellow
+            Write-Host "  folders. Pull the card to delete individual files, or use the wizard's" -ForegroundColor Yellow
+            Write-Host "  'delete a folder from a running board's SD card' option." -ForegroundColor Yellow
+            continue
+        }
         if ($raw -match '^[dD]\s*(.+)$') {
             $spec = $Matches[1].Trim()
             $delIdxs = @()
@@ -1546,6 +1599,25 @@ function Select-CardFiles {
         # because a cut-off capture is partial data. Picking one BY NUMBER is an
         # explicit choice though, so ask rather than silently dropping it - and
         # if the answer is no, drop it here so the count shown is honest.
+        # A file the board is STILL WRITING is not a candidate at all: it is not
+        # a dead run, it is an unfinished one, and importing it yields a partial
+        # capture indistinguishable from a complete one. Drop it before the
+        # aborted prompt so it is never offered as "import anyway?".
+        $liveSel = @($picked | Where-Object { $_.live -eq $true })
+        if ($liveSel.Count -gt 0) {
+            Write-Host ""
+            foreach ($lv in $liveSel) {
+                Write-Host ("  STILL RUNNING: {0}" -f $lv.name) -ForegroundColor Yellow
+            }
+            Write-Host "  That board is mid-run - the file is still being written." -ForegroundColor Yellow
+            Write-Host "  Let the run reach TERMINATE (or reset the board), then export." -ForegroundColor Yellow
+            $picked = @($picked | Where-Object { $_.live -ne $true })
+            if ($picked.Count -eq 0) {
+                Write-Host "  Nothing left selected." -ForegroundColor DarkGray
+                return $null
+            }
+        }
+
         $aborted = @($picked | Where-Object { $_.clean -eq $false })
         $includeAborted = $false
         if ($aborted.Count -gt 0) {
@@ -1586,35 +1658,57 @@ function Import-OneSdCard {
     # selection and shows what it found, then asks before it actually copies
     # anything - the same "preview, then confirm" shape as the rest of the
     # wizard, applied to the one write this whole SD-import flow makes.
-    param([string]$Card, [int]$Repeat, [string]$Boots, [switch]$IncludeAborted,
+    #
+    # SOURCE: pass EITHER -Card (a pulled card in a reader) OR -Port (a running
+    # board, read over USB). Everything after the source - the picker, the dry
+    # run, the confirmation, the import itself - is identical, because
+    # import_sdcard.py reports both sources in one --list-json shape. Keeping
+    # this as ONE function is the point: two copies would drift, and the half
+    # that is used less would be the one that rots.
+    param([string]$Card, [string]$Port, [int]$Repeat, [string]$Boots, [switch]$IncludeAborted,
           [string]$Roster, [switch]$DeleteSource, [string]$ExpectPrefix, [string]$Scenario = 'none')
 
-    if (-not (Test-Path $Card)) {
+    if (-not $Card -and -not $Port) {
+        Write-Host "  Import-OneSdCard needs -Card or -Port." -ForegroundColor Red
+        return
+    }
+    if ($Card -and -not (Test-Path $Card)) {
         Write-Host ("  {0} is not reachable right now." -f $Card) -ForegroundColor Yellow
         return
     }
 
-    $pyArgs = @('import_sdcard.py', '--card', $Card, '--repeat', $Repeat, '--scenario', $Scenario)
+    # The one place the two sources differ, expressed once and reused below.
+    $srcArgs  = if ($Card) { @('--card', $Card) } else { @('--port', $Port) }
+    $srcLabel = if ($Card) { $Card } else { "$Port (card still in the board)" }
+
+    $pyArgs = @('import_sdcard.py') + $srcArgs + @('--repeat', $Repeat, '--scenario', $Scenario)
     if ($Boots) { $pyArgs += @('--boots', $Boots) }
     if ($IncludeAborted) { $pyArgs += '--include-aborted' }
     if ($Roster) { $pyArgs += @('--roster', $Roster) }
     if ($DeleteSource) { $pyArgs += '--delete-source' }
 
     Write-Host ""
-    Write-Host ("Scanning {0} (repeat {1}) ..." -f $Card, $Repeat) -ForegroundColor DarkGray
+    Write-Host ("Scanning {0} (repeat {1}) ..." -f $srcLabel, $Repeat) -ForegroundColor DarkGray
+    if ($Port) {
+        Write-Host "  Reading the card over USB - this leaves it in the board. Close idf.py monitor if this stalls." -ForegroundColor DarkGray
+    }
     Push-Location (Join-Path $base 'tools')
     try {
         # What's on the card, before anything is selected or copied. Separate
         # from the dry run below on purpose: this is the pick-by-number list
         # (with each file's firmware build date), the dry run is the preview of
         # the copy the selection produces.
-        $listArgs = @('import_sdcard.py', '--card', $Card, '--repeat', $Repeat, '--scenario', $Scenario)
+        $listArgs = @('import_sdcard.py') + $srcArgs + @('--repeat', $Repeat, '--scenario', $Scenario)
         if ($Roster) { $listArgs += @('--roster', $Roster) }
         $listOut = & python @listArgs --list-json 2>&1
         $rc = $LASTEXITCODE
         if ($rc -ne 0) {
             $listOut | ForEach-Object { Write-Host "  $_" }
             Write-Host ("  import_sdcard.py --list-json exited {0} (python/pyserial missing? run from the ESP-IDF 5.3 PowerShell)." -f $rc) -ForegroundColor Yellow
+            if ($Port) {
+                Write-Host "  Over USB this usually means one of: idf.py monitor still holds the port, the board" -ForegroundColor DarkGray
+                Write-Host "  has no card in it, or it is running firmware older than LIST_SD (reflash it)." -ForegroundColor DarkGray
+            }
             return
         }
         # --list-json puts the array on stdout and warnings on stderr, but 2>&1
@@ -1634,7 +1728,7 @@ function Import-OneSdCard {
             return
         }
 
-        $sel = Select-CardFiles -Files $cardFiles -Card $Card
+        $sel = Select-CardFiles -Files $cardFiles -Card $Card -NoDelete:([bool]$Port)
         if ($null -eq $sel) {
             Write-Host "  Cancelled - nothing copied." -ForegroundColor DarkGray
             return
@@ -1665,8 +1759,9 @@ function Import-OneSdCard {
         # from what THAT file's path says), this just flags that the card is
         # carrying more than the single run the operator described.
         if ($ExpectPrefix) {
+            $wantPrefix = $ExpectPrefix.Replace('\', '/')
             $foreign = $dryOut | Select-String -Pattern '^\s*(?:WOULD COPY|SKIP)\s+(\S+)' |
-                Where-Object { -not $_.Matches[0].Groups[1].Value.StartsWith($ExpectPrefix, [StringComparison]::OrdinalIgnoreCase) }
+                Where-Object { -not $_.Matches[0].Groups[1].Value.Replace('\', '/').StartsWith($wantPrefix, [StringComparison]::OrdinalIgnoreCase) }
             if ($foreign) {
                 Write-Host ""
                 Write-Host ("  NOTE: this card also has {0} file(s) outside {1}\ - probably a different run left on the same card. They'll still be imported/named correctly on their own; just flagging it in case the wrong card got picked." -f $foreign.Count, $ExpectPrefix) -ForegroundColor Yellow
@@ -1706,9 +1801,27 @@ function Invoke-ImportSdCard {
     # (below), so a card normally holds exactly one new file per board by the
     # time it's pulled - asking "which boots, filter aborted, delete after?"
     # on every import was solving a problem that no longer exists day to day.
+    # WHERE THE CSVs COME FROM. Both routes read the SAME SD card and produce
+    # the same files in exports/ - the only question is whether the card is
+    # still in the board. Asked FIRST, before the run questions, because it is
+    # the one decision that changes what the operator has to physically do.
+    $srcIdx = Show-Menu -Title 'Where are the CSVs you want to export?' -Options @(
+        'From the board over USB  (card STAYS in the board - just plug in the cable)',
+        'From a pulled SD card    (card is out of the board, in a reader on this laptop)'
+    ) -DefaultIndex 0 -AllowBack
+    if ($srcIdx -eq -1) { return }
+    $fromBoard = ($srcIdx -eq 0)
+
     Write-Host ""
-    Write-Host "Pop the SD card out of the board and read it with a card reader on THIS" -ForegroundColor DarkGray
-    Write-Host "laptop - nothing here touches a board or a COM port." -ForegroundColor DarkGray
+    if ($fromBoard) {
+        Write-Host "Reading the card THROUGH the board over USB - the card stays where it is." -ForegroundColor DarkGray
+        Write-Host "Needs firmware with LIST_SD (reflash if the listing comes back empty), and" -ForegroundColor DarkGray
+        Write-Host "idf.py monitor must be closed - only one program can hold a COM port." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "Pop the SD card out of the board and read it with a card reader on THIS" -ForegroundColor DarkGray
+        Write-Host "laptop - nothing here touches a board or a COM port." -ForegroundColor DarkGray
+    }
 
     # Step machine, same shape/back-navigation as the capture flow's attack ->
     # topology -> location - this asks the run apart the same way instead of a
@@ -1773,8 +1886,17 @@ function Invoke-ImportSdCard {
         }
     }
 
-    $dirs         = Get-RunDirs -Attack $attack -Topology $topology -Location $location -Scenario $scenario
-    $expectPrefix = "$($dirs.AttackDir)\$($dirs.TopoDir)\$location\$scenario"
+    $dirs = Get-RunDirs -Attack $attack -Topology $topology -Location $location -Scenario $scenario
+    # NO scenario segment here, deliberately. This prefix is matched against a
+    # CARD-relative path, and the card tree has no scenario level at all - it is
+    # a host-side/ledger concept stamped at import time, exactly like --repeat
+    # (see tools\import_sdcard.py's header). Appending it made the prefix
+    # "<attack>\<topo>\<loc>\none", which no card path can ever start with, so
+    # the "files outside this run" notice below fired on EVERY import and told
+    # the operator every file was foreign. Separators are normalised at the
+    # comparison, because a pulled card reports rel paths with "\" while the
+    # over-USB listing reports them with "/".
+    $expectPrefix = "$($dirs.AttackDir)/$($dirs.TopoDir)/$location"
 
     # Roster: auto-match a saved preset for this exact attack/topology/scenario/
     # location - that preset already lists the boards THIS run used (matched by
@@ -1815,6 +1937,49 @@ function Invoke-ImportSdCard {
     }
     else {
         Write-Host "`nNo saved preset matches this attack/topology/scenario/location - files keep the card's own victim_NODE_<MAC> naming." -ForegroundColor DarkGray
+    }
+
+    # BOARD ROUTE: pick a COM port instead of a drive letter, then hand off to
+    # the same Import-OneSdCard the pulled-card route uses. Everything past the
+    # source - picker, dry run, confirmation, naming, exports/ layout - is
+    # shared, so the two routes cannot drift apart.
+    if ($fromBoard) {
+        $tries = 0
+        while ($true) {
+            $tries++
+            if ($tries -gt $script:MaxPromptTries) {
+                throw "No valid board selection after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
+            }
+            # -Ports is NOT optional: without it Select-Port pipes a $null down
+            # its filter, $shown ends up holding one null element, and the very
+            # first thing the render loop does is $shown[0].Port -> ContainsKey($null)
+            # -> "Key cannot be null". Every other caller passes a list; so does this one.
+            $ports = Get-PortList
+            $port = Select-Port -For 'the board holding the card' -Ports $ports -AllowBack
+            if (-not $port -or $port -eq $script:BackSignal) { return }
+            $tries = 0
+
+            # Same gate every other board-touching action goes through: do not
+            # open a port that is not an ESP32. Reading the card is harmless in
+            # itself, but the port is still opened and a Bluetooth link or a
+            # random serial device is not what anyone meant to pick.
+            if (-not (Test-PortSafeToTouch -Port $port -Action 'read its SD card over USB')) { continue }
+
+            # --delete-source is deliberately NOT passed here. Over USB the
+            # firmware can only delete whole card FOLDERS, never single files,
+            # so there is nothing to hand it - import_sdcard.py refuses the
+            # combination outright rather than half-honouring it.
+            Import-OneSdCard -Port $port -Repeat $repeat -Roster $rosterPath `
+                             -ExpectPrefix $expectPrefix -Scenario $scenario
+
+            Write-Host ""
+            Write-Host "  Note: the card was NOT cleared. Reading over USB never deletes -" -ForegroundColor DarkGray
+            Write-Host "  use the wizard's 'delete a folder from a running board's SD card'" -ForegroundColor DarkGray
+            Write-Host "  option when you actually want space back." -ForegroundColor DarkGray
+
+            $again = Read-Line "`nExport from another board for this same run? [y/N] > "
+            if ($again -ne 'y' -and $again -ne 'Y') { return }
+        }
     }
 
     # Drive: auto-pick when exactly one mounted drive has the attack-folder
@@ -2698,6 +2863,71 @@ function Set-SdLocation {
     }
     catch { return @{ Ok = $false; Lines = @($_.Exception.Message) } }
     finally { Pop-Location }
+}
+
+function Confirm-BoardLocations {
+    # ---- LOCATION PRE-FLIGHT (added sep. 22, 2026) ----
+    # The board decides which <location> folder its SD mirror writes into, from
+    # location.txt on its OWN card - NOT from the answer given in this wizard.
+    # When the two disagree the run still "works", and the damage is silent: the
+    # USB export lands in exports/<...>/home/ while the card copy lands in
+    # <...>/G402/, so one run is split across two SITE folders and location - a
+    # RECORDED experimental variable - is wrong for half the data. That is
+    # exactly what happened on 2026-09-22.
+    #
+    # Call this BEFORE flashing: location.txt is read at boot, so a value written
+    # here only takes effect on the reboot the flash provides.
+    #
+    # Shared by BOTH run paths on purpose. It started life inline in the preset
+    # "Yes - use it" branch, which left the manual menu flow with no check at all
+    # - the identical silent mis-filing was still reachable just by answering the
+    # menus instead of picking a preset. One copy, so the two cannot drift.
+    param(
+        [Parameter(Mandatory)] $Boards,
+        [Parameter(Mandatory)] [string] $WantLocation
+    )
+    $mismatch = @()
+    Write-Host ""
+    Write-Host ("Checking each board{0}s location.txt matches {1}{2}{1} ..." -f [char]39, [char]39, $WantLocation) -ForegroundColor DarkGray
+    foreach ($b in $Boards) {
+        if (-not $b.Port) { continue }
+        if (-not (Test-PortSafeToTouch -Port $b.Port -Action 'read its location' -Quiet)) { continue }
+        $cur = Get-SdLocation -TargetPort $b.Port
+        if ($cur.State -eq 'OK' -and $cur.Value -eq $WantLocation) { continue }
+        $mismatch += [pscustomobject]@{ Label=$b.Label; Port=$b.Port; Current=$cur }
+    }
+    if ($mismatch.Count -eq 0) {
+        Write-Host ("  All boards already report {1}{0}{1}." -f $WantLocation, [char]39) -ForegroundColor Green
+        return
+    }
+    Write-Host ""
+    Write-Host ("  {0} board(s) do NOT match {2}{1}{2}:" -f $mismatch.Count, $WantLocation, [char]39) -ForegroundColor Yellow
+    foreach ($mm in $mismatch) {
+        Write-Host ("    {0,-8} {1,-7} {2}" -f $mm.Label, $mm.Port, (Format-SdLocationState $mm.Current)) -ForegroundColor Yellow
+    }
+    Write-Host "  Left as-is, this runs SD data is filed under the WRONG site." -ForegroundColor Yellow
+    $fixAns = Read-Line ("  Write {1}{0}{1} to them now? [Y/n] > " -f $WantLocation, [char]39)
+    if ($fixAns -eq 'n' -or $fixAns -eq 'N') {
+        Write-Host "  Proceeding with a KNOWN location mismatch - data will be filed under the boards own value." -ForegroundColor Yellow
+        return
+    }
+    foreach ($mm in $mismatch) {
+        Write-Host ("    {0,-8} {1,-7} SET_LOCATION={2} ..." -f $mm.Label, $mm.Port, $WantLocation) -ForegroundColor DarkGray
+        $r = Set-SdLocation -TargetPort $mm.Port -Location $WantLocation
+        if (-not $r.Ok) {
+            # Set-SdLocation returns @{Ok;Lines} - ALWAYS truthy, so this must
+            # test .Ok, not the hashtable itself.
+            $why = @($r.Lines) -join ' '
+            if ($why -match 'LOCATION_STALE_MOUNT') {
+                Write-Host "      FAILED: that card was pulled and reinserted while this board kept" -ForegroundColor Red
+                Write-Host "      running, so its mount is stale. REBOOT the board, then retry." -ForegroundColor Red
+            }
+            else {
+                Write-Host ("      FAILED: {0}" -f $why) -ForegroundColor Red
+            }
+        }
+    }
+    Write-Host "  location.txt takes effect on the NEXT boot - the flash below provides it." -ForegroundColor DarkGray
 }
 
 function Invoke-DeleteSdFolder {
@@ -3843,6 +4073,9 @@ if (-not $Preset) {
 # somewhere: back to this same preset picker, rather than being the one
 # question in the whole flow with no way to back out of short of Ctrl+C.
 $backToPresetPicker = $false
+# Set by the preset branch's pre-flight so the shared check below does not
+# ask twice; re-armed here so backing out to the picker re-checks.
+$locationPreflightDone = $false
 :restart while ($true) {
 
 if (-not $Preset) {
@@ -3932,7 +4165,13 @@ if (-not $Preset) {
                     'No preset - answer the menus instead'
                 ) -DefaultIndex 0) {
 
-                    0 { $Preset = $file.FullName; $presetFromPicker = $true; $deciding = $false; $picking = $false }
+                    0 {
+                        # Before flashing, so a corrected location.txt is picked up by the
+                        # reboot the flash provides. Same check runs for the manual flow.
+                        Confirm-BoardLocations -Boards $preview -WantLocation ([string]$cfg.location)
+                        $locationPreflightDone = $true
+                        $Preset = $file.FullName; $presetFromPicker = $true; $deciding = $false; $picking = $false
+                    }
 
                     1 {
                         Write-Host ""
@@ -4921,6 +5160,16 @@ break restart
 $fullRoster = $roster
 $runRoster  = @($fullRoster | Where-Object { $_.Port })
 $children   = @($runRoster | Where-Object { $_.Role -ne 'root' })
+
+# LOCATION PRE-FLIGHT for the MANUAL flow (added sep. 22, 2026). Both paths
+# converge here with a final roster and $location, but the preset branch has
+# already asked by now - hence the flag. Answering the menus instead of using
+# a preset used to skip this check entirely and silently file the run's SD
+# data under whatever each card already said. Still before any flash.
+if (-not $locationPreflightDone -and $runRoster.Count -gt 0) {
+    Confirm-BoardLocations -Boards $runRoster -WantLocation $location
+    $locationPreflightDone = $true
+}
 
 # ------------------------------------------------- multi-laptop hand-off ----
 $remoteBoards = @($fullRoster | Where-Object { -not $_.Port })

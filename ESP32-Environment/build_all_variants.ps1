@@ -26,14 +26,48 @@ if (Test-Path $log) { Remove-Item $log -Force }
 # Getting these wrong silently builds the WRONG firmware and still reports BUILD OK —
 # an earlier version of this script used ACTIVE_ATTACK=1 for the wormhole rows, so it
 # compiled the blackhole attacker twice and labelled it "WORMHOLE".
+#
+# ⚠️ Bld is the BUILD DIRECTORY NAME and it is deliberately TINY. Do not
+# "improve" these into readable names like build_check_BLACKHOLE_attacker.
+# ESP-IDF's bootloader subproject generates paths ~136 characters long INSIDE
+# the build dir (e.g. bootloader\esp-idf\bootloader_support\CMakeFiles\
+# __idf_bootloader_support.dir\bootloader_flash\src\
+# bootloader_flash_config_esp32.c.obj.d). Add that to a workstation checkout
+# path and Windows MAX_PATH (260) is close. This script previously used
+# "build_check_<Name>" and the longest row, BLACKHOLE attacker, landed on
+# EXACTLY 260 on a normal checkout: ninja died with
+#   fatal error: opening dependency file ...obj.d: No such file or directory
+# deep inside the BOOTLOADER, long after the app itself had compiled, so the
+# error looked unrelated to the variant and the milestone table reported a
+# FAILED build for perfectly good code. The budget also depends on the USER'S
+# OWN PATH, so it failed on some machines and not others.
+# See MEMORY.md -> "Failed approaches" for the original diagnosis.
+# The Name column below is what gets PRINTED, so readability is not lost.
 $variants = @(
-    @{ Name = "ROOT";               Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
-    @{ Name = "CHILD plain";        Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
-    @{ Name = "BLACKHOLE attacker"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=0","-DMESH_TOPOLOGY=0") }
-    @{ Name = "BLACKHOLE victim";   Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0") }
-    @{ Name = "WORMHOLE Node A";    Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0") }
-    @{ Name = "WORMHOLE Node B";    Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0") }
+    @{ Name = "ROOT";               Bld = "bcr";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
+    @{ Name = "CHILD plain";        Bld = "bcc";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0") }
+    @{ Name = "BLACKHOLE attacker"; Bld = "bcba"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=0","-DMESH_TOPOLOGY=0") }
+    @{ Name = "BLACKHOLE victim";   Bld = "bcbv"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0") }
+    @{ Name = "WORMHOLE Node A";    Bld = "bcwa"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0") }
+    @{ Name = "WORMHOLE Node B";    Bld = "bcwb"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0") }
 )
+
+# Preflight: say it OUT LOUD if this checkout is too deep, instead of letting
+# ninja fail 700 objects in with an error that names a bootloader file. The
+# 136 is the longest path ESP-IDF generates inside a build dir (above); 260 is
+# MAX_PATH. This is a WARNING, not a hard stop — LongPathsEnabled=1 (admin) or
+# a shorter checkout path both make it a non-issue, and some builds still fit.
+$longestBld = ($variants | ForEach-Object { $_.Bld.Length } | Measure-Object -Maximum).Maximum
+$longestProj = ($variants | ForEach-Object { (Join-Path $repo $_.Proj).Length } | Measure-Object -Maximum).Maximum
+$worstPath = $longestProj + 1 + $longestBld + 1 + 136
+if ($worstPath -ge 260) {
+    Write-Host ""
+    Write-Host ("  WARNING: this checkout is deep enough to hit Windows MAX_PATH. Worst-case build" ) -ForegroundColor Yellow
+    Write-Host ("  path is ~{0} characters; the limit is 260. Builds may fail inside the BOOTLOADER" -f $worstPath) -ForegroundColor Yellow
+    Write-Host ("  with a misleading 'No such file or directory' on a .obj.d file." ) -ForegroundColor Yellow
+    Write-Host ("  Fix: move the repo nearer the drive root, or enable LongPathsEnabled=1 (admin)." ) -ForegroundColor Yellow
+    Write-Host ""
+}
 
 $results = @()
 $i = 0
@@ -41,7 +75,7 @@ foreach ($v in $variants) {
     $i++
     Write-Host ("[{0}/{1}] Building {2} ..." -f $i, $variants.Count, $v.Name) -ForegroundColor Cyan
     $dir = Join-Path $repo $v.Proj
-    $bld = "build_check_" + ($v.Name -replace '[^A-Za-z0-9]','_')
+    $bld = $v.Bld   # tiny on purpose — see the MAX_PATH note on $variants above
 
     Push-Location $dir
     # Splat via a plain variable. `@($v.Flags)` is an array SUBEXPRESSION, not a splat:

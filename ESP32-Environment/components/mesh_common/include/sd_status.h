@@ -97,6 +97,12 @@ int sd_status_boot_count(void);
  *  flash. */
 const char *sd_status_build_stamp(void);
 
+/** Seed the system clock from the firmware build stamp + uptime, so FatFs
+ *  stamps a REAL date on every file instead of 1980. Call once at boot,
+ *  before anything is written. Best-effort: logs and returns on failure.
+ *  A dating aid, NOT a measurement - see the implementation comment. */
+void sd_status_seed_clock_from_build(void);
+
 /** Unmount the card and release SPI3. Safe to call when nothing is mounted.
  *  csv_logger_close() calls this; nothing else normally needs to. */
 void sd_status_unmount(void);
@@ -132,6 +138,11 @@ typedef enum {
     SD_LOC_WRITE_BAD_VALUE,  /**< not an accepted site name — card NOT touched */
     SD_LOC_WRITE_NO_CARD,    /**< SPI bus init or mount failed */
     SD_LOC_WRITE_IO_FAILED,  /**< mounted, but the write itself failed */
+    SD_LOC_WRITE_STALE_MOUNT,/**< the card was pulled and reinserted while this
+                              *   board kept running, so the cached mount handle
+                              *   points at a card that is no longer there. A
+                              *   capture is in progress, so the mount CANNOT be
+                              *   rebuilt from under it — the board must reboot. */
 } sd_loc_write_t;
 
 /** What sd_status_peek_location() found on the card. */

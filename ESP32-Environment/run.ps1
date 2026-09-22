@@ -627,10 +627,43 @@ if ($Analyze) {
         $windowedOut = Join-Path $analysisSub 'windowed_dataset.csv'
         $featOut = Join-Path $analysisSub 'feature_table.csv'
 
+        # ── TRIM FIRST — must stay identical to analyze.ps1's Invoke-Analyze ──
+        # This step was MISSING here until sep. 22, 2026, while analyze.ps1 has
+        # always done it. The consequence was not cosmetic: a raw export folder
+        # can hold SEVERAL boot sessions, and the one that matters is NOT simply
+        # the longest (the smart trimmer scores phase progression — a real 400-row
+        # run beat a 3000-row idle session). So auto-analysis after a capture was
+        # silently folding idle/boot sessions into the feature table, while a later
+        # `.\analyze.ps1` on the SAME capture trimmed them out and produced a
+        # DIFFERENT table — written to the very same feature_table.csv path, with
+        # nothing in the artifact to say which pipeline produced it.
+        # If one of these two call sites changes, change the other.
+        $analysisSrc = $exportSub
+        $trimmedDir  = Join-Path $exportSub 'trimmed'
+        # Clear a stale trimmed/ from an earlier partial run: the analysis tools
+        # glob the folder, so leftovers load as if they were this run's data.
+        if (Test-Path $trimmedDir) { Remove-Item $trimmedDir -Recurse -Force }
+        Write-Host "`nAuto-analysis (trim): trim_run.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
+        Push-Location (Join-Path $base 'tools')
+        try { & $featuresPy trim_run.py $exportSub --apply } finally { Pop-Location }
+        if ($LASTEXITCODE -ne 0) {
+            # Never fatal: the raw export is the evidence and is untouched. Fall
+            # back to the raw folder and SAY SO, rather than letting the numbers
+            # below look like they came from a trimmed capture.
+            Write-Host "Trim failed (exit $LASTEXITCODE) - analysing the RAW export. Re-run .\analyze.ps1 once fixed." -ForegroundColor Yellow
+        }
+        elseif (Test-Path $trimmedDir) {
+            $analysisSrc = $trimmedDir
+            Write-Host "Trimmed -> analysing trimmed\ (raw export untouched)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "Trim produced no trimmed\ folder - analysing the RAW export." -ForegroundColor Yellow
+        }
+
         Write-Host "`nAuto-analysis (M6): $featuresPy preprocess.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
         $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
         Push-Location (Join-Path $base 'analysis')
-        try { & $featuresPy preprocess.py $exportSub -o $windowedOut } finally { Pop-Location }
+        try { & $featuresPy preprocess.py $analysisSrc -o $windowedOut } finally { Pop-Location }
         $stageWatch.Stop()
         $m6Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
 
@@ -642,7 +675,7 @@ if ($Analyze) {
             Write-Host "Auto-analysis (M7): $featuresPy features.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
             $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
             Push-Location (Join-Path $base 'analysis')
-            try { & $featuresPy features.py $exportSub -o $featOut } finally { Pop-Location }
+            try { & $featuresPy features.py $analysisSrc -o $featOut } finally { Pop-Location }
             $stageWatch.Stop()
             $m7Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
             if ($LASTEXITCODE -ne 0) {

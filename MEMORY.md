@@ -8,49 +8,103 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (the team could
-  not read them). Key points: **NaN ≠ 0** (NaN = nothing to measure; 0.001 = measured, almost nothing
-  got through); RSSI dBm negative, **closer to zero = stronger**, and `0` is the no-parent
-  placeholder; `*_delta` = rise in THAT window; **`z` = how many normal wobbles from normal**
-  (1.001 ÷ 0.025 ≈ 40), threshold 3 from Zhukabayeva 2025 so the bar isn't self-serving.
-- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.**
-  Shared `probe_relay.{h,c}`; victims send to their PARENT (`MESH_DATA_P2P`); **the attacker runs the
-  SAME relay and differs by ONE boolean callback**. ⚠️ **This IMPLEMENTS the paper** (§3.1.3.2
-  mandates it; Table 4.2 already specified the counters) — **the old TODS behaviour was the
-  deviation**. ⛔ **CONFLICTS WITH THE SIGNED MILESTONE FORM; adviser sign-off required** — every
-  milestone CRITERION still passes, only the mechanism changed. Fixes panel 2:40-4:50 at the root.
-  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale + the conflict: D-12.
-- sep. 21, 2026 — ⚠️ **TRAP THAT WOULD HAVE SILENTLY KILLED EVERY WORMHOLE RUN.** The relay first
-  forwarded only `PROBE_MAGIC`; Node A's duplicate carries `PROBE_MAGIC_WORMHOLE`, so every
-  intermediate relay would have dropped it and wormhole runs would have looked clean. Both magics now
+- sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too.** It was inline in the preset
+  "Yes - use it" branch only, so answering the menus skipped it and silently filed the run under whatever
+  each card said. Extracted to `Confirm-BoardLocations` (run_wizard.ps1), called from BOTH paths;
+  `$locationPreflightDone` (armed in `:restart`) stops a double ask. Manual call sits after `$runRoster`
+  is final — still BEFORE any flash, which matters: location.txt is only read at boot. Not hardware-tested.
+- sep. 22, 2026 — ⚠️ **`ERROR:LOCATION_WRITE_FAILED` = the card MOUNTED and the write still failed** (vs
+  `LOCATION_NO_CARD` = mount failed). Hit live on COM10/COM11, which also had NO location.txt — consistent
+  with a **write-protect lock switch on the microSD adapter** (mounts + reads fine, every write fails).
+  Else: full card, or FAT damage → read-only mount. Triage: lock switch →
+  power-cycle → write-test in a reader (a good card, E:, wrote fine with 3.63 GB free). **UNRESOLVED.**
+- sep. 22, 2026 — **Over USB an ARRIVALS file reports rows UNKNOWN, not the telem count.** `runs.csv`'s
+  `rows` is that boot's TELEM count; a root's arrivals.csv shares the boot but counts something else.
+  `_BoardCard.rows()` returned it for both kinds → wrong count in the picker AND `_already_imported()`
+  could never match, so re-import over `--port` COPIED A DUPLICATE. Now None for non-telem → identity-only
+  fallback catches it. `--card` unaffected; preprocess.py already archives same-key dupes, so not contamination.
+- sep. 22, 2026 — ⚠️ **"ABORTED" WAS A LIE: it also meant "still running".** runs.csv only gets its
+  `clean` row at TERMINATE, so a live run and a dead one are indistinguishable to the host — every
+  card read mid-capture reported ABORTED + "rows unknown". Firmware now reports whether it still has
+  each mirror OPEN (`sd_is_live_mirror()`, 3rd field of `SDFILE:<name>|<bytes>|<live>`); the picker
+  says **STILL RUNNING** and the importer REFUSES it (not behind --include-aborted: importing a live
+  file yields a truncated run that looks complete). Proof it was benign: boot 759 grew 179->434 KB
+  between two reads.
+- sep. 22, 2026 — ⚠️ **SET_LOCATION broke after an SD hot-swap — root cause + fix.**
+  `mount_for_location_op()` returned early on `s_card != NULL`, so pulling a card from a RUNNING board
+  left a stale handle and every later write failed until reboot (it "spread" because each swap broke
+  one more board). Now: on write failure the mount is rebuilt and retried — but **only between runs**.
+  Mid-capture it returns the new `ERROR:LOCATION_STALE_MOUNT` and says reboot, because unmounting
+  under a live run kills the SD mirror (mount_for_location_op's own comment warns of this).
+- sep. 22, 2026 — **SD files no longer date to 1980.** get_fattime() feeds `time(NULL)` into every FAT
+  entry; with no RTC that is 1970 -> clamped to 1980. `sd_status_seed_clock_from_build()` seeds the clock
+  from BUILD stamp + uptime atop `sd_status_run_boot_check()` (all 5 role call sites). ⚠️ build-time+uptime
+  is **a dating aid, NOT a measurement**; boot counter + runs.csv stay the exact record.
+- sep. 22, 2026 — **Location pre-flight in the wizard.** "Yes - use it" now reads each board's
+  location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
+  `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
+  site folders — hit for real 2026-09-22 (ran `-Location home`, cards said G402, `home/` was empty).
+- sep. 22, 2026 — **Root arrivals.csv exports fine over USB** (verified). runs.csv's `rows` counts
+  TELEMETRY only, so the manifest-vs-actual check is now telem-only (it false-alarmed on every arrivals import).
+- sep. 22, 2026 — ⚠️ **AUTO-ANALYSIS WAS SKIPPING THE TRIM (fixed).** `run.ps1 -Analyze` — what
+  `run_wizard.ps1` gives the ROOT (`New-RunParams`) — ran M6/M7 over the RAW export and never called
+  `trim_run.py`, while `analyze.ps1` always trimmed. A raw folder can hold SEVERAL boot sessions and the
+  right one is NOT the longest, so idle sessions were silently folded in; and BOTH paths write the same
+  `analysis/<cell>/feature_table.csv`, making trimmed/untrimmed tables indistinguishable afterwards.
+  Fixed: run.ps1 clears stale `trimmed/`, runs `trim_run.py --apply`, points BOTH M6+M7 at `$analysisSrc`;
+  a trim failure falls back to raw and SAYS SO. ⚠️ **Re-run `.nalyze.ps1` on any cell auto-analysed
+  before sep. 22.** Left alone (not a bug): the wizard's "Run analysis only" asks via
+  `Select-AnalysisInput`, which already prefers `trimmed/`. **Auto-EXPORT was correct** (`-Analyze`
+  implies `-Export`, run.ps1:240).
+- sep. 22, 2026 — ⚠️ **THE WORKING COPY MOVED TO `A:\Angelo\Excelsior\THESIS\T`.**
+  `C:\Users\Angelo Calpoporo\CLionProjects\NIS16-ESP32-Environment` is now a BACKUP only — do NOT edit it.
+  Reason: C:'s depth pushes ESP-IDF build paths into Windows `MAX_PATH` (worst case **exactly 260**); on
+  A: it is **199**. Same repo/branch/commit (THESIS3 @ 764ff06). A: was merged to hold everything: it
+  already had `archive/2026-09-18_Incomplete-2` + `_incomplete-3` C: never had, and received C:'s 13 work
+  files + `archive/20260913_pre-redesign` (513 files/293 CSVs) + `tools/feature_separability.py`
+  (PANEL-REQUIREMENT tool: proves no single feature decides the dataset) + 4 PDFs. SHA256-verified.
+  ⚠️ **NOT copied on purpose:** ~1.8 GB July build junk + superseded root `docs/`,`memory/`,`tools/`.
+- sep. 22, 2026 — **`Select-Port` crashed "Key cannot be null"** on the new USB-export flow: called without
+  `-Ports`, and piping `$null` through `Where-Object` yields ONE iteration with `$_ = $null`, so `$shown`
+  held a single null and the loop hit `ContainsKey($null)`. Fixed at the call site AND hardened in
+  `Select-Port` (`{ $_ -and ... }`).
+- sep. 22, 2026 — ⚠️ **ROOT CAUSE of "sometimes 0 rows off the SD card" (D-13): `fflush()` without
+  `fsync()`.** On ESP-IDF's FAT VFS `fflush()` writes the BYTES but not the **directory entry**, so any boot
+  not reaching `csv_logger_close()` (brownout, reset, card pulled live) left a file whose recorded size was
+  **0** — rows present, unreachable. Fixed: `sd_mirror_sync()` = `fflush` + `fsync`, rate-limited by
+  `LOGGER_SD_SYNC_INTERVAL_MS` (**5000 ms**, time-based), forced unconditionally in `csv_logger_flush()`.
+  ⚠️ **Does NOT repair existing cards** — a PRE-FIX 0-row card file is **LOST DATA, not "the node logged
+  nothing"**. Compiles clean; **NOT hardware-tested** (needs a board + mid-run reset).
+- sep. 22, 2026 — **Export has TWO sources, one pipeline.** `run_wizard.ps1` asks *board over USB* vs
+  *pulled SD card*, then runs the SAME picker → dry-run → confirm → import (`Import-OneSdCard -Card|-Port`).
+  New firmware cmds **`LIST_SD`** + **`EXPORT_SD_PATH=<rel>`**; `LIST_FILES` adds `|<bytes>|<rows>`. Host:
+  `import_sdcard.py --port COMx`. Both routes verified byte-identical.
+- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file** (counting =
+  streaming the card first). `?` NEVER renders as `0`. Telem-only mismatch note; see the arrivals fix above.
+- sep. 22, 2026 — **`--delete-source` REFUSED with `--port`**: DELETE_SD_PATH removes FOLDERS, not files.
+- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
+  to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
+  normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
+- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.** Shared
+  `probe_relay.{h,c}`; victims send to their PARENT; **the attacker runs the SAME relay, differing by ONE
+  boolean callback**. ⚠️ This IMPLEMENTS the paper (§3.1.3.2) — the old TODS behaviour was the deviation.
+  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale: D-12 in thesis-deviate.md.
+- sep. 21, 2026 — ⚠️ **TRAP THAT WOULD HAVE SILENTLY KILLED EVERY WORMHOLE RUN.** The relay first forwarded
+  only `PROBE_MAGIC`; Node A's duplicate carries `PROBE_MAGIC_WORMHOLE`, so every intermediate relay would
+  have dropped it and wormhole runs would have looked clean. Both magics now
   relay. **Any future change to the relay's accept-filter must re-check this.**
-- sep. 21, 2026 — **`leakage.py` is DATASET-AWARE, not hardcoded.** `relay_features_are_gated(df)`
-  counts how many `node_role`s carry each relay column: pre-C7 (1 role) excludes, post-C7 (>=2)
-  re-admits. Both generations coexist for months. Before/after score = deliverable E2.
+- sep. 21, 2026 - **`leakage.py` is DATASET-AWARE**: it asks how many roles carry each relay column, never hardcodes.
 - sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
   The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are FALSE now and would abort good captures;
   downgraded in `run_wizard.ps1` (the launcher in use), BOTH copies in `menu.ps1`, and the attacker
   boot banner. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
-- sep. 21, 2026 — **`layer` → `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` →
-  **`HopChangeCount`**; raw `layer` kept. ⚠️ **Off-by-one is the point** (Espressif roots at layer 1);
-  `layer == -1` → NaN, never -2. Feature VALUES unchanged — verified zero shared values moved.
+- sep. 21, 2026 - **`layer` -> `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` -> `HopChangeCount`; values unchanged.
 - sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
   length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
   run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
-- sep. 21, 2026 — **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (also
-  in `run_wizard.ps1` → VERIFY); works on ARCHIVED runs, unlike the serial banner. ⚠️ **`node_id` is
-  the STA MAC but `parent_mac` is the parent's SoftAP BSSID = STA + 1** — joining them directly
-  matches NOTHING and looks like a disconnected mesh. Confirmed on all 7 non-root nodes.
-- sep. 21, 2026 — **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against
-  verified source. Key: the MAC is `esp_read_mac(ESP_MAC_WIFI_STA)`, an **eFuse read** — the CP210x
-  USB bridge has no MAC at all; RSSI is read from the driver; PDR/LatencyHopRatio NaN during the
-  attack are **results, not gaps**.
-- sep. 20, 2026 — ⚠️ **CORRECTION: "only ONE cell has data" and "ZERO wormhole captures exist" were BOTH
-  WRONG** (recorded in STATUS+MEMORY, and I repeated them). `tools/inventory_cells.py` scans live **and
-  archived** exports: **18 runs, 8 COMPLETE, 5 attack×topology cells (all with a complete run), 2
-  locations (G402+home)**; wormhole linear r2/r3, star r1/r2/r3, partial_mesh r1 all exist. **Cause:
-  `archive.ps1` MOVES captures out of `tools/exports/`, and every tool only looked there.** ⚠️ Team call:
-  those 6 wormhole runs are pre-restart (schema v1) — mechanically complete; whether they count is yours.
+- sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
+- sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
+- sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
 - sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
   `recv_count,forward_count,drop_count`; v1's 11 unchanged; `validate_integrity.py` accepts BOTH.
   Point: `retry_count` means ONE thing on every role again (it used to carry the attacker's DROP
@@ -62,61 +116,6 @@
   is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
   by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
   selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
-- sep. 20, 2026 — ⛔ **C7 OPTION 1 — APPROVED BY THE USER sep. 20, NOT YET IMPLEMENTED.** F3 killed the
-  retry_count overload but not the ROLE GATE: honest nodes send TODS, so recv=0 and ForwardingRatio stays
-  attacker-only. Option 1 = every node relays to its parent explicitly (P2P to `mesh_setup_get_parent_mac()`,
-  always upward so no loops); it also makes attacker POSITION topologically meaningful and makes
-  `BLACKHOLE_ATTACKER_MAC` targeting obsolete. Cost ('existing runs non-comparable') is lowest NOW.
-- sep. 20, 2026 — **F1 `PHASE_ID_UNSET`/`GT_LABEL_UNSET` = 255.** A node that has not heard a broadcast
-  RECORDS that instead of claiming baseline. ⚠️ **Host handling is NOT optional**: 255 is non-zero, so the
-  phase-exit anchor would otherwise treat a node's FIRST window as its exit. Handled in
-  `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
-  **v1 and v2 give IDENTICAL segments**. Run `python test_segments.py` (no pytest here). Why: mesh_config.h.
-- sep. 20, 2026 — **F2: attacker MAC is a RUNTIME value** (NVS, compiled constant as fallback);
-  `export_logs.py --set/--get/--clear-attacker-mac`; takes effect on the NEXT boot. ⚠️ Since C7
-  Option 1 this is **bookkeeping only** — victims no longer target the attacker by MAC at all.
-- sep. 20, 2026 — **P5 `analysis/leakage.py`** = C7 Option 3 (exclude role-gated features from model
-  inputs, with a written reason per column). **Superseded in part by C7 Option 1** — see the sep. 21
-  dataset-aware entry above; full original text in ARCHIVE.md.
-- sep. 20, 2026 — `analyze.ps1 -Verify` runs **three exit-code-checked gates** (integrity → topology →
-  attack); a NOT-CONFIRMED after a failed gate reads **INCONCLUSIVE, not a negative result**.
-- sep. 20, 2026 — `member_boards.json` had **child_8/child_10 transposed** (child_8 listed B4:90, actually
-  70:68). Corrected against the boards' own telemetry — the export filename carries the nickname the board
-  reports for itself and column 2 its MAC, so the boards are ground truth. Every other entry verified.
-- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md` written** — per-role meaning of every column, **no column
-  holds an 802.11 MAC retry**, RSSI-is-per-link, root-is-layer-1. **Read it before writing schema text.**
-- sep. 20, 2026 — **TESTBED SCENARIO IS EVIDENCE-BACKED; sources ALREADY in our bibliography.**
-  **Khan et al. (2022), Sustainability 14(24):16630** — its ESP32+ESP-MESH air-quality nodes sit "at a
-  different location on a COLLEGE CAMPUS". Cite: 120 s reporting interval; baseline PDR >97%, loss
-  <1.8% — our corrected 0.998±0.025 lands INSIDE their range (a validation result). Karlof & Wagner
-  (2003) = the "target deployment" cite. ⇒ **The gap is a measured floor plan + a declared traffic
-  profile, NOT literature.** ⚠️ Zhukabayeva's "4-storey office building" detail is unverified.
-- sep. 20, 2026 — **"Realistic data" resolved (panel 9:10-12:00).** Every dependent variable is
-  network-layer and none depends on payload bytes ⇒ network behaviour MUST be real (it is); sensor
-  VALUES may be synthetic; placement/RF context must be real AND RECORDED (the actual gap). The paper
-  needs ONE paragraph stating measured vs generated. ⚠️ Do NOT slow the probe to 120 s — PDR
-  resolution is probes-per-window; keep 1 Hz as the declared measurement instrument.
-- sep. 20, 2026 — **P1/P2/P3 (analysis fixes) applied + verified — full entry in ARCHIVE.md.**
-  Sigma is still 3; `BASELINE_FLOOR` was RAISED 0.50→0.90. Rationale lives in each code comment.
-- sep. 20, 2026 — **SCOPE SETTLED by the user: "TinyTrust / Collaborative TinyML IDS" is DROPPED** — it came
-  from an externally-suggested (ChatGPT) prompt template, not the adviser or panel. The thesis is and stays
-  *Cross-Layer Dataset Design and Exploratory Analysis of ESP32-Based ESP-WIFI-MESH Network*, which does NOT
-  implement an IDS and excludes Sybil (§1.4.1). Risk R1 CLOSED. Two attacks only: blackhole + wormhole.
-  ⚠️ The user's prompt template still says "our thesis is focused on intrusion detection" — template
-  residue, do not act on it.
-- sep. 20, 2026 — **Five pre-fix diagnostics in ARCHIVE.md.** Still load-bearing: (a) ⚠️ **re-run
-  M6→M7 on ANY cell analysed before sep. 20** (WINDOW_SECONDS bug hit every table since D-9);
-  (b) **quotable proof the blackhole worked** — root arrivals **6.07/s → 0/s → 6.01/s**, attacker
-  forwarded 2605/2600 baseline vs **1/1020** attack; (c) **Table 3.4's predicted victim-retransmission
-  increase is a pre-registered MISS — REPORT it, do NOT edit the table** (§3.3.1.2 explains why).
-- sep. 20, 2026 — Scope evidence: "TinyTrust"/"TinyML"/"intrusion detection system" appear ZERO times in the
-  approved proposal or this repo (grep); the abstract says "Rather than implementing a real-time IDS".
-- sep. 20, 2026 — **Attacker placement is not topological.** Valid chain of 8, but the attacker sits at
-  **layer 7 of 8** — ONE victim downstream, five UPSTREAM, so those five send probes DOWN the chain and it
-  relays them back UP. The attack works; the traffic pattern is not one a real forwarding adversary produces.
-  The panel's "deployment appears random", made concrete. F2 (done) makes moving it cheap; **C7 Option 1 is
-  what would make position actually mean something.**
-- sep. 20, 2026 — Audit report Rev 3: https://claude.ai/artifact/RGB3RTXvfK7yzK9erEFNzE · the sep. 18 tooling batch + the sep. 16 root-as-blackhole-attacker proposal are in ARCHIVE.md; live threads carried in STATUS.md.
 
 ## Durable facts & constraints
 - **Git repo root is this whole `Unified/` folder** (code, docs, `Paper/`, `ESP32-Environment/` all inside it),
@@ -179,10 +178,12 @@
   FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process.
   Dot-sourcing with no `-IdfId` also fails silently (`idf-env config get` returns the STRING "null").
   Fix in use: `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime.
-- Long `idf.py -B <dir>` build-directory names — deep workstation paths push object paths past
-  Windows `MAX_PATH`; ninja fails inside the **bootloader** subproject long after the app compiled,
-  and the error looks unrelated. ✅ **Mitigation CONFIRMED**: short `-B` names (`bh1`,`o1a`,`vfy`)
-  build all 7 variants clean on this machine. Unapplied alternative: `LongPathsEnabled=1` (admin).
+- Long `idf.py -B <dir>` names — deep paths push object paths past Windows `MAX_PATH`; ninja fails in the
+  **bootloader** subproject long after the app compiled, so the error looks unrelated. ✅ **FIXED in
+  `build_all_variants.ps1` (sep. 22, 2026)**: it used `build_check_<Name>` and the longest row (BLACKHOLE
+  attacker) measured **exactly 260** — reporting FAILED for good code, with the budget shifting per user's
+  own path. Now a per-variant `Bld` field (`bcr`,`bcba`,…) + a preflight WARNING. ⚠️ **Don't rename them
+  back.** Still unapplied alternative: `LongPathsEnabled=1` (admin).
 - Non-ASCII characters (`⚠`, `—`, `…`) in a Python tool's **module docstring** when it is passed to `argparse`
   as `description` — the Windows console is cp1252, so `--help` dies with `UnicodeEncodeError` before printing
   anything. `tools/command_center.py` is deliberately ASCII-only and calls

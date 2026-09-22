@@ -118,6 +118,29 @@ def _looks_like_csv(line: str) -> bool:
     return line[0].isdigit() and "," in line
 
 
+def _open_port(port: str) -> serial.Serial:
+    """Open a board's serial port WITHOUT resetting it.
+
+    IMPORTANT: opening a serial port normally asserts DTR/RTS, which on an
+    ESP32 are wired to EN (reset) and GPIO0 (boot) — so a plain open would
+    REBOOT the board and kill the export task that's waiting for our command.
+    Both lines are deasserted BEFORE the open, so the board keeps running and
+    stays in its post-run "export ready" state.
+
+    Factored out of main() so import_sdcard.py's --port mode reaches a board
+    through exactly this door — a second, subtly different open() is precisely
+    how one of the two paths would end up resetting boards.
+    """
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = BAUD
+    ser.timeout = READ_TIMEOUT_S
+    ser.dtr = False
+    ser.rts = False
+    ser.open()
+    return ser
+
+
 def _drain(ser: serial.Serial) -> None:
     """Discard any bytes already sitting in the input buffer."""
     time.sleep(0.2)
@@ -449,8 +472,18 @@ def _archive_sd(ser: serial.Serial) -> None:
 
 
 def _list_files(ser: serial.Serial) -> None:
+    """Print the two LIVE files this boot is writing.
+
+    Newer firmware answers FILE:<path>|<bytes>|<rows>; older firmware answers a
+    bare FILE:<path>. Both are rendered — the extra fields are shown when they
+    are there and simply omitted when they are not, so this keeps working
+    against a board that has not been reflashed yet.
+
+    A count of -1 means the device could not read the file at all, which is
+    "unknown" and is NOT the same as an empty file (0 rows)."""
     _send_command(ser, "LIST_FILES")
-    deadline = time.time() + 10
+    # Counting rows means reading the files, so allow more than the old 10 s.
+    deadline = time.time() + 30
     print("Stored files on device:")
     while time.time() < deadline:
         raw = ser.readline()
@@ -459,8 +492,28 @@ def _list_files(ser: serial.Serial) -> None:
         line = raw.decode("utf-8", errors="replace").strip()
         if line == "END_LIST":
             return
-        if line.startswith("FILE:"):
-            print("   " + line[len("FILE:"):])
+        if not line.startswith("FILE:"):
+            continue
+        body = line[len("FILE:"):]
+        parts = body.split("|")
+        if len(parts) < 3:
+            print("   " + body)
+            continue
+        path, bytes_s, rows_s = parts[0], parts[1], parts[2]
+        size_txt = (_fmt_bytes(int(bytes_s))
+                    if _is_known_count(bytes_s) else "size unknown")
+        rows_txt = (f"{int(rows_s)} rows"
+                    if _is_known_count(rows_s) else "rows unknown")
+        print(f"   {path}  ({size_txt}, {rows_txt})")
+
+
+def _is_known_count(text: str) -> bool:
+    """True for a non-negative integer field. The device sends -1 for a value it
+    could not determine, which must read as "unknown" rather than as zero."""
+    try:
+        return int(text) >= 0
+    except (TypeError, ValueError):
+        return False
 
 
 # Map a run's topology to its export subfolder. These names match the folders
@@ -674,18 +727,7 @@ def main() -> int:
             return 1
 
     try:
-        # IMPORTANT: opening a serial port normally asserts DTR/RTS, which on an
-        # ESP32 are wired to EN (reset) and GPIO0 (boot) — so a plain open would
-        # REBOOT the board and kill the export task that's waiting for our
-        # command. We deassert both lines BEFORE opening so the board keeps
-        # running and stays in its post-run "export ready" state.
-        ser = serial.Serial()
-        ser.port = args.port
-        ser.baudrate = BAUD
-        ser.timeout = READ_TIMEOUT_S
-        ser.dtr = False
-        ser.rts = False
-        ser.open()
+        ser = _open_port(args.port)
     except serial.SerialException as e:
         print(f"ERROR: could not open {args.port}: {e}", file=sys.stderr)
         print("  Is idf.py monitor still open? Close it first.", file=sys.stderr)
