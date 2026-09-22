@@ -1030,6 +1030,8 @@ def main():
 
     feature_table.to_csv(args.output, index=False)
     print(f"Wrote {len(feature_table)} feature rows to: {args.output}")
+    from preprocess import _write_column_legend
+    _write_column_legend(feature_table.columns, args.output)
 
     nan_counts = {}
     for col in [

@@ -8,6 +8,13 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 23, 2026 — **`analysis/eda.py` plot readability overhaul + new `analysis/column_legend.py`.**
+  Analysis-only, no reflash, Basti's clone (not `A:\Angelo\...`). **UNCOMMITTED.** **Bug fixed:** phase
+  shading compared raw `Label` (NaN on unlabelled rows), stacking hundreds into one red block that read as
+  the attack; now compares `segment`-derived names, and PCA/t-SNE drop unlabelled windows too — moved
+  `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0% (the exclusion, not new data). ⚠️ Masking
+  the heatmap's upper triangle was tried and REJECTED by the user — don't reintroduce. `column_legend.py`'s
+  `_L` dict is now the single source of column meanings (checked vs `docs/DATA-DICTIONARY.md` + firmware).
 - sep. 22, 2026 — **CAPTURE DATES ARE REAL NOW: the board takes its clock from the laptop (`SET_TIME`).**
   The picker's date was never a run date — it was `sd_status_build_stamp()` (LINK-time `__DATE__`), identical on
   every boot of one flash: that is why deleting CSVs and re-running still showed `09/22 15:45`. No RTC, no NTP
@@ -18,10 +25,8 @@
   runs **before** the erase/flash (erased board can't answer; a fresh build stamp would beat an older anchor and
   make the first post-flash run an estimate). `runs.csv` += `started`,`clock_src` (**appended last**; 7/8/10-col
   headers parse via `_manifest_when()`, 6 cases tested). Picker shows `started`, `~` = `clock_src=build` (EST). **All 6 variants `-Clean` build verified: 0 warnings, 0 errors.** ⚠️ **NEEDS REFLASH.**
-- sep. 22, 2026 — **`status_NODE_<mac>.txt` is rewritten every boot and holds `Boot count:`, which IS the boot
-  counter** — deleting it resets `b<n>` to 1. It is NOT what the picker dates files from (that is `runs.csv`,
-  also the run-number + USB row-count/abort source). `DELETE_SD_FILE` accepts only `*_telem.csv`/`*_arrivals.csv`,
-  so it, `runs.csv`, `location.txt` and `clock.txt` are all undeletable by design.
+- sep. 22, 2026 — `status_NODE_<mac>.txt`/`runs.csv`/`location.txt`/`clock.txt` roles + why `DELETE_SD_FILE`
+  only accepts `*_telem.csv`/`*_arrivals.csv` — full detail ARCHIVE.md.
 - sep. 22, 2026 — **CAMPAIGN CHECKLIST IS NOW A SCANNER, not a tick-box** (`inventory_cells.py`,
   `report_checklist()` rewritten; `report_plan()` and `--repeats N` untouched and re-verified).
   (1) **THREE states: `[x]` complete / `[~]` data captured but INCOMPLETE / `[ ]` nothing ever.** Before,
@@ -192,9 +197,4 @@
   (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.
 - Non-ASCII in a Python tool's **module docstring** passed to `argparse(description=)` — cp1252 console ⇒
   `--help` dies with `UnicodeEncodeError`. Keep them ASCII; `sys.stdout.reconfigure(encoding="utf-8")` first.
-- Powering the SD reader module's VCC from ESP32 3V3 — its onboard AMS1117-3.3 drops ~1.1-1.3V, leaving the
-  card below its ~2.7V minimum. Symptom: CMD0 succeeds (R1=0x01) but ACMD41/OCR times out forever (0x107) —
-  looks like wiring but isn't. Use VIN/5V; the module's 74HC125 level-shifter never puts 5V on ESP32 GPIOs.
-- sep. 16, 2026 — Matching a `printf` format specifier to `sdmmc_card_t`'s `real_freq_khz`/
-  `max_freq_khz` declared type — it differs by ESP-IDF version (see CLAUDE.md bootstrap facts).
-  `sd_status.c`'s boot-check `rep()` now casts explicitly (`(unsigned long)x` + `%lu`) instead.
+- SD reader module VCC/format-specifier wiring & build gotchas — both fixed in code; full text ARCHIVE.md.

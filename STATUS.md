@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 22, 2026 — **CAPTURE DATES ARE REAL** (board now takes its clock from the laptop; `runs.csv` gained `started`/`clock_src`), plus the earlier export overhaul + D-13. **The working copy moved drives** (below). **Newer work UNCOMMITTED.**
+**Updated:** sep. 23, 2026 — `eda.py`/`column_legend.py` analysis-tooling pass (below); hardware side unchanged since sep. 22 (**CAPTURE DATES ARE REAL**, `runs.csv` += `started`/`clock_src`). **Working copy moved drives** (below). **Newer work UNCOMMITTED.**
 
 ## ⚠️ THE WORKING COPY MOVED — read this first
 **Work in `A:\Angelo\Excelsior\THESIS\T`.** `C:\...\NIS16-ESP32-Environment` (old C: path) is a BACKUP only —
@@ -34,7 +34,7 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 23, 2026 — **`eda.py` plot readability overhaul + new `column_legend.py`.** Fixed a real bug: phase shading compared raw `Label` (NaN-heavy) instead of `segment`, painting pre-baseline windows red as if attacked. Every windowed/feature CSV now gets a `<name>_legend.csv` sibling. Analysis-only. **UNCOMMITTED.**
 - sep. 22, 2026 — **BOARDS GET A REAL CLOCK.** `SET_TIME` + `/sdcard/clock.txt` anchor; host pushes UTC every
   connect; `runs.csv` += `started`,`clock_src`; pickers date by RUN. MEMORY.md. **6/6 CLEAN build verified — 0 warnings.**
 - sep. 22, 2026 — **`jitter` scenario; per-node PDR; build `-Clean`; wormhole warnings; wizard [15] crash; SMART ARCHIVE menu (duplicate + completeness detection).** MEMORY.md.
-- sep. 22, 2026 — **Console `LAYER`→`HOP` (root = H00), blackhole header → C7 positional model, leaf/off-path guards, `TOPOLOGY TREE`, USB-export stderr trap. 6/6 build clean.** **NEEDS REFLASH.**

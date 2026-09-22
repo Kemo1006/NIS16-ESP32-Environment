@@ -1079,6 +1079,21 @@ def run_pipeline(
 # CLI
 # ─────────────────────────────────────────────────────────────────────────
 
+def _write_column_legend(columns, data_path: str):
+    """Writes <data>_legend.csv beside the output: what every column means.
+
+    A failure here must never cost the data file already written, so it is
+    reported and swallowed rather than raised.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import column_legend
+        print(f"Wrote column legend to: "
+              f"{column_legend.write_legend(columns, data_path)}")
+    except Exception as exc:  # noqa: BLE001 — legend is a convenience
+        print(f"  (column legend not written: {exc})")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="NIS16 Milestone 6 — Cross-Layer Data Preprocessing Pipeline"
@@ -1104,6 +1119,7 @@ def main():
 
     windowed.to_csv(args.output, index=False)
     print(f"Wrote {len(windowed)} windowed rows to: {args.output}")
+    _write_column_legend(windowed.columns, args.output)
 
     if args.report or True:  # always show report — it's cheap and useful
         print()

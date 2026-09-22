@@ -119,6 +119,96 @@ LAYER_GROUPS = {
 
 LABEL_NAMES = {0: "Baseline", 1: "Blackhole", 2: "Wormhole"}
 
+# Plain-language axis text, so a plot can be read without opening features.py.
+# Windows are 1 s (preprocess.WINDOW_SECONDS), so "per window" = "per second".
+FEATURE_DESCRIPTIONS = {
+    "ForwardingRatio": "packets forwarded ÷ received (0–1)",
+    "IngressEgressDelta": "packets received − forwarded",
+    "RetryRate": "MAC retries ÷ transmissions (0–1)",
+    "PDR": "share of probes that reached the root (0–1)",
+    "ParentSwitchRate": "parent changes per second",
+    "HopChangeCount": "tree-depth changes in the window",
+    "HopStabilityDuration": "longest run with same parent & depth (s)",
+    "RSSI_mean": "mean signal strength to parent (dBm)",
+    "RSSI_var": "signal strength variance (dBm²)",
+    "RSSI_stability": "longest run within ±3 dBm of the mean (s)",
+    "RSSI_Hop_Diff": "|RSSI − baseline median for this depth| (dB)",
+    "LatencyHopRatio": "relative one-way delay per hop",
+    "ConsistencyScore": "|ForwardingRatio − 1|",
+    "TunnelIntensity": "tunnelled packets per second",
+    "TunnelBytes": "tunnelled bytes per second",
+    "TunnelLatency": "delay added by the tunnel",
+}
+
+# preprocess.py's `segment` column, shown by name. Only baseline/attack/cooldown
+# carry a ground-truth label; the rest are NaN in Label by design and were
+# previously plotted as a class literally called "nan".
+SEGMENT_DISPLAY = {
+    "pre_baseline": "Pre-baseline (unlabelled)",
+    "baseline": "Baseline",
+    "cooldown": "Cooldown (after attack)",
+    "baseline_rebroadcast": "Rebroadcast (unlabelled)",
+    "no_phase_seen": "No phase seen (unlabelled)",
+}
+PHASE_ORDER = [
+    "Baseline", "Blackhole attack", "Wormhole attack", "Cooldown (after attack)",
+    "Pre-baseline (unlabelled)", "Rebroadcast (unlabelled)",
+    "No phase seen (unlabelled)", "Unlabelled",
+]
+PHASE_COLORS = {
+    "Baseline": "#1f77b4",
+    "Blackhole attack": "#d62728",
+    "Wormhole attack": "#9467bd",
+    "Cooldown (after attack)": "#ff7f0e",
+}
+UNLABELLED_COLOR = "#9e9e9e"
+# Fixed per role so "victim" is the same colour in every figure; seaborn's
+# default assigns colours by first appearance, which differs per feature.
+ROLE_COLORS = {"victim": "#4c72b0", "root": "#55a868", "blackhole": "#dd8452",
+               "wormhole": "#8172b3", "wormhole_entry": "#8172b3",
+               "wormhole_exit": "#937860"}
+
+
+def _phase_names(df: pd.DataFrame) -> pd.Series:
+    """
+    One readable phase name per row: "Baseline", "Blackhole attack",
+    "Cooldown (after attack)", "Pre-baseline (unlabelled)", ...
+
+    Uses preprocess.py's `segment` column when present, because Label alone
+    folds cooldown into Baseline (both 0) and shows every unlabelled window as
+    NaN. Falls back to Label for older tables without a segment column.
+    """
+    label_col = "Label" if "Label" in df.columns else "window_label"
+    labels = pd.to_numeric(df[label_col], errors="coerce")
+    attack = labels.map(lambda v: f"{LABEL_NAMES.get(v, str(v))} attack"
+                        if pd.notna(v) and v != 0 else None)
+    if "segment" in df.columns:
+        seg = df["segment"].astype(str)
+        names = seg.map(SEGMENT_DISPLAY)
+        names = names.where(seg != "attack", attack)
+        return names.fillna("Unlabelled")
+    return labels.map(lambda v: "Unlabelled" if pd.isna(v)
+                      else ("Baseline" if v == 0
+                            else f"{LABEL_NAMES.get(v, str(v))} attack"))
+
+
+def _is_unlabelled(name: str) -> bool:
+    return name not in PHASE_COLORS and not name.endswith(" attack")
+
+
+def _phase_order_palette(names) -> tuple[list[str], dict]:
+    present = set(names)
+    order = [p for p in PHASE_ORDER if p in present]
+    order += sorted(present - set(order))
+    palette = {p: PHASE_COLORS.get(p, UNLABELLED_COLOR if _is_unlabelled(p) else "#2ca02c")
+               for p in order}
+    return order, palette
+
+
+def _axis_label(feat: str) -> str:
+    desc = FEATURE_DESCRIPTIONS.get(feat)
+    return f"{feat}\n{desc}" if desc else feat
+
 
 def _ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
@@ -216,7 +306,6 @@ def plot_distributions(
     if features is None:
         features = ["ForwardingRatio", "RetryRate", "RSSI_Hop_Diff"]
 
-    label_col = "Label" if "Label" in df.columns else "window_label"
     role_col = "node_role" if "node_role" in df.columns else "role"
 
     written = []
@@ -225,10 +314,23 @@ def plot_distributions(
             warnings.warn(f"plot_distributions: '{feat}' not in dataframe, skipping")
             continue
 
-        fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-        fig.suptitle(f"{feat} — distribution by phase and node role")
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
 
-        valid = df[df[feat].notna()]
+        # Unlabelled windows (mostly pre-baseline: the node was up before the
+        # experiment started) have no phase to be compared under. Leave them
+        # out of the phase comparison, and say how many were left out.
+        phase_all = _phase_names(df)
+        has_value = df[feat].notna()
+        unlabelled = phase_all.map(_is_unlabelled)
+        n_hidden = int((has_value & unlabelled).sum())
+        valid = df[has_value & ~unlabelled]
+        phase = phase_all[valid.index]
+
+        suptitle = f"{feat} — {FEATURE_DESCRIPTIONS.get(feat, 'distribution')}"
+        suptitle += f"\nDistribution by experiment phase and node role · {len(valid)} windows"
+        if n_hidden:
+            suptitle += f" ({n_hidden} unlabelled pre-baseline windows not shown)"
+        fig.suptitle(suptitle, fontsize=11)
 
         if valid.empty:
             for ax in axes:
@@ -242,8 +344,8 @@ def plot_distributions(
                 ax.set_xticks([])
                 ax.set_yticks([])
         else:
-            label_display = valid[label_col].map(lambda v: LABEL_NAMES.get(v, str(v)))
-            hist_df = valid.assign(_label_display=label_display)
+            order, palette = _phase_order_palette(phase)
+            hist_df = valid.assign(Phase=phase.values)
             # Cap the bin count explicitly. Seaborn's automatic (Freedman–Diaconis)
             # bin rule sets width from the IQR, which collapses toward zero when a
             # feature is nearly constant with a few outliers — RetryRate is 0.0
@@ -256,7 +358,8 @@ def plot_distributions(
             try:
                 sns.histplot(
                     data=hist_df,
-                    x=feat, hue="_label_display", kde=True, ax=axes[0], bins=nbins,
+                    x=feat, hue="Phase", hue_order=order, palette=palette,
+                    kde=True, ax=axes[0], bins=nbins,
                     element="step", stat="density", common_norm=False,
                 )
             except (np.linalg.LinAlgError, MemoryError, ValueError):
@@ -270,17 +373,36 @@ def plot_distributions(
                 axes[0].clear()
                 sns.histplot(
                     data=hist_df,
-                    x=feat, hue="_label_display", kde=False, ax=axes[0], bins=nbins,
+                    x=feat, hue="Phase", hue_order=order, palette=palette,
+                    kde=False, ax=axes[0], bins=nbins,
                     element="step", stat="density", common_norm=False,
                 )
-            axes[0].set_title("Histogram by phase")
+            axes[0].set_title("How often each value occurs, per phase\n"
+                              "(each phase scaled to the same area)", fontsize=10)
+            axes[0].set_xlabel(_axis_label(feat))
+            axes[0].set_ylabel("Density (share of that phase's windows)")
 
+            roles = valid[role_col].astype(str).unique().tolist()
             sns.boxplot(
-                data=valid.assign(_label_display=label_display),
-                x="_label_display", y=feat, hue=role_col, ax=axes[1],
+                data=hist_df.assign(**{"Node role": valid[role_col].astype(str).values}),
+                x="Phase", y=feat, hue="Node role", order=order, ax=axes[1],
+                hue_order=sorted(roles), palette={r: ROLE_COLORS.get(r, "#8c8c8c")
+                                                  for r in roles},
             )
-            axes[1].set_title("Box plot by phase and role")
-            axes[1].set_xlabel("Phase")
+            axes[1].set_title("Spread per phase and node role\n"
+                              "(box = middle 50%, line = median, dots = outliers)",
+                              fontsize=10)
+            axes[1].set_xlabel("")
+            axes[1].set_ylabel(_axis_label(feat))
+            axes[1].tick_params(axis="x", labelsize=9)
+
+            if valid[feat].nunique() == 1:
+                note = (f"Every window has {feat} = {valid[feat].iloc[0]:g}.\n"
+                        "Nothing varies, so there is no distribution to compare.")
+                for ax in axes:
+                    ax.text(0.5, 0.5, note, ha="center", va="center", fontsize=10,
+                            color="darkred", transform=ax.transAxes,
+                            bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "none"})
 
         fig.tight_layout()
         out_path = os.path.join(output_dir, f"distribution_{feat}.png")
@@ -318,6 +440,36 @@ def _extract_run_id(source_file: str) -> str:
     return match.group(1) if match else source_file
 
 
+def _phase_spans(run_df: pd.DataFrame) -> list[tuple[float, float, str, str]]:
+    """
+    Contiguous (start, end, phase name, colour) runs for background shading.
+
+    Compares phase NAMES, not the raw Label: Label is NaN on unlabelled windows
+    and NaN != NaN, so the old label comparison opened a new span on every
+    unlabelled window and stacked hundreds of translucent red spans into a
+    solid block that looked like the attack. Taken from the first row per
+    window_start — all nodes in a run share the root's broadcast schedule.
+    """
+    if "window_start" not in run_df.columns:
+        return []
+    ordered = run_df.sort_values("window_start").drop_duplicates("window_start")
+    if ordered.empty:
+        return []
+    names = _phase_names(ordered).tolist()
+    starts = ordered["window_start"].tolist()
+    _, palette = _phase_order_palette(names)
+    step = float(np.median(np.diff(starts))) if len(starts) > 1 else 1.0
+
+    spans = []
+    span_start, current = starts[0], names[0]
+    for t, name in zip(starts[1:], names[1:]):
+        if name != current:
+            spans.append((span_start, t, current, palette[current]))
+            span_start, current = t, name
+    spans.append((span_start, starts[-1] + step, current, palette[current]))
+    return spans
+
+
 def plot_time_series(
     df: pd.DataFrame,
     output_dir: str,
@@ -345,10 +497,12 @@ def plot_time_series(
     for run_id, run_df in df.groupby("_run_id"):
         run_df = run_df.sort_values("window_start")
 
-        fig, axes = plt.subplots(len(features), 1, figsize=(11, 3.5 * len(features)), sharex=True)
+        fig, axes = plt.subplots(len(features), 1, figsize=(12, 3.6 * len(features)), sharex=True)
         if len(features) == 1:
             axes = [axes]
-        fig.suptitle(f"Feature trajectories — {run_id}")
+        fig.suptitle(f"Feature trajectories over the run — {run_id}\n"
+                     "Background colour = experiment phase at that time", fontsize=11)
+        phase_spans = _phase_spans(run_df)
 
         for ax, feat in zip(axes, features):
             if feat not in run_df.columns:
@@ -360,9 +514,12 @@ def plot_time_series(
             for node_id, node_df in run_df.groupby("node_id"):
                 node_df = node_df.sort_values("window_start")
                 if node_df[feat].notna().any():
+                    role = (node_df["node_role"].iloc[0]
+                            if "node_role" in node_df.columns else None)
                     ax.plot(
                         node_df["window_start"], node_df[feat],
-                        marker="o", markersize=3, label=node_id,
+                        linewidth=1.2, color="#222222" if run_df["node_id"].nunique() == 1 else None,
+                        label=f"{node_id} ({role})" if role else node_id,
                     )
                     plotted_any = True
 
@@ -375,33 +532,23 @@ def plot_time_series(
                         ha="center", va="center", transform=ax.transAxes,
                         color="gray")
 
-            # Shade phase regions using window_phase_id / window_label
-            # so attack windows are visually obvious against the trace.
-            # Phase shading is computed once per run (not per node) since
-            # all nodes in a run should share the same broadcast phase
-            # schedule — using the first node's labels as the reference.
-            label_col = "Label" if "Label" in run_df.columns else "window_label"
-            if label_col in run_df.columns:
-                phase_changes = (
-                    run_df[["window_start", label_col]]
-                    .drop_duplicates("window_start")
-                    .sort_values("window_start")
-                )
-                prev_label = None
-                span_start = None
-                for _, row in phase_changes.iterrows():
-                    if row[label_col] != prev_label:
-                        if prev_label is not None and prev_label != 0:
-                            ax.axvspan(span_start, row["window_start"], color="red", alpha=0.08)
-                        span_start = row["window_start"]
-                        prev_label = row[label_col]
+            for start, end, name, color in phase_spans:
+                ax.axvspan(start, end, color=color, alpha=0.13, linewidth=0, zorder=0)
 
-            ax.set_ylabel(feat)
+            ax.set_ylabel(_axis_label(feat), fontsize=9)
             if ax.get_legend_handles_labels()[0]:
-                ax.legend(fontsize=7, loc="upper right")
+                ax.legend(fontsize=7, loc="upper left", title="Node", title_fontsize=7)
 
-        axes[-1].set_xlabel("window_start (s)")
-        fig.tight_layout()
+        if phase_spans:
+            from matplotlib.patches import Patch
+            seen = dict.fromkeys((n, c) for _, _, n, c in phase_spans)
+            fig.legend(
+                handles=[Patch(color=c, alpha=0.35, label=n) for n, c in seen],
+                loc="lower center", ncol=len(seen), fontsize=8, frameon=False,
+            )
+
+        axes[-1].set_xlabel("Run time — window_start (s)")
+        fig.tight_layout(rect=(0, 0.05 if phase_spans else 0, 1, 1))
 
         safe_name = str(run_id).replace(".csv", "").replace("/", "_")
         out_path = os.path.join(output_dir, f"timeseries_{safe_name}.png")
@@ -456,25 +603,61 @@ def plot_correlation_heatmaps(
 ) -> tuple[str, str, list[str]]:
     pearson, spearman, excluded = compute_correlations(df)
 
+    layer_of = {f: layer for layer, feats in LAYER_GROUPS.items() for f in feats}
+    method_blurb = {
+        "pearson": "Pearson r — how well two features follow a straight-line relationship",
+        "spearman": "Spearman ρ — how consistently two features rise or fall together "
+                    "(rank-based; catches curved trends too)",
+    }
+    # Colour-bar ticks spelled out in words: the bare -1..1 scale was the part
+    # nobody could read without already knowing what a correlation is.
+    cbar_ticks = [1, 0.7, 0.3, 0, -0.3, -0.7, -1]
+    cbar_words = [
+        "+1  always rise together", "+0.7  strong", "+0.3  weak",
+        "0  no relationship",
+        "−0.3  weak", "−0.7  strong", "−1  one rises, other falls",
+    ]
+
     for name, matrix in [("pearson", pearson), ("spearman", spearman)]:
-        fig, ax = plt.subplots(figsize=(11, 9))
+        tick_names = [f"{c} [{layer_of.get(c, 'Cross-layer')}]" for c in matrix.columns]
+        fig, ax = plt.subplots(figsize=(13, 11))
         sns.heatmap(
             matrix, annot=True, fmt=".2f", cmap="coolwarm",
-            center=0, vmin=-1, vmax=1, square=True, ax=ax,
-            cbar_kws={"label": "correlation coefficient"},
+            center=0, vmin=-1, vmax=1, square=True, ax=ax, linewidths=0.5,
+            xticklabels=tick_names, yticklabels=tick_names,
+            annot_kws={"fontsize": 15, "fontweight": "medium"},
+            cbar_kws={"label": "", "shrink": 0.8},
         )
-        title = f"{name.capitalize()} correlation — cross-layer features"
+        ax.grid(False)
+        cbar = ax.collections[0].colorbar
+        cbar.set_ticks(cbar_ticks)
+        cbar.set_ticklabels(cbar_words, fontsize=9)
+        ax.tick_params(axis="x", labelrotation=40, labelsize=9)
+        plt.setp(ax.get_xticklabels(), ha="right", rotation_mode="anchor")
+        ax.tick_params(axis="y", labelsize=9)
+
+        title = (f"{name.capitalize()} correlation between features "
+                 f"({len(df)} windows, all nodes and phases)\n{method_blurb[name]}")
         if excluded:
             # Wrap the excluded-columns list manually rather than relying
             # on matplotlib's title auto-wrap (which doesn't wrap titles
             # by default and was clipping the last column name off the
             # right edge of the figure).
-            import textwrap
-            excluded_text = "excluded (all-NaN): " + ", ".join(excluded)
-            wrapped = textwrap.fill(excluded_text, width=70)
-            title += f"\n{wrapped}"
-        ax.set_title(title, fontsize=9, loc="left")
-        fig.tight_layout()
+            excluded_text = "Not shown (no data in this run): " + ", ".join(excluded)
+            title += "\n" + textwrap.fill(excluded_text, width=110)
+        ax.set_title(title, fontsize=10, loc="left")
+
+        fig.text(
+            0.01, 0.01,
+            "How to read: each cell compares two features across every window. "
+            "Red = when one goes up, the other tends to go up. "
+            "Blue = when one goes up, the other tends to go down.\n"
+            "Pale = no clear relationship. The number is the strength (0 to ±1). "
+            "The diagonal is each feature against itself (always 1). "
+            "Correlation shows features move together, not that one causes the other.",
+            fontsize=8.5, color="#444444", ha="left", va="bottom",
+        )
+        fig.tight_layout(rect=(0, 0.05, 1, 1))
         out_path = os.path.join(output_dir, f"correlation_{name}.png")
         fig.savefig(out_path, dpi=120)
         plt.close(fig)
@@ -580,6 +763,16 @@ def run_dimensionality_reduction(
     label_col = "Label" if "Label" in df.columns else "window_label"
     working = df[usable_cols + [label_col]].copy()
     working[usable_cols] = working[usable_cols].apply(pd.to_numeric, errors="coerce")
+    working["_phase"] = _phase_names(df).values
+
+    # Windows with no ground truth (pre-baseline etc.) can't show whether the
+    # PHASES separate, which is this plot's whole question — and on
+    # blackhole/linear/home (2026-09-22) a handful of them sat at PC1 ≈ 35,
+    # squashing every labelled point into one corner. preprocess.py already
+    # keeps them out of every benign/attack population; do the same here.
+    unlabelled_rows = working["_phase"].map(_is_unlabelled)
+    n_unlabelled = int(unlabelled_rows.sum())
+    working = working[~unlabelled_rows]
 
     n_before = len(working)
     working = working.dropna(subset=usable_cols)
@@ -604,6 +797,7 @@ def run_dimensionality_reduction(
             "sparse_excluded": sorted(sparse_excluded),
             "constant_excluded": sorted(constant_excluded),
             "n_dropped_rows": n_dropped,
+            "n_unlabelled_excluded": n_unlabelled,
         }
 
     # PCA(n_components=2) needs at least two columns that actually vary, so this
@@ -696,6 +890,8 @@ def run_dimensionality_reduction(
         "tsne_perplexity_used": tsne_perplexity,
         "n_distinct_points": n_distinct,
         "labels": y,
+        "phase_names": working["_phase"].tolist(),
+        "n_unlabelled_excluded": n_unlabelled,
         "usable_columns": usable_cols,
         "excluded_columns": excluded,
         "allnan_excluded": sorted(allnan_excluded),
@@ -745,10 +941,13 @@ def _draw_projection_axis(
         ax.set_title(title)
         return
 
+    order, _ = _phase_order_palette(label_names)
     sns.scatterplot(
         x=proj[:, 0], y=proj[:, 1],
-        hue=label_names, palette=palette, ax=ax, s=40, alpha=0.8,
+        hue=label_names, hue_order=order, palette=palette, ax=ax,
+        s=22, alpha=0.6, linewidth=0,
     )
+    ax.legend(title="Phase", fontsize=8, title_fontsize=8)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -780,17 +979,19 @@ def plot_dimensionality_reduction(
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    label_names = [LABEL_NAMES.get(v, str(v)) for v in result["labels"]]
-    palette = sns.color_palette("Set1", n_colors=len(set(label_names)))
+    label_names = result["phase_names"]
+    _, palette = _phase_order_palette(label_names)
 
     _draw_projection_axis(
         axes[0], result["pca_projection"], label_names, palette,
-        _pca_title(result), "PC1", "PC2",
+        _pca_title(result), "PC1 — strongest combined pattern",
+        "PC2 — next strongest pattern",
     )
     _draw_projection_axis(
         axes[1], result["tsne_projection"], label_names, palette,
         f"t-SNE (perplexity={result['tsne_perplexity_used']})",
-        "t-SNE dim 1", "t-SNE dim 2", skipped=result.get("tsne_skipped"),
+        "t-SNE dim 1 (no units — only closeness matters)",
+        "t-SNE dim 2", skipped=result.get("tsne_skipped"),
     )
 
     sparse = result.get("sparse_excluded") or []
@@ -806,6 +1007,8 @@ def plot_dimensionality_reduction(
     subtitle = (
         f"{result['n_rows_used']} windows used"
         + (f" ({result['n_dropped_rows']} dropped for remaining NaNs)" if result["n_dropped_rows"] else "")
+        + (f"; {result['n_unlabelled_excluded']} unlabelled (pre-baseline) windows left out"
+           if result.get("n_unlabelled_excluded") else "")
         + ("\nExcluded — " + "; ".join(excl_bits) if excl_bits else "\nExcluded columns: none")
     )
     fig.suptitle(f"Dimensionality reduction — feature-space separability\n{subtitle}", fontsize=10)
@@ -877,17 +1080,19 @@ def plot_tunnel_end_projection(
         return out_path, result
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    label_names = [LABEL_NAMES.get(v, str(v)) for v in result["labels"]]
-    palette = sns.color_palette("Set1", n_colors=len(set(label_names)))
+    label_names = result["phase_names"]
+    _, palette = _phase_order_palette(label_names)
 
     _draw_projection_axis(
         axes[0], result["pca_projection"], label_names, palette,
-        _pca_title(result), "PC1", "PC2",
+        _pca_title(result), "PC1 — strongest combined pattern",
+        "PC2 — next strongest pattern",
     )
     _draw_projection_axis(
         axes[1], result["tsne_projection"], label_names, palette,
         f"t-SNE (perplexity={result['tsne_perplexity_used']})",
-        "t-SNE dim 1", "t-SNE dim 2", skipped=result.get("tsne_skipped"),
+        "t-SNE dim 1 (no units — only closeness matters)",
+        "t-SNE dim 2", skipped=result.get("tsne_skipped"),
     )
 
     kept_tunnel = [c for c in result["usable_columns"] if c.startswith("Tunnel")]

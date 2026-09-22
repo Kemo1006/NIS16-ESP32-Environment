@@ -1361,12 +1361,27 @@ Both still live as one-line warnings in STATUS.md.
   disabled (AC+DC)**. MANDATORY: **boards go DIRECT into a laptop port, NEVER the dock or any hub** — this is
   the same rule STATUS.md already had for ROOT POWER. Also update the CP210x + DisplayLink drivers.
 - sep. 22, 2026 — Export overhaul + 3 follow-up fixes (D-13 fsync, `LIST_SD`, dedup, `DELETE_SD_FILE`). Rolled out of STATUS.md.
+- sep. 22, 2026 — Console `LAYER`→`HOP` (root = H00), blackhole header rewritten to match C7's positional model, leaf/off-path guards, `TOPOLOGY TREE` block, USB-export stderr trap. 6/6 variants build clean. Rolled out of STATUS.md.
 
 ### Rolled from MEMORY.md — sep. 22, 2026 (cap): non-ASCII argparse docstrings
 - Non-ASCII characters (`⚠`, `—`, `…`) in a Python tool's **module docstring** when it is passed to `argparse`
   as `description` — the Windows console is cp1252, so `--help` dies with `UnicodeEncodeError` before printing
   anything. `tools/command_center.py` is deliberately ASCII-only and calls
   `sys.stdout.reconfigure(encoding="utf-8")` before `rich` draws.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): SD status/runs/location/clock file roles
+- sep. 22, 2026 — `status_NODE_<mac>.txt` is rewritten every boot and holds `Boot count:`, which IS the boot
+  counter — deleting it resets `b<n>` to 1. It is NOT what the picker dates files from (that is `runs.csv`,
+  also the run-number + USB row-count/abort source). `DELETE_SD_FILE` accepts only `*_telem.csv`/`*_arrivals.csv`,
+  so it, `runs.csv`, `location.txt` and `clock.txt` are all undeletable by design.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): SD reader VCC + printf format specifier
+- Powering the SD reader module's VCC from ESP32 3V3 — its onboard AMS1117-3.3 drops ~1.1-1.3V, leaving the
+  card below its ~2.7V minimum. Symptom: CMD0 succeeds (R1=0x01) but ACMD41/OCR times out forever (0x107) —
+  looks like wiring but isn't. Use VIN/5V; the module's 74HC125 level-shifter never puts 5V on ESP32 GPIOs.
+- sep. 16, 2026 — Matching a `printf` format specifier to `sdmmc_card_t`'s `real_freq_khz`/
+  `max_freq_khz` declared type — it differs by ESP-IDF version (see CLAUDE.md bootstrap facts).
+  `sd_status.c`'s boot-check `rep()` now casts explicitly (`(unsigned long)x` + `%lu`) instead.
 
 ### Rolled from MEMORY.md — sep. 22, 2026 (cap): MAX_PATH build-dir failure, full detail
 - Long `idf.py -B <dir>` names — deep paths push object paths past Windows `MAX_PATH`; ninja fails in the
