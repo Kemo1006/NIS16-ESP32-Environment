@@ -64,8 +64,7 @@
   location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
   `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
   site folders — hit for real 2026-09-22 (ran `-Location home`, cards said G402, `home/` was empty).
-- sep. 22, 2026 — **Root arrivals.csv exports fine over USB**; runs.csv `rows` is TELEM-only, so the
-  manifest-vs-actual check is telem-only (it false-alarmed on every arrivals import).
+- sep. 22, 2026 — **Root arrivals.csv exports fine over USB**; runs.csv `rows` is TELEM-only, so the manifest check is too.
 - sep. 22, 2026 — ⚠️ **AUTO-ANALYSIS WAS SKIPPING THE TRIM (fixed).** `run.ps1 -Analyze` — what
   `run_wizard.ps1` gives the ROOT (`New-RunParams`) — ran M6/M7 over the RAW export and never called
   `trim_run.py`, while `analyze.ps1` always trimmed. A raw folder can hold SEVERAL boot sessions and the
