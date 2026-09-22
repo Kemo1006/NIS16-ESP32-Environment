@@ -347,8 +347,9 @@ topo_status_t topo_validate(const topo_graph_t *g, const topo_node_t *nodes,
             if (g->layer[i] > 2) {
                 mac_str(nodes[i].mac, mac);
                 snprintf(reason, reason_len,
-                         "%s is at layer %d - a star allows only the center (1) and "
-                         "its direct nodes (2)", mac, g->layer[i]);
+                         "%s is at hop %d - a star allows only the center (hop 0) "
+                         "and its direct nodes (hop 1)", mac,
+                         g->layer[i] > 0 ? g->layer[i] - 1 : 0);
                 return TOPO_FAIL;
             }
         }

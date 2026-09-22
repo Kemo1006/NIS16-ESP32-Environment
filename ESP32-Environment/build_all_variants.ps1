@@ -1,4 +1,4 @@
-# build_all_variants.ps1 — compile every firmware variant and report warning counts.
+﻿# build_all_variants.ps1 — compile every firmware variant and report warning counts.
 #
 # WHY THIS EXISTS
 #   M1 criterion 1 is "all firmware variants compile without warnings". A normal
@@ -11,6 +11,34 @@
 #
 # Takes ~2-6 min total. ccache makes runs after the first much faster.
 # Nothing is flashed and no board is needed.
+#
+# -------------------------------------------------------------------------
+# WARM BUILDS PRODUCE A FALSE "0 warnings" -- USE -Clean FOR MILESTONE PROOF
+# -------------------------------------------------------------------------
+# ninja only recompiles what changed. A source file that does NOT recompile
+# CANNOT re-emit its warnings, so a warm run can print "ALL 6 VARIANTS BUILD
+# CLEAN - 0 warnings" while real warnings sit in the source untouched.
+#
+# Demonstrated 2026-09-22 on this exact tree: a warm run reported 0 warnings;
+# `touch child_node/main/wormhole_victim.c` and re-running the SAME script on
+# the SAME source reported WORMHOLE Node A = 1, Node B = 1. Nothing had been
+# fixed in between -- the first run simply never recompiled that file.
+#
+# M1 criterion 1 is "all firmware variants compile without warnings". Quoting a
+# warm run as evidence for that is quoting the cache, not the code, and a panel
+# rebuilding from scratch sees what the warm run hid. So:
+#
+#   .\build_all_variants.ps1 -Clean     <- milestone evidence / screenshots
+#   .\build_all_variants.ps1            <- fast "did I break the build" check
+#
+# A warm run still runs, but it will NOT claim a clean build; it says the count
+# is incremental and unverified, and names the variants it could not vouch for.
+param(
+    # Wipe every build directory first, so every file recompiles and every
+    # warning is re-emitted. Slower (no ccache reuse for the changed parts) and
+    # the only mode whose warning count means anything.
+    [switch]$Clean
+)
 
 $ErrorActionPreference = 'Continue'
 $repo = $PSScriptRoot
@@ -57,6 +85,27 @@ $variants = @(
 # 136 is the longest path ESP-IDF generates inside a build dir (above); 260 is
 # MAX_PATH. This is a WARNING, not a hard stop — LongPathsEnabled=1 (admin) or
 # a shorter checkout path both make it a non-issue, and some builds still fit.
+# Which build dirs already exist decides whether this run's warning count can
+# be trusted. Captured BEFORE anything is built, and before -Clean deletes them.
+$warmVariants = @()
+foreach ($v in $variants) {
+    $bldPath = Join-Path (Join-Path $repo $v.Proj) $v.Bld
+    if (Test-Path $bldPath) {
+        if ($Clean) {
+            Write-Host ("  wiping {0}\{1} ..." -f $v.Proj, $v.Bld) -ForegroundColor DarkGray
+            Remove-Item -Recurse -Force $bldPath -ErrorAction SilentlyContinue
+        } else {
+            $warmVariants += $v.Name
+        }
+    }
+}
+if ($Clean) {
+    Write-Host "Clean build: every variant recompiles from scratch, so the warning count is real." -ForegroundColor Green
+} elseif ($warmVariants.Count) {
+    Write-Host ("Incremental build: {0} variant(s) reuse cached objects. Warning count will NOT be trustworthy -- re-run with -Clean for milestone evidence." -f $warmVariants.Count) -ForegroundColor Yellow
+}
+Write-Host ""
+
 $longestBld = ($variants | ForEach-Object { $_.Bld.Length } | Measure-Object -Maximum).Maximum
 $longestProj = ($variants | ForEach-Object { (Join-Path $repo $_.Proj).Length } | Measure-Object -Maximum).Maximum
 $worstPath = $longestProj + 1 + $longestBld + 1 + 136
@@ -122,8 +171,18 @@ $totW = ($results | Measure-Object -Property Warnings -Sum).Sum
 $totE = ($results | Measure-Object -Property Errors   -Sum).Sum
 $bad  = @($results | Where-Object { $_.Result -ne "BUILD OK" }).Count
 
-if ($bad -eq 0 -and $totW -eq 0 -and $totE -eq 0) {
+if ($bad -eq 0 -and $totW -eq 0 -and $totE -eq 0 -and $warmVariants.Count -eq 0) {
     Write-Host ("ALL {0} VARIANTS BUILD CLEAN - 0 warnings, 0 errors" -f $results.Count) -ForegroundColor Green
+    if (-not $Clean) {
+        Write-Host "(every build dir was already absent, so this was a full compile)" -ForegroundColor DarkGray
+    }
+} elseif ($bad -eq 0 -and $totW -eq 0 -and $totE -eq 0) {
+    # The dangerous case: looks perfect, proves nothing. Say so instead of
+    # printing the same green line a clean run earns.
+    Write-Host ("0 warnings reported, but this was an INCREMENTAL build - NOT a clean-build result." -f $null) -ForegroundColor Yellow
+    Write-Host ("These {0} variant(s) reused cached objects and could not re-emit warnings:" -f $warmVariants.Count) -ForegroundColor Yellow
+    Write-Host ("  " + ($warmVariants -join ", ")) -ForegroundColor Yellow
+    Write-Host "Re-run with -Clean before quoting this as M1 criterion 1 evidence." -ForegroundColor Yellow
 } else {
     Write-Host ("{0} variant(s) not clean - {1} warning(s), {2} error(s). See {3}" -f $bad, $totW, $totE, $log) -ForegroundColor Red
     Write-Host "Do NOT hide these in the presentation - state what they are." -ForegroundColor Yellow

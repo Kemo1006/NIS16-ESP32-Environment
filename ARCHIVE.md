@@ -1171,3 +1171,208 @@ Both still live as one-line warnings in STATUS.md.
   `import_sdcard.py` deliberately skips. Recover by hand from `_archive/`. User accepted the loss.
 - sep. 21, 2026 - **`layer` -> `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` -> `HopChangeCount`; values unchanged.
 - sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the 0xB8 BSOD entry)
+- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
+  to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
+  normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
+- sep. 21, 2026 - **`leakage.py` is DATASET-AWARE**: it asks how many roles carry each relay column, never hardcodes.
+  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are FALSE now and would abort good captures;
+  downgraded in `run_wizard.ps1` (the launcher in use), BOTH copies in `menu.ps1`, and the attacker
+  boot banner. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
+- sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
+  length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
+  run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the hop-rename / leaf-guard entry)
+- sep. 22, 2026 — **Export has TWO sources, one pipeline.** `run_wizard.ps1` asks *board over USB* vs
+  *pulled SD card*, then runs the SAME picker → dry-run → confirm → import (`Import-OneSdCard -Card|-Port`).
+  New firmware cmds **`LIST_SD`** + **`EXPORT_SD_PATH=<rel>`**; `LIST_FILES` adds `|<bytes>|<rows>`. Host:
+  `import_sdcard.py --port COMx`. Both routes verified byte-identical.
+- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file.** `?` NEVER renders as `0`.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (hop-rename entry, 2nd pass)
+- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.** Shared
+  `probe_relay.{h,c}`; victims send to their PARENT; **the attacker runs the SAME relay, differing by ONE
+  boolean callback**. ⚠️ This IMPLEMENTS the paper (§3.1.3.2) — the old TODS behaviour was the deviation.
+  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale: D-12 in thesis-deviate.md.
+- sep. 21, 2026 — ⚠️ **TRAP THAT WOULD HAVE SILENTLY KILLED EVERY WORMHOLE RUN.** The relay first forwarded
+  only `PROBE_MAGIC`; Node A's duplicate carries `PROBE_MAGIC_WORMHOLE`, so every intermediate relay would
+  have dropped it and wormhole runs would have looked clean. Both magics now
+  relay. **Any future change to the relay's accept-filter must re-check this.**
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the import stderr-trap entry)
+- sep. 22, 2026 — ⚠⚠ **STILL RUNNING was STICKY — the live-flag bug, now fixed.** `sd_is_live_mirror()`
+  compared PATH STRINGS only, but `csv_logger_close()` nulls the mirror FILE*s at TERMINATE and keeps the
+  path strings (ARCHIVE_SD needs them). So after ANY completed run every file on that card reported
+  STILL RUNNING for the rest of the boot and the importer refused it — seen live on COM10+COM9. Now gated
+  on an OPEN handle. ⚠️ REFLASH needed; until then read the card in a reader, or power-cycle the board.
+- sep. 22, 2026 — **Children now stop cleanly at TERMINATE.** `heartbeat_task` was the only thing still
+  transmitting after a run (`while(true)`, timer-driven); it now exits for non-root nodes. probe_gen and
+  telemetry already self-exited; relay_task parks on an empty queue. Root keeps beating (owns the member
+  table). App-level only — the child stays joined and USB-reachable. All 6 variants build clean.
+- sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too**, via shared
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the r1 home-run data check)
+- sep. 22, 2026 — ⛔⛔ **NEVER FLASH `build_all_variants.ps1`'s OUTPUT. It is a COMPILE CHECK ONLY.**
+  It hardcodes `-DMESH_TOPOLOGY=0` on every variant (M1 criterion 1 = 'do all variants compile'), and
+  `NIS_TOPO_STAR = 0` with `s_topo_dirs[0] = "star"` — so those binaries run a STAR mesh (depth capped at
+  2) and log into `<attack>/star/<location>` whatever the experiment is. Flashed to all 4 boards sep. 22,
+  which then wrote `blackhole/star/home` for a LINEAR run — MAC/role were verified, topology was not.
+  Real flashing goes via `run.ps1 -Flash -Topology <t>` (star=0, tree=1, **linear=2**, partial=3), driven
+  by `run_wizard.ps1` from the preset. bcr/bcc/bcba/bcbv/bcwa/bcwb prove compilation, they do not deploy.
+- sep. 22, 2026 — **Per-file CSV delete, BOTH sources.** New firmware `DELETE_SD_FILE=<rel>` deletes ONE
+  capture (`DELETE_SD_PATH` only ever took whole folders, which is why `--delete-source` used to be
+  refused over `--port`). Guards: `sd_rel_capture_file_valid()` accepts only `*_telem.csv`/`*_arrivals.csv`
+  — so **runs.csv/location.txt can never be deleted this way** — and the board refuses a file it has OPEN.
+  Host: `export_logs.py --delete-sd-file`, `import_sdcard.py --delete-source` (now allowed with `--port`),
+  wizard picker's `d` works over USB too. Auto-delete-after-import stays OFF for USB (opt-in only).
+  ⚠️ **Any `& python ... 2>&1` here MUST set `$ErrorActionPreference='Continue'` first**: under the
+  script-wide `Stop`, PS 5.1 makes a NATIVE command's first stderr line TERMINATING. Shipped without it,
+  so one refused file killed the whole selection as "Could not run import_sdcard.py / python on PATH?".
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the jitter scenario)
+- sep. 22, 2026 — ⚠️ **`ERROR:LOCATION_WRITE_FAILED` = the card MOUNTED and the write still failed** (vs
+  `LOCATION_NO_CARD` = mount failed). Hit live on COM10/COM11, which also had NO location.txt — consistent
+  with a **write-protect lock switch on the microSD adapter** (mounts + reads fine, every write fails).
+  Else: full card, or FAT damage → read-only mount. Triage: lock switch →
+  power-cycle → write-test in a reader (a good card, E:, wrote fine with 3.63 GB free). **UNRESOLVED.**
+- sep. 22, 2026 — **Over USB an ARRIVALS file reports rows UNKNOWN, not the telem count.** `runs.csv`'s
+  `rows` is that boot's TELEM count; a root's arrivals.csv shares the boot but counts something else.
+  `_BoardCard.rows()` returned it for both kinds → wrong count in the picker AND `_already_imported()`
+  could never match, so re-import over `--port` COPIED A DUPLICATE. Now None for non-telem → identity-only
+  fallback catches it. `--card` unaffected; preprocess.py already archives same-key dupes, so not contamination.
+- sep. 22, 2026 — ⚠️ **"ABORTED" WAS A LIE: it also meant "still running".** runs.csv only gets its
+  `clean` row at TERMINATE, so a live run and a dead one are indistinguishable to the host — every
+  card read mid-capture reported ABORTED + "rows unknown". Firmware now reports whether it still has
+  each mirror OPEN (`sd_is_live_mirror()`, 3rd field of `SDFILE:<name>|<bytes>|<live>`); the picker
+  says **STILL RUNNING** and the importer REFUSES it (not behind --include-aborted: importing a live
+  file yields a truncated run that looks complete). Proof it was benign: boot 759 grew 179->434 KB
+  between two reads.
+- sep. 22, 2026 — ⚠️ **SET_LOCATION broke after an SD hot-swap — root cause + fix.**
+  `mount_for_location_op()` returned early on `s_card != NULL`, so pulling a card from a RUNNING board
+  left a stale handle and every later write failed until reboot (it "spread" because each swap broke
+  one more board). Now: on write failure the mount is rebuilt and retried — but **only between runs**.
+  Mid-capture it returns the new `ERROR:LOCATION_STALE_MOUNT` and says reboot, because unmounting
+  under a live run kills the SD mirror (mount_for_location_op's own comment warns of this).
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (room for the warm-build false-pass)
+- sep. 22, 2026 — ⚠️ **BOARD NOT YET REFLASHED with today's hop-rename/leaf-guard/positional-header
+  firmware.** The r1 home-run above was captured on the OLD firmware, and is still VALID data — today's
+  C changes are console-display and boot-warning ADDITIONS only (`mesh_setup.c`, `blackhole_victim.c`),
+  they touch NO CSV column, NO phase timing, NO probe logic. Reflashing changes what the SERIAL CONSOLE
+  shows and adds a boot-time safety warning; it does not invalidate or require re-capturing anything
+  already exported.
+- sep. 22, 2026 — **SD files no longer date to 1980.** get_fattime() feeds `time(NULL)` into each FAT
+  entry; no RTC = 1970 -> clamped. `sd_status_seed_clock_from_build()` seeds it from BUILD stamp + uptime
+  in `sd_status_run_boot_check()`. ⚠️ A dating AID, not a measurement; boot counter + runs.csv stay exact.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (batch 4; build false-pass now FIXED via -Clean)
+- sep. 22, 2026 — ⛔⛔ **`build_all_variants.ps1` CAN REPORT A FALSE "0 warnings" — M1 CRITERION 1 EVIDENCE
+  IS NOT TRUSTWORTHY ON A WARM BUILD.** It never wipes `bcr/bcc/bcba/bcbv/bcwa/bcwb`, so ninja reuses cached
+  objects and a file that did not recompile CANNOT re-emit its warnings. PROVEN sep. 22: same source, same
+  script, twice — warm run said `ALL 6 VARIANTS BUILD CLEAN - 0 warnings`; after `touch
+  child_node/main/wormhole_victim.c` the SAME tree reported WORMHOLE A=1, B=1. The script's own banner says
+  "Do NOT hide these in the presentation", and a panel rebuilding from scratch sees what the warm run hid.
+  **Before quoting a clean build as M1 evidence, delete the build dirs first.** The 2 latent warnings are
+  `wormhole_victim.c:262 root_data set but not used` + `:481 mdata unused` — harmless pre-C7 leftovers
+  (both tasks now send via `probe_relay_send_own()`; call sites traced, no behavioural gap), STILL UNFIXED.
+  A third warning, `root_main.c jit_attack unused`, WAS mine and IS fixed (baseline root preprocesses out
+  both consumers; silenced with `(void)`).
+- sep. 22, 2026 — **Location pre-flight in the wizard.** "Yes - use it" now reads each board's
+  location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
+  `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
+  site folders — hit for real 2026-09-22 (ran `-Location home`, cards said G402, `home/` was empty).
+- sep. 22, 2026 — **Root arrivals.csv exports fine over USB**; runs.csv `rows` is TELEM-only, so the manifest check is too.
+- sep. 22, 2026 — ⚠️ **AUTO-ANALYSIS WAS SKIPPING THE TRIM (fixed).** `run.ps1 -Analyze` — what
+  `run_wizard.ps1` gives the ROOT (`New-RunParams`) — ran M6/M7 over the RAW export and never called
+  `trim_run.py`, while `analyze.ps1` always trimmed. A raw folder can hold SEVERAL boot sessions and the
+  right one is NOT the longest, so idle sessions were silently folded in; and BOTH paths write the same
+  `analysis/<cell>/feature_table.csv`, making trimmed/untrimmed tables indistinguishable afterwards.
+  Fixed: run.ps1 clears stale `trimmed/`, runs `trim_run.py --apply`, points BOTH M6+M7 at `$analysisSrc`;
+  a trim failure falls back to raw and SAYS SO. ⚠️ **Re-run `.nalyze.ps1` on any cell auto-analysed
+  before sep. 22.** Left alone (not a bug): the wizard's "Run analysis only" asks via
+  `Select-AnalysisInput`, which already prefers `trimmed/`. **Auto-EXPORT was correct** (`-Analyze`
+  implies `-Export`, run.ps1:240).
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (batch 5)
+- sep. 22, 2026 — ⚠️ **THE WORKING COPY MOVED TO `A:\Angelo\Excelsior\THESIS\T`.**
+  `C:\Users\Angelo Calpoporo\CLionProjects\NIS16-ESP32-Environment` is now a BACKUP only — do NOT edit it.
+  Reason: C:'s depth pushes ESP-IDF build paths into Windows `MAX_PATH` (worst case **exactly 260**); on
+  A: it is **199**. Same repo/branch/commit (THESIS3 @ 764ff06). A: was merged to hold everything: it
+  already had `archive/2026-09-18_Incomplete-2` + `_incomplete-3` C: never had, and received C:'s 13 work
+  files + `archive/20260913_pre-redesign` (513 files/293 CSVs) + `tools/feature_separability.py`
+  (PANEL-REQUIREMENT tool: proves no single feature decides the dataset) + 4 PDFs. SHA256-verified.
+  ⚠️ **NOT copied on purpose:** ~1.8 GB July build junk + superseded root `docs/`,`memory/`,`tools/`.
+- sep. 22, 2026 — **`Select-Port` crashed "Key cannot be null"** on the new USB-export flow: called without
+  `-Ports`, and piping `$null` through `Where-Object` yields ONE iteration with `$_ = $null`, so `$shown`
+  held a single null and the loop hit `ContainsKey($null)`. Fixed at the call site AND hardened in
+  `Select-Port` (`{ $_ -and ... }`).
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (batch 6; superseded by the archive-menu entry)
+- sep. 22, 2026 — **G402 cell RESTORED from git** (`git checkout` of the 9 staged-deleted files, incl.
+  BOTH root files). User then chose to ARCHIVE G402 + home as test data — correct order: `archive.ps1`
+  MOVES into `archive/` where `inventory_cells.py` still counts them, vs a staged deletion which loses
+  them silently. `archive.ps1` moves `tools/exports/` AND generated `analysis/` output together.
+- sep. 22, 2026 — ⚠️ **ROOT CAUSE of "sometimes 0 rows off the SD card" (D-13): `fflush()` without
+  `fsync()`.** On ESP-IDF's FAT VFS `fflush()` writes the BYTES but not the **directory entry**, so any boot
+  not reaching `csv_logger_close()` (brownout, reset, card pulled live) left a file whose recorded size was
+  **0** — rows present, unreachable. Fixed: `sd_mirror_sync()` = `fflush` + `fsync`, rate-limited by
+  `LOGGER_SD_SYNC_INTERVAL_MS` (**5000 ms**, time-based), forced unconditionally in `csv_logger_flush()`.
+  ⚠️ **Does NOT repair existing cards** — a PRE-FIX 0-row card file is **LOST DATA, not "the node logged
+  nothing"**. Compiles clean; **NOT hardware-tested** (needs a board + mid-run reset).
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (batch 7; coverage blocker now in STATUS Next step 2)
+- sep. 22, 2026 — ⚠️ **`home` blackhole/linear is NOT `[x]` because of COVERAGE, not archiving.**
+  `inventory_cells.py:63` `COVERAGE_FLOOR = 0.95` (M5): the ROOT logged **93.7%** of expected samples, so
+  the cell is disqualified by 1.3 points despite clean topology, exact phase timing and a CONFIRMED
+  blackhole. G402 fails the same way (worst 93.9%). **The root dropping samples is now a MILESTONE
+  BLOCKER, not a cosmetic warning** — same finding `validate_integrity.py` reports as a WARN.
+
+## Rolled from MEMORY.md — sep. 22, 2026 (to hold the 200-line cap)
+### Failed approaches — settled, fix is in the code
+- Splitting recovered SPIFFS dumps on newlines after stripping page metadata — welds row tails to heads
+  and fabricates data that passes a field regex. `recover_spiffs.py` now accepts only byte runs delimited
+  by a newline on BOTH sides.
+- `run_matrix.py --record` with hand-typed `--repeat` — silently re-recorded the wrong run. Use
+  `--autorecord` (scans, validates, records; no flags to mistype).
+
+### Rolled from MEMORY.md — sep. 22, 2026: the stderr-promotion trap (full detail)
+- sep. 22, 2026 — ⚠️⚠️ **THE STDERR-PROMOTION TRAP BIT AGAIN — in `Invoke-ImportSdCard` this time.**
+  A USB export dry-ran fine then died on the real copy with "Could not run import_sdcard.py / Is python on
+  PATH?" while python was on PATH and working. Cause: `import_sdcard.py`'s real copy streams a progress bar
+  to **stderr** (`export_logs.py:213` writes a CR-padded progress line); under `Stop`, PS 5.1 promotes
+  a native command's FIRST stderr line to a TERMINATING error. The dry run survives only because it prints
+  no progress. Tell-tale: `$_.Exception.Message` renders EMPTY (the promoted line is just CR + padding).
+  Both calls now wrap in `$ErrorActionPreference='Continue'` + `finally` restore. The "Is python on PATH?"
+  hint was HARDCODED after the catch (fired on ANY exception, named a "5.3" window absent on this 5.5.4
+  laptop); it probes for python now. ⚠️ **Editing `run_wizard.ps1` does NOT affect an ALREADY-RUNNING
+  wizard — exit [17] and relaunch.** Grep every `& python ... 2>&1` before shipping.
+
+### Rolled from MEMORY.md — sep. 22, 2026: USB BSOD 0xB8 investigation (full detail)
+- sep. 22, 2026 — ⚠️⚠️ **WINDOWS BSOD `ATTEMPTED_SWITCH_FROM_DPC` (0xB8) WHEN TALKING TO A BOARD OVER USB.**
+  Angelo's laptop (Win11 26200) hard-crashed 2× on sep. 22 (11:45 + 13:36 local, dumps in `C:\Windows\Minidump`)
+  during export / `DELETE_SD_FILE` / `SET_LOCATION`, plus a 0xA0 INTERNAL_POWER_ERROR sep. 21. HOST DRIVER
+  fault — **not the firmware, not the scripts**; nothing an ESP sends over a COM port can crash Windows.
+  **PRIME SUSPECT, topology CONFIRMED by the PnP parent chain: EVERY CP210x ever enumerated sat 2–3 Genesys Logic hubs
+  (VID_05E3) deep behind ONE Intel root port — the Dell D6000 dock (DisplayLink VID_17E9/PID_6006, driver
+  9.3.33xx from 2020) plus a further hub chained onto it.** Boards shared that one port with the dock's video
+  chip. `silabser.sys` 11.3.0.176 is the other driver in the path. FIXED sep. 22: **USB selective suspend
+  disabled (AC+DC)**. MANDATORY: **boards go DIRECT into a laptop port, NEVER the dock or any hub** — this is
+  the same rule STATUS.md already had for ROOT POWER. Also update the CP210x + DisplayLink drivers.
+- sep. 22, 2026 — Export overhaul + 3 follow-up fixes (D-13 fsync, `LIST_SD`, dedup, `DELETE_SD_FILE`). Rolled out of STATUS.md.
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): non-ASCII argparse docstrings
+- Non-ASCII characters (`⚠`, `—`, `…`) in a Python tool's **module docstring** when it is passed to `argparse`
+  as `description` — the Windows console is cp1252, so `--help` dies with `UnicodeEncodeError` before printing
+  anything. `tools/command_center.py` is deliberately ASCII-only and calls
+  `sys.stdout.reconfigure(encoding="utf-8")` before `rich` draws.
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): MAX_PATH build-dir failure, full detail
+- Long `idf.py -B <dir>` names — deep paths push object paths past Windows `MAX_PATH`; ninja fails in the
+  **bootloader** subproject long after the app compiled, so the error looks unrelated. ✅ **FIXED in
+  `build_all_variants.ps1` (sep. 22, 2026)**: it used `build_check_<Name>` and the longest row (BLACKHOLE
+  attacker) measured **exactly 260** — reporting FAILED for good code, with the budget shifting per user's
+  own path. Now a per-variant `Bld` field (`bcr`,`bcba`,…) + a preflight WARNING. ⚠️ **Don't rename them
+  back.** Still unapplied alternative: `LongPathsEnabled=1` (admin).
+

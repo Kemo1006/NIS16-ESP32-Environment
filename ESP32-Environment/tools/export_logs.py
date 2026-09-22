@@ -13,6 +13,16 @@ each ESP32 starts a task that listens on UART0 for these commands:
     ARCHIVE_SD       -> archives (never deletes) this run's SD-card mirror CSVs
     GET_LOCATION     -> reports location.txt as it stands, changing nothing
     SET_LOCATION=x   -> writes/overwrites location.txt on the board's SD card
+    SET_TIME=<epoch> -> hands the board a real clock and saves it to the card
+    GET_TIME         -> reports the board's clock and where it came from
+
+SET_TIME is sent AUTOMATICALLY on every connection (see _push_host_time), not
+only when asked for. The board has no RTC and never reaches NTP, so without it
+every file, folder and manifest row is dated from the firmware's BUILD time --
+the same value on every boot of one flash, which says nothing about when a
+capture ran. This script is one of the few moments a board is attached to
+something that owns a real clock, so it always spends that moment re-anchoring
+it.
 
 The device frames each file stream between two markers:
 
@@ -138,7 +148,57 @@ def _open_port(port: str) -> serial.Serial:
     ser.dtr = False
     ser.rts = False
     ser.open()
+    _push_host_time(ser)
     return ser
+
+
+def _push_host_time(ser: serial.Serial) -> None:
+    """Give the board this laptop's clock, and let it save that to the card.
+
+    WHY THIS IS UNCONDITIONAL: an ESP32 with no RTC boots at the 1970 epoch, so
+    the firmware falls back to dating everything from its own BUILD timestamp.
+    That value is baked in at link time and is therefore IDENTICAL on every boot
+    of one flash -- delete a card's CSVs, re-run, and the "date" is unchanged,
+    because it never described the run in the first place. The board cannot fix
+    this alone; only something holding a real clock can, and this function is
+    the moment one is attached.
+
+    The board persists what we send to SD_CLOCK_FILE, so a single connection
+    also fixes the NEXT boot, including runs done later on a powerbank with no
+    laptop present. Every path that opens a port therefore refreshes the anchor
+    -- export, MAC read, SET_LOCATION, import_sdcard.py --port -- which is why
+    this lives in _open_port() rather than in one command's branch.
+
+    UTC, deliberately: two teammates on laptops in different time zones must
+    produce comparable captures, and the firmware formats with gmtime_r.
+
+    Best-effort by design. Firmware predating SET_TIME ignores unknown commands
+    silently, and a board that is busy or unresponsive must never fail an export
+    over a timestamp -- so every failure here is swallowed and the board simply
+    keeps its build-time estimate.
+    """
+    prev_timeout = getattr(ser, "timeout", READ_TIMEOUT_S)
+    try:
+        _send_command(ser, f"SET_TIME={int(time.time())}")
+        # Read the ack rather than firing and forgetting: leaving TIME_SET in
+        # the buffer would make it the first line the NEXT command's parser
+        # sees.
+        #
+        # On a SHORT timeout, not the port's usual one: firmware predating
+        # SET_TIME ignores unknown commands silently, so this read would
+        # otherwise burn the full READ_TIMEOUT_S on every single connection to
+        # a board that has not been reflashed yet. A board that does support
+        # the command answers immediately.
+        ser.timeout = 0.4
+        ser.read_until(b"\n")
+    except Exception:
+        pass
+    finally:
+        try:
+            ser.timeout = prev_timeout
+            ser.reset_input_buffer()
+        except Exception:
+            pass
 
 
 def _drain(ser: serial.Serial) -> None:
@@ -689,6 +749,18 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--set-time", dest="set_time", action="store_true",
+                   help="Give this board a real clock and save it to its SD card, "
+                        "then exit. Every connection does this anyway (see "
+                        "_push_host_time); this flag exists so it can be done "
+                        "DELIBERATELY at a moment that matters -- above all "
+                        "immediately BEFORE reflashing. The new firmware's build "
+                        "stamp is newer than an anchor written days ago and would "
+                        "win over it, making the first run after a flash a "
+                        "build-time ESTIMATE; an anchor written seconds before the "
+                        "flash is newer still, so the very first run is already on "
+                        "a real clock. run.ps1 does this automatically. "
+                        "Standalone: exports/wipes nothing.")
     p.add_argument("--set-attacker-mac", dest="set_attacker_mac", default=None,
                    metavar="AA:BB:CC:DD:EE:FF",
                    help="F2: point this blackhole VICTIM board at a different "
@@ -776,6 +848,38 @@ def main() -> int:
             if not acked:
                 print("   wipe command sent (no ack — older firmware, or already "
                       "clean). Give it a moment before reflashing.")
+            return 0
+
+        if args.set_time:
+            # _open_port() already pushed the clock and the board already saved
+            # it. All that is left is to report what the board now believes, so
+            # an operator can SEE that it took -- a silent success here is
+            # indistinguishable from firmware that ignored the command.
+            print("-> SET_TIME (host clock -> board + SD card) ...")
+            _send_command(ser, "GET_TIME")
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line.startswith("TIME:"):
+                    # TIME:<YYYY-MM-DD HH:MM:SS>:<host|build|none>
+                    body = line[len("TIME:"):]
+                    stamp, _, src = body.rpartition(":")
+                    if src == "host":
+                        print(f"   board clock: {stamp} UTC (real clock, from this laptop)")
+                        print("   Saved to clock.txt on the card — the next boot starts "
+                              "from it, so captures get true dates.")
+                    else:
+                        print(f"   board clock: {stamp} UTC (still an ESTIMATE from the "
+                              f"firmware build time)")
+                        print("   The board did not take the clock. It is almost "
+                              "certainly running firmware from before SET_TIME existed "
+                              "— reflash it.")
+                    return 0
+            print("   no answer — this board predates SET_TIME/GET_TIME. Reflash it "
+                  "to give it a real clock.")
             return 0
 
         if args.get_location:

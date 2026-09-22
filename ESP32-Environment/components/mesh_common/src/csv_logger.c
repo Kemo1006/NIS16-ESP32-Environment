@@ -14,6 +14,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>   /* strtoll(): SET_TIME=<unix_epoch> */
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
@@ -848,23 +849,47 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
         return;
     }
     if (need_header) {
-        fputs("boot,run,node_id,role,rows,uptime_s,event,built\n", f);
+        fputs("boot,run,node_id,role,rows,uptime_s,event,built,started,clock_src\n", f);
     }
     int64_t uptime_s = (esp_timer_get_time() - s_boot_start_us) / 1000000;
+
+    /* "started" is the WALL CLOCK this run began. It exists because "built"
+     * was the only date on a card and kept being read as one - it is not, and
+     * no amount of labelling fixed that while it was the only thing on offer.
+     *
+     * Captured once, on the "start" row, and reused verbatim by the "clean"
+     * row so both lines of one run agree; re-reading the clock for the second
+     * line would record the time the run ENDED under a column named "started".
+     *
+     * It is only as good as sd_status.c's clock: a real time on a board that
+     * has met a laptop (clock_src=host), an extrapolation from the build stamp
+     * otherwise (clock_src=build). That is exactly why the source travels with
+     * it in its own column instead of being inferred downstream - a reader must
+     * never have to guess which of the two it is holding. */
+    static char s_run_started[24] = {0};
+    if (strcmp(event, "start") == 0 || s_run_started[0] == '\0') {
+        sd_status_now_stamp(s_run_started, sizeof(s_run_started));
+    }
     /* "built" is sd_status_build_stamp() — the date+time THIS FIRMWARE was
      * compiled, recorded per boot because it is the only calendar reference an
      * RTC-less board has (see sd_status.h for why a build stamp and not a clock).
-     * It is what lets someone reading a pulled card tell today's captures from
-     * ones left over from an older flash. Last column on purpose: a card whose
-     * runs.csv was started by older firmware keeps its 7-column header, and
-     * import_sdcard.py reads the extra field back positionally in that case —
-     * appending never disturbs the fields the firmware itself parses back
-     * (sd_manifest_count_prior_runs() reads only the first two).
-     * No quoting needed: the stamp is "YYYY-MM-DD HH:MM:SS", never a comma. */
-    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s\n",
+     * It is what lets someone reading a pulled card tell which FLASH a capture
+     * came from - a different question from when it ran, which "started" above
+     * now answers properly.
+     *
+     * These three are APPENDED, never inserted: a card whose runs.csv was
+     * started by older firmware keeps its original 7- or 8-column header
+     * forever (a header is only written when the file is new), so newer boots
+     * add fields with no name to land under and import_sdcard.py reads them
+     * back positionally (_manifest_when() handles all three generations).
+     * Appending also never disturbs the fields the firmware itself parses back
+     * — sd_manifest_count_prior_runs() reads only the first two.
+     * No quoting needed: the stamps are "YYYY-MM-DD HH:MM:SS" and the source is
+     * one of host/build/none, so none of them can contain a comma. */
+    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s,%s,%s\n",
             sd_status_boot_count(), run_number, node_id, role_str,
             (unsigned)rows, (long long)uptime_s, event,
-            sd_status_build_stamp());
+            sd_status_build_stamp(), s_run_started, sd_status_clock_source_str());
     fflush(f);
     fclose(f);
 }
@@ -1468,7 +1493,7 @@ static void serial_export_task(void *arg)
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
                   "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
-                  "DELETE_SD_PATH=<attack>/<topology>/<location>");
+                  "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -1644,6 +1669,56 @@ static void serial_export_task(void *arg)
                         uart_write_bytes(EXPORT_UART, "ERROR:SD_ARCHIVE_FAILED\n", 25);
                         break;
                 }
+
+            /* ── SET_TIME=<unix_epoch> — hand the board a real clock.
+             *
+             * This board has no RTC and never reaches NTP, so left alone it
+             * dates every file it writes from the firmware's BUILD timestamp —
+             * which is identical on every boot of one flash and therefore says
+             * nothing about when a capture actually ran. That is the bug this
+             * command exists to close.
+             *
+             * The value is applied immediately AND persisted to the card
+             * (SD_CLOCK_FILE), so the benefit is not confined to this session:
+             * the NEXT boot starts its clock from that anchor instead of the
+             * build stamp, which is what finally makes runs.csv's "started"
+             * column, the status report, and Explorer's "Date modified" on
+             * every folder and CSV tell the truth.
+             *
+             * Sent automatically by tools/export_logs.py on EVERY connection
+             * (_push_host_time), so the anchor is refreshed by every export,
+             * MAC read and SET_LOCATION pass rather than needing anyone to
+             * remember it. Unknown commands are ignored by older firmware, so
+             * the host can send it blindly. ── */
+            } else if (strncmp(cmd_buf, "SET_TIME=", 9) == 0) {
+                const char *value = cmd_buf + 9;
+                char *end = NULL;
+                errno = 0;
+                long long epoch = strtoll(value, &end, 10);
+                if (end == value || errno != 0) {
+                    uart_write_bytes(EXPORT_UART, "ERROR:BAD_TIME\n", 15);
+                } else if (!sd_status_set_host_time(epoch)) {
+                    uart_write_bytes(EXPORT_UART, "ERROR:BAD_TIME\n", 15);
+                } else {
+                    char out[64];
+                    char now[24];
+                    sd_status_now_stamp(now, sizeof(now));
+                    snprintf(out, sizeof(out), "TIME_SET:%s\n", now);
+                    uart_write_bytes(EXPORT_UART, out, strlen(out));
+                }
+
+            /* ── GET_TIME — what the board thinks the time is, and whether that
+             * is a real clock or an extrapolation from the build stamp. Reports
+             * the SOURCE alongside the value because the two readings mean
+             * different things and a host that cannot tell them apart would
+             * file an estimate as a measurement. ── */
+            } else if (strcmp(cmd_buf, "GET_TIME") == 0) {
+                char out[64];
+                char now[24];
+                sd_status_now_stamp(now, sizeof(now));
+                snprintf(out, sizeof(out), "TIME:%s:%s\n",
+                         now, sd_status_clock_source_str());
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
 
             /* ── SET_LOCATION=<value> — write/overwrite location.txt on the
              * SD card over the SAME USB link already used to flash/export,

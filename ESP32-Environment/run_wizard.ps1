@@ -87,11 +87,12 @@ $LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
 
 # Run-to-run variation the panel asked for. 'none' is byte-identical to the
 # pre-scenario wizard. Keep the ValidateSet in run.ps1 in sync with this list.
-$SCENARIOS = @('none', 'burst', 'highload', 'mobility', 'powercycle')
+$SCENARIOS = @('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
 $SCENARIO_LABELS = @(
     "none        - today's behaviour, no variation",
     'burst       - CODE: one child fires 100 probes back-to-back in the attack window',
     'highload    - CODE: every child probes 4x faster for the whole run',
+    'jitter      - CODE: ROOT randomises baseline/attack window LENGTHS each boot, so elapsed time stops predicting the phase',
     'mobility    - HUMAN: you move one child from spot A to spot B (checklist only)',
     'powercycle  - HUMAN: you unplug/replug one child (checklist only)'
 )
@@ -320,6 +321,7 @@ function Show-CaptureWizardMenu {
             @{ Idx = 16; Text = 'Sync capture data with GitHub (push / pull / test) - raw CSVs only, never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
+            @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
             @{ Idx = 14; Text = 'View a saved run log (a past run''s console output, incl. any errors - no board/COM contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
@@ -1365,17 +1367,48 @@ function Get-SdCardCandidates {
     return $out
 }
 
-function Format-BuildStamp {
-    # "2026-09-17 14:32:07" (csv_logger.c's runs.csv "built" column, via
-    # import_sdcard.py --list-json) -> "09 / 17 / 2026 14:32", the leftmost
-    # column of the card file picker. Fixed 20 chars wide so the "|" after it
-    # lines up down the list whether or not a given file has a stamp.
+function Get-RunStampRaw {
+    # The sortable ISO stamp a card file should be dated by.
+    #
+    # Prefers runs.csv's "started" - when the run ACTUALLY RAN - and falls back
+    # to "built" (when the firmware was COMPILED) only for cards written before
+    # the clock anchor existed. The fallback matters: a build stamp is identical
+    # on every boot of one flash, so sorting by it puts every capture from one
+    # flash in an arbitrary order and makes a re-run look like the original.
     # Mirrored in menu.ps1 - keep the two in sync.
-    param([string]$Stamp)
-    if ($Stamp -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
-        return ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+    param($File)
+    if ($File.started) { return [string]$File.started }
+    if ($File.built)   { return [string]$File.built }
+    return ''
+}
+
+function Test-RunStampEstimated {
+    # $true when the stamp above is an EXTRAPOLATION from the firmware build
+    # time rather than a real clock: either the board has never been given one
+    # (runs.csv clock_src = "build"), or the card predates the clock anchor and
+    # carries only a build stamp. The picker prefixes these with "~" so an
+    # estimate can never be copied into notes as a measured capture time.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param($File)
+    if ($File.started) { return ($File.clock_src -ne 'host') }
+    return $true
+}
+
+function Format-RunStamp {
+    # "2026-09-22 18:03:41" -> "09 / 22 / 2026 18:03", the leftmost column of
+    # the card file picker, with "~" prepended for an estimate. Padded to 21
+    # chars at the call site - 20 for the stamp plus the "~" - so the "|" after
+    # it lines up down the list whether or not a given file has a stamp and
+    # whether or not that stamp is an estimate.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param($File)
+    $raw = Get-RunStampRaw $File
+    if ($raw -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
+        $t = ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+        if (Test-RunStampEstimated $File) { return "~$t" }
+        return $t
     }
-    return '(no build stamp)'
+    return '(no date on card)'
 }
 
 function Format-ByteSize {
@@ -1423,35 +1456,46 @@ function Select-CardFiles {
     # *_telem.csv / *_arrivals.csv, so runs.csv is never reachable this way.
     param([Parameter(Mandatory)]$Files, [string]$Card, [string]$Port, [switch]$NoDelete)
 
-    # Sorted newest-build-first; unknown stamps sink to the bottom (they can
-    # only be pre-stamp firmware, i.e. older than anything that has one).
+    # Sorted newest-RUN-first; unknown stamps sink to the bottom (they can only
+    # be pre-anchor firmware, i.e. older than anything that has one).
     $sorted = @($Files | Sort-Object `
-        @{ Expression = { if ($_.built) { $_.built } else { '' } }; Descending = $true }, `
+        @{ Expression = { Get-RunStampRaw $_ }; Descending = $true }, `
         @{ Expression = { '{0}/{1}/{2}' -f $_.attack, $_.topology, $_.location } }, `
         @{ Expression = { [int]$_.boot } })
 
-    # Deliberately NOT wrapped in @(): this is compared with -eq against a
-    # scalar below, and a 1-element array on the right of -eq is the classic
-    # PowerShell footgun (it coerces rather than compares cleanly).
-    $newest = $sorted | Where-Object { $_.built } | Select-Object -First 1 -ExpandProperty built
+    # Plain foreach rather than Where-Object | Select-Object -ExpandProperty:
+    # this is compared with -eq against a scalar below, and a 1-element array on
+    # the right of -eq is the classic PowerShell footgun (it coerces rather than
+    # compares cleanly). A loop yields a string or nothing, never an array.
+    $newest = ''
+    foreach ($cf in $sorted) {
+        $cs = Get-RunStampRaw $cf
+        if ($cs) { $newest = $cs; break }
+    }
 
     $draw = {
         Write-Host ""
         Write-Host "On this card:" -ForegroundColor Cyan
-        Write-Host "  (leftmost column = when the FIRMWARE that logged the file was built - not" -ForegroundColor DarkGray
-        Write-Host "   when it ran. Every boot of one flash shares it, so it tells today's" -ForegroundColor DarkGray
-        Write-Host "   captures from ones an older flash left behind.)" -ForegroundColor DarkGray
+        Write-Host "  (leftmost column = when the run ACTUALLY RAN, from runs.csv. Newest first;" -ForegroundColor DarkGray
+        Write-Host "   green = newest on this card, yellow = left behind by an earlier session.)" -ForegroundColor DarkGray
+        Write-Host "  A leading ~ means that board has never been given a real clock, so the time" -ForegroundColor DarkGray
+        Write-Host "   is EXTRAPOLATED from when its firmware was built - treat it as approximate." -ForegroundColor DarkGray
+        Write-Host "   Exporting from this laptop once gives that board a real clock from then on." -ForegroundColor DarkGray
         Write-Host ""
         for ($i = 0; $i -lt $sorted.Count; $i++) {
             $f = $sorted[$i]
-            $stamp = Format-BuildStamp $f.built
-            # Green = newest firmware on this card (almost always "the one you
-            # just flashed"); yellow = an older flash left this here.
-            $stampColor = if (-not $f.built) { 'DarkGray' }
-                          elseif ($newest -and $f.built -eq $newest) { 'Green' }
+            $stamp = Format-RunStamp $f
+            $fStamp = Get-RunStampRaw $f
+            # Green = the most recent capture on this card (almost always "the
+            # run you just did"); yellow = an earlier session left this here.
+            # The "~" in $stamp, not the colour, carries "this is an estimate" -
+            # recency and certainty are two different facts and collapsing them
+            # into one colour would hide whichever lost.
+            $stampColor = if (-not $fStamp) { 'DarkGray' }
+                          elseif ($newest -and $fStamp -eq $newest) { 'Green' }
                           else { 'Yellow' }
             Write-Host ("  [{0}] " -f ($i + 1)) -NoNewline
-            Write-Host ("{0,-20}" -f $stamp) -NoNewline -ForegroundColor $stampColor
+            Write-Host ("{0,-21}" -f $stamp) -NoNewline -ForegroundColor $stampColor
             Write-Host (" | {0}" -f $f.name)
 
             $bits = @("{0}/{1}/{2}" -f $f.attack, $f.topology, $f.location)
@@ -1787,7 +1831,17 @@ function Import-OneSdCard {
         if ($sel.Rel.Count -gt 0) { $pyArgs += @('--files', ($sel.Rel -join ',')) }
         if ($sel.IncludeAborted -and $pyArgs -notcontains '--include-aborted') { $pyArgs += '--include-aborted' }
 
-        $dryOut = & python @pyArgs --dry-run 2>&1
+        # MUST be 'Continue' around every native call here. Under the script-wide
+        # 'Stop', PS 5.1 turns a native command's FIRST 2>&1 stderr line into a
+        # TERMINATING error. The dry run survived only because it prints no
+        # progress; the real copy below streams its progress bar to stderr
+        # (export_logs.py's _progress), which unwound to the catch and reported a
+        # bogus "Could not run import_sdcard.py / Is python on PATH?" while python
+        # was working perfectly. Same trap, same fix as the delete path above.
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try   { $dryOut = & python @pyArgs --dry-run 2>&1 }
+        finally { $ErrorActionPreference = $prevEap }
         $rc = $LASTEXITCODE
         $dryOut | ForEach-Object { Write-Host "  $_" }
         if ($rc -ne 0) {
@@ -1824,14 +1878,27 @@ function Import-OneSdCard {
             Write-Host "  Skipped - nothing copied." -ForegroundColor DarkGray
             return
         }
-        $realOut = & python @pyArgs 2>&1
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try   { $realOut = & python @pyArgs 2>&1 }
+        finally { $ErrorActionPreference = $prevEap }
         $rc = $LASTEXITCODE
         $realOut | ForEach-Object { Write-Host "  $_" }
         if ($rc -ne 0) { Write-Host ("  import_sdcard.py exited {0} - see above." -f $rc) -ForegroundColor Yellow }
     }
     catch {
         Write-Host ("  Could not run import_sdcard.py: {0}" -f $_.Exception.Message) -ForegroundColor Red
-        Write-Host "  Is python on PATH? Run from the ESP-IDF 5.3 PowerShell window." -ForegroundColor DarkGray
+        # Was hardcoded "Is python on PATH? Run from the ESP-IDF 5.3 PowerShell":
+        # it fires on ANY exception, so on 2026-09-22 it blamed python for a
+        # stderr-promotion error while python was working perfectly, and named a
+        # 5.3 window that does not exist on a 5.5 laptop. State the real causes.
+        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+            Write-Host "  python is NOT on PATH - run this from the ESP-IDF PowerShell window." -ForegroundColor DarkGray
+        }
+        else {
+            Write-Host "  python IS on PATH, so this is not a PATH problem. Usual causes: the COM" -ForegroundColor DarkGray
+            Write-Host "  port is held by idf.py monitor, or the board stopped answering mid-copy." -ForegroundColor DarkGray
+        }
     }
     finally { Pop-Location }
 }
@@ -2174,6 +2241,236 @@ function Invoke-ShowTopologyStructure {
     Read-Host "Press Enter to return to the menu" | Out-Null
 }
 
+function Get-ArchiveLiveSummary {
+    # What is sitting in tools/exports/ right now, grouped into the
+    # <attack>/<topology>/<location>/<scenario> cells the campaign is counted in.
+    param([string]$ExportsRoot)
+
+    $cells = @{}
+    if (-not (Test-Path $ExportsRoot)) { return @() }
+    foreach ($f in Get-ChildItem $ExportsRoot -Recurse -File -ErrorAction SilentlyContinue) {
+        if ($f.Name -eq '.gitkeep') { continue }
+        $rel = $f.FullName.Substring($ExportsRoot.Length).TrimStart('\')
+        $parts = $rel -split '\\'
+        if ($parts.Count -lt 2) {
+            # Loose file at the root of exports/ (run_ledger.csv lives here).
+            $key = '(loose files)'
+        } else {
+            $key = ($parts[0..([Math]::Min(2, $parts.Count - 2))] -join ' / ')
+        }
+        if (-not $cells.ContainsKey($key)) {
+            $cells[$key] = [PSCustomObject]@{
+                Cell = $key; Files = 0; Bytes = 0L; Trimmed = 0; Roots = 0; Arrivals = 0
+            }
+        }
+        $c = $cells[$key]
+        $c.Files++
+        $c.Bytes += $f.Length
+        if ($rel -like '*trimmed*')     { $c.Trimmed++ }
+        if ($f.Name -like 'root_*')     { $c.Roots++ }
+        if ($f.Name -like '*arrivals*') { $c.Arrivals++ }
+    }
+    return @($cells.Values | Sort-Object Cell)
+}
+
+function Get-ArchiveDuplicateReport {
+    # THE CHECK THAT WOULD HAVE SAVED 2026-09-22: is this capture ALREADY in an
+    # archive? archive.ps1 MOVES data out of tools/exports/, which leaves the
+    # git-tracked paths showing as deletions. A `git checkout` of those paths
+    # "restores" files that were never lost, and the same run then exists twice --
+    # inflating `runs found` in the campaign checklist and making two archive
+    # folders claim the same capture.
+    #
+    # Name-match first (cheap), hash only the collisions, so this stays fast even
+    # with a large archive/.
+    param([string]$ExportsRoot, [string]$ArchiveRoot)
+
+    $dups = @()
+    if (-not (Test-Path $ExportsRoot) -or -not (Test-Path $ArchiveRoot)) { return $dups }
+
+    $archiveByName = @{}
+    foreach ($af in Get-ChildItem $ArchiveRoot -Recurse -File -Filter '*.csv' -ErrorAction SilentlyContinue) {
+        if (-not $archiveByName.ContainsKey($af.Name)) { $archiveByName[$af.Name] = @() }
+        $archiveByName[$af.Name] += $af
+    }
+
+    foreach ($lf in Get-ChildItem $ExportsRoot -Recurse -File -Filter '*.csv' -ErrorAction SilentlyContinue) {
+        # run_ledger.csv is scaffold that archive.ps1 regenerates header-only every
+        # time, so it is byte-identical across every archive by construction. It is
+        # not a capture and flagging it as a duplicate is pure noise.
+        if ($lf.Name -eq 'run_ledger.csv') { continue }
+        if (-not $archiveByName.ContainsKey($lf.Name)) { continue }
+        $liveHash = (Get-FileHash -Path $lf.FullName -Algorithm SHA256).Hash
+        foreach ($af in $archiveByName[$lf.Name]) {
+            if ($af.Length -ne $lf.Length) { continue }
+            if ((Get-FileHash -Path $af.FullName -Algorithm SHA256).Hash -eq $liveHash) {
+                $dups += [PSCustomObject]@{
+                    Name = $lf.Name
+                    In   = (Split-Path (Split-Path $af.FullName -Parent) -Leaf)
+                    Where= $af.FullName.Substring($ArchiveRoot.Length).TrimStart('\')
+                }
+                break
+            }
+        }
+    }
+    return $dups
+}
+
+function Invoke-ArchiveMenu {
+    # Wizard front end for archive.ps1. The MOVE itself stays in archive.ps1 --
+    # one implementation, one place to fix. What this adds is the judgement that
+    # archive.ps1 cannot make on its own: what is about to move, whether any of it
+    # already lives in an archive, and whether any of it is a COMPLETE run that
+    # the campaign is currently counting.
+    Write-Host ""
+    Write-Host "=== Archive captured data ===" -ForegroundColor Cyan
+    Write-Host "Archiving MOVES tools\exports\ + generated analysis\ output into" -ForegroundColor DarkGray
+    Write-Host "archive\<date>_<label>\ and resets the working tree. Nothing is deleted." -ForegroundColor DarkGray
+
+    $exportsRoot = Join-Path $base 'tools\exports'
+    $archiveRoot = Join-Path $base 'archive'
+
+    $cells = Get-ArchiveLiveSummary -ExportsRoot $exportsRoot
+    $dataCells = @($cells | Where-Object { $_.Cell -ne '(loose files)' })
+
+    if (-not $dataCells.Count) {
+        Write-Host ""
+        Write-Host "  Nothing to archive - tools\exports\ holds no capture data." -ForegroundColor Yellow
+        Write-Host "  (run_ledger.csv and the .gitkeep scaffold are not captures.)" -ForegroundColor DarkGray
+        Write-Host ""
+        Read-Host "Press Enter to return to the menu" | Out-Null
+        return
+    }
+
+    # ---- what is here -------------------------------------------------------
+    Write-Host ""
+    Write-Host "  ON DISK NOW (tools\exports\)" -ForegroundColor Cyan
+    Write-Host ("  {0,-34}{1,>6}{2,>10}{3,>9}{4,>10}" -f 'cell', 'files', 'size', 'root?', 'arrivals')
+    Write-Host ("  " + ('-' * 70))
+    foreach ($c in $cells) {
+        $mb = if ($c.Bytes -ge 1MB) { "{0:N1} MB" -f ($c.Bytes / 1MB) } else { "{0:N0} KB" -f ($c.Bytes / 1KB) }
+        $rootMark = if ($c.Roots -gt 0) { 'yes' } else { 'NO' }
+        Write-Host ("  {0,-34}{1,6}{2,10}{3,9}{4,10}" -f $c.Cell, $c.Files, $mb, $rootMark, $c.Arrivals)
+    }
+
+    # ---- is any of it already archived? ------------------------------------
+    Write-Host ""
+    Write-Host "  Checking whether any of this is ALREADY in archive\ ..." -ForegroundColor DarkGray
+    $dups = Get-ArchiveDuplicateReport -ExportsRoot $exportsRoot -ArchiveRoot $archiveRoot
+    if ($dups.Count) {
+        $byFolder = $dups | Group-Object In | Sort-Object Count -Descending
+        Write-Host ""
+        Write-Host ("  !! {0} file(s) here are BYTE-IDENTICAL to files already archived:" -f $dups.Count) -ForegroundColor Red
+        foreach ($g in $byFolder) {
+            Write-Host ("     {0,-40} {1} file(s)" -f $g.Name, $g.Count) -ForegroundColor Red
+        }
+        Write-Host "     Archiving again makes a SECOND copy of the same capture and" -ForegroundColor Yellow
+        Write-Host "     inflates 'runs found' in the campaign checklist. A staged deletion" -ForegroundColor Yellow
+        Write-Host "     under tools\exports\ usually means archive.ps1 already moved it -" -ForegroundColor Yellow
+        Write-Host "     check archive\ before restoring anything with git." -ForegroundColor Yellow
+    } else {
+        Write-Host "  None - every file here is new to archive\." -ForegroundColor Green
+    }
+
+    # ---- is any of it a COMPLETE run? --------------------------------------
+    Write-Host ""
+    Write-Host "  Completeness (inventory_cells.py, M4/M5 criteria) ..." -ForegroundColor DarkGray
+    $completeLive = 0
+    Push-Location $base
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'   # native stderr must not throw under 'Stop'
+    try {
+        $inv = & python (Join-Path $base 'tools\inventory_cells.py') --plan --repeats 1 2>&1
+        $liveRows = @($inv | Select-String -Pattern '^\s*live\s+')
+        foreach ($r in $liveRows) {
+            $line = $r.ToString()
+            Write-Host ("    {0}" -f $line.Trim()) -ForegroundColor DarkGray
+            if ($line -match '\sOK\s*$') { $completeLive++ }
+        }
+        if (-not $liveRows.Count) {
+            Write-Host "    (inventory reported no 'live' rows)" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host ("    could not run inventory_cells.py: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+    } finally {
+        $ErrorActionPreference = $prevEap
+        Pop-Location
+    }
+    if ($completeLive -gt 0) {
+        Write-Host ""
+        Write-Host ("  NOTE: {0} COMPLETE run(s) are in here - they currently count toward M4." -f $completeLive) -ForegroundColor Yellow
+        Write-Host "  Archiving keeps them counted (the checklist scans archive\ too), but" -ForegroundColor DarkGray
+        Write-Host "  they leave tools\exports\, so analyze.ps1 must be pointed at the" -ForegroundColor DarkGray
+        Write-Host "  archive folder afterwards." -ForegroundColor DarkGray
+    }
+
+    # ---- a label suggestion drawn from what is actually here ---------------
+    $suggest = if ($dups.Count -eq (Get-ChildItem $exportsRoot -Recurse -File -Filter '*.csv' -ErrorAction SilentlyContinue).Count -and $dups.Count -gt 0) {
+        'duplicate-of-existing-archive'
+    } elseif ($completeLive -eq 0) {
+        'incomplete'
+    } elseif ($dataCells.Count -eq 1) {
+        ($dataCells[0].Cell -replace ' / ', '-')
+    } else {
+        'capture'
+    }
+
+    # ---- options ------------------------------------------------------------
+    while ($true) {
+        Write-Host ""
+        Write-Host "  What do you want to do?" -ForegroundColor Cyan
+        Write-Host "    [1] Preview only - show every file that would move, change NOTHING  <- default"
+        Write-Host "    [2] Archive now  - prompts for a label and a reason"
+        if ($dups.Count) {
+            Write-Host "    [3] List the already-archived duplicates in full" -ForegroundColor Yellow
+        }
+        Write-Host "    [4] Cancel - go back"
+        $pick = Read-Line "  Press Enter for [1], or type 1-4 > "
+        if (-not $pick) { $pick = '1' }
+
+        switch ($pick.Trim()) {
+            '1' {
+                Push-Location $base
+                try { & (Join-Path $base 'archive.ps1') -WhatIf }
+                finally { Pop-Location }
+            }
+            '2' {
+                Write-Host ""
+                if ($dups.Count) {
+                    Write-Host "  Reminder: part of this is already archived (see above)." -ForegroundColor Yellow
+                }
+                $label = Read-Line ("  Short label for the folder [{0}] > " -f $suggest)
+                if (-not $label) { $label = $suggest }
+                $reason = Read-Line "  One line on WHY (recorded in the archive's README) > "
+                if (-not $reason) { $reason = 'archived from the capture wizard' }
+                Write-Host ""
+                Write-Host ("  Will create: archive\{0}_{1}\" -f (Get-Date -Format 'yyyy-MM-dd'), $label) -ForegroundColor Cyan
+                $go = Read-Line "  Proceed? [y/N] > "
+                if ($go -eq 'y' -or $go -eq 'Y') {
+                    Push-Location $base
+                    try { & (Join-Path $base 'archive.ps1') -Label $label -Reason $reason -Force }
+                    finally { Pop-Location }
+                    Write-Host ""
+                    Write-Host "  Archived. tools\exports\ is back to a clean scaffold." -ForegroundColor Green
+                    Read-Host "Press Enter to return to the menu" | Out-Null
+                    return
+                }
+                Write-Host "  Cancelled - nothing moved." -ForegroundColor DarkGray
+            }
+            '3' {
+                if (-not $dups.Count) { Write-Host "  No duplicates to list." -ForegroundColor DarkGray; continue }
+                Write-Host ""
+                foreach ($d in ($dups | Sort-Object Where)) {
+                    Write-Host ("    {0}" -f $d.Name) -ForegroundColor Yellow
+                    Write-Host ("        already at archive\{0}" -f $d.Where) -ForegroundColor DarkGray
+                }
+            }
+            '4' { return }
+            default { Write-Host "  Type 1, 2, 3 or 4." -ForegroundColor Yellow }
+        }
+    }
+}
+
 function Invoke-CampaignChecklist {
     # Tick-box progress table for the whole campaign, scanned from the folders.
     #
@@ -2205,7 +2502,12 @@ function Invoke-CampaignChecklist {
     try {
         python (Join-Path $base 'tools\inventory_cells.py') --checklist --repeats $repeats
         Write-Host ""
-        if ((Read-YesNo -Question "Also show the full per-run inventory (with the reason each incomplete run failed)?" -Default $false)) {
+        # Read-Line, NOT Read-YesNo: Read-YesNo is defined in menu.ps1 only and
+        # this script does not dot-source it, so calling it here threw
+        # CommandNotFoundException and killed the checklist AFTER it had already
+        # printed (2026-09-22). Every other prompt in this file uses Read-Line.
+        $invAns = Read-Line "Also show the full per-run inventory (with the reason each incomplete run failed)? [y/N] > "
+        if ($invAns -eq 'y' -or $invAns -eq 'Y') {
             python (Join-Path $base 'tools\inventory_cells.py') --plan --repeats $repeats
         }
     }
@@ -2800,6 +3102,7 @@ function Get-BoardBuildDir {
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
     if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
+    if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     if ($Params.CommandCenter) { $suffix += '_cc' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
     $proj = if ($role -eq 'root') { 'root_node' } else { 'child_node' }
@@ -4094,6 +4397,7 @@ if (-not $Preset) {
         if ($modeIdx -eq 10) { Invoke-TrimOnly; continue }
         if ($modeIdx -eq 14) { Invoke-ViewRunLog; continue }
         if ($modeIdx -eq 15) { Invoke-DeleteSdFolder; continue }
+        if ($modeIdx -eq 20) { Invoke-ArchiveMenu; continue }
         if ($modeIdx -eq 18) { Invoke-CampaignChecklist; continue }
         if ($modeIdx -eq 19) { Invoke-ShowTopologyStructure; continue }
         if ($modeIdx -eq 17) {

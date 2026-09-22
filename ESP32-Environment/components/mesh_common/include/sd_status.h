@@ -97,11 +97,67 @@ int sd_status_boot_count(void);
  *  flash. */
 const char *sd_status_build_stamp(void);
 
+/** Where the system clock's current value came from. Recorded because the two
+ *  are NOT the same kind of number and must never be presented as if they were:
+ *  HOST is a real wall clock a laptop handed the board, BUILD is an estimate
+ *  derived from when the firmware was compiled. runs.csv carries this per boot
+ *  and tools/import_sdcard.py prints it, so nobody reads an estimate as a
+ *  measurement. */
+typedef enum {
+    SD_CLOCK_SRC_NONE = 0,  /**< clock never seeded — files would date to 1980 */
+    SD_CLOCK_SRC_BUILD,     /**< firmware build stamp + uptime (an ESTIMATE) */
+    SD_CLOCK_SRC_HOST,      /**< a host-pushed epoch + uptime (a real clock) */
+} sd_clock_src_t;
+
 /** Seed the system clock from the firmware build stamp + uptime, so FatFs
  *  stamps a REAL date on every file instead of 1980. Call once at boot,
  *  before anything is written. Best-effort: logs and returns on failure.
- *  A dating aid, NOT a measurement - see the implementation comment. */
-void sd_status_seed_clock_from_build(void);
+ *  A dating aid, NOT a measurement - see the implementation comment.
+ *
+ *  This is the FLOOR, not the answer: it runs before the card is mounted (so
+ *  something sane is in place even if there is no card at all), and
+ *  sd_status_apply_clock_anchor() replaces it with a real time moments later
+ *  when the card carries one. */
+void sd_status_seed_clock(void);
+
+/** Replace the build-stamp estimate with the host clock anchor stored in
+ *  SD_CLOCK_FILE, if the card has one. Call ONCE, after the card mounts and
+ *  BEFORE anything is written to it — every directory entry created after this
+ *  point (the 63-folder tree, status reports, CSV mirrors) carries the
+ *  resulting date, which is what makes "Date modified" in Explorer true.
+ *
+ *  No-op when the card has no anchor, when it is unparseable, or when it is
+ *  OLDER than the clock already running — the clock only ever moves forward,
+ *  so a stale card can never drag a freshly-set time backwards.
+ *
+ *  ACCURACY: anchor + uptime. The anchor is the wall clock at the board's last
+ *  USB contact, so the error is however long the board sat unpowered between
+ *  that contact and this boot — seconds for the normal flash-then-run cycle,
+ *  longer for a board left on a shelf. Still bounded by a real event, unlike
+ *  the build stamp, which drifts until the next recompile. */
+void sd_status_apply_clock_anchor(void);
+
+/** Set the clock from a host-supplied Unix epoch (UTC seconds) AND persist it
+ *  to SD_CLOCK_FILE so the NEXT boot starts from it too. Backs the SET_TIME
+ *  console command; @p epoch is rejected if it is not a plausible wall clock.
+ *  @return true if the clock was set (persisting is best-effort and a card
+ *          failure does not make this false — the running clock is still
+ *          correct, it just will not survive the reboot). */
+bool sd_status_set_host_time(long long epoch);
+
+/** Where the running clock came from (never NULL as a string form). */
+sd_clock_src_t sd_status_clock_source(void);
+
+/** "host" | "build" | "none" — the wire/CSV spelling of the above. */
+const char *sd_status_clock_source_str(void);
+
+/** The CURRENT wall clock as "YYYY-MM-DD HH:MM:SS" (local time, which on this
+ *  board is UTC — nothing ever sets a TZ). Writes at most @p len bytes and
+ *  always null-terminates. Returns false and writes "unknown" if the clock was
+ *  never seeded. Unlike sd_status_build_stamp() this CHANGES as the run
+ *  progresses, which is the entire point: it dates the capture, not the
+ *  compile. */
+bool sd_status_now_stamp(char *out, size_t len);
 
 /** Unmount the card and release SPI3. Safe to call when nothing is mounted.
  *  csv_logger_close() calls this; nothing else normally needs to. */

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Run an ESP32 node, and OPTIONALLY export its CSVs when you exit the monitor.
 
@@ -147,6 +147,9 @@ param(
     #               hold that same window on a BASELINE run too (announced as
     #               PHASE_ID_BASELINE, gt_label unchanged) so the burst lands at
     #               the same offset in both -- a matched legit-burst/attack pair.
+    #   jitter   => -DTRAFFIC_PROFILE=3 on the ROOT only: randomises (additively)
+    #               the baseline and attack window lengths per boot, so elapsed
+    #               run-clock time stops predicting the phase label.
     #   highload => -DTRAFFIC_PROFILE=2 on EVERY child (root untouched): probes
     #               at 250ms instead of 1000ms for the whole run.
     # HUMAN scenarios take NO build flag -- they only label the run and, with
@@ -154,7 +157,7 @@ param(
     #   mobility    => move the target child from spot A to spot B
     #   powercycle  => unplug the target child, wait, replug it
     # 'none' is byte-identical to pre-scenario firmware/behaviour.
-    [ValidateSet('none', 'burst', 'highload', 'mobility', 'powercycle')][string]$Scenario = 'none',
+    [ValidateSet('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')][string]$Scenario = 'none',
     # Marks THIS child as the scenario's subject: the burst sender, the node you
     # will move, or the node you will unplug/replug. Exactly one child per run.
     # Ignored (and warned on) for -Scenario none/highload; invalid on the root.
@@ -288,6 +291,34 @@ if ($stale -and -not $BuildOnly) {
 #      manual `idf.py ... erase-flash` needed.
 #    * -Wipe WITHOUT -Flash -> light serial DELETE_LOGS only (keeps the firmware;
 #      the on-device command listener runs from boot, so DELETE_LOGS is accepted).
+# ---------------------------------------------------------------------------
+# GIVE THE BOARD A REAL CLOCK -- BEFORE the erase, BEFORE the flash.
+# ---------------------------------------------------------------------------
+# An ESP32 has no RTC and never reaches NTP, so on its own it dates every file,
+# folder and manifest row from the firmware's BUILD timestamp. That value is
+# baked in at link time and is IDENTICAL on every boot of one flash, which is
+# why deleting a card's CSVs and re-running produced the SAME date: it never
+# described the run. The board's clock can only come from a laptop.
+#
+# WHY HERE AND NOT LATER: the board keeps the anchor on its SD card and starts
+# the next boot from it, but only if the anchor is NEWER than the incoming
+# firmware's build stamp (sd_status_apply_clock_anchor() only ever moves the
+# clock forward). A fresh build is minutes old, so an anchor from the last
+# session would lose to it and the first run after a flash would fall back to a
+# build-time estimate. Writing the anchor seconds before flashing beats the new
+# build stamp, so even that first run is on a real clock.
+#
+# Ordering is load-bearing: this must precede -Wipe -Flash's esptool
+# erase_flash, because an erased board has no firmware left to accept the
+# command. Best-effort throughout -- a board that is unplugged, busy, or still
+# running pre-SET_TIME firmware just keeps the old estimate, and nothing about
+# a run depends on this succeeding.
+if (-not $BuildOnly) {
+    Write-Host "Setting $Port's clock from this laptop (so captures get real dates) ..." -ForegroundColor DarkGray
+    Push-Location (Join-Path $base 'tools')
+    try { python export_logs.py --port $Port --set-time } catch { } finally { Pop-Location }
+}
+
 if ($Wipe -and -not $BuildOnly) {
     if ($Flash) {
         Write-Host "Full-erasing $Port before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ..." -ForegroundColor Yellow
@@ -364,6 +395,15 @@ switch ($Scenario) {
         if ($Role -ne 'root') {
             $scenarioFlags += '-DTRAFFIC_PROFILE=2'
             $scenarioTag = 'highload'
+        }
+    }
+    'jitter' {
+        # ROOT ONLY -- the root is the only board that schedules phases; every
+        # child just follows the broadcasts, so a jitter child binary would be
+        # byte-identical to a plain one and only cost an extra build dir.
+        if ($Role -eq 'root') {
+            $scenarioFlags += '-DTRAFFIC_PROFILE=3'
+            $scenarioTag = 'jitter'
         }
     }
 }

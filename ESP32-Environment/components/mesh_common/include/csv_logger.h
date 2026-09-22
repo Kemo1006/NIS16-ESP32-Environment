@@ -37,12 +37,25 @@
  *
  * Alongside the mirrors, every run appends to a per-folder manifest,
  * <attack>/<topology>/<location>/runs.csv (boot,run,node_id,role,rows,
- * uptime_s,event), so a human or tools/import_sdcard.py can tell which run
+ * uptime_s,event,built,started,clock_src), so a human or tools/import_sdcard.py can tell which run
  * is which and whether it ended cleanly. A "start" row is appended when the
  * telemetry mirror opens; a "clean" row (with the final row count) is
  * appended from csv_logger_close(). A run with a "start" and no matching
  * "clean" was aborted (power loss, a killed run) — the manifest is
  * append-only and never rewritten, so that gap IS the record.
+ *
+ * The last three columns answer "WHEN", which an RTC-less board could not
+ * previously say at all:
+ *   built      build date+time of the firmware that logged the boot. Identical
+ *              on every boot of one flash - it identifies the FLASH, not the run.
+ *   started    the wall clock this run began. THIS is the capture date.
+ *   clock_src  "host" if that wall clock came from a laptop via SET_TIME (a
+ *              real time), "build" if it was extrapolated from the build stamp
+ *              because the card has never met a laptop (an ESTIMATE). Never
+ *              read "started" without reading this.
+ * They are appended LAST on purpose: a card whose runs.csv was started by older
+ * firmware keeps its original header forever (a header is only written when the
+ * file is new), so import_sdcard.py reads the extra fields back positionally.
  *
  * runs.csv is also the source of r<run>: the next run's number is the count
  * of distinct boots already recorded there for this node, plus one. There is

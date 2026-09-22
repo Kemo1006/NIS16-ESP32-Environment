@@ -8,116 +8,121 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 22, 2026 — ⛔⛔ **NEVER FLASH `build_all_variants.ps1`'s OUTPUT. It is a COMPILE CHECK ONLY.**
-  It hardcodes `-DMESH_TOPOLOGY=0` on every variant (M1 criterion 1 = 'do all variants compile'), and
-  `NIS_TOPO_STAR = 0` with `s_topo_dirs[0] = "star"` — so those binaries run a STAR mesh (depth capped at
-  2) and log into `<attack>/star/<location>` whatever the experiment is. Flashed to all 4 boards sep. 22,
-  which then wrote `blackhole/star/home` for a LINEAR run — MAC/role were verified, topology was not.
-  Real flashing goes via `run.ps1 -Flash -Topology <t>` (star=0, tree=1, **linear=2**, partial=3), driven
-  by `run_wizard.ps1` from the preset. bcr/bcc/bcba/bcbv/bcwa/bcwb prove compilation, they do not deploy.
-- sep. 22, 2026 — ⚠⚠ **STILL RUNNING was STICKY — the live-flag bug, now fixed.** `sd_is_live_mirror()`
-  compared PATH STRINGS only, but `csv_logger_close()` nulls the mirror FILE*s at TERMINATE and keeps the
-  path strings (ARCHIVE_SD needs them). So after ANY completed run every file on that card reported
-  STILL RUNNING for the rest of the boot and the importer refused it — seen live on COM10+COM9. Now gated
-  on an OPEN handle. ⚠️ REFLASH needed; until then read the card in a reader, or power-cycle the board.
-- sep. 22, 2026 — **Per-file CSV delete, BOTH sources.** New firmware `DELETE_SD_FILE=<rel>` deletes ONE
-  capture (`DELETE_SD_PATH` only ever took whole folders, which is why `--delete-source` used to be
-  refused over `--port`). Guards: `sd_rel_capture_file_valid()` accepts only `*_telem.csv`/`*_arrivals.csv`
-  — so **runs.csv/location.txt can never be deleted this way** — and the board refuses a file it has OPEN.
-  Host: `export_logs.py --delete-sd-file`, `import_sdcard.py --delete-source` (now allowed with `--port`),
-  wizard picker's `d` works over USB too. Auto-delete-after-import stays OFF for USB (opt-in only).
-  ⚠️ **Any `& python ... 2>&1` here MUST set `$ErrorActionPreference='Continue'` first**: under the
-  script-wide `Stop`, PS 5.1 makes a NATIVE command's first stderr line TERMINATING. Shipped without it,
-  so one refused file killed the whole selection as "Could not run import_sdcard.py / python on PATH?".
-- sep. 22, 2026 — **Children now stop cleanly at TERMINATE.** `heartbeat_task` was the only thing still
-  transmitting after a run (`while(true)`, timer-driven); it now exits for non-root nodes. probe_gen and
-  telemetry already self-exited; relay_task parks on an empty queue. Root keeps beating (owns the member
-  table). App-level only — the child stays joined and USB-reachable. All 6 variants build clean.
-- sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too**, via shared
-- sep. 22, 2026 — ⚠️ **`ERROR:LOCATION_WRITE_FAILED` = the card MOUNTED and the write still failed** (vs
-  `LOCATION_NO_CARD` = mount failed). Hit live on COM10/COM11, which also had NO location.txt — consistent
-  with a **write-protect lock switch on the microSD adapter** (mounts + reads fine, every write fails).
-  Else: full card, or FAT damage → read-only mount. Triage: lock switch →
-  power-cycle → write-test in a reader (a good card, E:, wrote fine with 3.63 GB free). **UNRESOLVED.**
-- sep. 22, 2026 — **Over USB an ARRIVALS file reports rows UNKNOWN, not the telem count.** `runs.csv`'s
-  `rows` is that boot's TELEM count; a root's arrivals.csv shares the boot but counts something else.
-  `_BoardCard.rows()` returned it for both kinds → wrong count in the picker AND `_already_imported()`
-  could never match, so re-import over `--port` COPIED A DUPLICATE. Now None for non-telem → identity-only
-  fallback catches it. `--card` unaffected; preprocess.py already archives same-key dupes, so not contamination.
-- sep. 22, 2026 — ⚠️ **"ABORTED" WAS A LIE: it also meant "still running".** runs.csv only gets its
-  `clean` row at TERMINATE, so a live run and a dead one are indistinguishable to the host — every
-  card read mid-capture reported ABORTED + "rows unknown". Firmware now reports whether it still has
-  each mirror OPEN (`sd_is_live_mirror()`, 3rd field of `SDFILE:<name>|<bytes>|<live>`); the picker
-  says **STILL RUNNING** and the importer REFUSES it (not behind --include-aborted: importing a live
-  file yields a truncated run that looks complete). Proof it was benign: boot 759 grew 179->434 KB
-  between two reads.
-- sep. 22, 2026 — ⚠️ **SET_LOCATION broke after an SD hot-swap — root cause + fix.**
-  `mount_for_location_op()` returned early on `s_card != NULL`, so pulling a card from a RUNNING board
-  left a stale handle and every later write failed until reboot (it "spread" because each swap broke
-  one more board). Now: on write failure the mount is rebuilt and retried — but **only between runs**.
-  Mid-capture it returns the new `ERROR:LOCATION_STALE_MOUNT` and says reboot, because unmounting
-  under a live run kills the SD mirror (mount_for_location_op's own comment warns of this).
-- sep. 22, 2026 — **SD files no longer date to 1980.** get_fattime() feeds `time(NULL)` into each FAT
-  entry; no RTC = 1970 -> clamped. `sd_status_seed_clock_from_build()` seeds it from BUILD stamp + uptime
-  in `sd_status_run_boot_check()`. ⚠️ A dating AID, not a measurement; boot counter + runs.csv stay exact.
-- sep. 22, 2026 — **Location pre-flight in the wizard.** "Yes - use it" now reads each board's
-  location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
-  `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
-  site folders — hit for real 2026-09-22 (ran `-Location home`, cards said G402, `home/` was empty).
-- sep. 22, 2026 — **Root arrivals.csv exports fine over USB**; runs.csv `rows` is TELEM-only, so the manifest check is too.
-- sep. 22, 2026 — ⚠️ **AUTO-ANALYSIS WAS SKIPPING THE TRIM (fixed).** `run.ps1 -Analyze` — what
-  `run_wizard.ps1` gives the ROOT (`New-RunParams`) — ran M6/M7 over the RAW export and never called
-  `trim_run.py`, while `analyze.ps1` always trimmed. A raw folder can hold SEVERAL boot sessions and the
-  right one is NOT the longest, so idle sessions were silently folded in; and BOTH paths write the same
-  `analysis/<cell>/feature_table.csv`, making trimmed/untrimmed tables indistinguishable afterwards.
-  Fixed: run.ps1 clears stale `trimmed/`, runs `trim_run.py --apply`, points BOTH M6+M7 at `$analysisSrc`;
-  a trim failure falls back to raw and SAYS SO. ⚠️ **Re-run `.nalyze.ps1` on any cell auto-analysed
-  before sep. 22.** Left alone (not a bug): the wizard's "Run analysis only" asks via
-  `Select-AnalysisInput`, which already prefers `trimmed/`. **Auto-EXPORT was correct** (`-Analyze`
-  implies `-Export`, run.ps1:240).
-- sep. 22, 2026 — ⚠️ **THE WORKING COPY MOVED TO `A:\Angelo\Excelsior\THESIS\T`.**
-  `C:\Users\Angelo Calpoporo\CLionProjects\NIS16-ESP32-Environment` is now a BACKUP only — do NOT edit it.
-  Reason: C:'s depth pushes ESP-IDF build paths into Windows `MAX_PATH` (worst case **exactly 260**); on
-  A: it is **199**. Same repo/branch/commit (THESIS3 @ 764ff06). A: was merged to hold everything: it
-  already had `archive/2026-09-18_Incomplete-2` + `_incomplete-3` C: never had, and received C:'s 13 work
-  files + `archive/20260913_pre-redesign` (513 files/293 CSVs) + `tools/feature_separability.py`
-  (PANEL-REQUIREMENT tool: proves no single feature decides the dataset) + 4 PDFs. SHA256-verified.
-  ⚠️ **NOT copied on purpose:** ~1.8 GB July build junk + superseded root `docs/`,`memory/`,`tools/`.
-- sep. 22, 2026 — **`Select-Port` crashed "Key cannot be null"** on the new USB-export flow: called without
-  `-Ports`, and piping `$null` through `Where-Object` yields ONE iteration with `$_ = $null`, so `$shown`
-  held a single null and the loop hit `ContainsKey($null)`. Fixed at the call site AND hardened in
-  `Select-Port` (`{ $_ -and ... }`).
-- sep. 22, 2026 — ⚠️ **ROOT CAUSE of "sometimes 0 rows off the SD card" (D-13): `fflush()` without
-  `fsync()`.** On ESP-IDF's FAT VFS `fflush()` writes the BYTES but not the **directory entry**, so any boot
-  not reaching `csv_logger_close()` (brownout, reset, card pulled live) left a file whose recorded size was
-  **0** — rows present, unreachable. Fixed: `sd_mirror_sync()` = `fflush` + `fsync`, rate-limited by
-  `LOGGER_SD_SYNC_INTERVAL_MS` (**5000 ms**, time-based), forced unconditionally in `csv_logger_flush()`.
-  ⚠️ **Does NOT repair existing cards** — a PRE-FIX 0-row card file is **LOST DATA, not "the node logged
-  nothing"**. Compiles clean; **NOT hardware-tested** (needs a board + mid-run reset).
-- sep. 22, 2026 — **Export has TWO sources, one pipeline.** `run_wizard.ps1` asks *board over USB* vs
-  *pulled SD card*, then runs the SAME picker → dry-run → confirm → import (`Import-OneSdCard -Card|-Port`).
-  New firmware cmds **`LIST_SD`** + **`EXPORT_SD_PATH=<rel>`**; `LIST_FILES` adds `|<bytes>|<rows>`. Host:
-  `import_sdcard.py --port COMx`. Both routes verified byte-identical.
-- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file.** `?` NEVER renders as `0`.
-- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
-  to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
-  normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
-- sep. 21, 2026 — **C7 OPTION 1 SHIPPED (D-12): every node relays hop-by-hop at the app layer.** Shared
-  `probe_relay.{h,c}`; victims send to their PARENT; **the attacker runs the SAME relay, differing by ONE
-  boolean callback**. ⚠️ This IMPLEMENTS the paper (§3.1.3.2) — the old TODS behaviour was the deviation.
-  ⚠️ **Pre-C7 and post-C7 captures are NOT comparable.** Full rationale: D-12 in thesis-deviate.md.
-- sep. 21, 2026 — ⚠️ **TRAP THAT WOULD HAVE SILENTLY KILLED EVERY WORMHOLE RUN.** The relay first forwarded
-  only `PROBE_MAGIC`; Node A's duplicate carries `PROBE_MAGIC_WORMHOLE`, so every intermediate relay would
-  have dropped it and wormhole runs would have looked clean. Both magics now
-  relay. **Any future change to the relay's accept-filter must re-check this.**
-- sep. 21, 2026 - **`leakage.py` is DATASET-AWARE**: it asks how many roles carry each relay column, never hardcodes.
-  The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are FALSE now and would abort good captures;
-  downgraded in `run_wizard.ps1` (the launcher in use), BOTH copies in `menu.ps1`, and the attacker
-  boot banner. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
-- sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
-  length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
-  run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
+- sep. 22, 2026 — **CAPTURE DATES ARE REAL NOW: the board takes its clock from the laptop (`SET_TIME`).**
+  The picker's date was never a run date — it was `sd_status_build_stamp()` (LINK-time `__DATE__`), identical on
+  every boot of one flash: that is why deleting CSVs and re-running still showed `09/22 15:45`. No RTC, no NTP
+  ⇒ only a host can supply one. New `SET_TIME=<epoch>`/`GET_TIME`: `settimeofday()` + save to `/sdcard/clock.txt`;
+  `sd_status_apply_clock_anchor()` reads it next boot **after mount, before the folder tree** — that ordering is
+  what makes Explorer's "Date modified" true (FatFs `get_fattime()` reads `time(NULL)`). FORWARD-only, so a stale
+  card can't rewind a fresh time. `_push_host_time()` sends UTC on **every** `_open_port()`; `run.ps1 --set-time`
+  runs **before** the erase/flash (erased board can't answer; a fresh build stamp would beat an older anchor and
+  make the first post-flash run an estimate). `runs.csv` += `started`,`clock_src` (**appended last**; 7/8/10-col
+  headers parse via `_manifest_when()`, 6 cases tested). Picker shows `started`, `~` = `clock_src=build` (EST). **All 6 variants `-Clean` build verified: 0 warnings, 0 errors.** ⚠️ **NEEDS REFLASH.**
+- sep. 22, 2026 — **`status_NODE_<mac>.txt` is rewritten every boot and holds `Boot count:`, which IS the boot
+  counter** — deleting it resets `b<n>` to 1. It is NOT what the picker dates files from (that is `runs.csv`,
+  also the run-number + USB row-count/abort source). `DELETE_SD_FILE` accepts only `*_telem.csv`/`*_arrivals.csv`,
+  so it, `runs.csv`, `location.txt` and `clock.txt` are all undeletable by design.
+- sep. 22, 2026 — **CAMPAIGN CHECKLIST IS NOW A SCANNER, not a tick-box** (`inventory_cells.py`,
+  `report_checklist()` rewritten; `report_plan()` and `--repeats N` untouched and re-verified).
+  (1) **THREE states: `[x]` complete / `[~]` data captured but INCOMPLETE / `[ ]` nothing ever.** Before,
+  "never attempted" and "attempted 5x, always just short" both rendered `[ ]`, hiding every hour spent.
+  Only `[x]` counts toward M4. (2) **WHERE THE TICKED CELLS COME FROM** — each `[x]` names its source
+  folder. This answers the recurring "all the data is in archive, why is it still checked?": the scan
+  covers `tools/exports/` AND `archive/*/exports/` **by design** — archiving must not cost milestone
+  credit. (3) **DOUBLE-COUNT DETECTOR** — same (cell, repeat, children, arrivals_rows) from 2+ sources.
+  On first run it immediately flagged this session's own G402 duplicate across `2026-09-22_incomplete`
+  + `_test`. (4) **CLOSEST TO DONE** — near-misses ranked by worst coverage %, each with its one-line
+  blocker, so the next action is obvious (`home` 93.7% vs the 95% floor sits at the top).
+  ⚠️ Column widths are computed FROM THE DATA — pre-redesign archives carry legacy folder names like
+  `partial_mesh_topology` that shear a fixed-width table.
+- sep. 22, 2026 — **WIZARD NOW HAS A SMART ARCHIVE FRONT END (`Invoke-ArchiveMenu`, DATA group).** The MOVE
+  still lives in `archive.ps1` — one implementation — but the wizard adds the judgement it cannot make:
+  (1) a per-CELL table with file count/size and **whether a root + arrivals file is present**;
+  (2) **BYTE-IDENTICAL DUPLICATE DETECTION against every `archive/*/`** (name-match first, hash only
+  collisions; `run_ledger.csv` skipped — regenerated header-only, would always false-positive);
+  (3) a COMPLETE-run warning via `inventory_cells.py`; (4) a content-derived label suggestion;
+  (5) preview-only (`-WhatIf`) / archive-now / list duplicates / cancel.
+  ⚠️ **WHY (2) MATTERS — this session's own mistake:** `archive.ps1` MOVES data out of `tools/exports/`,
+  which leaves the git-tracked paths as STAGED DELETIONS. Those deletions were read as data loss and
+  `git checkout`-restored — recreating 9 G402 files that were already safe in
+  `archive/2026-09-22_incomplete/`. Result: the SAME capture in two archives and `runs found` 36→37.
+  **A staged deletion under `tools/exports/` usually means archive.ps1 moved it — check `archive/` BEFORE
+  restoring with git.** The new detector was tested against exactly that duplicate and flagged all 9.
+- sep. 22, 2026 — **`verify_attack.py` NOW PRINTS PER-NODE PDR under the pooled row — use THAT in the paper.**
+  Pooled PDR averages nodes the attack never touched with nodes it annihilated, so it describes NO actual
+  node. On blackhole/linear/home r1: pooled 0.514 = mean of victim H01 **1.0000** (upstream of the
+  attacker, never transits it) and victim H03 **0.0137** (downstream, near-total loss) — a ~37x
+  understatement of the real effect, and the pooled value moves run-to-run purely with where the attacker
+  lands. The pooled row STAYS (the 3-sigma test consumes it); the split prints underneath, and a victim
+  above the attacker is called out explicitly. ⚠️ Uses the PRE-`block_aggregate` frame (`df_nodes`) —
+  `verify()` rebinds `df` to the pooled frame, which drops `node_role`/`hop` (first attempt printed `?`/`-`).
+- sep. 22, 2026 — **FIXED: wizard [15] campaign checklist CRASHED at the end** — `run_wizard.ps1:2232`
+  called `Read-YesNo`, which is defined ONLY in `menu.ps1` and never dot-sourced here, so it threw
+  `CommandNotFoundException` AFTER printing the whole checklist. Now uses this file's own `Read-Line`
+  idiom. Swept for the same class: `Get-BuildDirSpec`/`Show-MainMenu` appear in run_wizard.ps1 but only
+  inside COMMENTS — `Read-YesNo` was the one real cross-script call.
+- sep. 22, 2026 — **`build_all_variants.ps1` HARDENED + the 2 wormhole warnings FIXED.** New `-Clean`
+  switch wipes every build dir first; a warm run now REFUSES to print "ALL VARIANTS BUILD CLEAN" and
+  instead names the variants that reused cached objects. **Use `-Clean` for any M1 criterion-1 evidence.**
+  Dead `mesh_data_t root_data`/`mdata` descriptors deleted from `wormhole_victim.c` (pre-C7 leftovers;
+  both tasks send via `probe_relay_send_own()` — call sites traced, no behavioural change).
+- sep. 22, 2026 — **NEW SCENARIO `jitter` (TRAFFIC_PROFILE=3) — ROOT ONLY, ADDITIVE ONLY.** The root draws a
+  fresh random EXTENSION per boot for the baseline (0..`JITTER_BASELINE_MAX_S`=45s) and attack
+  (0..`JITTER_ATTACK_MAX_S`=30s) windows via `esp_random()`, so phase transitions land at a different
+  wall-clock offset every run. **WHY:** every run used the identical schedule (60/300/180/120), so
+  `leakage.py` lists `window_start` as METADATA — elapsed time alone scored **0.857** against the label
+  without looking at the network. That is the panel's 12:45-16:00 "runs are all identical" objection, and
+  `eda.py`'s survivors warning names attack-parameter variation as THE fix (not feature exclusion).
+  ⛔⛔ **NEVER MAKE THE JITTER SUBTRACTIVE.** `preprocess.py` resolves real baseline as "the LAST
+  `PHASE_BASELINE_S` of phase 0", anchored backwards from each node's phase-0 exit. A baseline SHORTER
+  than 300s would make that slice reach past the real baseline's start and pull mesh-formation noise into
+  the benign class — wrong, and still plausible-looking. Additive keeps every existing host rule correct
+  with ZERO analysis-side change. Not in the CSV and doesn't need to be: real durations are recoverable
+  from any node's phase_id transition timestamps. Root-only because only the root schedules phases — a
+  jitter child binary would be byte-identical to a plain one. Wired into `run.ps1`, `run_wizard.ps1` and
+  `menu.ps1` (scenario lists + build-dir suffix + flag mapping all kept in sync).
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE VERIFIED end-to-end (blackhole/linear/home) — attack CONFIRMED.**
+  Chain: ROOT(H00)-victim1(H01, direct child of root)-ATTACKER(H02)-victim2(H03). `verify_attack.py`:
+  **BLACKHOLE CONFIRMED**, ForwardingRatio 1.000→0.026, PDR 1.000→0.514. Phase 0 clean (300.4s on all 4
+  boards) — **NOT luck: F1 (sep. 20) already fixed this**, recording `PHASE_ID_UNSET=255` before any
+  broadcast is heard instead of mislabelling it phase 0; `preprocess.py` excludes 255 as `pre_baseline`.
+  ⚠️️ **FINDING: aggregate PDR (0.514) HIDES a near-total per-victim split** — victim1 (upstream of
+  attacker, direct root child) stayed at PDR=1.000 through the ENTIRE attack window (untouched); victim2
+  (downstream) crashed to PDR=0.0137 (near-total). Pooling both into one PDR number is the exact positional
+  effect flagged today in blackhole_victim.c's header — now proven on real data. **Report PDR per-node-
+  relative-to-attacker in the write-up, not pooled.** ✅ **Checked, NOT a gap: `leakage.py`'s survivors
+  warning (eda.py:993) ALREADY catches ForwardingRatio/ConsistencyScore at 99.9% accuracy on this exact
+  run** (`lift_over_majority` 0.30 > the 0.15 print threshold) — confirmed by direct call, not just reading
+  the CSV. **Deliberately NOT auto-excluded**: the code's own documented reasoning is that a fixed-schedule
+  attack window is separable BY CONSTRUCTION in any single run, so excluding by accuracy alone would hide
+  real signal along with the leak. Its stated fix is attack-PARAMETER VARIATION across repeats (panel
+  12:45-16:00), not a code change — no `leakage.py` edit needed or made.
+- sep. 22, 2026 — **CONSOLE SAYS `HOP`, NOT `LAYER` (adviser) + the blackhole's position is now GUARDED.**
+  "Layer" reads as an OSI layer; this is a mesh TREE depth (the mesh runs BELOW IP). Renamed across the root
+  dashboard + `topology_graph.c`'s star reason. ⚠️ **Off-by-one is deliberate — ESP-WIFI-MESH numbers the
+  ROOT layer 1, so hop = layer-1 and the ROOT IS H00**, matching `preprocess.py:768`'s `hop` (D-11); the
+  console now agrees with the dataset. `fmt_layer()` deleted → `fmt_hop()`. **The raw firmware CSV still
+  writes `layer`**; renaming that column is a schema change hitting every script + every existing capture —
+  NOT done, ask first. Also: `blackhole_victim.c`'s header described the PRE-C7 model and contradicted its
+  own code — rewritten. New **leaf/off-path guards** (a blackhole with nothing under it drops nothing and
+  the capture still passes EVERY check): attacker warns after 10 s of attack-phase at recv=0
+  (`LEAF_WARN_AFTER_MS`); the ROOT dashboard, which alone sees the whole tree, shouts before the window
+  opens. New `TOPOLOGY TREE` block prints BELOW the existing tables — nothing previously printed changed.
+  ✅ **6/6 variants BUILD CLEAN on ESP-IDF 5.5.4**, 0 warnings. **REFLASH ALL.** ❌ **DECLINED: hex
+  `I (622272)` timestamp** — ESP-IDF's standard prefix, not ours; hex-ing it IS "we invented our own format".
+- sep. 22, 2026 — ⚠️ **PS 5.1 PROMOTES A NATIVE COMMAND'S FIRST STDERR LINE TO A TERMINATING ERROR**
+  under `$ErrorActionPreference='Stop'` — so a tool that writes a progress bar to stderr (`export_logs.py`)
+  kills its PowerShell caller with an EMPTY exception message. Both `run_wizard.ps1` import calls now wrap
+  in `'Continue'` + `finally` restore. **Grep every `& python ... 2>&1` before shipping.** ⚠️ Editing
+  `run_wizard.ps1` does NOT affect an ALREADY-RUNNING wizard — exit [17] and relaunch. Detail: ARCHIVE.md.
+
 ## Durable facts & constraints
+- sep. 22, 2026 — ⚠️⚠️ **PLUG BOARDS DIRECT INTO THE LAPTOP — NEVER THE DOCK OR ANY HUB.** Win11 26200
+  hard-crashed 2x (BSOD `ATTEMPTED_SWITCH_FROM_DPC` 0xB8) during export / `DELETE_SD_FILE` / `SET_LOCATION`.
+  HOST DRIVER fault, **not the firmware or scripts** — nothing an ESP sends over a COM port can crash Windows.
+  Confirmed by the PnP parent chain: every CP210x sat 2-3 Genesys hubs deep behind the Dell D6000 dock,
+  sharing one Intel root port with its DisplayLink video chip. USB selective suspend now off (AC+DC); still to
+  do: update CP210x + DisplayLink drivers. Dumps in `C:\Windows\Minidump`. Detail: ARCHIVE.md.
 - **Git repo root is this whole `Unified/` folder** (code, docs, `Paper/`, `ESP32-Environment/` all inside it),
   NOT `ESP32-Environment/` alone — branch `Unified`, remote `origin` =
   `https://github.com/Kemo1006/NIS16-ESP32-Environment`. GitHub IS the laptop-to-laptop transport: a `git pull`
@@ -169,7 +174,6 @@
   `uart_write_bytes()` succeeds into an unterminated line; only Node A can prove a frame crossed.
   Guard on A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner.
 
-
 ## Failed approaches — do not retry
 - Passing `idf.py -D` flags as `@($spec.Flags)` — that is an array SUBEXPRESSION, not a splat, so both
   defines merge into ONE arg (`-DACTIVE_ATTACK="1 -DMESH_TOPOLOGY=2"` → build failure). Use a plain
@@ -178,20 +182,16 @@
   FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process.
   Dot-sourcing with no `-IdfId` also fails silently (`idf-env config get` returns the STRING "null").
   Fix in use: `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime.
-- Long `idf.py -B <dir>` names — deep paths push object paths past Windows `MAX_PATH`; ninja fails in the
-  **bootloader** subproject long after the app compiled, so the error looks unrelated. ✅ **FIXED in
-  `build_all_variants.ps1` (sep. 22, 2026)**: it used `build_check_<Name>` and the longest row (BLACKHOLE
-  attacker) measured **exactly 260** — reporting FAILED for good code, with the budget shifting per user's
-  own path. Now a per-variant `Bld` field (`bcr`,`bcba`,…) + a preflight WARNING. ⚠️ **Don't rename them
-  back.** Still unapplied alternative: `LongPathsEnabled=1` (admin).
-- Non-ASCII characters (`⚠`, `—`, `…`) in a Python tool's **module docstring** when it is passed to `argparse`
-  as `description` — the Windows console is cp1252, so `--help` dies with `UnicodeEncodeError` before printing
-  anything. `tools/command_center.py` is deliberately ASCII-only and calls
-  `sys.stdout.reconfigure(encoding="utf-8")` before `rich` draws.
-- Splitting recovered SPIFFS dumps on newlines after stripping page metadata — welds row tails to heads and fabricates data that passes a field regex. `recover_spiffs.py` now accepts only byte runs delimited by `
-` on both sides.
-` on both sides.
-- `run_matrix.py --record` with hand-typed `--repeat` — silently re-recorded the wrong run. Use `--autorecord` (scans, validates, records; no flags to mistype).
+  ⚠️ **sep. 22, 2026 — `export.ps1` ALSO fails here and LOOKS LIKE "ESP-IDF is not installed". It is.**
+  `activate.py` derives the venv name from whichever `python` is first on PATH (3.12 on Angelo's box), then
+  reports `idf5.5_py3.12_env ... not found`. The real venv is **`idf5.5_py3.11_env`**. Never conclude IDF is
+  absent from an `export.ps1` failure — check `C:\Espressif\idf-env.exe config get` first. Working line:
+  `. C:\Espressif\Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57` (**this laptop = v5.5.4**).
+- Long `idf.py -B <dir>` names — deep paths pass Windows `MAX_PATH`; ninja fails in the **bootloader**
+  subproject long after the app compiled, so it looks unrelated. Fixed by short per-variant `Bld` names
+  (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.
+- Non-ASCII in a Python tool's **module docstring** passed to `argparse(description=)` — cp1252 console ⇒
+  `--help` dies with `UnicodeEncodeError`. Keep them ASCII; `sys.stdout.reconfigure(encoding="utf-8")` first.
 - Powering the SD reader module's VCC from ESP32 3V3 — its onboard AMS1117-3.3 drops ~1.1-1.3V, leaving the
   card below its ~2.7V minimum. Symptom: CMD0 succeeds (R1=0x01) but ACMD41/OCR times out forever (0x107) —
   looks like wiring but isn't. Use VIN/5V; the module's 74HC125 level-shifter never puts 5V on ESP32 GPIOs.

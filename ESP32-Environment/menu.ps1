@@ -1,4 +1,4 @@
-<#
+﻿<#
   Combined ESP-WIFI-MESH launcher
   ---------------------------------------------------------------------------
   No more long flag strings. Run:   .\menu.ps1
@@ -315,10 +315,11 @@ function Select-Scenario {
         'none        (today''s behaviour -- no variation)',
         'burst       (CODE: one child fires 100 probes back-to-back in the attack window)',
         'highload    (CODE: every child probes 4x faster for the whole run)',
+        'jitter      (CODE: ROOT randomises baseline/attack window lengths each boot)',
         'mobility    (HUMAN: you move one child from spot A to spot B -- checklist only)',
         'powercycle  (HUMAN: you unplug/replug one child -- checklist only)'
     )
-    $vals = @('none', 'burst', 'highload', 'mobility', 'powercycle')
+    $vals = @('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
     $def  = [array]::IndexOf($vals, $Current) + 1
     if ($def -lt 1) { $def = 1 }
     $idx = Read-Choice -Title "Scenario for this run (every board in the run gets the SAME one)?" -Options $opts -Default $def -AllowBack:$AllowBack
@@ -371,17 +372,48 @@ function Show-And-Confirm {
     return $go
 }
 
-function Format-BuildStamp {
-    # "2026-09-17 14:32:07" (csv_logger.c's runs.csv "built" column, via
-    # import_sdcard.py --list-json) -> "09 / 17 / 2026 14:32", the leftmost
-    # column of the card file picker. Fixed 20 chars wide so the "|" after it
-    # lines up down the list whether or not a given file has a stamp.
+function Get-RunStampRaw {
+    # The sortable ISO stamp a card file should be dated by.
+    #
+    # Prefers runs.csv's "started" - when the run ACTUALLY RAN - and falls back
+    # to "built" (when the firmware was COMPILED) only for cards written before
+    # the clock anchor existed. The fallback matters: a build stamp is identical
+    # on every boot of one flash, so sorting by it puts every capture from one
+    # flash in an arbitrary order and makes a re-run look like the original.
     # Mirrored in run_wizard.ps1 - keep the two in sync.
-    param([string]$Stamp)
-    if ($Stamp -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
-        return ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+    param($File)
+    if ($File.started) { return [string]$File.started }
+    if ($File.built)   { return [string]$File.built }
+    return ''
+}
+
+function Test-RunStampEstimated {
+    # $true when the stamp above is an EXTRAPOLATION from the firmware build
+    # time rather than a real clock: either the board has never been given one
+    # (runs.csv clock_src = "build"), or the card predates the clock anchor and
+    # carries only a build stamp. The picker prefixes these with "~" so an
+    # estimate can never be copied into notes as a measured capture time.
+    # Mirrored in run_wizard.ps1 - keep the two in sync.
+    param($File)
+    if ($File.started) { return ($File.clock_src -ne 'host') }
+    return $true
+}
+
+function Format-RunStamp {
+    # "2026-09-22 18:03:41" -> "09 / 22 / 2026 18:03", the leftmost column of
+    # the card file picker, with "~" prepended for an estimate. Padded to 21
+    # chars at the call site - 20 for the stamp plus the "~" - so the "|" after
+    # it lines up down the list whether or not a given file has a stamp and
+    # whether or not that stamp is an estimate.
+    # Mirrored in run_wizard.ps1 - keep the two in sync.
+    param($File)
+    $raw = Get-RunStampRaw $File
+    if ($raw -match '^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})') {
+        $t = ('{0} / {1} / {2} {3}:{4}' -f $Matches[2], $Matches[3], $Matches[1], $Matches[4], $Matches[5])
+        if (Test-RunStampEstimated $File) { return "~$t" }
+        return $t
     }
-    return '(no build stamp)'
+    return '(no date on card)'
 }
 
 function Select-CardFiles {
@@ -410,35 +442,46 @@ function Select-CardFiles {
     # without importing something first just to trigger that cleanup.
     param([Parameter(Mandatory)]$Files, [string]$Card)
 
-    # Sorted newest-build-first; unknown stamps sink to the bottom (they can
-    # only be pre-stamp firmware, i.e. older than anything that has one).
+    # Sorted newest-RUN-first; unknown stamps sink to the bottom (they can only
+    # be pre-anchor firmware, i.e. older than anything that has one).
     $sorted = @($Files | Sort-Object `
-        @{ Expression = { if ($_.built) { $_.built } else { '' } }; Descending = $true }, `
+        @{ Expression = { Get-RunStampRaw $_ }; Descending = $true }, `
         @{ Expression = { '{0}/{1}/{2}' -f $_.attack, $_.topology, $_.location } }, `
         @{ Expression = { [int]$_.boot } })
 
-    # Deliberately NOT wrapped in @(): this is compared with -eq against a
-    # scalar below, and a 1-element array on the right of -eq is the classic
-    # PowerShell footgun (it coerces rather than compares cleanly).
-    $newest = $sorted | Where-Object { $_.built } | Select-Object -First 1 -ExpandProperty built
+    # Plain foreach rather than Where-Object | Select-Object -ExpandProperty:
+    # this is compared with -eq against a scalar below, and a 1-element array on
+    # the right of -eq is the classic PowerShell footgun (it coerces rather than
+    # compares cleanly). A loop yields a string or nothing, never an array.
+    $newest = ''
+    foreach ($cf in $sorted) {
+        $cs = Get-RunStampRaw $cf
+        if ($cs) { $newest = $cs; break }
+    }
 
     $draw = {
         Write-Host ""
         Write-Host "On this card:" -ForegroundColor Cyan
-        Write-Host "  (leftmost column = when the FIRMWARE that logged the file was built - not" -ForegroundColor DarkGray
-        Write-Host "   when it ran. Every boot of one flash shares it, so it tells today's" -ForegroundColor DarkGray
-        Write-Host "   captures from ones an older flash left behind.)" -ForegroundColor DarkGray
+        Write-Host "  (leftmost column = when the run ACTUALLY RAN, from runs.csv. Newest first;" -ForegroundColor DarkGray
+        Write-Host "   green = newest on this card, yellow = left behind by an earlier session.)" -ForegroundColor DarkGray
+        Write-Host "  A leading ~ means that board has never been given a real clock, so the time" -ForegroundColor DarkGray
+        Write-Host "   is EXTRAPOLATED from when its firmware was built - treat it as approximate." -ForegroundColor DarkGray
+        Write-Host "   Exporting from this laptop once gives that board a real clock from then on." -ForegroundColor DarkGray
         Write-Host ""
         for ($i = 0; $i -lt $sorted.Count; $i++) {
             $f = $sorted[$i]
-            $stamp = Format-BuildStamp $f.built
-            # Green = newest firmware on this card (almost always "the one you
-            # just flashed"); yellow = an older flash left this here.
-            $stampColor = if (-not $f.built) { 'DarkGray' }
-                          elseif ($newest -and $f.built -eq $newest) { 'Green' }
+            $stamp = Format-RunStamp $f
+            $fStamp = Get-RunStampRaw $f
+            # Green = the most recent capture on this card (almost always "the
+            # run you just did"); yellow = an earlier session left this here.
+            # The "~" in $stamp, not the colour, carries "this is an estimate" -
+            # recency and certainty are two different facts and collapsing them
+            # into one colour would hide whichever lost.
+            $stampColor = if (-not $fStamp) { 'DarkGray' }
+                          elseif ($newest -and $fStamp -eq $newest) { 'Green' }
                           else { 'Yellow' }
             Write-Host ("  [{0}] " -f ($i + 1)) -NoNewline
-            Write-Host ("{0,-20}" -f $stamp) -NoNewline -ForegroundColor $stampColor
+            Write-Host ("{0,-21}" -f $stamp) -NoNewline -ForegroundColor $stampColor
             Write-Host (" | {0}" -f $f.name)
 
             $bits = @("{0}/{1}/{2}" -f $f.attack, $f.topology, $f.location)
@@ -1543,6 +1586,7 @@ function Get-BuildDirSpec {
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
     if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
+    if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
     $buildDir = Join-Path $buildRoot "$proj\build_${suffix}_$portTag"
 
@@ -1569,6 +1613,8 @@ function Get-BuildDirSpec {
 
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $flags += '-DTRAFFIC_PROFILE=1' }
     if ($scenario -eq 'highload' -and $role -ne 'root') { $flags += '-DTRAFFIC_PROFILE=2' }
+    # jitter is ROOT-ONLY: only the root schedules phases (see run.ps1's mapping).
+    if ($scenario -eq 'jitter' -and $role -eq 'root') { $flags += '-DTRAFFIC_PROFILE=3' }
 
     return [pscustomobject]@{ Proj = $proj; BuildDir = $buildDir; Flags = $flags }
 }

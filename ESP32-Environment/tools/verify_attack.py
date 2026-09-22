@@ -320,6 +320,11 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
           f"attack windows: {int((raw_lab == label).sum())}")
 
     feats = [f for f, _, _ in SIGNATURES[attack]]
+    # Keep the PRE-AGGREGATION frame for the per-node report below: block_aggregate
+    # pools `block` windows per point and keeps only the signature features, so it
+    # drops node_role/hop. Per-node PDR is a descriptive breakdown, not an input to
+    # the sigma test, so it wants the unpooled rows anyway.
+    df_nodes = df
     df, agg_note = block_aggregate(df, feats, block)
     lab = pd.to_numeric(df["Label"], errors="coerce")
     base_mask = lab == LABEL_BASELINE
@@ -390,6 +395,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         for marker, feat, note in footnotes:
             print(f"  [{marker}] {feat}: {note}")
     print()
+    print_per_node_pdr(df_nodes, label)
     if confirmed:
         print(f"  VERDICT: {attack.upper()} CONFIRMED  "
               f"({primary_pass}/{primary_total} primary signatures exceed {sigma:g}-sigma)."
@@ -402,6 +408,84 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         print(f"  VERDICT: NOT CONFIRMED - no primary signature exceeded {sigma:g}-sigma. "
               f"Check the attacker setup / run." + excluded_note)
     return confirmed, conclusive
+
+
+def print_per_node_pdr(df, label, sigma_note=""):
+    """Per-node PDR next to the pooled number the table above reports.
+
+    WHY THIS EXISTS
+    ---------------
+    Since C7 Option 1 the blackhole is POSITIONAL: it can only drop traffic from
+    nodes BELOW it in the tree. A victim that sits closer to the root than the
+    attacker reaches the root without ever transiting it and is completely
+    unaffected for the whole run.
+
+    Pooling every victim into one PDR therefore averages "untouched" with
+    "annihilated" and reports something that happened to NOBODY. Measured on
+    blackhole/linear/home r1 (2026-09-22): pooled attack PDR 0.514, which is the
+    mean of victim H01 at 1.000 (upstream of the attacker, never touched) and
+    victim H03 at 0.0137 (downstream, near-total loss). Quoting 0.514 understates
+    the attack on the node it actually hit by a factor of ~37, and the number
+    moves run to run purely with where the attacker happened to land in the tree.
+
+    So the pooled value stays (it is what the 3-sigma test consumes) and this
+    prints the split underneath it, which is the figure the write-up should use.
+    """
+    if "PDR" not in df.columns or "node_id" not in df.columns:
+        return
+    lab = df["Label"] if "Label" in df.columns else df.get("window_label")
+    if lab is None:
+        return
+
+    base = df[lab == LABEL_BASELINE]
+    atk = df[lab == label]
+    if atk.empty:
+        return
+
+    keys = ["node_id"]
+    for extra in ("node_role", "hop"):
+        if extra in df.columns:
+            keys.append(extra)
+
+    b = base.groupby(keys)["PDR"].mean()
+    a = atk.groupby(keys)["PDR"].agg(["mean", "count"])
+    rows = []
+    for k, r in a.iterrows():
+        if pd.isna(r["mean"]):
+            continue
+        rows.append((k if isinstance(k, tuple) else (k,), b.get(k, float("nan")),
+                     r["mean"], int(r["count"])))
+    if not rows:
+        return
+
+    rows.sort(key=lambda t: t[2])   # worst-hit node first
+    print("  PER-NODE PDR (the pooled row above averages these — see "
+          "print_per_node_pdr.__doc__)")
+    hdr = "  {:<20}{:<12}{:>6}{:>12}{:>12}{:>8}".format(
+        "node_id", "role", "hop", "baseline", "attack", "n")
+    print(hdr)
+    print("  " + "-" * (len(hdr) - 2))
+    for key, bmean, amean, n in rows:
+        node = key[0]
+        role = key[1] if len(key) > 1 else "?"
+        hop = key[2] if len(key) > 2 else float("nan")
+        hop_s = "-" if pd.isna(hop) else f"{int(hop)}"
+        b_s = "  n/a" if pd.isna(bmean) else f"{bmean:.4f}"
+        print("  {:<20}{:<12}{:>6}{:>12}{:>12}{:>8}".format(
+            str(node), str(role), hop_s, b_s, f"{amean:.4f}", n))
+
+    unaffected = [r for r in rows if r[2] > 0.90]
+    hit = [r for r in rows if r[2] < 0.50]
+    if unaffected and hit:
+        print()
+        print("  ** {} victim(s) were NOT attacked at all (PDR > 0.90 through the "
+              "attack window):".format(len(unaffected)))
+        print("     " + ", ".join(str(r[0][0]) for r in unaffected))
+        print("     They sit ABOVE the attacker in the tree, so their traffic never "
+              "transits it.")
+        print("     Report PDR PER NODE in the write-up; the pooled value describes "
+              "no actual node.")
+    print()
 
 
 def main():

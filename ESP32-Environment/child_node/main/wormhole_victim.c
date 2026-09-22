@@ -258,12 +258,9 @@ static void tunnel_forwarder_task(void *arg)
 {
     probe_pkt_t pkt;
 
-    /* Direct-to-root descriptor (baseline/cooldown). */
-    mesh_data_t root_data = {
-        .size  = sizeof(probe_pkt_t),
-        .proto = MESH_PROTO_BIN,
-        .tos   = MESH_TOS_P2P,
-    };
+    /* No mesh_data_t descriptor here any more: since C7 Option 1 this task
+      * sends through probe_relay_send_own(), which builds its own. The old
+      * direct-to-root descriptor lingered as dead code until 2026-09-22. */
 
     /* Tunnel-to-A frame (wormhole phase) — sent over UART1, not the mesh. */
     tunnel_pkt_t tp = { .magic = WORMHOLE_TUNNEL_MAGIC };
@@ -282,7 +279,6 @@ static void tunnel_forwarder_task(void *arg)
         /* C7 Option 1: hop by hop to our parent, like every other node. The
          * probe still reaches the root - it is just carried and COUNTED by each
          * node on the way, instead of the stack moving it invisibly. */
-        root_data.data = (uint8_t *)&pkt;
         esp_err_t err = probe_relay_send_own(&pkt);
         if (err == ESP_OK) {
             s_probes_to_root++;
@@ -478,12 +474,8 @@ void app_main(void)
 static void reinject_task(void *arg)
 {
     probe_pkt_t pkt;
-    mesh_data_t mdata = {
-        .data  = (uint8_t *)&pkt,
-        .size  = sizeof(pkt),
-        .proto = MESH_PROTO_BIN,
-        .tos   = MESH_TOS_P2P,
-    };
+    /* Same as the forwarder above: probe_relay_send_own() owns the descriptor
+     * since C7 Option 1, so there is nothing to build here. */
 
     ESP_LOGI(TAG, "Re-inject task running.");
 

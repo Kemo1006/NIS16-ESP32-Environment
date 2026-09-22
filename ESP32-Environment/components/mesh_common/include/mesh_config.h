@@ -413,6 +413,11 @@
  *                                  matched pair (legit burst vs burst-under-attack).
  *   -DTRAFFIC_PROFILE=2 highload → every child probes at HIGHLOAD_PROBE_INTERVAL_MS
  *                                  for the WHOLE run. Root unchanged.
+ *   -DTRAFFIC_PROFILE=3 jitter   → ROOT ONLY: randomises how long the baseline and
+ *                                  attack windows run (ADDITIVE only, see below),
+ *                                  so phase transitions land at a different
+ *                                  wall-clock offset every run and elapsed time
+ *                                  stops predicting the label. Children unchanged.
  *
  * mobility / powercycle are HUMAN scenarios: no flag, label-only on the host.
  *
@@ -423,9 +428,50 @@
 #define TRAFFIC_PROFILE_NONE        0
 #define TRAFFIC_PROFILE_BURST       1
 #define TRAFFIC_PROFILE_HIGHLOAD    2
+#define TRAFFIC_PROFILE_JITTER      3
 
 #ifndef TRAFFIC_PROFILE
 #define TRAFFIC_PROFILE             TRAFFIC_PROFILE_NONE
+#endif
+
+/* ---------------------------------------------------------------------------
+ * TIMING JITTER (TRAFFIC_PROFILE=3) -- ROOT ONLY
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Every run so far used the SAME fixed schedule (STABILISE 60 / BASELINE 300 /
+ * ATTACK 180 / COOLDOWN 120). analysis/leakage.py lists `window_start` as a
+ * METADATA column for exactly that reason: with an identical schedule in every
+ * run, "how many seconds since this run started" alone scores 0.857 accuracy
+ * against the label WITHOUT LOOKING AT THE NETWORK AT ALL. That is a clock, not
+ * a measurement, and it is the concrete form of the CTTHES2 panel's
+ * 12:45-16:00 objection that the runs are all identical.
+ *
+ * With this profile the ROOT draws a fresh random EXTENSION for the baseline and
+ * attack windows on every boot, so the wall-clock position of each phase
+ * transition differs run to run and elapsed time stops being a free label.
+ *
+ * WHY THE JITTER IS ADDITIVE ONLY (never shortens a window) -- DO NOT "FIX" THIS
+ * ------------------------------------------------------------------------------
+ * analysis/preprocess.py resolves the real baseline as "the LAST PHASE_BASELINE_S
+ * of phase 0", anchored backwards from each node's own phase-0 exit, because
+ * phase 0 also covers boot and mesh formation. If a run's true baseline were
+ * ever SHORTER than PHASE_BASELINE_S, that backward slice would reach past the
+ * start of the real baseline and silently pull mesh-formation noise into the
+ * benign class -- a wrong result that still looks perfectly plausible.
+ * Extending only keeps the last PHASE_BASELINE_S always inside real baseline, so
+ * every existing analysis rule stays correct with no host-side change.
+ *
+ * NOT RECORDED ANYWHERE, AND IT DOES NOT NEED TO BE: the drawn values are
+ * printed at the root's console, and the ACTUAL phase durations are recoverable
+ * from the data itself -- every node's CSV timestamps its phase_id transitions.
+ * The dataset stays self-describing.
+ * --------------------------------------------------------------------------- */
+#ifndef JITTER_BASELINE_MAX_S
+#define JITTER_BASELINE_MAX_S   45U   /* extra baseline seconds, 0..this        */
+#endif
+#ifndef JITTER_ATTACK_MAX_S
+#define JITTER_ATTACK_MAX_S     30U   /* extra attack seconds, 0..this          */
 #endif
 
 /** Probe interval used by the highload profile (4x the normal rate). */
@@ -580,6 +626,24 @@
 /** Written at the card root (never inside a topology folder) when location.txt
  *  is missing or unrecognised — environment must be RECORDED, never guessed. */
 #define SD_LOCATION_ERR_FILE    SD_MOUNT_POINT "/LOCATION_MISSING.txt"
+
+/** HOST CLOCK ANCHOR — one line, a Unix epoch (UTC seconds), written by the
+ *  SET_TIME console command (csv_logger.c) and read back at the next boot by
+ *  sd_status_apply_clock_anchor().
+ *
+ *  This board has no RTC and never reaches NTP, so the ONLY real calendar it
+ *  can ever have is one a laptop hands it over USB. Every host tool that opens
+ *  a board's port pushes the current time here (tools/export_logs.py
+ *  _push_host_time), so the anchor is refreshed on every export, MAC read and
+ *  SET_LOCATION pass. The next boot starts its clock at anchor + uptime
+ *  instead of BUILD TIME + uptime, which is what makes runs.csv's "started"
+ *  column a real capture date rather than a rebuild date.
+ *
+ *  Card root, not a leaf folder: it describes the CARD's last contact with a
+ *  laptop, not any one attack/topology/location run. Being at the root also
+ *  keeps it out of DELETE_SD_FILE's reach (sd_rel_file_valid() only accepts
+ *  *_telem.csv / *_arrivals.csv inside a leaf), exactly like location.txt. */
+#define SD_CLOCK_FILE           SD_MOUNT_POINT "/clock.txt"
 
 /** Topology folder names — MUST stay byte-identical to _TOPOLOGY_DIR in
  *  tools/export_logs.py so the card mirrors exports/. Note PARTIAL's quirk:

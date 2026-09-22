@@ -1,36 +1,63 @@
 /**
  * @file blackhole_victim.c
- * @brief Blackhole ATTACKER (relay) firmware — Milestone 2.
+ * @brief Blackhole ATTACKER (relay) firmware - Milestone 2.
  *
- * TRUE RELAY MODEL (thesis §4.2.1.2 C, Milestone 2): this board is the blackhole
- * ATTACKER. Victim boards address their probe packets to THIS node's MAC (they
- * are built with BLACKHOLE_ROLE=1, which points them at BLACKHOLE_ATTACKER_MAC).
- * This node receives those probes and either:
- *   - Baseline / cooldown: FORWARDS each probe to the root (normal relay), so
- *     the root receives the victims' probes as usual.
- *   - Attack phase (PHASE_ID_BLACKHOLE): silently DROPS them — the packets
- *     vanish, so the root sees the victims' probes stop arriving during the
- *     window and resume afterwards. That drop-in-arrivals is the blackhole
- *     signature (Milestone 2: "zero forwarded probes reach the root during the
- *     attack window").
+ * POSITIONAL RELAY MODEL (C7 Option 1 / D-12, paper Section 3.1.3.2).
  *
- * The attacker does NOT generate its own probes; it only relays the victims'.
- * It stays a legitimate mesh participant throughout — no control-plane changes,
- * only the application-layer relay decision (forward vs drop) is altered.
+ * This board is the blackhole ATTACKER. It runs the SAME hop-by-hop relay every
+ * honest node runs (probe_relay.c); the only difference is one decision
+ * callback. Victims do NOT address it: since C7 Option 1 every node sends its
+ * probes to ITS OWN PARENT and each node on the path relays them upward, so
+ * this board sees a probe only because it sits between that victim and the
+ * root.
+ *
+ *   - Baseline / cooldown: FORWARDS everything that transits it (normal relay).
+ *   - Attack phase (PHASE_ID_BLACKHOLE): silently DROPS it. The packets vanish,
+ *     the root stops receiving those victims' probes for the window, and they
+ *     resume afterwards. That drop in arrivals is the blackhole signature
+ *     (Milestone 2: "zero forwarded probes reach the root during the attack").
+ *
+ * WHAT THIS MEANS IN PRACTICE - READ BEFORE PLACING BOARDS
+ * -------------------------------------------------------
+ * The attack is PURELY POSITIONAL. This board can only blackhole the traffic of
+ * nodes that are BELOW it in the tree. Consequences:
+ *
+ *   - If the mesh parks this board as a LEAF, nothing transits it, it drops
+ *     nothing, and the run looks perfectly benign.
+ *   - Victims that sit CLOSER TO THE ROOT than this board reach the root without
+ *     ever touching it, and stay unaffected for the whole run.
+ *   - Neither case raises an error anywhere in the pipeline: the export, the
+ *     integrity check and the 3-sigma verifier all pass on a run where the
+ *     attack never actually happened.
+ *
+ * telemetry_task() therefore watches recv_count during the attack window and
+ * shouts if nothing has ever transited this node (see LEAF_WARN_AFTER_MS).
+ * Placement is now a real experimental variable (the CTTHES2 panel asked for
+ * "different position of the attackers", 12:45-16:00) - so it is also a real
+ * way to waste a run. Check the root's PARENT/CHILD STRUCTURE dashboard before
+ * trusting a capture.
+ *
+ * The attacker does NOT generate its own probes; it only relays other nodes'.
+ * It stays a legitimate mesh participant throughout - no control-plane changes,
+ * only the application-layer forward/drop decision is altered.
+ *
+ * BLACKHOLE_ATTACKER_MAC is BOOKKEEPING ONLY since C7 Option 1. Nothing targets
+ * it any more; a stale value prints a warning at boot and does not affect the
+ * run. Tidy it with export_logs.py --set-attacker-mac (F2, runtime/NVS).
  *
  * Telemetry counter mapping (shared 11-col schema, role column = "blackhole"):
- *   probes_count = probes RECEIVED from victims (climbs the whole run)
- *   tx_count     = probes FORWARDED to root (climbs baseline/cooldown, FLAT during attack)
- *   retry_count  = probes DROPPED (0 in baseline, climbs during attack; also send-fails)
+ *   probes_count = probes RECEIVED for relay   (climbs the whole run)
+ *   tx_count     = probes FORWARDED to parent  (climbs baseline/cooldown, FLAT during attack)
+ *   retry_count  = failed esp_mesh_send() calls ONLY (F3 - deliberate drops are
+ *                  NOT filed here; they have their own drop_count column)
+ *   drop_count   = probes accepted and deliberately not passed on
  *
  * Build (selected by child_node/main/CMakeLists.txt on the flags):
  *   cd child_node && idf.py -DACTIVE_ATTACK=1 -DBLACKHOLE_ROLE=0 build flash  # THIS (attacker relay)
- *   cd child_node && idf.py -DACTIVE_ATTACK=1 -DBLACKHOLE_ROLE=1 build flash  # a victim that targets the attacker
- *   cd root_node   && idf.py -DACTIVE_ATTACK=1                    build flash  # root announces PHASE_ID_BLACKHOLE
- * Set BLACKHOLE_ATTACKER_MAC in mesh_config.h to THIS board's STA MAC (printed
- * at boot below) before building the victim boards. See BLACKHOLE-SETUP.md.
+ *   cd child_node && idf.py -DACTIVE_ATTACK=1 -DBLACKHOLE_ROLE=1 build flash  # a victim
+ *   cd root_node  && idf.py -DACTIVE_ATTACK=1                    build flash  # root announces PHASE_ID_BLACKHOLE
  *
- * NIS16 — CTTHES2 Milestone 2 — Blackhole Attack (relay)
+ * NIS16 - CTTHES2 Milestone 2 - Blackhole Attack (positional relay)
  */
 
 #include <stdio.h>
@@ -77,6 +104,11 @@ static uint8_t  s_self_mac[6]          = {0};
  * exactly the "stays protocol-compliant at PHY/MAC" criterion in
  * docs/ATTACK-VALIDATION.md, now true by construction rather than by argument.
  */
+
+/* How long the attack window may run with NOTHING having transited this node
+ * before telemetry_task() calls it out. 10 s at 10 Hz sampling = 100 samples,
+ * long enough that a slow first hop cannot trip it. */
+#define LEAF_WARN_AFTER_MS  10000
 
 /* ── Forward declarations ─────────────────────────────────────────────────── */
 static void telemetry_task(void *arg);
@@ -137,22 +169,27 @@ void app_main(void)
     esp_read_mac(s_self_mac, ESP_MAC_WIFI_STA);
     build_run_id(s_run_id, sizeof(s_run_id));
     ESP_LOGI(TAG, "Node ID: %s   Run ID: %s", s_node_id, s_run_id);
-    ESP_LOGI(TAG, "This is the blackhole ATTACKER. Set BLACKHOLE_ATTACKER_MAC "
-                  "on the victim boards to my STA MAC: " MACSTR,
+    ESP_LOGI(TAG, "This is the blackhole ATTACKER. My STA MAC: " MACSTR,
              MAC2STR(s_self_mac));
+    /* Positional, not addressed — see the file header. Stated at boot because
+     * placement is the one thing that silently voids a capture. */
+    ESP_LOGW(TAG, "POSITIONAL ATTACK: I drop only what my DESCENDANTS route "
+                  "through me. As a leaf, or with every victim closer to the "
+                  "root than me, I drop nothing and the run looks benign. "
+                  "Check the root's PARENT/CHILD STRUCTURE before trusting it.");
 
-    /* Loud pre-flight: victims send their probes P2P to whatever MAC was
-     * COMPILED INTO THEM as BLACKHOLE_ATTACKER_MAC. If that is not this board,
-     * every probe is addressed to a node that isn't here: the root logs zero
-     * arrivals in EVERY phase, arrivals.csv comes out header-only, and BOTH
-     * primary features (PDR and ForwardingRatio) are 100% NaN — while every
-     * board still looks perfectly healthy. That exact silent failure cost a
-     * full run on 2026-09-15 and again on 2026-09-16, so it is checked here
-     * rather than discovered at analysis time 11 minutes later.
+    /* Bookkeeping pre-flight. BEFORE C7 Option 1 this was load-bearing: victims
+     * sent P2P to whatever MAC was COMPILED INTO THEM, so a stale value meant
+     * every probe went to a node that wasn't there — zero arrivals in every
+     * phase, header-only arrivals.csv, PDR and ForwardingRatio 100% NaN, and
+     * every board still looking healthy. That cost a full run on 2026-09-15 and
+     * again on 2026-09-16.
      *
-     * This board can only warn: the stale value lives in the VICTIMS' firmware,
-     * so the fix is always to re-flash them (the wizard patches mesh_config.h
-     * for you, but only when you actually build/flash through it). */
+     * It CANNOT do that any more: nothing addresses this board (see the file
+     * header). The check is kept because the recorded MAC still labels the
+     * attacker in the dataset and in member_boards.json, and a wrong label is
+     * its own kind of lost run — but a mismatch is now cosmetic, and the warning
+     * below says so rather than implying the capture is void. */
     {
         /* F2: check the EFFECTIVE target (NVS override if one is set, else the
          * compiled constant) — checking the compiled constant alone would now
@@ -230,6 +267,10 @@ void app_main(void)
 
 static void telemetry_task(void *arg)
 {
+    /* Leaf/off-path guard state — see the LEAF GUARD block below. */
+    bool    leaf_warned  = false;
+    int64_t attack_t0_us = 0;
+
     ESP_LOGI(TAG, "Telemetry task running at %u ms interval.",
              SAMPLING_INTERVAL_MS);
 
@@ -274,6 +315,45 @@ static void telemetry_task(void *arg)
         uint32_t forwarded = probe_relay_forward_count();
         uint32_t dropped   = probe_relay_drop_count();
         uint32_t send_fail = probe_relay_send_fail_count();
+
+        /* ── LEAF / OFF-PATH GUARD ───────────────────────────────────────────
+         * Since C7 Option 1 the attack is positional: this board drops only what
+         * its descendants route through it. If the mesh parked it as a LEAF, or
+         * every victim sits closer to the root than it does, NOTHING transits,
+         * `received` never leaves 0, and the capture comes out looking perfectly
+         * benign — export, validate_integrity.py and verify_attack.py all pass a
+         * run in which the attack never happened. Indistinguishable from "the
+         * attack failed" at analysis time, so it is caught here instead, while
+         * the boards are still on the bench and the run can be re-placed.
+         *
+         * `received` is cumulative from boot, so this asks exactly the right
+         * question: has ANYTHING ever transited me? One shot per boot. */
+        if (!leaf_warned && phase_listener_get_phase_id() == PHASE_ID_BLACKHOLE) {
+            if (received > 0) {
+                leaf_warned = true;          /* traffic transits us — nothing to warn about */
+            } else {
+                if (attack_t0_us == 0) {
+                    attack_t0_us = ts;
+                }
+                if ((ts - attack_t0_us) >= (int64_t)LEAF_WARN_AFTER_MS * 1000) {
+                    leaf_warned = true;
+                    ESP_LOGE(TAG, "***********************************************************");
+                    ESP_LOGE(TAG, "*** BLACKHOLE IS DROPPING NOTHING - THIS RUN IS WASTED  ***");
+                    ESP_LOGE(TAG, "***********************************************************");
+                    ESP_LOGE(TAG, "  %d s into the attack window and NOT ONE probe has ever",
+                             (int)(LEAF_WARN_AFTER_MS / 1000));
+                    ESP_LOGE(TAG, "  transited this node (recv=0, layer=%d).", layer);
+                    ESP_LOGE(TAG, "  Since C7 Option 1 I can only blackhole nodes BELOW me in");
+                    ESP_LOGE(TAG, "  the tree. Either I am a LEAF, or every victim sits closer");
+                    ESP_LOGE(TAG, "  to the root than I do and reaches it without touching me.");
+                    ESP_LOGE(TAG, "  The capture will look BENIGN and still pass every check.");
+                    ESP_LOGE(TAG, "  Fix: move this board so victims are DOWNSTREAM of it (the");
+                    ESP_LOGE(TAG, "  root's PARENT/CHILD STRUCTURE dashboard shows the tree),");
+                    ESP_LOGE(TAG, "  then re-run. Do not analyse this capture.");
+                    ESP_LOGE(TAG, "***********************************************************");
+                }
+            }
+        }
 
         csv_logger_append_telemetry(
             ts,

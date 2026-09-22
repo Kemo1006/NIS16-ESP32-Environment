@@ -15,7 +15,8 @@
 #include <string.h>
 #include <strings.h>
 #include <errno.h>
-#include <time.h>        /* sd_status_seed_clock_from_build(): mktime/struct tm */
+#include <stdlib.h>      /* sd_status_apply_clock_anchor(): strtoll */
+#include <time.h>        /* sd_status_seed_clock(): mktime/struct tm/gmtime_r */
 #include <sys/time.h>    /* settimeofday() - see the same function */
 #include <sys/stat.h>
 
@@ -32,6 +33,12 @@
 /* ── Module-private state ────────────────────────────────────────────────── */
 
 static const char *TAG = "SD_STATUS";
+
+/* Where the running clock came from. Tracked rather than recomputed so the
+ * answer cannot drift from the settimeofday() call that actually made it
+ * true, and so runs.csv can record HOW a timestamp was arrived at next to
+ * the timestamp itself. See sd_clock_src_t in the header. */
+static sd_clock_src_t s_clock_src = SD_CLOCK_SRC_NONE;
 
 /* app_main's task stack is 3584B (CONFIG_ESP_MAIN_TASK_STACK_SIZE) — nothing
  * here is a local. s_report is 8192 because the folder walk grew from 20 lines
@@ -379,7 +386,7 @@ const char *sd_status_build_stamp(void)
  * by however long it sat. It is a dating aid, NOT a measurement — anything
  * that must be exact still uses the boot counter and runs.csv, which are
  * monotonic and do not depend on a clock at all. */
-void sd_status_seed_clock_from_build(void)
+void sd_status_seed_clock(void)
 {
     const char *stamp = sd_status_build_stamp();   /* "YYYY-MM-DD HH:MM:SS" */
     struct tm tmv = {0};
@@ -407,8 +414,179 @@ void sd_status_seed_clock_from_build(void)
         ESP_LOGW(TAG, "clock seed: settimeofday failed (errno %d).", errno);
         return;
     }
-    ESP_LOGI(TAG, "clock seeded from build stamp %s - SD files will carry a real date.",
-             stamp);
+    s_clock_src = SD_CLOCK_SRC_BUILD;
+    ESP_LOGI(TAG, "clock seeded from build stamp %s (ESTIMATE) - refined from the card's "
+                  "anchor next if it has one.", stamp);
+}
+
+/* The lower bound for a believable host epoch: 2025-01-01T00:00:00Z. Anything
+ * below it is a host that never had a clock either, a truncated line, or a
+ * stray digit - all of which would date captures to the 1970s and are better
+ * refused than written to the card. The upper bound (year 2100) catches the
+ * opposite slip: milliseconds passed where seconds were meant, which would
+ * otherwise sail through and stamp every file ~50,000 years from now. */
+#define SD_CLOCK_EPOCH_MIN  1735689600LL
+#define SD_CLOCK_EPOCH_MAX  4102444800LL
+
+/* Move the clock to `epoch` (+ this boot's uptime when `add_uptime`), but ONLY
+ * forward.
+ *
+ * Forward-only is the whole safety property. Two things can set this clock (a
+ * card anchor at boot, a SET_TIME over USB mid-session) and they can disagree:
+ * a card that has been sitting in a drawer carries an older anchor than the
+ * laptop that just pushed a fresh one. Letting the older value win would make a
+ * capture appear to run BEFORE the run that preceded it, and FAT directory
+ * entries would go backwards mid-session. So a candidate that is not newer than
+ * what is already running is discarded, and the source tag is left alone. */
+static bool clock_set_forward(time_t epoch, bool add_uptime, sd_clock_src_t src)
+{
+    time_t candidate = epoch;
+    if (add_uptime) {
+        candidate += (time_t)(esp_timer_get_time() / 1000000);
+    }
+    if (candidate <= time(NULL)) {
+        return false;
+    }
+    struct timeval tv = { .tv_sec = candidate, .tv_usec = 0 };
+    if (settimeofday(&tv, NULL) != 0) {
+        ESP_LOGW(TAG, "clock: settimeofday failed (errno %d).", errno);
+        return false;
+    }
+    s_clock_src = src;
+    return true;
+}
+
+void sd_status_apply_clock_anchor(void)
+{
+    FILE *f = fopen(SD_CLOCK_FILE, "r");
+    if (!f) {
+        ESP_LOGI(TAG, "clock: no %s on this card - dates stay BUILD-TIME estimates. "
+                      "Connect this board to a laptop once (any export / MAC read / "
+                      "SET_LOCATION) to give it a real clock.", SD_CLOCK_FILE);
+        return;
+    }
+    char line[64] = {0};
+    char *got = fgets(line, sizeof(line), f);
+    fclose(f);
+    if (!got) {
+        ESP_LOGW(TAG, "clock: %s is empty - keeping the build-stamp estimate.", SD_CLOCK_FILE);
+        return;
+    }
+
+    errno = 0;
+    char *end = NULL;
+    long long epoch = strtoll(line, &end, 10);
+    if (end == line || errno != 0
+            || epoch < SD_CLOCK_EPOCH_MIN || epoch > SD_CLOCK_EPOCH_MAX) {
+        ESP_LOGW(TAG, "clock: %s holds an implausible value - keeping the build-stamp "
+                      "estimate.", SD_CLOCK_FILE);
+        return;
+    }
+
+    if (!clock_set_forward((time_t)epoch, true, SD_CLOCK_SRC_HOST)) {
+        /* Not an error: a board reflashed minutes ago already has a build stamp
+         * NEWER than the card's last laptop contact, and that stamp is then the
+         * better estimate of the two. Say which one won so the console is never
+         * ambiguous about what dated the files. */
+        ESP_LOGI(TAG, "clock: card anchor is older than the build stamp - keeping the "
+                      "build stamp.");
+        return;
+    }
+
+    char now[24];
+    sd_status_now_stamp(now, sizeof(now));
+    ESP_LOGI(TAG, "clock: set from the card's host anchor -> %s UTC (REAL time, plus "
+                  "however long this board sat unpowered).", now);
+}
+
+bool sd_status_set_host_time(long long epoch)
+{
+    if (epoch < SD_CLOCK_EPOCH_MIN || epoch > SD_CLOCK_EPOCH_MAX) {
+        ESP_LOGW(TAG, "SET_TIME: %lld is not a plausible epoch - ignored.", epoch);
+        return false;
+    }
+
+    /* No uptime added: the host is telling us what time it is RIGHT NOW, not
+     * what time this boot started. */
+    if (!clock_set_forward((time_t)epoch, false, SD_CLOCK_SRC_HOST)) {
+        /* The clock was already at or past this value. Still record the source
+         * as HOST - the host really did vouch for it - and still persist below,
+         * because the point of the file is the NEXT boot, not this one. */
+        s_clock_src = SD_CLOCK_SRC_HOST;
+    }
+
+    /* Persist for the next boot. Best-effort and deliberately not fatal: a
+     * read-only or absent card costs us the anchor, not the running clock.
+     * Borrows an existing mount when the run is still live (same rule as the
+     * location.txt helpers) so writing this can never end an SD mirror. */
+    bool took_mount = false;
+    if (sd_status_ensure_mounted("SET_TIME", &took_mount)) {
+        errno = 0;
+        FILE *wf = fopen(SD_CLOCK_FILE, "w");
+        if (wf) {
+            char now[24];
+            sd_status_now_stamp(now, sizeof(now));
+            /* Epoch alone on line 1 so the parser above never has to skip
+             * anything; the human-readable line after it is for whoever opens
+             * this file in Notepad wondering what the number means. */
+            fprintf(wf, "%lld\n# %s UTC - written by SET_TIME over USB. Do not edit.\n",
+                    epoch, now);
+            fclose(wf);
+            ESP_LOGI(TAG, "SET_TIME: clock = %s UTC, anchor saved to %s.", now, SD_CLOCK_FILE);
+        } else {
+            ESP_LOGW(TAG, "SET_TIME: clock set, but %s could not be written (errno %d) - "
+                          "the next boot falls back to the build stamp.",
+                     SD_CLOCK_FILE, errno);
+        }
+        if (took_mount) {
+            sd_status_unmount();
+        }
+    } else {
+        ESP_LOGW(TAG, "SET_TIME: clock set, but no card to save the anchor to - "
+                      "the next boot falls back to the build stamp.");
+    }
+    return true;
+}
+
+sd_clock_src_t sd_status_clock_source(void)
+{
+    return s_clock_src;
+}
+
+const char *sd_status_clock_source_str(void)
+{
+    switch (s_clock_src) {
+        case SD_CLOCK_SRC_HOST:  return "host";
+        case SD_CLOCK_SRC_BUILD: return "build";
+        case SD_CLOCK_SRC_NONE:
+        default:                 return "none";
+    }
+}
+
+bool sd_status_now_stamp(char *out, size_t len)
+{
+    if (!out || len == 0) {
+        return false;
+    }
+    if (s_clock_src == SD_CLOCK_SRC_NONE) {
+        strlcpy(out, "unknown", len);
+        return false;
+    }
+    time_t now = time(NULL);
+    struct tm tmv;
+    /* gmtime_r, not localtime_r: nothing on this board ever calls setenv("TZ"),
+     * so the two agree today - but if a TZ is ever set, every stamp this
+     * project writes must stay UTC or captures from two laptops stop being
+     * comparable. Pinning it here makes that explicit instead of incidental. */
+    if (!gmtime_r(&now, &tmv)) {
+        strlcpy(out, "unknown", len);
+        return false;
+    }
+    if (strftime(out, len, "%Y-%m-%d %H:%M:%S", &tmv) == 0) {
+        strlcpy(out, "unknown", len);
+        return false;
+    }
+    return true;
 }
 
 void sd_status_unmount(void)
@@ -631,8 +809,11 @@ sd_loc_write_t sd_status_write_location(const char *value)
 sd_status_result_t sd_status_run_boot_check(void)
 {
     /* Before ANY file is created this boot: without it every SD directory
-     * entry written below is stamped 1980 (see the function comment). */
-    sd_status_seed_clock_from_build();
+     * entry written below is stamped 1980 (see the function comment). This is
+     * only the floor - sd_status_apply_clock_anchor() below replaces it with a
+     * real host clock the moment the card is up, and it must stay BEFORE the
+     * mount so a board with no card at all still reports a sane date. */
+    sd_status_seed_clock();
 
     s_report_len = 0;
     s_report[0] = '\0';
@@ -707,6 +888,15 @@ sd_status_result_t sd_status_run_boot_check(void)
         return SD_STATUS_NO_CARD;
     }
 
+    /* The card is up and NOTHING has been written to it yet. This is the only
+     * correct moment to fix the clock: FatFs stamps every directory entry from
+     * time(NULL) via get_fattime(), so the R/W test file, the 63-folder tree,
+     * the status report and every CSV mirror below all inherit whatever the
+     * clock says right here. One line earlier and the folders would carry the
+     * build-time estimate; one line later and they would be wrong forever,
+     * because a directory's creation date is written once. */
+    sd_status_apply_clock_anchor();
+
     rep("[2] SD CARD\r\n"
         "  Name: %s\r\n"
         "  Type: %s\r\n"
@@ -716,6 +906,24 @@ sd_status_result_t sd_status_run_boot_check(void)
         (card->ocr & (1 << 30)) ? "SDHC/SDXC" : "SDSC",
         (unsigned long)card->real_freq_khz, (unsigned long)card->max_freq_khz,
         (unsigned long long)((uint64_t)card->csd.capacity) * card->csd.sector_size / (1024 * 1024));
+
+    {
+        char now[24];
+        sd_status_now_stamp(now, sizeof(now));
+        /* Spelled out rather than printed as a bare timestamp: a reader who
+         * cannot tell a measured time from an extrapolated one will date a
+         * capture wrongly, and this report is exactly what someone reads when
+         * they pull an unfamiliar card. */
+        rep("[2b] CLOCK\r\n"
+            "  Boot time now: %s UTC\r\n"
+            "  Source: %s\r\n\r\n",
+            now,
+            (sd_status_clock_source() == SD_CLOCK_SRC_HOST)
+                ? "HOST anchor (" SD_CLOCK_FILE ") - a real clock, plus any time "
+                  "this board sat unpowered"
+                : "FIRMWARE BUILD TIME + uptime - AN ESTIMATE, not a capture time. "
+                  "Connect this board to a laptop once to fix it.");
+    }
 
     bool integrity_ok = false;
     {
@@ -813,13 +1021,22 @@ sd_status_result_t sd_status_run_boot_check(void)
         char node_mac_str[18];
         snprintf(node_mac_str, sizeof(node_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        char started[24];
+        sd_status_now_stamp(started, sizeof(started));
+        /* "Firmware built" and "Run started" are two different questions and
+         * used to have one answer between them. Both are printed, labelled,
+         * with the clock's provenance attached to the one that claims to be a
+         * capture time - see [2b] above. */
         rep("[5] ENVIRONMENT\r\n"
             "  Build attack: %s\r\n"
             "  Build topology: %s\r\n"
             "  Firmware built: %s\r\n"
+            "  Run started: %s UTC (clock: %s)\r\n"
             "  Recorded location: %s\r\n"
             "  Node: %s (MAC %s)\r\n\r\n",
-            atk_dir, topo_dir, sd_status_build_stamp(), s_location, node_id, node_mac_str);
+            atk_dir, topo_dir, sd_status_build_stamp(),
+            started, sd_status_clock_source_str(),
+            s_location, node_id, node_mac_str);
 
         bool chosen_dir_ok = (attack_status[atk_idx] >= 0)
                           && (topo_status[atk_idx][MESH_TOPOLOGY] >= 0)

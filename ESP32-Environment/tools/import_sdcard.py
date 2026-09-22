@@ -23,19 +23,30 @@ to "none", and the date is taken at import time.
 A single card commonly spans MULTIPLE repeats (b1..b13 across two experiment
 runs, say) and one --repeat cannot cover the whole thing correctly. Each leaf
 folder's runs.csv (written by csv_logger.c — boot,run,node_id,role,rows,
-uptime_s,event,built) says how many rows each boot logged and whether it ended
+uptime_s,event,built,started,clock_src) says how many rows each boot logged and whether it ended
 cleanly, so --boots picks the boot numbers that belong to THIS repeat and
 --include-aborted overrides the default skip of boots that never reached a
 clean close. --files does the same selection one FILE at a time.
 
+WHEN DID THIS RUN? — "started" vs "built"
+-----------------------------------------
+"started" is the wall clock a run began, and it is what the wizards' numbered
+picker shows in its leftmost column. "clock_src" says how much that is worth:
+
+    host   the board was given a real clock by a laptop (export_logs.py pushes
+           SET_TIME on every connection and the board keeps the anchor on the
+           card), so "started" is a genuine capture time, give or take however
+           long the board sat unpowered since that push.
+    build  the card has never met a laptop, so the firmware extrapolated from
+           its own BUILD timestamp. An ESTIMATE. The picker prefixes these with
+           "~" and never lets one pass as a measurement.
+
 "built" is the build date+time of the firmware that logged a boot
-(sd_status_build_stamp(); see sd_status.h for why a build stamp and not a
-clock). It is the only calendar reference on a board that boots at 1970, and it
-answers the question a pulled card otherwise cannot: is this capture from the
-flash I am running now, or left over from a session I have forgotten about?
-Every boot of one flash shares it, so pair it with the boot number for ordering
-within a flash. --list-json reports it per file, which is what the wizards'
-numbered picker shows in its leftmost column.
+(sd_status_build_stamp()). Every boot of one flash shares it, so it dates the
+FLASH, not the run: it answers "is this capture from the firmware I am running
+now, or left over from a session I have forgotten about?" and nothing more.
+Cards written before the clock anchor existed have only this, which is why the
+picker falls back to it — labelled as a build date, never as a capture date.
 
 Naming is NOT reimplemented here — this calls _subdir_for() and _make_filename()
 from export_logs.py, so a card import and a USB export produce byte-identical
@@ -137,34 +148,81 @@ class _Args:
             setattr(self, k, v)
 
 
-def _manifest_built(row):
-    """The "built" field of one runs.csv row — sd_status_build_stamp() as
-    csv_logger.c recorded it ("YYYY-MM-DD HH:MM:SS"), or None.
+def _clean_stamp(value):
+    """Normalise one manifest timestamp field to a string or None.
 
-    Two shapes have to work. A card whose runs.csv was CREATED by firmware
-    carrying this feature has a "built" header column, and DictReader hands it
-    over by name. A card whose manifest was started by OLDER firmware keeps its
-    original 7-column header forever (the firmware only writes a header when the
-    file is new), so newer boots append an 8th field that has no name to land
-    under — DictReader collects those into row[None]. Reading it back
-    positionally there is what stops a reused card from silently losing the
-    stamp on every boot until it is reformatted."""
-    built = (row.get("built") or "").strip()
-    if not built:
-        extra = row.get(None) or []
-        if extra:
-            built = str(extra[-1]).strip()
-    # "unknown" is what the firmware writes when the app descriptor could not be
-    # parsed; it carries no more information than a missing field, so flatten
-    # the two into one "we don't know" for every reader downstream.
-    if not built or built == "unknown":
+    "unknown" is what the firmware writes when it could not answer (an
+    unparseable app descriptor, or a clock that was never seeded); it carries no
+    more information than a missing field, so the two are flattened into one
+    "we don't know" for every reader downstream."""
+    value = (value or "").strip()
+    if not value or value == "unknown":
         return None
-    return built
+    return value
+
+
+def _manifest_when(row):
+    """The three "when" fields of one runs.csv row, as
+    (built, started, clock_src) with None for anything absent.
+
+        built      build date+time of the firmware that logged the boot.
+                   The same on every boot of one flash — it dates the FLASH.
+        started    wall clock the run began. This dates the CAPTURE.
+        clock_src  "host"  -> started came from a laptop via SET_TIME (real)
+                   "build" -> started was extrapolated from `built` because the
+                              card has never been connected to a laptop
+                              (an ESTIMATE, and must be shown as one)
+
+    THREE header generations have to work, because the firmware only writes a
+    header when runs.csv is NEW — a card reused across firmware versions keeps
+    its original header forever while newer boots append wider rows. DictReader
+    puts fields with no name to land under into row[None], in order, so the
+    extras are read back POSITIONALLY and the generation is identified by how
+    many of them there are:
+
+        7-column header (pre-"built" firmware)   extras = built, started, src
+        8-column header ("built" firmware)       extras = started, src
+       10-column header (current)                extras = none; all by name
+
+    Without this a reused card would silently mis-assign the columns — the old
+    single-field version took extras[-1] as "built", which on a 10-column row
+    would hand back the literal string "host"."""
+    named_built = _clean_stamp(row.get("built"))
+    named_started = _clean_stamp(row.get("started"))
+    named_src = _clean_stamp(row.get("clock_src"))
+    extra = [str(x) for x in (row.get(None) or [])]
+
+    if named_built is None and row.get("built") is None and extra:
+        # 7-column header: nothing after "event" has a name.
+        built = _clean_stamp(extra[0]) if len(extra) >= 1 else None
+        started = _clean_stamp(extra[1]) if len(extra) >= 2 else None
+        src = _clean_stamp(extra[2]) if len(extra) >= 3 else None
+    elif named_started is None and row.get("started") is None and extra:
+        # 8-column header: "built" is named, the clock fields are not.
+        built = named_built
+        started = _clean_stamp(extra[0]) if len(extra) >= 1 else None
+        src = _clean_stamp(extra[1]) if len(extra) >= 2 else None
+    else:
+        built, started, src = named_built, named_started, named_src
+
+    # A "started" with no source cannot be trusted as a real clock, and the only
+    # firmware that writes one always writes the source too — so treat the
+    # combination as the estimate it almost certainly is rather than letting it
+    # render as a measurement.
+    if started is not None and src is None:
+        src = "build"
+    return built, started, src
+
+
+def _manifest_built(row):
+    """Back-compat shim: just the "built" field. See _manifest_when()."""
+    return _manifest_when(row)[0]
 
 
 def _read_manifest(leaf_dir):
     """Parses <leaf_dir>/runs.csv (written by csv_logger.c) into
-    {boot_number: {"rows": int, "uptime_s": int, "clean": bool, "built": str|None}}.
+    {boot_number: {"rows": int, "uptime_s": int, "clean": bool, "built": str|None,
+                   "started": str|None, "clock_src": str|None}}.
 
     The manifest is append-only on the firmware side: a boot appends a
     "start" row (rows=0) when its telemetry mirror opens, then a "clean" row
@@ -175,8 +233,15 @@ def _read_manifest(leaf_dir):
     "built" is the build date+time of the FIRMWARE that logged that boot (see
     sd_status_build_stamp()). It is the same for every boot of one flash, which
     is exactly what makes it useful: it separates "captured with the firmware I
-    flashed today" from "left on this card by a flash weeks ago", which an
-    RTC-less board can express no other way. None on older cards.
+    flashed today" from "left on this card by a flash weeks ago". None on older
+    cards.
+
+    "started" is when the run ACTUALLY RAN, and "clock_src" says whether that is
+    a real clock ("host", pushed from a laptop by SET_TIME and kept on the card)
+    or an extrapolation from "built" ("build", because this card has never met a
+    laptop). Both are None on cards written before the clock anchor existed, in
+    which case "built" is all there is and callers must present it as a build
+    date — never as a capture date.
 
     Returns {} if runs.csv is absent or unreadable (older firmware predating
     the manifest, or a card the sweep already tidied down to nothing) — the
@@ -207,12 +272,19 @@ def _parse_manifest_lines(lines):
         except (KeyError, TypeError, ValueError):
             continue  # malformed line (e.g. a write torn by power loss) — skip it
         entry = manifest.setdefault(
-            boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None})
-        # Either row of a boot carries the stamp and both say the same
-        # thing (one flash cannot be relinked mid-run), so the first one
-        # that has it wins and a torn/missing field never clears it.
+            boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None,
+                   "started": None, "clock_src": None})
+        # Either row of a boot carries these and both say the same thing (one
+        # flash cannot be relinked mid-run, and csv_logger.c reuses the run's
+        # captured start time for the "clean" row), so the first row that has
+        # each field wins and a torn/missing field never clears it.
+        built, started, clock_src = _manifest_when(row)
         if entry["built"] is None:
-            entry["built"] = _manifest_built(row)
+            entry["built"] = built
+        if entry["started"] is None:
+            entry["started"] = started
+        if entry["clock_src"] is None:
+            entry["clock_src"] = clock_src
         if row.get("event") == "clean":
             entry["rows"] = rows
             entry["uptime_s"] = uptime_s
@@ -633,12 +705,18 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
     """One --list-json entry: everything a picker needs to show a file and hand
     it back for import.
 
-    "built" is the headline field — the build date+time of the firmware that
-    logged this boot (csv_logger.c's runs.csv "built" column). A board with no
-    RTC cannot date its own captures, so this is what tells an operator whether
-    a file on the card belongs to the flash they are running now or to a session
-    they have since forgotten about. None on cards written before the stamp
-    existed, which reads as "unknown", never as "old".
+    "started" is the headline field — when the run actually ran — and
+    "clock_src" is inseparable from it: "host" means a laptop gave this board a
+    real clock, "build" means the time was extrapolated from the firmware's
+    build stamp and is an ESTIMATE. A picker must never show the second kind
+    without marking it, or an estimate gets filed as a measurement.
+
+    "built" is the fallback and a different question: the build date+time of the
+    firmware that logged this boot. It is identical on every boot of one flash,
+    so it tells an operator whether a file belongs to the flash they are running
+    now or to a session they have since forgotten about — but it says nothing
+    about when the capture happened. All three are None on cards written before
+    the corresponding firmware, which reads as "unknown", never as "old".
 
     "rel" is the identifier: pass it straight back in --files to import exactly
     this file.
@@ -680,6 +758,10 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         # manifest positively says it started and never closed cleanly.
         "clean": None if entry is None else bool(entry["clean"]),
         "built": (entry or {}).get("built"),
+        # The real capture time and its provenance — see the docstring. Both
+        # None on a pre-anchor card, where "built" is all the picker can show.
+        "started": (entry or {}).get("started"),
+        "clock_src": (entry or {}).get("clock_src"),
         # The name it was already imported under, if an identical capture (same
         # identity AND row count) is sitting in exports/ — so the picker can say
         # so before the operator picks it again.
@@ -884,6 +966,15 @@ def _run(source, args):
         if entry is not None:
             status += (f", manifest: {entry['rows']} rows / {entry['uptime_s']}s, "
                        f"{'clean' if entry['clean'] else 'ABORTED'}")
+            # Capture time first, because that is the question being asked;
+            # the build stamp stays visible as the flash's identity. An
+            # extrapolated time is always shown with its "~" and its source so
+            # it cannot be copied into notes as a measured one.
+            if entry.get("started"):
+                if entry.get("clock_src") == "host":
+                    status += f", ran {entry['started']}"
+                else:
+                    status += f", ran ~{entry['started']} (est. from build time)"
             if entry["built"]:
                 status += f", built {entry['built']}"
 

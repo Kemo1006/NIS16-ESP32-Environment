@@ -30,6 +30,7 @@
 #include "esp_wifi.h"
 #include "esp_timer.h"
 #include "esp_mac.h"
+#include "esp_random.h"   /* jitter_extra_s() — TRAFFIC_PROFILE=jitter */
 
 #include "mesh_config.h"
 #include "mesh_setup.h"
@@ -267,17 +268,61 @@ static void phase_banner(const char *name)
     ESP_LOGI(TAG, "════════════════════ %s ════════════════════", name);
 }
 
+/* Draw this run's extra seconds for one window (TRAFFIC_PROFILE=jitter).
+ *
+ * ADDITIVE ONLY, and the return value is added to the configured length -- see
+ * the TIMING JITTER block in mesh_config.h for why shortening a window would
+ * silently corrupt preprocess.py's baseline slice.
+ *
+ * esp_random() is the hardware RNG and is already seeded once Wi-Fi is up, which
+ * it is by the time this task runs. Every board draws independently; only the
+ * ROOT's draw matters, because only the root schedules phases. */
+static uint32_t jitter_extra_s(uint32_t max_s)
+{
+#if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_JITTER)
+    if (max_s == 0) {
+        return 0;
+    }
+    return esp_random() % (max_s + 1U);
+#else
+    (void)max_s;
+    return 0;
+#endif
+}
+
 static void experiment_controller_task(void *arg)
 {
+    /* Both draws happen HERE, before the first phase, so the whole run's
+     * schedule is decided (and printed) up front rather than surprising the
+     * operator mid-run. */
+    const uint32_t jit_base   = jitter_extra_s(JITTER_BASELINE_MAX_S);
+    const uint32_t jit_attack = jitter_extra_s(JITTER_ATTACK_MAX_S);
+    /* On a plain baseline root (ACTIVE_ATTACK=NONE, TRAFFIC_PROFILE!=burst) BOTH
+     * consumers of jit_attack are preprocessed out, so it reads as unused and
+     * -Wunused-variable fires. Silenced here rather than restating those two #if
+     * conditions a third time, which would rot the moment either one changes. */
+    (void)jit_attack;
+
+#if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_JITTER)
+    phase_banner("TIMING JITTER ACTIVE");
+    ESP_LOGW(TAG, "[CTRL] TRAFFIC_PROFILE=jitter — this run's schedule is NOT the "
+                  "standard one:");
+    ESP_LOGW(TAG, "[CTRL]   baseline %u s (+%u jitter) , attack %u s (+%u jitter)",
+             PHASE_BASELINE_S, jit_base, PHASE_ATTACK_S, jit_attack);
+    ESP_LOGW(TAG, "[CTRL] Drawn fresh per boot so elapsed time stops predicting the "
+                  "phase. Exact durations are recoverable from any node's CSV.");
+#endif
+
     ESP_LOGI(TAG, "[CTRL] Waiting %u s for mesh to stabilise...",
              PHASE_STABILISE_S);
     vTaskDelay(pdMS_TO_TICKS(PHASE_STABILISE_S * 1000));
 
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
     phase_banner("PHASE 0 — BASELINE");
-    ESP_LOGI(TAG, "[CTRL] Starting PHASE 0 — Baseline (%u s)", PHASE_BASELINE_S);
+    ESP_LOGI(TAG, "[CTRL] Starting PHASE 0 — Baseline (%u s)",
+             PHASE_BASELINE_S + jit_base);
     broadcast_and_count(PHASE_ID_BASELINE);
-    vTaskDelay(pdMS_TO_TICKS(PHASE_BASELINE_S * 1000));
+    vTaskDelay(pdMS_TO_TICKS((PHASE_BASELINE_S + jit_base) * 1000));
     ESP_LOGI(TAG, "[CTRL] Phase 0 complete.");
 
     /*
@@ -291,9 +336,9 @@ static void experiment_controller_task(void *arg)
 #if (ACTIVE_ATTACK != ATTACK_NONE)
     phase_banner("PHASE — ATTACK");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE %d — Attack (%u s)",
-             ACTIVE_ATTACK, PHASE_ATTACK_S);
+             ACTIVE_ATTACK, PHASE_ATTACK_S + jit_attack);
     broadcast_and_count(ACTIVE_ATTACK);
-    vTaskDelay(pdMS_TO_TICKS(PHASE_ATTACK_S * 1000));
+    vTaskDelay(pdMS_TO_TICKS((PHASE_ATTACK_S + jit_attack) * 1000));
     ESP_LOGI(TAG, "[CTRL] Attack phase complete.");
 #else
 #if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_BURST)
@@ -308,7 +353,9 @@ static void experiment_controller_task(void *arg)
                   "attack-length baseline window (%u s) for the burst scenario.",
              PHASE_ATTACK_S);
     broadcast_and_count(PHASE_ID_BASELINE);   /* new seq_num, same phase 0 */
-    vTaskDelay(pdMS_TO_TICKS(PHASE_ATTACK_S * 1000));
+    /* Same jitter as a real attack window, so a jittered baseline run and a
+     * jittered attack run stay a matched pair for the burst scenario. */
+    vTaskDelay(pdMS_TO_TICKS((PHASE_ATTACK_S + jit_attack) * 1000));
     ESP_LOGI(TAG, "[CTRL] Baseline window complete.");
 #else
     ESP_LOGI(TAG, "[CTRL] ACTIVE_ATTACK=NONE — skipping attack window (baseline run).");

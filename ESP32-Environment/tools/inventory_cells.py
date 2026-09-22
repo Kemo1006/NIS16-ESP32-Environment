@@ -321,6 +321,35 @@ def report_plan(rows, repeats=1):
     print()
 
 
+def _worst_coverage(reasons):
+    """Pull the worst coverage % out of a reason string, or None.
+
+    judge() phrases it as "N node(s) below 95% coverage (worst 93.7%)". A run
+    that fails ONLY on coverage is a near miss worth ranking; one missing a root
+    file is a different kind of broken, so this returns None for those and they
+    sort last.
+    """
+    m = re.search(r"worst ([\d.]+)%", reasons or "")
+    return float(m.group(1)) if m else None
+
+
+def _blocker_summary(reasons):
+    """The shortest honest description of why a run did not count."""
+    r = reasons or ""
+    if "no root telemetry" in r or "no root arrivals" in r:
+        return "no root file"
+    if "header-only" in r:
+        return "arrivals header-only"
+    if "child node(s), need" in r:
+        return "too few children"
+    if "no data rows" in r:
+        return "empty telem file"
+    cov = _worst_coverage(r)
+    if cov is not None:
+        return f"coverage {cov:.1f}% (floor {COVERAGE_FLOOR:.0%})"
+    return (r[:40] + "...") if len(r) > 43 else (r or "unknown")
+
+
 def report_checklist(rows, repeats=1):
     """Tick-box progress table, grouped by location then topology.
 
@@ -329,31 +358,51 @@ def report_checklist(rows, repeats=1):
     what is actually on disk - the box is ticked because the files exist and
     pass the M4/M5 criteria, not because someone remembered doing the run.
 
-    A run counts only if it is COMPLETE (root telemetry + non-empty arrivals +
-    >= 3 children + every node >= 95% coverage). A capture that exists but fails
-    a criterion stays unticked on purpose: it has to be redone, so showing it as
-    done would be worse than showing nothing.
+    THREE STATES, NOT TWO
+    ---------------------
+    A run counts as [x] only if it is COMPLETE (root telemetry + non-empty
+    arrivals + >= 3 children + every node >= 95% coverage). But an empty box used
+    to mean two completely different things - "never attempted" and "attempted
+    five times, every one just short" - and rendering them identically hid every
+    hour already spent. [~] now means the cell HAS data that failed a criterion,
+    so the grid shows effort as well as results. Only [x] counts toward M4.
+
+    A capture that exists but fails is still not DONE: it has to be redone, and
+    the CLOSEST TO DONE list below says exactly what to fix.
     """
     have = defaultdict(int)
+    have_src = defaultdict(list)
+    attempted = defaultdict(list)
+
+    def _key(r):
+        return (r["attack"], r["topology"],
+                r["location"] if r["location"] != "-" else "",
+                r["scenario"] if r["scenario"] != "-" else "none")
+
     for r in rows:
-        if r["verdict"] != "COMPLETE":
-            continue
-        key = (r["attack"], r["topology"],
-               r["location"] if r["location"] != "-" else "",
-               r["scenario"] if r["scenario"] != "-" else "none")
-        have[key] += 1
+        k = _key(r)
+        if r["verdict"] == "COMPLETE":
+            have[k] += 1
+            have_src[k].append(r["source"])
+        else:
+            attempted[k].append(r)
 
     def cell(atk, topo, loc, scn):
-        n = have.get((atk, topo, loc, scn), 0)
+        k = (atk, topo, loc, scn)
+        n = have.get(k, 0)
         if repeats > 1:
             return f"{n}/{repeats}".center(9)
-        return ("   [x]   " if n else "   [ ]   ")
+        if n:
+            return "   [x]   "
+        return "   [~]   " if attempted.get(k) else "   [ ]   "
 
     total_done = total_planned = 0
     print()
     print("=" * 96)
     print(f"  CAMPAIGN PROGRESS   ({'x' if repeats == 1 else str(repeats) + ' repeats'} "
-          f"per cell)   [x] = complete run on disk")
+          f"per cell)")
+    print("  [x] = complete run on disk     [~] = data captured but INCOMPLETE     "
+          "[ ] = nothing yet")
     print("=" * 96)
 
     for loc in PLAN_LOCATIONS:
@@ -381,6 +430,76 @@ def report_checklist(rows, repeats=1):
     print()
     print("=" * 96)
     print(f"  complete: {total_done} / {total_planned} planned runs")
+
+    # ---- where each tick actually comes from --------------------------------
+    # Without this, a [x] is unattributable and archiving looks like it should
+    # have cleared the box. It does not: the scan covers tools/exports/ AND
+    # archive/*/exports/, so an archived run keeps its tick on purpose.
+    if have_src:
+        print()
+        print("  WHERE THE TICKED CELLS COME FROM (archived runs still count):")
+        # Width from the DATA, not a guess: pre-redesign archives carry legacy
+        # folder names like "partial_mesh_topology" that overflow a fixed column
+        # and shear the whole table.
+        tw = max([len(k[1]) for k in have_src] + [len("topology")]) + 2
+        for k in sorted(have_src):
+            atk, topo, loc, scn = k
+            where = ", ".join(sorted(set(have_src[k])))
+            loc_s = loc or "-"
+            print(f"    [x] {atk:<10}{topo:<{tw}}{loc_s:<8}{scn:<10} <- {where}")
+
+    # ---- the same capture counted twice -------------------------------------
+    # A run that exists in two sources with identical child/arrival counts is
+    # almost certainly one capture copied, not two independent runs (this is
+    # exactly what a `git checkout` of archive.ps1's staged deletions produces).
+    seen = defaultdict(list)
+    for r in rows:
+        sig = (r["attack"], r["topology"], r["location"], r["scenario"],
+               r["repeat"], r["children"], r["arrivals_rows"])
+        seen[sig].append(r["source"])
+    dups = {s: v for s, v in seen.items() if len(set(v)) > 1}
+    if dups:
+        print()
+        print("  !! POSSIBLE DOUBLE-COUNTING - identical run found in more than one source:")
+        for sig, srcs in sorted(dups.items(), key=lambda kv: str(kv[0])):
+            atk, topo, loc, scn, rep, kids, arr = sig
+            print(f"     {atk} / {topo} / {loc} / {scn}  r{rep}  "
+                  f"({kids} children, {arr} arrivals)")
+            for s in sorted(set(srcs)):
+                print(f"         in: {s}")
+        print("     Same child + arrival counts from two places usually means ONE")
+        print("     capture present twice, which inflates 'runs found'. Keep one.")
+
+    # ---- what to fix next ---------------------------------------------------
+    # Ranked by how close it is, so the next action is obvious instead of buried
+    # in the per-run inventory.
+    near = []
+    for k, rs in attempted.items():
+        if have.get(k, 0):
+            continue                      # already satisfied by another repeat
+        best = None
+        for r in rs:
+            cov = _worst_coverage(r["reasons"])
+            rank = (0, -cov) if cov is not None else (1, 0)
+            if best is None or rank < best[0]:
+                best = (rank, r, cov)
+        near.append((best[0], k, best[1], best[2]))
+
+    if near:
+        near.sort(key=lambda t: t[0])
+        print()
+        print("  CLOSEST TO DONE (cells with data that did not qualify):")
+        tw2 = max([len(k[1]) for _r, k, _b, _c in near[:12]] + [len("topology")]) + 2
+        print(f"    {'attack':<11}{'topology':<{tw2}}{'loc':<8}{'scn':<10}{'blocker'}")
+        for _rank, k, r, cov in near[:12]:
+            atk, topo, loc, scn = k
+            loc_s = loc or "-"
+            print(f"    {atk:<11}{topo:<{tw2}}{loc_s:<8}{scn:<10}"
+                  f"{_blocker_summary(r['reasons'])}   [{r['source']}]")
+        if len(near) > 12:
+            print(f"    ... and {len(near) - 12} more - run with --plan for every reason.")
+
+    print()
     print("  n/a in the benign column = the attack run's own phase 0 is the control")
     print("     (highload is whole-run; none/mobility carry no extra traffic).")
     print("     burst fires only inside the attack window, so it needs a matched")

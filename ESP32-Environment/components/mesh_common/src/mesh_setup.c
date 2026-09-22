@@ -697,13 +697,24 @@ static const char *phase_id_str(uint8_t id)
     }
 }
 
-/* "L0A", or "L--" (same width) for a node not reachable from the root. */
-static void fmt_layer(char *buf, size_t len, int layer, int lyr_w)
+/* "H00" for the root, "H01" for its children, ... or "H--" (same width) for a
+ * node not reachable from the root.
+ *
+ * WHY HOP AND NOT LAYER (adviser, sep. 22, 2026): "layer" reads as an OSI layer
+ * to anyone taught the OSI model, and this number is nothing of the sort -
+ * ESP-WIFI-MESH runs BELOW IP and this is a node's depth in the mesh TREE.
+ *
+ * The OFF-BY-ONE is deliberate and must stay: ESP-WIFI-MESH numbers the ROOT as
+ * layer 1, so hop = layer - 1 and the root is 0 hops from itself. That is the
+ * same conversion analysis/preprocess.py:768 already applies when it derives the
+ * `hop` column (D-11), so this console now agrees with the dataset and the paper
+ * instead of being one off from both. */
+static void fmt_hop(char *buf, size_t len, int layer, int w)
 {
     if (layer > 0) {
-        snprintf(buf, len, "L%0*X", lyr_w, (unsigned)layer);
+        snprintf(buf, len, "H%0*X", w, (unsigned)(layer - 1));
     } else {
-        snprintf(buf, len, "L%.*s", lyr_w, "--------");
+        snprintf(buf, len, "H%.*s", w, "--------");
     }
 }
 
@@ -734,7 +745,7 @@ static void tree_line_cb(void *ctx, int idx, int depth)
     const tree_fmt_t *f = (const tree_fmt_t *)ctx;
     const heartbeat_entry_t *e = &s_nodes[idx];
     char lyr[16];
-    fmt_layer(lyr, sizeof(lyr), depth + 1, f->lyr_w);
+    fmt_hop(lyr, sizeof(lyr), depth + 1, f->lyr_w);
     int p = f->g->parent[idx];
     char uplink[MAC_W + 1];
     if (p >= 0) {
@@ -747,6 +758,47 @@ static void tree_line_cb(void *ctx, int idx, int depth)
              f->lyr_w + 2, lyr, MAC2STR(e->mac),
              f->role_w, node_role_to_str(e->role),
              uplink, f->cnt_w, (unsigned)f->g->child_count[idx]);
+}
+
+typedef struct {
+    int lyr_w;
+    int role_w;
+} art_fmt_t;
+
+/* ADDITIONAL view, printed BELOW the PARENT/CHILD table above, which is left
+ * exactly as it was. That table states the structure by naming each node's
+ * UPLINK; this one draws the same walk as a shape, so depth and who-sits-under-
+ * whom are readable at a glance while a run is in progress.
+ *
+ * ASCII only, deliberately: the wizard's console is cp1252 and box-drawing
+ * characters arrive there as mojibake - the same reason tools/command_center.py
+ * is ASCII-only. */
+static void tree_art_cb(void *ctx, int idx, int depth)
+{
+    const art_fmt_t *f = (const art_fmt_t *)ctx;
+    const heartbeat_entry_t *e = &s_nodes[idx];
+    char hop[16];
+    fmt_hop(hop, sizeof(hop), depth, f->lyr_w);
+
+    /* 3 spaces per level, clamped so a deep chain cannot overrun the buffer. */
+    char indent[64];
+    int want = depth * 3;
+    if (want > (int)sizeof(indent) - 1) {
+        want = (int)sizeof(indent) - 1;
+    }
+    memset(indent, ' ', (size_t)want);
+    indent[want] = '\0';
+
+    /* Why the marker: since C7 Option 1 the blackhole is positional - it drops
+     * only what its DESCENDANTS route through it. Marking it in the shape makes
+     * "is anything actually under the attacker?" answerable from the root
+     * console, before the capture is analysed. */
+    const char *mark = (e->role == NODE_ROLE_BLACKHOLE)
+                     ? "  <== DROPS EVERYTHING INDENTED BELOW IT"
+                     : "";
+    ESP_LOGI(TAG, " %-*s  %s%s" MACSTR_UC "  %-*s%s",
+             f->lyr_w + 2, hop, indent, depth ? "`- " : "",
+             MAC2STR(e->mac), f->role_w, node_role_to_str(e->role), mark);
 }
 
 static void heartbeat_table_print(void)
@@ -843,7 +895,11 @@ static void heartbeat_table_print(void)
     ESP_LOGI(TAG, " MESH TOPOLOGY");
     ESP_LOGI(TAG, " TYPE        : %s", topo_kind_str(kind));
     ESP_LOGI(TAG, " NODE COUNT  : 0x%0*X (%u)", cnt_w, (unsigned)n, (unsigned)n);
-    ESP_LOGI(TAG, " LAYER COUNT : 0x%0*X (%d)", cnt_w, (unsigned)g.max_layer, g.max_layer);
+    /* Depth in HOPS, so it matches the HOP column below and the dataset's `hop`:
+     * a 4-layer chain is 3 hops deep. */
+    ESP_LOGI(TAG, " HOP DEPTH   : 0x%0*X (%d)", cnt_w,
+             (unsigned)(g.max_layer > 0 ? g.max_layer - 1 : 0),
+             g.max_layer > 0 ? g.max_layer - 1 : 0);
     ESP_LOGI(TAG, " REACHABLE   : 0x%0*X (%d)", cnt_w, (unsigned)g.reachable, g.reachable);
     if (st == TOPO_OK) {
         ESP_LOGI(TAG, " STATUS      : %s", topo_status_str(st));
@@ -856,7 +912,7 @@ static void heartbeat_table_print(void)
     log_rule('-', rule_w);
 
     ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %*s  %-*s  %*s",
-             lyr_col, "LYR", MAC_W, "MAC ADDRESS", role_w, "ROLE",
+             lyr_col, "HOP", MAC_W, "MAC ADDRESS", role_w, "ROLE",
              rssi_w, "RSSI", phase_w, "PHASE", age_w, "AGE(s)");
     bool mismatch = false;
     bool no_rssi  = false;
@@ -864,7 +920,7 @@ static void heartbeat_table_print(void)
         int k = order[i];
         const heartbeat_entry_t *e = &s_nodes[k];
         char lyr[16];
-        fmt_layer(lyr, sizeof(lyr), g.layer[k], lyr_w);
+        fmt_hop(lyr, sizeof(lyr), g.layer[k], lyr_w);
         if (g.layer[k] > 0 && e->layer != g.layer[k]) {
             mismatch = true;
             strlcat(lyr, "*", sizeof(lyr));
@@ -888,7 +944,7 @@ static void heartbeat_table_print(void)
                  rssi_w, rssi, phase_w, phase, age_w, (unsigned long)age_s);
     }
     if (mismatch) {
-        ESP_LOGI(TAG, " * node's own stack reports a different layer (re-parenting)");
+        ESP_LOGI(TAG, " * node's own stack reports a different depth (re-parenting)");
     }
     if (no_rssi) {
         ESP_LOGI(TAG, " n/a = no parent link to measure (root)");
@@ -897,10 +953,38 @@ static void heartbeat_table_print(void)
         log_rule('-', rule_w);
         ESP_LOGI(TAG, " PARENT/CHILD STRUCTURE (depth-first from root)");
         ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %-*s  %s",
-                 lyr_col, "LYR", MAC_W, "MAC ADDRESS", role_w, "ROLE",
+                 lyr_col, "HOP", MAC_W, "MAC ADDRESS", role_w, "ROLE",
                  MAC_W, "UPLINK", "DN");
         tree_fmt_t f = { .g = &g, .lyr_w = lyr_w, .role_w = role_w, .cnt_w = cnt_w };
         topo_walk(&g, tree_line_cb, &f);
+
+        /* ---- ADDITIONAL: the same walk drawn as a shape ------------------- */
+        log_rule('-', rule_w);
+        ESP_LOGI(TAG, " TOPOLOGY TREE (indent = depth; probes flow UP toward the root)");
+        art_fmt_t af = { .lyr_w = lyr_w, .role_w = role_w };
+        topo_walk(&g, tree_art_cb, &af);
+
+        /* Root-side leaf/off-path guard. The attacker's own firmware warns when
+         * nothing transits it (blackhole_victim.c, LEAF_WARN_AFTER_MS), but the
+         * ROOT is the only node that sees the WHOLE tree - so it can say so
+         * before the attack window even opens. A blackhole with no descendants
+         * drops nothing, and that capture passes every downstream check while
+         * containing no attack at all. */
+        for (size_t i = 0; i < n; i++) {
+            if (s_nodes[i].role != NODE_ROLE_BLACKHOLE) {
+                continue;
+            }
+            if (g.child_count[i] == 0) {
+                ESP_LOGE(TAG, " !! BLACKHOLE " MACSTR_UC " HAS NOTHING UNDER IT -"
+                              " it will drop NOTHING and this run will look benign."
+                              " Move it so victims sit below it, then re-run.",
+                         MAC2STR(s_nodes[i].mac));
+            } else {
+                ESP_LOGI(TAG, " blackhole " MACSTR_UC " has 0x%0*X node(s) directly"
+                              " under it; only its descendants are attacked.",
+                         MAC2STR(s_nodes[i].mac), cnt_w, (unsigned)g.child_count[i]);
+            }
+        }
     }
     log_rule('=', rule_w);
 
