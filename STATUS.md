@@ -12,8 +12,8 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 **Export + data-integrity (D-13)**, independent of any milestone/adviser gate. Next: hardware-test on a real board.
 
 ## Next step
-1. ⛔ **REFLASH EVERY BOARD** — the STILL-RUNNING fix, DELETE_SD_FILE and the child clean-stop all
-   need it. All 6 variants build clean (sep. 22, 11:50).
+1. ✅ **ALL 4 BOARDS REFLASHED sep. 22** (`ab74ec4`, MAC-verified, hashes OK). Next: **hardware-test**
+   the STILL-RUNNING fix, `DELETE_SD_FILE` and the child clean-stop on a real run.
 2. ⚠️ **Hardware-test D-13 + the USB export path** on real hardware (reset a board mid-run; wizard [3]).
 3. **Re-flash EVERY board** — D-13 + `LIST_SD` + schema v2 (F3), F1, F2, C7. Old firmware can't answer `LIST_SD`.
 4. **Then the campaign** (128 vs 512 — `inventory_cells.py --plan --repeats N`); re-analyse the 8 complete runs.

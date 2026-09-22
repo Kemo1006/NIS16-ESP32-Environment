@@ -8,6 +8,10 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 22, 2026 — **All 4 boards reflashed** with `ab74ec4` (COM3 ROOT/bcr, COM10+COM9 victim/bcbv, COM11
+  attacker/bcba; MACs re-read via `esptool read_mac`, matched to `presets/Cal/TRY.json`, hashes verified).
+  ⚠️ COM10 boot 9 + COM9 boot 1 were never exported — the reboot moved them to `<leaf>/_archive/`, which
+  `import_sdcard.py` deliberately skips. Recover by hand from `_archive/`. User accepted the loss.
 - sep. 22, 2026 — ⚠⚠ **STILL RUNNING was STICKY — the live-flag bug, now fixed.** `sd_is_live_mirror()`
   compared PATH STRINGS only, but `csv_logger_close()` nulls the mirror FILE*s at TERMINATE and keeps the
   path strings (ARCHIVE_SD needs them). So after ANY completed run every file on that card reported
@@ -24,8 +28,6 @@
   telemetry already self-exited; relay_task parks on an empty queue. Root keeps beating (owns the member
   table). App-level only — the child stays joined and USB-reachable. All 6 variants build clean.
 - sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too**, via shared
-  `Confirm-BoardLocations` (run_wizard.ps1); `$locationPreflightDone` (armed in `:restart`) stops a double
-  ask. Runs BEFORE any flash — location.txt is only read at boot.
 - sep. 22, 2026 — ⚠️ **`ERROR:LOCATION_WRITE_FAILED` = the card MOUNTED and the write still failed** (vs
   `LOCATION_NO_CARD` = mount failed). Hit live on COM10/COM11, which also had NO location.txt — consistent
   with a **write-protect lock switch on the microSD adapter** (mounts + reads fine, every write fails).
