@@ -34,7 +34,7 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 23, 2026 — **root names VICTIMS live during the run** (errors if nothing is downstream of the attacker) + vocabulary `victim`→`child`. MEMORY.md. ⚠️ **REFLASH.**
 - sep. 23, 2026 — **firmware role `victim`→`child` + `exposure` column; phase-schedule mismatch now
   detected from the data.** MEMORY.md. ⚠️ **NEEDS REFLASH.**
 - sep. 23, 2026 — **`exposure` column + de-hardcoded ESP-IDF/python paths and the board roster.** MEMORY.md.
-- sep. 23, 2026 — **`eda.py` readability overhaul + `column_legend.py`** (Basti, analysis-only). MEMORY.md.

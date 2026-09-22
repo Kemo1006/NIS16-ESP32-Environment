@@ -256,6 +256,39 @@ def resolve_files(args, dir_is_default):
 
 
 # ── Structure reconstruction ────────────────────────────────────────────────
+# Firmware wrote role="victim" for every plain child until 2026-09-23; it writes
+# "child" now. Captures from before that flash keep the old word forever, so both
+# are folded to one display name here -- the same canonicalisation preprocess.py
+# applies (ROLE_ALIASES). A node is a VICTIM only if an attacker sits between it
+# and the root, which is what exposure_of() below decides from the rebuilt tree.
+ROLE_ALIASES = {"victim": "child"}
+ATTACK_ROLES = ("blackhole", "wormhole_a", "wormhole_b")
+
+
+def canonical_role(role):
+    return ROLE_ALIASES.get(str(role).strip().lower(), str(role).lower())
+
+
+def exposure_of(nid, nodes, parent_of):
+    """'ATTACKER' / 'VICTIM' / 'not in path' / 'root' for one node."""
+    n = nodes.get(nid)
+    r = canonical_role(getattr(n, "role", "")) if n else ""
+    if r == "root":
+        return "root"
+    if r in ATTACK_ROLES:
+        return "ATTACKER"
+    if not any(canonical_role(getattr(v, "role", "")) in ATTACK_ROLES
+               for v in nodes.values()):
+        return "-"
+    cur, seen = parent_of.get(nid), {nid}
+    while cur is not None and cur not in seen:
+        seen.add(cur)
+        if canonical_role(getattr(nodes.get(cur), "role", "")) in ATTACK_ROLES:
+            return "VICTIM"
+        cur = parent_of.get(cur)
+    return "not in path"
+
+
 def _resolve_parent(mac, sta_index):
     """parent_mac (the parent's SoftAP BSSID = STA + 1) -> node_id, or None."""
     if mac in (None, "", ZERO_MAC):
@@ -342,18 +375,24 @@ def print_structure_banner(graph, nodes, expect=None):
           f"   (root = hop 0)")
     print(f" REACHABLE   : {n_reach} of {len(nodes)}")
     print("-" * 69)
-    print(" HOP   MAC ADDRESS        ROLE       UPLINK (= ITS PARENT)")
+    print(" HOP   MAC ADDRESS        ROLE       EXPOSURE      UPLINK (= ITS PARENT)")
     for nid, depth in order:
         n = nodes[nid]
         par = graph.parent.get(nid)
         uplink = "--:--:--:--:--:--  (root, no parent)" if par is None else mac_of(par)
-        print(f" H{depth:02d}   {mac_of(nid)}  {str(n.role).upper():<10} {uplink}")
+        exp = exposure_of(nid, nodes, graph.parent)
+        print(f" H{depth:02d}   {mac_of(nid)}  "
+              f"{canonical_role(n.role).upper():<10} {exp:<13} {uplink}")
 
     missing = [nid for nid in nodes if nid not in seen]
     for nid in missing:
         n = nodes[nid]
-        print(f" ???   {mac_of(nid)}  {str(n.role).upper():<10} NOT REACHABLE FROM ROOT")
+        print(f" ???   {mac_of(nid)}  {canonical_role(n.role).upper():<10} "
+              f"{'unknown':<13} NOT REACHABLE FROM ROOT")
     print("-" * 69)
+    print(" ROLE is what the board was BUILT as; EXPOSURE is what this run's")
+    print(" topology makes it. A child is a VICTIM only when an attacker sits")
+    print(" between it and the root - one above the attacker is never touched.")
     print(" UPLINK is the node's PARENT. All other MACs are the node's own.")
     print(" Note: in the raw CSV, parent_mac is the parent's SoftAP BSSID,")
     print(" which is its STA MAC + 1. Resolved here already.")
@@ -377,7 +416,7 @@ def print_tree(graph, nodes, start=None):
             label = f"layer {derived}"
         else:
             label = f"layer {derived}, logged {n.final_layer}"
-        print(f"{'    ' * depth}{nid}  ({label}, role {n.role})")
+        print(f"{'    ' * depth}{nid}  ({label}, role {canonical_role(n.role)})")
         for child in sorted(graph.children[nid], reverse=True):
             stack.append((child, depth + 1))
 

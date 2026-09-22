@@ -970,19 +970,76 @@ static void heartbeat_table_print(void)
          * before the attack window even opens. A blackhole with no descendants
          * drops nothing, and that capture passes every downstream check while
          * containing no attack at all. */
+        /* ---- WHO IS ACTUALLY A VICTIM, decided live from the tree --------
+         *
+         * A child is a VICTIM only if an attacker sits between it and the root;
+         * one ABOVE the attacker reaches the root without transiting it and is
+         * untouched for the whole run. The analysis side derives exactly this
+         * after the fact (analysis/exposure.py -> the `exposure` column), but
+         * after the fact is too late to DO anything about it: a badly placed
+         * attacker costs a full run before anyone finds out. The root is the
+         * one node that sees the whole tree, so it can say it now.
+         *
+         * Same rule as exposure.py, just walked upward: from each node follow
+         * parents to the root and look for an attacker on the way. The step
+         * counter is a cycle guard -- topo_build() flags cycles, but this must
+         * not be the thing that hangs a live run if one slips through. */
+        bool any_attacker = false;
         for (size_t i = 0; i < n; i++) {
-            if (s_nodes[i].role != NODE_ROLE_BLACKHOLE) {
-                continue;
+            if (s_nodes[i].role == NODE_ROLE_BLACKHOLE
+                    || s_nodes[i].role == NODE_ROLE_WORMHOLE_A
+                    || s_nodes[i].role == NODE_ROLE_WORMHOLE_B) {
+                any_attacker = true;
+                break;
             }
-            if (g.child_count[i] == 0) {
-                ESP_LOGE(TAG, " !! BLACKHOLE " MACSTR_UC " HAS NOTHING UNDER IT -"
-                              " it will drop NOTHING and this run will look benign."
-                              " Move it so victims sit below it, then re-run.",
-                         MAC2STR(s_nodes[i].mac));
+        }
+
+        if (any_attacker) {
+            log_rule('-', rule_w);
+            ESP_LOGI(TAG, " EXPOSURE (who this run's attack can actually reach)");
+            int victims = 0, bystanders = 0;
+            for (size_t i = 0; i < n; i++) {
+                if ((int)i == g.root) {
+                    continue;
+                }
+                if (s_nodes[i].role == NODE_ROLE_BLACKHOLE
+                        || s_nodes[i].role == NODE_ROLE_WORMHOLE_A
+                        || s_nodes[i].role == NODE_ROLE_WORMHOLE_B) {
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  ATTACKER (%s)",
+                             MAC2STR(s_nodes[i].mac),
+                             node_role_to_str(s_nodes[i].role));
+                    continue;
+                }
+                int cur = g.parent[i];
+                bool downstream = false;
+                for (size_t steps = 0; cur >= 0 && steps <= n; steps++) {
+                    if (s_nodes[cur].role == NODE_ROLE_BLACKHOLE
+                            || s_nodes[cur].role == NODE_ROLE_WORMHOLE_A
+                            || s_nodes[cur].role == NODE_ROLE_WORMHOLE_B) {
+                        downstream = true;
+                        break;
+                    }
+                    cur = g.parent[cur];
+                }
+                if (downstream) {
+                    victims++;
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  VICTIM - its traffic transits"
+                                  " the attacker", MAC2STR(s_nodes[i].mac));
+                } else {
+                    bystanders++;
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  not in the attack path -"
+                                  " above the attacker, will be UNAFFECTED",
+                             MAC2STR(s_nodes[i].mac));
+                }
+            }
+            if (victims == 0) {
+                ESP_LOGE(TAG, " !! NO NODE IS DOWNSTREAM OF THE ATTACKER -"
+                              " it will drop NOTHING and this run will look"
+                              " benign. Move a child below it, then re-run.");
             } else {
-                ESP_LOGI(TAG, " blackhole " MACSTR_UC " has 0x%0*X node(s) directly"
-                              " under it; only its descendants are attacked.",
-                         MAC2STR(s_nodes[i].mac), cnt_w, (unsigned)g.child_count[i]);
+                ESP_LOGI(TAG, " %d victim(s), %d bystander(s). Only the victims"
+                              " can show the attack; report PDR per node.",
+                         victims, bystanders);
             }
         }
     }

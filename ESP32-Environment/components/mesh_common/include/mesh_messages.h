@@ -117,7 +117,12 @@ static inline const char *node_role_to_str(uint8_t role)
 {
     switch (role) {
         case NODE_ROLE_ROOT:       return "ROOT";
-        case NODE_ROLE_VICTIM:     return "VICTIM";
+        /* "CHILD", not "VICTIM": this is what the node IS by build. Whether it
+         * is a VICTIM depends on where the attacker landed in THIS run, which
+         * only the root can see -- it prints that separately once the tree is
+         * up (heartbeat_table_print). The enum VALUE is on the wire and must
+         * not change; only the word shown to a human does. */
+        case NODE_ROLE_VICTIM:     return "CHILD";
         case NODE_ROLE_BLACKHOLE:  return "BLACKHOLE";
         case NODE_ROLE_WORMHOLE_A: return "WORMHOLE_A";
         case NODE_ROLE_WORMHOLE_B: return "WORMHOLE_B";

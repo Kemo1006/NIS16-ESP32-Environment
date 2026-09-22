@@ -8,29 +8,29 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 23, 2026 — **THE PHASE SCHEDULE IS DECLARED TWICE AND NOTHING CHECKED THEY AGREE — now it does.**
-  `mesh_config.h`'s `PHASE_*_S` are overridable at build time (`-DPHASE_BASELINE_S=180`) but `preprocess.py`
-  and `validate_integrity.py` carry their own copies. Damage is silent and ONE-DIRECTIONAL: `preprocess.py`
-  slices baseline BACKWARDS from the phase-0 exit, so a firmware baseline SHORTER than the host assumes
-  reaches past the real start and labels mesh-formation noise BENIGN. Both now MEASURE real durations from
-  `phase_id` transitions: warn on SHORT, note LONG (normal — `jitter` extends phases), `--phase-durations`
-  declares a different schedule, `preprocess.py` reports `short_baseline` per node. Verified with a wrong
-  nominal (`0=600`): silent when they agree, loud when not. **Still duplicated — but never silent now.**
-- sep. 23, 2026 — **"VICTIM" IS DERIVED FROM THE TOPOLOGY, not the firmware role** (`analysis/exposure.py`).
-  New `exposure` column per node per run: `root`/`attacker`/`downstream` (**the REAL victims**)/`upstream`
-  (present, unreachable by the attack)/`no_attacker`/`unknown` (chain unresolved — never folded into another
-  value). Resolved from `parent_mac` (parent's SoftAP BSSID = STA+1), preferring the parent held DURING the
-  attack window, with a cycle guard. Verified: `downstream` → attack PDR **0.0000**, `upstream` → **1.0000**.
-  `verify_attack.py` prints "built as" vs "exposure" and names only downstream nodes VICTIM.
-  ⚠️ **In `leakage.py` METADATA_COLUMNS** — in an attack window "downstream" is nearly the label.
-- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child` (Change B, DONE).** `victim_main.c` writes `child`;
-  a plain child is only a VICTIM if the attacker sits between it and the root, which `exposure` now says.
-  ⚠️ **The compat map is what makes this safe:** `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to the
-  canonical `child` at the ONE place `node_role` is produced, so pre-2026-09-23 captures (which say `victim`
-  forever) keep working. `features.py` gates on `CHILD_ROLE`, deliberately NOT on both spellings — accepting
-  both there would hide a canonicalisation that had stopped running. **Verified by regenerating
-  feature_table.csv and diffing: shape identical (3502x66), `node_role` the ONLY column that changed, PDR
-  non-null 1318 and sum 1074.0 unchanged.** ⚠️ **NEEDS REFLASH** before the next capture.
+- sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
+  the TOPOLOGY TREE). Same rule as `exposure.py` but walked UPWARD through `g.parent[]`, step-guarded: any
+  attacker ancestor ⇒ VICTIM. Prints each node ATTACKER / VICTIM / "not in the attack path" + a count, and
+  **errors outright when NO node is downstream** ("it will drop NOTHING and this run will look benign") — to
+  catch bad attacker placement BEFORE burning an 11-minute run, which post-hoc analysis structurally cannot.
+  Console role word `VICTIM`→`CHILD`; **the enum VALUE is on the wire and did NOT change.**
+  `verify_topology.py` gained an EXPOSURE column + `canonical_role()`. Vocabulary now consistent across
+  firmware console, verify_topology, verify_attack and feature_table.
+- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH CAN NO LONGER PASS UNNOTICED.** `mesh_config.h`'s `PHASE_*_S`
+  are build-time overridable but `preprocess.py`/`validate_integrity.py` carry copies. Silent and
+  ONE-DIRECTIONAL: preprocess slices baseline BACKWARDS from the phase-0 exit, so a firmware baseline
+  SHORTER than the host assumes labels mesh-formation noise BENIGN. Both now MEASURE from `phase_id`
+  transitions — warn SHORT, note LONG (`jitter`), `--phase-durations` overrides. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **`exposure` COLUMN: who the attack could actually reach** (`analysis/exposure.py`), per
+  node per run: `root`/`attacker`/`downstream` (**the REAL victims**)/`upstream`/`no_attacker`/`unknown`
+  (never folded). From `parent_mac` (parent's SoftAP BSSID = STA+1), using the parent held DURING the
+  attack, cycle-guarded. Verified: `downstream` → PDR **0.0000**, `upstream` → **1.0000**. ⚠️ **In
+  `leakage.py` METADATA_COLUMNS** — nearly the label in an attack window. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child` (Change B, DONE).** ⚠️ **The compat map is what
+  makes it safe:** `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to canonical `child` at the ONE place
+  `node_role` is produced, so pre-rename captures keep working; `features.py` gates on `CHILD_ROLE` and
+  deliberately NOT on both, which would hide a canonicalisation that had stopped running. Verified by
+  regenerating feature_table.csv: shape identical, `node_role` the ONLY changed column, PDR unchanged (it sits behind the gate, so that IS the proof). ⚠️ **NEEDS REFLASH.**
 - sep. 23, 2026 — **DE-HARDCODED the machine-specific paths.** `Get-EspMac.ps1` pinned `esp-idf-v5.3.5` +
   `idf5.3_py3.11_env` — **dead on a 5.5.4 laptop, symptom just "no MAC"**. It and `board_check.py` now discover
   via `IDF_PATH`/`IDF_TOOLS_PATH`, then glob `<SystemDrive>\Espressif` newest-first. `C:\Python314\python.exe`
