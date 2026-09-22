@@ -23,6 +23,9 @@
   — so **runs.csv/location.txt can never be deleted this way** — and the board refuses a file it has OPEN.
   Host: `export_logs.py --delete-sd-file`, `import_sdcard.py --delete-source` (now allowed with `--port`),
   wizard picker's `d` works over USB too. Auto-delete-after-import stays OFF for USB (opt-in only).
+  ⚠️ **Any `& python ... 2>&1` here MUST set `$ErrorActionPreference='Continue'` first**: under the
+  script-wide `Stop`, PS 5.1 makes a NATIVE command's first stderr line TERMINATING. Shipped without it,
+  so one refused file killed the whole selection as "Could not run import_sdcard.py / python on PATH?".
 - sep. 22, 2026 — **Children now stop cleanly at TERMINATE.** `heartbeat_task` was the only thing still
   transmitting after a run (`while(true)`, timer-driven); it now exits for non-root nodes. probe_gen and
   telemetry already self-exited; relay_task parks on an empty queue. Root keeps beating (owns the member
@@ -114,9 +117,6 @@
 - sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
   length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
   run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
-- sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
-- sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
-- sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
 ## Durable facts & constraints
 - **Git repo root is this whole `Unified/` folder** (code, docs, `Paper/`, `ESP32-Environment/` all inside it),
   NOT `ESP32-Environment/` alone — branch `Unified`, remote `origin` =

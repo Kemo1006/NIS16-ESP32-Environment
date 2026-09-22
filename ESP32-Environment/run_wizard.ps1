@@ -1561,19 +1561,44 @@ function Select-CardFiles {
                     # illegal trailing escape, and .Replace() is a plain string swap.
                     $rel = $d.rel.Replace([string][char]92, '/')
                     Push-Location (Join-Path $base 'tools')
+                    $prevEap = $ErrorActionPreference
                     try {
-                        $out = & python export_logs.py --port $Port --delete-sd-file $rel 2>&1
-                        if ($out | Select-String -Pattern '^SD_DELETE_RESULT: OK' -Quiet) {
+                        # MUST be 'Continue' around the native call. Under the
+                        # script-wide 'Stop' (line ~60), PS 5.1 turns a native
+                        # command's first 2>&1 stderr line into a TERMINATING error --
+                        # and export_logs.py prints its failure hint to stderr. That
+                        # unwound past this loop to Import-OneSdCard's catch, which
+                        # reported a bogus "Could not run import_sdcard.py / Is python
+                        # on PATH?" and abandoned every remaining file in the same
+                        # selection. Invoke-DeleteSdFolder already does this; the
+                        # per-file path has to as well.
+                        $ErrorActionPreference = 'Continue'
+                        $out = & python -u export_logs.py --port $Port --delete-sd-file $rel 2>&1
+                        if ($LASTEXITCODE -eq 0) {
                             Write-Host ("    Deleted {0}" -f $d.name) -ForegroundColor Green
                             $deletedRel += $d.rel
                         }
                         else {
-                            $why = (@($out) | Where-Object { $_ -match 'FAILED|ERROR|no ack' } | Select-Object -First 1)
-                            if (-not $why) { $why = 'no result from the board' }
-                            Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $why) -ForegroundColor Yellow
+                            $err = (@($out) | Where-Object { "$_" -match 'ERROR:' } | Select-Object -First 1)
+                            $err = "$err".Trim()
+                            # One board refusing a file must NOT stop the others: a
+                            # selection routinely mixes the live run with old captures.
+                            if ($err -match 'SD_FILE_IN_USE') {
+                                Write-Host ("    SKIPPED {0}" -f $d.name) -ForegroundColor Yellow
+                                Write-Host "      The board is writing to this file RIGHT NOW (the run in progress)." -ForegroundColor Yellow
+                                Write-Host "      Let it reach TERMINATE, then delete it." -ForegroundColor Yellow
+                            }
+                            else {
+                                if (-not $err) { $err = 'the board did not confirm the delete' }
+                                Write-Host ("    FAILED to delete {0}" -f $d.name) -ForegroundColor Yellow
+                                Write-Host ("      {0}" -f $err) -ForegroundColor Yellow
+                            }
                         }
                     }
-                    finally { Pop-Location }
+                    catch {
+                        Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $_.Exception.Message) -ForegroundColor Yellow
+                    }
+                    finally { $ErrorActionPreference = $prevEap; Pop-Location }
                 }
                 else {
                     Write-Host ("    Skipped {0} - no card path or port known." -f $d.name) -ForegroundColor Yellow
@@ -2001,9 +2026,9 @@ function Invoke-ImportSdCard {
                              -ExpectPrefix $expectPrefix -Scenario $scenario
 
             Write-Host ""
-            Write-Host "  Note: the card was NOT cleared. Reading over USB never deletes -" -ForegroundColor DarkGray
-            Write-Host "  use the wizard's 'delete a folder from a running board's SD card'" -ForegroundColor DarkGray
-            Write-Host "  option when you actually want space back." -ForegroundColor DarkGray
+            Write-Host "  Note: importing never deletes. To free space, use 'd<numbers>' in the" -ForegroundColor DarkGray
+            Write-Host "  file list above (one capture at a time, over USB or a pulled card), or" -ForegroundColor DarkGray
+            Write-Host "  the main menu's 'delete a folder from a running board's SD card'." -ForegroundColor DarkGray
 
             $again = Read-Line "`nExport from another board for this same run? [y/N] > "
             if ($again -ne 'y' -and $again -ne 'Y') { return }

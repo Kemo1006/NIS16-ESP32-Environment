@@ -1162,4 +1162,6 @@ Both still live as one-line warnings in STATUS.md.
   is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
   by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
   selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
-
+- sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
+- sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
+- sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
