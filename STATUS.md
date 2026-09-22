@@ -12,8 +12,8 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 **Export + data-integrity (D-13)**, independent of any milestone/adviser gate. Next: hardware-test on a real board.
 
 ## Next step
-1. ✅ **Reflashed + live-flag fix CONFIRMED ON HARDWARE** (a growing file reads STILL RUNNING, finished
-   ones read ABORTED — they all used to stick). Still to hardware-test: `DELETE_SD_FILE`, child clean-stop.
+1. ✅ **HARDWARE-CONFIRMED sep. 22:** live-flag fix (growing file = STILL RUNNING, finished = ABORTED)
+   and `DELETE_SD_FILE` (2 deleted over USB; live file correctly refused). **Left: child clean-stop.**
 2. ⚠️ **Hardware-test D-13 + the USB export path** on real hardware (reset a board mid-run; wizard [3]).
 3. **Re-flash EVERY board** — D-13 + `LIST_SD` + schema v2 (F3), F1, F2, C7. Old firmware can't answer `LIST_SD`.
 4. **Then the campaign** (128 vs 512 — `inventory_cells.py --plan --repeats N`); re-analyse the 8 complete runs.
