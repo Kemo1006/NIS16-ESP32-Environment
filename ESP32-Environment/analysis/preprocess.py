@@ -85,6 +85,27 @@ MAX_INTERP_GAP_SAMPLES = 2          # "gap of 1-2 consecutive missing samples".
 # PHASE_BASELINE_S of phase 0 is the real baseline; anything earlier is
 # pre_baseline and is EXCLUDED from the labelled dataset (window_label = NaN).
 # Must match PHASE_BASELINE_S in components/mesh_common/include/mesh_config.h.
+# Firmware wrote "victim" for every plain child until 2026-09-23, when it
+# became "child" -- a child is only a VICTIM if the attacker sits between it and
+# the root, which is a property of the RUN, not of the build (see
+# analysis/exposure.py). Captures from before that flash say "victim" and will
+# forever, so both spellings are folded to one canonical value here, at the ONE
+# place node_role is produced.
+#
+# Canonical is "child". Leaving it as "victim" would have made the firmware
+# change cosmetic; picking "child" means features.py's role gates must test
+# "child" too -- they do. Anything not listed passes through untouched, so
+# blackhole / wormhole_a / wormhole_b / root are unaffected.
+ROLE_ALIASES = {"victim": "child"}
+
+
+def _canonical_role(role):
+    """One spelling per role, across every firmware generation."""
+    if role is None:
+        return role
+    return ROLE_ALIASES.get(str(role).strip().lower(), role)
+
+
 PHASE_BASELINE_S = 300
 
 # F1 (firmware, 2026-09-20): from this capture onward the board RECORDS the
@@ -195,6 +216,9 @@ class PreprocessReport:
     files_skipped: list[str] = field(default_factory=list)
     unimported_card_files: list[str] = field(default_factory=list)
     duplicates_archived: list[str] = field(default_factory=list)
+    # Nodes whose phase 0 was SHORTER than PHASE_BASELINE_S — see the block in
+    # the segment assignment for why that silently corrupts the benign class.
+    short_baseline: list[str] = field(default_factory=list)
     rows_dropped_malformed: int = 0
     rows_dropped_downsampled: int = 0
     rows_dropped_corrupt_timestamp: int = 0
@@ -254,6 +278,14 @@ class PreprocessReport:
                 lines.append(f"    {name}")
             lines.append("    -> run tools\\import_sdcard.py --card <drive> --repeat <N> "
                           "instead of copying off the card by hand.")
+        if self.short_baseline:
+            lines.append(
+                f"  !! BASELINE SHORTER THAN EXPECTED on {len(self.short_baseline)} node(s). "
+                f"PHASE_BASELINE_S here is {PHASE_BASELINE_S}s; if the firmware was built "
+                f"with -DPHASE_BASELINE_S=<less>, the 'baseline' slice reaches past the real "
+                f"start and mesh-formation noise is being labelled benign. Make the two agree.")
+            for name in self.short_baseline:
+                lines.append(f"    {name}")
         if self.duplicates_archived:
             lines.append(f"  Duplicate captures archived: {len(self.duplicates_archived)} "
                           f"(older re-run of the same board+repeat -- see _archive/)")
@@ -860,7 +892,9 @@ def build_windows(
             "location": run_context.get("location"),
             "scenario": run_context.get("scenario"),
             "run_repeat": _repeat_from_filename(source_file),
-            "node_role": wdf["role"].mode().iloc[0] if not wdf["role"].mode().empty else wdf["role"].iloc[0],
+            "node_role": _canonical_role(
+                wdf["role"].mode().iloc[0] if not wdf["role"].mode().empty
+                else wdf["role"].iloc[0]),
             "layer": wdf["layer"].mode().iloc[0] if "layer" in wdf and not wdf["layer"].mode().empty else np.nan,
             "hop": _layer_to_hop(
                 wdf["layer"].mode().iloc[0]
@@ -1011,6 +1045,25 @@ def assign_segments(
         seg[is_zero & (t >= 0)] = SEGMENT_REBROADCAST
         seg[is_zero & (t < 0)] = SEGMENT_BASELINE
         seg[is_zero & (t < -PHASE_BASELINE_S)] = SEGMENT_PRE_BASELINE
+
+        # THE SCHEDULE IS DEFINED IN TWO PLACES AND NOTHING CHECKED THEY AGREE.
+        #
+        # PHASE_BASELINE_S above must equal the firmware's PHASE_BASELINE_S
+        # (mesh_config.h), which is overridable at build time with
+        # `idf.py -DPHASE_BASELINE_S=180`. Build shorter than the host assumes
+        # and this slice reaches PAST the start of the real baseline, pulling
+        # mesh-formation noise into the benign class -- silently, and in the
+        # direction that looks like clean data rather than an error.
+        #
+        # The capture itself knows the answer, so measure it: how much phase-0
+        # actually preceded the exit. Shorter than we assumed is the dangerous
+        # direction and is reported per node; LONGER is normal and expected,
+        # because the `jitter` scenario extends phase 0 on purpose.
+        zero_span = -t[is_zero].min() if is_zero.any() else 0.0
+        if zero_span and zero_span < PHASE_BASELINE_S:
+            report.short_baseline.append(
+                f"{node_id} ({source_file}): phase 0 ran {zero_span:.0f}s but "
+                f"PHASE_BASELINE_S is {PHASE_BASELINE_S}s")
         # Applied LAST so it wins outright: an explicitly-unset phase is never
         # baseline, whatever t_anchor_s says about it.
         seg[is_unset.loc[idx]] = SEGMENT_PRE_BASELINE

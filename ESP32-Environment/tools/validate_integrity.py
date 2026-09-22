@@ -90,7 +90,19 @@ def _read_header(path):
 # starts at boot, before the first phase broadcast arrives, so the "baseline"
 # bucket absorbs the unlogged 60 s stabilisation window too (observed ~358 rows
 # vs the 300 s * 1 Hz spec on a real capture) — hence the wide tolerance below.
+# NOMINAL schedule, mirroring mesh_config.h's PHASE_BASELINE_S / PHASE_ATTACK_S
+# / PHASE_COOLDOWN_S. Those are overridable at build time
+# (`idf.py -DPHASE_BASELINE_S=180`), and nothing used to notice when a capture
+# disagreed -- so these are now treated as an EXPECTATION to check against the
+# data, not as ground truth. Override with --phase-durations when a campaign
+# deliberately runs a different schedule.
 PHASE_DURATION_S = {0: 300, 1: 180, 2: 180, 3: 120}
+
+# How far a measured phase may drift from nominal before it is called out. The
+# `jitter` scenario extends phases on purpose, so a phase running LONG is normal
+# and only reported for information; running SHORT is what corrupts the
+# baseline slice downstream (see preprocess.py) and is always flagged.
+PHASE_DURATION_TOLERANCE = 0.10
 
 # mesh_config.h SAMPLING_INTERVAL_MS. Timeline of the firmware value:
 #   pre-2026-07-12 : 1000ms (1 Hz)  -> validate with --sample-interval-ms 1000
@@ -565,6 +577,62 @@ def _check_sample_coverage(rows, header, kind, sample_interval_ms, report):
                     f"measured ~{actual_hz:.2f} Hz, {len(gaps)} gap(s))")
 
 
+def _check_phase_durations(rows, header, kind, report):
+    """Measure each phase's REAL duration and compare it to the nominal schedule.
+
+    The schedule is declared twice -- mesh_config.h (PHASE_BASELINE_S etc.,
+    overridable with `idf.py -DPHASE_BASELINE_S=180`) and again in this file and
+    preprocess.py -- and nothing checked the two agreed. The capture itself
+    settles it: phase_id changes are timestamped, so the durations are IN the
+    data and never have to be assumed.
+
+    Direction matters. Running LONG is expected -- the `jitter` scenario extends
+    phases on purpose -- so it is reported as info. Running SHORT is the
+    dangerous one: preprocess.py slices the baseline BACKWARDS from the phase-0
+    exit, so a baseline shorter than it assumes reaches past the real start and
+    labels mesh-formation noise as benign.
+    """
+    if kind != "telem" or not rows:
+        return
+    try:
+        ts_idx = header.index("timestamp_us")
+        ph_idx = header.index("phase_id")
+    except ValueError:
+        return
+
+    spans = {}
+    for fields in rows:
+        try:
+            ph = int(fields[ph_idx])
+            ts = int(fields[ts_idx])
+        except (ValueError, IndexError):
+            continue
+        if ph not in PHASE_DURATION_S:      # 255 = never announced; not a phase
+            continue
+        lo, hi = spans.get(ph, (ts, ts))
+        spans[ph] = (min(lo, ts), max(hi, ts))
+
+    for ph in sorted(spans):
+        nominal = PHASE_DURATION_S[ph]
+        measured = (spans[ph][1] - spans[ph][0]) / 1e6
+        if measured <= 0 or nominal <= 0:
+            continue
+        drift = (measured - nominal) / nominal
+        if drift < -PHASE_DURATION_TOLERANCE:
+            report.warn(
+                f"phase {ph} ran {measured:.0f}s but the nominal schedule says "
+                f"{nominal}s — SHORTER than expected. If the firmware was built "
+                f"with a reduced -DPHASE_*_S, preprocess.py's baseline slice "
+                f"reaches past the real start and labels formation noise benign. "
+                f"Make mesh_config.h, preprocess.py and this file agree, or pass "
+                f"--phase-durations."
+            )
+        elif drift > PHASE_DURATION_TOLERANCE:
+            report.info(
+                f"phase {ph} ran {measured:.0f}s vs nominal {nominal}s "
+                f"(longer — expected under the 'jitter' scenario)")
+
+
 def _check_phase_coverage(phase_counts, attack, kind, sample_interval_ms, report):
     attack_phase = ATTACK_TO_PHASE.get(attack)
     check_upper_bound = True
@@ -743,6 +811,7 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms,
             actual_header = _read_header(path) or EXPECTED_HEADERS[kind]
             _check_role_consistency(rows, actual_header, meta, report)
             _check_label_integrity(rows, actual_header, report)
+            _check_phase_durations(rows, actual_header, kind, report)
             _check_sample_coverage(rows, actual_header, kind,
                                    sample_interval_ms, report)
             if meta:
@@ -775,6 +844,11 @@ def main():
                          "Default: the exports/ folder next to this script.")
     p.add_argument("--manifest", default=None,
                     help="Manifest JSON path. Default: <directory>/manifest.json")
+    p.add_argument("--phase-durations", default=None, metavar="0=300,1=180,3=120",
+                    help="Override the nominal phase schedule when a campaign runs a "
+                         "different one (e.g. firmware built with -DPHASE_BASELINE_S=180). "
+                         "Comma-separated phase=seconds. Keeps this check honest instead "
+                         "of requiring a source edit.")
     p.add_argument("--include-derived", action="store_true",
                     help="Also validate trimmed/, _archive/ and archive/ copies. Off by "
                          "default: trimmed/ output is byte-identical to the raw capture "
@@ -793,6 +867,15 @@ def main():
     if not os.path.isdir(args.directory):
         print(f"ERROR: no such directory: {args.directory}", file=sys.stderr)
         return 1
+
+    if args.phase_durations:
+        try:
+            for item in args.phase_durations.split(","):
+                k, v = item.split("=")
+                PHASE_DURATION_S[int(k)] = float(v)
+        except ValueError:
+            print("ERROR: --phase-durations wants e.g. 0=300,1=180,3=120", file=sys.stderr)
+            return 2
 
     manifest_path = args.manifest or os.path.join(args.directory, "manifest.json")
     reports = validate(args.directory, manifest_path, args.relock,

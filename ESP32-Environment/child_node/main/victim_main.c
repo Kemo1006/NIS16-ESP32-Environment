@@ -388,7 +388,15 @@ static void telemetry_task(void *arg)
         csv_logger_append_telemetry(
             ts,
             s_node_id,
-            "victim",
+            /* "child", not "victim": this string is what the node IS by build,
+             * and a plain child is only a VICTIM if the attacker happens to sit
+             * between it and the root. Since C7 the blackhole is positional, so
+             * a child above it is never touched -- yet it used to log itself
+             * "victim" exactly like the one below that loses everything, which
+             * is what made a pooled PDR describe neither node. Who was actually
+             * exposed is derived from the tree in analysis/exposure.py and lands
+             * in the feature table's `exposure` column. */
+            "child",
             layer,
             pmac,
             rssi,

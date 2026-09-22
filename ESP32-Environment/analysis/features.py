@@ -112,6 +112,10 @@ ROOT_LAYER_DEFAULT = 1
 # A node in that state cannot be held responsible for undelivered probes.
 NO_PARENT_MAC = "00:00:00:00:00:00"
 
+# The canonical role of a plain, non-attacking child. preprocess.py maps the
+# pre-2026-09-23 firmware's "victim" onto it; see its ROLE_ALIASES.
+CHILD_ROLE = "child"
+
 # RELAY-node features: only defined for a node that receives transit traffic
 # and forwards it, which in this testbed is the blackhole ATTACKER alone. They
 # are NaN in baseline and wormhole runs BY DESIGN (no relay present), and
@@ -343,7 +347,7 @@ def compute_pdr_features(
     """
     Packet Delivery Ratio (Equation 4.5), victim nodes only.
 
-    PDR = probes_received_at_root_from_this_victim / probes_sent_by_victim
+    PDR = probes_received_at_root_from_this_child / probes_sent_by_victim
 
     JOIN KEY: (node, sequence number) — NOT (node, time window). This is the
     join the milestones form specifies ("joining each node's outgoing log with
@@ -466,7 +470,11 @@ def compute_pdr_features(
     seq_last = (pd.to_numeric(windowed["probes_count_last"], errors="coerce")
                 + pd.to_numeric(windowed["retry_count_last"], errors="coerce"))
 
-    is_victim = windowed["node_role"] == "victim"
+    # "child" is the canonical role since 2026-09-23; preprocess.py folds the
+    # older "victim" spelling into it (ROLE_ALIASES), so this one test covers
+    # captures from both firmware generations. Accepting both here as well would
+    # hide a canonicalisation that had silently stopped running.
+    is_child = windowed["node_role"] == CHILD_ROLE
     transmitted = probes_sent.fillna(0) > 0
     parent = windowed["parent_mac"].fillna(NO_PARENT_MAC).astype(str).str.upper()
     associated = (windowed["layer"].fillna(-1) > 0) & (parent != NO_PARENT_MAC)
@@ -484,7 +492,7 @@ def compute_pdr_features(
     else:
         root_running = windowed["window_phase_id"].isin(root_phases)
 
-    attributable = (is_victim & transmitted & associated
+    attributable = (is_child & transmitted & associated
                     & no_reset & seq_known & root_running)
 
     macs = windowed["node_id"].apply(node_id_to_mac_norm)

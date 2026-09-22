@@ -8,39 +8,42 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 23, 2026 — **"VICTIM" IS NOW DERIVED FROM THE TOPOLOGY, not the firmware role** (`analysis/exposure.py`,
-  new). Every child logs itself `victim` at build time, but since C7 the blackhole is POSITIONAL: a child ABOVE
-  it never transits it and is untouched. New `exposure` column per node per run: `root` / `attacker` /
-  `downstream` (= the REAL victims) / `upstream` (present but unreachable by the attack) / `no_attacker` /
-  `unknown` (chain unresolved — never folded into another value). Resolved from `parent_mac` (the parent's
-  SoftAP BSSID = STA+1, same rule `verify_topology.py` uses), preferring the parent held DURING the attack
-  window, with a cycle guard. Verified on blackhole/linear/home r1: `downstream` → attack PDR **0.0000**,
-  `upstream` → **1.0000**. `verify_attack.py`'s per-node table now prints "built as" vs "exposure" and names
-  only downstream nodes VICTIM. ⚠️ **Registered in `leakage.py` METADATA_COLUMNS** — inside an attack window
-  "downstream" is nearly the label, same leak class as `node_role`. **Firmware untouched; no reflash.**
-  Change B (renaming the firmware role `victim`→`child`) is NOT done — it needs a canonicalisation map in
-  `preprocess.py` + updated `features.py` gates, and a reflash.
-- sep. 23, 2026 — **DE-HARDCODED the machine-specific paths.** `tools/Get-EspMac.ps1` pinned
-  `esp-idf-v5.3.5` + `idf5.3_py3.11_env` — **dead on this laptop, which has 5.5.4 only**, and the only symptom
-  was "no MAC". It and `board_check.py` now discover the install from `IDF_PATH`/`IDF_TOOLS_PATH`, then glob
-  `<SystemDrive>\Espressif` newest-first. `C:\Python314\python.exe` in all three menus → the `py` launcher.
-  `board_check.py`'s MAC→label table is now overridable by `presets/boards.json` (`--roster`), so a new or
-  swapped board needs no code edit — deliberately NOT the per-run presets, which disagree by design (the same
-  MAC is `ROOT` in one and `node2` in another). ⚠️ **STILL DUPLICATED, not fixed:** the phase schedule lives
-  in `mesh_config.h` (`PHASE_BASELINE_S` etc., overridable with `-DPHASE_BASELINE_S=`), AND in
-  `preprocess.py:88`, AND in `validate_integrity.py:93`. Override it at build time and the host tools are
-  silently wrong. Real durations are recoverable from `phase_id` transition timestamps — worth doing.
-- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — 2 bugs in `eda.py`, fixed.** (1) `window_start` is
-  each node's OWN clock from ITS boot and boards are flashed one at a time (phase 0 began at 60s on the root
-  but **670s on node2** — why its baseline "starts at 600s"; harmless, `preprocess.py` drops phase 255). The
-  phase bands came from whichever node sorted first, so they were right for at most ONE line.
-  `_align_to_baseline()` re-bases x on each node's own phase-0 entry (t=0 = baseline, pre-baseline negative);
-  **anchor on the RAW `segment` column, not `_phase_names()`** (that returns "Baseline" and never matches).
-  (2) `_extract_run_id()` expects the OLD `RUN_xxx_telem` filename, so every capture fell back to per-file.
-  Now grouped on attack/topology/location/run_repeat. ⚠️ **BOTH views are written and BOTH are wanted** — the
-  per-run overlay AND one per capture file; making it per-run alone silently dropped the per-node plots the
-  team uses (deleted, then restored from git). Shared `_draw_timeseries()` so they can't drift.
-  Full detail: ARCHIVE.md.
+- sep. 23, 2026 — **THE PHASE SCHEDULE IS DECLARED TWICE AND NOTHING CHECKED THEY AGREE — now it does.**
+  `mesh_config.h`'s `PHASE_*_S` are overridable at build time (`-DPHASE_BASELINE_S=180`) but `preprocess.py`
+  and `validate_integrity.py` carry their own copies. Damage is silent and ONE-DIRECTIONAL: `preprocess.py`
+  slices baseline BACKWARDS from the phase-0 exit, so a firmware baseline SHORTER than the host assumes
+  reaches past the real start and labels mesh-formation noise BENIGN. Both now MEASURE real durations from
+  `phase_id` transitions: warn on SHORT, note LONG (normal — `jitter` extends phases), `--phase-durations`
+  declares a different schedule, `preprocess.py` reports `short_baseline` per node. Verified with a wrong
+  nominal (`0=600`): silent when they agree, loud when not. **Still duplicated — but never silent now.**
+- sep. 23, 2026 — **"VICTIM" IS DERIVED FROM THE TOPOLOGY, not the firmware role** (`analysis/exposure.py`).
+  New `exposure` column per node per run: `root`/`attacker`/`downstream` (**the REAL victims**)/`upstream`
+  (present, unreachable by the attack)/`no_attacker`/`unknown` (chain unresolved — never folded into another
+  value). Resolved from `parent_mac` (parent's SoftAP BSSID = STA+1), preferring the parent held DURING the
+  attack window, with a cycle guard. Verified: `downstream` → attack PDR **0.0000**, `upstream` → **1.0000**.
+  `verify_attack.py` prints "built as" vs "exposure" and names only downstream nodes VICTIM.
+  ⚠️ **In `leakage.py` METADATA_COLUMNS** — in an attack window "downstream" is nearly the label.
+- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child` (Change B, DONE).** `victim_main.c` writes `child`;
+  a plain child is only a VICTIM if the attacker sits between it and the root, which `exposure` now says.
+  ⚠️ **The compat map is what makes this safe:** `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to the
+  canonical `child` at the ONE place `node_role` is produced, so pre-2026-09-23 captures (which say `victim`
+  forever) keep working. `features.py` gates on `CHILD_ROLE`, deliberately NOT on both spellings — accepting
+  both there would hide a canonicalisation that had stopped running. **Verified by regenerating
+  feature_table.csv and diffing: shape identical (3502x66), `node_role` the ONLY column that changed, PDR
+  non-null 1318 and sum 1074.0 unchanged.** ⚠️ **NEEDS REFLASH** before the next capture.
+- sep. 23, 2026 — **DE-HARDCODED the machine-specific paths.** `Get-EspMac.ps1` pinned `esp-idf-v5.3.5` +
+  `idf5.3_py3.11_env` — **dead on a 5.5.4 laptop, symptom just "no MAC"**. It and `board_check.py` now discover
+  via `IDF_PATH`/`IDF_TOOLS_PATH`, then glob `<SystemDrive>\Espressif` newest-first. `C:\Python314\python.exe`
+  in all 3 menus → the `py` launcher. `board_check.py`'s MAC→label table is overridable by
+  `presets/boards.json` (`--roster`) so a new board needs no code edit — NOT the per-run presets, which
+  disagree by design. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — fixed.** `window_start` is each node's OWN clock from
+  ITS boot and boards are flashed one at a time (phase 0 began 60s in on the root, **670s on node2** — why its
+  baseline "starts at 600s"; harmless, phase 255 is dropped). Bands came from whichever node sorted first.
+  `_align_to_baseline()` re-bases on each node's phase-0 entry; **anchor on the RAW `segment` column, not
+  `_phase_names()`** (returns "Baseline", never matches). Also `_extract_run_id()` expected the OLD filename,
+  so the overlay never existed. ⚠️ **BOTH views are written and BOTH are wanted** (per-run overlay AND one per
+  capture file) — per-run alone silently dropped plots the team uses. Detail: ARCHIVE.md.
 - sep. 23, 2026 — **KEEP `RetryRate` in the blackhole signature; the stale comment was the only problem.**
   Its removal condition ("once retry_count means MAC-layer failure on every role") IS met — verified in
   `blackhole_victim.c:378-386`, F3 moved deliberate drops to `drop_count`. But that killed the LEAK, which is
