@@ -59,8 +59,8 @@
   location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
   `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
   site folders — hit for real 2026-09-22 (ran `-Location home`, cards said G402, `home/` was empty).
-- sep. 22, 2026 — **Root arrivals.csv exports fine over USB** (verified). runs.csv's `rows` counts
-  TELEMETRY only, so the manifest-vs-actual check is now telem-only (it false-alarmed on every arrivals import).
+- sep. 22, 2026 — **Root arrivals.csv exports fine over USB**; runs.csv `rows` is TELEM-only, so the
+  manifest-vs-actual check is telem-only (it false-alarmed on every arrivals import).
 - sep. 22, 2026 — ⚠️ **AUTO-ANALYSIS WAS SKIPPING THE TRIM (fixed).** `run.ps1 -Analyze` — what
   `run_wizard.ps1` gives the ROOT (`New-RunParams`) — ran M6/M7 over the RAW export and never called
   `trim_run.py`, while `analyze.ps1` always trimmed. A raw folder can hold SEVERAL boot sessions and the
@@ -94,8 +94,7 @@
   *pulled SD card*, then runs the SAME picker → dry-run → confirm → import (`Import-OneSdCard -Card|-Port`).
   New firmware cmds **`LIST_SD`** + **`EXPORT_SD_PATH=<rel>`**; `LIST_FILES` adds `|<bytes>|<rows>`. Host:
   `import_sdcard.py --port COMx`. Both routes verified byte-identical.
-- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file** (counting =
-  streaming the card first). `?` NEVER renders as `0`. Telem-only mismatch note; see the arrivals fix above.
+- sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file.** `?` NEVER renders as `0`.
 - sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
   to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
   normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
