@@ -51,10 +51,9 @@
   one more board). Now: on write failure the mount is rebuilt and retried — but **only between runs**.
   Mid-capture it returns the new `ERROR:LOCATION_STALE_MOUNT` and says reboot, because unmounting
   under a live run kills the SD mirror (mount_for_location_op's own comment warns of this).
-- sep. 22, 2026 — **SD files no longer date to 1980.** get_fattime() feeds `time(NULL)` into every FAT
-  entry; with no RTC that is 1970 -> clamped to 1980. `sd_status_seed_clock_from_build()` seeds the clock
-  from BUILD stamp + uptime atop `sd_status_run_boot_check()` (all 5 role call sites). ⚠️ build-time+uptime
-  is **a dating aid, NOT a measurement**; boot counter + runs.csv stay the exact record.
+- sep. 22, 2026 — **SD files no longer date to 1980.** get_fattime() feeds `time(NULL)` into each FAT
+  entry; no RTC = 1970 -> clamped. `sd_status_seed_clock_from_build()` seeds it from BUILD stamp + uptime
+  in `sd_status_run_boot_check()`. ⚠️ A dating AID, not a measurement; boot counter + runs.csv stay exact.
 - sep. 22, 2026 — **Location pre-flight in the wizard.** "Yes - use it" now reads each board's
   location.txt, diffs it against the preset, and offers to fix it BEFORE flashing. The board picks its
   `<location>` folder from its OWN card, not the menu answer, so a mismatch splits one run across two
