@@ -1165,3 +1165,9 @@ Both still live as one-line warnings in STATUS.md.
 - sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
 - sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
 - sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
+- sep. 22, 2026 — **All 4 boards reflashed** with `ab74ec4` (COM3 ROOT/bcr, COM10+COM9 victim/bcbv, COM11
+  attacker/bcba; MACs re-read via `esptool read_mac`, matched to `presets/Cal/TRY.json`, hashes verified).
+  ⚠️ COM10 boot 9 + COM9 boot 1 were never exported — the reboot moved them to `<leaf>/_archive/`, which
+  `import_sdcard.py` deliberately skips. Recover by hand from `_archive/`. User accepted the loss.
+- sep. 21, 2026 - **`layer` -> `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` -> `HopChangeCount`; values unchanged.
+- sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.

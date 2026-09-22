@@ -8,10 +8,13 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 22, 2026 — **All 4 boards reflashed** with `ab74ec4` (COM3 ROOT/bcr, COM10+COM9 victim/bcbv, COM11
-  attacker/bcba; MACs re-read via `esptool read_mac`, matched to `presets/Cal/TRY.json`, hashes verified).
-  ⚠️ COM10 boot 9 + COM9 boot 1 were never exported — the reboot moved them to `<leaf>/_archive/`, which
-  `import_sdcard.py` deliberately skips. Recover by hand from `_archive/`. User accepted the loss.
+- sep. 22, 2026 — ⛔⛔ **NEVER FLASH `build_all_variants.ps1`'s OUTPUT. It is a COMPILE CHECK ONLY.**
+  It hardcodes `-DMESH_TOPOLOGY=0` on every variant (M1 criterion 1 = 'do all variants compile'), and
+  `NIS_TOPO_STAR = 0` with `s_topo_dirs[0] = "star"` — so those binaries run a STAR mesh (depth capped at
+  2) and log into `<attack>/star/<location>` whatever the experiment is. Flashed to all 4 boards sep. 22,
+  which then wrote `blackhole/star/home` for a LINEAR run — MAC/role were verified, topology was not.
+  Real flashing goes via `run.ps1 -Flash -Topology <t>` (star=0, tree=1, **linear=2**, partial=3), driven
+  by `run_wizard.ps1` from the preset. bcr/bcc/bcba/bcbv/bcwa/bcwb prove compilation, they do not deploy.
 - sep. 22, 2026 — ⚠⚠ **STILL RUNNING was STICKY — the live-flag bug, now fixed.** `sd_is_live_mirror()`
   compared PATH STRINGS only, but `csv_logger_close()` nulls the mirror FILE*s at TERMINATE and keeps the
   path strings (ARCHIVE_SD needs them). So after ANY completed run every file on that card reported
@@ -109,11 +112,9 @@
   have dropped it and wormhole runs would have looked clean. Both magics now
   relay. **Any future change to the relay's accept-filter must re-check this.**
 - sep. 21, 2026 - **`leakage.py` is DATASET-AWARE**: it asks how many roles carry each relay column, never hardcodes.
-- sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
   The old "RUN WILL BE EMPTY / ZERO arrivals" alarms are FALSE now and would abort good captures;
   downgraded in `run_wizard.ps1` (the launcher in use), BOTH copies in `menu.ps1`, and the attacker
   boot banner. ⚠️ `BLACKHOLE_ROLE` is still REQUIRED — it selects which source file builds.
-- sep. 21, 2026 - **`layer` -> `hop` (D-11).** New `hop` column (root = 0); `LayerChangeCount` -> `HopChangeCount`; values unchanged.
 - sep. 21, 2026 — **Smart trimmer**: `trim_run.py` scores boot sessions on PHASE PROGRESSION, not
   length (the old rule kept a long idle session over a short/aborted real run). Proven: 400-row real
   run (+102.6) beat a 3000-row idle session (-146.5). Warns if two look real, or none does.
