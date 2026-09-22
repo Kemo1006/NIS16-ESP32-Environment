@@ -8,11 +8,24 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too.** It was inline in the preset
-  "Yes - use it" branch only, so answering the menus skipped it and silently filed the run under whatever
-  each card said. Extracted to `Confirm-BoardLocations` (run_wizard.ps1), called from BOTH paths;
-  `$locationPreflightDone` (armed in `:restart`) stops a double ask. Manual call sits after `$runRoster`
-  is final — still BEFORE any flash, which matters: location.txt is only read at boot. Not hardware-tested.
+- sep. 22, 2026 — ⚠⚠ **STILL RUNNING was STICKY — the live-flag bug, now fixed.** `sd_is_live_mirror()`
+  compared PATH STRINGS only, but `csv_logger_close()` nulls the mirror FILE*s at TERMINATE and keeps the
+  path strings (ARCHIVE_SD needs them). So after ANY completed run every file on that card reported
+  STILL RUNNING for the rest of the boot and the importer refused it — seen live on COM10+COM9. Now gated
+  on an OPEN handle. ⚠️ REFLASH needed; until then read the card in a reader, or power-cycle the board.
+- sep. 22, 2026 — **Per-file CSV delete, BOTH sources.** New firmware `DELETE_SD_FILE=<rel>` deletes ONE
+  capture (`DELETE_SD_PATH` only ever took whole folders, which is why `--delete-source` used to be
+  refused over `--port`). Guards: `sd_rel_capture_file_valid()` accepts only `*_telem.csv`/`*_arrivals.csv`
+  — so **runs.csv/location.txt can never be deleted this way** — and the board refuses a file it has OPEN.
+  Host: `export_logs.py --delete-sd-file`, `import_sdcard.py --delete-source` (now allowed with `--port`),
+  wizard picker's `d` works over USB too. Auto-delete-after-import stays OFF for USB (opt-in only).
+- sep. 22, 2026 — **Children now stop cleanly at TERMINATE.** `heartbeat_task` was the only thing still
+  transmitting after a run (`while(true)`, timer-driven); it now exits for non-root nodes. probe_gen and
+  telemetry already self-exited; relay_task parks on an empty queue. Root keeps beating (owns the member
+  table). App-level only — the child stays joined and USB-reachable. All 6 variants build clean.
+- sep. 22, 2026 — **Location pre-flight now covers the MANUAL run path too**, via shared
+  `Confirm-BoardLocations` (run_wizard.ps1); `$locationPreflightDone` (armed in `:restart`) stops a double
+  ask. Runs BEFORE any flash — location.txt is only read at boot.
 - sep. 22, 2026 — ⚠️ **`ERROR:LOCATION_WRITE_FAILED` = the card MOUNTED and the write still failed** (vs
   `LOCATION_NO_CARD` = mount failed). Hit live on COM10/COM11, which also had NO location.txt — consistent
   with a **write-protect lock switch on the microSD adapter** (mounts + reads fine, every write fails).
@@ -81,7 +94,6 @@
   `import_sdcard.py --port COMx`. Both routes verified byte-identical.
 - sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file** (counting =
   streaming the card first). `?` NEVER renders as `0`. Telem-only mismatch note; see the arrivals fix above.
-- sep. 22, 2026 — **`--delete-source` REFUSED with `--port`**: DELETE_SD_PATH removes FOLDERS, not files.
 - sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
   to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
   normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
@@ -105,18 +117,6 @@
 - sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
 - sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
 - sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
-- sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
-  `recv_count,forward_count,drop_count`; v1's 11 unchanged; `validate_integrity.py` accepts BOTH.
-  Point: `retry_count` means ONE thing on every role again (it used to carry the attacker's DROP
-  count). ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** — recv>0 with forward=0 would score
-  the root ForwardingRatio 0.0, making the node that MEASURES the attack read as the one committing
-  it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
-- sep. 20, 2026 — **⚠️ `PDR` ALONE SCORES 0.9987 vs a 0.7031 majority** (`analysis/leakage.py`, G402) ⇒
-  **excluding leaking features does NOT answer the panel's 2:40-4:50 objection.** PDR is not leakage — it
-  is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
-  by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
-  selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
-
 ## Durable facts & constraints
 - **Git repo root is this whole `Unified/` folder** (code, docs, `Paper/`, `ESP32-Environment/` all inside it),
   NOT `ESP32-Environment/` alone — branch `Unified`, remote `origin` =

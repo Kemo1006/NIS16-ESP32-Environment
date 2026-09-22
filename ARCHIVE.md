@@ -1147,3 +1147,19 @@ still-load-bearing annotations.
 - sep. 20, 2026 — ⚠️ **Attacker PLACEMENT still matters post-C7:** an attacker at the far end of a chain
   intercepts nothing, because it only drops what transits it. Full entry in ARCHIVE.md; the operational
   warning lives in `run_wizard.ps1` and `docs/EXPECTED-RESULTS.md`.
+
+## Rolled out of MEMORY.md — sep. 22, 2026 (line cap, 2nd pass)
+Both still live as one-line warnings in STATUS.md.
+
+- sep. 20, 2026 — **TELEMETRY IS SCHEMA v2 (14 cols) — EVERY BOARD MUST BE RE-FLASHED.** F3 appends
+  `recv_count,forward_count,drop_count`; v1's 11 unchanged; `validate_integrity.py` accepts BOTH.
+  Point: `retry_count` means ONE thing on every role again (it used to carry the attacker's DROP
+  count). ⚠️ **The ROOT reports 0/0/0, NOT its arrival count** — recv>0 with forward=0 would score
+  the root ForwardingRatio 0.0, making the node that MEASURES the attack read as the one committing
+  it. Full rationale: `csv_logger.h` F3 block + `root_main.c`.
+- sep. 20, 2026 — **⚠️ `PDR` ALONE SCORES 0.9987 vs a 0.7031 majority** (`analysis/leakage.py`, G402) ⇒
+  **excluding leaking features does NOT answer the panel's 2:40-4:50 objection.** PDR is not leakage — it
+  is the real, independently-observed effect — but a **100% drop rate in a fixed 180 s window is separable
+  by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
+  selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
+

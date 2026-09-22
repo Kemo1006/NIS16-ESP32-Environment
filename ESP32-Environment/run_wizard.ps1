@@ -1413,11 +1413,15 @@ function Select-CardFiles {
     # copy landed). This lets the operator clear out junk/aborted files (e.g.
     # the 0-row ABORTED entry in the listing) they never intend to import,
     # without importing something first just to trigger that cleanup.
-    # -NoDelete hides the 'd' (delete off the card) command. Set when the card
-    # is being read THROUGH a board over USB: the firmware's DELETE_SD_PATH
-    # removes whole folders, never single files, so there is no per-file delete
-    # to offer there and pretending otherwise would be a dead end.
-    param([Parameter(Mandatory)]$Files, [string]$Card, [switch]$NoDelete)
+    # Pass EITHER -Card (a pulled card: delete with Remove-Item) OR -Port (the
+    # card still in a board: delete with export_logs.py --delete-sd-file, which
+    # sends the firmware's DELETE_SD_FILE). Both give the operator the same 'd'
+    # command; only the mechanism differs. -NoDelete still hides 'd' entirely
+    # for any caller that wants a read-only picker.
+    # Note the board refuses to unlink a file it currently has OPEN, so the run
+    # in progress cannot be deleted out from under itself, and it accepts only
+    # *_telem.csv / *_arrivals.csv, so runs.csv is never reachable this way.
+    param([Parameter(Mandatory)]$Files, [string]$Card, [string]$Port, [switch]$NoDelete)
 
     # Sorted newest-build-first; unknown stamps sink to the bottom (they can
     # only be pre-stamp firmware, i.e. older than anything that has one).
@@ -1490,7 +1494,8 @@ function Select-CardFiles {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid card file selection after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $prompt = if ($NoDelete) {
+        $canDelete = (-not $NoDelete) -and ($Card -or $Port)
+        $prompt = if (-not $canDelete) {
             "`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'c' = cancel > "
         } else {
             "`nImport which? numbers (e.g. 1,3 or 1-{0}), 'a' = ALL, 'd1,3' = delete those from the card (no import), 'c' = cancel > "
@@ -1500,10 +1505,8 @@ function Select-CardFiles {
         $raw = $raw.Trim()
         if ($raw -eq 'c' -or $raw -eq 'C') { return $null }
 
-        if ($raw -match '^[dD]\s*(.+)$' -and $NoDelete) {
-            Write-Host "  Deleting single files is not possible over USB - the board can only delete whole" -ForegroundColor Yellow
-            Write-Host "  folders. Pull the card to delete individual files, or use the wizard's" -ForegroundColor Yellow
-            Write-Host "  'delete a folder from a running board's SD card' option." -ForegroundColor Yellow
+        if ($raw -match '^[dD]\s*(.+)$' -and -not $canDelete) {
+            Write-Host "  Deleting is not available from this listing." -ForegroundColor Yellow
             continue
         }
         if ($raw -match '^[dD]\s*(.+)$') {
@@ -1542,17 +1545,40 @@ function Select-CardFiles {
 
             $deletedRel = @()
             foreach ($d in $toDelete) {
-                if (-not $Card) {
-                    Write-Host ("    Skipped {0} - no card path known." -f $d.name) -ForegroundColor Yellow
+                if ($Card) {
+                    $full = Join-Path $Card $d.rel
+                    try {
+                        Remove-Item -LiteralPath $full -Force -ErrorAction Stop
+                        Write-Host ("    Deleted {0}" -f $d.name) -ForegroundColor Green
+                        $deletedRel += $d.rel
+                    }
+                    catch { Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $_.Exception.Message) -ForegroundColor Yellow }
+                }
+                elseif ($Port) {
+                    # The board wants card-relative FORWARD slashes; a mounted-card
+                    # listing reports Windows separators, so normalise either shape.
+                    # [char]92 rather than a backslash literal: as a regex, '\' alone is an
+                    # illegal trailing escape, and .Replace() is a plain string swap.
+                    $rel = $d.rel.Replace([string][char]92, '/')
+                    Push-Location (Join-Path $base 'tools')
+                    try {
+                        $out = & python export_logs.py --port $Port --delete-sd-file $rel 2>&1
+                        if ($out | Select-String -Pattern '^SD_DELETE_RESULT: OK' -Quiet) {
+                            Write-Host ("    Deleted {0}" -f $d.name) -ForegroundColor Green
+                            $deletedRel += $d.rel
+                        }
+                        else {
+                            $why = (@($out) | Where-Object { $_ -match 'FAILED|ERROR|no ack' } | Select-Object -First 1)
+                            if (-not $why) { $why = 'no result from the board' }
+                            Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $why) -ForegroundColor Yellow
+                        }
+                    }
+                    finally { Pop-Location }
+                }
+                else {
+                    Write-Host ("    Skipped {0} - no card path or port known." -f $d.name) -ForegroundColor Yellow
                     continue
                 }
-                $full = Join-Path $Card $d.rel
-                try {
-                    Remove-Item -LiteralPath $full -Force -ErrorAction Stop
-                    Write-Host ("    Deleted {0}" -f $d.name) -ForegroundColor Green
-                    $deletedRel += $d.rel
-                }
-                catch { Write-Host ("    FAILED to delete {0}: {1}" -f $d.name, $_.Exception.Message) -ForegroundColor Yellow }
             }
             if ($deletedRel.Count -gt 0) {
                 $sorted = @($sorted | Where-Object { $deletedRel -notcontains $_.rel })
@@ -1728,7 +1754,7 @@ function Import-OneSdCard {
             return
         }
 
-        $sel = Select-CardFiles -Files $cardFiles -Card $Card -NoDelete:([bool]$Port)
+        $sel = Select-CardFiles -Files $cardFiles -Card $Card -Port $Port
         if ($null -eq $sel) {
             Write-Host "  Cancelled - nothing copied." -ForegroundColor DarkGray
             return
@@ -1965,10 +1991,12 @@ function Invoke-ImportSdCard {
             # random serial device is not what anyone meant to pick.
             if (-not (Test-PortSafeToTouch -Port $port -Action 'read its SD card over USB')) { continue }
 
-            # --delete-source is deliberately NOT passed here. Over USB the
-            # firmware can only delete whole card FOLDERS, never single files,
-            # so there is nothing to hand it - import_sdcard.py refuses the
-            # combination outright rather than half-honouring it.
+            # --delete-source (auto-delete AFTER a verified copy) is still not
+            # passed here, deliberately. The firmware can now remove a single
+            # file (DELETE_SD_FILE), so it would work - but silently erasing a
+            # board's only copy as a side effect of reading it is not something
+            # to switch on by default. The picker's 'd' command is the explicit
+            # opt-in, and it is offered for this USB path now.
             Import-OneSdCard -Port $port -Repeat $repeat -Roster $rosterPath `
                              -ExpectPrefix $expectPrefix -Scenario $scenario
 

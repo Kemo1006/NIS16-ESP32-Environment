@@ -484,6 +484,29 @@ static void heartbeat_task(void *arg)
     int64_t next_send_us = 0;
 
     while (true) {
+        /* CLEAN STOP for child nodes once the experiment is over.
+         *
+         * Everything else a child runs already ends itself at TERMINATE:
+         * probe_gen_task and telemetry_task both loop on
+         * phase_listener_is_terminated(), and relay_task parks on an empty
+         * queue. This task did not — it is timer-driven, so it kept putting a
+         * mesh packet on the air every HEARTBEAT_INTERVAL_MS forever after the
+         * run had finished, which is radio traffic and power spent on an
+         * experiment that is over.
+         *
+         * The ROOT deliberately keeps beating: it owns the member table and is
+         * the node the operator still watches after a run. A child leaving is
+         * safe for that table — this is an APP-level packet, so stopping it
+         * does not leave the mesh or drop the ESP-MESH association, and the
+         * board stays reachable over USB for LIST_SD / EXPORT_SD_PATH /
+         * SET_LOCATION exactly as before. The export_status/export_percent
+         * fields carried here are unused Phase 2 placeholders (set once to
+         * IDLE and never updated), so nothing downstream loses a live feed. */
+        if (phase_listener_is_terminated() && !mesh_setup_is_root()) {
+            ESP_LOGI(TAG, "Heartbeat task exiting - TERMINATE reached (child node); "
+                          "the board stays up for serial export commands.");
+            vTaskDelete(NULL);
+        }
         if (esp_timer_get_time() >= next_send_us) {
             bool is_root = mesh_setup_is_root();
             /* The table owner is the root even when s_is_root was never set

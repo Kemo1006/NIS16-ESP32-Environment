@@ -715,6 +715,16 @@ def main() -> int:
                         "part must be baseline, blackhole or wormhole. The board refuses "
                         "if it is logging into that folder right now. Standalone: "
                         "exports/wipes nothing.")
+    p.add_argument("--delete-sd-file", dest="delete_sd_file", default=None,
+                   metavar="ATTACK/TOPOLOGY/LOCATION/FILE.csv",
+                   help="PERMANENTLY delete ONE capture CSV on this board's SD card "
+                        "over USB, e.g. blackhole/linear/G402/victim_NODE_AABBCC_r1_b3"
+                        "_telem.csv. The per-file counterpart to --delete-sd-path, for "
+                        "clearing an aborted run without taking the rest of the folder "
+                        "with it. The board accepts only *_telem.csv / *_arrivals.csv, "
+                        "so runs.csv and location.txt cannot be removed this way, and "
+                        "refuses a file it has open right now. Standalone: exports "
+                        "nothing.")
     args = p.parse_args()
 
     if args.delete_sd_path is not None:
@@ -940,6 +950,49 @@ def main() -> int:
                 print("   set-location command sent (no ack — older firmware without "
                       "this command). Reflash with the current firmware and retry.")
             return 0
+
+        if args.delete_sd_file:
+            print(f"-> DELETE_SD_FILE={args.delete_sd_file} ...")
+            _send_command(ser, f"DELETE_SD_FILE={args.delete_sd_file}")
+            # One unlink, unlike the folder walk below - but the card is still
+            # SPI at 4 MHz and may have to be mounted first, so allow for that.
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line == "SD_FILE_DELETED":
+                    print("SD_DELETE_RESULT: OK 1")
+                    print(f"   deleted {args.delete_sd_file} from the SD card.")
+                    return 0
+                if line.startswith("ERROR:"):
+                    hint = {
+                        "ERROR:BAD_SD_FILE":
+                            "the board rejected that name. It deletes only *_telem.csv / "
+                            "*_arrivals.csv under <attack>/<topology>/<location>[/<scenario>] "
+                            "- runs.csv and location.txt are deliberately out of reach.",
+                        "ERROR:SD_FILE_IN_USE":
+                            "the board has that file OPEN - it is the run in progress. Let it "
+                            "reach TERMINATE (or reboot the board) first.",
+                        "ERROR:SD_NO_CARD":
+                            "the SD card could not be mounted - reseat it and check wiring/power.",
+                        "ERROR:SD_FILE_NOT_FOUND":
+                            "no such file on this card (nothing deleted).",
+                        "ERROR:SD_DELETE_FAILED":
+                            "the card refused the unlink - it may be write-protected or failing.",
+                        "ERROR:COMMAND_TOO_LONG":
+                            "the path is too long for the board's command buffer.",
+                    }.get(line)
+                    print(f"SD_DELETE_RESULT: {line}")
+                    print(f"   delete-sd-file FAILED: {line}", file=sys.stderr)
+                    if hint:
+                        print(f"   {hint}", file=sys.stderr)
+                    return 1
+            print("SD_DELETE_RESULT: NO_ACK")
+            print("   no ack - older firmware without DELETE_SD_FILE, or the board is not "
+                  "running. Reflash with the current firmware and retry.", file=sys.stderr)
+            return 1
 
         if args.delete_sd_path:
             print(f"-> DELETE_SD_PATH={args.delete_sd_path} ...")

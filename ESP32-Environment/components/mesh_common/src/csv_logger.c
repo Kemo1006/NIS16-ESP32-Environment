@@ -632,8 +632,79 @@ static void uart_emit(const char *buf, int n, size_t cap)
  * nothing went wrong, the experiment just has not finished yet. */
 static bool sd_is_live_mirror(const char *full_path)
 {
-    return (s_sd_log_path[0] != '\0' && strcasecmp(full_path, s_sd_log_path) == 0) ||
-           (s_sd_arrivals_path[0] != '\0' && strcasecmp(full_path, s_sd_arrivals_path) == 0);
+    /* Gate on the FILE*, not just the path. csv_logger_close() nulls the
+     * handles at TERMINATE but deliberately keeps the path strings (ARCHIVE_SD
+     * and the close-time logging still need them), so a path-only test stayed
+     * true for the rest of the boot: a run that finished perfectly cleanly kept
+     * reporting STILL RUNNING, and the importer kept refusing it, until someone
+     * power-cycled the board. An OPEN handle is what 'being written' means. */
+    return (s_sd_log_fp != NULL && s_sd_log_path[0] != '\0'
+                && strcasecmp(full_path, s_sd_log_path) == 0) ||
+           (s_sd_arrivals_fp != NULL && s_sd_arrivals_path[0] != '\0'
+                && strcasecmp(full_path, s_sd_arrivals_path) == 0);
+}
+
+/* DELETE_SD_FILE=<rel> — remove ONE capture CSV, rather than the whole folder
+ * DELETE_SD_PATH takes. Exists because clearing a single aborted or unwanted
+ * run off a card used to mean deleting every capture in that leaf beside it.
+ *
+ * Stricter than sd_rel_file_valid() (which EXPORT_SD_PATH uses, and which must
+ * stay able to read runs.csv): deleting additionally requires the name to end
+ * in _telem.csv or _arrivals.csv. That is what puts runs.csv — the manifest
+ * recording every boot — plus location.txt, node_config.txt and the
+ * status_*.txt reports out of this command's reach. Losing runs.csv would
+ * leave every remaining capture on the card undatable and unattributable. */
+static bool sd_rel_capture_file_valid(const char *rel)
+{
+    if (!sd_rel_file_valid(rel)) {
+        return false;
+    }
+    size_t len = strlen(rel);
+    return (len > 10 && strcasecmp(rel + len - 10, "_telem.csv") == 0) ||
+           (len > 13 && strcasecmp(rel + len - 13, "_arrivals.csv") == 0);
+}
+
+static sd_delete_result_t sd_delete_rel_file(const char *rel)
+{
+    if (!sd_rel_capture_file_valid(rel)) {
+        return SD_DEL_BAD_PATH;
+    }
+    int n = snprintf(s_del_path, sizeof(s_del_path), "%s/%s", SD_MOUNT_POINT, rel);
+    if (n < 0 || n >= (int)sizeof(s_del_path)) {
+        return SD_DEL_BAD_PATH;
+    }
+
+    /* The one guard that matters most: never unlink a file this boot still has
+     * OPEN. The export task takes commands from boot (CSV_EXPORT_ON_INIT), so
+     * this can arrive mid-run, and deleting the mirror out from under a live
+     * FILE* loses the run in progress. Same reasoning as SD_DEL_IN_USE in
+     * sd_delete_rel_path(), narrowed from "folder" to "this exact file". */
+    if (sd_is_live_mirror(s_del_path)) {
+        return SD_DEL_IN_USE;
+    }
+
+    bool took_mount = false;
+    if (!sd_status_ensure_mounted("DELETE_SD_FILE", &took_mount)) {
+        return SD_DEL_NO_CARD;
+    }
+
+    sd_delete_result_t result;
+    struct stat st;
+    if (stat(s_del_path, &st) != 0) {
+        result = SD_DEL_NOT_FOUND;
+    } else if (S_ISDIR(st.st_mode)) {
+        result = SD_DEL_BAD_PATH;          /* a folder is DELETE_SD_PATH's job */
+    } else if (remove(s_del_path) == 0) {
+        result = SD_DEL_OK;
+    } else {
+        ESP_LOGW(TAG, "DELETE_SD_FILE: could not remove %s (errno %d)", s_del_path, errno);
+        result = SD_DEL_FAILED;
+    }
+
+    if (took_mount) {
+        sd_status_unmount();
+    }
+    return result;
 }
 
 /* Streams one leaf folder: its runs.csv manifest verbatim, then every CSV
@@ -1395,7 +1466,7 @@ static void serial_export_task(void *arg)
 
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
-                  "EXPORT_SD_PATH=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
+                  "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
                   "DELETE_SD_PATH=<attack>/<topology>/<location>");
 
@@ -1408,8 +1479,12 @@ static void serial_export_task(void *arg)
     printf("\n===========You can ctrl + ] to export the data=========\n\n");
     fflush(stdout);
 
-    /* Sized for DELETE_SD_PATH=<attack>/<topology>/<location>/<scenario>. */
-    char cmd_buf[96]  = {0};
+    /* Sized for the LONGEST command, now DELETE_SD_FILE=<attack>/<topology>/
+     * <location>/<scenario>/<file>.csv. A capture filename alone is ~43 chars
+     * (victim_NODE_<12 hex>_r<n>_b<n>_arrivals.csv), so the old 96 left almost
+     * no margin and a long site name would have truncated it. A truncated line
+     * is rejected below, never dispatched. */
+    char cmd_buf[192] = {0};
     int  cmd_idx      = 0;
     bool cmd_overflow = false;
 
@@ -1782,6 +1857,38 @@ static void serial_export_task(void *arg)
                     case SD_DEL_FAILED:
                     default:
                         snprintf(out, sizeof(out), "ERROR:SD_DELETE_FAILED:%d\n", removed);
+                        break;
+                }
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
+            /* -- DELETE_SD_FILE=<rel> -- PERMANENTLY delete ONE capture CSV.
+             * The per-file counterpart to DELETE_SD_PATH above, so an aborted
+             * or unwanted run can be cleared without taking every other
+             * capture in the same leaf folder with it. Refuses anything that
+             * is not a *_telem.csv / *_arrivals.csv, which is what keeps
+             * runs.csv and location.txt safe -- see sd_rel_file_valid(). */
+            } else if (strncmp(cmd_buf, "DELETE_SD_FILE=", 15) == 0) {
+                const char *rel = cmd_buf + 15;
+                char out[48];
+                switch (sd_delete_rel_file(rel)) {
+                    case SD_DEL_OK:
+                        snprintf(out, sizeof(out), "SD_FILE_DELETED\n");
+                        ESP_LOGI(TAG, "DELETE_SD_FILE: deleted %s", rel);
+                        break;
+                    case SD_DEL_BAD_PATH:
+                        snprintf(out, sizeof(out), "ERROR:BAD_SD_FILE\n");
+                        break;
+                    case SD_DEL_IN_USE:
+                        snprintf(out, sizeof(out), "ERROR:SD_FILE_IN_USE\n");
+                        break;
+                    case SD_DEL_NO_CARD:
+                        snprintf(out, sizeof(out), "ERROR:SD_NO_CARD\n");
+                        break;
+                    case SD_DEL_NOT_FOUND:
+                        snprintf(out, sizeof(out), "ERROR:SD_FILE_NOT_FOUND\n");
+                        break;
+                    case SD_DEL_FAILED:
+                    default:
+                        snprintf(out, sizeof(out), "ERROR:SD_DELETE_FAILED\n");
                         break;
                 }
                 uart_write_bytes(EXPORT_UART, out, strlen(out));

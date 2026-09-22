@@ -327,7 +327,7 @@ class _BoardCard:
     def __init__(self, port):
         self.port = port
         self.label = f"{port} (card in the board)"
-        self.can_delete = False   # DELETE_SD_PATH removes FOLDERS, not files
+        self.can_delete = True    # DELETE_SD_FILE removes ONE capture file
         self._ser = export_logs._open_port(port)
         self._files = {}      # rel -> size in bytes
         self._live = set()    # rel paths the board still has OPEN right now
@@ -458,10 +458,28 @@ class _BoardCard:
         return _row_count(dest)
 
     def delete(self, rel):
+        """Remove ONE capture file from the card over USB (DELETE_SD_FILE).
+
+        Only ever reached after the caller has VERIFIED the copy (destination
+        exists, row count matches), same contract as the mounted-card path, so
+        a failed or short transfer can never reach this. The firmware refuses
+        anything that is not a *_telem.csv / *_arrivals.csv, and refuses a file
+        it currently has open, so the run in progress and runs.csv itself are
+        both out of reach even if a caller asked for them."""
+        export_logs._send_command(self._ser, f"DELETE_SD_FILE={rel}")
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            raw = self._ser.readline()
+            if not raw:
+                continue
+            line = raw.decode("utf-8", errors="replace").strip()
+            if line == "SD_FILE_DELETED":
+                return
+            if line.startswith("ERROR:"):
+                raise RuntimeError(f"board refused DELETE_SD_FILE: {line}")
         raise RuntimeError(
-            "--delete-source is not available over --port: the firmware's "
-            "DELETE_SD_PATH removes whole folders, never single files. Pull the "
-            "card, or use the wizard's 'delete a folder from the card' option.")
+            "board never acknowledged DELETE_SD_FILE. Old firmware without the "
+            "command, or the port is being held by idf.py monitor.")
 
     def close(self):
         try:
@@ -741,12 +759,6 @@ def main():
 
     if args.card and not os.path.isdir(args.card):
         return f"ERROR: --card path not found: {args.card}"
-    if args.port and args.delete_source:
-        return ("ERROR: --delete-source cannot be used with --port. The "
-                "firmware can only delete whole card FOLDERS (DELETE_SD_PATH), "
-                "never single files, so there is no safe per-file removal over "
-                "USB. Pull the card if you need to free it.")
-
     try:
         source = _MountedCard(args.card) if args.card else _BoardCard(args.port)
     except Exception as e:                       # serial, or a board that can't list
