@@ -2,8 +2,15 @@
 # NIS16-ESP32-Environment-semi-final/, which has its own .gitignore.
 # Only personal / generated files are ignored here so the anchor docs get committed.
 
-CLAUDE.local.md      # personal overrides — never share
-.env                 # secrets
+# NOTE: .gitignore does NOT support trailing comments. A comment placed after a
+# pattern becomes part of the pattern, so it silently matches nothing. That bug
+# is how CLAUDE.local.md and .env ended up unignored here (fixed sep. 22, 2026).
+# Keep every comment on its own line.
+
+# personal overrides — never share
+CLAUDE.local.md
+# secrets
+.env
 *.log
 
 # Editor / OS junk

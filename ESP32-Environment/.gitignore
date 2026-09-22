@@ -5,6 +5,16 @@ build/
 build_*/
 **/build_*/
 
+# build_all_variants.ps1's compile-check dirs. These are NOT called build_*:
+# they were deliberately shortened to bcr/bcc/bcba/bcbv/bcwa/bcwb (sep. 22, 2026)
+# because the long `build_check_<Name>` paths pushed ninja's object paths past
+# Windows MAX_PATH and failed in the bootloader subproject. That rename also
+# walked them straight out of the `build_*/` rule above, leaving ~8,500 files of
+# build output untracked-but-not-ignored, one `git add -A` away from the repo.
+# Keep this list in sync with the $variants table in build_all_variants.ps1.
+bc[a-z]*/
+**/bc[a-z]*/
+
 # sdkconfig backups / generated headers
 sdkconfig.old
 **/sdkconfig.old
