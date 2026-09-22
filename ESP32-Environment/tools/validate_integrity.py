@@ -204,8 +204,30 @@ def _sha256(path):
     return h.hexdigest()
 
 
-def _find_csvs(root):
-    for dirpath, _dirnames, filenames in os.walk(root):
+# Folders that hold DERIVED or SUPERSEDED copies of captures already validated
+# elsewhere in the same tree. Same list preprocess.py strips when it resolves a
+# capture's cell (see its _cell_from_path), so the two agree on what counts as a
+# real export.
+DERIVED_DIRS = {"trimmed", "_archive", "archive"}
+
+
+def _find_csvs(root, include_derived=False):
+    """Every capture CSV under `root`, skipping derived/superseded copies.
+
+    trimmed/ holds trim_run.py's output. When a capture contains exactly one
+    boot session — the healthy case — that output is BYTE-IDENTICAL to the raw
+    file, so walking into it validated every capture twice and reported "10
+    files, 6 PASS, 4 WARN" for what was really 5 files. The duplicate rows made
+    the PASS/WARN tally meaningless as a count of actual captures.
+
+    _archive/ and archive/ are prior runs deliberately moved aside; they are not
+    part of the current export and re-reporting them as WARNs buries the files
+    that are. Pass include_derived=True to check them on purpose.
+    """
+    for dirpath, dirnames, filenames in os.walk(root):
+        if not include_derived:
+            # Prune in place so os.walk never descends into them at all.
+            dirnames[:] = [d for d in dirnames if d not in DERIVED_DIRS]
         for name in sorted(filenames):
             if name.endswith("_telem.csv") or name.endswith("_arrivals.csv"):
                 yield os.path.join(dirpath, name)
@@ -473,9 +495,19 @@ def _check_sample_coverage(rows, header, kind, sample_interval_ms, report):
     whole file. Telemetry only — arrivals is an event log with no expected rate
     (see _check_arrivals_coverage).
 
-    Measured on this project's captures: 95.5% to 97.3%, the shortfall being
-    FreeRTOS scheduling jitter rather than lost samples. The root sits lowest
-    because it also runs the probe sink and phase broadcaster.
+    A shortfall has TWO very different causes and they must not be reported as
+    one. Either the node stopped logging for a while (real holes in the record,
+    data actually missing), or it logged continuously but at a slower cadence
+    than configured (every sample present, just fewer per second). Only the
+    first is lost data; the second is a firmware timing property.
+
+    So this measures the gaps directly and says which it found. Before 2026-09-22
+    the firmware slept with vTaskDelay() AFTER the loop body, making the real
+    period body_time + SAMPLING_INTERVAL_MS -- the root landed at 110ms/9.09Hz
+    and scored 93.6% here with ZERO gaps in the entire run. The old message said
+    "node was dropping samples", which sent people looking for lost data that did
+    not exist. The loops now use xTaskDelayUntil(); a file still showing a slow
+    cadence is either pre-fix or a genuine regression, and this report says which.
     """
     if kind != "telem" or not rows:
         return
@@ -496,16 +528,41 @@ def _check_sample_coverage(rows, header, kind, sample_interval_ms, report):
         return
     expected = span_s * (1000.0 / sample_interval_ms)
     coverage = len(stamps) / expected
+    nominal_hz = 1000.0 / sample_interval_ms
+
+    # What the node ACTUALLY did, independent of what it was configured to do.
+    stamps.sort()
+    deltas = [(b - a) / 1e6 for a, b in zip(stamps, stamps[1:])]
+    deltas_sorted = sorted(deltas)
+    median_s = deltas_sorted[len(deltas_sorted) // 2] if deltas_sorted else 0.0
+    actual_hz = (1.0 / median_s) if median_s > 0 else 0.0
+    # A "gap" is an interval several times the node's OWN cadence -- i.e. it
+    # stopped logging. Measured against the median, not the nominal rate, so a
+    # uniformly-slow node is never mistaken for one with holes in its record.
+    gaps = [d for d in deltas if median_s > 0 and d > 3 * median_s]
+    worst_s = max(deltas) if deltas else 0.0
+
     if coverage < SAMPLE_COVERAGE_FLOOR:
+        if gaps:
+            lost = int(sum(d / median_s - 1 for d in gaps))
+            cause = (f"{len(gaps)} gap(s) in the record, longest {worst_s:.2f}s "
+                     f"— roughly {lost} sample(s) genuinely MISSING")
+        else:
+            cause = (f"but NO gaps (longest interval {worst_s:.2f}s): the node "
+                     f"logged continuously at ~{actual_hz:.2f} Hz, slower than the "
+                     f"{nominal_hz:.1f} Hz this check expects. Nothing is lost — "
+                     f"the cadence is off. Check the telemetry loop uses "
+                     f"xTaskDelayUntil(), or pass --sample-interval-ms "
+                     f"{median_s * 1000:.0f}")
         report.warn(
             f"sample coverage {coverage:.1%} of expected "
-            f"({len(stamps)} rows over {span_s:.0f}s at "
-            f"{1000.0 / sample_interval_ms:.1f} Hz) — below the "
-            f"{SAMPLE_COVERAGE_FLOOR:.0%} floor; node was dropping samples"
+            f"({len(stamps)} rows over {span_s:.0f}s at {nominal_hz:.1f} Hz) "
+            f"— below the {SAMPLE_COVERAGE_FLOOR:.0%} floor; {cause}"
         )
     else:
         report.info(f"sample coverage {coverage:.1%} of expected "
-                    f"({len(stamps)} rows over {span_s:.0f}s)")
+                    f"({len(stamps)} rows over {span_s:.0f}s, "
+                    f"measured ~{actual_hz:.2f} Hz, {len(gaps)} gap(s))")
 
 
 def _check_phase_coverage(phase_counts, attack, kind, sample_interval_ms, report):
@@ -660,11 +717,12 @@ def _check_manifest(rel_path, digest, size, row_count, manifest, relock, report)
         manifest[rel_path]["row_count"] = row_count  # keep in sync, hash unchanged
 
 
-def validate(target_dir, manifest_path, relock, sample_interval_ms):
+def validate(target_dir, manifest_path, relock, sample_interval_ms,
+             include_derived=False):
     reports = []
     manifest = _load_manifest(manifest_path)
 
-    for path in _find_csvs(target_dir):
+    for path in _find_csvs(target_dir, include_derived):
         report = FileReport(path)
         name = os.path.basename(path)
         kind = "telem" if name.endswith("_telem.csv") else "arrivals"
@@ -717,6 +775,11 @@ def main():
                          "Default: the exports/ folder next to this script.")
     p.add_argument("--manifest", default=None,
                     help="Manifest JSON path. Default: <directory>/manifest.json")
+    p.add_argument("--include-derived", action="store_true",
+                    help="Also validate trimmed/, _archive/ and archive/ copies. Off by "
+                         "default: trimmed/ output is byte-identical to the raw capture "
+                         "whenever a file holds one boot session, so including it "
+                         "validated everything twice and doubled the PASS/WARN tally.")
     p.add_argument("--strict", action="store_true",
                     help="Treat WARNings as failures too (nonzero exit).")
     p.add_argument("--relock", action="store_true",
@@ -732,7 +795,8 @@ def main():
         return 1
 
     manifest_path = args.manifest or os.path.join(args.directory, "manifest.json")
-    reports = validate(args.directory, manifest_path, args.relock, args.sample_interval_ms)
+    reports = validate(args.directory, manifest_path, args.relock,
+                       args.sample_interval_ms, args.include_derived)
 
     if not reports:
         print(f"No *_telem.csv / *_arrivals.csv files found under {args.directory}")

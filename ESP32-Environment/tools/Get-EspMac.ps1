@@ -56,16 +56,35 @@ param(
 function Get-EspMac {
     param([Parameter(Mandatory)][string]$Port)
 
-    # Prefer esptool.py on PATH (ESP-IDF PowerShell); fall back to the pinned
-    # v5.3.5 install so this also works from a plain PowerShell window.
+    # Prefer esptool.py on PATH (an ESP-IDF PowerShell); otherwise DISCOVER an
+    # install rather than pinning one.
+    #
+    # This used to hardcode esp-idf-v5.3.5 + idf5.3_py3.11_env. CLAUDE.md records
+    # that the team runs BOTH 5.3.5 and 5.5.4, so on any laptop that had moved on
+    # the fallback pointed at a directory that does not exist and this function
+    # simply stopped working -- silently, because the only symptom is "no MAC".
+    # Verified 2026-09-23: this machine has 5.5.4 / idf5.5_py3.11_env only.
     $esptool = Get-Command esptool.py -ErrorAction SilentlyContinue
     if ($esptool) {
         $raw = & esptool.py -p $Port read_mac 2>$null
     } else {
-        $py = 'C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe'
-        $et = 'C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py\esptool\esptool.py'
-        if (-not (Test-Path $py) -or -not (Test-Path $et)) {
-            Write-Warning "esptool.py not on PATH and pinned path not found. Run from the ESP-IDF 5.3 PowerShell window."
+        $toolsRoot = if ($env:IDF_TOOLS_PATH) { $env:IDF_TOOLS_PATH }
+                     else { Join-Path $(if ($env:SystemDrive) { $env:SystemDrive } else { 'C:' }) 'Espressif' }
+        # Newest version first, so a laptop with several installs uses the latest.
+        $idfRoots = @()
+        if ($env:IDF_PATH) { $idfRoots += $env:IDF_PATH }
+        $idfRoots += (Get-ChildItem (Join-Path $toolsRoot 'frameworks') -Directory -Filter 'esp-idf-*' -ErrorAction SilentlyContinue |
+                      Sort-Object Name -Descending | Select-Object -ExpandProperty FullName)
+        $et = $idfRoots |
+              ForEach-Object { Join-Path $_ 'components\esptool_py\esptool\esptool.py' } |
+              Where-Object { Test-Path $_ } | Select-Object -First 1
+        $py = Get-ChildItem (Join-Path $toolsRoot 'python_env') -Directory -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending |
+              ForEach-Object { Join-Path $_.FullName 'Scripts\python.exe' } |
+              Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $py) { $py = (Get-Command python -ErrorAction SilentlyContinue).Source }
+        if (-not $et -or -not $py) {
+            Write-Warning "esptool.py not on PATH and no ESP-IDF install found under $toolsRoot. Run this from an ESP-IDF PowerShell window."
             return
         }
         $raw = & $py $et -p $Port read_mac 2>$null

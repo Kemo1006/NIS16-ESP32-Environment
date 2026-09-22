@@ -318,7 +318,7 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
-            @{ Idx = 16; Text = 'Sync capture data with GitHub (push / pull / test) - raw CSVs only, never code' }
+            @{ Idx = 16; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, presets. Never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
             @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
@@ -2811,7 +2811,11 @@ function Invoke-RunAnalysisOnly {
     # rather than failing the whole thing.
     $edaPy = $null
     $featuresPy = $null
-    foreach ($cand in @('python', 'python3', 'C:\Python314\python.exe')) {
+    # 'py' is the Windows Python launcher: always on PATH when Python is
+    # installed, and it finds the interpreter wherever it actually lives.
+    # Replaces a hardcoded C:\Python314\python.exe, which was one
+    # machine's install path and matched nothing anywhere else.
+    foreach ($cand in @('python', 'python3', 'py')) {
         if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
         & $cand -c "import pandas, numpy, matplotlib, seaborn, scipy, sklearn" 2>$null
         if ($LASTEXITCODE -eq 0) { $edaPy = $cand; if (-not $featuresPy) { $featuresPy = $cand }; break }
@@ -2925,7 +2929,8 @@ function Invoke-DataSync {
     # tools\push_data.py does all git work in a private clone, so this folder's
     # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
     # actions - keep the two in sync.
-    param([ValidateSet('push', 'pull', 'test')][string]$Mode, [ValidateSet('exports', 'presets')][string]$Area = 'exports')
+    param([ValidateSet('push', 'pull', 'test')][string]$Mode,
+          [ValidateSet('exports', 'presets', 'analysis')][string]$Area = 'exports')
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
     if ($Mode -eq 'test') {
@@ -2943,8 +2948,19 @@ function Invoke-DataSync {
     } elseif ($Mode -eq 'pull') {
         Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
         Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+    } elseif ($Area -eq 'analysis') {
+        if ($Mode -eq 'pull') {
+            Write-Host "Copies teammates' analysis + EDA output from GitHub into analysis\<attack>\<topology>\<site>\" -ForegroundColor DarkGray
+            Write-Host "(feature_table.csv, windowed_dataset.csv, eda_output\*.png/.csv). Lists them and asks first;" -ForegroundColor DarkGray
+            Write-Host "a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+        } else {
+            Write-Host "Pushes your analysis + EDA RESULTS under analysis\<attack>\<topology>\<site>\ - the plots and" -ForegroundColor DarkGray
+            Write-Host "tables a teammate cannot regenerate without your raw data. These are .gitignore'd (they are" -ForegroundColor DarkGray
+            Write-Host "rebuilt by -Analyze), so they never reach GitHub any other way." -ForegroundColor DarkGray
+            Write-Host "Only .csv/.png/.json/.md at cell depth go up - the pipeline's own .py is never pushed." -ForegroundColor DarkGray
+        }
     } else {
-        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\)." -ForegroundColor DarkGray
         Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
     }
     Push-Location $base
@@ -2966,18 +2982,22 @@ function Invoke-DataSyncMenu {
     # so the main menu stays scannable. Loops so a push can be followed by a pull
     # (or a presets upload) without going back out to the main menu first.
     while ($true) {
-        switch (Show-Menu -Title 'Capture data sync (GitHub) - raw CSVs and presets only, never code:' -Options @(
+        switch (Show-Menu -Title 'Data sync (GitHub) - captures, analysis output and presets. NEVER code:' -Options @(
             "Push my capture data to GitHub - merges with teammates' pushes",
             "Pull teammates' capture data from GitHub - never overwrites your files",
+            'Push my analysis + EDA output - feature_table, windowed_dataset, eda_output\ plots',
+            "Pull teammates' analysis + EDA output - never overwrites your files",
             "Upload my saved presets to GitHub - shares presets\<you>\*.json, fetches teammates' new ones back too",
             'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
             'Back to the main menu'
-        ) -DefaultIndex 4) {
+        ) -DefaultIndex 6) {
             0 { Invoke-DataSync -Mode push -Area exports }
             1 { Invoke-DataSync -Mode pull -Area exports }
-            2 { Invoke-DataSync -Mode push -Area presets }
-            3 { Invoke-DataSync -Mode test }
-            4 { return }
+            2 { Invoke-DataSync -Mode push -Area analysis }
+            3 { Invoke-DataSync -Mode pull -Area analysis }
+            4 { Invoke-DataSync -Mode push -Area presets }
+            5 { Invoke-DataSync -Mode test }
+            6 { return }
         }
     }
 }

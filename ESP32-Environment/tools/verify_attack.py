@@ -78,8 +78,20 @@ import argparse
 import math
 import sys
 
+import os
+
 import numpy as np
 import pandas as pd
+
+# analysis/exposure.py holds the one definition of "who was actually exposed to
+# the attacker", shared with features.py so this report and the feature table can
+# never disagree about who counts as a victim. Path is derived from THIS file's
+# location, so it follows the repo wherever it is checked out.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "analysis"))
+try:
+    import exposure as _exposure
+except ImportError:          # analysis/ missing — report still runs, just without
+    _exposure = None         # the derived column on tables that lack it
 
 LABEL_BASELINE = 0
 LABEL_BLACKHOLE = 1
@@ -433,6 +445,19 @@ def print_per_node_pdr(df, label, sigma_note=""):
     """
     if "PDR" not in df.columns or "node_id" not in df.columns:
         return
+
+    # EXPOSURE is what decides who counts as a victim. The firmware's role says
+    # what a board WAS BUILT as; exposure says whether the attacker actually sat
+    # on its path to the root. A child above the attacker logs itself "victim"
+    # and is never touched -- see analysis/exposure.py.
+    df = df.copy()
+    if "exposure" not in df.columns:
+        # Older feature tables have no column; derive it here so this report is
+        # correct on them too rather than silently falling back to the role.
+        try:
+            df["exposure"] = _exposure.compute_exposure(df).values
+        except Exception:
+            df["exposure"] = "unknown"
     lab = df["Label"] if "Label" in df.columns else df.get("window_label")
     if lab is None:
         return
@@ -443,7 +468,7 @@ def print_per_node_pdr(df, label, sigma_note=""):
         return
 
     keys = ["node_id"]
-    for extra in ("node_role", "hop"):
+    for extra in ("node_role", "exposure", "hop"):
         if extra in df.columns:
             keys.append(extra)
 
@@ -461,30 +486,60 @@ def print_per_node_pdr(df, label, sigma_note=""):
     rows.sort(key=lambda t: t[2])   # worst-hit node first
     print("  PER-NODE PDR (the pooled row above averages these — see "
           "print_per_node_pdr.__doc__)")
-    hdr = "  {:<20}{:<12}{:>6}{:>12}{:>12}{:>8}".format(
-        "node_id", "role", "hop", "baseline", "attack", "n")
+    hdr = "  {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
+        "node_id", "built as", "exposure", "hop", "baseline", "attack", "n")
     print(hdr)
     print("  " + "-" * (len(hdr) - 2))
+    names = {k: i for i, k in enumerate(keys)}
     for key, bmean, amean, n in rows:
         node = key[0]
-        role = key[1] if len(key) > 1 else "?"
-        hop = key[2] if len(key) > 2 else float("nan")
+
+        def field(col, default="?"):
+            i = names.get(col)
+            return key[i] if i is not None and i < len(key) else default
+
+        role = field("node_role")
+        exp = field("exposure", "unknown")
+        hop = field("hop", float("nan"))
         hop_s = "-" if pd.isna(hop) else f"{int(hop)}"
         b_s = "  n/a" if pd.isna(bmean) else f"{bmean:.4f}"
-        print("  {:<20}{:<12}{:>6}{:>12}{:>12}{:>8}".format(
-            str(node), str(role), hop_s, b_s, f"{amean:.4f}", n))
+        # "victim" is printed for downstream nodes ONLY. Every other child is
+        # named for what it actually was during the run, so the table can never
+        # be read as "two victims, one of which somehow survived".
+        exp_s = {"downstream": "VICTIM", "upstream": "not in path",
+                 "attacker": "ATTACKER", "root": "root",
+                 "no_attacker": "no attacker"}.get(str(exp), str(exp))
+        print("  {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
+            str(node), str(role), exp_s, hop_s, b_s, f"{amean:.4f}", n))
 
-    unaffected = [r for r in rows if r[2] > 0.90]
-    hit = [r for r in rows if r[2] < 0.50]
-    if unaffected and hit:
-        print()
-        print("  ** {} victim(s) were NOT attacked at all (PDR > 0.90 through the "
-              "attack window):".format(len(unaffected)))
-        print("     " + ", ".join(str(r[0][0]) for r in unaffected))
-        print("     They sit ABOVE the attacker in the tree, so their traffic never "
-              "transits it.")
-        print("     Report PDR PER NODE in the write-up; the pooled value describes "
-              "no actual node.")
+    ei = names.get("exposure")
+    def exposure_of(r):
+        return str(r[0][ei]) if ei is not None and ei < len(r[0]) else "unknown"
+
+    victims = [r for r in rows if exposure_of(r) == "downstream"]
+    bystanders = [r for r in rows if exposure_of(r) == "upstream"]
+    print()
+    if victims:
+        worst = min(r[2] for r in victims)
+        print("  ** {} VICTIM(S) — the attacker sits on their path to the root. "
+              "Worst attack PDR {:.4f}.".format(len(victims), worst))
+        print("     " + ", ".join(str(r[0][0]) for r in victims))
+        print("     This is the population the write-up should quote. The pooled "
+              "PDR above averages")
+        print("     victims with bystanders and describes no actual node.")
+    if bystanders:
+        print("  ** {} node(s) were NOT in the attack path (built as children, "
+              "never exposed):".format(len(bystanders)))
+        print("     " + ", ".join(str(r[0][0]) for r in bystanders))
+        print("     They sit ABOVE the attacker, so their traffic never transits "
+              "it. Unaffected BY")
+        print("     CONSTRUCTION — not evidence the attack was weak, and not "
+              "victims.")
+    if not victims and bystanders:
+        print("  !! No node was downstream of the attacker in this run, so the "
+              "capture cannot")
+        print("     show a blackhole effect at all. Re-place the attacker and "
+              "re-run.")
     print()
 
 

@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Push capture CSVs or saved presets to GitHub - data only, never code.
+"""Push capture CSVs, analysis output or saved presets to GitHub - data only, never code.
 
-    python tools/push_data.py push                    raw capture CSVs under tools/exports/
+    python tools/push_data.py push                     raw capture CSVs under tools/exports/
+    python tools/push_data.py push --area analysis     analysis + EDA output (feature_table,
+                                                       windowed_dataset, eda_output/ plots)
     python tools/push_data.py push --area presets      your saved presets under presets/<you>/
     python tools/push_data.py pull                     fetch teammates' CSVs - never touches code
+    python tools/push_data.py pull --area analysis     fetch teammates' analysis + EDA output
     python tools/push_data.py pull --area presets      fetch teammates' presets - never touches code
+
+The branch is whichever one YOUR repo is checked out on (--branch overrides).
+It used to be hardcoded, which quietly sent data to one branch while the code
+that produced it sat on another.
     python tools/push_data.py test                     3 throwaway animal CSVs under sync_test/
     python tools/push_data.py test-cleanup             remove sync_test/ from GitHub and here
 
@@ -44,9 +51,20 @@ LEDGERS = {"run_ledger.csv", "test_ledger.csv"}
 EXPORTS = "tools/exports"
 TEST_AREA = "sync_test"
 PRESETS = "presets"
+ANALYSIS = "analysis"
 CONFLICTS = "sync_conflicts"
 MAX_ATTEMPTS = 5
-AREA_EXT = {EXPORTS: ".csv", TEST_AREA: ".csv", PRESETS: ".json"}
+# str.endswith() takes a tuple, so an area may accept several file types.
+# ANALYSIS deliberately does NOT list .py/.txt: analysis/ holds the pipeline's
+# own source (preprocess.py, eda.py, requirements.txt) right beside its output,
+# and this tool must never move code. See is_area_payload() for the second half
+# of that guard.
+AREA_EXT = {
+    EXPORTS: (".csv",),
+    TEST_AREA: (".csv",),
+    PRESETS: (".json",),
+    ANALYSIS: (".csv", ".png", ".json", ".md"),
+}
 # Folders that mean "superseded capture, not live data". .gitignore already covers
 # these, but a file committed before that rule existed stays --cached and would
 # still be pushed into the live tree, so the sync path re-checks them by name.
@@ -95,14 +113,54 @@ def rows(data):
     return max(len(data.splitlines()) - 1, 0)
 
 
+def _fmt_size(n):
+    if n >= 1024 * 1024:
+        return "{:.1f} MB".format(n / (1024 * 1024))
+    if n >= 1024:
+        return "{:.0f} KB".format(n / 1024)
+    return "{} B".format(n)
+
+
 def tag(s):
     return re.sub(r"[^A-Za-z0-9-]", "-", s or "unknown").strip("-") or "unknown"
+
+
+def current_branch():
+    """The branch YOUR repo is checked out on, or None if there isn't one.
+
+    Returns None on a detached HEAD, where `rev-parse --abbrev-ref HEAD` says
+    the literal string "HEAD" -- which is not a branch and must never be pushed
+    to as if it were.
+    """
+    p = git(["rev-parse", "--abbrev-ref", "HEAD"], BASE, check=False)
+    if p.returncode != 0:
+        return None
+    name = text(p).strip()
+    return None if name in ("", "HEAD") else name
 
 
 class Ctx:
     def __init__(self, args):
         self.yes = args.yes
-        self.branch = args.branch
+        # Follow the branch the operator is actually working on.
+        #
+        # This used to default to a fixed "Unified". That silently sent capture
+        # data to one branch while the code that produced it lived on another,
+        # so a teammate who checked out the working branch got the firmware but
+        # not the CSVs, and the push output said "branch Unified" in a line that
+        # is easy to read past. Data belongs beside the code that made it.
+        #
+        # An explicit --branch still wins, for the case where you really do mean
+        # somewhere else.
+        self.branch = args.branch or current_branch()
+        self.branch_explicit = bool(args.branch)
+        if not self.branch:
+            raise SyncError(
+                "Could not tell which branch to sync with: this repo is on a detached "
+                "HEAD (no branch checked out).\n"
+                "Check out a branch first (git switch <branch>), or say explicitly:\n"
+                "  python tools/push_data.py {} --branch <branch>".format(
+                    getattr(args, "action", "push")))
         self.root = Path(text(git(["rev-parse", "--show-toplevel"], BASE)).strip())
         self.prefix = text(git(["rev-parse", "--show-prefix"], BASE)).strip()
         self.url = text(git(["remote", "get-url", args.remote], BASE)).strip()
@@ -118,27 +176,68 @@ class Ctx:
             self.sync = Path(args.sync_dir)
         else:
             home = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".cache")
-            h = hashlib.sha1("{}|{}".format(self.url, self.root).encode()).hexdigest()[:10]
+            h = hashlib.sha1("{}|{}|{}".format(
+                self.url, self.root, self.branch).encode()).hexdigest()[:10]
             self.sync = Path(home) / MARKER / h
 
 
 # ------------------------------------------------------------ private clone ---
 
+def require_remote_branch(ctx):
+    """Check the branch exists on the remote before anything tries to clone it.
+
+    ensure_clone() clones with --branch <name>; if the branch is local-only that
+    fails with git's bare "Remote branch not found in upstream origin", which
+    reads like the remote is broken rather than like "push your branch first".
+    """
+    p = git(["ls-remote", "--heads", ctx.url, ctx.branch], BASE, check=False)
+    if p.returncode != 0 or text(p).strip():
+        return
+    if ctx.branch_explicit:
+        # They named it, so don't lecture them about the branch they are on.
+        raise SyncError(
+            "Branch '{0}' does not exist on the remote, so there is nothing to sync "
+            "data against.\n"
+            "Check the name, or drop --branch to use the branch this repo is on "
+            "({1}).".format(ctx.branch, current_branch() or "none - detached HEAD"))
+    raise SyncError(
+        "This repo is on branch '{0}', but that branch is not on the remote yet, so "
+        "there is nothing to sync data against.\n"
+        "Push the branch itself first:\n"
+        "  git push -u origin {0}\n"
+        "or sync the data somewhere that already exists:\n"
+        "  python tools/push_data.py push --branch <existing-branch>".format(ctx.branch))
+
+
 def ensure_clone(ctx):
+    require_remote_branch(ctx)
     marker = ctx.sync / ".git" / MARKER
     if ctx.sync.exists():
         if not marker.exists():
             raise SyncError("{} exists but was not made by this tool - refusing to touch it.\n"
                             "Move it somewhere else and run again.".format(ctx.sync))
         git(["remote", "set-url", "origin", ctx.url], ctx.sync)
+        apply_sparse(ctx)
         return
     ctx.sync.parent.mkdir(parents=True, exist_ok=True)
     print("  First run on this computer: making a small private copy of the repo (data folders only)...")
     git(["clone", "--quiet", "--filter=blob:none", "--no-checkout", "--single-branch",
          "--branch", ctx.branch, ctx.url, str(ctx.sync)], ctx.sync.parent)
     marker.write_text("created by tools/push_data.py - safe to delete\n")
+    apply_sparse(ctx)
+
+
+def apply_sparse(ctx):
+    """(Re)declare which folders the private clone checks out.
+
+    Called on EVERY run, not just at clone time: a clone made before a new area
+    existed would otherwise never check that folder out, and the area would look
+    permanently empty on the one machine that had synced before. `sparse-checkout
+    set` is idempotent, so re-running it costs nothing.
+    """
     git(["sparse-checkout", "set", "--cone",
-         ctx.prefix + EXPORTS, ctx.prefix + TEST_AREA, ctx.prefix + PRESETS, ctx.prefix + CONFLICTS], ctx.sync)
+         ctx.prefix + EXPORTS, ctx.prefix + TEST_AREA, ctx.prefix + PRESETS,
+         ctx.prefix + ANALYSIS, ctx.prefix + CONFLICTS], ctx.sync)
 
 
 def refresh(ctx):
@@ -162,13 +261,19 @@ def push_head(ctx):
     raise SyncError("git push failed (login / network / permission - not a teammate race):\n" + msg.strip())
 
 
-def commit_checked(ctx, allowed, message, ext, allow_delete=False):
+def commit_checked(ctx, allowed, message, area, allow_delete=False):
     p = git(["diff", "--cached", "--name-status", "-z", "--no-renames"], ctx.sync)
     toks = nul_list(p)
     bad = []
     for status, path in zip(toks[0::2], toks[1::2]):
         ok_status = status in ("A", "M") or (allow_delete and status == "D")
-        ok_path = any(path.startswith(ctx.prefix + a + "/") for a in allowed) and path.lower().endswith(ext)
+        rel = path[len(ctx.prefix):]
+        # sync_conflicts/ mirrors an area's files under a different root, so it
+        # is checked on extension only -- the cell-depth rule below belongs to
+        # analysis/ paths, and a conflict copy is not one.
+        ok_ext = (is_area_payload(area, rel) if rel.startswith(area + "/")
+                  else rel.lower().endswith(AREA_EXT[area]))
+        ok_path = any(path.startswith(ctx.prefix + a + "/") for a in allowed) and ok_ext
         if not (ok_status and ok_path):
             bad.append("{} {}".format(status, path))
     if bad:
@@ -183,9 +288,47 @@ def commit_checked(ctx, allowed, message, ext, allow_delete=False):
 
 # ----------------------------------------------------------------- planning ---
 
-def local_files(area, ext):
-    p = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", area], BASE)
-    return sorted(r for r in set(nul_list(p)) if r.lower().endswith(ext) and (BASE / r).is_file())
+def is_area_payload(area, rel):
+    """Is `rel` a RESULT file this area should sync, rather than code?
+
+    Extension alone is enough for exports/presets, whose folders hold nothing
+    else. analysis/ is different: the pipeline's source lives at its top level
+    (eda.py, preprocess.py, analysis_README.md, requirements.txt) while results
+    live under analysis/<attack>/<topology>/<location>/. Syncing on extension
+    alone would push analysis_README.md and ANALYSIS-Commands.md as if they were
+    data, and this tool's entire promise is that it never moves code.
+
+    So analysis payload must additionally sit at cell depth -- at least
+    analysis/<attack>/<topology>/<location>/<file>. Anything shallower is
+    refused no matter what it is called.
+    """
+    if not rel.lower().endswith(AREA_EXT[area]):
+        return False
+    if rel.startswith(ANALYSIS + "/"):
+        return len(rel.split("/")) >= 5
+    return True
+
+
+def local_files(area, ext=None):
+    cmd = ["ls-files", "-z", "--cached", "--others"]
+    if area != ANALYSIS:
+        cmd.append("--exclude-standard")
+    # ANALYSIS is listed WITHOUT --exclude-standard on purpose. Its three
+    # outputs -- feature_table.csv, windowed_dataset.csv and eda_output/ -- are
+    # all in .gitignore (lines 64-66), because they are regenerated by
+    # run.ps1 -Analyze and have no business in a CODE commit. But "don't commit
+    # it with the source" and "don't share it with the team" are different
+    # decisions, and a teammate who cannot rebuild your EDA plots locally still
+    # needs to see them. This tool pushes into its own private clone, never into
+    # your repo's index, so honouring .gitignore here would block the one thing
+    # the area exists to do while protecting nothing.
+    #
+    # is_area_payload() is what keeps that safe: extension whitelist plus a
+    # cell-depth rule, so the pipeline's own .py/.txt at analysis/ top level can
+    # never ride along.
+    p = git(cmd + ["--", area], BASE)
+    return sorted(r for r in set(nul_list(p))
+                  if is_area_payload(area, r) and (BASE / r).is_file())
 
 
 def in_archive(rel):
@@ -251,15 +394,17 @@ def conflict_path(ctx, rel, data):
 def build_plan(ctx, area):
     archived_files, archived_rows = archived_on_github(ctx) if area == EXPORTS else (set(), set())
     writes, notes = [], {"same": 0, "older": [], "archived": [], "in_archive": []}
+    # One listing, then blob reads only for paths that are genuinely tracked.
+    tracked = set(remote_tree(ctx, area))
     for rel in local_files(area, AREA_EXT[area]):
         if in_archive(rel):
             notes["in_archive"].append(rel)
             continue
         data = (BASE / rel).read_bytes()
         repo_path = ctx.prefix + rel
-        dest = ctx.sync / repo_path
         name = rel.rsplit("/", 1)[-1]
-        remote = dest.read_bytes() if dest.exists() else None
+        remote = (git(["cat-file", "blob", "HEAD:" + repo_path], ctx.sync).stdout
+                  if repo_path in tracked else None)
 
         if name in LEDGERS:
             merged = merge_ledger(remote, data, archived_rows)
@@ -302,7 +447,12 @@ def print_plan(writes, notes):
         print("  {} - {} file(s):".format(labels[kind], len(items)))
         for _, rel, repo_path, data in items:
             extra = "" if kind != "conflict" else "   -> saved as " + repo_path
-            print("    {}  ({} rows){}".format(rel, rows(data), extra))
+            # Row counts only mean something for text. A PNG "has" as many
+            # rows as it happens to contain 0x0A bytes, which is noise dressed
+            # up as a measurement - show its size instead.
+            measure = ("{} rows".format(rows(data)) if rel.lower().endswith((".csv", ".md", ".json"))
+                       else _fmt_size(len(data)))
+            print("    {}  ({}){}".format(rel, measure, extra))
     if notes["same"]:
         print("  already on GitHub, identical: {} file(s)".format(notes["same"]))
     if notes["older"]:
@@ -342,11 +492,11 @@ def sync_push(ctx, area):
             dst = ctx.sync / repo_path
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(data)
-        git(["add", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
+        git(["add", "-f", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
             stdin="\0".join(w[2] for w in writes))
         if not commit_checked(ctx, [area, CONFLICTS],
                               "Data: {} {} file(s) from {}".format(len(writes), area, ctx.computer),
-                              AREA_EXT[area]):
+                              area):
             raise SyncError("planned {} file(s) but git staged nothing - nothing was pushed.".format(len(writes)))
 
         for kind, rel, repo_path, data in writes:
@@ -390,9 +540,9 @@ def pull_back(ctx, area, yes):
     incoming, ledgers, skipped_archived, matching, differ = [], [], 0, [], []
     skipped_nested = 0
     for repo_path in remote_tree(ctx, area):
-        if not repo_path.lower().endswith(AREA_EXT[area]):
-            continue
         rel = repo_path[len(ctx.prefix):]
+        if not is_area_payload(area, rel):
+            continue
         # A teammate on an older copy of this tool could have pushed their local
         # archive folder into the live tree; don't seed it back into ours.
         if in_archive(rel):
@@ -445,7 +595,13 @@ def pull_back(ctx, area, yes):
             matching += incoming + ledgers
     else:
         print("  You already have all of your teammates' {} data.".format(area))
-    stage_locally(matching)
+    # Not for analysis: those paths are .gitignore'd in the user's own repo on
+    # purpose (rebuildable output), and staging them would slip derived files
+    # into the code commits that rule exists to keep them out of. The reason
+    # stage_locally() exists -- git refusing to overwrite untracked files on
+    # pull -- does not apply to ignored ones, which checkout replaces freely.
+    if area != ANALYSIS:
+        stage_locally(matching)
 
     if differ:
         blocking = set(nul_list(git(["diff", "--name-only", "-z", "--relative", "HEAD", "--", area], BASE, check=False)))
@@ -511,7 +667,7 @@ def test_cleanup(ctx):
             print("  Cancelled.")
             return
         git(["rm", "-r", "-q", "--", ctx.prefix + TEST_AREA], ctx.sync)
-        commit_checked(ctx, [TEST_AREA], "Data: remove sync test files", AREA_EXT[TEST_AREA], allow_delete=True)
+        commit_checked(ctx, [TEST_AREA], "Data: remove sync test files", TEST_AREA, allow_delete=True)
         if push_head(ctx):
             print("  Removed sync_test/ from GitHub.")
             break
@@ -531,12 +687,17 @@ def test_cleanup(ctx):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("action", choices=["push", "pull", "test", "test-cleanup"])
-    ap.add_argument("--area", choices=["exports", "presets"], default="exports",
-                     help="what push/pull syncs: capture CSVs under tools/exports (default) "
-                          "or your saved presets under presets/<you>/. Ignored by test/test-cleanup.")
+    ap.add_argument("--area", choices=["exports", "presets", "analysis"], default="exports",
+                     help="what push/pull syncs: capture CSVs under tools/exports (default), "
+                          "your saved presets under presets/<you>/, or analysis + EDA output "
+                          "under analysis/<attack>/<topology>/<location>/ (.csv/.png/.json/.md "
+                          "only -- never the pipeline's own .py). Ignored by test/test-cleanup.")
     ap.add_argument("--yes", action="store_true", help="answer yes to every prompt")
     ap.add_argument("--no-pull-back", action="store_true", help="don't offer teammates' files afterwards")
-    ap.add_argument("--branch", default="Unified")
+    ap.add_argument("--branch", default=None,
+                     help="branch to sync data on. Default: whatever branch YOUR repo is "
+                          "currently on, so data follows the code you are working on. Pass "
+                          "this only to push somewhere other than your current branch.")
     ap.add_argument("--remote", default="origin", help="remote in YOUR repo whose URL is used")
     ap.add_argument("--sync-dir", help="private clone location (default under %%LOCALAPPDATA%%)")
     args = ap.parse_args()
@@ -551,7 +712,7 @@ def main():
             test_cleanup(ctx)
             return 0
 
-        area = PRESETS if args.area == "presets" else EXPORTS
+        area = {"presets": PRESETS, "analysis": ANALYSIS}.get(args.area, EXPORTS)
 
         if args.action == "pull":
             refresh(ctx)

@@ -440,6 +440,53 @@ def _extract_run_id(source_file: str) -> str:
     return match.group(1) if match else source_file
 
 
+def _align_to_baseline(run_df: pd.DataFrame) -> pd.DataFrame:
+    """Add `_t`: seconds relative to the moment THIS node entered phase 0.
+
+    window_start is each node's OWN run clock, restarting at 0 when that board
+    boots -- and boards are flashed one at a time, so the same wall-clock instant
+    is a different window_start on every node. Measured on blackhole/linear/home
+    r1 (2026-09-22), phase 0 began at window_start 60s on the root, 153s on one
+    victim, 222s on the attacker and 670s on the victim that was powered up
+    first. Plotting all four against a shared x-axis therefore drew each line
+    ~10 minutes out of step with the others, and the phase shading -- taken from
+    whichever node happened to sort first at each window_start -- was correct for
+    at most one of them.
+
+    Re-basing on each node's own phase-0 entry puts every node on ONE timeline:
+    x=0 is "baseline starts", pre-baseline idle falls at negative x where it is
+    obviously not part of the experiment, and the bands are then true for every
+    line on the axis. This is a PLOT axis only -- the feature table is untouched,
+    so nothing here can reach a model.
+    """
+    df = run_df.copy()
+    if "window_start" not in df.columns:
+        return df
+    # Anchor on preprocess.py's RAW `segment` value, not _phase_names() -- that
+    # returns display strings ("Baseline", "Blackhole attack"), so matching it
+    # against a lowercase segment name silently never fires and every node keeps
+    # its own un-rebased clock.
+    if "segment" in df.columns:
+        is_base = df["segment"].astype(str) == "baseline"
+    else:
+        lab = pd.to_numeric(
+            df["Label" if "Label" in df.columns else "window_label"], errors="coerce")
+        is_base = lab == 0
+    # Fall back to the node's own first window when a capture has no baseline at
+    # all (root-only or truncated runs still plot, just un-rebased).
+    base = df["window_start"].where(is_base)
+    key = "node_id" if "node_id" in df.columns else None
+    if key is None:
+        origin = base.min() if base.notna().any() else df["window_start"].min()
+        df["_t"] = df["window_start"] - origin
+        return df
+    origins = base.groupby(df[key]).min()
+    fallback = df.groupby(key)["window_start"].min()
+    origins = origins.fillna(fallback)
+    df["_t"] = df["window_start"] - df[key].map(origins)
+    return df
+
+
 def _phase_spans(run_df: pd.DataFrame) -> list[tuple[float, float, str, str]]:
     """
     Contiguous (start, end, phase name, colour) runs for background shading.
@@ -447,16 +494,22 @@ def _phase_spans(run_df: pd.DataFrame) -> list[tuple[float, float, str, str]]:
     Compares phase NAMES, not the raw Label: Label is NaN on unlabelled windows
     and NaN != NaN, so the old label comparison opened a new span on every
     unlabelled window and stacked hundreds of translucent red spans into a
-    solid block that looked like the attack. Taken from the first row per
-    window_start — all nodes in a run share the root's broadcast schedule.
+    solid block that looked like the attack.
+
+    Spans are built on `_t` (see _align_to_baseline), NOT window_start. The
+    previous version took the first row per window_start "because all nodes in a
+    run share the root's broadcast schedule" -- they share the schedule, but not
+    the clock it is measured on, so the bands only ever lined up with whichever
+    node booted first.
     """
-    if "window_start" not in run_df.columns:
+    axis = "_t" if "_t" in run_df.columns else "window_start"
+    if axis not in run_df.columns:
         return []
-    ordered = run_df.sort_values("window_start").drop_duplicates("window_start")
+    ordered = run_df.sort_values(axis).drop_duplicates(axis)
     if ordered.empty:
         return []
     names = _phase_names(ordered).tolist()
-    starts = ordered["window_start"].tolist()
+    starts = ordered[axis].tolist()
     _, palette = _phase_order_palette(names)
     step = float(np.median(np.diff(starts))) if len(starts) > 1 else 1.0
 
@@ -470,91 +523,150 @@ def _phase_spans(run_df: pd.DataFrame) -> list[tuple[float, float, str, str]]:
     return spans
 
 
+def _draw_timeseries(plot_df, features, title, out_path, single_node=False):
+    """Render one time-series figure and return its path.
+
+    Shared by BOTH views below so the per-run overlay and the per-node plots can
+    never drift apart in alignment, shading or labelling -- the misaligned bands
+    fixed on 2026-09-23 came from exactly that kind of duplicated drawing code.
+    """
+    fig, axes = plt.subplots(len(features), 1,
+                             figsize=(12, 3.6 * len(features)), sharex=True)
+    if len(features) == 1:
+        axes = [axes]
+    fig.suptitle(title, fontsize=10)
+    phase_spans = _phase_spans(plot_df)
+
+    for ax, feat in zip(axes, features):
+        if feat not in plot_df.columns:
+            ax.text(0.5, 0.5, f"'{feat}' not in dataset", ha="center", va="center",
+                    transform=ax.transAxes, color="gray")
+            continue
+
+        plotted_any = False
+        for node_id, node_df in plot_df.groupby("node_id"):
+            node_df = node_df.sort_values("_t")
+            if node_df[feat].notna().any():
+                role = (node_df["node_role"].iloc[0]
+                        if "node_role" in node_df.columns else None)
+                ax.plot(
+                    node_df["_t"], node_df[feat],
+                    linewidth=1.2, color="#222222" if single_node else None,
+                    label=f"{node_id} ({role})" if role else node_id,
+                )
+                plotted_any = True
+
+        # An all-NaN feature (PDR on a root-only capture, say) draws no lines at
+        # all. Say so on the axis rather than leaving a blank panel — and skip
+        # the legend, which warns "No artists with labels found" otherwise.
+        if not plotted_any:
+            ax.text(0.5, 0.5, f"no data for '{feat}' here",
+                    ha="center", va="center", transform=ax.transAxes, color="gray")
+
+        for span_start, span_end, _name, color in phase_spans:
+            ax.axvspan(span_start, span_end, color=color, alpha=0.13,
+                       linewidth=0, zorder=0)
+        # The one moment every node agrees on, now that they are aligned.
+        ax.axvline(0.0, color="#444444", linewidth=0.9, linestyle="--", zorder=1)
+
+        ax.set_ylabel(_axis_label(feat), fontsize=9)
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=7, loc="upper left", title="Node", title_fontsize=7)
+
+    if phase_spans:
+        from matplotlib.patches import Patch
+        seen = dict.fromkeys((n, c) for _, _, n, c in phase_spans)
+        fig.legend(
+            handles=[Patch(color=c, alpha=0.35, label=n) for n, c in seen],
+            loc="lower center", ncol=len(seen), fontsize=8, frameon=False,
+        )
+
+    axes[-1].set_xlabel("Time relative to each node's BASELINE start (s)  "
+                        "— dashed line = t0")
+    fig.tight_layout(rect=(0, 0.05 if phase_spans else 0, 1, 1))
+    fig.savefig(out_path, dpi=120)
+    plt.close(fig)
+    return out_path
+
+
 def plot_time_series(
     df: pd.DataFrame,
     output_dir: str,
     features: list[str] | None = None,
 ) -> list[str]:
     """
-    Plots selected feature trajectories over run duration (window_start)
-    per node, to visualize temporal alignment of manipulation windows —
-    per the thesis: "Selected feature trajectories (e.g., parent switch
-    events, PDR)". Defaults to exactly those two.
+    Selected feature trajectories over the run — per the thesis: "Selected
+    feature trajectories (e.g., parent switch events, PDR)". Defaults to those.
 
-    One figure per RUN (not per source_file/node — see _extract_run_id's
-    docstring for why those differ), with one line per node within that
-    run, matching how a person would actually want to inspect "did phase
-    transitions align across nodes within this run", which is the
-    thesis's stated purpose for this analysis.
+    TWO VIEWS, both written, because they answer different questions:
+
+      timeseries_<attack>_<topology>_<site>_<repeat>.png
+          every node of one run overlaid. This is the "did the phases line up
+          across nodes, and did the attack land where we said it would" view.
+      timeseries_<source_file>.png
+          one figure per node, one per capture file. This is the "what exactly
+          did THIS board do" view, and it is the one to open when a single node
+          looks wrong.
+
+    Only the overlay existed after the 2026-09-23 run-grouping fix, which
+    silently dropped the per-node figures people were already using. Both are
+    produced now; neither replaces the other.
+
+    Both are drawn on `_t` (see _align_to_baseline): t=0 is the moment THAT node
+    entered baseline, so pre-baseline idle sits at negative t and the phase bands
+    are true for every line on the axis.
     """
     if features is None:
         features = ["ParentSwitchRate", "PDR"]
 
     df = df.copy()
-    df["_run_id"] = df["source_file"].apply(_extract_run_id)
+    # Group by the RUN, using the columns preprocess.py already resolved.
+    #
+    # _extract_run_id() regex-matches "RUN_xxx_telem", the OLD firmware filename
+    # shape (NODE_AABBCC..._RUN_001_telem.csv). Every real capture now comes out
+    # of export_logs.py/import_sdcard.py as
+    # child_node2_linear_blackhole_r1_20260922_220313_telem.csv, so the regex
+    # never matched and the fallback returned the whole filename — which is why
+    # the overlay never existed until this was fixed. The identity columns are
+    # right there in the table and cannot drift from the filename.
+    id_cols = [c for c in ("attack", "topology", "location", "run_repeat")
+               if c in df.columns]
+    if id_cols:
+        df["_run_id"] = df[id_cols].astype(str).agg("_".join, axis=1)
+    else:
+        df["_run_id"] = df["source_file"].apply(_extract_run_id)
 
     written = []
     for run_id, run_df in df.groupby("_run_id"):
-        run_df = run_df.sort_values("window_start")
+        run_df = _align_to_baseline(run_df).sort_values("_t")
+        safe_run = str(run_id).replace(".csv", "").replace("/", "_")
 
-        fig, axes = plt.subplots(len(features), 1, figsize=(12, 3.6 * len(features)), sharex=True)
-        if len(features) == 1:
-            axes = [axes]
-        fig.suptitle(f"Feature trajectories over the run — {run_id}\n"
-                     "Background colour = experiment phase at that time", fontsize=11)
-        phase_spans = _phase_spans(run_df)
+        # ── view 1: the whole run, every node on one axis ──
+        written.append(_draw_timeseries(
+            run_df, features,
+            f"Feature trajectories over the run — {run_id}\n"
+            "Background colour = experiment phase.  t=0 is when BASELINE starts on "
+            "each node;\nnegative t is pre-baseline idle (node booted, root had not "
+            "announced a phase yet) and is excluded from analysis.",
+            os.path.join(output_dir, f"timeseries_{safe_run}.png")))
 
-        for ax, feat in zip(axes, features):
-            if feat not in run_df.columns:
-                ax.text(0.5, 0.5, f"'{feat}' not in dataset", ha="center", va="center",
-                         transform=ax.transAxes, color="gray")
-                continue
-
-            plotted_any = False
-            for node_id, node_df in run_df.groupby("node_id"):
-                node_df = node_df.sort_values("window_start")
-                if node_df[feat].notna().any():
-                    role = (node_df["node_role"].iloc[0]
-                            if "node_role" in node_df.columns else None)
-                    ax.plot(
-                        node_df["window_start"], node_df[feat],
-                        linewidth=1.2, color="#222222" if run_df["node_id"].nunique() == 1 else None,
-                        label=f"{node_id} ({role})" if role else node_id,
-                    )
-                    plotted_any = True
-
-            # An all-NaN feature (PDR on a root-only capture, say) draws no lines
-            # at all. Say so on the axis, the same way the missing-column branch
-            # above does, rather than leaving a blank panel — and skip the legend,
-            # which warns "No artists with labels found" when nothing was plotted.
-            if not plotted_any:
-                ax.text(0.5, 0.5, f"no data for '{feat}' in this run",
-                        ha="center", va="center", transform=ax.transAxes,
-                        color="gray")
-
-            for start, end, name, color in phase_spans:
-                ax.axvspan(start, end, color=color, alpha=0.13, linewidth=0, zorder=0)
-
-            ax.set_ylabel(_axis_label(feat), fontsize=9)
-            if ax.get_legend_handles_labels()[0]:
-                ax.legend(fontsize=7, loc="upper left", title="Node", title_fontsize=7)
-
-        if phase_spans:
-            from matplotlib.patches import Patch
-            seen = dict.fromkeys((n, c) for _, _, n, c in phase_spans)
-            fig.legend(
-                handles=[Patch(color=c, alpha=0.35, label=n) for n, c in seen],
-                loc="lower center", ncol=len(seen), fontsize=8, frameon=False,
-            )
-
-        axes[-1].set_xlabel("Run time — window_start (s)")
-        fig.tight_layout(rect=(0, 0.05 if phase_spans else 0, 1, 1))
-
-        safe_name = str(run_id).replace(".csv", "").replace("/", "_")
-        out_path = os.path.join(output_dir, f"timeseries_{safe_name}.png")
-        fig.savefig(out_path, dpi=120)
-        plt.close(fig)
-        written.append(out_path)
+        # ── view 2: one figure per capture file, same names as before ──
+        if "source_file" not in run_df.columns:
+            continue
+        for src, node_df in run_df.groupby("source_file"):
+            node_ids = node_df["node_id"].unique()
+            who = node_ids[0] if len(node_ids) == 1 else f"{len(node_ids)} nodes"
+            role = (node_df["node_role"].iloc[0]
+                    if "node_role" in node_df.columns else "")
+            safe_src = str(src).replace(".csv", "").replace("/", "_")
+            written.append(_draw_timeseries(
+                node_df, features,
+                f"Feature trajectories — {who}"
+                f"{f' ({role})' if role else ''}\n{src}\n"
+                "Background colour = experiment phase.  t=0 is when BASELINE starts; "
+                "negative t is pre-baseline idle (excluded from analysis).",
+                os.path.join(output_dir, f"timeseries_{safe_src}.png"),
+                single_node=len(node_ids) == 1))
 
     return written
 

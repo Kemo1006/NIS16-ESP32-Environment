@@ -1721,7 +1721,7 @@ function New-BoardWindow {
     # -NoProfile stays so a profile script can't clobber any of this afterward.
     param([pscustomobject]$Activation, [string]$RunScript, [string]$WorkDir, [string]$ArgText, [string]$Title, [string]$Banner, [string]$Color)
     $rq = $RunScript -replace "'", "''"
-    $initScript = if ($Activation -and $Activation.Script) { $Activation.Script } elseif ($env:IDF_TOOLS_PATH) { Join-Path $env:IDF_TOOLS_PATH 'Initialize-Idf.ps1' } else { 'C:\Espressif\Initialize-Idf.ps1' }
+    $initScript = if ($Activation -and $Activation.Script) { $Activation.Script } elseif ($env:IDF_TOOLS_PATH) { Join-Path $env:IDF_TOOLS_PATH 'Initialize-Idf.ps1' } else { Join-Path $(if ($env:SystemDrive) { $env:SystemDrive } else { 'C:' }) 'Espressif\Initialize-Idf.ps1' }
     $initq = $initScript -replace "'", "''"
     $initCall = ". '$initq'"
     if ($Activation -and $Activation.IdfId) {
@@ -2975,7 +2975,11 @@ if ($action -eq 7) {
     # rather than failing the whole thing.
     $edaPy = $null
     $featuresPy = $null
-    foreach ($cand in @('python', 'python3', 'C:\Python314\python.exe')) {
+    # 'py' is the Windows Python launcher: always on PATH when Python is
+    # installed, and it finds the interpreter wherever it actually lives.
+    # Replaces a hardcoded C:\Python314\python.exe, which was one
+    # machine's install path and matched nothing anywhere else.
+    foreach ($cand in @('python', 'python3', 'py')) {
         if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
         & $cand -c "import pandas, numpy, matplotlib, seaborn, scipy, sklearn" 2>$null
         if ($LASTEXITCODE -eq 0) { $edaPy = $cand; if (-not $featuresPy) { $featuresPy = $cand }; break }

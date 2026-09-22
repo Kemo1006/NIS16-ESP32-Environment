@@ -81,6 +81,8 @@ if hasattr(sys.stdout, "reconfigure"):
 import numpy as np
 import pandas as pd
 
+import exposure
+
 EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 
 # IMPORTED, never redeclared. This was a literal 5 while preprocess.py used 1
@@ -988,6 +990,17 @@ def compute_features(
         result["PDR"] = np.nan
 
     result["Label"] = result["window_label"]
+
+    # WHO WAS ACTUALLY EXPOSED, derived from the tree rather than taken from the
+    # firmware's build-time role. Since C7 the blackhole is POSITIONAL: a child
+    # ABOVE it reaches the root without transiting it and is untouched for the
+    # whole run, yet it logs itself "victim" exactly like the child below that
+    # loses everything. Reporting both as victims is what produces a pooled PDR
+    # describing neither. See analysis/exposure.py.
+    #
+    # METADATA, not a feature -- inside an attack window "downstream" is nearly
+    # the label itself, so leakage.py lists it alongside node_role.
+    result["exposure"] = exposure.compute_exposure(result).values
 
     blocked = ",".join(FEATURES_BLOCKED_ON_FIRMWARE)
     result["missing_firmware_fields"] = blocked

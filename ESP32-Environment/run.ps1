@@ -641,7 +641,11 @@ if ($Analyze) {
     # is usable we just skip analysis rather than failing the run.
     $edaPy = $null        # full EDA stack -> can run features AND eda
     $featuresPy = $null   # at least pandas/numpy -> can run features
-    foreach ($cand in @('python', 'python3', 'C:\Python314\python.exe')) {
+    # 'py' is the Windows Python launcher: always on PATH when Python is
+    # installed, and it finds the interpreter wherever it actually lives.
+    # Replaces a hardcoded C:\Python314\python.exe, which was one
+    # machine's install path and matched nothing anywhere else.
+    foreach ($cand in @('python', 'python3', 'py')) {
         if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
         & $cand -c "import pandas, numpy, matplotlib, seaborn, scipy, sklearn" 2>$null
         if ($LASTEXITCODE -eq 0) {

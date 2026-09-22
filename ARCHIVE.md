@@ -1390,4 +1390,187 @@ Both still live as one-line warnings in STATUS.md.
   attacker) measured **exactly 260** — reporting FAILED for good code, with the budget shifting per user's
   own path. Now a per-variant `Bld` field (`bcr`,`bcba`,…) + a preflight WARNING. ⚠️ **Don't rename them
   back.** Still unapplied alternative: `LongPathsEnabled=1` (admin).
+- sep. 22, 2026 — **Console `LAYER`→`HOP` (root = H00), blackhole header → C7 positional model, leaf/off-path guards, `TOPOLOGY TREE`, USB-export stderr trap. 6/6 build clean.** **NEEDS REFLASH.**  (rolled out of STATUS.md sep. 22)
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): jitter scenario, full rationale
+- sep. 22, 2026 — **NEW SCENARIO `jitter` (TRAFFIC_PROFILE=3) — ROOT ONLY, ADDITIVE ONLY.** The root draws a
+  fresh random EXTENSION per boot for the baseline (0..`JITTER_BASELINE_MAX_S`=45s) and attack
+  (0..`JITTER_ATTACK_MAX_S`=30s) windows via `esp_random()`, so phase transitions land at a different
+  wall-clock offset every run. **WHY:** every run used the identical schedule (60/300/180/120), so
+  `leakage.py` lists `window_start` as METADATA — elapsed time alone scored **0.857** against the label
+  without looking at the network. That is the panel's 12:45-16:00 "runs are all identical" objection, and
+  `eda.py`'s survivors warning names attack-parameter variation as THE fix (not feature exclusion).
+  ⛔⛔ **NEVER MAKE THE JITTER SUBTRACTIVE.** `preprocess.py` resolves real baseline as "the LAST
+  `PHASE_BASELINE_S` of phase 0", anchored backwards from each node's phase-0 exit. A baseline SHORTER
+  than 300s would make that slice reach past the real baseline's start and pull mesh-formation noise into
+  the benign class — wrong, and still plausible-looking. Additive keeps every existing host rule correct
+  with ZERO analysis-side change. Not in the CSV and doesn't need to be: real durations are recoverable
+  from any node's phase_id transition timestamps. Root-only because only the root schedules phases — a
+  jitter child binary would be byte-identical to a plain one. Wired into `run.ps1`, `run_wizard.ps1` and
+  `menu.ps1` (scenario lists + build-dir suffix + flag mapping all kept in sync).
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): campaign checklist scanner, full detail
+- sep. 22, 2026 — **CAMPAIGN CHECKLIST IS NOW A SCANNER, not a tick-box** (`inventory_cells.py`,
+  `report_checklist()` rewritten; `report_plan()` and `--repeats N` untouched and re-verified).
+  (1) **THREE states: `[x]` complete / `[~]` data captured but INCOMPLETE / `[ ]` nothing ever.** Before,
+  "never attempted" and "attempted 5x, always just short" both rendered `[ ]`, hiding every hour spent.
+  Only `[x]` counts toward M4. (2) **WHERE THE TICKED CELLS COME FROM** — each `[x]` names its source
+  folder. This answers the recurring "all the data is in archive, why is it still checked?": the scan
+  covers `tools/exports/` AND `archive/*/exports/` **by design** — archiving must not cost milestone
+  credit. (3) **DOUBLE-COUNT DETECTOR** — same (cell, repeat, children, arrivals_rows) from 2+ sources.
+  On first run it immediately flagged this session's own G402 duplicate across `2026-09-22_incomplete`
+  + `_test`. (4) **CLOSEST TO DONE** — near-misses ranked by worst coverage %, each with its one-line
+  blocker, so the next action is obvious (`home` 93.7% vs the 95% floor sits at the top).
+  ⚠️ Column widths are computed FROM THE DATA — pre-redesign archives carry legacy folder names like
+  `partial_mesh_topology` that shear a fixed-width table.
+- - sep. 22, 2026 — **`jitter` scenario; per-node PDR; build `-Clean`; wormhole warnings; wizard [15] crash; SMART ARCHIVE menu (duplicate + completeness detection).** MEMORY.md.  (rolled out of STATUS.md sep. 22)
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): wizard smart-archive front end, full detail
+- sep. 22, 2026 — **WIZARD NOW HAS A SMART ARCHIVE FRONT END (`Invoke-ArchiveMenu`, DATA group).** The MOVE
+  still lives in `archive.ps1` — one implementation — but the wizard adds the judgement it cannot make:
+  (1) a per-CELL table with file count/size and **whether a root + arrivals file is present**;
+  (2) **BYTE-IDENTICAL DUPLICATE DETECTION against every `archive/*/`** (name-match first, hash only
+  collisions; `run_ledger.csv` skipped — regenerated header-only, would always false-positive);
+  (3) a COMPLETE-run warning via `inventory_cells.py`; (4) a content-derived label suggestion;
+  (5) preview-only (`-WhatIf`) / archive-now / list duplicates / cancel.
+  ⚠️ **WHY (2) MATTERS — this session's own mistake:** `archive.ps1` MOVES data out of `tools/exports/`,
+  which leaves the git-tracked paths as STAGED DELETIONS. Those deletions were read as data loss and
+  `git checkout`-restored — recreating 9 G402 files that were already safe in
+  `archive/2026-09-22_incomplete/`. Result: the SAME capture in two archives and `runs found` 36→37.
+  **A staged deletion under `tools/exports/` usually means archive.ps1 moved it — check `archive/` BEFORE
+  restoring with git.** The new detector was tested against exactly that duplicate and flagged all 9.
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): first clean r1 capture, full detail
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE VERIFIED end-to-end (blackhole/linear/home) — attack CONFIRMED.**
+  Chain: ROOT(H00)-victim1(H01, direct child of root)-ATTACKER(H02)-victim2(H03). `verify_attack.py`:
+  **BLACKHOLE CONFIRMED**, ForwardingRatio 1.000→0.026, PDR 1.000→0.514. Phase 0 clean (300.4s on all 4
+  boards) — **NOT luck: F1 (sep. 20) already fixed this**, recording `PHASE_ID_UNSET=255` before any
+  broadcast is heard instead of mislabelling it phase 0; `preprocess.py` excludes 255 as `pre_baseline`.
+  ⚠️️ **FINDING: aggregate PDR (0.514) HIDES a near-total per-victim split** — victim1 (upstream of
+  attacker, direct root child) stayed at PDR=1.000 through the ENTIRE attack window (untouched); victim2
+  (downstream) crashed to PDR=0.0137 (near-total). Pooling both into one PDR number is the exact positional
+  effect flagged today in blackhole_victim.c's header — now proven on real data. **Report PDR per-node-
+  relative-to-attacker in the write-up, not pooled.** ✅ **Checked, NOT a gap: `leakage.py`'s survivors
+  warning (eda.py:993) ALREADY catches ForwardingRatio/ConsistencyScore at 99.9% accuracy on this exact
+  run** (`lift_over_majority` 0.30 > the 0.15 print threshold) — confirmed by direct call, not just reading
+  the CSV. **Deliberately NOT auto-excluded**: the code's own documented reasoning is that a fixed-schedule
+  attack window is separable BY CONSTRUCTION in any single run, so excluding by accuracy alone would hide
+  real signal along with the leak. Its stated fix is attack-PARAMETER VARIATION across repeats (panel
+  12:45-16:00), not a code change — no `leakage.py` edit needed or made.
+
+### Rolled from MEMORY.md — sep. 22, 2026 (cap): first clean r1 capture, full detail
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE VERIFIED end-to-end (blackhole/linear/home) — attack CONFIRMED.**
+  Chain: ROOT(H00)-victim1(H01, direct child of root)-ATTACKER(H02)-victim2(H03). `verify_attack.py`:
+  **BLACKHOLE CONFIRMED**, ForwardingRatio 1.000→0.026, PDR 1.000→0.514. Phase 0 clean (300.4s on all 4
+  boards) — **NOT luck: F1 (sep. 20) already fixed this**, recording `PHASE_ID_UNSET=255` before any
+  broadcast is heard instead of mislabelling it phase 0; `preprocess.py` excludes 255 as `pre_baseline`.
+  ⚠️️ **FINDING: aggregate PDR (0.514) HIDES a near-total per-victim split** — victim1 (upstream of
+  attacker, direct root child) stayed at PDR=1.000 through the ENTIRE attack window (untouched); victim2
+  (downstream) crashed to PDR=0.0137 (near-total). Pooling both into one PDR number is the exact positional
+  effect flagged today in blackhole_victim.c's header — now proven on real data. **Report PDR per-node-
+  relative-to-attacker in the write-up, not pooled.** ✅ **Checked, NOT a gap: `leakage.py`'s survivors
+  warning (eda.py:993) ALREADY catches ForwardingRatio/ConsistencyScore at 99.9% accuracy on this exact
+  run** (`lift_over_majority` 0.30 > the 0.15 print threshold) — confirmed by direct call, not just reading
+  the CSV. **Deliberately NOT auto-excluded**: the code's own documented reasoning is that a fixed-schedule
+  attack window is separable BY CONSTRUCTION in any single run, so excluding by accuracy alone would hide
+  real signal along with the leak. Its stated fix is attack-PARAMETER VARIATION across repeats (panel
+  12:45-16:00), not a code change — no `leakage.py` edit needed or made.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): LAYER→HOP rename + leaf guards, full detail
+- sep. 22, 2026 — **CONSOLE SAYS `HOP`, NOT `LAYER` (adviser) + the blackhole's position is now GUARDED.**
+  "Layer" reads as an OSI layer; this is a mesh TREE depth (the mesh runs BELOW IP). Renamed across the root
+  dashboard + `topology_graph.c`'s star reason. ⚠️ **Off-by-one is deliberate — ESP-WIFI-MESH numbers the
+  ROOT layer 1, so hop = layer-1 and the ROOT IS H00**, matching `preprocess.py:768`'s `hop` (D-11); the
+  console now agrees with the dataset. `fmt_layer()` deleted → `fmt_hop()`. **The raw firmware CSV still
+  writes `layer`**; renaming that column is a schema change hitting every script + every existing capture —
+  NOT done, ask first. Also: `blackhole_victim.c`'s header described the PRE-C7 model and contradicted its
+  own code — rewritten. New **leaf/off-path guards** (a blackhole with nothing under it drops nothing and
+  the capture still passes EVERY check): attacker warns after 10 s of attack-phase at recv=0
+  (`LEAF_WARN_AFTER_MS`); the ROOT dashboard, which alone sees the whole tree, shouts before the window
+  opens. New `TOPOLOGY TREE` block prints BELOW the existing tables — nothing previously printed changed.
+  ✅ **6/6 variants BUILD CLEAN on ESP-IDF 5.5.4**, 0 warnings. **REFLASH ALL.** ❌ **DECLINED: hex
+  `I (622272)` timestamp** — ESP-IDF's standard prefix, not ours; hex-ing it IS "we invented our own format".
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): jitter scenario summary
+- sep. 22, 2026 — **SCENARIO `jitter` (TRAFFIC_PROFILE=3) — ROOT ONLY, ADDITIVE ONLY.** Root draws a random
+  per-boot EXTENSION to baseline (0..45s) and attack (0..30s), so phases don't land at the same wall-clock
+  offset every run. WHY: identical schedules made elapsed time alone score **0.857** against the label — the
+  panel's "runs are all identical" objection. ⛔ **NEVER MAKE IT SUBTRACTIVE:** `preprocess.py` takes
+  baseline as the LAST `PHASE_BASELINE_S` of phase 0, so a shorter baseline pulls mesh-formation noise into
+  the benign class. Full rationale: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): wizard smart-archive summary
+- sep. 22, 2026 — **WIZARD SMART ARCHIVE FRONT END (`Invoke-ArchiveMenu`).** Adds per-cell tables,
+  **byte-identical duplicate detection across every `archive/*/`**, a COMPLETE-run warning and `-WhatIf`.
+  ⚠️ **WHY — a real mistake:** `archive.ps1` MOVES data out of `tools/exports/`, leaving git-tracked paths as
+  STAGED DELETIONS; those were mistaken for data loss and `git checkout`-restored, recreating 9 G402 files
+  already safe in `archive/2026-09-22_incomplete/`. **A staged deletion under `tools/exports/` usually means
+  archive.ps1 moved it — check `archive/` BEFORE restoring with git.** Full detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): timeseries alignment, full detail
+- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — 2 bugs in `eda.py`, both fixed.** (1) `window_start`
+  is each node's OWN run clock restarting at 0 on ITS boot, and boards are flashed one at a time, so the same
+  instant is a different x on every node (phase 0 began at 60s on the root but **670s on node2**, which is why
+  its baseline "started at 600s" — NOT a bug in the data; `preprocess.py` excludes phase 255 anyway). The phase
+  bands were taken from whichever node sorted first, so they were right for at most ONE line. New
+  `_align_to_baseline()` re-bases x on each node's own phase-0 entry: t=0 = baseline starts, pre-baseline idle
+  goes NEGATIVE. Plot axis only — the feature table is untouched, so nothing reaches a model. **Anchor on the
+  RAW `segment` column, not `_phase_names()`** (that returns display strings like "Baseline" and silently
+  never matches). (2) `_extract_run_id()` regex expects the OLD `RUN_xxx_telem` filename, so every real capture
+  fell back to per-file and each node got its own figure — the opposite of the function's purpose. Now grouped
+  on attack/topology/location/run_repeat. ⚠️ **BOTH views are written and BOTH are wanted** — the per-run
+  overlay AND one figure per capture file (`timeseries_<source_file>.png`). Making it per-run alone silently
+  dropped the per-node plots the team already used; they were deleted, then restored from git. Shared
+  `_draw_timeseries()` so the two can't drift. The overlay SHOWS the positional finding: the downstream
+  victim's PDR drops to 0 exactly across the red attack band while the upstream one stays flat at 1.0, and
+  node2's parent switches sit entirely at NEGATIVE t (formation), never touching the experiment.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): data sync branch + push bugs, full detail
+- sep. 22, 2026 — **DATA SYNC: follows your CURRENT BRANCH, and pushes ANALYSIS + EDA** (`push_data.py`).
+  `--branch` was hardcoded `"Unified"`, sending CSVs to one branch while the code sat on another. Now
+  `current_branch()`. New `--area analysis` shares `analysis/<attack>/<topology>/<site>/` output; TWO guards,
+  both required — extension whitelist AND a **cell-depth rule**, since the pipeline's `.py` sits beside its
+  output. Listed WITHOUT `--exclude-standard` (those outputs are `.gitignore`d as rebuildable).
+  ⚠️ **TWO BUGS IT EXPOSED — the push SILENTLY did nothing.** (1) The private clone carries the same
+  `.gitignore`, so `git add` skipped every analysis path **without a word** and the commit staged nothing —
+  needs `git add -f`. (2) "already on GitHub?" was answered from the clone's WORKING TREE, so files the failed
+  push left on disk made every later run print **"already on GitHub, identical"** and push nothing, forever.
+  Now answered from the git TREE. **Verify a push against the REMOTE (`git ls-tree origin/<branch>`), never
+  the tool's own summary.**
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): capture dates / SET_TIME, full detail
+- sep. 22, 2026 — **CAPTURE DATES ARE REAL NOW: the board takes its clock from the laptop (`SET_TIME`).**
+  The picker's date was never a run date — it was `sd_status_build_stamp()` (LINK-time `__DATE__`), identical on
+  every boot of one flash: that is why deleting CSVs and re-running still showed `09/22 15:45`. No RTC, no NTP
+  ⇒ only a host can supply one. New `SET_TIME=<epoch>`/`GET_TIME`: `settimeofday()` + save to `/sdcard/clock.txt`;
+  `sd_status_apply_clock_anchor()` reads it next boot **after mount, before the folder tree** — that ordering is
+  what makes Explorer's "Date modified" true (FatFs `get_fattime()` reads `time(NULL)`). FORWARD-only, so a stale
+  card can't rewind a fresh time. `_push_host_time()` sends UTC on **every** `_open_port()`; `run.ps1 --set-time`
+  runs **before** the erase/flash (erased board can't answer; a fresh build stamp would beat an older anchor and
+  make the first post-flash run an estimate). `runs.csv` += `started`,`clock_src` (**appended last**; 7/8/10-col
+  headers parse via `_manifest_when()`, 6 cases tested). Picker shows `started`, `~` = `clock_src=build` (EST). **All 6 variants `-Clean` build verified: 0 warnings, 0 errors.** ⚠️ **NEEDS REFLASH.**
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): Initialize-Idf / export.ps1 activation, full detail
+- Spawning a build/flash window as plain `powershell.exe` — `idf.py`/`esptool.py` are POWERSHELL
+  FUNCTIONS from `C:\Espressif\Initialize-Idf.ps1`, and functions don't survive into a child process.
+  Dot-sourcing with no `-IdfId` also fails silently (`idf-env config get` returns the STRING "null").
+  Fix in use: `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime.
+  ⚠️ **sep. 22, 2026 — `export.ps1` ALSO fails here and LOOKS LIKE "ESP-IDF is not installed". It is.**
+  `activate.py` derives the venv name from whichever `python` is first on PATH (3.12 on Angelo's box), then
+  reports `idf5.5_py3.12_env ... not found`. The real venv is **`idf5.5_py3.11_env`**. Never conclude IDF is
+  absent from an `export.ps1` failure — check `C:\Espressif\idf-env.exe config get` first. Working line:
+  `. C:\Espressif\Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57` (**this laptop = v5.5.4**).
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): per-node PDR, full detail
+- sep. 22, 2026 — **`verify_attack.py` NOW PRINTS PER-NODE PDR under the pooled row — use THAT in the paper.**
+  Pooled PDR averages nodes the attack never touched with nodes it annihilated, so it describes NO actual
+  node. On blackhole/linear/home r1: pooled 0.514 = mean of victim H01 **1.0000** (upstream of the
+  attacker, never transits it) and victim H03 **0.0137** (downstream, near-total loss) — a ~37x
+  understatement of the real effect, and the pooled value moves run-to-run purely with where the attacker
+  lands. The pooled row STAYS (the 3-sigma test consumes it); the split prints underneath, and a victim
+  above the attacker is called out explicitly. ⚠️ Uses the PRE-`block_aggregate` frame (`df_nodes`) —
+  `verify()` rebinds `df` to the pooled frame, which drops `node_role`/`hop` (first attempt printed `?`/`-`).
 

@@ -284,6 +284,19 @@ static void telemetry_task(void *arg)
     int     slow_iters    = 0;          /* iterations with period > 150 ms */
 #endif
 
+    /* Fixed-PERIOD sampling anchor. vTaskDelay() below used to sleep
+     * SAMPLING_INTERVAL_MS *after* the body finished, so the real period was
+     * body_time + 100ms. With CONFIG_FREERTOS_HZ=100 the tick is 10ms, so any
+     * non-zero body time pushed the wake to the next tick and the node sampled
+     * at 110ms = 9.09Hz. Measured on the 2026-09-22 home capture: the root sat
+     * at exactly 110.0ms median and scored 93.6% against validate_integrity.py's
+     * 10Hz expectation -- the M5 "95% of expected samples" blocker. Nothing was
+     * being dropped (longest gap in the whole run: 0.36s); the cadence was just
+     * slower than nominal, and no node whose body takes >0ms could ever pass.
+     *
+     * xTaskDelayUntil() sleeps until anchor + period instead, so the body's
+     * duration is absorbed and the period is a true SAMPLING_INTERVAL_MS. */
+    TickType_t next_sample = xTaskGetTickCount();
     while (!phase_listener_is_terminated()) {
         int64_t ts = esp_timer_get_time();
 
@@ -422,7 +435,7 @@ static void telemetry_task(void *arg)
                  (unsigned long)forwarded,
                  (unsigned long)dropped);
 
-        vTaskDelay(pdMS_TO_TICKS(SAMPLING_INTERVAL_MS));
+        xTaskDelayUntil(&next_sample, pdMS_TO_TICKS(SAMPLING_INTERVAL_MS));
     }
 
     ESP_LOGI(TAG, "Telemetry task exiting.");

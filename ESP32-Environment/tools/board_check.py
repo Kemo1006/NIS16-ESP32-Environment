@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import json
 import os
 import re
 import subprocess
@@ -84,6 +85,63 @@ KNOWN = {
 }
 
 
+# Default location for an operator-maintained roster. Deliberately its own file,
+# NOT the per-run presets under presets/<you>/: those record which board played
+# which ROLE in one campaign, and they disagree with each other by design (the
+# same MAC is "ROOT" in one preset and "node2" in another). A board's number is a
+# property of the hardware; its role is a property of a run.
+ROSTER_FILENAME = "boards.json"
+
+
+def _roster_path_default():
+    """<repo>/presets/boards.json, derived from this file's location."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(os.path.dirname(here), "presets", ROSTER_FILENAME)
+
+
+def load_roster(path=None):
+    """MAC -> label, from a JSON file, falling back to the built-in KNOWN table.
+
+    KNOWN lists the boards this project started with. Adding or swapping one
+    should not require editing source, so anything in the roster file wins and
+    anything absent from it still resolves through KNOWN.
+
+    Accepts either shape:
+        {"aa:bb:cc:dd:ee:ff": "node1", ...}
+        {"boards": [{"Mac": "aa:bb:...", "Label": "node1"}, ...]}
+    the second being the same shape the wizard already writes for presets, so a
+    roster can be produced by hand-editing a preset export.
+
+    A missing file is normal and silent. A malformed one warns and falls back —
+    never crashes a board check over a config typo.
+    """
+    roster = dict(KNOWN)
+    path = path or _roster_path_default()
+    if not os.path.isfile(path):
+        return roster
+    try:
+        # utf-8-sig: PowerShell's ConvertTo-Json writes a BOM, and the wizard
+        # produces these files.
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            data = json.load(fh)
+        entries = data.get("boards", data) if isinstance(data, dict) else data
+        if isinstance(entries, dict):
+            pairs = entries.items()
+        else:
+            pairs = [(b.get("Mac"), b.get("Label")) for b in entries
+                     if isinstance(b, dict)]
+        added = 0
+        for mac, label in pairs:
+            if mac and label:
+                roster[str(mac).lower()] = str(label)
+                added += 1
+        print(f"  roster: {added} board(s) from {path}")
+    except (OSError, ValueError, AttributeError) as e:
+        print(f"  WARNING: could not read roster {path} ({e}); using the "
+              f"built-in table only.", file=sys.stderr)
+    return roster
+
+
 def _mark(ok):
     return "PASS" if ok else "FAIL"
 
@@ -127,11 +185,21 @@ def find_esptool():
         (["esptool"], "esptool on PATH"),
         ([sys.executable, "-m", "esptool"], "python -m esptool"),
     ]
-    for idf in sorted(glob.glob(r"C:\Espressif\frameworks\esp-idf-*"), reverse=True):
+    # Espressif root from the environment when an ESP-IDF shell set it, falling
+    # back to <SystemDrive>\Espressif -- never a literal "C:", which is wrong on
+    # any machine that installed elsewhere or boots another drive letter.
+    tools_root = os.environ.get("IDF_TOOLS_PATH") or os.path.join(
+        os.environ.get("SystemDrive", "C:") + os.sep, "Espressif")
+    idf_roots = sorted(glob.glob(os.path.join(tools_root, "frameworks", "esp-idf-*")),
+                       reverse=True)
+    if os.environ.get("IDF_PATH"):
+        idf_roots.insert(0, os.environ["IDF_PATH"])
+    for idf in idf_roots:
         script = os.path.join(idf, "components", "esptool_py", "esptool", "esptool.py")
         if os.path.isfile(script):
-            for py in sorted(glob.glob(r"C:\Espressif\python_env\*\Scripts\python.exe"),
-                             reverse=True):
+            for py in sorted(glob.glob(os.path.join(
+                    tools_root, "python_env", "*", "Scripts", "python.exe")),
+                    reverse=True):
                 candidates.append(([py, script], f"IDF bundled ({os.path.basename(idf)})"))
             candidates.append(([sys.executable, script], "IDF esptool.py + current python"))
 
@@ -336,18 +404,24 @@ def spiffs_usage(text):
     return used, total, used * 100.0 / total
 
 
-def identify(mac):
+# Filled by main() from load_roster(); KNOWN until then so importing this module
+# and calling identify() directly still works.
+ROSTER = dict(KNOWN)
+
+
+def identify(mac, roster=None):
+    roster = ROSTER if roster is None else roster
     if not mac:
         return "unknown (MAC not read)"
     m = mac.lower()
-    if m in KNOWN:
-        return KNOWN[m]
+    if m in roster:
+        return roster[m]
     # try AP-side MAC (usually STA + 1 in the last octet)
     head, last = m.rsplit(":", 1)
     try:
         alt = f"{head}:{int(last, 16) - 1:02x}"
-        if alt in KNOWN:
-            return KNOWN[alt] + "  [AP-side MAC]"
+        if alt in roster:
+            return roster[alt] + "  [AP-side MAC]"
     except ValueError:
         pass
     return "NOT in the known roster - a spare/new board"
@@ -374,9 +448,15 @@ def main():
     ap = argparse.ArgumentParser(description="Diagnose a suspect ESP32 board.")
     ap.add_argument("--port", help="e.g. COM28")
     ap.add_argument("--list", action="store_true", help="list serial ports and exit")
+    ap.add_argument("--roster", default=None,
+                    help="JSON file mapping board MAC -> label, so a new or swapped "
+                         "board needs no code edit. Default: presets/boards.json if "
+                         "it exists. Entries override the built-in table.")
     ap.add_argument("--wait", type=float, default=10.0,
                     help="seconds to spend on the runtime check (default 10)")
     args = ap.parse_args()
+    global ROSTER
+    ROSTER = load_roster(args.roster)
 
     if args.list or not args.port:
         print("Serial ports currently present:")

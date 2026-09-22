@@ -131,6 +131,11 @@ LEAKING_COLUMNS: dict[str, str] = {
 METADATA_COLUMNS: dict[str, str] = {
     "attack_type": "Plain-text label equivalent (combine_all.py ships it verbatim).",
     "attack": "Plain-text label equivalent.",
+    "exposure": (
+        "Derived from the topology: 'downstream' means the attacker sits on "
+        "this node's path to the root. Inside an attack window that IS very "
+        "nearly the label, for the same reason node_role is."
+    ),
     "node_role": (
         "Plain-text role, and role is what gates the leaking features above. "
         "The value blackhole in this column IS the answer."
