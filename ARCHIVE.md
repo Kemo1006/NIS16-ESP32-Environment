@@ -1641,3 +1641,73 @@ Both still live as one-line warnings in STATUS.md.
   `verify_attack.py` prints "built as" vs "exposure" and names only downstream nodes VICTIM.
   ⚠️ **In `leakage.py` METADATA_COLUMNS** — in an attack window "downstream" is nearly the label.
 
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): de-hardcoding summary
+- sep. 23, 2026 — **DE-HARDCODED the machine-specific paths.** `Get-EspMac.ps1` pinned `esp-idf-v5.3.5` +
+  `idf5.3_py3.11_env` — **dead on a 5.5.4 laptop, symptom just "no MAC"**. It and `board_check.py` now discover
+  via `IDF_PATH`/`IDF_TOOLS_PATH`, then glob `<SystemDrive>\Espressif` newest-first. `C:\Python314\python.exe`
+  in all 3 menus → the `py` launcher. `board_check.py`'s MAC→label table is overridable by
+  `presets/boards.json` (`--roster`) so a new board needs no code edit — NOT the per-run presets, which
+  disagree by design. Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): live exposure block, full detail
+- sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
+  the TOPOLOGY TREE). Same rule as `exposure.py` but walked UPWARD through `g.parent[]`, step-guarded: any
+  attacker ancestor ⇒ VICTIM. Prints each node ATTACKER / VICTIM / "not in the attack path" + a count, and
+  **errors outright when NO node is downstream** ("it will drop NOTHING and this run will look benign") — to
+  catch bad attacker placement BEFORE burning an 11-minute run, which post-hoc analysis structurally cannot.
+  Console role word `VICTIM`→`CHILD`; **the enum VALUE is on the wire and did NOT change.**
+  `verify_topology.py` gained an EXPOSURE column + `canonical_role()`. Vocabulary now consistent across
+  firmware console, verify_topology, verify_attack and feature_table.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): timeseries alignment summary
+- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — fixed.** `window_start` is each node's OWN clock from
+  ITS boot and boards are flashed one at a time (phase 0 began 60s in on the root, **670s on node2** — why its
+  baseline "starts at 600s"; harmless, phase 255 is dropped). Bands came from whichever node sorted first.
+  `_align_to_baseline()` re-bases on each node's phase-0 entry; **anchor on the RAW `segment` column, not
+  `_phase_names()`** (returns "Baseline", never matches). Also `_extract_run_id()` expected the OLD filename,
+  so the overlay never existed. ⚠️ **BOTH views are written and BOTH are wanted** (per-run overlay AND one per
+  capture file) — per-run alone silently dropped plots the team uses. Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): victim->child rename summary
+- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child` (Change B, DONE).** ⚠️ **The compat map is what
+  makes it safe:** `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to canonical `child` at the ONE place
+  `node_role` is produced, so pre-rename captures keep working; `features.py` gates on `CHILD_ROLE` and
+  deliberately NOT on both, which would hide a canonicalisation that had stopped running. Verified by
+  regenerating feature_table.csv: shape identical, `node_role` the ONLY changed column, PDR unchanged (it sits behind the gate, so that IS the proof). ⚠️ **NEEDS REFLASH.**
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): phase-schedule guard summary
+- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH CAN NO LONGER PASS UNNOTICED.** `mesh_config.h`'s `PHASE_*_S`
+  are build-time overridable but `preprocess.py`/`validate_integrity.py` carry copies. Silent and
+  ONE-DIRECTIONAL: preprocess slices baseline BACKWARDS from the phase-0 exit, so a firmware baseline
+  SHORTER than the host assumes labels mesh-formation noise BENIGN. Both now MEASURE from `phase_id`
+  transitions — warn SHORT, note LONG (`jitter`), `--phase-durations` overrides. Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): first clean r1 capture summary
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE VERIFIED (blackhole/linear/home) — attack CONFIRMED.**
+  ForwardingRatio 1.000→0.026, PDR 1.000→0.514. ⚠️ **Aggregate PDR HIDES a positional split:** the victim
+  UPSTREAM of the attacker stayed at PDR=1.000 throughout; the downstream one fell to 0.0137. Pooling
+  describes no real node — **report PDR PER NODE relative to the attacker.** ✅ NOT a gap: `leakage.py`'s
+  survivors warning already catches ForwardingRatio/ConsistencyScore; the documented fix is attack-PARAMETER
+  VARIATION across repeats, not a code change. Full detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): SET_TIME clock summary
+- sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The
+  picker's date was `sd_status_build_stamp()` (link-time `__DATE__`), identical on every boot of one flash —
+  why deleting CSVs and re-running still showed the same date. No RTC, no NTP ⇒ only a host can supply one.
+  `SET_TIME`/`GET_TIME` + `/sdcard/clock.txt`; the anchor is applied **after mount, before the folder tree**,
+  which is what makes Explorer's "Date modified" true. FORWARD-only. `runs.csv` += `started`,`clock_src`.
+  ⚠️ **NEEDS REFLASH.** Full detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): stderr-promotion trap summary
+- sep. 22, 2026 — ⚠️ **PS 5.1 PROMOTES A NATIVE COMMAND'S FIRST STDERR LINE TO A TERMINATING ERROR**
+  under `$ErrorActionPreference='Stop'` — so a tool that writes a progress bar to stderr (`export_logs.py`)
+  kills its PowerShell caller with an EMPTY exception message. Both `run_wizard.ps1` import calls now wrap
+  in `'Continue'` + `finally` restore. **Grep every `& python ... 2>&1` before shipping.** ⚠️ Editing
+  `run_wizard.ps1` does NOT affect an ALREADY-RUNNING wizard — exit [17] and relaunch. Detail: ARCHIVE.md.
+
+## Durable facts & constraints
+

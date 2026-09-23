@@ -115,6 +115,17 @@ NO_PARENT_MAC = "00:00:00:00:00:00"
 # The canonical role of a plain, non-attacking child. preprocess.py maps the
 # pre-2026-09-23 firmware's "victim" onto it; see its ROLE_ALIASES.
 CHILD_ROLE = "child"
+ROOT_ROLE = "root"
+
+# Which node_role actually runs the manipulation, per attack. Used by the
+# coverage check in compute_features(): every feature below is ROLE-GATED, and
+# a gate that matches nothing computes nothing -- silently. That is not
+# hypothetical; renaming "victim" to "child" on 2026-09-23 would have emptied
+# PDR exactly this way had the gate not been updated with it.
+ATTACK_ROLES = {
+    "blackhole": ("blackhole",),
+    "wormhole": ("wormhole_a", "wormhole_b"),
+}
 
 # RELAY-node features: only defined for a node that receives transit traffic
 # and forwards it, which in this testbed is the blackhole ATTACKER alone. They
@@ -1013,7 +1024,49 @@ def compute_features(
     blocked = ",".join(FEATURES_BLOCKED_ON_FIRMWARE)
     result["missing_firmware_fields"] = blocked
 
+    _warn_on_missing_attack_role(result)
+
     return result
+
+
+def _warn_on_missing_attack_role(result: pd.DataFrame) -> None:
+    """Say so when a run's attacker role is absent from the capture.
+
+    Every manipulation feature is role-gated -- `windowed["node_role"] ==
+    "blackhole"` and friends -- and those gates are guarded with `if mask.any()`,
+    so a gate matching ZERO rows does nothing at all and says nothing. The run
+    then produces an all-NaN ForwardingRatio, which is a PRIMARY signature
+    feature, and verify_attack.py reports a failure whose cause is invisible.
+
+    Three real ways to get here, none of them obvious from the output:
+      * the attacker's board was never exported (only root + children pulled),
+      * the capture sits in the wrong <attack>/ folder,
+      * the role string drifted from what the gate tests -- which is exactly
+        what the victim->child rename would have done to PDR.
+
+    A warning, not an error: a baseline run legitimately has no attacker, and a
+    partial export is still worth loading. It just must not be silent.
+    """
+    if "node_role" not in result.columns or "attack" not in result.columns:
+        return
+    for attack, g in result.groupby("attack"):
+        expected = ATTACK_ROLES.get(str(attack).strip().lower())
+        if not expected:
+            continue          # baseline, or an attack with no dedicated role
+        present = set(g["node_role"].dropna().astype(str).unique())
+        missing = [r for r in expected if r not in present]
+        if not missing:
+            continue
+        warnings.warn(
+            f"[features] this {attack} run contains NO node with role "
+            f"{' or '.join(missing)} — roles present: {sorted(present)}. "
+            f"Every manipulation feature is gated on that role, so "
+            f"ForwardingRatio/IngressEgressDelta/ConsistencyScore will be "
+            f"all-NaN and the attack cannot be verified from this table. "
+            f"Check the attacker's board was exported, that the capture is in "
+            f"the right <attack>/ folder, and that the role string matches.",
+            stacklevel=2,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────

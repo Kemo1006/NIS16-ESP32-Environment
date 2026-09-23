@@ -8,47 +8,57 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 23, 2026 — ⚠️ **`exposure.py` MUST use the ATTACK-WINDOW parent, not the whole-run mode — the sep. 22
+  data proves it.** node2 (`B0CBD8F33218`) sat BELOW the attacker for its entire 671-window pre-baseline, then
+  re-parented to the root before baseline began. Whole-run mode is dominated by those pre-baseline rows and
+  returns the ATTACKER as its parent (it even makes node2/attacker look like a 2-cycle). That would label an
+  untouched node `downstream` — the exact error the column exists to prevent. Its PDR was 1.000 throughout.
+  **Never "simplify" `_dominant_parent()` to a plain mode.**
+- sep. 23, 2026 — **ROLE-GATE COVERAGE GUARD** (`features._warn_on_missing_attack_role`). Manipulation
+  features are gated on `node_role == "<attacker>"` behind `if mask.any()`, so a gate matching ZERO rows
+  computes nothing and SAYS nothing — `ForwardingRatio` (PRIMARY) goes all-NaN and `verify_attack` fails
+  invisibly. Causes: attacker never exported, wrong `<attack>/` folder, or a role string drifting (what
+  victim→child would have done to PDR). Now warns, naming the roles present. `ATTACK_ROLES` constants.
+- sep. 23, 2026 — **AUDIT of groupmate `fac59c5`/`13b607c` (`docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md`):
+  every load-bearing number FACT-CHECKED and CORRECT** — `MESH_ROOT_LAYER (1)` (re-verified in 5.5.4, not
+  just the 5.3.5 cited), `layer -1 → NaN`, SoftAP = STA+1 on all 4 values, attacker `recv 180/fwd 0/drop
+  180`, arrivals `301→0→121` downstream vs `300→180→121` upstream. No errors; their MEMORY edits held both
+  caps. Also: zero absolute paths left in code, no silent `except: pass`, and the lone `ForwardingRatio>1`
+  (4.00) window is node2's re-parent queue flush in **pre_baseline** (EXCLUDED) — baseline FR is genuinely
+  n=600, sd=0.000000.
 - sep. 23, 2026 — **PANEL EVIDENCE for hop/`parent_mac` is ESPRESSIF'S OWN HEADER — cite it, not our code:**
   `#define MESH_ROOT_LAYER (1)` (`esp_mesh.h`, IDF v5.3.5) + the IDF MAC table ("Wi-Fi SoftAP: base_mac, +1 to
   the last octet") answer both "why hop = layer−1" and "why `parent_mac` matches no `node_id`" (SoftAP vs STA).
   Plain-language version (analogies, panel script, no code-reading required) written to
   `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — companion to `REVIEWER-QUESTIONS.md` §3/§7, not a replacement.
 - sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
-  the TOPOLOGY TREE). Same rule as `exposure.py` but walked UPWARD through `g.parent[]`, step-guarded: any
-  attacker ancestor ⇒ VICTIM. Prints each node ATTACKER / VICTIM / "not in the attack path" + a count, and
-  **errors outright when NO node is downstream** ("it will drop NOTHING and this run will look benign") — to
-  catch bad attacker placement BEFORE burning an 11-minute run, which post-hoc analysis structurally cannot.
-  Console role word `VICTIM`→`CHILD`; **the enum VALUE is on the wire and did NOT change.**
-  `verify_topology.py` gained an EXPOSURE column + `canonical_role()`. Vocabulary now consistent across
-  firmware console, verify_topology, verify_attack and feature_table.
-- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH CAN NO LONGER PASS UNNOTICED.** `mesh_config.h`'s `PHASE_*_S`
-  are build-time overridable but `preprocess.py`/`validate_integrity.py` carry copies. Silent and
-  ONE-DIRECTIONAL: preprocess slices baseline BACKWARDS from the phase-0 exit, so a firmware baseline
-  SHORTER than the host assumes labels mesh-formation noise BENIGN. Both now MEASURE from `phase_id`
+  the TOPOLOGY TREE). Same rule as `exposure.py`, walked UPWARD through `g.parent[]`, step-guarded. Prints each
+  node ATTACKER / VICTIM / "not in the attack path", and **errors when NO node is downstream** — catches bad
+  attacker placement BEFORE burning an 11-minute run. Console role word `VICTIM`→`CHILD`; **enum VALUE is on
+  the wire and did NOT change.** `verify_topology.py` gained an EXPOSURE column. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH IS NO LONGER SILENT.** `mesh_config.h`'s `PHASE_*_S` are
+  build-time overridable but the host tools carry copies; preprocess slices baseline BACKWARDS from the
+  phase-0 exit, so a SHORTER firmware baseline labels formation noise BENIGN. Both now MEASURE from `phase_id`
   transitions — warn SHORT, note LONG (`jitter`), `--phase-durations` overrides. Detail: ARCHIVE.md.
 - sep. 23, 2026 — **`exposure` COLUMN: who the attack could actually reach** (`analysis/exposure.py`), per
   node per run: `root`/`attacker`/`downstream` (**the REAL victims**)/`upstream`/`no_attacker`/`unknown`
   (never folded). From `parent_mac` (parent's SoftAP BSSID = STA+1), using the parent held DURING the
   attack, cycle-guarded. Verified: `downstream` → PDR **0.0000**, `upstream` → **1.0000**. ⚠️ **In
   `leakage.py` METADATA_COLUMNS** — nearly the label in an attack window. Detail: ARCHIVE.md.
-- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child` (Change B, DONE).** ⚠️ **The compat map is what
-  makes it safe:** `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to canonical `child` at the ONE place
-  `node_role` is produced, so pre-rename captures keep working; `features.py` gates on `CHILD_ROLE` and
-  deliberately NOT on both, which would hide a canonicalisation that had stopped running. Verified by
-  regenerating feature_table.csv: shape identical, `node_role` the ONLY changed column, PDR unchanged (it sits behind the gate, so that IS the proof). ⚠️ **NEEDS REFLASH.**
-- sep. 23, 2026 — **DE-HARDCODED the machine-specific paths.** `Get-EspMac.ps1` pinned `esp-idf-v5.3.5` +
-  `idf5.3_py3.11_env` — **dead on a 5.5.4 laptop, symptom just "no MAC"**. It and `board_check.py` now discover
-  via `IDF_PATH`/`IDF_TOOLS_PATH`, then glob `<SystemDrive>\Espressif` newest-first. `C:\Python314\python.exe`
-  in all 3 menus → the `py` launcher. `board_check.py`'s MAC→label table is overridable by
-  `presets/boards.json` (`--roster`) so a new board needs no code edit — NOT the per-run presets, which
-  disagree by design. Detail: ARCHIVE.md.
-- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — fixed.** `window_start` is each node's OWN clock from
-  ITS boot and boards are flashed one at a time (phase 0 began 60s in on the root, **670s on node2** — why its
-  baseline "starts at 600s"; harmless, phase 255 is dropped). Bands came from whichever node sorted first.
-  `_align_to_baseline()` re-bases on each node's phase-0 entry; **anchor on the RAW `segment` column, not
-  `_phase_names()`** (returns "Baseline", never matches). Also `_extract_run_id()` expected the OLD filename,
-  so the overlay never existed. ⚠️ **BOTH views are written and BOTH are wanted** (per-run overlay AND one per
-  capture file) — per-run alone silently dropped plots the team uses. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child`.** ⚠️ **The compat map makes it safe:**
+  `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to canonical `child` at the ONE place `node_role` is
+  produced; `features.py` gates on `CHILD_ROLE` and deliberately NOT on both (which would hide a
+  canonicalisation that stopped running). Verified: regenerating feature_table changed ONLY `node_role`; PDR
+  unchanged, and PDR sits behind the gate so that IS the proof. ⚠️ **NEEDS REFLASH.** Detail: ARCHIVE.md.
+- sep. 23, 2026 — **DE-HARDCODED machine paths.** `Get-EspMac.ps1` pinned IDF `v5.3.5`+`py3.11` — dead on a
+  5.5.4 box, symptom just "no MAC". It and `board_check.py` discover via `IDF_PATH`/`IDF_TOOLS_PATH` then glob
+  `<SystemDrive>\Espressif`. `C:\Python314\python.exe` → `py` launcher. Board roster overridable by
+  `presets/boards.json` (`--roster`). Detail: ARCHIVE.md.
+- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — fixed.** `window_start` is each node's OWN boot clock
+  (phase 0 began 60s in on the root, **670s on node2**), so bands drawn from whichever node sorted first were
+  right for at most one line. `_align_to_baseline()` re-bases per node; **anchor on the RAW `segment` column,
+  not `_phase_names()`** (returns "Baseline", never matches). ⚠️ **BOTH views are written and BOTH are wanted**
+  (per-run overlay AND one per capture file). Detail: ARCHIVE.md.
 - sep. 23, 2026 — **KEEP `RetryRate` in the blackhole signature; the stale comment was the only problem.**
   Its removal condition ("once retry_count means MAC-layer failure on every role") IS met — verified in
   `blackhole_victim.c:378-386`, F3 moved deliberate drops to `drop_count`. But that killed the LEAK, which is
@@ -82,12 +92,9 @@
   the attack; now compares `segment`-derived names, and PCA/t-SNE drop unlabelled windows too — moved
   `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0%. ⚠️ Heatmap upper-triangle masking was tried
   and REJECTED — don't reintroduce. `column_legend.py`'s `_L` dict is now the single source of column meanings.
-- sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The
-  picker's date was `sd_status_build_stamp()` (link-time `__DATE__`), identical on every boot of one flash —
-  why deleting CSVs and re-running still showed the same date. No RTC, no NTP ⇒ only a host can supply one.
-  `SET_TIME`/`GET_TIME` + `/sdcard/clock.txt`; the anchor is applied **after mount, before the folder tree**,
-  which is what makes Explorer's "Date modified" true. FORWARD-only. `runs.csv` += `started`,`clock_src`.
-  ⚠️ **NEEDS REFLASH.** Full detail: ARCHIVE.md.
+- sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The old
+  date was the link-time build stamp, identical on every boot of one flash. `/sdcard/clock.txt` anchor applied
+  **after mount, before the folder tree** (that ordering is what makes "Date modified" true). Detail: ARCHIVE.md.
 - sep. 22, 2026 — `status_NODE_<mac>.txt`/`runs.csv`/`location.txt`/`clock.txt` roles + why `DELETE_SD_FILE`
   only accepts `*_telem.csv`/`*_arrivals.csv` — full detail ARCHIVE.md.
 - sep. 22, 2026 — **CAMPAIGN CHECKLIST IS A SCANNER** (`inventory_cells.py`): `[x]` complete / `[~]` captured
@@ -111,22 +118,15 @@
   EXTENSION to baseline/attack windows so phases don't land at the same offset every run (elapsed time alone
   scored 0.857 against the label). ⛔ **NEVER SUBTRACTIVE** — a shorter baseline pulls mesh-formation noise
   into the benign class. Full rationale: ARCHIVE.md.
-- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE VERIFIED (blackhole/linear/home) — attack CONFIRMED.**
-  ForwardingRatio 1.000→0.026, PDR 1.000→0.514. ⚠️ **Aggregate PDR HIDES a positional split:** the victim
-  UPSTREAM of the attacker stayed at PDR=1.000 throughout; the downstream one fell to 0.0137. Pooling
-  describes no real node — **report PDR PER NODE relative to the attacker.** ✅ NOT a gap: `leakage.py`'s
-  survivors warning already catches ForwardingRatio/ConsistencyScore; the documented fix is attack-PARAMETER
-  VARIATION across repeats, not a code change. Full detail: ARCHIVE.md.
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE (blackhole/linear/home) — attack CONFIRMED**, independently
+  re-verified sep. 23 (see the AUDIT entry). ⚠️ **Report PDR PER NODE relative to the attacker, never pooled**
+  — the upstream child held 1.000 throughout while the downstream one fell to ~0. Detail: ARCHIVE.md.
 - sep. 22, 2026 — **CONSOLE SAYS `HOP`, NOT `LAYER` (adviser); root = H00.** ESP-MESH `layer` is 1-based, so
   the console now prints hop = layer-1 and agrees with the paper. Blackhole header rewritten to the C7
   positional model; leaf/off-path guards added; `TOPOLOGY TREE` block added. Full detail: ARCHIVE.md.
-- sep. 22, 2026 — ⚠️ **PS 5.1 PROMOTES A NATIVE COMMAND'S FIRST STDERR LINE TO A TERMINATING ERROR**
-  under `$ErrorActionPreference='Stop'` — so a tool that writes a progress bar to stderr (`export_logs.py`)
-  kills its PowerShell caller with an EMPTY exception message. Both `run_wizard.ps1` import calls now wrap
-  in `'Continue'` + `finally` restore. **Grep every `& python ... 2>&1` before shipping.** ⚠️ Editing
-  `run_wizard.ps1` does NOT affect an ALREADY-RUNNING wizard — exit [17] and relaunch. Detail: ARCHIVE.md.
-
-## Durable facts & constraints
+- ⚠️ **PS 5.1 promotes a native command's FIRST STDERR LINE to a TERMINATING error** under
+  `$ErrorActionPreference='Stop'` — a tool writing a progress bar to stderr kills its caller with an EMPTY
+  exception message. **Grep every `& python ... 2>&1` before shipping.** Detail: ARCHIVE.md.
 - sep. 22, 2026 — ⚠️⚠️ **PLUG BOARDS DIRECT INTO THE LAPTOP — NEVER THE DOCK OR ANY HUB.** Win11 26200
   hard-crashed 2x (BSOD `ATTEMPTED_SWITCH_FROM_DPC` 0xB8) during export / `DELETE_SD_FILE` / `SET_LOCATION`.
   HOST DRIVER fault, **not the firmware or scripts** — nothing an ESP sends over a COM port can crash Windows.
