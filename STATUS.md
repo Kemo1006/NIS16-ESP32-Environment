@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 23, 2026 — read-only session: **independently re-verified the sep. 22 `blackhole/linear/home` r1 capture** (raw CSVs + post-overhaul EDA plots) — attack signature and phase timing both conform to the paper; no code touched. Earlier: CAPTURE DATES ARE REAL, export overhaul + D-13. **The working copy moved drives** (below). **Newer work UNCOMMITTED.**
+**Updated:** sep. 23, 2026 — read-only session: **independently re-verified the sep. 22 `blackhole/linear/home` r1 capture** (raw CSVs + post-overhaul EDA plots) — attack signature and phase timing both conform to the paper; no code touched. Also wrote `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — plain-language, panel-ready version of the hop/`parent_mac` explanations (companion to `REVIEWER-QUESTIONS.md` §3/§7). Earlier: CAPTURE DATES ARE REAL, export overhaul + D-13. **Working copy moved drives** (below). **Newer work UNCOMMITTED.**
 
 ## ⚠️ THE WORKING COPY MOVED — read this first
 **Work in `A:\Angelo\Excelsior\THESIS\T`.** `C:\...\NIS16-ESP32-Environment` (old C: path) is a BACKUP only —

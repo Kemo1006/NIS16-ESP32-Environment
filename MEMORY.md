@@ -11,6 +11,8 @@
 - sep. 23, 2026 — **PANEL EVIDENCE for hop/`parent_mac` is ESPRESSIF'S OWN HEADER — cite it, not our code:**
   `#define MESH_ROOT_LAYER (1)` (`esp_mesh.h`, IDF v5.3.5) + the IDF MAC table ("Wi-Fi SoftAP: base_mac, +1 to
   the last octet") answer both "why hop = layer−1" and "why `parent_mac` matches no `node_id`" (SoftAP vs STA).
+  Plain-language version (analogies, panel script, no code-reading required) written to
+  `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — companion to `REVIEWER-QUESTIONS.md` §3/§7, not a replacement.
 - sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
   the TOPOLOGY TREE). Same rule as `exposure.py` but walked UPWARD through `g.parent[]`, step-guarded: any
   attacker ancestor ⇒ VICTIM. Prints each node ATTACKER / VICTIM / "not in the attack path" + a count, and
@@ -78,9 +80,8 @@
   Analysis-only, no reflash, Basti's clone (not `A:\Angelo\...`). **UNCOMMITTED.** **Bug fixed:** phase
   shading compared raw `Label` (NaN on unlabelled rows), stacking hundreds into one red block that read as
   the attack; now compares `segment`-derived names, and PCA/t-SNE drop unlabelled windows too — moved
-  `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0% (the exclusion, not new data). ⚠️ Masking
-  the heatmap's upper triangle was tried and REJECTED by the user — don't reintroduce. `column_legend.py`'s
-  `_L` dict is now the single source of column meanings (checked vs `docs/DATA-DICTIONARY.md` + firmware).
+  `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0%. ⚠️ Heatmap upper-triangle masking was tried
+  and REJECTED — don't reintroduce. `column_legend.py`'s `_L` dict is now the single source of column meanings.
 - sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The
   picker's date was `sd_status_build_stamp()` (link-time `__DATE__`), identical on every boot of one flash —
   why deleting CSVs and re-running still showed the same date. No RTC, no NTP ⇒ only a host can supply one.
@@ -189,9 +190,8 @@
   variable and `@flags`. `build_all_variants.ps1:47-53` documents the same gotcha.
 - Spawning a build/flash window as plain `powershell.exe` — `idf.py`/`esptool.py` are POWERSHELL FUNCTIONS
   from `Initialize-Idf.ps1` and don't survive into a child process; dot-sourcing without `-IdfId` fails
-  silently. ⚠️ **`export.ps1` ALSO fails and LOOKS LIKE "ESP-IDF is not installed" — it is not:** it builds
-  the venv name from whichever `python` is first on PATH (3.12) and hunts `idf5.5_py3.12_env`; the real one
-  is `idf5.5_py3.11_env`. Check `idf-env.exe config get` before concluding anything. Detail: ARCHIVE.md.
+  silently. ⚠️ **`export.ps1` ALSO fails, LOOKING LIKE "ESP-IDF is not installed"** — it actually hunts
+  `idf5.5_py3.12_env` (wrong; real is `...py3.11_env`). Check `idf-env.exe config get` first. ARCHIVE.md.
 - Long `idf.py -B <dir>` names — deep paths pass Windows `MAX_PATH`; ninja fails in the **bootloader**
   subproject long after the app compiled, so it looks unrelated. Fixed by short per-variant `Bld` names
   (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.
