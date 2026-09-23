@@ -529,7 +529,23 @@ try {
         $attackLabel = if ($Attack -eq 'wormhole' -and $Role -ne 'root') { "wormhole/$WormholeEnd" } else { $Attack }
         $scenarioLabel = if ($Scenario -ne 'none') { $Scenario + $(if ($ScenarioTarget) { '+target' } else { '' }) } else { 'none' }
         Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$attackLabel, scenario=$scenarioLabel, build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
-        idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags -p $Port flash monitor
+        # flash and monitor run as two calls so a failed flash is caught HERE: the
+        # old combined `flash monitor` fell through into export against a board
+        # that the -Wipe erase had just left blank (sep. 23 2026: COM4 died at
+        # 100% with "Failed to leave compressed flash mode (C800: Not enough
+        # data)" - bytes lost on the USB serial link at 460800 baud). One retry
+        # at 115200 usually gets through; if not, stop before export.
+        idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags -p $Port flash
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`nFlash FAILED on $Port (usually a USB serial glitch). Retrying once at 115200 baud ..." -ForegroundColor Yellow
+            idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags -p $Port -b 115200 flash
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`nFlash FAILED twice on $Port - NOT exporting (the board has no firmware on it)." -ForegroundColor Red
+            Write-Host "Check: board plugged DIRECTLY into the laptop (no dock/hub), a short data cable, then re-run." -ForegroundColor Red
+            exit 1
+        }
+        idf.py -B $buildDir -p $Port monitor
     } else {
         if ($Attack -ne 'none' -or $Topology -ne 'tree') {
             Write-Host "NOTE: -Attack/-Topology have no effect without -Flash; monitoring the CURRENTLY flashed firmware." -ForegroundColor Yellow

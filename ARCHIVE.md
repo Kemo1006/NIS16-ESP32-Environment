@@ -1711,3 +1711,141 @@ Both still live as one-line warnings in STATUS.md.
 
 ## Durable facts & constraints
 
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): groupmate audit, full detail
+- sep. 23, 2026 — **AUDIT of groupmate `fac59c5`/`13b607c` (`docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md`):
+  every load-bearing number FACT-CHECKED and CORRECT** — `MESH_ROOT_LAYER (1)` (re-verified in 5.5.4, not
+  just the 5.3.5 cited), `layer -1 → NaN`, SoftAP = STA+1 on all 4 values, attacker `recv 180/fwd 0/drop
+  180`, arrivals `301→0→121` downstream vs `300→180→121` upstream. No errors; their MEMORY edits held both
+  caps. Also: zero absolute paths left in code, no silent `except: pass`, and the lone `ForwardingRatio>1`
+  (4.00) window is node2's re-parent queue flush in **pre_baseline** (EXCLUDED) — baseline FR is genuinely
+  n=600, sd=0.000000.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): attack-window parent rationale
+- sep. 23, 2026 — ⚠️ **`exposure.py` MUST use the ATTACK-WINDOW parent, not the whole-run mode — the sep. 22
+  data proves it.** node2 (`B0CBD8F33218`) sat BELOW the attacker for its entire 671-window pre-baseline, then
+  re-parented to the root before baseline began. Whole-run mode is dominated by those pre-baseline rows and
+  returns the ATTACKER as its parent (it even makes node2/attacker look like a 2-cycle). That would label an
+  untouched node `downstream` — the exact error the column exists to prevent. Its PDR was 1.000 throughout.
+  **Never "simplify" `_dominant_parent()` to a plain mode.**
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): role-gate guard detail
+- sep. 23, 2026 — **ROLE-GATE COVERAGE GUARD** (`features._warn_on_missing_attack_role`). Manipulation
+  features are gated on `node_role == "<attacker>"` behind `if mask.any()`, so a gate matching ZERO rows
+  computes nothing and SAYS nothing — `ForwardingRatio` (PRIMARY) goes all-NaN and `verify_attack` fails
+  invisibly. Causes: attacker never exported, wrong `<attack>/` folder, or a role string drifting (what
+  victim→child would have done to PDR). Now warns, naming the roles present. `ATTACK_ROLES` constants.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): exposure column detail
+- sep. 23, 2026 — **`exposure` COLUMN: who the attack could actually reach** (`analysis/exposure.py`), per
+  node per run: `root`/`attacker`/`downstream` (**the REAL victims**)/`upstream`/`no_attacker`/`unknown`
+  (never folded). From `parent_mac` (parent's SoftAP BSSID = STA+1), using the parent held DURING the
+  attack, cycle-guarded. Verified: `downstream` → PDR **0.0000**, `upstream` → **1.0000**. ⚠️ **In
+  `leakage.py` METADATA_COLUMNS** — nearly the label in an attack window. Detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): phase-schedule guard detail
+- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH IS NO LONGER SILENT.** `mesh_config.h`'s `PHASE_*_S` are
+  build-time overridable but the host tools carry copies; preprocess slices baseline BACKWARDS from the
+  phase-0 exit, so a SHORTER firmware baseline labels formation noise BENIGN. Both now MEASURE from `phase_id`
+  transitions — warn SHORT, note LONG (`jitter`), `--phase-durations` overrides. Detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): live exposure detail
+- sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
+  the TOPOLOGY TREE). Same rule as `exposure.py`, walked UPWARD through `g.parent[]`, step-guarded. Prints each
+  node ATTACKER / VICTIM / "not in the attack path", and **errors when NO node is downstream** — catches bad
+  attacker placement BEFORE burning an 11-minute run. Console role word `VICTIM`→`CHILD`; **enum VALUE is on
+  the wire and did NOT change.** `verify_topology.py` gained an EXPOSURE column. Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): victim->child detail
+- sep. 23, 2026 — **FIRMWARE ROLE RENAMED `victim`→`child`.** ⚠️ **The compat map makes it safe:**
+  `preprocess.py`'s `ROLE_ALIASES` folds BOTH spellings to canonical `child` at the ONE place `node_role` is
+  produced; `features.py` gates on `CHILD_ROLE` and deliberately NOT on both (which would hide a
+  canonicalisation that stopped running). Verified: regenerating feature_table changed ONLY `node_role`; PDR
+  unchanged, and PDR sits behind the gate so that IS the proof. ⚠️ **NEEDS REFLASH.** Detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): timeseries detail
+- sep. 23, 2026 — **TIMESERIES PLOTS WERE MISALIGNED — fixed.** `window_start` is each node's OWN boot clock
+  (phase 0 began 60s in on the root, **670s on node2**), so bands drawn from whichever node sorted first were
+  right for at most one line. `_align_to_baseline()` re-bases per node; **anchor on the RAW `segment` column,
+  not `_phase_names()`** (returns "Baseline", never matches). ⚠️ **BOTH views are written and BOTH are wanted**
+  (per-run overlay AND one per capture file). Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): wireshark guide MAC fix
+- sep. 23, 2026 — ⚠️ **`docs/WIRESHARK-GUIDE.md` had ROOT and a CHILD SWAPPED** — it listed
+  `b0:cb:d8:f3:32:18` as ROOT, but since at least sep. 22 the root is `70:4b:ca:25:b7:68` and `b0:cb…18` is
+  the UPSTREAM child. Every "the root" filter pointed at a child and would have shown plausible-but-wrong
+  traffic. Corrected against the capture + a one-liner to re-derive it. Also: filter 4 is **attacker → its
+  PARENT**, not "→ root" — it worked only because the attacker's parent happened to be `b0:cb…18`; the parent
+  changes with the topology. Verified `simple_sniffer` DOES exist in the installed 5.5.4 (Path A is viable).
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): phase schedule in status report
+- sep. 23, 2026 — **STATUS REPORT RECORDS ITS OWN PHASE SCHEDULE** (`[6]`, `sd_status.c`): compiled
+  `PHASE_STABILISE/BASELINE/ATTACK/COOLDOWN_S` + whether jitter is on. WHY: the host tools cannot DERIVE the
+  nominal — jitter EXTENDS phases on purpose, so the measured duration legitimately differs. Recording the
+  compiled value is the only way a pulled card can state its own provenance. Free-form text; nothing parses it.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): de-hardcoding detail
+- sep. 23, 2026 — **DE-HARDCODED machine paths.** `Get-EspMac.ps1` pinned IDF `v5.3.5`+`py3.11` — dead on a
+  5.5.4 box, symptom just "no MAC". It and `board_check.py` discover via `IDF_PATH`/`IDF_TOOLS_PATH` then glob
+  `<SystemDrive>\Espressif`. `C:\Python314\python.exe` → `py` launcher. Board roster overridable by
+  `presets/boards.json` (`--roster`). Detail: ARCHIVE.md.
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): USB BSOD detail
+- sep. 22, 2026 — ⚠️⚠️ **PLUG BOARDS DIRECT INTO THE LAPTOP — NEVER THE DOCK OR ANY HUB.** Win11 26200
+  hard-crashed 2x (BSOD `ATTEMPTED_SWITCH_FROM_DPC` 0xB8) during export / `DELETE_SD_FILE` / `SET_LOCATION`.
+  HOST DRIVER fault, **not the firmware or scripts** — nothing an ESP sends over a COM port can crash Windows.
+  Confirmed by the PnP parent chain: every CP210x sat 2-3 Genesys hubs deep behind the Dell D6000 dock,
+  sharing one Intel root port with its DisplayLink video chip. USB selective suspend now off (AC+DC); still to
+  do: update CP210x + DisplayLink drivers. Dumps in `C:\Windows\Minidump`. Detail: ARCHIVE.md.
+
+
+### Rolled from MEMORY.md — sep. 23, 2026 (cap): data sync push bugs
+- sep. 22, 2026 — **DATA SYNC: follows your CURRENT BRANCH, and pushes ANALYSIS + EDA** (`push_data.py`
+  `--area analysis`). `--branch` was hardcoded `"Unified"`. ⚠️ **TWO BUGS IT EXPOSED — the push SILENTLY did
+  nothing:** the private clone carries the same `.gitignore`, so `git add` skipped every analysis path without
+  a word (needs `-f`); and "already on GitHub?" was answered from the clone's WORKING TREE, so leftovers from
+  the failed push made every later run say "already on GitHub, identical" forever. **Verify a push against the
+  REMOTE (`git ls-tree origin/<branch>`), never the tool's own summary.** Full detail: ARCHIVE.md.
+
+## Rolled from MEMORY.md (sep. 23, 2026)
+- ⚠️ **Paper-scope conflict R-A:** paper §1.4.1 + abstract commit to a *"controlled indoor environment"*. The DLSU-campus decision deliberately relaxes that — must be amended in §1.4.1/abstract and logged in `thesis-deviate.md` as D-5, not slipped in.
+- ⚠️ **Paper-scope conflict R-B:** paper §1.4.1 explicitly EXCLUDES *"grayhole, Sybil, or selective forwarding"* from the threat model. Partial/probabilistic drop rates ARE selective forwarding — so the obvious fix for the panel's "vary the attacks" comment collides with approved scope. Safest reading: the panel asked for different **attacker positions**, not different drop rates. Adviser decides (plan §7 R-B).
+- ✅ **§2.8 + Table 2.8 already survey existing wireless datasets** — extend that table for the dataset-comparison work, don't write a new section.
+- sep. 23, 2026 — **firmware role `victim`→`child` + `exposure` column; phase-schedule mismatch detected from the data.** MEMORY.md. ⚠️ **NEEDS REFLASH.**
+- ✅ **Already have a pre-registered attack signature (panel P6):** paper **§3.4.4 + Tables 3.4/3.5** state the expected observables for blackhole and wormhole, written at proposal time before any capture. Quote as-published; NEVER edit them to match results. §3.3.1.1/§3.3.2.1 hold the theory citations.
+- Feature coverage is run-type-dependent: baseline 10/16, blackhole 13/16, wormhole 13/16, **combined matrix 16/16**. "No feature uniformly NaN" is a claim about the assembled dataset, not any single run.
+- The FOLDER you build from decides the role, not the COM port: `root_node/` → root, `child_node/` → victim.
+- Mesh identity is shared across every board: `MESH_ID {0xAB,0xCD,0xEF,0x01,0x23,0x45}`, `MESH_PASSWORD "MeshSecure2026!"` in `components/mesh_common/include/mesh_config.h` — never change between flashing root and victims.
+- Blackhole signature (M2): attack-window PDR ~0.08 vs 0.94 benign, ForwardingRatio ~0.02, root logs zero arrivals. Wormhole signature: duplicated `(src_mac, seq_num)` arrivals (×2 on the tunnelled node).
+- sep. 23, 2026 — **root names VICTIMS live during the run** (errors if nothing is downstream of the attacker) + vocabulary `victim`→`child`. MEMORY.md. ⚠️ **REFLASH.**
+- **aug. 29, 2026 — honest nodes cannot observe their own forwarding** (MESH_DATA_TODS => the stack
+  relayed below the app layer). ✅ **SOLVED sep. 21 by C7 Option 1 (D-12)** — every node now relays
+  explicitly and reports real recv/forward/drop. Kept for the why; full text in ARCHIVE.md.
+
+- (rolled from MEMORY.md sep. 23, 2026)
+- sep. 22, 2026 — **CONSOLE SAYS `HOP`, NOT `LAYER` (adviser); root = H00.** ESP-MESH `layer` is 1-based, so
+  the console now prints hop = layer-1 and agrees with the paper. Blackhole header rewritten to the C7
+  positional model; leaf/off-path guards added; `TOPOLOGY TREE` block added. Full detail: ARCHIVE.md.
+- sep. 23, 2026 — **status report records its own phase schedule `[6]`; Wireshark guide ROOT/child MACs were SWAPPED (fixed).** ⛔ Two self-inflicted breakages killed a live run — MEMORY.md, first entry.
+- (rolled from MEMORY.md sep. 23, 2026)
+- sep. 22, 2026 — **FIRST CLEAN r1 CAPTURE (blackhole/linear/home) — attack CONFIRMED**, independently
+  re-verified sep. 23 (see the AUDIT entry). ⚠️ **Report PDR PER NODE relative to the attacker, never pooled**
+  — the upstream child held 1.000 throughout while the downstream one fell to ~0. Detail: ARCHIVE.md.
+- (rolled from MEMORY.md sep. 23, 2026)
+- sep. 22, 2026 — **SCENARIO `jitter` (TRAFFIC_PROFILE=3) — ROOT ONLY, ADDITIVE ONLY.** Random per-boot
+  EXTENSION to baseline/attack windows so phases don't land at the same offset every run (elapsed time alone
+  scored 0.857 against the label). ⛔ **NEVER SUBTRACTIVE** — a shorter baseline pulls mesh-formation noise
+  into the benign class. Full rationale: ARCHIVE.md.
+- (rolled from MEMORY.md sep. 23, 2026)
+- sep. 22, 2026 — **`build_all_variants.ps1` HARDENED + the 2 wormhole warnings FIXED.** New `-Clean`
+  switch wipes every build dir first; a warm run now REFUSES to print "ALL VARIANTS BUILD CLEAN" and
+  instead names the variants that reused cached objects. **Use `-Clean` for any M1 criterion-1 evidence.**
+  Dead `mesh_data_t root_data`/`mdata` descriptors deleted from `wormhole_victim.c` (pre-C7 leftovers;
+  both tasks send via `probe_relay_send_own()` — call sites traced, no behavioural change).
+- sep. 23, 2026 — TWO SELF-INFLICTED BREAKAGES in `run_wizard.ps1`, both killed a live run, both fixed and verified by a clean 6/6 build: (1) writing C string literals through a shell heredoc turned its escape sequences into real newlines inside the literals, producing "missing terminating \" character" x102 mid-flash — fix: use a script FILE with an r-string, never an inline heredoc, for C string work. (2) .NET format strings use `{1,6}` (positive width = right-align), not Python's `{1,>6}` — `run_wizard.ps1:2348` threw "Input string was not in a correct format".
+- sep. 23, 2026 — STATUS REPORT RECORDS ITS OWN PHASE SCHEDULE (`[6]`, `sd_status.c`): the host cannot derive the nominal phase durations since jitter extends them on purpose, so recording the compiled value on the SD card is the only way a pulled card states its own provenance. Free-form text; nothing parses it.
+- sep. 23, 2026 — Rolled from STATUS.md "Recently done": `run.ps1` failed-flash retry at 115200 (never exports a blank board) shipped; wizard MacBook sniffer test passed (Wi-Fi ON-but-disconnected); mesh was HT40 at the time, was going to try 40 MHz width for the sniffer instead — superseded same day by MESH_FORCE_HT20 (see MEMORY.md), which then broke mesh joining outright (see MEMORY.md's newest Decisions entry) and was partially reverted.

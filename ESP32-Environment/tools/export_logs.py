@@ -169,8 +169,9 @@ def _push_host_time(ser: serial.Serial) -> None:
     -- export, MAC read, SET_LOCATION, import_sdcard.py --port -- which is why
     this lives in _open_port() rather than in one command's branch.
 
-    UTC, deliberately: two teammates on laptops in different time zones must
-    produce comparable captures, and the firmware formats with gmtime_r.
+    The epoch sent is true UTC (time.time() is timezone-free), so two laptops
+    always agree. The firmware only RENDERS it as Philippine time (PHT, UTC+8,
+    SD_CLOCK_TZ in mesh_config.h), which is why the prints below say PHT.
 
     Best-effort by design. Firmware predating SET_TIME ignores unknown commands
     silently, and a board that is busy or unresponsive must never fail an export
@@ -868,11 +869,11 @@ def main() -> int:
                     body = line[len("TIME:"):]
                     stamp, _, src = body.rpartition(":")
                     if src == "host":
-                        print(f"   board clock: {stamp} UTC (real clock, from this laptop)")
+                        print(f"   board clock: {stamp} PHT (real clock, from this laptop)")
                         print("   Saved to clock.txt on the card — the next boot starts "
                               "from it, so captures get true dates.")
                     else:
-                        print(f"   board clock: {stamp} UTC (still an ESTIMATE from the "
+                        print(f"   board clock: {stamp} PHT (still an ESTIMATE from the "
                               f"firmware build time)")
                         print("   The board did not take the clock. It is almost "
                               "certainly running firmware from before SET_TIME existed "

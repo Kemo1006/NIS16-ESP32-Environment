@@ -54,6 +54,7 @@ static void ip_event_handler(void *arg, esp_event_base_t base,
                               int32_t id, void *data);
 static void build_node_id(void);
 static void log_mesh_status(void);
+static void apply_rf_width(const char *when, bool only_if_ht40);
 /* Declared this early (defs live down in the heartbeat section) so
  * mesh_event_handler can call them for instant disconnect reporting instead
  * of waiting on the heartbeat table's own staleness timer — see the
@@ -103,6 +104,16 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 
     /* ── 6. Wi-Fi start ──────────────────────────────────────────────────── */
     s_mesh_event_group = xEventGroupCreate();
+#if MESH_FORCE_HT20
+    /* Set 20 MHz BEFORE the radio starts, never after: forcing it after
+     * esp_mesh_start() hit the scan/AP as they came up and no node joined
+     * (sep. 23 2026). APSTA first so BOTH interfaces exist - in the default
+     * mode the STA set fails with ESP_ERR_WIFI_IF and stays 40 MHz. The mesh
+     * stack picks its own mode afterwards; the width is per-interface config
+     * and carries over. The CONNECTED handlers re-check it (only_if_ht40). */
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));
+    apply_rf_width("before wifi start", false);
+#endif
     ESP_ERROR_CHECK(esp_wifi_start());
 
     /* ── 7. Mesh init ────────────────────────────────────────────────────── */
@@ -210,6 +221,7 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 
     /* ── 9. Start mesh ───────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_start());
+    /* No width change here - see "before wifi start" above. */
 
     ESP_LOGI(TAG, "Mesh started. Node ID: %s  Role: %d", s_node_id, (int)s_role);
 
@@ -298,6 +310,41 @@ static void build_node_id(void)
  * this node PLUS every descendant it currently has a path to - so on the
  * root it is the whole mesh's live count; on a child it is usually 1
  * (itself) unless it has its own children in a deeper topology. */
+/* Pin both interfaces to 20 MHz (see MESH_FORCE_HT20) and log what the radio
+ * actually uses. Non-fatal on purpose: the mesh stack toggles STA / STA+AP
+ * modes, so an interface can be disabled at call time (ESP_ERR_WIFI_IF). With
+ * only_if_ht40, an interface already at 20 MHz is left alone - re-setting a
+ * connected link for nothing isn't worth the risk of a renegotiation. */
+static void apply_rf_width(const char *when, bool only_if_ht40)
+{
+#if MESH_FORCE_HT20
+    const wifi_interface_t ifs[2] = { WIFI_IF_STA, WIFI_IF_AP };
+    for (int i = 0; i < 2; i++) {
+        wifi_bandwidth_t bw;
+        if (only_if_ht40 &&
+            (esp_wifi_get_bandwidth(ifs[i], &bw) != ESP_OK || bw != WIFI_BW_HT40)) {
+            continue;
+        }
+        esp_err_t err = esp_wifi_set_bandwidth(ifs[i], WIFI_BW_HT20);
+        if (only_if_ht40) {
+            ESP_LOGW(TAG, "RF width: %s was back at 40 MHz (%s) - forced to 20 MHz: %s",
+                     i ? "AP" : "STA", when, esp_err_to_name(err));
+        }
+    }
+#endif
+    wifi_bandwidth_t sta_bw = 0, ap_bw = 0;
+    bool sta_ok = esp_wifi_get_bandwidth(WIFI_IF_STA, &sta_bw) == ESP_OK;
+    bool ap_ok  = esp_wifi_get_bandwidth(WIFI_IF_AP, &ap_bw) == ESP_OK;
+    uint8_t prim = 0;
+    wifi_second_chan_t sec = WIFI_SECOND_CHAN_NONE;
+    esp_wifi_get_channel(&prim, &sec);
+    ESP_LOGI(TAG, "RF width (%s): STA %s, AP %s, channel %u%s", when,
+             !sta_ok ? "off" : (sta_bw == WIFI_BW_HT40 ? "40 MHz" : "20 MHz"),
+             !ap_ok  ? "off" : (ap_bw  == WIFI_BW_HT40 ? "40 MHz" : "20 MHz"),
+             (unsigned)prim,
+             sec == WIFI_SECOND_CHAN_NONE ? "" : " (+secondary 40 MHz half)");
+}
+
 static void log_mesh_status(void)
 {
     int n = esp_mesh_get_routing_table_size();
@@ -332,6 +379,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
                  layer, MAC2STR(pmac), s_is_root ? "YES" : "NO");
         xEventGroupSetBits(s_mesh_event_group, MESH_CONNECTED_BIT);
         log_mesh_status();
+        apply_rf_width("connected", true);
         break;
     }
 
@@ -349,6 +397,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
                  (int)cc->aid, MAC2STR(cc->mac));
         xEventGroupSetBits(s_mesh_event_group, MESH_CONNECTED_BIT);
         log_mesh_status();
+        apply_rf_width("connected", true);
         break;
     }
 
@@ -1032,7 +1081,17 @@ static void heartbeat_table_print(void)
                              MAC2STR(s_nodes[i].mac));
                 }
             }
-            if (victims == 0) {
+            /* The table fills one heartbeat at a time, so the first prints
+             * after boot see only PART of the tree (sep. 23 2026: the attacker
+             * reported before its parent and the victim below it, and the root
+             * printed this error twice in its first 7 s for a layout that was
+             * correct). No verdict until every node the mesh stack knows about
+             * has reported; the routing table counts the root itself. */
+            int in_mesh = esp_mesh_get_routing_table_size();
+            if ((int)n < in_mesh) {
+                ESP_LOGI(TAG, " (%d of %d node(s) reported so far - verdict waits"
+                              " for the rest)", (int)n, in_mesh);
+            } else if (victims == 0) {
                 ESP_LOGE(TAG, " !! NO NODE IS DOWNSTREAM OF THE ATTACKER -"
                               " it will drop NOTHING and this run will look"
                               " benign. Move a child below it, then re-run.");

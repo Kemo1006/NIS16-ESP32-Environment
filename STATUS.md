@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 23, 2026 — read-only session: **independently re-verified the sep. 22 `blackhole/linear/home` r1 capture** (raw CSVs + post-overhaul EDA plots) — attack signature and phase timing both conform to the paper; no code touched. Also wrote `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — plain-language, panel-ready version of the hop/`parent_mac` explanations (companion to `REVIEWER-QUESTIONS.md` §3/§7). Earlier: CAPTURE DATES ARE REAL, export overhaul + D-13. **Working copy moved drives** (below). **Newer work UNCOMMITTED.**
+**Updated:** sep. 24, 2026 — HT20 mesh-join fix hardware-verified + everything COMMITTED/PUSHED (THESIS3). **Next: re-run blackhole/linear/home with the attacker placed nearest the root — root table must show it at `H01`** (a `NO NODE IS DOWNSTREAM` with all nodes reported = placement, not a bug; MEMORY.md).
 
 ## ⚠️ THE WORKING COPY MOVED — read this first
 **Work in `A:\Angelo\Excelsior\THESIS\T`.** `C:\...\NIS16-ESP32-Environment` (old C: path) is a BACKUP only —
@@ -28,13 +28,13 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️ **Pre-C7 captures NOT comparable to post-C7**; **PDR alone scores 0.9987 vs 0.7031** (`feature_separability.py`).
 - ⚠️⚠️ **D-13: a PRE-fix 0-row card file is LOST DATA**, not evidence the node logged nothing.
 - ⚠️⚠️ **ROOT POWER — verify before EVERY capture** (brownout loop); direct laptop USB, never a shared hub.
-- ⚠️ **No pcap ever captured.** `docs/WIRESHARK-GUIDE.md` §7/§9. M1 Macs: Wi-Fi OFF first.
+- ⚠️ **HT20 firmware — REFLASH any board not on today's fix** (COM3/4/12/15 already are). Boot log must show `RF width (before wifi start): STA 20 MHz, AP 20 MHz`. SD cards hold a short sep. 23 TEST capture (blackhole/linear/home) — next boot archives it; don't import it. Mac pcap: data frames still not validated. Check any capture with wizard **Check a Mac sniffer capture file** (`tools/check_pcap.py`; repairs 'cut short').
 - **Two unreconciled panel tracks:** `Plan/THESIS3-PANEL-PLAN.md` vs `.../memory/panel-change-2026-09.md`. **R-A/R-B unwritten**; `run_ledger.csv` header-only.
 - 📝 **OTHER MEMBER — [17] TOPOLOGY STRUCTURE, DISPLAY ONLY (the CSVs are CORRECT, do not "fix" them):** it
   prints `parent_mac` (SoftAP MAC) but names nodes by `node_id` (STA MAC), so no column matches; map back via −1.
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- sep. 23, 2026 — **root names VICTIMS live during the run** (errors if nothing is downstream of the attacker) + vocabulary `victim`→`child`. MEMORY.md. ⚠️ **REFLASH.**
-- sep. 23, 2026 — **firmware role `victim`→`child` + `exposure` column; phase-schedule mismatch now
-  detected from the data.** MEMORY.md. ⚠️ **NEEDS REFLASH.**
+- sep. 23, 2026 — ✅ **FIXED + HARDWARE-VERIFIED: `MESH_FORCE_HT20` had broken mesh joining** (0 nodes in 11 min). HT20 now set BEFORE `esp_wifi_start()` (APSTA mode). 4-board test: all joined, correct chain, all 20 MHz, phases reach children. 4 boards already flashed with it. MEMORY.md.
+- sep. 23, 2026 — **board dates now PHT (UTC+8) + fixed build-stamp-8h bug that made every capture keep the build-time date.** Root+child build clean. Also: false early `NO NODE IS DOWNSTREAM` now waits for all nodes. ⚠️ **REFLASH.** MEMORY.md.
+- sep. 23, 2026 — **wizard now PARKS the root (bootloader) before flashing children, wakes it at its turn** — the old root's stale TERMINATE was killing fresh children (root saw only itself). MEMORY.md. Re-run the capture.

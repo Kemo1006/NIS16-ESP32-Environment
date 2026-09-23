@@ -127,8 +127,10 @@ ESP-IDF already ships this. On this machine:
 C:\Espressif\frameworks\esp-idf-v5.5.4\examples\network\simple_sniffer\
 ```
 
-It puts the ESP32's radio in promiscuous mode and writes a real `.pcap` to an SD card or over
-serial. Flash a spare board, set channel 11, run it beside your mesh during a capture, then open the
+It puts the ESP32's radio in promiscuous mode and writes a real `.pcap` to an SD card (or RAM /
+JTAG — **not** plain serial). ⚠️ Out of the box it expects SDMMC or SPI pins 15/2/14/13 at ~20 MHz;
+our boards are SPI on **23/19/18/5 at 4 MHz** (`mesh_config.h`), so it needs those edits first.
+Flash a spare board, set channel 11, run it beside your mesh during a capture, then open the
 file in Wireshark.
 
 > Want this wired into `run.ps1` as a proper `pcap_sniffer/` project alongside `root_node/` and
@@ -170,9 +172,15 @@ Intel and Apple Silicon Macs even as Apple's command-line tools changed undernea
 1. **Option-click** the Wi-Fi icon in the menu bar (hold Option, then click)
 2. Choose **"Open Wireless Diagnostics…"**
 3. In the menu bar (while Wireless Diagnostics is the active app): **Window → Sniffer**
-4. Pick channel **11**, click **Start**
+4. Pick channel **11**, width **20 MHz**, click **Start**
 5. Let it run ~20–30 s near your boards, click **Stop**
-6. It saves a `.wcap`/`.pcap` file to your Desktop — open that file directly in Wireshark
+6. It saves a `.wcap`/`.pcap` file — on newer macOS in **`/var/tmp`** (Finder → Cmd+Shift+G), on
+   older ones the Desktop — open that file directly in Wireshark
+
+> ⚠️ **For the Wireless Diagnostics Sniffer, Wi-Fi must be ON but NOT joined to a network**
+> (Option-click Wi-Fi → Disconnect). The "turn Wi-Fi OFF" advice above is for Wireshark's monitor
+> mode only — the Sniffer needs the radio powered, so Wi-Fi OFF gives a 0-byte file (sep. 23 2026,
+> M1 MacBook). **Test first:** `run_wizard.ps1` → *MacBook sniffer test* (~2 min, no attack run).
 
 ⚠️ **Do NOT use the old `airport` Terminal command** shown in older Wireshark tutorials online —
 **Apple permanently removed it in macOS Sonoma 14.4** (early 2024). If your Mac is on Sonoma 14.4+
@@ -207,16 +215,38 @@ the top is the **display filter**. Type, press Enter.
 
 ### Your boards (copy-paste these)
 
-| Board | MAC |
-|---|---|
-| ROOT | `b0:cb:d8:f3:32:18` |
-| attacker_5 | `20:50:0d:e7:1c:38` |
-| child_6 | `20:50:0d:e7:0c:80` |
-| child_7 | `f4:2d:c9:73:e6:18` |
-| child_8 | `70:4b:ca:25:b7:68` |
-| child_9 | `28:05:a5:32:d7:b4` |
-| child_10 | `b4:bf:e9:32:fe:90` |
-| child_11 | `b4:bf:e9:34:ed:80` |
+⚠️ **This table was WRONG until sep. 23, 2026 — it had ROOT and child_8 swapped.** It listed
+`b0:cb:d8:f3:32:18` as ROOT, but that board has been a plain child since at least the sep. 22
+capture, where `70:4b:ca:25:b7:68` is the root. Filtering for "the root" with the old MAC would have
+shown you a child's traffic and nothing would have looked obviously broken. Corrected below against
+`blackhole/linear/home` r1. **Re-derive it before you trust it** — see the command under the table.
+
+| Board | MAC | Role in the sep. 22 `blackhole/linear/home` r1 run |
+|---|---|---|
+| ROOT | `70:4b:ca:25:b7:68` | root (hop 0) |
+| attacker | `20:50:0d:e7:1c:38` | **blackhole** (hop 2) |
+| child (downstream) | `20:50:0d:e7:0c:80` | **VICTIM** — below the attacker (hop 3) |
+| child (upstream) | `b0:cb:d8:f3:32:18` | not in the attack path (hop 1) |
+| spare | `f4:2d:c9:73:e6:18` | not in this run |
+| spare | `28:05:a5:32:d7:b4` | not in this run |
+| spare | `b4:bf:e9:32:fe:90` | not in this run |
+| spare | `b4:bf:e9:34:ed:80` | not in this run |
+
+**The role column is PER RUN, not a property of the board.** Which board is root, and which children
+sit below the attacker, depends on how the mesh formed that day. Only the ATTACKER is fixed at build
+time. Since sep. 23 the root prints an EXPOSURE block at boot naming who is actually a victim, and
+`verify_topology.py --structure` prints the same from a finished capture — use either rather than
+assuming this table still applies.
+
+**Re-derive the MAC↔role mapping from any capture in one line** (this is where the table above came
+from, so it can never drift again):
+
+```bash
+python tools/verify_topology.py --dir tools/exports --topology linear \
+    --attack blackhole --location home --repeat 1 --expect linear --structure
+```
+
+That prints HOP, MAC, ROLE and EXPOSURE together. Copy the MACs straight out of it.
 
 **Where this table came from — and when it goes stale:** every MAC above was read directly from
 each board's own telemetry (the `node_id` column every board writes into its own CSV), cross-checked
@@ -260,7 +290,7 @@ wlan.addr in {b0:cb:d8:f3:32:18, 20:50:0d:e7:1c:38, 20:50:0d:e7:0c:80, f4:2d:c9:
 
 **Just checking ONE board** (e.g. the practice capture, or isolating one victim):
 ```
-wlan.addr == b0:cb:d8:f3:32:18
+wlan.addr == 70:4b:ca:25:b7:68
 ```
 
 **2. ⭐ Real MAC retransmissions** — the thing your dataset does not have:
@@ -273,10 +303,15 @@ wlan.fc.retry == 1
 wlan.sa == 20:50:0d:e7:1c:38
 ```
 
-**4. Attacker → root specifically** (run this across the attack window; the count should collapse):
+**4. ⭐ Attacker → ITS PARENT** (the count should collapse across the attack window):
 ```
 wlan.sa == 20:50:0d:e7:1c:38 && wlan.da == b0:cb:d8:f3:32:18
 ```
+⚠️ **This filter says "attacker → its PARENT", not "attacker → root".** In the sep. 22 run the chain
+was `root → b0:cb…18 → attacker → 20:50…0c:80`, so the attacker's parent happened to be `b0:cb…18`
+and this is the right frame to watch. **The parent changes when the topology changes**, and then this
+MAC is wrong and the filter silently shows nothing. Get the current one from
+`verify_topology.py --structure` (the UPLINK column of the attacker's row) before each capture.
 
 **5. The mesh forming / re-forming** (beacons + joins, unencrypted):
 ```
@@ -355,8 +390,10 @@ The only physical requirement is **range** — see step 8 below.
 9. ☐ Click the red **⏹ stop** square
 10. ☐ In the filter bar, type your root's MAC and press Enter:
     ```
-    wlan.addr == b0:cb:d8:f3:32:18
+    wlan.addr == 70:4b:ca:25:b7:68
     ```
+    *(That is the root as of the sep. 22 run. If you have swapped boards, get the current root's MAC
+    from `verify_topology.py --structure` — the row with hop H00.)*
 11. ☐ **Rows appear?** ✅ You're done — you can see your mesh. Move to §7.3.
     **Nothing appears?** See Troubleshooting below.
 
@@ -420,7 +457,7 @@ you already know before it matters.
 | Are the boards even powered and mesh-formed? | Wait the full 60 s; check a board's own serial log for "Phase update" |
 | Were you close enough? | Move within a few metres; Wi-Fi range indoors is shorter than you'd expect |
 | Right channel? | Your mesh is **channel 11**. If using Wireless Diagnostics Sniffer, confirm you picked channel 11 (not another number) |
-| Still on Wi-Fi while capturing? | **Turn the Mac's Wi-Fi off before starting monitor mode** — this is the #1 cause of an empty capture on modern macOS, see §4 Path C |
+| Still on Wi-Fi while capturing? | **Wireshark monitor mode:** turn the Mac's Wi-Fi off first. **Wireless Diagnostics Sniffer:** the opposite — Wi-Fi ON but disconnected; Wi-Fi OFF = 0-byte file. See §4 Path C |
 | Typo'd the MAC filter? | Copy-paste from §5's table — a single wrong hex digit filters out everything |
 
 ---
@@ -435,6 +472,7 @@ you already know before it matters.
 | **See the attack happen** | I/O Graph + `wlan.sa == <attacker> && wlan.da == <root>` |
 | Watch the mesh form | `wlan.fc.type == 0` |
 | Nothing is being captured | **You are on the wrong channel. It is 11.** |
+| Wireshark: "cut short in the middle of a packet" | Only the LAST packet is partial (file grabbed before the Sniffer finished writing — wait ~10 s after Stop). Everything else is fine. `python tools\check_pcap.py <file>` (or wizard → *Check a Mac sniffer capture file*) reports mesh beacons/data + span and writes a `_fixed` copy |
 
 ---
 
@@ -454,7 +492,7 @@ compare "before" against "during" against "after," not just look at one snapshot
 | Claim from `ATTACK-VALIDATION.md` | Filter | What you should see |
 |---|---|---|
 | Attacker **receives** the packets (not radio jamming) | `wlan.da == 20:50:0d:e7:1c:38` | Frames arriving **in every phase**, including during the attack — proves it's receiving, not being jammed off the air |
-| Attacker **drops instead of forwarding** — the core claim | `wlan.sa == 20:50:0d:e7:1c:38 && wlan.da == b0:cb:d8:f3:32:18` | Frames present in baseline **and** cooldown, then **a gap** for the whole attack-phase window. **This is the single most convincing screenshot in your whole thesis** — apply **Statistics → I/O Graph** to this exact filter and watch the line fall to zero and climb back |
+| Attacker **drops instead of forwarding** — the core claim | `wlan.sa == 20:50:0d:e7:1c:38 && wlan.da == <the attacker's PARENT, H01 in verify_topology --structure>` | Frames present in baseline **and** cooldown, then **a gap** for the whole attack-phase window. **This is the single most convincing screenshot in your whole thesis** — apply **Statistics → I/O Graph** to this exact filter and watch the line fall to zero and climb back |
 | Attacker **stays protocol-compliant** — still a live mesh member | `wlan.addr == 20:50:0d:e7:1c:38` (drop the `da`/`sa` restriction) | Traffic from the attacker continues throughout the attack window — it's still associated, still sending/receiving management frames, just not forwarding victim probes. If it went completely silent instead, that would mean something different happened (a crash, not a blackhole) |
 | **Independent check of Table 3.4's "increased retries" prediction** | `wlan.fc.retry == 1 && (wlan.addr in {victim MACs from §5})` | Should stay near-zero through the attack window. This corroborates the pre-registered MISS in `ATTACK-VALIDATION.md` §2.2 using **real 802.11 header data**, not the application-layer `retry_count` column — a stronger, independent form of the same finding |
 
@@ -479,7 +517,7 @@ is exactly the "same board, different role" case this warning is about.)*
 | Claim from `ATTACK-VALIDATION.md` | Filter | What you should see |
 |---|---|---|
 | Node B stops sending its probes directly (it's tunnelling them over the wire instead) | `wlan.sa == <Node B's MAC>` — compare baseline phase vs. wormhole phase | B's direct Wi-Fi transmissions should **drop noticeably** during the wormhole phase vs. its own baseline rate — it's routing its traffic through the wire now, not the air |
-| Node A **re-injects** the tunnelled probes on B's behalf | `wlan.sa == <Node A's MAC> && wlan.da == b0:cb:d8:f3:32:18` — compare the same two phases | Node A's traffic toward the root should be **higher** during the wormhole phase than its own baseline rate — the extra volume is B's re-injected probes |
+| Node A **re-injects** the tunnelled probes on B's behalf | `wlan.sa == <Node A's MAC> && wlan.da == <Node A's PARENT>` — compare the same two phases | Node A's traffic toward the root should be **higher** during the wormhole phase than its own baseline rate — the extra volume is B's re-injected probes |
 | **Independent check of the "topology does NOT distort" finding** — the actual headline result in `ATTACK-VALIDATION.md` §2 | `wlan.fc.type == 0`, watch the **Info** column for "Association Request/Response" or "Reassociation…" | You should see **zero** new association/reassociation events during the wormhole phase. Beacons and associations are **unencrypted**, so this confirms — from OUTSIDE any board's own self-report — that no node actually re-parented during the attack. This is the strongest possible corroboration of that result, because it comes from a source that couldn't be fooled even if a board's telemetry were lying |
 
 ### 9.3 What to put in the paper

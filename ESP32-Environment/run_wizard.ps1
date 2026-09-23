@@ -336,6 +336,8 @@ function Show-CaptureWizardMenu {
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
             @{ Idx = 18; Text = 'Campaign progress checklist - which runs are DONE, scanned from the folders (no board/COM contact)' }
             @{ Idx = 19; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
+            @{ Idx = 21; Text = 'MacBook sniffer test (~2 min, no attack run - proves the Mac Wireless Diagnostics Sniffer records ESP32 frames)' }
+            @{ Idx = 22; Text = 'Check a Mac sniffer capture file (.pcap - mesh beacons/data, capture length, repairs a "cut short" file; no board contact)' }
         ) }
     )
     $exitIdx = 8
@@ -2345,7 +2347,7 @@ function Invoke-ArchiveMenu {
     # ---- what is here -------------------------------------------------------
     Write-Host ""
     Write-Host "  ON DISK NOW (tools\exports\)" -ForegroundColor Cyan
-    Write-Host ("  {0,-34}{1,>6}{2,>10}{3,>9}{4,>10}" -f 'cell', 'files', 'size', 'root?', 'arrivals')
+    Write-Host ("  {0,-34}{1,6}{2,10}{3,9}{4,10}" -f 'cell', 'files', 'size', 'root?', 'arrivals')
     Write-Host ("  " + ('-' * 70))
     foreach ($c in $cells) {
         $mb = if ($c.Bytes -ge 1MB) { "{0:N1} MB" -f ($c.Bytes / 1MB) } else { "{0:N0} KB" -f ($c.Bytes / 1KB) }
@@ -2569,6 +2571,158 @@ function Invoke-VerifyRun {
     Write-Host ("Running: python tools\verify_attack.py `"$table`"$attackTag") -ForegroundColor DarkGray
     Push-Location $base
     try { python (Join-Path $base 'tools\verify_attack.py') @vaArgs } finally { Pop-Location }
+}
+
+function Invoke-CheckSnifferFile {
+    # Runs tools\check_pcap.py on a Mac Sniffer capture: packet count, mesh
+    # beacons vs mesh DATA frames, capture span, and a _fixed copy when the file
+    # ends in a partial packet (Wireshark's "cut short in the middle of a
+    # packet"). No board/COM contact.
+    param([string]$Path)
+    if (-not $Path) {
+        Write-Host ""
+        Write-Host "Copy the Mac's capture (.pcap / .pcapng) to this laptop first - newer macOS keeps it in /var/tmp." -ForegroundColor DarkGray
+        $Path = Read-Line "Capture file path (drag the file into this window, then Enter) > "
+    }
+    if (-not $Path) { return }
+    $Path = $Path.Trim().Trim('"').Trim("'")
+    Write-Host ""
+    & python (Join-Path $base 'tools\check_pcap.py') $Path
+    Write-Host ""
+    Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
+function Invoke-MacSnifferTest {
+    # ~2-minute smoke test for the MacBook's Wireless Diagnostics Sniffer, so a
+    # teammate can prove the Mac actually records ESP32 frames BEFORE burning a
+    # full 11-minute attack run on it (sep. 23 2026: a whole run came back as a
+    # 0-byte capture). No flashing, no attack, no export: the boards just need
+    # to be running the normal mesh firmware. A running mesh root beacons on
+    # MESH_CHANNEL constantly, so if this laptop sees the root alive over USB
+    # while the Mac records nothing, the fault is provably on the Mac side.
+    $chan = 11
+    $hdr = Join-Path $base 'components\mesh_common\include\mesh_config.h'
+    $hit = if (Test-Path $hdr) { Select-String -Path $hdr -Pattern '^\s*#define\s+MESH_CHANNEL\s+(\d+)' | Select-Object -First 1 }
+    if ($hit) { $chan = [int]$hit.Matches[0].Groups[1].Value }
+
+    Write-Host ""
+    Write-Host "=== MacBook sniffer test (short - no attack run) ===" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "On the MAC, before starting:" -ForegroundColor Cyan
+    Write-Host "  1. Wi-Fi must be ON but NOT joined to any network." -ForegroundColor Yellow
+    Write-Host "     (Option-click the Wi-Fi icon -> 'Disconnect from <network>'. Do NOT switch Wi-Fi off -"
+    Write-Host "      the Sniffer uses the Wi-Fi radio, so Wi-Fi OFF = nothing to capture with = empty file.)"
+    Write-Host "  2. Option-click Wi-Fi icon -> Open Wireless Diagnostics -> menu bar Window -> Sniffer"
+    Write-Host ("  3. Channel: {0}    Width: 20 MHz    (wrong channel = empty file)" -f $chan) -ForegroundColor Yellow
+    Write-Host "     (boards must run firmware with MESH_FORCE_HT20 - boot log 'RF width ... STA 20 MHz, AP 20 MHz'."
+    Write-Host "      Older firmware talks at 40 MHz, which a 20 MHz Mac hears as beacons only.)"
+    Write-Host "  4. Put the Mac within 1-2 metres of the boards."
+    Write-Host "  Don't press Start yet - the countdown below tells you when."
+    Write-Host ""
+    Write-Host "On the BOARDS: power them on with the normal mesh firmware (root at least; children optional)." -ForegroundColor Cyan
+    Write-Host "  They'll start a normal run schedule and write a SHORT, incomplete run to their SD cards -" -ForegroundColor DarkGray
+    Write-Host "  that's expected. Don't import it as a real capture." -ForegroundColor DarkGray
+
+    # Optional live proof that the air had traffic: listen to the ROOT's serial.
+    $rootPort = $null
+    $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+    if ($ports.Count -gt 0) {
+        $ans = Read-Line "`nIs the ROOT board plugged into THIS laptop by USB (lets me confirm it's transmitting)? [Y/n] > "
+        if ($ans -ne 'n' -and $ans -ne 'N') {
+            $pick = Select-Port -For 'the ROOT board (listen only - no flashing)' -Ports $ports -AllowBack
+            if ($pick -and $pick -ne $script:BackSignal) { $rootPort = $pick }
+        }
+    }
+
+    $secs = 90
+    $ans = Read-Line "`nHow many seconds should the Mac capture? [90] > "
+    $n = 0
+    if ($ans -and [int]::TryParse($ans.Trim(), [ref]$n) -and $n -ge 20 -and $n -le 600) { $secs = $n }
+
+    Read-Line "`nPress Enter, THEN click Start in the Mac's Sniffer window > " | Out-Null
+
+    $sp = $null
+    $lines = 0; $children = 0; $ctrl = 0; $serialErr = $null
+    if ($rootPort) {
+        try {
+            $sp = New-Object System.IO.Ports.SerialPort $rootPort, 115200
+            # Both lines low so opening the port doesn't hold the ESP32 in reset.
+            $sp.DtrEnable = $false; $sp.RtsEnable = $false
+            $sp.ReadTimeout = 250
+            $sp.Open()
+        } catch {
+            $serialErr = $_.Exception.Message
+            $sp = $null
+        }
+    }
+
+    $deadline = (Get-Date).AddSeconds($secs)
+    $nextTick = Get-Date
+    try {
+        while ((Get-Date) -lt $deadline) {
+            if ($sp) {
+                try {
+                    $l = $sp.ReadLine()
+                    $lines++
+                    if ($l -match 'Child connected') { $children++ }
+                    if ($l -match '\[CTRL\]') { $ctrl++ }
+                } catch [System.TimeoutException] { }
+            } else {
+                Start-Sleep -Milliseconds 250
+            }
+            if ((Get-Date) -ge $nextTick) {
+                $left = [int][math]::Ceiling(($deadline - (Get-Date)).TotalSeconds)
+                $msg = "  capturing... {0,3} s left" -f $left
+                if ($sp) { $msg += ("   root serial: {0} lines, {1} child-connect events" -f $lines, $children) }
+                Write-Host $msg -ForegroundColor DarkGray
+                $nextTick = (Get-Date).AddSeconds(10)
+            }
+        }
+    } finally {
+        if ($sp -and $sp.IsOpen) { $sp.Close() }
+    }
+
+    Write-Host ""
+    Write-Host ">>> Click STOP in the Mac's Sniffer window NOW. <<<" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "What this laptop saw:" -ForegroundColor Cyan
+    $rootAlive = $false
+    if (-not $rootPort) {
+        Write-Host "  (root serial not monitored - can't confirm the mesh was transmitting)" -ForegroundColor DarkGray
+    } elseif ($serialErr) {
+        Write-Host ("  Could not open {0}: {1}  (port busy? close any serial monitor)" -f $rootPort, $serialErr) -ForegroundColor Yellow
+    } elseif ($lines -gt 0) {
+        $rootAlive = $true
+        Write-Host ("  ROOT ALIVE on {0}: {1} log lines, {2} child-connect events, {3} phase-control lines." -f $rootPort, $lines, $children, $ctrl) -ForegroundColor Green
+        Write-Host ("  A running root beacons on channel {0} nonstop - there WAS traffic in the air." -f $chan) -ForegroundColor Green
+    } else {
+        Write-Host ("  Root on {0} printed NOTHING for {1} s - it may be hung/unpowered. Press its EN/RST button and retry." -f $rootPort, $secs) -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "Now get the Mac's file:" -ForegroundColor Cyan
+    Write-Host "  - WAIT ~10 s after Stop before touching the file. Opening/copying it while the Sniffer is" -ForegroundColor Yellow
+    Write-Host "    still writing is what gives 'cut short in the middle of a packet' (or a 0-byte file)." -ForegroundColor Yellow
+    Write-Host "  - Newer macOS saves it in /var/tmp (Finder: Cmd+Shift+G, type /var/tmp), older ones on the Desktop."
+    Write-Host "    Take the newest .pcap / .pcapng with a timestamp matching just now; copy it to this laptop."
+    Write-Host ""
+    $pc = Read-Line "Paste the copied capture file's path here to check it now (Enter to skip) > "
+    if ($pc) { Invoke-CheckSnifferFile -Path $pc; return }
+    Write-Host ""
+    Write-Host "Or check it by eye in Wireshark: filter  wlan.sa_resolved contains ""Espressif""" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "Result:" -ForegroundColor Cyan
+    Write-Host "  PASS  - Espressif frames are in the file -> the Mac sniffer works; do the real run the same way." -ForegroundColor Green
+    Write-Host "  HALF  - file has frames but no Espressif ones -> Mac works; wrong channel, or too far from the boards."
+    Write-Host "  FAIL  - file is 0 bytes / no frames at all:" -ForegroundColor Yellow
+    if ($rootAlive) {
+        Write-Host "          the mesh WAS transmitting (proved above), so the fault is on the MAC: re-check" -ForegroundColor Yellow
+        Write-Host "          Wi-Fi ON-but-disconnected, then reboot the Mac. Still failing -> use an ESP32 sniffer" -ForegroundColor Yellow
+        Write-Host "          board instead (docs\WIRESHARK-GUIDE.md section 4, Path A)." -ForegroundColor Yellow
+    } else {
+        Write-Host "          re-run this test WITH the root plugged in here, so we can tell Mac-fault from mesh-fault." -ForegroundColor Yellow
+    }
+    Read-Host "Press Enter to return to the menu" | Out-Null
 }
 
 function Invoke-IdentifyAllBoards {
@@ -4420,6 +4574,8 @@ if (-not $Preset) {
         if ($modeIdx -eq 20) { Invoke-ArchiveMenu; continue }
         if ($modeIdx -eq 18) { Invoke-CampaignChecklist; continue }
         if ($modeIdx -eq 19) { Invoke-ShowTopologyStructure; continue }
+        if ($modeIdx -eq 21) { Invoke-MacSnifferTest; continue }
+        if ($modeIdx -eq 22) { Invoke-CheckSnifferFile; continue }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember
@@ -6269,6 +6425,44 @@ if ($children.Count -gt 0) {
 # FAILED-child `exit 1` below, since PowerShell unwinds finally blocks on exit
 # just like any other scope exit.
 try {
+# SILENCE THE OLD ROOT BEFORE ANY CHILD BOOTS. The root is flashed LAST, so
+# until its turn it is still running whatever it ran before - often the
+# previous 11-min experiment. When that one ends it broadcasts TERMINATE, and a
+# freshly flashed child (seq counter at 0) accepts it: the child stops logging
+# and heartbeating before the NEW root has even started, and the new root's
+# topology table then shows only itself (sep. 23 2026 blackhole/linear/home -
+# child got phase_id=4 root_ts=667 s at its own uptime 116 s).
+#
+# PARKED, NOT ERASED: esptool --after no_reset leaves the chip sitting in its
+# ROM bootloader - no Wi-Fi, no firmware running, flash untouched. It is woken
+# (hard reset) right before its own run.ps1 call below, so run.ps1's
+# SET_TIME -> erase -> flash sequence finds live firmware exactly as before.
+# Erasing here instead would kill SET_TIME (an erased board cannot answer it),
+# and setting the clock early would date the root by the moment it was parked,
+# minutes stale by the time it boots. The park is VERIFIED by a second esptool
+# call that must sync WITHOUT resetting - that only succeeds if the chip really
+# is still in the bootloader.
+$rootParked = $false
+$rootStep = $plan | Where-Object { $_.Board.Role -eq 'root' } | Select-Object -First 1
+if ($rootStep -and $plan[0].Board.Role -ne 'root' -and -not $DryRun) {
+    $rp = $rootStep.Board.Port
+    Write-Host ""
+    Write-Host ("Parking the root on {0} (bootloader, firmware kept) - its OLD firmware would otherwise" -f $rp) -ForegroundColor Yellow
+    Write-Host "send a stale TERMINATE that stops the children before the new root even starts." -ForegroundColor Yellow
+    & esptool.py --chip esp32 --port $rp --after no_reset read_mac | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        & esptool.py --chip esp32 --port $rp --before no_reset --after no_reset read_mac | Out-Null
+    }
+    if ($LASTEXITCODE -eq 0) {
+        $rootParked = $true
+        Write-Host ("  {0} parked - silent until its turn." -f $rp) -ForegroundColor Green
+    } else {
+        Write-Host ("  Could not park {0}. UNPLUG THE ROOT now and plug it back in only at its turn," -f $rp) -ForegroundColor Red
+        Write-Host "  or the old run may terminate the children. Press Enter once it is unplugged." -ForegroundColor Red
+        [void](Read-Line "  > ")
+    }
+}
+
 $total = $plan.Count
 $step = 0
 $runStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -6290,6 +6484,18 @@ foreach ($p in $plan) {
         Write-Host ("  This is the root: the experiment runs {0} once the mesh forms." -f (Format-Duration ([int]$durations.Total))) -ForegroundColor Cyan
         Write-Host ("  Expected TERMINATE around {0} - set an alarm, nothing needs you until then." -f $rootEta.ToString('HH:mm')) -ForegroundColor Cyan
         Write-Host "  Then come back and press Ctrl+] to auto-export." -ForegroundColor Cyan
+
+        if ($rootParked) {
+            # Wake it into its OLD firmware so run.ps1's SET_TIME has something
+            # to answer. That firmware restarts from stabilise (60 s before any
+            # phase broadcast), and run.ps1 erases it within seconds. The wait
+            # covers boot -> SD mount -> serial command task (~7 s on the root).
+            Write-Host ""
+            Write-Host "  Waking the parked root so run.ps1 can set its clock ..." -ForegroundColor DarkGray
+            & esptool.py --chip esp32 --port $b.Port --before no_reset --after hard_reset read_mac | Out-Null
+            if ($LASTEXITCODE -eq 0) { Start-Sleep -Seconds 10 }
+            else { Write-Host "  Wake failed - the root keeps a build-time clock this run; the capture itself is unaffected." -ForegroundColor Yellow }
+        }
     }
 
     $boardStopwatch = [System.Diagnostics.Stopwatch]::StartNew()

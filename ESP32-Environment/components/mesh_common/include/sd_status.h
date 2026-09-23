@@ -151,8 +151,8 @@ sd_clock_src_t sd_status_clock_source(void);
 /** "host" | "build" | "none" — the wire/CSV spelling of the above. */
 const char *sd_status_clock_source_str(void);
 
-/** The CURRENT wall clock as "YYYY-MM-DD HH:MM:SS" (local time, which on this
- *  board is UTC — nothing ever sets a TZ). Writes at most @p len bytes and
+/** The CURRENT wall clock as "YYYY-MM-DD HH:MM:SS" (local time =
+ *  Philippine time, SD_CLOCK_TZ in mesh_config.h). Writes at most @p len bytes and
  *  always null-terminates. Returns false and writes "unknown" if the clock was
  *  never seeded. Unlike sd_status_build_stamp() this CHANGES as the run
  *  progresses, which is the entire point: it dates the capture, not the

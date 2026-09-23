@@ -388,6 +388,12 @@ const char *sd_status_build_stamp(void)
  * monotonic and do not depend on a clock at all. */
 void sd_status_seed_clock(void)
 {
+    /* Timezone FIRST: mktime() below reads the build stamp as local time, and
+     * every stamp after this (sd_status_now_stamp, FatFs get_fattime) renders
+     * through it. See SD_CLOCK_TZ in mesh_config.h. */
+    setenv("TZ", SD_CLOCK_TZ, 1);
+    tzset();
+
     const char *stamp = sd_status_build_stamp();   /* "YYYY-MM-DD HH:MM:SS" */
     struct tm tmv = {0};
     if (sscanf(stamp, "%d-%d-%d %d:%d:%d",
@@ -495,7 +501,7 @@ void sd_status_apply_clock_anchor(void)
 
     char now[24];
     sd_status_now_stamp(now, sizeof(now));
-    ESP_LOGI(TAG, "clock: set from the card's host anchor -> %s UTC (REAL time, plus "
+    ESP_LOGI(TAG, "clock: set from the card's host anchor -> %s " SD_CLOCK_TZ_LABEL " (REAL time, plus "
                   "however long this board sat unpowered).", now);
 }
 
@@ -529,10 +535,10 @@ bool sd_status_set_host_time(long long epoch)
             /* Epoch alone on line 1 so the parser above never has to skip
              * anything; the human-readable line after it is for whoever opens
              * this file in Notepad wondering what the number means. */
-            fprintf(wf, "%lld\n# %s UTC - written by SET_TIME over USB. Do not edit.\n",
+            fprintf(wf, "%lld\n# %s " SD_CLOCK_TZ_LABEL " - written by SET_TIME over USB. Do not edit.\n",
                     epoch, now);
             fclose(wf);
-            ESP_LOGI(TAG, "SET_TIME: clock = %s UTC, anchor saved to %s.", now, SD_CLOCK_FILE);
+            ESP_LOGI(TAG, "SET_TIME: clock = %s " SD_CLOCK_TZ_LABEL ", anchor saved to %s.", now, SD_CLOCK_FILE);
         } else {
             ESP_LOGW(TAG, "SET_TIME: clock set, but %s could not be written (errno %d) - "
                           "the next boot falls back to the build stamp.",
@@ -574,11 +580,10 @@ bool sd_status_now_stamp(char *out, size_t len)
     }
     time_t now = time(NULL);
     struct tm tmv;
-    /* gmtime_r, not localtime_r: nothing on this board ever calls setenv("TZ"),
-     * so the two agree today - but if a TZ is ever set, every stamp this
-     * project writes must stay UTC or captures from two laptops stop being
-     * comparable. Pinning it here makes that explicit instead of incidental. */
-    if (!gmtime_r(&now, &tmv)) {
+    /* localtime_r = Philippine time (SD_CLOCK_TZ, set in sd_status_seed_clock).
+     * The epoch underneath is still true UTC, so two boards stay comparable;
+     * only the printed wall clock is local, and it is labelled as such. */
+    if (!localtime_r(&now, &tmv)) {
         strlcpy(out, "unknown", len);
         return false;
     }
@@ -915,7 +920,7 @@ sd_status_result_t sd_status_run_boot_check(void)
          * capture wrongly, and this report is exactly what someone reads when
          * they pull an unfamiliar card. */
         rep("[2b] CLOCK\r\n"
-            "  Boot time now: %s UTC\r\n"
+            "  Boot time now: %s " SD_CLOCK_TZ_LABEL "\r\n"
             "  Source: %s\r\n\r\n",
             now,
             (sd_status_clock_source() == SD_CLOCK_SRC_HOST)
@@ -1031,12 +1036,50 @@ sd_status_result_t sd_status_run_boot_check(void)
             "  Build attack: %s\r\n"
             "  Build topology: %s\r\n"
             "  Firmware built: %s\r\n"
-            "  Run started: %s UTC (clock: %s)\r\n"
+            "  Run started: %s " SD_CLOCK_TZ_LABEL " (clock: %s)\r\n"
             "  Recorded location: %s\r\n"
             "  Node: %s (MAC %s)\r\n\r\n",
             atk_dir, topo_dir, sd_status_build_stamp(),
             started, sd_status_clock_source_str(),
             s_location, node_id, node_mac_str);
+
+        /* The schedule that produced this data, written where a human pulling
+         * the card can read it. PHASE_*_S live in mesh_config.h and are
+         * -D-overridable at build time, while preprocess.py and
+         * validate_integrity.py carry their own copies -- so a card and the
+         * host tools can disagree about what "baseline" means. The host side
+         * now detects that, but it cannot DERIVE the nominal: the jitter
+         * profile extends phases by a random amount ON PURPOSE, so the measured
+         * duration legitimately differs from the compiled one. Recording the
+         * compiled value is the only way a card can state its own provenance.
+         *
+         * Free-form text on purpose -- nothing parses this file, so adding to
+         * it cannot break a reader. */
+        rep("[6] PHASE SCHEDULE (compiled into this firmware)\r\n"
+            "  stabilise %us / baseline %us / attack %us / cooldown %us\r\n"
+#if defined(TRAFFIC_PROFILE) && (TRAFFIC_PROFILE == TRAFFIC_PROFILE_JITTER)
+            "  jitter ON (root): baseline +0..%us, attack +0..%us -- the MEASURED\r\n"
+            "  durations will EXCEED the nominal above, by design.\r\n",
+            (unsigned)PHASE_STABILISE_S, (unsigned)PHASE_BASELINE_S,
+            (unsigned)PHASE_ATTACK_S, (unsigned)PHASE_COOLDOWN_S,
+            (unsigned)JITTER_BASELINE_MAX_S, (unsigned)JITTER_ATTACK_MAX_S);
+#else
+            "  jitter OFF -- measured durations should match the nominal above.\r\n",
+            (unsigned)PHASE_STABILISE_S, (unsigned)PHASE_BASELINE_S,
+            (unsigned)PHASE_ATTACK_S, (unsigned)PHASE_COOLDOWN_S);
+#endif
+        /* RF width is part of the capture's conditions: HT40 and HT20 runs are
+         * not strictly comparable (RSSI / background retries can shift), so
+         * every report records which one this firmware enforces. Compiled
+         * value - the report is written before Wi-Fi starts; the boot log's
+         * "RF width (...)" line shows the live radio. */
+        rep("  RF width: %s (channel %u)\r\n\r\n",
+#if MESH_FORCE_HT20
+            "20 MHz / HT20 (MESH_FORCE_HT20=1)",
+#else
+            "ESP32 default, 40 MHz / HT40 (MESH_FORCE_HT20=0)",
+#endif
+            (unsigned)MESH_CHANNEL);
 
         bool chosen_dir_ok = (attack_status[atk_idx] >= 0)
                           && (topo_status[atk_idx][MESH_TOPOLOGY] >= 0)

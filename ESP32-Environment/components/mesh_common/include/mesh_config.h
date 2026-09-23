@@ -30,6 +30,17 @@
  *  your local APs are NOT using. See esp32-issues.md I-008. */
 #define MESH_CHANNEL        11
 
+/** 1 = force every interface to 20 MHz (HT20) instead of the ESP32 default
+ *  HT40 ("channel 11, 40D" in the logs = 40 MHz, secondary below).
+ *  Why: the only sniffer we have (M1 MacBook, Wireless Diagnostics) offers
+ *  20 MHz ONLY, and a 20 MHz receiver cannot decode 40 MHz data frames - the
+ *  sep. 23 2026 capture heard every board's beacons but ~0 of its data
+ *  frames. HT20 also matches what an independent observer can witness.
+ *  ⚠️ Changes the RF layer: captures from before this flag (HT40) are not
+ *  strictly comparable with captures after it - don't pool them unlabeled.
+ *  Boot log shows the result: "RF width (...): STA 20 MHz, AP 20 MHz". */
+#define MESH_FORCE_HT20     1
+
 /** Layers are NOT sized from a board count. The mesh stack assigns each node
  *  its layer (hop count from the root, root = layer 1) as it joins, so the
  *  firmware only tells the stack which STRUCTURE to keep and otherwise lets
@@ -644,6 +655,19 @@
  *  keeps it out of DELETE_SD_FILE's reach (sd_rel_file_valid() only accepts
  *  *_telem.csv / *_arrivals.csv inside a leaf), exactly like location.txt. */
 #define SD_CLOCK_FILE           SD_MOUNT_POINT "/clock.txt"
+
+/** Every date the board WRITES (runs.csv, status report, console, FAT file
+ *  times) is Philippine time, UTC+8 - the team's own clock. The clock itself
+ *  still holds a true UTC epoch (clock.txt, SET_TIME); only the rendering is
+ *  local. POSIX spelling: "PHT-8" means UTC+8 (the sign is inverted in TZ).
+ *
+ *  Also how the BUILD stamp is read: __DATE__/__TIME__ are the build laptop's
+ *  wall clock, i.e. PH time. Read as UTC (the old behaviour) it landed 8 h in
+ *  the future, so a real SET_TIME anchor always "lost" to it and every capture
+ *  kept the build-time estimate. A team member building outside UTC+8 must
+ *  change this, or their build stamps will be off by the difference. */
+#define SD_CLOCK_TZ             "PHT-8"
+#define SD_CLOCK_TZ_LABEL       "PHT"
 
 /** Topology folder names — MUST stay byte-identical to _TOPOLOGY_DIR in
  *  tools/export_logs.py so the card mirrors exports/. Note PARTIAL's quirk:
