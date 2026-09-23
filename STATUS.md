@@ -14,8 +14,8 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 ## Next step
 1. ✅ **HARDWARE-CONFIRMED sep. 22:** live-flag fix (growing file = STILL RUNNING, finished = ABORTED)
    and `DELETE_SD_FILE` (2 deleted over USB; live file correctly refused). **Left: child clean-stop.**
-2. ⚠️ **ROOT SAMPLE COVERAGE 93.7% < the 95% M5 floor is now a MILESTONE BLOCKER** — it is the ONLY
-   thing keeping blackhole/linear/home off the checklist. Investigate before the campaign.
+2. ⚠️ **ROOT COVERAGE 93.6% < 95% M5 floor — LIKELY FIXED, RE-MEASURE.** Validator: no gaps, root ran ~9.09 Hz
+   (sleep-after-work). `xTaskDelayUntil` fix (`7d1e066`, sep. 23 02:02) postdates that sep. 22 capture. Next export: `validate_integrity.py` ≥95%.
 3. ⚠️ **RE-FLASH EVERY BOARD** — D-13, `LIST_SD`, v2 (F3), F1, F2, C7, hop rename, leaf guards,
    `jitter`, **+ the sep. 22 CLOCK change. All 6 variants verified CLEAN (`-Clean`, 0 warnings) sep. 22.**
    To rebuild: `. C:\Espressif\Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57` — **`export.ps1` is

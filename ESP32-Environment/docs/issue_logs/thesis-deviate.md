@@ -276,3 +276,16 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Status** | Firmware **compiles clean**; **NOT yet validated on hardware** — it needs a board, a mid-run reset, and a card read back. Do that before trusting it in the campaign. |
 
 ---
+## D-14 · Radio pinned to 20 MHz (HT20) instead of the ESP32 default 40 MHz (HT40)
+
+| | |
+|---|---|
+| **Context** | The paper never states a channel width (no "MHz", "bandwidth", "HT20/HT40" or "802.11n" in the proposal), so every capture before sep. 23 2026 ran the ESP32 default: **HT40**, logged as `channel 11, 40D` (40 MHz, secondary channel below). |
+| **Why we changed it** | The only independent observer available — an M1 MacBook's Wireless Diagnostics Sniffer — captures **20 MHz only**, and a 20 MHz receiver cannot decode 40 MHz data frames. A real sep. 23 capture heard every board's beacons but ~0 of their data frames (root 0, child 3 of 1848). Without HT20 the sniffer cannot serve as the third-party check on the dataset (panel P6: *the attacker counts its own drops*). |
+| **We do** | `MESH_FORCE_HT20 1` (`mesh_config.h`). `mesh_setup.c` sets `WIFI_MODE_APSTA` and forces both interfaces to `WIFI_BW_HT20` **before** `esp_wifi_start()`; the `MESH_EVENT_*_CONNECTED` handlers re-check and log it. Every boot prints `RF width (before wifi start): STA 20 MHz, AP 20 MHz`, and the SD status report `[6]` records it, so every capture carries its own width. |
+| **⚠️ Trap found and fixed** | The first version forced the width **after** `esp_wifi_start()` / `esp_mesh_start()`. That hit the scan and the root's AP as they came up: **no node joined in a full 11-min run.** Moving it before the radio starts fixed it — verified on 4 boards in wizard order (all joined, correct chain, 20 MHz from boot, phases reached every child). Do not move the call back. |
+| **⚠️ Effect on EXISTING captures** | **HT40 captures (everything before sep. 23 2026) are NOT comparable to HT20 captures** — the PHY differs (rates, airtime, possibly RSSI by a few dB). Label by width; never pool them unlabelled. The verifier compares within one run, so its verdicts are unaffected. **Re-check before citing: Table 3.3's absolute *Expected RSSI Ranges by Node Position* against HT20 data.** |
+| **To restore the default** | `MESH_FORCE_HT20 0` and reflash. The sniffer then goes back to seeing beacons only. |
+| **Status** | Mesh formation + width **hardware-verified** (sep. 24 2026, 3-min test). A full 11-min HT20 run and a sniffer capture of its data frames are **still to be validated**. |
+
+---
