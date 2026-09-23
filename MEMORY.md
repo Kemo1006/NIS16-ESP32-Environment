@@ -8,6 +8,9 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 23, 2026 — **PANEL EVIDENCE for hop/`parent_mac` is ESPRESSIF'S OWN HEADER — cite it, not our code:**
+  `#define MESH_ROOT_LAYER (1)` (`esp_mesh.h`, IDF v5.3.5) + the IDF MAC table ("Wi-Fi SoftAP: base_mac, +1 to
+  the last octet") answer both "why hop = layer−1" and "why `parent_mac` matches no `node_id`" (SoftAP vs STA).
 - sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c`, EXPOSURE block after
   the TOPOLOGY TREE). Same rule as `exposure.py` but walked UPWARD through `g.parent[]`, step-guarded: any
   attacker ancestor ⇒ VICTIM. Prints each node ATTACKER / VICTIM / "not in the attack path" + a count, and
@@ -93,9 +96,6 @@
   duplicate detection across every `archive/*/`, COMPLETE-run warning, `-WhatIf`. ⚠️ **`archive.ps1` MOVES
   data, so git shows STAGED DELETIONS under `tools/exports/` — check `archive/` BEFORE `git checkout`-ing
   them back; doing that once recreated 9 files already safely archived.** Detail: ARCHIVE.md.
-- sep. 22, 2026 — **`verify_attack.py` PRINTS PER-NODE PDR under the pooled row.** The pooled value averages
-  an untouched upstream node with an annihilated downstream one and describes NOBODY — quote the per-node
-  split in the write-up. Superseded in part by the `exposure` column (above). Detail: ARCHIVE.md.
 - sep. 22, 2026 — **FIXED: wizard [15] campaign checklist CRASHED at the end** — `run_wizard.ps1:2232`
   called `Read-YesNo`, which is defined ONLY in `menu.ps1` and never dot-sourced here, so it threw
   `CommandNotFoundException` AFTER printing the whole checklist. Now uses this file's own `Read-Line`

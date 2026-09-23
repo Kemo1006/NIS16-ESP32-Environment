@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 22, 2026 — **CAPTURE DATES ARE REAL** (board now takes its clock from the laptop; `runs.csv` gained `started`/`clock_src`), plus the earlier export overhaul + D-13. **The working copy moved drives** (below). **Newer work UNCOMMITTED.**
+**Updated:** sep. 23, 2026 — read-only session: **independently re-verified the sep. 22 `blackhole/linear/home` r1 capture** (raw CSVs + post-overhaul EDA plots) — attack signature and phase timing both conform to the paper; no code touched. Earlier: CAPTURE DATES ARE REAL, export overhaul + D-13. **The working copy moved drives** (below). **Newer work UNCOMMITTED.**
 
 ## ⚠️ THE WORKING COPY MOVED — read this first
 **Work in `A:\Angelo\Excelsior\THESIS\T`.** `C:\...\NIS16-ESP32-Environment` (old C: path) is a BACKUP only —
@@ -30,11 +30,11 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️⚠️ **ROOT POWER — verify before EVERY capture** (brownout loop); direct laptop USB, never a shared hub.
 - ⚠️ **No pcap ever captured.** `docs/WIRESHARK-GUIDE.md` §7/§9. M1 Macs: Wi-Fi OFF first.
 - **Two unreconciled panel tracks:** `Plan/THESIS3-PANEL-PLAN.md` vs `.../memory/panel-change-2026-09.md`. **R-A/R-B unwritten**; `run_ledger.csv` header-only.
-- ✅ **FIXED sep. 22 (ALL need a REFLASH):** live-run "ABORTED"; SET_LOCATION after hot-swap; sticky STILL RUNNING. MEMORY.md.
+- 📝 **OTHER MEMBER — [17] TOPOLOGY STRUCTURE, DISPLAY ONLY (the CSVs are CORRECT, do not "fix" them):** it
+  prints `parent_mac` (SoftAP MAC) but names nodes by `node_id` (STA MAC), so no column matches; map back via −1.
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
 - sep. 23, 2026 — **root names VICTIMS live during the run** (errors if nothing is downstream of the attacker) + vocabulary `victim`→`child`. MEMORY.md. ⚠️ **REFLASH.**
 - sep. 23, 2026 — **firmware role `victim`→`child` + `exposure` column; phase-schedule mismatch now
   detected from the data.** MEMORY.md. ⚠️ **NEEDS REFLASH.**
-- sep. 23, 2026 — **`exposure` column + de-hardcoded ESP-IDF/python paths and the board roster.** MEMORY.md.
