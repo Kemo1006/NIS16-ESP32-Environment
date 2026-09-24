@@ -8,6 +8,13 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 24, 2026 — **`run_wizard.ps1` multi-laptop roster: "N boards need ports" warning was WRONG whenever the roster
+  is split** (step 6 always added +1 for root even after the operator had just said root is on ANOTHER laptop — said
+  "5 boards need ports" right after a "root not here" answer). Fixed: that warning only fires when NOT multi-laptop
+  (root/children are only sorted into local-vs-remote per-board, in step 7's `Select-PortOrRemote`, which already
+  handles it correctly). Also added 3 clarifying banners (root-remote confirmation, child-count multi-laptop example,
+  one-time "you'll be asked per board" notice before step 7) — the child COUNT is always the FULL experiment across
+  every laptop, never just this one's; per-board "is it here?" is what actually sorts local from remote.
 - sep. 23, 2026 — ⛔→✅ **`MESH_FORCE_HT20` first version BROKE mesh formation; FIXED + HARDWARE-VERIFIED same day.**
   Broken run: 0 nodes joined in 11 min (root `NODE COUNT` 1, children `AP:0`). Cause: `apply_rf_width()`
   forced 20 MHz AFTER `esp_wifi_start()` (no-op: STA iface not up, stayed 40 MHz) and AFTER `esp_mesh_start()`
@@ -81,14 +88,6 @@
   spellings to canonical `child` at the ONE place `node_role` is made, so old captures still work;
   `features.py` gates on `CHILD_ROLE`, deliberately NOT both. Verified: only `node_role` changed, PDR
   unchanged (it sits behind the gate, so that IS the proof). ⚠️ **REFLASH.** Detail: ARCHIVE.md.
-- sep. 23, 2026 — **DE-HARDCODED machine paths.** `Get-EspMac.ps1` pinned IDF `v5.3.5`+`py3.11` — dead on a
-  5.5.4 box. It and `board_check.py` now discover via `IDF_PATH`/`IDF_TOOLS_PATH` then glob
-  `<SystemDrive>\Espressif`. `py` launcher replaces `C:\Python314`. Board roster overridable by
-  `presets/boards.json` (`--roster`). Detail: ARCHIVE.md.
-- sep. 23, 2026 — **TIMESERIES WERE MISALIGNED — fixed.** `window_start` is each node's OWN boot clock
-  (phase 0 at 60s on the root, **670s on node2**), so bands from whichever node sorted first were right for
-  one line at most. `_align_to_baseline()` re-bases per node; **anchor on the RAW `segment` column**, not
-  `_phase_names()`. ⚠️ **BOTH views are written and BOTH are wanted.** Detail: ARCHIVE.md.
 - sep. 23, 2026 — **KEEP `RetryRate` in the blackhole signature; the stale comment was the only problem.**
   Its removal condition ("once retry_count means MAC-layer failure on every role") IS met — verified in
   `blackhole_victim.c:378-386`, F3 moved deliberate drops to `drop_count`. But that killed the LEAK, which is

@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 24, 2026 — HT20 mesh-join fix hardware-verified + everything COMMITTED/PUSHED (THESIS3). **Next: re-run blackhole/linear/home with the attacker placed nearest the root — root table must show it at `H01`** (a `NO NODE IS DOWNSTREAM` with all nodes reported = placement, not a bug; MEMORY.md).
+**Updated:** sep. 24, 2026 — scenario rename to `stationary` + multi-laptop wizard fixes, all COMMITTED/PUSHED (THESIS3). **Next: re-run blackhole/linear/home, attacker placed nearest the root — root table must show it at `H01`** (a `NO NODE IS DOWNSTREAM` with all nodes reported = placement, not a bug; MEMORY.md).
 
 ## ⚠️ THE WORKING COPY MOVED — read this first
 **Work in `A:\Angelo\Excelsior\THESIS\T`.** `C:\...\NIS16-ESP32-Environment` (old C: path) is a BACKUP only —
@@ -35,6 +35,6 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 24, 2026 — **Multi-laptop wizard fix:** "N boards need ports" wrongly counted a remote root/child as needing a LOCAL port. Fixed + clarifying banners added. MEMORY.md.
 - sep. 24, 2026 — **Scenario `none` → `stationary` EVERYWHERE, with its own `stationary\` folder** (`none` still accepted). Fixed: jitter runs could not export. 20 py + 19 PS checks + firmware build pass. **REFLASH.** MEMORY.md.
-- sep. 24, 2026 — **Campaign checklist: LIVE/ARCHIVE views, `[x]` needs capture + analysis, scenarios RANDOMISED per cell (`tools/campaign_plan.json`, 4 of 6, balanced), `none` shown as "stationary".** 144 planned runs. MEMORY.md.
 - sep. 23, 2026 — ✅ **FIXED + HARDWARE-VERIFIED: `MESH_FORCE_HT20` had broken mesh joining** (0 nodes in 11 min). HT20 now set BEFORE `esp_wifi_start()` (APSTA mode). 4-board test: all joined, correct chain, all 20 MHz, phases reach children. 4 boards already flashed with it. MEMORY.md.

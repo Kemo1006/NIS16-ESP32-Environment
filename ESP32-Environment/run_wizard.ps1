@@ -5262,6 +5262,10 @@ else {
                         # just confirm what "no" already said. Roster questions still
                         # cover the FULL experiment so labels/ports line up with
                         # whichever laptop the root and any other remote boards are on.
+                        Write-Host ""
+                        Write-Host "-> Root is on ANOTHER laptop, so this is now a MULTI-LAPTOP split. The next" -ForegroundColor Cyan
+                        Write-Host "   questions cover the FULL experiment (every board, on every laptop) - you'll" -ForegroundColor Cyan
+                        Write-Host "   say which of THOSE are physically here in a moment." -ForegroundColor Cyan
                         $multiLaptop = $true
                         $step = 6
                         continue flow
@@ -5288,7 +5292,12 @@ else {
                 Write-Host "       10 ESP32s total (1 root + 9 children) -> enter 9" -ForegroundColor DarkGray
                 Write-Host "       just the root, no children at all     -> enter 0" -ForegroundColor DarkGray
                 if ($multiLaptop) {
-                    Write-Host "  Multi-laptop: count the FULL experiment's children, not just this laptop's." -ForegroundColor DarkGray
+                    Write-Host "  MULTI-LAPTOP: this is the FULL experiment's children, ACROSS every laptop" -ForegroundColor Yellow
+                    Write-Host "  combined - not just what's plugged in here. Example: your laptop has 2" -ForegroundColor Yellow
+                    Write-Host "  boards, a teammate's has 2 more -> enter 4 (the total, same on both laptops)." -ForegroundColor Yellow
+                    Write-Host "  Right after this you'll name each of those 4 one at a time, and for EACH" -ForegroundColor Yellow
+                    Write-Host "  one say whether IT is physically at your desk - that's how the wizard sorts" -ForegroundColor Yellow
+                    Write-Host "  out which ones are yours to flash." -ForegroundColor Yellow
                 }
 
                 $newCount = $childCount
@@ -5323,11 +5332,29 @@ else {
                 $childCount = $newCount
 
                 $ports = Get-PortList
-                if (($childCount + 1) -gt $ports.Count) {
+                # This count only means something when every board in the roster is
+                # local: in a multi-laptop split, $childCount is the FULL experiment's
+                # children (see step 6's own note above) and the root may be remote
+                # (step 5) - neither is knowable as "needs a port on THIS laptop" until
+                # Select-PortOrRemote asks per-board in step 7. Showing "N need ports"
+                # against the whole roster here is what said "5 boards need ports" to
+                # an operator who had JUST said the root was on another laptop.
+                if (-not $multiLaptop) {
+                    $localNeeded = $childCount + 1   # root is always local outside a split
+                    if ($localNeeded -gt $ports.Count) {
+                        Write-Host ""
+                        Write-Host ("{0} boards need ports but only {1} are plugged in right now." -f $localNeeded, $ports.Count) -ForegroundColor Yellow
+                        Write-Host "When you reach a board that isn't plugged in yet, pick 'a' at the port prompt -" -ForegroundColor Yellow
+                        Write-Host "swap it onto a free USB port and the wizard will find it for you." -ForegroundColor Yellow
+                    }
+                }
+
+                if ($multiLaptop -and $childCount -gt 0) {
                     Write-Host ""
-                    Write-Host ("{0} boards need ports but only {1} are plugged in right now." -f ($childCount + 1), $ports.Count) -ForegroundColor Yellow
-                    Write-Host "When you reach a board that isn't plugged in yet, pick 'a' at the port prompt -" -ForegroundColor Yellow
-                    Write-Host "swap it onto a free USB port and the wizard will find it for you." -ForegroundColor Yellow
+                    Write-Host ("Now naming all {0} children one at a time. For EACH one, after its label," -f $childCount) -ForegroundColor Cyan
+                    Write-Host "you'll be asked 'Is it plugged into THIS laptop?' - say Y only for a board" -ForegroundColor Cyan
+                    Write-Host "physically at your desk right now; say N for anything on another laptop" -ForegroundColor Cyan
+                    Write-Host "(it gets recorded as remote and skipped - no port question for it)." -ForegroundColor Cyan
                 }
 
                 $i = 1
