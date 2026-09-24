@@ -1714,7 +1714,40 @@ function Select-CardFiles {
                 Write-Host ("  STILL RUNNING: {0}" -f $lv.name) -ForegroundColor Yellow
             }
             Write-Host "  That board is mid-run - the file is still being written." -ForegroundColor Yellow
-            Write-Host "  Let the run reach TERMINATE (or reset the board), then export." -ForegroundColor Yellow
+            Write-Host "  Let the run reach TERMINATE, then export." -ForegroundColor Yellow
+            # Over USB the board can be told to finish now (firmware END_RUN):
+            # it closes the file cleanly, so nothing is lost by pulling the card
+            # later. Only offered with -Port - a pulled card has no board to ask.
+            if ($Port) {
+                Write-Host ""
+                Write-Host "  If the run is OVER (root finished, or this board missed TERMINATE)," -ForegroundColor Yellow
+                Write-Host "  this board can close its file now. If it is still mid-run, the" -ForegroundColor Yellow
+                Write-Host "  capture is cut short and stays marked ABORTED." -ForegroundColor Yellow
+                $ans = Read-Host "  End this board's run now and close its file? [y/N]"
+                if ($ans -match '^[Yy]') {
+                    Push-Location (Join-Path $base 'tools')
+                    $prevEap = $ErrorActionPreference
+                    try {
+                        $ErrorActionPreference = 'Continue'
+                        $out = & python -u export_logs.py --port $Port --end-run 2>&1
+                    }
+                    finally { $ErrorActionPreference = $prevEap; Pop-Location }
+                    $res = (@($out) | Where-Object { "$_" -match '^END_RUN_RESULT:' } | Select-Object -First 1)
+                    $res = "$res" -replace '^END_RUN_RESULT:\s*', ''
+                    switch ($res.Trim()) {
+                        'COMPLETE'  { Write-Host "  Closed. The run had reached cooldown - capture is complete." -ForegroundColor Green }
+                        'CUT_SHORT' { Write-Host "  Closed, but BEFORE cooldown - the capture is cut short (stays ABORTED)." -ForegroundColor Yellow }
+                        'ALREADY'   { Write-Host "  The run had already ended on this board." -ForegroundColor Green }
+                        default {
+                            Write-Host "  END_RUN failed:" -ForegroundColor Red
+                            @($out) | ForEach-Object { Write-Host ("    {0}" -f $_) -ForegroundColor DarkGray }
+                        }
+                    }
+                    if ($res.Trim() -in @('COMPLETE', 'CUT_SHORT', 'ALREADY')) {
+                        Write-Host "  Run the export again - the file now lists as closed." -ForegroundColor Cyan
+                    }
+                }
+            }
             $picked = @($picked | Where-Object { $_.live -ne $true })
             if ($picked.Count -eq 0) {
                 Write-Host "  Nothing left selected." -ForegroundColor DarkGray

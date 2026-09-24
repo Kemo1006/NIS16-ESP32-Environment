@@ -54,6 +54,11 @@ static int64_t           s_phase_since_us = 0;
 /* Set when TERMINATE was declared by the watchdog, not received from the root. */
 static volatile bool     s_term_timed_out = false;
 
+/* Set by END_RUN (phase_listener_end_run_now). s_manual_complete says whether
+ * the run had already reached cooldown, i.e. its labelled content is whole. */
+static volatile bool     s_term_manual     = false;
+static volatile bool     s_manual_complete = false;
+
 /* Root only: keep receiving after TERMINATE (see
  * phase_listener_keep_running_after_terminate()). */
 static bool              s_keep_running = false;
@@ -173,6 +178,36 @@ void phase_listener_wait_for_terminate(void)
 bool phase_listener_terminate_timed_out(void)
 {
     return s_term_timed_out;
+}
+
+int phase_listener_end_run_now(void)
+{
+    if (!s_term_eg || !s_phase_mutex) {
+        return PL_END_NOT_RUNNING;
+    }
+    if (phase_listener_is_terminated()) {
+        return PL_END_ALREADY;
+    }
+    xSemaphoreTake(s_phase_mutex, portMAX_DELAY);
+    bool complete = (s_phase_id == PHASE_ID_COOLDOWN);
+    xSemaphoreGive(s_phase_mutex);
+
+    s_manual_complete = complete;
+    s_term_manual     = true;
+    ESP_LOGW(TAG, "END_RUN from USB -- ending the run now (%s). Manifest will "
+                  "record manual_end.",
+             complete ? "cooldown reached, data complete"
+                      : "BEFORE cooldown, capture is cut short");
+    xEventGroupSetBits(s_term_eg, TERMINATE_BIT);
+    return complete ? PL_END_COMPLETE : PL_END_CUT_SHORT;
+}
+
+bool phase_listener_ended_manually(bool *complete)
+{
+    if (complete) {
+        *complete = s_manual_complete;
+    }
+    return s_term_manual;
 }
 
 void phase_listener_keep_running_after_terminate(void)
@@ -310,7 +345,7 @@ static void phase_listener_task(void *arg)
              * node behaves as if TERMINATE had arrived. The root keeps
              * dispatching: it still needs the children's final heartbeats, and
              * its own callback ignores probes once terminated. */
-            if (s_data_cb && (s_keep_running || !s_term_timed_out)) {
+            if (s_data_cb && (s_keep_running || !phase_listener_is_terminated())) {
                 s_data_cb(rx_buf, mdata.size, from.addr);
             }
             continue;
@@ -322,6 +357,18 @@ static void phase_listener_task(void *arg)
         if (msg->seq_num <= s_last_seq) {
             /* Duplicate or out-of-order broadcast — ignore. */
             xSemaphoreGive(s_phase_mutex);
+            continue;
+        }
+
+        /* The root re-sends TERMINATE for a while, and a node may already have
+         * ended locally (watchdog / END_RUN). Take such a copy quietly; a child
+         * then exits as it would have on the first one. */
+        if (msg->phase_id == PHASE_ID_TERMINATE && phase_listener_is_terminated()) {
+            s_last_seq = msg->seq_num;
+            xSemaphoreGive(s_phase_mutex);
+            if (!s_keep_running) {
+                vTaskDelete(NULL);
+            }
             continue;
         }
 

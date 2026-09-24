@@ -757,6 +757,14 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--end-run", dest="end_run", action="store_true",
+                   help="End this board's run NOW and close its files cleanly "
+                        "(firmware END_RUN), for a board the card listing shows as "
+                        "STILL RUNNING. If the board was already in cooldown the "
+                        "capture is complete; if not, it is cut short and stays "
+                        "marked ABORTED. Prints one 'END_RUN_RESULT: <x>' line "
+                        "(COMPLETE | CUT_SHORT | ALREADY | FAIL). Standalone: "
+                        "exports nothing.")
     p.add_argument("--set-time", dest="set_time", action="store_true",
                    help="Give this board a real clock and save it to its SD card, "
                         "then exit. Every connection does this anyway (see "
@@ -889,6 +897,59 @@ def main() -> int:
                     return 0
             print("   no answer — this board predates SET_TIME/GET_TIME. Reflash it "
                   "to give it a real clock.")
+            return 0
+
+        if args.end_run:
+            print("-> END_RUN ...")
+            _send_command(ser, "END_RUN")
+            result = None
+            deadline = time.time() + 5
+            while time.time() < deadline and result is None:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace").strip()
+                if line == "END_RUN:OK:COMPLETE":
+                    result = "COMPLETE"
+                elif line == "END_RUN:OK:CUT_SHORT":
+                    result = "CUT_SHORT"
+                elif line == "END_RUN:ALREADY_ENDED":
+                    print("END_RUN_RESULT: ALREADY")
+                    print("   the run had already ended on this board — nothing to do.")
+                    return 0
+                elif line.startswith("ERROR:"):
+                    print("END_RUN_RESULT: FAIL")
+                    print(f"   end-run FAILED: {line}", file=sys.stderr)
+                    return 1
+            if result is None:
+                print("END_RUN_RESULT: FAIL")
+                print("   no answer — this board predates END_RUN. Reflash it, or "
+                      "reset it (the file then reads as ABORTED).", file=sys.stderr)
+                return 1
+            # The close runs on the board's main task; wait for its log line so
+            # the caller never lists the card while the file is still open.
+            closed = False
+            deadline = time.time() + 20
+            while time.time() < deadline:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                line = raw.decode("utf-8", errors="replace")
+                if "Telemetry file closed" in line or "SD card unmounted" in line:
+                    closed = True
+                    if "SD card unmounted" in line:
+                        break
+            if not closed:
+                print("END_RUN_RESULT: FAIL")
+                print("   the board accepted END_RUN but never reported closing its "
+                      "file. Check it in idf.py monitor.", file=sys.stderr)
+                return 1
+            print(f"END_RUN_RESULT: {result}")
+            if result == "COMPLETE":
+                print("   run ended in cooldown — capture is complete and closed.")
+            else:
+                print("   run ended BEFORE cooldown — file is closed and safe to copy, "
+                      "but the capture is cut short and stays marked ABORTED.")
             return 0
 
         if args.get_location:

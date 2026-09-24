@@ -378,6 +378,14 @@ static void experiment_controller_task(void *arg)
     ESP_LOGI(TAG, "[CTRL] Broadcasting TERMINATE.");
     broadcast_and_count(PHASE_ID_TERMINATE);
 
+    /* Re-send for a while: a child that was re-parenting (so not in the routing
+     * table) missed the first round, and it would otherwise keep its file open. */
+    for (uint32_t t = 0; t < TERMINATE_RESEND_S; t += TERMINATE_RESEND_GAP_S) {
+        vTaskDelay(pdMS_TO_TICKS(TERMINATE_RESEND_GAP_S * 1000));
+        phase_listener_broadcast(PHASE_ID_TERMINATE);
+    }
+    ESP_LOGI(TAG, "[CTRL] TERMINATE re-sends done.");
+
     vTaskDelete(NULL);
 }
 

@@ -1405,15 +1405,24 @@ esp_err_t csv_logger_close(void)
         fflush(s_sd_log_fp);
         fclose(s_sd_log_fp);
         s_sd_log_fp = NULL;
-        /* The run's data is complete either way, so it still gets "clean";
-         * the extra row keeps a watchdog ending visible on the card instead of
-         * passing it off as a normal TERMINATE. The importer ignores events it
-         * does not know. */
-        if (phase_listener_terminate_timed_out()) {
+        /* A watchdog ending, or an END_RUN in cooldown, leaves the run's data
+         * complete, so it still gets "clean"; the extra row keeps how it ended
+         * visible on the card. An END_RUN BEFORE cooldown gets no "clean": the
+         * file is closed properly (safe to import) but the capture is cut
+         * short, so it must keep reading as ABORTED. The importer ignores
+         * events it does not know. */
+        bool manual_complete = false;
+        bool manual = phase_listener_ended_manually(&manual_complete);
+        if (manual) {
+            sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
+                               "manual_end");
+        } else if (phase_listener_terminate_timed_out()) {
             sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
                                "term_timeout");
         }
-        sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows, "clean");
+        if (!manual || manual_complete) {
+            sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows, "clean");
+        }
     }
     if (s_sd_arrivals_fp) {
         fflush(s_sd_arrivals_fp);
@@ -1512,7 +1521,7 @@ static void serial_export_task(void *arg)
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
                   "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
-                  "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME");
+                  "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -1738,6 +1747,20 @@ static void serial_export_task(void *arg)
                 snprintf(out, sizeof(out), "TIME:%s:%s\n",
                          now, sd_status_clock_source_str());
                 uart_write_bytes(EXPORT_UART, out, strlen(out));
+
+            /* ── END_RUN — end this board's run now and close its files, for a
+             * board the card listing shows as STILL RUNNING (it missed
+             * TERMINATE, or the operator wants it stopped). The main task does
+             * the actual close; the host polls LIST_SD until the file shows as
+             * no longer open. Reply says whether cooldown had been reached. ── */
+            } else if (strcmp(cmd_buf, "END_RUN") == 0) {
+                int r = phase_listener_end_run_now();
+                const char *msg =
+                    r == PL_END_COMPLETE  ? "END_RUN:OK:COMPLETE\n" :
+                    r == PL_END_CUT_SHORT ? "END_RUN:OK:CUT_SHORT\n" :
+                    r == PL_END_ALREADY   ? "END_RUN:ALREADY_ENDED\n" :
+                                            "ERROR:END_RUN_NOT_RUNNING\n";
+                uart_write_bytes(EXPORT_UART, msg, strlen(msg));
 
             /* ── SET_LOCATION=<value> — write/overwrite location.txt on the
              * SD card over the SAME USB link already used to flash/export,

@@ -105,6 +105,25 @@ void phase_listener_wait_for_terminate(void);
  */
 bool phase_listener_terminate_timed_out(void);
 
+/** Results of phase_listener_end_run_now(). */
+#define PL_END_NOT_RUNNING  (-1)  /**< listener never started                */
+#define PL_END_CUT_SHORT      0   /**< ended before cooldown: capture partial */
+#define PL_END_COMPLETE       1   /**< ended in cooldown: capture complete    */
+#define PL_END_ALREADY        2   /**< run had already ended; nothing done    */
+
+/**
+ * @brief End the run on this node now (serial END_RUN), as if TERMINATE had
+ *        arrived: the waiting main task closes the logs and the card.
+ * @return one of the PL_END_* values above.
+ */
+int phase_listener_end_run_now(void);
+
+/**
+ * @brief True if the run was ended by END_RUN. *complete (if not NULL) gets
+ *        whether it had already reached cooldown.
+ */
+bool phase_listener_ended_manually(bool *complete);
+
 /* ── Root-side broadcast helper (used only by root_main.c) ───────────────── */
 
 /**

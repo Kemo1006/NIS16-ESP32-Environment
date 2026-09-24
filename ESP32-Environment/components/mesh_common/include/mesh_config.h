@@ -366,6 +366,14 @@
 #define TERMINATE_GRACE_S       60U
 #endif
 
+/** After TERMINATE the root keeps re-sending it every TERMINATE_RESEND_GAP_S
+ *  for TERMINATE_RESEND_S. A child that was mid-reparent (not in the routing
+ *  table) when the first one went out still gets it once it re-joins. Kept
+ *  short: the old root must not end a NEW run's children that join it before
+ *  it is reflashed (the wizard parks the root first, which also prevents that). */
+#define TERMINATE_RESEND_S      60U
+#define TERMINATE_RESEND_GAP_S  5U
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * TELEMETRY SAMPLING
  * ═══════════════════════════════════════════════════════════════════════════ */
