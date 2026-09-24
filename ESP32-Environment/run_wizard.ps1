@@ -252,7 +252,9 @@ function Show-Menu {
         for ($i = 0; $i -lt $Options.Count; $i++) {
             if ($GroupHeaders -and $GroupHeaders.ContainsKey($i)) {
                 Write-Host ""
-                Write-Host ("  {0}" -f $GroupHeaders[$i]) -ForegroundColor DarkCyan
+                # An empty heading is just a spacer - sets a trailing "Back" apart
+                # from the last group without inventing a name for it.
+                if ($GroupHeaders[$i]) { Write-Host ("  {0}" -f $GroupHeaders[$i]) -ForegroundColor DarkCyan }
             }
             if ($i -eq $DefaultIndex) {
                 # The default is marked right on its option line, not only in the
@@ -261,7 +263,12 @@ function Show-Menu {
                 # on their own the brackets could read as "already chosen", so the
                 # explicit "<- default (press Enter)" marker is what actually signals
                 # the default here - the brackets are just the selector style.
-                Write-Host ("  [{0}] {1}  <- default (press Enter)" -f ($i + 1), $Options[$i]) -ForegroundColor Green
+                # A multi-line option (the preset picker's board list) keeps the
+                # marker on its FIRST line, not trailing after the last detail row.
+                $nl   = $Options[$i].IndexOf("`n")
+                $head = if ($nl -ge 0) { $Options[$i].Substring(0, $nl) } else { $Options[$i] }
+                $tail = if ($nl -ge 0) { $Options[$i].Substring($nl) } else { '' }
+                Write-Host ("  [{0}] {1}  <- default (press Enter){2}" -f ($i + 1), $head, $tail) -ForegroundColor Green
             }
             else {
                 Write-Host ("  [{0}] {1}" -f ($i + 1), $Options[$i])
@@ -308,6 +315,45 @@ function Show-Menu {
     }
 }
 
+function Test-NoExperimentData {
+    # True when import_sdcard.py --list-json says this telemetry file holds only
+    # phase 255 ("no broadcast heard yet") - a board that stopped before the
+    # root's schedule reached it. $false when phases are unknown (over USB).
+    param($File)
+    if ($null -eq $File.phases) { return $false }
+    $real = @(@($File.phases) | Where-Object { $_ -ne 255 })
+    return ($real.Count -eq 0)
+}
+
+function Get-AbortCauseText {
+    # One line on WHY an ABORTED file ended, from import_sdcard.py --list-json:
+    #   ended_by  = reset reason of the next boot that reached logging
+    #               (firmware from sep. 25, 2026 - runs.csv reset_reason column)
+    #   status    = the card's status_<node>.txt now; its boot count vs this
+    #               file's boot says whether the board ever booted again. That
+    #               part works on older cards too - every firmware wrote it.
+    # $null when there is nothing to say (e.g. over USB).
+    param($File)
+    switch ($File.ended_by) {
+        'POWERON'  { return 'ended by a POWER CUT (unplugged / powerbank off) - the next boot was a plain power-on' }
+        'BROWNOUT' { return 'ended by a BROWNOUT - the supply sagged (weak powerbank/charger/cable)' }
+        { $_ -in @('PANIC', 'TASK_WDT', 'INT_WDT', 'WDT') } { return "ended by a CRASH ($_) - the firmware reset itself" }
+    }
+    $st = $File.status
+    if ($null -eq $st -or $null -eq $st.boot_count) { return $null }
+    $after = [int]$st.boot_count - [int]$File.boot
+    if ($after -le 0) {
+        return 'the board NEVER booted again with this card - its power was cut and never restored'
+    }
+    $txt = "the board booted $after more time(s) after this file and never logged again"
+    if ($null -ne $st.brownouts) {
+        $txt += " - brownouts so far: $($st.brownouts), crashes: $($st.crashes), last reset: $($st.last_reset)"
+    } else {
+        $txt += ' - dying before logging starts looks like a brownout loop (weak powerbank/cable); reflash to record the reason'
+    }
+    return $txt
+}
+
 function Show-CaptureWizardMenu {
     # Grouped version of the top-level "What do you want to do?" menu, same
     # CAPTURE/DATA/MAINTENANCE/VERIFY grouping menu.ps1's Show-MainMenu uses for
@@ -325,11 +371,11 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
-            @{ Idx = 16; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, presets. Never code' }
+            @{ Idx = 16; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, run logs, presets. Never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
             @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
-            @{ Idx = 14; Text = 'View a saved run log (a past run''s console output, incl. any errors - no board/COM contact)' }
+            @{ Idx = 14; Text = 'View a saved run log (a past run''s console output start to end, filed by attack/topology/location - keep, archive, delete or push; no board/COM contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
             @{ Idx = 1; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
@@ -1526,6 +1572,12 @@ function Select-CardFiles {
             }
             if ($f.archived) { $bits += '_archive' }
             $noteColor = 'DarkGray'
+            # What the file HOLDS, not just how it ended (mounted card only -
+            # $null over USB). Only phase 255 = the board stopped before the
+            # root's schedule reached it: no experiment data at all.
+            $noData = Test-NoExperimentData $f
+            if ($noData) { $bits += 'NO EXPERIMENT DATA (only pre-run phase 255 - board stopped before the run started)' }
+            elseif ($null -ne $f.phases) { $bits += ('phases ' + ((@($f.phases) | Where-Object { $_ -ne 255 }) -join ',')) }
             # live wins over clean=false: a run in progress is NOT an aborted one.
             if ($f.live -eq $true) {
                 $bits += 'STILL RUNNING (board is mid-run - do not import yet)'
@@ -1535,6 +1587,7 @@ function Select-CardFiles {
                 $bits += 'ABORTED (started, never closed cleanly)'
                 $noteColor = 'Yellow'
             }
+            if ($noData) { $noteColor = 'Red' }
             if ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
             Write-Host ("      {0}" -f ($bits -join '  |  ')) -ForegroundColor $noteColor
         }
@@ -1759,7 +1812,19 @@ function Select-CardFiles {
         $includeAborted = $false
         if ($aborted.Count -gt 0) {
             Write-Host ""
-            foreach ($a in $aborted) { Write-Host ("  ABORTED: {0}" -f $a.name) -ForegroundColor Yellow }
+            foreach ($a in $aborted) {
+                $cause = Get-AbortCauseText $a
+                if ($cause) { Write-Host ("  WHY: {0} {1}" -f $a.name, $cause) -ForegroundColor Yellow }
+                if (Test-NoExperimentData $a) {
+                    Write-Host ("  ABORTED: {0}  - NO EXPERIMENT DATA: only pre-run phase 255 rows. The board was" -f $a.name) -ForegroundColor Red
+                    Write-Host  "           unplugged / lost power before the root started. Importing it adds nothing -" -ForegroundColor Red
+                    Write-Host  "           validate_integrity FAILs it and analysis skips it. Re-capture this node." -ForegroundColor Red
+                } elseif ($null -ne $a.phases) {
+                    Write-Host ("  ABORTED: {0}  - reached phase(s) {1}; ends early, the rest of the run is missing" -f $a.name, ((@($a.phases) | Where-Object { $_ -ne 255 }) -join ',')) -ForegroundColor Yellow
+                } else {
+                    Write-Host ("  ABORTED: {0}" -f $a.name) -ForegroundColor Yellow
+                }
+            }
             $ans = Read-Line ("  {0} of the file(s) you picked never closed cleanly (power loss, a killed run) - import them anyway? [y/N] > " -f $aborted.Count)
             if ($ans -eq 'y' -or $ans -eq 'Y') {
                 $includeAborted = $true
@@ -3128,14 +3193,31 @@ function Invoke-DataSync {
     # tools\push_data.py does all git work in a private clone, so this folder's
     # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
     # actions - keep the two in sync.
-    param([ValidateSet('push', 'pull', 'test')][string]$Mode,
-          [ValidateSet('exports', 'presets', 'analysis')][string]$Area = 'exports')
+    param([ValidateSet('push', 'pull', 'test', 'delete', 'restore')][string]$Mode,
+          [ValidateSet('exports', 'presets', 'analysis', 'logs')][string]$Area = 'exports')
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
-    if ($Mode -eq 'test') {
+    if ($Mode -eq 'delete') {
+        Write-Host "Removes the files you pick from GitHub (a normal commit - GitHub's history keeps them, so" -ForegroundColor DarkGray
+        Write-Host "'Restore deleted data' can undo it), then offers to delete this laptop's copies too." -ForegroundColor DarkGray
+        Write-Host "Teammates are asked on their next pull; their push never re-uploads a deleted file." -ForegroundColor DarkGray
+        Write-Host "Asks you to type DELETE before anything goes." -ForegroundColor DarkGray
+    } elseif ($Mode -eq 'restore') {
+        Write-Host "Lists every delete on GitHub (yours or a teammate's), newest first. The files you pick go" -ForegroundColor DarkGray
+        Write-Host "back on GitHub exactly as they were, and back on this laptop unless you have a different copy." -ForegroundColor DarkGray
+    } elseif ($Mode -eq 'test') {
         Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
         Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
         Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+    } elseif ($Area -eq 'logs') {
+        if ($Mode -eq 'pull') {
+            Write-Host "Copies teammates' saved run logs from GitHub into run_logs\<attack>\<topology>\<location>\" -ForegroundColor DarkGray
+            Write-Host "(never code). Lists them and asks first; a log you already have - or archived - is never" -ForegroundColor DarkGray
+            Write-Host "overwritten or brought back. Pushes nothing." -ForegroundColor DarkGray
+        } else {
+            Write-Host "Pushes your saved run logs (.log console transcripts) under run_logs\ (never code)." -ForegroundColor DarkGray
+            Write-Host "Archived logs (run_logs\_archive\) stay local. Shows what will go up and asks first." -ForegroundColor DarkGray
+        }
     } elseif ($Area -eq 'presets') {
         if ($Mode -eq 'pull') {
             Write-Host "Copies teammates' saved presets from GitHub into presets\<them>\ (never code). Lists them" -ForegroundColor DarkGray
@@ -3180,25 +3262,59 @@ function Invoke-DataSyncMenu {
     # The push_data.py actions live behind one main-menu entry instead of several,
     # so the main menu stays scannable. Loops so a push can be followed by a pull
     # (or a presets upload) without going back out to the main menu first.
+    # Grouped by WHAT is synced, same "-- NAME" style as the main menu; the
+    # numbers stay one sequential run, so the headings are purely visual.
     while ($true) {
-        switch (Show-Menu -Title 'Data sync (GitHub) - captures, analysis output and presets. NEVER code:' -Options @(
+        switch (Show-Menu -Title 'Data sync (GitHub) - captures, analysis output, run logs and presets. NEVER code:' -Options @(
             "Push my capture data to GitHub - merges with teammates' pushes",
             "Pull teammates' capture data from GitHub - never overwrites your files",
             'Push my analysis + EDA output - feature_table, windowed_dataset, eda_output\ plots',
             "Pull teammates' analysis + EDA output - never overwrites your files",
+            'Push my saved run logs - console output of each run, filed by attack\topology\location',
+            "Pull teammates' run logs - never overwrites your files",
             "Upload my saved presets to GitHub - shares presets\<you>\*.json, fetches teammates' new ones back too",
             'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
+            'Delete data from GitHub (+ this laptop) - pick captures, analysis, run logs or presets; always undoable',
+            "Restore deleted data - undo a delete (yours or a teammate's) from GitHub's history",
             'Back to the main menu'
-        ) -DefaultIndex 6) {
-            0 { Invoke-DataSync -Mode push -Area exports }
-            1 { Invoke-DataSync -Mode pull -Area exports }
-            2 { Invoke-DataSync -Mode push -Area analysis }
-            3 { Invoke-DataSync -Mode pull -Area analysis }
-            4 { Invoke-DataSync -Mode push -Area presets }
-            5 { Invoke-DataSync -Mode test }
-            6 { return }
+        ) -DefaultIndex 10 -GroupHeaders @{
+            0  = '-- CAPTURE DATA'
+            2  = '-- ANALYSIS + EDA'
+            4  = '-- RUN LOGS'
+            6  = '-- PRESETS'
+            7  = '-- TEST'
+            8  = '-- DELETE / RESTORE'
+            10 = ''
+        }) {
+            0  { Invoke-DataSync -Mode push -Area exports }
+            1  { Invoke-DataSync -Mode pull -Area exports }
+            2  { Invoke-DataSync -Mode push -Area analysis }
+            3  { Invoke-DataSync -Mode pull -Area analysis }
+            4  { Invoke-DataSync -Mode push -Area logs }
+            5  { Invoke-DataSync -Mode pull -Area logs }
+            6  { Invoke-DataSync -Mode push -Area presets }
+            7  { Invoke-DataSync -Mode test }
+            8  { $a = Select-DataSyncArea -Verb 'Delete';  if ($a) { Invoke-DataSync -Mode delete -Area $a } }
+            9  { $a = Select-DataSyncArea -Verb 'Restore'; if ($a) { Invoke-DataSync -Mode restore -Area $a } }
+            10 { return }
         }
     }
+}
+
+function Select-DataSyncArea {
+    # Which kind of data a delete/restore works on - one tools\push_data.py area
+    # each. Returns the --area value, or $null for Back.
+    param([string]$Verb)
+    $areas = @('exports', 'analysis', 'logs', 'presets')
+    $idx = Show-Menu -Title "$Verb which kind of data?" -Options @(
+        'Capture data (tools\exports\ CSVs)',
+        'Analysis + EDA output (analysis\<attack>\<topology>\<location>\)',
+        'Run logs (run_logs\)',
+        'Presets (presets\<member>\*.json)',
+        'Back'
+    ) -DefaultIndex 4
+    if ($idx -ge $areas.Count) { return $null }
+    return $areas[$idx]
 }
 
 function Get-ConfiguredAttackerMac {
@@ -3589,7 +3705,8 @@ function New-RunParams {
     # Returns an ORDERED hashtable for splatting into run.ps1. Hashtable splatting
     # binds by parameter NAME; an array would bind positionally and shove the whole
     # thing into -Port.
-    param($Board, [string]$Attack, [string]$Topology, [string]$Location, [int]$RepeatNum, [string]$Scenario = 'stationary')
+    param($Board, [string]$Attack, [string]$Topology, [string]$Location, [int]$RepeatNum, [string]$Scenario = 'stationary',
+          [int]$ExpectedChildren = 0)
 
     $h = [ordered]@{
         Port     = $Board.Port
@@ -3607,6 +3724,9 @@ function New-RunParams {
     if ($Board.Role -eq 'root') {
         $h.Attack  = $Attack
         $h.Analyze = $true
+        # Roster gate: the root will not start Phase 0 until this many children
+        # are in the mesh (EXPECTED_CHILDREN in mesh_config.h).
+        $h.ExpectedChildren = $ExpectedChildren
         return $h
     }
 
@@ -4079,6 +4199,24 @@ function Find-PresetOwnerByMac {
     return $best
 }
 
+function Get-MemberNicknameMap {
+    # first:last MAC ("20:38") -> nickname from member_boards.json, so the preset
+    # picker can name each board the way the whiteboard table does. Same
+    # first:last matching as Find-PresetOwnerByMac. Empty map (picker shows '-')
+    # when the file or tools\Show-MemberBoards.ps1 is missing or unreadable.
+    $map = @{}
+    if (-not (Get-Command Read-MemberBoardData -ErrorAction SilentlyContinue)) { return $map }
+    $data = $null
+    try { $data = Read-MemberBoardData -Path (Join-Path $base 'member_boards.json') } catch { return $map }
+    if (-not $data) { return $map }
+    foreach ($name in $data.Members.Keys) {
+        foreach ($b in $data.Members[$name]) {
+            if ($b.mac -and $b.nickname) { $map[(Format-ShortMac ([string]$b.mac))] = [string]$b.nickname }
+        }
+    }
+    return $map
+}
+
 function Select-PresetOwner {
     # Whose boards is this preset for? Defaults to whatever the MACs say, then
     # to this laptop's member - so the absent-member case (you flashing Kyle's
@@ -4116,62 +4254,220 @@ function Remove-AnsiEscapes {
     return $script:AnsiEscapeRegex.Replace($Line, '')
 }
 
-function Invoke-ViewRunLog {
-    # Reads run_logs\*.log - the console transcripts a run saves when the
-    # operator says yes to "Save a full log of this run" during a capture
-    # (see the -saveRunLog block in the execute section below). Filenames use
-    # the same base as the preset that drove the run (or the topology-attack-
-    # scenario-location pattern when none was used), plus a timestamp, so a
-    # log and its preset are easy to spot as a pair. No board/COM contact.
-    $dir = Join-Path $base 'run_logs'
-    if (-not (Test-Path $dir)) {
-        Write-Host "`nNo run_logs\ folder yet - it's created the first time a run's log is saved." -ForegroundColor Yellow
-        return
-    }
-    $files = @(Get-ChildItem -Path $dir -Filter '*.log' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
-    if ($files.Count -eq 0) {
-        Write-Host "`nNo saved run logs yet - run_logs\ is empty." -ForegroundColor Yellow
-        return
-    }
+function Get-RunLogRoot { return (Join-Path $base 'run_logs') }
 
-    $opts = @($files | ForEach-Object {
-        "{0,-55} {1}  ({2:N0} KB)" -f $_.Name, $_.LastWriteTime.ToString('MMM dd HH:mm'), ($_.Length / 1KB)
-    })
-    $opts += 'Back'
-    $idx = Show-Menu -Title 'View which run log?' -Options $opts -DefaultIndex 0
-    if ($idx -eq $files.Count) { return }
-    $file = $files[$idx]
+function Get-RunLogDir {
+    # Where a run's console log is filed: run_logs\<attack>\<topology>\<location>\<scenario>\
+    # - the same folder names tools\exports\ and analysis\ use (Get-RunDirs), so a
+    # log sits beside "its" run in every tree. Always includes the scenario: there
+    # is no pre-rename flat layout to stay compatible with here.
+    param([string]$AttackDir, [string]$TopoDir, [string]$Location, [string]$Scenario)
+    return (Join-Path (Get-RunLogRoot) ("{0}\{1}\{2}\{3}" -f $AttackDir, $TopoDir, $Location, (ConvertTo-Scenario $Scenario)))
+}
 
-    $picking = $true
-    while ($picking) {
-        switch (Show-Menu -Title "$($file.Name) - how do you want to view it?" -Options @(
-            'Print the last 100 lines here (quick look for errors)',
-            'Print the whole file here',
+function Get-RunLogEntries {
+    # Every *.log under run_logs\ (live) or run_logs\_archive\ (-Archived), each
+    # tagged with its folder relative to that root ('blackhole\linear\G402\stationary').
+    # '' = a log saved straight into run_logs\ before logs were filed by run.
+    param([switch]$Archived)
+    $root = [IO.Path]::GetFullPath((Get-RunLogRoot))
+    $scan = if ($Archived) { Join-Path $root '_archive' } else { $root }
+    if (-not (Test-Path $scan)) { return @() }
+    $out = @()
+    foreach ($f in @(Get-ChildItem -Path $scan -Filter '*.log' -File -Recurse -ErrorAction SilentlyContinue)) {
+        $rel = $f.DirectoryName.Substring($scan.Length).Trim('\')
+        if (-not $Archived -and ($rel -eq '_archive' -or $rel -like '_archive\*')) { continue }
+        $out += [pscustomobject]@{ File = $f; Category = $rel }
+    }
+    return $out
+}
+
+function Remove-EmptyRunLogDirs {
+    # After a move/delete, drop the now-empty category folders it leaves behind,
+    # walking up but never removing $StopAt itself (run_logs\) - an emptied _archive\ goes too.
+    param([string]$Dir, [string]$StopAt)
+    $stop = [IO.Path]::GetFullPath($StopAt).TrimEnd('\')
+    $d = [IO.Path]::GetFullPath($Dir).TrimEnd('\')
+    while ($d.Length -gt $stop.Length -and $d.StartsWith($stop, [StringComparison]::OrdinalIgnoreCase)) {
+        if (@(Get-ChildItem -LiteralPath $d -Force -ErrorAction SilentlyContinue).Count -gt 0) { break }
+        Remove-Item -LiteralPath $d -Force -ErrorAction SilentlyContinue
+        $d = Split-Path $d -Parent
+    }
+}
+
+function Move-RunLog {
+    # Archive (live -> _archive) or restore (_archive -> live), keeping the same
+    # attack\topology\location\scenario folders on the other side. Refuses rather
+    # than overwrites if a log of that name is already there.
+    param($Entry, [string]$FromRoot, [string]$ToRoot)
+    $destDir = if ($Entry.Category) { Join-Path $ToRoot $Entry.Category } else { $ToRoot }
+    $dest = Join-Path $destDir $Entry.File.Name
+    if (Test-Path -LiteralPath $dest) {
+        Write-Host "  Not moved - $dest already exists." -ForegroundColor Yellow
+        return $false
+    }
+    New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+    Move-Item -LiteralPath $Entry.File.FullName -Destination $dest -ErrorAction Stop
+    Remove-EmptyRunLogDirs -Dir $Entry.File.DirectoryName -StopAt (Get-RunLogRoot)
+    Write-Host "  Moved -> $dest" -ForegroundColor Green
+    return $true
+}
+
+function Write-RunLogLine {
+    # ESP-IDF error lines ("E (1234) tag: ...") and the wizard's own FAILED /
+    # ERROR messages in red, so a problem stands out while paging a long run.
+    param([string]$Line)
+    $clean = Remove-AnsiEscapes $Line
+    if ($clean -match '^E \(\d+\)' -or $clean -match '(?i)\b(error|failed|fatal|abort(ed|ing)?)\b') {
+        Write-Host $clean -ForegroundColor Red
+    } else {
+        Write-Host $clean
+    }
+}
+
+function Show-RunLogPaged {
+    # The whole run, first line to last, one screen at a time - "Print the whole
+    # file" used to dump thousands of lines at once, so the start of the run
+    # scrolled away before it could be read.
+    param($Entry)
+    $lines = @(Get-Content -LiteralPath $Entry.File.FullName -Encoding UTF8)
+    $pageSize = 40
+    try { $h = $Host.UI.RawUI.WindowSize.Height; if ($h -gt 12) { $pageSize = $h - 4 } } catch { }
+    $where = if ($Entry.Category) { $Entry.Category -replace '\\', ' > ' } else { 'not filed' }
+    Write-Host ""
+    Write-Host ("=== START OF RUN LOG: {0}  ({1}, {2:N0} lines) ===" -f $Entry.File.Name, $where, $lines.Count) -ForegroundColor Cyan
+    $i = 0
+    while ($i -lt $lines.Count) {
+        $end = [Math]::Min($i + $pageSize, $lines.Count)
+        for ($j = $i; $j -lt $end; $j++) { Write-RunLogLine $lines[$j] }
+        $i = $end
+        if ($i -ge $lines.Count) { break }
+        $ans = Read-Line ("-- lines 1-{0} of {1} ({2}%) - Enter next page, 'a' all the rest, 'q' stop here > " -f $i, $lines.Count, [int](100 * $i / $lines.Count))
+        $ans = "$ans".Trim().ToLower()
+        if ($ans -eq 'q') {
+            Write-Host "  (stopped at line $i of $($lines.Count))" -ForegroundColor DarkGray
+            return
+        }
+        if ($ans -eq 'a') { $pageSize = $lines.Count }
+    }
+    Write-Host ("=== END OF RUN LOG: {0} ===" -f $Entry.File.Name) -ForegroundColor Cyan
+}
+
+function Invoke-RunLogActions {
+    # One log's menu: view it, then keep / archive / delete it, or push it.
+    # Returns once the operator goes back, or the file is moved or deleted.
+    param($Entry, [switch]$Archived)
+    $root = Get-RunLogRoot
+    $archiveRoot = Join-Path $root '_archive'
+    $default = 0
+    while ($true) {
+        $opts = @(
+            'View the whole run, beginning to end (page by page)',
+            'Show only the last 100 lines (quick look for errors)',
             'Open the full file in Notepad',
-            'Delete this log',
-            'Back'
-        ) -DefaultIndex 0) {
-            0 {
-                Write-Host ""
-                Get-Content -Path $file.FullName -Tail 100 -Encoding UTF8 |
-                    ForEach-Object { Write-Host (Remove-AnsiEscapes $_) }
-            }
+            'Keep it here - back to the log list'
+        )
+        if ($Archived) {
+            $opts += 'Restore it - move it back out of the archive into the live list'
+        } else {
+            $opts += 'Archive it - moves to run_logs\_archive\<same folders>\ (still viewable, never pushed)'
+        }
+        $opts += 'Delete it from this laptop - PERMANENT (a pushed copy stays on GitHub: Data sync -> Delete data)'
+        $headers = @{ 0 = '-- VIEW'; 3 = '-- KEEP / ARCHIVE / DELETE' }
+        if (-not $Archived) {
+            $opts += 'Push my run logs to GitHub - lists every log not on GitHub yet and asks first'
+            $headers[6] = '-- SHARE'
+        }
+        $where = if ($Entry.Category) { $Entry.Category -replace '\\', ' > ' } else { 'not filed by run' }
+        $tag = if ($Archived) { 'ARCHIVED, ' } else { '' }
+        $idx = Show-Menu -Title "$($Entry.File.Name)  ($tag$where) - what do you want to do?" -Options $opts -DefaultIndex $default -GroupHeaders $headers
+        switch ($idx) {
+            0 { Show-RunLogPaged $Entry; $default = 3 }
             1 {
                 Write-Host ""
-                Get-Content -Path $file.FullName -Encoding UTF8 |
-                    ForEach-Object { Write-Host (Remove-AnsiEscapes $_) }
+                Get-Content -LiteralPath $Entry.File.FullName -Tail 100 -Encoding UTF8 |
+                    ForEach-Object { Write-RunLogLine $_ }
+                $default = 3
             }
-            2 { Start-Process notepad.exe $file.FullName }
-            3 {
-                $confirm = Read-Line "  Delete $($file.Name)? [y/N] > "
+            2 { Start-Process notepad.exe $Entry.File.FullName; $default = 3 }
+            3 { return }
+            4 {
+                if ($Archived) { $moved = Move-RunLog -Entry $Entry -FromRoot $archiveRoot -ToRoot $root }
+                else { $moved = Move-RunLog -Entry $Entry -FromRoot $root -ToRoot $archiveRoot }
+                if ($moved) { return }
+            }
+            5 {
+                $confirm = Read-Line "  PERMANENTLY delete $($Entry.File.Name)? This cannot be undone. [y/N] > "
                 if ($confirm -eq 'y' -or $confirm -eq 'Y') {
-                    Remove-Item -Path $file.FullName -Force
+                    Remove-Item -LiteralPath $Entry.File.FullName -Force
+                    Remove-EmptyRunLogDirs -Dir $Entry.File.DirectoryName -StopAt $root
                     Write-Host "  Deleted." -ForegroundColor Green
-                    $picking = $false
+                    return
                 }
+                Write-Host "  Kept." -ForegroundColor DarkGray
             }
-            4 { $picking = $false }
+            6 { Invoke-DataSync -Mode push -Area logs }
         }
+    }
+}
+
+function Invoke-ViewRunLog {
+    # Browses run_logs\ - the console transcripts a run saves when the operator
+    # says yes to "Save a full log of this run" (see the -saveRunLog block in the
+    # execute section below). Logs are filed under run_logs\<attack>\<topology>\
+    # <location>\<scenario>\ (Get-RunLogDir) and listed grouped by that folder;
+    # older logs saved flat in run_logs\ show up as "not filed". Filenames keep
+    # the preset's base name (or topology-attack-scenario-location) + a timestamp.
+    # No board/COM contact.
+    $showArchived = $false
+    while ($true) {
+        $entries = @(Get-RunLogEntries -Archived:$showArchived |
+            Sort-Object -Property @{ Expression = 'Category'; Ascending = $true },
+                                  @{ Expression = { $_.File.LastWriteTime }; Descending = $true })
+        $archivedCount = @(Get-RunLogEntries -Archived).Count
+
+        if ($entries.Count -eq 0) {
+            if ($showArchived) {
+                Write-Host "`nNo archived run logs." -ForegroundColor Yellow
+                $showArchived = $false
+                continue
+            }
+            if ($archivedCount -eq 0) {
+                Write-Host "`nNo saved run logs yet - they're saved under run_logs\<attack>\<topology>\<location>\ when" -ForegroundColor Yellow
+                Write-Host "you answer yes to 'Save a full log of this run' before a capture." -ForegroundColor Yellow
+                return
+            }
+        }
+
+        $opts = @()
+        $headers = @{}
+        $lastCat = $null
+        $newest = 0
+        for ($i = 0; $i -lt $entries.Count; $i++) {
+            $e = $entries[$i]
+            if ($e.Category -ne $lastCat) {
+                $headers[$i] = if ($e.Category) { '-- ' + ($e.Category -replace '\\', ' > ') } else { '-- NOT FILED (saved before logs were sorted by attack/topology/location)' }
+                $lastCat = $e.Category
+            }
+            if ($e.File.LastWriteTime -gt $entries[$newest].File.LastWriteTime) { $newest = $i }
+            $opts += "{0,-55} {1}  ({2:N0} KB)" -f $e.File.Name, $e.File.LastWriteTime.ToString('MMM dd HH:mm'), ($e.File.Length / 1KB)
+        }
+        $toggleIdx = -1
+        if ($showArchived) {
+            $toggleIdx = $opts.Count; $opts += 'Back to the live (not archived) logs'
+        } elseif ($archivedCount -gt 0) {
+            $toggleIdx = $opts.Count; $opts += "Show archived logs ($archivedCount)"
+        }
+        $backIdx = $opts.Count
+        $opts += 'Back to the main menu'
+        $headers[$(if ($toggleIdx -ge 0) { $toggleIdx } else { $backIdx })] = ''
+
+        $title = if ($showArchived) { 'ARCHIVED run logs (run_logs\_archive\) - view which?' } else { 'Saved run logs - view which? (newest is the default)' }
+        $default = if ($entries.Count -gt 0) { $newest } else { $backIdx }
+        $idx = Show-Menu -Title $title -Options $opts -DefaultIndex $default -GroupHeaders $headers
+        if ($idx -eq $backIdx) { return }
+        if ($idx -eq $toggleIdx) { $showArchived = -not $showArchived; continue }
+        Invoke-RunLogActions -Entry $entries[$idx] -Archived:$showArchived
     }
 }
 
@@ -4708,15 +5004,31 @@ if (-not $Preset) {
 
             # Show-Menu takes numbers only - there is no letter escape - so the
             # opt-out has to be the last numbered entry.
+            # Each preset lists its boards (role, MAC, member nickname) under the
+            # summary line, root last like the run order - "3 board(s)" alone
+            # didn't say WHICH boards, so telling two G402 presets apart meant
+            # opening each one.
+            $nickByMac = Get-MemberNicknameMap
             $opts = @($presetFiles | ForEach-Object {
                 $c = Read-PresetFile -Path $_.FullName
                 if (-not $c) { "{0,-26} (unreadable)" -f $_.Name }
                 else {
                     $a = [string]$c.attack
                     if ($a -eq 'none') { $a = 'baseline' }
-                    "{0,-26} {1,-10} {2,-8} {3,-13} {4} board(s), {5}" -f
+                    $head = "{0,-26} {1,-10} {2,-8} {3,-13} {4} board(s), {5}" -f
                         $_.Name, $a, [string]$c.topology, [string]$c.location,
                         @($c.boards).Count, $_.LastWriteTime.ToString('MMM dd')
+                    $boardLines = @((ConvertTo-Roster -Cfg $c).Roster | ForEach-Object {
+                        $role = if ($_.Role -eq 'root') { 'root' } elseif ($_.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+                        $mac  = if ($_.Mac) { $_.Mac } else { 'MAC not recorded' }
+                        $nick = '-'
+                        if ($_.Mac -and $nickByMac.Count -gt 0) {
+                            $short = Format-ShortMac $_.Mac
+                            if ($nickByMac.ContainsKey($short)) { $nick = $nickByMac[$short] }
+                        }
+                        "      {0} {1,-17}  {2}" -f (Colorize-Role $role.PadRight(8) $role), $mac, $nick
+                    })
+                    (@($head) + $boardLines) -join "`n"
                 }
             })
             $opts += 'No preset - answer the menus instead'
@@ -6038,6 +6350,27 @@ elseif ($attack -eq 'wormhole') {
 $cleanAns = Read-Line "`nClean-rebuild build_* first? (usually NOT needed - idf.py picks up header/define changes on its own; only useful after a suspicious/interrupted build) [y/N] > "
 $cleanBuild = ($cleanAns -eq 'y' -or $cleanAns -eq 'Y')
 
+# ------------------------------------------------------------ roster gate ----
+# The root is built to WAIT until every child of the run is in the mesh before
+# Phase 0 (run.ps1 -ExpectedChildren). On sep. 24, 2026 it started on a fixed
+# 60 s timer while five of seven children were being moved onto powerbanks and
+# never came back - a "clean" run with two children.
+#
+# Children on THIS laptop are counted live from $runRoster (so an add/remove
+# edit below is followed). Children on OTHER laptops are only partly known: the
+# roster records a remote board only when it has a job (attacker, tunnel end,
+# scenario target) - a plain child flashed elsewhere is not in it at all. So on
+# a multi-laptop run the operator confirms that number once.
+$script:remoteChildCount = @($fullRoster | Where-Object { -not $_.Port -and $_.Role -ne 'root' }).Count
+$rootIsLocal = @($runRoster | Where-Object { $_.Role -eq 'root' }).Count -gt 0
+if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt 0)) {
+    Write-Host ""
+    Write-Host "The root will NOT start the run until every child is in the mesh." -ForegroundColor Cyan
+    $ans = Read-Line ("How many children run on OTHER laptops (every non-root board not flashed here)? [Enter = {0}] > " -f $script:remoteChildCount)
+    $n = 0
+    if ($ans -and [int]::TryParse($ans.Trim(), [ref]$n) -and $n -ge 0) { $script:remoteChildCount = $n }
+}
+
 # --------------------------------------------------------- confirmation ----
 
 # Wrapped as a scriptblock (not just run inline) so the edit-a-node loop just
@@ -6047,10 +6380,11 @@ $cleanBuild = ($cleanAns -eq 'y' -or $cleanAns -eq 'Y')
 # an edit "took" with no visible confirmation.
 $buildAndPrintPlan = {
     $script:plan = @()
+    $script:expectedChildren = @($runRoster | Where-Object { $_.Role -ne 'root' }).Count + $script:remoteChildCount
     foreach ($b in $runRoster) {
         $script:plan += [pscustomobject]@{
             Board  = $b
-            Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario)
+            Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario -ExpectedChildren $script:expectedChildren)
         }
     }
 
@@ -6452,14 +6786,16 @@ if (-not $preBuilt) {
 # Full console log of this run (every board's flash/monitor output, incl. any
 # errors) - opt-in, same naming convention as a preset so the two pair up on
 # sight: <preset-base-name>_<timestamp>.log, or <topology>-<attack>-<scenario>-
-# <location>_<timestamp>.log when no preset is involved. Reviewable later from
-# the wizard's DATA menu ("View a saved run log" -> Invoke-ViewRunLog).
+# <location>_<timestamp>.log when no preset is involved. Filed by run under
+# run_logs\<attack>\<topology>\<location>\<scenario>\ (Get-RunLogDir), like the
+# exports. Reviewable later from the wizard's DATA menu ("View a saved run log"
+# -> Invoke-ViewRunLog); offered for a GitHub push once it is closed off.
 $saveLogAns = Read-Line "`nSave a full log of this run (console output incl. any errors, viewable later from the wizard)? [Y/n] > "
 $saveRunLog = ($saveLogAns -ne 'n' -and $saveLogAns -ne 'N')
 $runLogPath = $null
 $transcriptStarted = $false
 if ($saveRunLog) {
-    $runLogDir = Join-Path $base 'run_logs'
+    $runLogDir = Get-RunLogDir -AttackDir $attackDir -TopoDir $topoDir -Location $location -Scenario $scenario
     if (-not (Test-Path $runLogDir)) { New-Item -ItemType Directory -Force -Path $runLogDir | Out-Null }
     $logBaseName = if ($Preset) { [IO.Path]::GetFileNameWithoutExtension($Preset) } else { "$topoDir-$attackDir-$scenario-$($location.ToLower())" }
     $runLogPath = Join-Path $runLogDir ("{0}_{1}.log" -f $logBaseName, (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
@@ -6563,6 +6899,13 @@ foreach ($p in $plan) {
         Write-Host ("  This is the root: the experiment runs {0} once the mesh forms." -f (Format-Duration ([int]$durations.Total))) -ForegroundColor Cyan
         Write-Host ("  Expected TERMINATE around {0} - set an alarm, nothing needs you until then." -f $rootEta.ToString('HH:mm')) -ForegroundColor Cyan
         Write-Host "  Then come back and press Ctrl+] to auto-export." -ForegroundColor Cyan
+        if ($p.Params.ExpectedChildren -gt 0) {
+            Write-Host ""
+            Write-Host ("  ROSTER GATE: this root WAITS until all {0} children are in the mesh before Phase 0." -f $p.Params.ExpectedChildren) -ForegroundColor Yellow
+            Write-Host "  Every child must already be on its FINAL power (powerbank/charger) - a board moved" -ForegroundColor Yellow
+            Write-Host "  after this point cuts its own capture. The monitor prints 'WAITING: n/N' every 10 s;" -ForegroundColor Yellow
+            Write-Host "  if a child is truly gone, type START_ANYWAY + Enter there (the run is then SHORT)." -ForegroundColor Yellow
+        }
 
         if ($rootParked) {
             # Wake it into its OLD firmware so run.ps1's SET_TIME has something
@@ -6656,6 +6999,17 @@ finally {
         try { Stop-Transcript | Out-Null } catch { }
         Write-Host "  Run log saved -> $runLogPath" -ForegroundColor Green
         Write-Host "  Review it later from the wizard's DATA menu -> View a saved run log." -ForegroundColor DarkGray
+        # Offered AFTER Stop-Transcript so the push's own output is not in the
+        # log. Also reached on the FAILED-child `exit 1` path - a failed run's
+        # log is exactly the one a teammate needs to see. push_data.py lists
+        # what goes up and asks again before anything is sent.
+        try {
+            $pushLogAns = Read-Line "  Push this run log to GitHub now? (shows every run log not on GitHub yet, asks before sending) [y/N] > "
+            if ($pushLogAns -eq 'y' -or $pushLogAns -eq 'Y') { Invoke-DataSync -Mode push -Area logs }
+            else { Write-Host "  Not pushed - later: main menu -> Sync data with GitHub -> RUN LOGS." -ForegroundColor DarkGray }
+        } catch {
+            Write-Host ("  Run log push skipped ({0}) - the log itself is saved." -f $_.Exception.Message) -ForegroundColor Yellow
+        }
     }
 }
 

@@ -28,6 +28,7 @@
 #include "esp_chip_info.h"
 #include "esp_idf_version.h"
 #include "esp_mac.h"
+#include "esp_system.h"   /* esp_reset_reason(): why THIS boot happened */
 #include "esp_log.h"
 
 /* ── Module-private state ────────────────────────────────────────────────── */
@@ -322,6 +323,55 @@ const char *sd_status_run_dir(void)
 int sd_status_boot_count(void)
 {
     return s_boot_count;
+}
+
+/* Why this boot happened, as one fixed word (no commas - it goes straight into
+ * runs.csv). esp_reset_reason() is kept in RTC memory, so it survives the very
+ * reset it describes.
+ *
+ * Exists because of sep. 24, 2026: five G402 children stopped logging when they
+ * were moved onto powerbanks and never logged again, and the card could not say
+ * whether they were never re-powered or were brownout-looping at radio start-up.
+ * A brownout there dies AFTER this boot check but BEFORE csv_logger_init(), so
+ * it leaves no CSV - only a climbing boot count. Now every boot names its cause,
+ * and the running BROWNOUT / CRASH totals below survive any number of loops. */
+static const char *s_reset_reason = "UNKNOWN";
+static bool        s_reset_is_brownout = false;
+static bool        s_reset_is_crash = false;
+
+static void read_reset_reason(void)
+{
+    esp_reset_reason_t r = esp_reset_reason();
+    s_reset_is_brownout = (r == ESP_RST_BROWNOUT);
+    s_reset_is_crash = (r == ESP_RST_PANIC || r == ESP_RST_INT_WDT ||
+                        r == ESP_RST_TASK_WDT || r == ESP_RST_WDT);
+    switch (r) {
+        case ESP_RST_POWERON:   s_reset_reason = "POWERON";   break; /* plug-in, EN button, esptool/flash reset */
+        case ESP_RST_EXT:       s_reset_reason = "EXT_PIN";   break;
+        case ESP_RST_SW:        s_reset_reason = "SOFTWARE";  break; /* esp_restart() */
+        case ESP_RST_PANIC:     s_reset_reason = "PANIC";     break; /* crash / abort() / failed ESP_ERROR_CHECK */
+        case ESP_RST_INT_WDT:   s_reset_reason = "INT_WDT";   break;
+        case ESP_RST_TASK_WDT:  s_reset_reason = "TASK_WDT";  break;
+        case ESP_RST_WDT:       s_reset_reason = "WDT";       break;
+        case ESP_RST_DEEPSLEEP: s_reset_reason = "DEEPSLEEP"; break;
+        case ESP_RST_BROWNOUT:  s_reset_reason = "BROWNOUT";  break; /* supply sagged: weak powerbank/charger/cable */
+        case ESP_RST_SDIO:      s_reset_reason = "SDIO";      break;
+        default:                s_reset_reason = "OTHER";     break;
+    }
+    if (s_reset_is_brownout) {
+        ESP_LOGE(TAG, "RESET REASON: BROWNOUT -- the supply sagged. Use a stronger powerbank/charger or a "
+                      "shorter cable; a board stuck in a brownout loop never reaches logging.");
+    } else if (s_reset_is_crash) {
+        ESP_LOGE(TAG, "RESET REASON: %s -- the previous boot CRASHED; its capture was cut short "
+                      "and this boot starts a new file.", s_reset_reason);
+    } else {
+        ESP_LOGI(TAG, "Reset reason: %s", s_reset_reason);
+    }
+}
+
+const char *sd_status_reset_reason_str(void)
+{
+    return s_reset_reason;
 }
 
 const char *sd_status_build_stamp(void)
@@ -819,6 +869,7 @@ sd_status_result_t sd_status_run_boot_check(void)
      * real host clock the moment the card is up, and it must stay BEFORE the
      * mount so a board with no card at all still reports a sane date. */
     sd_status_seed_clock();
+    read_reset_reason();   /* before any early return: runs.csv wants it even if the card fails */
 
     s_report_len = 0;
     s_report[0] = '\0';
@@ -1100,19 +1151,32 @@ sd_status_result_t sd_status_run_boot_check(void)
              * also uses it to name this boot's CSVs, so power-cycling a board
              * never appends two runs into one file. */
             int boot_count = 1;
+            /* Running totals, carried forward from the previous report exactly
+             * like the boot count. Only resets that point at a PROBLEM are
+             * counted - a plain POWERON is every normal plug-in and flash. */
+            int brownouts = 0;
+            int crashes = 0;
             FILE *rf = fopen(dest_path, "r");
             if (rf) {
-                char old_line[64];
+                char old_line[96];
                 while (fgets(old_line, sizeof(old_line), rf)) {
                     int parsed;
                     if (sscanf(old_line, "Boot count: %d", &parsed) == 1) {
                         boot_count = parsed + 1;
-                        break;
+                    } else if (sscanf(old_line, "Brownout resets (total): %d", &parsed) == 1) {
+                        brownouts = parsed;
+                    } else if (sscanf(old_line, "Crash resets (total): %d", &parsed) == 1) {
+                        crashes = parsed;
                     }
                 }
                 fclose(rf);
             }
+            if (s_reset_is_brownout) brownouts++;
+            if (s_reset_is_crash)    crashes++;
             rep("Boot count: %d\r\n", boot_count);
+            rep("Reset reason (why THIS boot started): %s\r\n", s_reset_reason);
+            rep("Brownout resets (total): %d\r\n", brownouts);
+            rep("Crash resets (total): %d\r\n", crashes);
 
             errno = 0;
             FILE *wf = fopen(dest_path, "w");

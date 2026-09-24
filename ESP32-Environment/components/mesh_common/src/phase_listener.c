@@ -62,6 +62,11 @@ static volatile bool     s_manual_complete = false;
 /* Root only: keep receiving after TERMINATE (see
  * phase_listener_keep_running_after_terminate()). */
 static bool              s_keep_running = false;
+/* Set by the START_ANYWAY serial command - see the root's roster gate. */
+static volatile bool     s_start_anyway = false;
+
+void phase_listener_request_start_anyway(void) { s_start_anyway = true; }
+bool phase_listener_start_anyway_requested(void) { return s_start_anyway; }
 
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;

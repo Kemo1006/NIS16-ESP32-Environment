@@ -24,6 +24,14 @@ endif()
 # target child's burst lands at the same offset as in an attack run. Highload
 # (2) is a child-only flag; passing it here is harmless (root_main.c does not
 # read TRAFFIC_PROFILE_HIGHLOAD) but run.ps1 never sends it to the root anyway.
+# Roster gate (run.ps1 -ExpectedChildren): children that must be in the mesh
+# before Phase 0. Always passed explicitly by run.ps1 (0 = off), so a value
+# cached in this build dir from an earlier run can never leak into this one.
+if(DEFINED EXPECTED_CHILDREN)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE EXPECTED_CHILDREN=${EXPECTED_CHILDREN})
+    message(STATUS "root_node: EXPECTED_CHILDREN=${EXPECTED_CHILDREN} (0 = roster gate off)")
+endif()
+
 if(DEFINED TRAFFIC_PROFILE)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE TRAFFIC_PROFILE=${TRAFFIC_PROFILE})
     message(STATUS "root_node: TRAFFIC_PROFILE=${TRAFFIC_PROFILE} (1=burst)")

@@ -167,6 +167,26 @@
 #define PHASE_STABILISE_S   60U
 #endif
 
+/** ROSTER GATE - how many CHILDREN (every non-root board in the run) must be in
+ *  the mesh before the root starts Phase 0. After PHASE_STABILISE_S the root
+ *  keeps waiting, printing who is missing every ROSTER_GATE_LOG_S, until the
+ *  routing table holds all of them for ROSTER_GATE_STABLE_S in a row.
+ *
+ *  Why (sep. 24, 2026, G402 linear): the root started Phase 0 on a fixed 60 s
+ *  timer while five of seven children were unplugged/being moved onto
+ *  powerbanks and never came back. The run completed, "cleanly", with two
+ *  children - an 11-minute capture that was useless before it began.
+ *
+ *  run.ps1 -ExpectedChildren sets it for the root build (the wizard passes its
+ *  roster's child count). 0 = gate off, the old fixed-timer behaviour. A child
+ *  that is genuinely gone: type START_ANYWAY in the root's monitor (or send it
+ *  over serial) and the run starts with whoever is there - loudly marked. */
+#ifndef EXPECTED_CHILDREN
+#define EXPECTED_CHILDREN      0
+#endif
+#define ROSTER_GATE_STABLE_S   5U    /* all present this many 1 s checks in a row */
+#define ROSTER_GATE_LOG_S      10U   /* "still waiting" line cadence              */
+
 /** Phase 0 — Baseline: normal operation, no manipulation. */
 #ifndef PHASE_BASELINE_S
 #define PHASE_BASELINE_S    300U       /* 5 minutes */

@@ -167,7 +167,10 @@ LABEL_MISMATCH_FAIL_FRACTION = 0.01
 # Attacker firmware self-identifies with a distinct role string instead of
 # "victim" (blackhole_victim.c / wormhole_victim.c) — both are legitimate
 # identities for a board the filename tags with role=victim.
-VICTIM_ROLE_ALIASES = {"victim", "blackhole", "wormhole_a", "wormhole_b"}
+# "child" since sep. 23, 2026 (firmware role victim->child): without it every
+# current child file drew a "role 'child' doesn't match 'child'" WARN, noise that
+# trained readers to skim past the WARNs that matter.
+VICTIM_ROLE_ALIASES = {"victim", "child", "blackhole", "wormhole_a", "wormhole_b"}
 
 # export_logs.py names files "<role>_..." where --role is root | child | victim
 # (default: child). The regex MUST list all three — an earlier version only
@@ -675,6 +678,27 @@ def _check_phase_coverage(phase_counts, attack, kind, sample_interval_ms, report
             )
 
 
+def _check_reached_experiment(phase_counts, report):
+    """FAIL a telemetry file that holds no row from any experiment phase.
+
+    Only phase 255 ("no broadcast heard yet") means the board stopped logging
+    before the root's schedule reached it - on sep. 24, 2026 five of seven
+    G402 children did exactly this when they were unplugged from the laptop to
+    be carried to their powerbanks. Such a file cannot yield one labelled
+    window; as a mere WARN it passed with exit 0 and sat beside real runs as if
+    it were one. Returns False when it failed, so the per-phase WARNs (which
+    would only repeat this) are skipped."""
+    if any(phase_counts.get(p, 0) for p in PHASE_DURATION_S):
+        return True
+    seen = ", ".join(f"{p} ({PHASE_NAMES.get(p, '?')})" for p in sorted(phase_counts)) or "none"
+    report.fail(
+        f"NO EXPERIMENT DATA - not one row from phase "
+        f"{'/'.join(str(p) for p in PHASE_DURATION_S)}; phases seen: {seen}. The board "
+        f"stopped logging before the root's schedule reached it (unplugged / power lost "
+        f"/ reset before the run started). Not a capture of this run - move it out.")
+    return False
+
+
 def _check_role_consistency(rows, header, meta, report):
     if not rows or "role" not in header:
         return
@@ -818,9 +842,11 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms,
                 if kind == "arrivals":
                     _check_arrivals_coverage(rows, actual_header,
                                              meta["attack"], report)
-                else:
+                elif _check_reached_experiment(phase_counts, report):
                     _check_phase_coverage(phase_counts, meta["attack"], kind,
                                           sample_interval_ms, report)
+            elif kind == "telem":
+                _check_reached_experiment(phase_counts, report)
 
         digest = _sha256(path)
         size = os.path.getsize(path)

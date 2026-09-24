@@ -293,6 +293,70 @@ static uint32_t jitter_extra_s(uint32_t max_s)
 #endif
 }
 
+#if (EXPECTED_CHILDREN > 0)
+/* Children currently in the mesh: the root's routing table counts the root
+ * itself, so one less. Only compiled with the gate on - unused otherwise, and
+ * -Werror would turn that into a failed build. */
+static int children_in_mesh(void)
+{
+    int n = esp_mesh_get_routing_table_size() - 1;
+    return n < 0 ? 0 : n;
+}
+#endif
+
+/* Printed at every phase start: a child that drops out MID-run (unplugged,
+ * powerbank cut out, brownout) is not stopped by the gate, but it must never
+ * again go unnoticed until the CSVs are read. */
+static void report_children_at(const char *when)
+{
+#if (EXPECTED_CHILDREN > 0)
+    int have = children_in_mesh();
+    if (have < EXPECTED_CHILDREN) {
+        ESP_LOGE(TAG, "[CTRL] %s: only %d/%d children in the mesh - %d dropped out. "
+                      "Their capture is cut short from here; check their power.",
+                 when, have, EXPECTED_CHILDREN, EXPECTED_CHILDREN - have);
+    } else {
+        ESP_LOGI(TAG, "[CTRL] %s: %d/%d children in the mesh.", when, have, EXPECTED_CHILDREN);
+    }
+#else
+    (void)when;
+#endif
+}
+
+/* ROSTER GATE (EXPECTED_CHILDREN in mesh_config.h): do not start Phase 0 until
+ * every child of this run is in the mesh. Waits as long as it takes - a run
+ * with missing children is worthless, and the operator can release it with
+ * START_ANYWAY when a board is genuinely gone. */
+static void wait_for_all_children(void)
+{
+#if (EXPECTED_CHILDREN > 0)
+    uint32_t waited_s = 0;
+    uint32_t stable_s = 0;
+    phase_banner("WAITING FOR ALL CHILDREN");
+    while (stable_s < ROSTER_GATE_STABLE_S) {
+        int have = children_in_mesh();
+        stable_s = (have >= EXPECTED_CHILDREN) ? stable_s + 1 : 0;
+        if (phase_listener_start_anyway_requested()) {
+            ESP_LOGE(TAG, "[CTRL] START_ANYWAY after %u s - starting with %d/%d children. "
+                          "This run is SHORT %d node(s); say so wherever it is used.",
+                     (unsigned)waited_s, have, EXPECTED_CHILDREN,
+                     have < EXPECTED_CHILDREN ? EXPECTED_CHILDREN - have : 0);
+            return;
+        }
+        if (stable_s == 0 && waited_s % ROSTER_GATE_LOG_S == 0) {
+            ESP_LOGW(TAG, "[CTRL] WAITING: %d/%d children in the mesh (%u s). Phase 0 will NOT "
+                          "start until all have joined.", have, EXPECTED_CHILDREN, (unsigned)waited_s);
+            ESP_LOGW(TAG, "[CTRL]   A missing child is unpowered, brownout-looping (weak "
+                          "powerbank/cable) or out of range. Fix it, or type START_ANYWAY.");
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        waited_s++;
+    }
+    ESP_LOGI(TAG, "[CTRL] All %d children in the mesh after %u s - starting the run.",
+             EXPECTED_CHILDREN, (unsigned)waited_s);
+#endif
+}
+
 static void experiment_controller_task(void *arg)
 {
     /* Both draws happen HERE, before the first phase, so the whole run's
@@ -320,9 +384,11 @@ static void experiment_controller_task(void *arg)
     ESP_LOGI(TAG, "[CTRL] Waiting %u s for mesh to stabilise...",
              PHASE_STABILISE_S);
     vTaskDelay(pdMS_TO_TICKS(PHASE_STABILISE_S * 1000));
+    wait_for_all_children();
 
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
     phase_banner("PHASE 0 — BASELINE");
+    report_children_at("Phase 0 start");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 0 — Baseline (%u s)",
              (unsigned)(PHASE_BASELINE_S + jit_base));
     broadcast_and_count(PHASE_ID_BASELINE);
@@ -341,6 +407,7 @@ static void experiment_controller_task(void *arg)
     phase_banner("PHASE — ATTACK");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE %d — Attack (%u s)",
              ACTIVE_ATTACK, (unsigned)(PHASE_ATTACK_S + jit_attack));
+    report_children_at("Attack start");
     broadcast_and_count(ACTIVE_ATTACK);
     vTaskDelay(pdMS_TO_TICKS((PHASE_ATTACK_S + jit_attack) * 1000));
     ESP_LOGI(TAG, "[CTRL] Attack phase complete.");
@@ -369,6 +436,7 @@ static void experiment_controller_task(void *arg)
     /* ── Phase 3: Cooldown ───────────────────────────────────────────────── */
     phase_banner("PHASE 3 — COOLDOWN");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 3 — Cooldown (%u s)", PHASE_COOLDOWN_S);
+    report_children_at("Cooldown start");
     broadcast_and_count(PHASE_ID_COOLDOWN);
     vTaskDelay(pdMS_TO_TICKS(PHASE_COOLDOWN_S * 1000));
     ESP_LOGI(TAG, "[CTRL] Phase 3 complete.");

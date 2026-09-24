@@ -8,6 +8,42 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 25, 2026 — **ROSTER GATE + RESET REASON (firmware, needs reflash).** Root waits after stabilise until `EXPECTED_CHILDREN` (routing table
+  size - 1) are in the mesh for 5 s; `run.ps1 -ExpectedChildren` (always passed on root, 0 = off; wizard = local children + remote count it asks
+  for on multi-laptop runs - plain remote children are NOT in the roster). `START_ANYWAY` on serial releases it. Every board writes its reset
+  reason + `Brownout/Crash resets (total)` to status_*.txt and an 11th `reset_reason` column to runs.csv (importer reads it positionally).
+- sep. 25, 2026 — **ABORTED G402 files = boards UNPLUGGED to move onto powerbanks, not crashes.** Evidence: each file is continuous 10 Hz,
+  no uptime reset, ends in phase 255 BEFORE the root started; a crash reboots and the next boot moves the cut file to `_archive/`
+  (csv_logger_init, unconditional) - these sat at leaf level, so the board NEVER reached the logger again. Boot count (`status_*.txt`)
+  ticks before the radio, logger after: count > file's b-number = brownout loop on the powerbank; equal = never re-powered. Fixes:
+  validator FAIL + preprocess skip for no-experiment files, duplicate-archive prefers data over newest, picker shows it, analyze.ps1 gates.
+- sep. 25, 2026 — **RUN LOGS: filed by run, viewable start-to-end, syncable.** Wizard saves to `run_logs/<attack>/<topology>/<location>/<scenario>/`
+  (`Get-RunLogDir`; old flat logs list as NOT FILED); viewer pages the whole run, keep/archive (`run_logs/_archive/`, never pushed)/delete/push.
+  `push_data.py --area logs`: `*.log` is ignored by the THESIS3 root .gitignore, so logs are listed like analysis (no staging). Data-sync submenu grouped. Scripted-stdin tested, NOT pushed live.
+- sep. 25, 2026 — **DATA SYNC DELETE / RESTORE** (`push_data.py delete|restore --area X`, wizard Data sync [9]/[10]): a delete is a normal
+  commit, so history keeps it and restore puts back the exact bytes. Only files GitHub HAS can be deleted (keeps it undoable). Push SKIPS a
+  file deleted on GitHub if local bytes match a past version (else it would undo the delete); pull/push OFFER (never auto, even --yes) to
+  remove such local copies; differing copies always kept. Ledgers + archive/ moves excluded. Sim-tested on a local bare repo, not real GitHub.
+- sep. 24, 2026 — **STILL RUNNING / ABORTED root cause: a child misses TERMINATE** (root sends it P2P to every
+  node in its routing table, 5 repeats; a child mid-reparent isn't in the table). Its SD mirror stays open →
+  STILL RUNNING over USB, ABORTED once the card is pulled. **NOT HT20.** 4 layers now: (1) cooldown watchdog in
+  `phase_listener_wait_for_terminate()` — no TERMINATE 180 s into cooldown → ends locally, manifest `term_timeout`
+  +`clean` (PUSHED `4144d30`); (2) root re-sends TERMINATE every 5 s for 60 s (`TERMINATE_RESEND_S`); (3) serial
+  `END_RUN` (`export_logs.py --end-run`, offered by the wizard on a STILL RUNNING file over USB): in cooldown →
+  `manual_end`+`clean`; before cooldown → `manual_end` only (stays ABORTED — honest, cut short); (4) dashboard
+  below. (2)+(3) pushed `d122033`/`489709a`, build-verified root+child, NOT hardware-tested. Importer ignores
+  unknown manifest events; run numbers count distinct boots, so extra rows are safe. A card pulled mid-run
+  is still ABORTED — correct, not a bug.
+- sep. 24, 2026 — **Root dashboard EXPORT column + `EXPORT :` line** ("ALL n BOARDS DONE - SAFE TO EXPORT").
+  Uses the spare heartbeat `export_status` = `EXPORT_STATUS_LOG_CLOSED` (0x04) once `csv_logger_is_closed()`;
+  children send 3 final beats 1 s apart then go quiet; root keeps LOG_CLOSED rows (no stale eviction) and its
+  listener keeps running after TERMINATE (`phase_listener_keep_running_after_terminate`), ignoring late probes.
+  Committed+pushed `5f4443b`. Needs a REFLASH of every board; old firmware stays "not yet".
+- sep. 24, 2026 — **Xtensa `uint32_t` is `long unsigned int`**: `%u` on `PHASE_*_S + jit_*` broke the root build
+  under `-Werror`. Cast to `(unsigned)` like `sd_status.c` (`cd7c212`).
+- sep. 24, 2026 — **Basti's laptop git identity is `xMiguelCarlosx`** — commits "by Miguel" from this clone are
+  the user (VS Code auto-sync also runs `pull --autostash` mid-session). `PCAP/` + `*.pcap` git-ignored: a 120 MB
+  Mac capture exceeds GitHub's 100 MB cap and blocked every push until removed from history.
 - sep. 24, 2026 — **`run_wizard.ps1` multi-laptop roster: "N boards need ports" warning was WRONG whenever the roster
   is split** (step 6 always added +1 for root even after the operator had just said root is on ANOTHER laptop — said
   "5 boards need ports" right after a "root not here" answer). Fixed: that warning only fires when NOT multi-laptop
@@ -93,38 +129,6 @@
   `blackhole_victim.c:378-386`, F3 moved deliberate drops to `drop_count`. But that killed the LEAK, which is
   the argument for KEEPING it: the FAIL is now an honest clean negative, and Table 3.4's pre-registered
   prediction missing is a result to REPORT, not to delete. Dropping it would read as hiding a failed prediction.
-- sep. 22, 2026 — **`vTaskDelay`→`xTaskDelayUntil` IN ALL 4 TELEMETRY LOOPS — THE M5 COVERAGE BLOCKER'S ROOT
-  CAUSE.** They slept 100ms AFTER the body, so the real period was body+100ms; with `CONFIG_FREERTOS_HZ=100`
-  (10ms tick) any non-zero body cost a whole tick. Root measured **110.0ms = 9.09Hz → 93.6%** vs the 10Hz the
-  validator assumes — **with ZERO gaps** (longest interval 0.36s). Nothing was lost; no node with a >0ms body
-  could ever have passed. Fixed in `root_main.c`, `blackhole_victim.c`, `victim_main.c`, `wormhole_victim.c`;
-  **6/6 `-Clean` build verified, 0 warnings.** ⚠️ **Re-measure coverage after the reflash before M5 is done.**
-- sep. 22, 2026 — ⚠️ **M3 CONVERGENCE FAILS on the sep. 22 home run.** node2 (`B0CBD8F33218`, hop 1) took
-  **607.1s** to converge, 3 parent_switches, 6 layer_changes (others 0-31s / 0) — explains its 647s of
-  phase-255 idle, its 11906-row file and likely its ~8.6Hz attack/cooldown cadence. `verify_topology.py`:
-  "Converged within 60s: NO". Structure itself is CORRECT linear H00-H03. Run it with `--dir tools/exports`
-  (the exports ROOT, not a leaf cell).
-- sep. 22, 2026 — **`validate_integrity.py`: WARN separates LOST DATA from SLOW CADENCE; derived dirs skipped.**
-  It said "node was dropping samples" for pure cadence drift. Now reports median interval + gaps-vs-own-cadence
-  and names which. `_find_csvs()` prunes `trimmed/`,`_archive/`,`archive/` (`--include-derived` restores):
-  trimmed output is **byte-identical to raw when a capture holds ONE boot session — the HEALTHY case** (all 5
-  live captures verified: 1 session, 0 regressions). **`trimmed/` is correct — do not delete or "fix" it.**
-- sep. 22, 2026 — **DATA SYNC follows your CURRENT BRANCH; pushes ANALYSIS + EDA** (`--area analysis`).
-  ⚠️ **Two bugs it exposed — the push SILENTLY did nothing:** the private clone carries the same
-  `.gitignore` (needs `git add -f`), and "already on GitHub?" read the clone's WORKING TREE, so leftovers
-  from the failed push made every later run claim "identical" forever. **Verify against the REMOTE
-  (`git ls-tree origin/<branch>`), never the tool's summary.** Detail: ARCHIVE.md.
-- sep. 23, 2026 — **`analysis/eda.py` plot readability overhaul + new `analysis/column_legend.py`.**
-  Analysis-only, no reflash, Basti's clone (not `A:\Angelo\...`). **UNCOMMITTED.** **Bug fixed:** phase
-  shading compared raw `Label` (NaN on unlabelled rows), stacking hundreds into one red block that read as
-  the attack; now compares `segment`-derived names, and PCA/t-SNE drop unlabelled windows too — moved
-  `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0%. ⚠️ Heatmap upper-triangle masking was tried
-  and REJECTED — don't reintroduce. `column_legend.py`'s `_L` dict is now the single source of column meanings.
-- sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The old
-  date was the link-time build stamp, identical on every boot of one flash. `/sdcard/clock.txt` anchor applied
-  **after mount, before the folder tree** (that ordering is what makes "Date modified" true). Detail: ARCHIVE.md.
-- sep. 22, 2026 — `status_NODE_<mac>.txt`/`runs.csv`/`location.txt`/`clock.txt` roles + why `DELETE_SD_FILE`
-  only accepts `*_telem.csv`/`*_arrivals.csv` — full detail ARCHIVE.md.
 - sep. 24, 2026 — **CAMPAIGN CHECKLIST: LIVE vs ARCHIVE, and `[x]` needs ANALYSIS** (`inventory_cells.py --scope`,
   wizard option asks). User REVERSED sep. 22's "archives count by design": archiving now takes a run OFF the live
   checklist. `[x]` = run in `tools/exports/` COMPLETE (M4/M5) + `analysis/<cell>/feature_table.csv` newer than the
@@ -135,23 +139,15 @@
 - sep. 24, 2026 — **SCENARIO `none` RENAMED `stationary` EVERYWHERE + it gets a REAL folder** (`<loc>/stationary/`). `none` = accepted
   alias (canon_scenario / ConvertTo-Scenario, one per script). Pre-rename flat captures still read as stationary (fallbacks in
   Get-RunDirs/cell_dir/analyze.ps1). `-Attack none` (baseline) UNCHANGED. Also fixed: `jitter` missing from export_logs/run_matrix/analyze.ps1 → every jitter export failed. 20 py + 19 PS checks + root/child build pass.
-- sep. 22, 2026 — **WIZARD SMART ARCHIVE FRONT END** (`Invoke-ArchiveMenu`): per-cell tables, byte-identical
-  duplicate detection across every `archive/*/`, COMPLETE-run warning, `-WhatIf`. ⚠️ **`archive.ps1` MOVES
-  data, so git shows STAGED DELETIONS under `tools/exports/` — check `archive/` BEFORE `git checkout`-ing
-  them back; doing that once recreated 9 files already safely archived.** Detail: ARCHIVE.md.
-- sep. 22, 2026 — **FIXED: wizard [15] campaign checklist CRASHED at the end** — `run_wizard.ps1:2232`
-  called `Read-YesNo`, which is defined ONLY in `menu.ps1` and never dot-sourced here, so it threw
-  `CommandNotFoundException` AFTER printing the whole checklist. Now uses this file's own `Read-Line`
-  idiom. Swept for the same class: `Get-BuildDirSpec`/`Show-MainMenu` appear in run_wizard.ps1 but only
-  inside COMMENTS — `Read-YesNo` was the one real cross-script call.
 - ⚠️ **PS 5.1 promotes a native command's FIRST STDERR LINE to a TERMINATING error** under
   `$ErrorActionPreference='Stop'` — a tool writing a progress bar to stderr kills its caller with an EMPTY
   exception message. **Grep every `& python ... 2>&1` before shipping.** Detail: ARCHIVE.md.
 - ⛔⛔ **PLUG BOARDS DIRECT INTO THE LAPTOP — NEVER THE DOCK OR A HUB.** Win11 BSOD'd twice
   (`ATTEMPTED_SWITCH_FROM_DPC` 0xB8) during USB board I/O — HOST DRIVER fault, not firmware. Every CP210x
   sat 2-3 hubs deep behind the Dell D6000. USB selective suspend now off. Detail: ARCHIVE.md.
-- **Git repo root is this whole `Unified/` folder** (code, docs, `Paper/`, `ESP32-Environment/` all inside it),
-  NOT `ESP32-Environment/` alone — branch `Unified`, remote `origin` =
+- **Git repo root is this whole folder** (`THESIS3/` on Basti's laptop: `OneDrive\Documents\Thesis\THESIS3`;
+  code, docs, `Paper/`, `ESP32-Environment/` all inside it), NOT `ESP32-Environment/` alone — branch **`THESIS3`**
+  (was `Unified` before sep. 2026), remote `origin` =
   `https://github.com/Kemo1006/NIS16-ESP32-Environment`. GitHub IS the laptop-to-laptop transport: a `git pull`
   elsewhere gets the same MEMORY.md/STATUS.md/code. (Corrected sep. 17, 2026; was stale before that.)
 - Thesis: DLSU CCS, CTTHES2/THES3. Proponents: Calpoporo, Carlos, Ong, Reinante. Adviser: Cu, Gregory G.
@@ -190,6 +186,9 @@
   from `Initialize-Idf.ps1` and don't survive into a child process; dot-sourcing without `-IdfId` fails
   silently. ⚠️ **`export.ps1` ALSO fails, LOOKING LIKE "ESP-IDF is not installed"** — it actually hunts
   `idf5.5_py3.12_env` (wrong; real is `...py3.11_env`). Check `idf-env.exe config get` first. ARCHIVE.md.
+  ✅ Works on Basti's laptop (sep. 24): `$env:IDF_PYTHON_ENV_PATH="C:\Espressif\python_env\idf5.3_py3.11_env"`
+  then `. C:\Espressif\frameworks\esp-idf-v5.3.5\export.ps1`. Build into `-B $env:LOCALAPPDATA\...` and restore
+  `root_node/sdkconfig`, `child_node/sdkconfig`, `root_node/dependencies.lock` afterwards (the build rewrites them).
 - Long `idf.py -B <dir>` names — deep paths pass Windows `MAX_PATH`; ninja fails in the **bootloader**
   subproject long after the app compiled, so it looks unrelated. Fixed by short per-variant `Bld` names
   (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.

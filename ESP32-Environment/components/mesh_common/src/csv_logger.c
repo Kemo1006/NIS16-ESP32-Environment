@@ -852,7 +852,7 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
         return;
     }
     if (need_header) {
-        fputs("boot,run,node_id,role,rows,uptime_s,event,built,started,clock_src\n", f);
+        fputs("boot,run,node_id,role,rows,uptime_s,event,built,started,clock_src,reset_reason\n", f);
     }
     int64_t uptime_s = (esp_timer_get_time() - s_boot_start_us) / 1000000;
 
@@ -888,11 +888,17 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
      * Appending also never disturbs the fields the firmware itself parses back
      * — sd_manifest_count_prior_runs() reads only the first two.
      * No quoting needed: the stamps are "YYYY-MM-DD HH:MM:SS" and the source is
-     * one of host/build/none, so none of them can contain a comma. */
-    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s,%s,%s\n",
+     * one of host/build/none, so none of them can contain a comma.
+     *
+     * reset_reason (11th, appended the same way) is why THIS boot started -
+     * POWERON / BROWNOUT / PANIC / ... (sd_status_reset_reason_str()). Read the
+     * NEXT boot's value to learn how an ABORTED boot ended: BROWNOUT or a crash
+     * there names the cause; POWERON means the power was simply cut. */
+    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s,%s,%s,%s\n",
             sd_status_boot_count(), run_number, node_id, role_str,
             (unsigned)rows, (long long)uptime_s, event,
-            sd_status_build_stamp(), s_run_started, sd_status_clock_source_str());
+            sd_status_build_stamp(), s_run_started, sd_status_clock_source_str(),
+            sd_status_reset_reason_str());
     fflush(f);
     fclose(f);
 }
@@ -1521,7 +1527,8 @@ static void serial_export_task(void *arg)
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
                   "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
-                  "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN");
+                  "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | "
+                  "START_ANYWAY");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -1753,6 +1760,13 @@ static void serial_export_task(void *arg)
              * TERMINATE, or the operator wants it stopped). The main task does
              * the actual close; the host polls LIST_SD until the file shows as
              * no longer open. Reply says whether cooldown had been reached. ── */
+            /* ── START_ANYWAY — release the root's roster gate with fewer
+             * children than EXPECTED_CHILDREN (a board that is genuinely gone).
+             * The root logs the shortfall loudly; nothing else changes. ── */
+            } else if (strcmp(cmd_buf, "START_ANYWAY") == 0) {
+                phase_listener_request_start_anyway();
+                uart_write_bytes(EXPORT_UART, "START_ANYWAY:OK\n", 16);
+
             } else if (strcmp(cmd_buf, "END_RUN") == 0) {
                 int r = phase_listener_end_run_now();
                 const char *msg =

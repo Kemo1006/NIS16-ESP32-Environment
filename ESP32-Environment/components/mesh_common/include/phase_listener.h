@@ -179,6 +179,12 @@ void phase_listener_set_data_cb(phase_listener_data_cb_t cb);
  */
 void phase_listener_keep_running_after_terminate(void);
 
+/** START_ANYWAY (serial): the operator accepts a run with fewer children than
+ *  EXPECTED_CHILDREN - the root's roster gate stops waiting. Meaningless on a
+ *  child; harmless there. */
+void phase_listener_request_start_anyway(void);
+bool phase_listener_start_anyway_requested(void);
+
 #ifdef __cplusplus
 }
 #endif
