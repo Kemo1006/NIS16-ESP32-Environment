@@ -308,7 +308,8 @@ static void experiment_controller_task(void *arg)
     ESP_LOGW(TAG, "[CTRL] TRAFFIC_PROFILE=jitter — this run's schedule is NOT the "
                   "standard one:");
     ESP_LOGW(TAG, "[CTRL]   baseline %u s (+%u jitter) , attack %u s (+%u jitter)",
-             PHASE_BASELINE_S, jit_base, PHASE_ATTACK_S, jit_attack);
+             (unsigned)PHASE_BASELINE_S, (unsigned)jit_base,
+             (unsigned)PHASE_ATTACK_S, (unsigned)jit_attack);
     ESP_LOGW(TAG, "[CTRL] Drawn fresh per boot so elapsed time stops predicting the "
                   "phase. Exact durations are recoverable from any node's CSV.");
 #endif
@@ -320,7 +321,7 @@ static void experiment_controller_task(void *arg)
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
     phase_banner("PHASE 0 — BASELINE");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE 0 — Baseline (%u s)",
-             PHASE_BASELINE_S + jit_base);
+             (unsigned)(PHASE_BASELINE_S + jit_base));
     broadcast_and_count(PHASE_ID_BASELINE);
     vTaskDelay(pdMS_TO_TICKS((PHASE_BASELINE_S + jit_base) * 1000));
     ESP_LOGI(TAG, "[CTRL] Phase 0 complete.");
@@ -336,7 +337,7 @@ static void experiment_controller_task(void *arg)
 #if (ACTIVE_ATTACK != ATTACK_NONE)
     phase_banner("PHASE — ATTACK");
     ESP_LOGI(TAG, "[CTRL] Starting PHASE %d — Attack (%u s)",
-             ACTIVE_ATTACK, PHASE_ATTACK_S + jit_attack);
+             ACTIVE_ATTACK, (unsigned)(PHASE_ATTACK_S + jit_attack));
     broadcast_and_count(ACTIVE_ATTACK);
     vTaskDelay(pdMS_TO_TICKS((PHASE_ATTACK_S + jit_attack) * 1000));
     ESP_LOGI(TAG, "[CTRL] Attack phase complete.");
