@@ -9,6 +9,7 @@
 #include "mesh_config.h"
 #include "sd_status.h"
 #include "blackhole_target.h"
+#include "phase_listener.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -1400,6 +1401,14 @@ esp_err_t csv_logger_close(void)
         fflush(s_sd_log_fp);
         fclose(s_sd_log_fp);
         s_sd_log_fp = NULL;
+        /* The run's data is complete either way, so it still gets "clean";
+         * the extra row keeps a watchdog ending visible on the card instead of
+         * passing it off as a normal TERMINATE. The importer ignores events it
+         * does not know. */
+        if (phase_listener_terminate_timed_out()) {
+            sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
+                               "term_timeout");
+        }
         sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows, "clean");
     }
     if (s_sd_arrivals_fp) {

@@ -47,6 +47,13 @@ static uint32_t          s_last_seq      = 0;
 #define TERMINATE_BIT   BIT0
 static EventGroupHandle_t s_term_eg = NULL;
 
+/* When the current phase was entered (esp_timer us), for the cooldown watchdog
+ * in phase_listener_wait_for_terminate(). Written under s_phase_mutex. */
+static int64_t           s_phase_since_us = 0;
+
+/* Set when TERMINATE was declared by the watchdog, not received from the root. */
+static volatile bool     s_term_timed_out = false;
+
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;
 
@@ -123,10 +130,45 @@ bool phase_listener_is_terminated(void)
     return (xEventGroupGetBits(s_term_eg) & TERMINATE_BIT) != 0;
 }
 
+/* A node that misses all PHASE_BROADCAST_REPEAT copies of TERMINATE (it was
+ * mid-reparent, or the root lost power right at the end) used to wait here
+ * forever: its SD mirror stayed open, the card listing said STILL RUNNING, and
+ * pulling the card left the run with no "clean" manifest row, so it read as
+ * ABORTED. By the time cooldown has run its full length plus a grace period,
+ * the run's labelled content is complete, so the node ends it itself.
+ *
+ * Only COOLDOWN arms this. Any earlier phase can legitimately go silent for a
+ * whole window, and a node that loses the mesh mid-run must keep logging: that
+ * disconnection is exactly what a blackhole capture needs to show. */
 void phase_listener_wait_for_terminate(void)
 {
-    xEventGroupWaitBits(s_term_eg, TERMINATE_BIT,
-                        pdFALSE, pdFALSE, portMAX_DELAY);
+    const int64_t limit_us =
+        (int64_t)(PHASE_COOLDOWN_S + TERMINATE_GRACE_S) * 1000000LL;
+    for (;;) {
+        EventBits_t bits = xEventGroupWaitBits(s_term_eg, TERMINATE_BIT,
+                                               pdFALSE, pdFALSE,
+                                               pdMS_TO_TICKS(5000));
+        if (bits & TERMINATE_BIT) {
+            return;
+        }
+        xSemaphoreTake(s_phase_mutex, portMAX_DELAY);
+        bool in_cooldown = (s_phase_id == PHASE_ID_COOLDOWN);
+        int64_t since_us = s_phase_since_us;
+        xSemaphoreGive(s_phase_mutex);
+        if (in_cooldown && esp_timer_get_time() - since_us > limit_us) {
+            s_term_timed_out = true;
+            ESP_LOGE(TAG, "No TERMINATE received %u s into cooldown -- ending the "
+                          "run locally. Manifest will record term_timeout.",
+                     (unsigned)(PHASE_COOLDOWN_S + TERMINATE_GRACE_S));
+            xEventGroupSetBits(s_term_eg, TERMINATE_BIT);
+            return;
+        }
+    }
+}
+
+bool phase_listener_terminate_timed_out(void)
+{
+    return s_term_timed_out;
 }
 
 void phase_listener_set_data_cb(phase_listener_data_cb_t cb)
@@ -254,7 +296,10 @@ static void phase_listener_task(void *arg)
         bool is_phase = (mdata.size >= sizeof(phase_msg_t) &&
                          msg->magic == PHASE_MSG_MAGIC);
         if (!is_phase) {
-            if (s_data_cb) {
+            /* After a watchdog ending this task is still alive (a received
+             * TERMINATE deletes it). Stop dispatching, so the node behaves as
+             * if TERMINATE had arrived and nothing writes to a closed log. */
+            if (s_data_cb && !s_term_timed_out) {
                 s_data_cb(rx_buf, mdata.size, from.addr);
             }
             continue;
@@ -269,6 +314,9 @@ static void phase_listener_task(void *arg)
             continue;
         }
 
+        if (msg->phase_id != s_phase_id) {
+            s_phase_since_us = esp_timer_get_time();
+        }
         s_last_seq  = msg->seq_num;
         s_phase_id  = msg->phase_id;
         s_gt_label  = phase_id_to_label(msg->phase_id);

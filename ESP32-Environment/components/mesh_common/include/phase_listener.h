@@ -94,8 +94,16 @@ bool phase_listener_is_terminated(void);
  * @brief Block the calling task until the experiment terminates.
  *
  * Used by root_main to hold app_main() alive while the experiment runs.
+ * Returns on its own if TERMINATE never arrives within PHASE_COOLDOWN_S +
+ * TERMINATE_GRACE_S of entering cooldown; see phase_listener_terminate_timed_out().
  */
 void phase_listener_wait_for_terminate(void);
+
+/**
+ * @brief True if the run was ended by the cooldown watchdog rather than a
+ *        TERMINATE broadcast from the root.
+ */
+bool phase_listener_terminate_timed_out(void);
 
 /* ── Root-side broadcast helper (used only by root_main.c) ───────────────── */
 

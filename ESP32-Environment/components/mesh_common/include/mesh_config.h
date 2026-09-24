@@ -360,6 +360,12 @@
 /** Delay between consecutive repeats (ms). */
 #define PHASE_BROADCAST_GAP_MS  100
 
+/** Grace period past the end of cooldown before a node that never heard
+ *  TERMINATE ends the run itself (phase_listener_wait_for_terminate()). */
+#ifndef TERMINATE_GRACE_S
+#define TERMINATE_GRACE_S       60U
+#endif
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * TELEMETRY SAMPLING
  * ═══════════════════════════════════════════════════════════════════════════ */
