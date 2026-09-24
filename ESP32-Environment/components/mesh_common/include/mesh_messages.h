@@ -63,7 +63,10 @@ typedef enum {
     EXPORT_STATUS_IDLE        = 0x00,
     EXPORT_STATUS_IN_PROGRESS = 0x01,
     EXPORT_STATUS_COMPLETE    = 0x02,
-    EXPORT_STATUS_FAILED      = 0x03
+    EXPORT_STATUS_FAILED      = 0x03,
+    /** Run over and csv_logger_close() done: files closed, card unmounted.
+     *  Safe to export. Shown in the root's EXPORT column. */
+    EXPORT_STATUS_LOG_CLOSED  = 0x04
 } export_status_t;
 
 /* ── Heartbeat ───────────────────────────────────────────────────────────── */

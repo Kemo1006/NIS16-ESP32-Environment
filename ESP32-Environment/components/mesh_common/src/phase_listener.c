@@ -54,6 +54,10 @@ static int64_t           s_phase_since_us = 0;
 /* Set when TERMINATE was declared by the watchdog, not received from the root. */
 static volatile bool     s_term_timed_out = false;
 
+/* Root only: keep receiving after TERMINATE (see
+ * phase_listener_keep_running_after_terminate()). */
+static bool              s_keep_running = false;
+
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;
 
@@ -169,6 +173,11 @@ void phase_listener_wait_for_terminate(void)
 bool phase_listener_terminate_timed_out(void)
 {
     return s_term_timed_out;
+}
+
+void phase_listener_keep_running_after_terminate(void)
+{
+    s_keep_running = true;
 }
 
 void phase_listener_set_data_cb(phase_listener_data_cb_t cb)
@@ -297,9 +306,11 @@ static void phase_listener_task(void *arg)
                          msg->magic == PHASE_MSG_MAGIC);
         if (!is_phase) {
             /* After a watchdog ending this task is still alive (a received
-             * TERMINATE deletes it). Stop dispatching, so the node behaves as
-             * if TERMINATE had arrived and nothing writes to a closed log. */
-            if (s_data_cb && !s_term_timed_out) {
+             * TERMINATE deletes it on a child). Stop dispatching there, so the
+             * node behaves as if TERMINATE had arrived. The root keeps
+             * dispatching: it still needs the children's final heartbeats, and
+             * its own callback ignores probes once terminated. */
+            if (s_data_cb && (s_keep_running || !s_term_timed_out)) {
                 s_data_cb(rx_buf, mdata.size, from.addr);
             }
             continue;
@@ -332,6 +343,11 @@ static void phase_listener_task(void *arg)
         /* Signal termination to anyone waiting. */
         if (msg->phase_id == PHASE_ID_TERMINATE) {
             xEventGroupSetBits(s_term_eg, TERMINATE_BIT);
+            if (s_keep_running) {
+                ESP_LOGI(TAG, "Experiment terminated — listener stays up for "
+                              "the nodes' final heartbeats.");
+                continue;
+            }
             ESP_LOGI(TAG, "Experiment terminated — phase listener task exiting.");
             vTaskDelete(NULL);
         }

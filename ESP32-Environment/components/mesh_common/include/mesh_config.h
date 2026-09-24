@@ -550,6 +550,11 @@
  *  single dropped frame never evicts a healthy node. */
 #define HEARTBEAT_STALE_MS       (3U * HEARTBEAT_INTERVAL_MS)
 
+/** Heartbeats a child sends, 1 s apart, after its log closes and before it
+ *  goes quiet — the root's "safe to export" report. More than one so a single
+ *  lost frame doesn't hide it. */
+#define HEARTBEAT_FINAL_SENDS    3
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * CSV LOGGER / LOCAL STORAGE
  * ═══════════════════════════════════════════════════════════════════════════ */

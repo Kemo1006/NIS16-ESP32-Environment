@@ -10,6 +10,7 @@
 #include "mesh_messages.h"
 #include "node_identity.h"
 #include "phase_listener.h"
+#include "csv_logger.h"
 #include "topology_graph.h"
 
 #include <stdlib.h>
@@ -531,8 +532,14 @@ static void heartbeat_task(void *arg)
              HEARTBEAT_INTERVAL_MS);
 
     int64_t next_send_us = 0;
+    int     final_sends  = 0;
 
     while (true) {
+        /* The table owner is the root even when s_is_root was never set
+         * (a fixed routerless root gets no PARENT_CONNECTED event). */
+        bool owns_table = mesh_setup_is_root() || s_table_ready;
+        bool log_closed = csv_logger_is_closed();
+
         /* CLEAN STOP for child nodes once the experiment is over.
          *
          * Everything else a child runs already ends itself at TERMINATE:
@@ -548,11 +555,17 @@ static void heartbeat_task(void *arg)
          * safe for that table — this is an APP-level packet, so stopping it
          * does not leave the mesh or drop the ESP-MESH association, and the
          * board stays reachable over USB for LIST_SD / EXPORT_SD_PATH /
-         * SET_LOCATION exactly as before. The export_status/export_percent
-         * fields carried here are unused Phase 2 placeholders (set once to
-         * IDLE and never updated), so nothing downstream loses a live feed. */
-        if (phase_listener_is_terminated() && !mesh_setup_is_root()) {
-            ESP_LOGI(TAG, "Heartbeat task exiting - TERMINATE reached (child node); "
+         * SET_LOCATION exactly as before.
+         *
+         * Before going quiet, a child waits for its log to CLOSE and then sends
+         * HEARTBEAT_FINAL_SENDS beats with export_status = LOG_CLOSED, so the
+         * root's dashboard can say "safe to export" for it. The root keeps that
+         * row instead of aging it out (heartbeat_table_print). If the log never
+         * closes, the child keeps beating as a still-running node, which is
+         * what it is. */
+        if (phase_listener_is_terminated() && !owns_table && log_closed
+                && final_sends >= HEARTBEAT_FINAL_SENDS) {
+            ESP_LOGI(TAG, "Heartbeat task exiting - log closed and reported (child node); "
                           "the board stays up for serial export commands.");
             vTaskDelete(NULL);
         }
@@ -574,6 +587,8 @@ static void heartbeat_task(void *arg)
             pkt.layer         = (int16_t)mesh_setup_get_layer();
             pkt.uptime_sec    = (uint32_t)((esp_timer_get_time() - boot_us) / 1000000LL);
             pkt.current_phase = phase_listener_get_phase_id();
+            pkt.export_status = log_closed ? EXPORT_STATUS_LOG_CLOSED
+                                           : EXPORT_STATUS_IDLE;
 
             /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
              * a non-root node's upward send (TODS) — see the routerless-mesh
@@ -595,7 +610,14 @@ static void heartbeat_task(void *arg)
                     heartbeat_table_print();
                 }
             }
-            next_send_us = esp_timer_get_time() + (int64_t)HEARTBEAT_INTERVAL_MS * 1000;
+            /* A child's closing beats go out 1 s apart, so one lost frame
+             * doesn't leave the root without the "log closed" report. */
+            uint32_t gap_ms = HEARTBEAT_INTERVAL_MS;
+            if (log_closed && !owns_table && phase_listener_is_terminated()) {
+                final_sends++;
+                gap_ms = 1000;
+            }
+            next_send_us = esp_timer_get_time() + (int64_t)gap_ms * 1000;
         }
 
         int64_t wait_us = next_send_us - esp_timer_get_time();
@@ -634,6 +656,7 @@ typedef struct {
     int8_t   parent_rssi;
     uint32_t uptime_sec;
     uint8_t  current_phase;
+    uint8_t  export_status;   /* EXPORT_STATUS_LOG_CLOSED = safe to export     */
     int64_t  last_seen_us;
     uint8_t *seen_parents;    /* PARTIAL only: every distinct parent observed  */
     size_t   seen_count;
@@ -867,7 +890,10 @@ static void heartbeat_table_print(void)
     for (size_t i = 0; i < s_node_count;) {
         heartbeat_entry_t *e = &s_nodes[i];
         uint32_t age_ms = (uint32_t)((now - e->last_seen_us) / 1000LL);
-        if (age_ms > HEARTBEAT_STALE_MS) {
+        /* A node that reported its log closed goes quiet on purpose. Keep its
+         * row so the dashboard can keep saying it is safe to export. */
+        if (age_ms > HEARTBEAT_STALE_MS
+                && e->export_status != EXPORT_STATUS_LOG_CLOSED) {
             ESP_LOGW(TAG, "Node OFFLINE — no heartbeat for %u s: " MACSTR,
                      (unsigned)(age_ms / 1000U), MAC2STR(e->mac));
             entry_remove(i);
@@ -936,7 +962,8 @@ static void heartbeat_table_print(void)
         phase_w = (int)strlen("PHASE");
     }
     int lyr_col = lyr_w + 2;   /* 'L' + digits + mismatch flag */
-    int row_w = 1 + lyr_col + 2 + MAC_W + 2 + role_w + 2 + rssi_w + 2 + phase_w + 2 + age_w;
+    int row_w = 1 + lyr_col + 2 + MAC_W + 2 + role_w + 2 + rssi_w + 2 + phase_w + 2 + age_w
+                + 2 + (int)strlen("not yet");   /* EXPORT column */
     int tree_w = 1 + lyr_col + 2 + MAC_W + 2 + role_w + 2 + MAC_W + 2 + 2 + cnt_w;
     int rule_w = row_w > tree_w ? row_w : tree_w;
 
@@ -958,11 +985,29 @@ static void heartbeat_table_print(void)
         ESP_LOGE(TAG, " STATUS      : %s", topo_status_str(st));
     }
     ESP_LOGI(TAG, " DETAIL      : %s", reason);
+
+    /* EXPORT: a board is safe to export once its heartbeat says its log is
+     * closed. Only boards in this table are counted, so the line says so. */
+    size_t done = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (s_nodes[i].export_status == EXPORT_STATUS_LOG_CLOSED) {
+            done++;
+        }
+    }
+    if (n > 0 && done == n) {
+        ESP_LOGI(TAG, " EXPORT      : ALL %u BOARDS DONE - SAFE TO EXPORT "
+                      "(a board missing from this table is not covered)", (unsigned)n);
+    } else if (done > 0) {
+        ESP_LOGW(TAG, " EXPORT      : %u/%u boards done - WAIT, rows marked 'not yet' "
+                      "are still writing", (unsigned)done, (unsigned)n);
+    } else {
+        ESP_LOGI(TAG, " EXPORT      : not yet - run in progress, do not export");
+    }
     log_rule('-', rule_w);
 
-    ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %*s  %-*s  %*s",
+    ESP_LOGI(TAG, " %-*s  %-*s  %-*s  %*s  %-*s  %*s  %s",
              lyr_col, "HOP", MAC_W, "MAC ADDRESS", role_w, "ROLE",
-             rssi_w, "RSSI", phase_w, "PHASE", age_w, "AGE(s)");
+             rssi_w, "RSSI", phase_w, "PHASE", age_w, "AGE(s)", "EXPORT");
     bool mismatch = false;
     bool no_rssi  = false;
     for (size_t i = 0; i < n; i++) {
@@ -987,10 +1032,11 @@ static void heartbeat_table_print(void)
         snprintf(phase, sizeof(phase), "0x%02X %s",
                  (unsigned)e->current_phase, phase_id_str(e->current_phase));
         uint32_t age_s = (uint32_t)((now - e->last_seen_us) / 1000000LL);
-        ESP_LOGI(TAG, " %-*s  " MACSTR_UC "  %-*s  %*s  %-*s  %*lu",
+        ESP_LOGI(TAG, " %-*s  " MACSTR_UC "  %-*s  %*s  %-*s  %*lu  %s",
                  lyr_col, lyr, MAC2STR(e->mac),
                  role_w, node_role_to_str(e->role),
-                 rssi_w, rssi, phase_w, phase, age_w, (unsigned long)age_s);
+                 rssi_w, rssi, phase_w, phase, age_w, (unsigned long)age_s,
+                 e->export_status == EXPORT_STATUS_LOG_CLOSED ? "SAFE" : "not yet");
     }
     if (mismatch) {
         ESP_LOGI(TAG, " * node's own stack reports a different depth (re-parenting)");
@@ -1211,6 +1257,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
                 || hit->layer != pkt->layer
                 || memcmp(hit->parent_mac, pkt->parent_mac, 6) != 0
                 || hit->role  != pkt->assigned_role
+                || hit->export_status != pkt->export_status
                 || strncmp(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN) != 0;
 
     strlcpy(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN);
@@ -1220,6 +1267,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
     hit->parent_rssi   = pkt->parent_rssi;
     hit->uptime_sec    = pkt->uptime_sec;
     hit->current_phase = pkt->current_phase;
+    hit->export_status = pkt->export_status;
     hit->last_seen_us  = esp_timer_get_time();
 #if (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
     entry_note_parent(hit);

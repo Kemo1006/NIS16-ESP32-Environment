@@ -151,6 +151,15 @@ typedef void (*phase_listener_data_cb_t)(const uint8_t *data, size_t len,
  */
 void phase_listener_set_data_cb(phase_listener_data_cb_t cb);
 
+/**
+ * @brief Keep the listener receiving after TERMINATE instead of exiting.
+ *
+ * Root only. Children send their final "log closed" heartbeats AFTER
+ * TERMINATE, and the root can only hear them if its single esp_mesh_recv()
+ * reader is still running. Call once, before the run ends.
+ */
+void phase_listener_keep_running_after_terminate(void);
+
 #ifdef __cplusplus
 }
 #endif

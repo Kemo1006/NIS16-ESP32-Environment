@@ -185,6 +185,9 @@ void app_main(void)
     /* ── 2. Phase listener (the root also receives its own broadcasts via
      *       the mesh receive queue, keeping its own state consistent) ─────── */
     ESP_ERROR_CHECK(phase_listener_start());
+    /* Keep hearing the children after TERMINATE: their final heartbeats are
+     * what fill the dashboard's EXPORT column. */
+    phase_listener_keep_running_after_terminate();
 
     /* ── 2b. Command Center heartbeat table — seeds the root's own row, then
      *        accepts updates via probe_data_cb below. Every connected node's
@@ -396,6 +399,11 @@ static void probe_data_cb(const uint8_t *data, size_t len,
     (void)from_addr;  /* src_mac travels inside the probe/heartbeat payload */
 
     if (heartbeat_ingest(data, len)) return;
+
+    /* The listener now keeps running after TERMINATE (for the heartbeats
+     * above). Probes past that point belong to no phase, and the log they
+     * would go to is closing. */
+    if (phase_listener_is_terminated()) return;
 
     if (len < sizeof(probe_pkt_t)) return;
 

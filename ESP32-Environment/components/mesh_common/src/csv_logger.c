@@ -34,6 +34,8 @@
 static const char *TAG = "CSV_LOGGER";
 
 static FILE    *s_log_fp          = NULL;   /* telemetry file (all roles)   */
+/* Set at the very end of csv_logger_close(); read by the heartbeat task. */
+static volatile bool s_closed     = false;
 static FILE    *s_arrivals_fp     = NULL;   /* probe arrivals (root only)   */
 static char     s_filepath[128]   = {0};    /* path of telemetry file       */
 static char     s_arrivals_path[128] = {0}; /* path of arrivals file        */
@@ -1073,6 +1075,8 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
 {
     esp_err_t ret;
 
+    s_closed = false;
+
     /* ── 1. Mount SPIFFS (once) ──────────────────────────────────────────── */
     if (!s_mounted) {
         esp_vfs_spiffs_conf_t spiffs_cfg = {
@@ -1431,7 +1435,13 @@ esp_err_t csv_logger_close(void)
         ESP_LOGI(TAG, "SD card unmounted — safe to remove.");
     }
 
+    s_closed = true;   /* last: heartbeats report "safe to export" from here */
     return ESP_OK;
+}
+
+bool csv_logger_is_closed(void)
+{
+    return s_closed;
 }
 
 const char *csv_logger_get_filepath(void)

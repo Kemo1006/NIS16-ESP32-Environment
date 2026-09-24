@@ -199,6 +199,10 @@ esp_err_t csv_logger_flush(void);
  *  called again to log. */
 esp_err_t csv_logger_close(void);
 
+/** True once csv_logger_close() has finished for this boot: every file is
+ *  closed and the card unmounted, so the board is safe to export from. */
+bool csv_logger_is_closed(void);
+
 /* ── Serial export ───────────────────────────────────────────────────────── */
 
 /**
