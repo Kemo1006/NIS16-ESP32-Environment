@@ -126,9 +126,13 @@
   **after mount, before the folder tree** (that ordering is what makes "Date modified" true). Detail: ARCHIVE.md.
 - sep. 22, 2026 — `status_NODE_<mac>.txt`/`runs.csv`/`location.txt`/`clock.txt` roles + why `DELETE_SD_FILE`
   only accepts `*_telem.csv`/`*_arrivals.csv` — full detail ARCHIVE.md.
-- sep. 22, 2026 — **CAMPAIGN CHECKLIST IS A SCANNER** (`inventory_cells.py`): `[x]` complete / `[~]` captured
-  but INCOMPLETE / `[ ]` never — only `[x]` counts toward M4. Scans `tools/exports/` AND `archive/*/exports/`
-  **by design** (archiving must not cost milestone credit); flags double-counted cells. Detail: ARCHIVE.md.
+- sep. 24, 2026 — **CAMPAIGN CHECKLIST: LIVE vs ARCHIVE, and `[x]` needs ANALYSIS** (`inventory_cells.py --scope`,
+  wizard option asks). User REVERSED sep. 22's "archives count by design": archiving now takes a run OFF the live
+  checklist. `[x]` = run in `tools/exports/` COMPLETE (M4/M5) + `analysis/<cell>/feature_table.csv` newer than the
+  capture; else `[~]` naming the fix ("run analyze.ps1" vs "RE-CAPTURE"). Archive view checks `archive/<x>/analysis/`
+  (git-ignored there → a fresh clone shows archives "not analysed"), dedupes copies. Summary/`--plan` count live only.
+  **RANDOMISED PLAN:** each (location, topology, attack) draws 4 of the 6 `run.ps1` scenarios, balanced (5-6 uses each per
+  location, bh≠wh per topology), saved ONCE in `tools/campaign_plan.json` (seed recorded; `--reshuffle` only pre-campaign). Slot order = run order. Benign row only where burst drawn. `none` DISPLAYS as "stationary" (checklist + wizard menu); value, folders (none = NO scenario folder) and dataset stay `none`.
 - sep. 22, 2026 — **WIZARD SMART ARCHIVE FRONT END** (`Invoke-ArchiveMenu`): per-cell tables, byte-identical
   duplicate detection across every `archive/*/`, COMPLETE-run warning, `-WhatIf`. ⚠️ **`archive.ps1` MOVES
   data, so git shows STAGED DELETIONS under `tools/exports/` — check `archive/` BEFORE `git checkout`-ing
@@ -169,10 +173,6 @@
 - I-017 recurring hazard: children left powered through a run's later phases overfill SPIFFS (~1.1 MB) and
   become unreadable on export → carry each child back UNPLUGGED; `board_check.py --port COMxx --wait 75`
   before a run (≥50% SPIFFS → wipe+flash first).
-- ✅ **The old "verify the attacker MAC before EVERY blackhole run" run-killer is RETIRED** by C7
-  Option 1 — victims no longer address the attacker by MAC, so a stale value is bookkeeping only.
-  Its symptom (all-NaN PDR + empty arrivals + root probes_count stuck at 0) can now only mean
-  something else, so do NOT reach for that diagnosis first. Full historical entry in ARCHIVE.md.
 - ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture.** Symptom: boot count
   climbing every ~2 s, `rst:0x3 (SW_RESET)`, UART garbled mid-line, always as the radio powers up. Cause:
   **power brownout, not firmware** — the ROOT runs softAP+STA (a child runs STA only) and its brownout

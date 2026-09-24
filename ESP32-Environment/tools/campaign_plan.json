@@ -1,0 +1,207 @@
+{
+  "seed": 892723747,
+  "pool": [
+    "none",
+    "highload",
+    "burst",
+    "jitter",
+    "mobility",
+    "powercycle"
+  ],
+  "per_cell": 4,
+  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it.",
+  "cells": {
+    "home/linear/blackhole": [
+      "mobility",
+      "jitter",
+      "burst",
+      "none"
+    ],
+    "home/linear/wormhole": [
+      "powercycle",
+      "burst",
+      "jitter",
+      "highload"
+    ],
+    "home/star/blackhole": [
+      "none",
+      "mobility",
+      "powercycle",
+      "jitter"
+    ],
+    "home/star/wormhole": [
+      "none",
+      "burst",
+      "powercycle",
+      "highload"
+    ],
+    "home/tree/blackhole": [
+      "none",
+      "jitter",
+      "burst",
+      "mobility"
+    ],
+    "home/tree/wormhole": [
+      "powercycle",
+      "highload",
+      "mobility",
+      "none"
+    ],
+    "home/partial_mesh/blackhole": [
+      "highload",
+      "burst",
+      "mobility",
+      "jitter"
+    ],
+    "home/partial_mesh/wormhole": [
+      "highload",
+      "mobility",
+      "powercycle",
+      "burst"
+    ],
+    "G402/linear/blackhole": [
+      "highload",
+      "none",
+      "jitter",
+      "mobility"
+    ],
+    "G402/linear/wormhole": [
+      "burst",
+      "mobility",
+      "none",
+      "highload"
+    ],
+    "G402/star/blackhole": [
+      "highload",
+      "powercycle",
+      "burst",
+      "mobility"
+    ],
+    "G402/star/wormhole": [
+      "highload",
+      "powercycle",
+      "burst",
+      "jitter"
+    ],
+    "G402/tree/blackhole": [
+      "burst",
+      "none",
+      "mobility",
+      "powercycle"
+    ],
+    "G402/tree/wormhole": [
+      "powercycle",
+      "burst",
+      "jitter",
+      "highload"
+    ],
+    "G402/partial_mesh/blackhole": [
+      "powercycle",
+      "none",
+      "burst",
+      "jitter"
+    ],
+    "G402/partial_mesh/wormhole": [
+      "none",
+      "mobility",
+      "powercycle",
+      "jitter"
+    ],
+    "DLSU_Library/linear/blackhole": [
+      "none",
+      "powercycle",
+      "mobility",
+      "burst"
+    ],
+    "DLSU_Library/linear/wormhole": [
+      "jitter",
+      "none",
+      "mobility",
+      "powercycle"
+    ],
+    "DLSU_Library/star/blackhole": [
+      "powercycle",
+      "burst",
+      "jitter",
+      "highload"
+    ],
+    "DLSU_Library/star/wormhole": [
+      "jitter",
+      "highload",
+      "mobility",
+      "none"
+    ],
+    "DLSU_Library/tree/blackhole": [
+      "powercycle",
+      "burst",
+      "highload",
+      "mobility"
+    ],
+    "DLSU_Library/tree/wormhole": [
+      "mobility",
+      "jitter",
+      "burst",
+      "powercycle"
+    ],
+    "DLSU_Library/partial_mesh/blackhole": [
+      "powercycle",
+      "highload",
+      "none",
+      "burst"
+    ],
+    "DLSU_Library/partial_mesh/wormhole": [
+      "none",
+      "highload",
+      "mobility",
+      "jitter"
+    ],
+    "Goks/linear/blackhole": [
+      "mobility",
+      "none",
+      "powercycle",
+      "burst"
+    ],
+    "Goks/linear/wormhole": [
+      "jitter",
+      "highload",
+      "mobility",
+      "burst"
+    ],
+    "Goks/star/blackhole": [
+      "burst",
+      "powercycle",
+      "jitter",
+      "none"
+    ],
+    "Goks/star/wormhole": [
+      "powercycle",
+      "jitter",
+      "none",
+      "highload"
+    ],
+    "Goks/tree/blackhole": [
+      "burst",
+      "powercycle",
+      "mobility",
+      "none"
+    ],
+    "Goks/tree/wormhole": [
+      "mobility",
+      "highload",
+      "jitter",
+      "none"
+    ],
+    "Goks/partial_mesh/blackhole": [
+      "powercycle",
+      "burst",
+      "mobility",
+      "highload"
+    ],
+    "Goks/partial_mesh/wormhole": [
+      "burst",
+      "none",
+      "highload",
+      "jitter"
+    ]
+  }
+}

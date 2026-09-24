@@ -89,7 +89,7 @@ $LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
 # pre-scenario wizard. Keep the ValidateSet in run.ps1 in sync with this list.
 $SCENARIOS = @('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
 $SCENARIO_LABELS = @(
-    "none        - today's behaviour, no variation",
+    "stationary  - no variation, nodes stay put (passed as -Scenario none)",
     'burst       - CODE: one child fires 100 probes back-to-back in the attack window',
     'highload    - CODE: every child probes 4x faster for the whole run',
     'jitter      - CODE: ROOT randomises baseline/attack window LENGTHS each boot, so elapsed time stops predicting the phase',
@@ -2494,7 +2494,12 @@ function Invoke-CampaignChecklist {
 
     Write-Host ""
     Write-Host "=== Campaign progress checklist ===" -ForegroundColor Cyan
-    Write-Host "Scanning tools\exports\ and archive\*\exports\ ..." -ForegroundColor DarkGray
+    Write-Host "Scanned from the folders only - no board/COM contact." -ForegroundColor DarkGray
+    Write-Host "  [1] LIVE    - tools\exports\ + analysis\ (what counts; archiving a run removes it)"
+    Write-Host "  [2] ARCHIVE - archive\*\exports\ + archive\*\analysis\ (history)"
+    $scope = 'live'
+    $sAns = Read-Line "Which checklist? [1] > "
+    if ($sAns -and $sAns.Trim() -eq '2') { $scope = 'archive' }
 
     $repeats = 1
     $ans = Read-Host "Planned repeats per cell? (1 = 128 attack runs, 4 = 512) [1]"
@@ -2502,7 +2507,7 @@ function Invoke-CampaignChecklist {
 
     Push-Location $base
     try {
-        python (Join-Path $base 'tools\inventory_cells.py') --checklist --repeats $repeats
+        python (Join-Path $base 'tools\inventory_cells.py') --checklist --scope $scope --repeats $repeats
         Write-Host ""
         # Read-Line, NOT Read-YesNo: Read-YesNo is defined in menu.ps1 only and
         # this script does not dot-source it, so calling it here threw

@@ -349,9 +349,11 @@ def _run_context_from_path(input_dir: str) -> dict:
     export tree at all (e.g. synthetic fixtures from generate_fake_data.py), so
     unknown provenance is never labelled as if it were known.
 
-    Scenario defaults to 'none' rather than NaN because the export convention is
-    that `none` gets NO folder (see thesis-deviate D-6 / run scenarios v1) —
-    absence of the segment IS the 'none' scenario, not missing information.
+    Scenario defaults to 'stationary' rather than NaN because the export
+    convention is that the no-variation scenario (run.ps1 -Scenario none) gets
+    NO folder — absence of the segment IS that scenario, not missing
+    information. The dataset names it 'stationary' (thesis-deviate D-10); the
+    folders/filenames/run.ps1 keep 'none'.
     Location falls back to 'unrecorded', matching combine_all.py's own name for
     pre-location captures.
     """
@@ -376,7 +378,9 @@ def _run_context_from_path(input_dir: str) -> dict:
     ctx["attack"] = tail[0]
     ctx["topology"] = tail[1] if len(tail) > 1 and tail[1] in KNOWN_TOPOLOGIES else None
     ctx["location"] = tail[2] if len(tail) > 2 else "unrecorded"
-    ctx["scenario"] = tail[3] if len(tail) > 3 else "none"
+    scn = tail[3] if len(tail) > 3 else "none"
+    # A stray ".../none/" folder (a since-fixed bug) means the same thing.
+    ctx["scenario"] = "stationary" if scn == "none" else scn
     return ctx
 
 

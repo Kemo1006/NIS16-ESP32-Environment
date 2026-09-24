@@ -135,7 +135,8 @@ _add("location", "Windowed (preprocess)",
      "Where the run was recorded, from the folder name",
      "e.g. home | G402 | DLSU_Library | Goks; 'unrecorded' if the folder has none")
 _add("scenario", "Windowed (preprocess)",
-     "Optional sub-scenario from the folder name", "'none' if not given")
+     "Optional sub-scenario from the folder name",
+     "'stationary' if not given (= run.ps1 -Scenario none)")
 _add("run_repeat", "Windowed (preprocess)",
      "Repeat number of the run, from the _r1_/_r2_/_r3_ tag in the filename",
      "integer")

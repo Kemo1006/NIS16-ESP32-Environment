@@ -46,8 +46,14 @@ for f in sorted(files):
     attack_type = _resolve("attack", 0, "unrecorded")
     topology = _resolve("topology", 1, "unrecorded")
     location = _resolve("location", 2, "unrecorded")
-    # No scenario folder means the `none` scenario — absence IS the value.
-    scenario = _resolve("scenario", 3, "none")
+    # No scenario folder means the no-variation scenario — absence IS the value.
+    # Tables made before sep. 24 2026 say "none"; the dataset name is now
+    # "stationary", so both pool as one group (thesis-deviate D-10).
+    scenario = _resolve("scenario", 3, "stationary")
+    if isinstance(scenario, str):
+        scenario = "stationary" if scenario == "none" else scenario
+    else:
+        scenario = scenario.replace("none", "stationary")   # whole-value match
 
     d["attack_type"] = attack_type
     d["topology"] = topology

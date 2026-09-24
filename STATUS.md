@@ -35,6 +35,6 @@ do not edit it. Reason + verification: MEMORY.md ("WORKING COPY MOVED" entry, se
 - ⚠️ **OPEN — how are CHILDREN exported?** No post-root pass; they get `-Export` at Ctrl+] BEFORE the root drives the phases. **Confirm before the campaign.**
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 24, 2026 — **Campaign checklist: LIVE/ARCHIVE views, `[x]` needs capture + analysis, scenarios RANDOMISED per cell (`tools/campaign_plan.json`, 4 of 6, balanced), `none` shown as "stationary".** 144 planned runs. MEMORY.md.
 - sep. 23, 2026 — ✅ **FIXED + HARDWARE-VERIFIED: `MESH_FORCE_HT20` had broken mesh joining** (0 nodes in 11 min). HT20 now set BEFORE `esp_wifi_start()` (APSTA mode). 4-board test: all joined, correct chain, all 20 MHz, phases reach children. 4 boards already flashed with it. MEMORY.md.
 - sep. 23, 2026 — **board dates now PHT (UTC+8) + fixed build-stamp-8h bug that made every capture keep the build-time date.** Root+child build clean. Also: false early `NO NODE IS DOWNSTREAM` now waits for all nodes. ⚠️ **REFLASH.** MEMORY.md.
-- sep. 23, 2026 — **wizard now PARKS the root (bootloader) before flashing children, wakes it at its turn** — the old root's stale TERMINATE was killing fresh children (root saw only itself). MEMORY.md. Re-run the capture.
