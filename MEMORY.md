@@ -132,7 +132,10 @@
   capture; else `[~]` naming the fix ("run analyze.ps1" vs "RE-CAPTURE"). Archive view checks `archive/<x>/analysis/`
   (git-ignored there → a fresh clone shows archives "not analysed"), dedupes copies. Summary/`--plan` count live only.
   **RANDOMISED PLAN:** each (location, topology, attack) draws 4 of the 6 `run.ps1` scenarios, balanced (5-6 uses each per
-  location, bh≠wh per topology), saved ONCE in `tools/campaign_plan.json` (seed recorded; `--reshuffle` only pre-campaign). Slot order = run order. Benign row only where burst drawn. `none` DISPLAYS as "stationary" (checklist + wizard menu); value, folders (none = NO scenario folder) and dataset stay `none`.
+  location, bh≠wh per topology), saved ONCE in `tools/campaign_plan.json` (seed recorded; `--reshuffle` only pre-campaign). Slot order = run order. Benign row only where burst drawn.
+- sep. 24, 2026 — **SCENARIO `none` RENAMED `stationary` EVERYWHERE + it gets a REAL folder** (`<loc>/stationary/`). `none` = accepted
+  alias (canon_scenario / ConvertTo-Scenario, one per script). Pre-rename flat captures still read as stationary (fallbacks in
+  Get-RunDirs/cell_dir/analyze.ps1). `-Attack none` (baseline) UNCHANGED. Also fixed: `jitter` missing from export_logs/run_matrix/analyze.ps1 → every jitter export failed. 20 py + 19 PS checks + root/child build pass.
 - sep. 22, 2026 — **WIZARD SMART ARCHIVE FRONT END** (`Invoke-ArchiveMenu`): per-cell tables, byte-identical
   duplicate detection across every `archive/*/`, COMPLETE-run warning, `-WhatIf`. ⚠️ **`archive.ps1` MOVES
   data, so git shows STAGED DELETIONS under `tools/exports/` — check `archive/` BEFORE `git checkout`-ing
@@ -164,10 +167,6 @@
 - **Attack-validation framing (panel P6):** validate by *definitional conformance* (canonical criteria vs
   what we implement, failures declared), matching signature SHAPE not absolute values — so LEACH/AODV/RPL
   sources are valid and need not be ESP32-specific. **Now written up in `docs/ATTACK-VALIDATION.md`.**
-- **Two conformance gaps, both now MEASURED and written up** in `docs/ATTACK-VALIDATION.md`: (a) the
-  blackhole is a *placed* relay — it does not ATTRACT traffic by false route advertisement; (b) the
-  wormhole duplicates arrivals but does **NOT** re-form parent selection (0 switches, r2 and r3). The
-  paper's own functional naming (§4.2.1.2/4.2.1.3, Tables 4.6/4.7) already makes the defensible claim.
 - ⚠️ **Known circularity (panel P6):** the blackhole attacker counts its OWN drops — the evidence the attack occurred comes from the node performing it. Needs an independent observer (sniffer node / monitor-mode adapter) or root-side accounting.
 - Attack/traffic parameters are compile-time constants: drop rate 100% (`blackhole_victim.c`), `PROBE_INTERVAL_MS 1000`, `SAMPLING_INTERVAL_MS 100`, phases 60/300/180/120 s = 11 min (`mesh_config.h`). `run.ps1` exposes topology/role but **no attack-intensity flags**, so r1/r2/r3 still differ only in RF noise — the panel's 12:45-16:00 objection, unanswered. ✅ **Attacker POSITION is the one exception since F2**: it is a runtime NVS value now, no re-flash. Full pre-F2 text in ARCHIVE.md.
 - I-017 recurring hazard: children left powered through a run's later phases overfill SPIFFS (~1.1 MB) and

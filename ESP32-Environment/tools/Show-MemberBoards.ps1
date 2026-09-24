@@ -254,7 +254,7 @@ function Read-MemberBoardScenario {
     # Which human task (if any) THIS board is currently doing - mirrors
     # run_wizard's scenario targets (burst/mobility/powercycle each need
     # exactly ONE board across the whole roster; highload applies to every
-    # child automatically and 'none' names nobody, so neither is offered here
+    # child automatically and 'stationary' names nobody, so neither is offered here
     # as a per-board job - same set Test-ScenarioNeedsTarget flags in
     # run_wizard.ps1). Picking a job another board already holds asks to move
     # it here instead, same pattern as Read-MemberBoardMac's clash check.

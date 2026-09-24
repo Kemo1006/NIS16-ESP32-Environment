@@ -60,9 +60,17 @@ LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
 # Run-to-run variation (panel, sep. 2026 — see run.ps1 -Scenario). Like
 # --location, a whole matrix campaign runs at ONE scenario at a time — this is
 # an extra session-wide axis, not auto-crossed with topology/attack/repeat.
-# "none" is the pre-scenario default, so an un-scenario'd campaign's ledger
-# key/folder path is unchanged from before this feature existed.
-SCENARIOS = ["none", "burst", "highload", "mobility", "powercycle"]
+# "stationary" (formerly "none", still accepted - canon_scenario()) is the
+# no-variation scenario. Since sep. 24 2026 it gets its own folder like every
+# other scenario; captures from before that have none and read as stationary.
+# Must match run.ps1 -Scenario's ValidateSet (jitter was missing).
+SCENARIOS = ["stationary", "burst", "highload", "jitter", "mobility", "powercycle"]
+SCENARIO_ALIASES = {"none": "stationary"}
+
+
+def canon_scenario(scenario):
+    s = scenario or "stationary"
+    return SCENARIO_ALIASES.get(s, s)
 
 # burst/mobility/powercycle need exactly one TARGET board — the burst sender,
 # the node moved, or the node power-cycled. In this fixed 4-board table only
@@ -108,8 +116,8 @@ def load_ledger(outdir):
     (DictReader only populates keys the CSV header actually had) — r.get(...),
     not r["location"]/r["scenario"], or every pre-existing row KeyErrors on
     load. Location is backfilled as "unrecorded" (not a guessed site);
-    scenario is backfilled as "none" (the pre-scenario default, matching every
-    run that predates this feature) — both in the returned dict and in the row
+    scenario is backfilled as "stationary" (old "none" rows are converted,
+    matching every run that predates scenarios) — both in the returned dict and in the row
     itself, so the next save_ledger() call persists the columns for them."""
     path = ledger_path(outdir)
     rows = {}
@@ -118,7 +126,7 @@ def load_ledger(outdir):
             for r in csv.DictReader(f):
                 loc = r.get("location") or "unrecorded"
                 r["location"] = loc
-                scenario = r.get("scenario") or "none"
+                scenario = canon_scenario(r.get("scenario"))
                 r["scenario"] = scenario
                 r.setdefault("scenario_target", "")
                 rows[(r["topology"], r["attack"], loc, scenario, int(r["repeat"]))] = r
@@ -134,7 +142,7 @@ def save_ledger(outdir, rows):
             w.writerow(rows[key])
 
 
-def all_cells(location, repeats, scenario="none"):
+def all_cells(location, repeats, scenario="stationary"):
     for topo in TOPOLOGIES:
         for atk in ATTACKS:
             for rep in range(1, repeats + 1):
@@ -142,7 +150,7 @@ def all_cells(location, repeats, scenario="none"):
 
 
 # ── Command generation ──────────────────────────────────────────────────────
-def _board_lines(topo, attack, location, rep, ports, export, scenario="none", scenario_target=None):
+def _board_lines(topo, attack, location, rep, ports, export, scenario="stationary", scenario_target=None):
     """Yield (comment, run.ps1-command) pairs for one cell, in BOOT ORDER —
     victims first, root LAST — mirroring ../docs/_archive/guides/ATTACKS-Commands.md exactly.
     export=True puts -Export on victims and -Analyze on the root (the flash+run
@@ -154,7 +162,7 @@ def _board_lines(topo, attack, location, rep, ports, export, scenario="none", sc
     board gets -Scenario (root needs it too, for the burst baseline-run window
     — see mesh_config.h TRAFFIC_PROFILE), and ONLY the board named by
     scenario_target ('nodeb' or 'control' — see SCENARIO_TARGETS) gets
-    -ScenarioTarget. scenario_target is ignored for highload/none/mobility/
+    -ScenarioTarget. scenario_target is ignored for highload/stationary/mobility/
     powercycle need it but this fixed table has no per-run prompt for it, so
     the caller (main()) validates and defaults it."""
     vic_tail = " -Wipe -Flash" + (" -Export" if export else "")
@@ -198,7 +206,7 @@ def _board_lines(topo, attack, location, rep, ports, export, scenario="none", sc
                f"{common}{root_tail}")
 
 
-def print_cmds(topo, attack, location, rep, ports, export, scenario="none", scenario_target=None):
+def print_cmds(topo, attack, location, rep, ports, export, scenario="stationary", scenario_target=None):
     print(f"# == Run cell:  topology={topo}  attack={attack}  location={location}  "
           f"scenario={scenario}  repeat={rep} ==")
     print("# Boot order: run the victim lines FIRST (they sit scanning), the "
@@ -223,7 +231,7 @@ def print_cmds(topo, attack, location, rep, ports, export, scenario="none", scen
         print(f"{cmd}   # {comment}")
 
 
-def print_export_cmds(topo, attack, location, rep, ports, scenario="none"):
+def print_export_cmds(topo, attack, location, rep, ports, scenario="stationary"):
     """Fallback: standalone export_logs.py commands, for when a board was run
     WITHOUT -Export (data still on SPIFFS). Root last so its arrivals.csv is in
     place for -Analyze. Mirrors run.ps1's 'To export later' hint."""
@@ -251,17 +259,20 @@ def print_export_cmds(topo, attack, location, rep, ports, scenario="none"):
 
 
 # ── File discovery + validation ─────────────────────────────────────────────
-def cell_dir(outdir, topo, attack, location, scenario="none"):
-    # 'none' must NOT become a real folder segment - see the SCENARIOS comment
-    # above ("folder path is unchanged from before this feature existed").
-    # Must stay byte-identical to _subdir_for() in export_logs.py and
-    # Get-RunDirs in run_wizard.ps1/run.ps1.
-    if scenario and scenario != "none":
-        return os.path.join(outdir, attack, TOPO_DIR[topo], location, scenario)
-    return os.path.join(outdir, attack, TOPO_DIR[topo], location)
+def cell_dir(outdir, topo, attack, location, scenario="stationary"):
+    # Every scenario is a folder, stationary included (sep. 24 2026). A
+    # pre-rename stationary capture has NO scenario folder - fall back to it
+    # only when the new folder is absent. Must stay byte-identical to
+    # _subdir_for() in export_logs.py and Get-RunDirs in run_wizard.ps1/run.ps1.
+    scenario = canon_scenario(scenario)
+    new = os.path.join(outdir, attack, TOPO_DIR[topo], location, scenario)
+    legacy = os.path.join(outdir, attack, TOPO_DIR[topo], location)
+    if scenario == "stationary" and not os.path.isdir(new) and glob.glob(os.path.join(legacy, "*.csv")):
+        return legacy
+    return new
 
 
-def find_files(outdir, topo, attack, location, rep, scenario="none"):
+def find_files(outdir, topo, attack, location, rep, scenario="stationary"):
     """All CSVs for a cell. Controls export as `..._none_...` but live in the
     attack folder (via -DestAttack), so match on the repeat token, not the
     attack token, inside the cell's own folder."""
@@ -290,7 +301,7 @@ def coverage(files):
     return root_telem, root_arr, vic
 
 
-def validate_cell(outdir, topo, attack, location, sample_interval_ms, scenario="none"):
+def validate_cell(outdir, topo, attack, location, sample_interval_ms, scenario="stationary"):
     """Run validate_integrity.py against the cell's folder. Returns (ok, output).
 
     Prefers the `trimmed\\` subfolder when it exists. That folder — not the raw
@@ -324,7 +335,7 @@ def validate_cell(outdir, topo, attack, location, sample_interval_ms, scenario="
 
 
 # ── Views ───────────────────────────────────────────────────────────────────
-def scan_unrecorded(outdir, location, repeats, scenario="none"):
+def scan_unrecorded(outdir, location, repeats, scenario="stationary"):
     """Cells whose CSVs are on disk and complete, but which are NOT ticked off.
 
     Exists because the failure is silent and easy: the repeat number lives in
@@ -348,7 +359,7 @@ def scan_unrecorded(outdir, location, repeats, scenario="none"):
     return found
 
 
-def print_status(outdir, location, repeats, scenario="none", show_unrecorded=True):
+def print_status(outdir, location, repeats, scenario="stationary", show_unrecorded=True):
     rows = load_ledger(outdir)
     done = 0
     total = 0
@@ -397,7 +408,7 @@ def print_status(outdir, location, repeats, scenario="none", show_unrecorded=Tru
     print("!" * 62)
 
 
-def _untrimmed(outdir, topo, attack, location, files, scenario="none"):
+def _untrimmed(outdir, topo, attack, location, files, scenario="stationary"):
     """Of this cell's raw captures, which are absent from trimmed/.
 
     The analysis pipeline and the validator both read trimmed/, so a capture that
@@ -413,7 +424,7 @@ def _untrimmed(outdir, topo, attack, location, files, scenario="none"):
 
 
 def record(outdir, topo, attack, location, rep, do_validate, sample_interval_ms,
-           scenario="none", scenario_target=""):
+           scenario="stationary", scenario_target=""):
     files = find_files(outdir, topo, attack, location, rep, scenario)
     if not files:
         print(f"(!) No exported CSVs found for {topo}/{attack}/{location}/{scenario}/r{rep} under "
@@ -518,7 +529,7 @@ def main():
                          "don't move mid-matrix, so this applies to every cell in "
                          "the run, not just one. Required for every mode below "
                          "except plain --plan.")
-    ap.add_argument("--scenario", choices=SCENARIOS, default="none",
+    ap.add_argument("--scenario", choices=SCENARIOS + list(SCENARIO_ALIASES), default="stationary",
                     help="Run scenario for this WHOLE campaign (run.ps1 -Scenario) "
                          "— like --location, one value applies to every cell, not "
                          "an extra axis auto-crossed with topology/attack/repeat. "
@@ -546,6 +557,7 @@ def main():
     ap.add_argument("--nodeb-port", default=DEFAULT_PORTS["nodeb"])
     ap.add_argument("--control-port", default=DEFAULT_PORTS["control"])
     args = ap.parse_args()
+    args.scenario = canon_scenario(args.scenario)
 
     ports = {
         "root": args.root_port,

@@ -414,7 +414,8 @@
  * Selected at build time, like ACTIVE_ATTACK / MESH_TOPOLOGY, so no source
  * edit is needed per run (run.ps1 -Scenario maps to the flag):
  *
- *   (no flag)                    → none: byte-identical to pre-scenario firmware.
+ *   (no flag)                    → stationary (formerly "none"): byte-identical
+ *                                  to pre-scenario firmware.
  *   -DTRAFFIC_PROFILE=1 burst    → ONE child (the -ScenarioTarget board) fires
  *                                  BURST_COUNT probes back-to-back BURST_OFFSET_S
  *                                  into the attack-length window. The ROOT built
@@ -436,13 +437,13 @@
  *   export folder (exports/<attack>/<topo>/<loc>/<scenario>/), the run ledger
  *   and the wizard preset.
  * ─────────────────────────────────────────────────────────────────────────── */
-#define TRAFFIC_PROFILE_NONE        0
+#define TRAFFIC_PROFILE_STATIONARY  0
 #define TRAFFIC_PROFILE_BURST       1
 #define TRAFFIC_PROFILE_HIGHLOAD    2
 #define TRAFFIC_PROFILE_JITTER      3
 
 #ifndef TRAFFIC_PROFILE
-#define TRAFFIC_PROFILE             TRAFFIC_PROFILE_NONE
+#define TRAFFIC_PROFILE             TRAFFIC_PROFILE_STATIONARY
 #endif
 
 /* ---------------------------------------------------------------------------

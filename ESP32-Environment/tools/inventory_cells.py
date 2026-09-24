@@ -145,6 +145,7 @@ def scan(exports_root, source_label, sample_interval_ms):
             topology = topology or g["topology"]
             key = (source_label, attack, topology, location, scenario, g["repeat"])
             runs[key][g["kind"]].append((path, g))
+            runs[key]["rel"] = os.path.relpath(dirpath, exports_root)
     return runs
 
 
@@ -205,21 +206,17 @@ def judge(run, sample_interval_ms):
     return verdict, reasons, stats
 
 
-def analysis_status(run, analysis_root, attack, topology, location, scenario):
+def analysis_status(run, analysis_root):
     """'ok' / 'missing' / 'stale' for the analyze.ps1 output of this run's cell.
 
     analysis_root is analysis/ for live runs and archive/<name>/analysis/ for an
-    archived one (archive.ps1 moves both trees together). Mirrors the exports
-    layout: no location folder on legacy captures, no scenario folder for 'none'.
-    'stale' = feature_table.csv is older than the newest capture file, i.e. this
-    run was exported after the last analysis.
+    archived one (archive.ps1 moves both trees together). The analysis folder
+    MIRRORS the capture's own folder (analyze.ps1 writes it that way), so this
+    is right for new .../<location>/stationary/ captures and for pre-rename
+    ones with no scenario folder alike. 'stale' = feature_table.csv is older
+    than the newest capture file, i.e. exported after the last analysis.
     """
-    parts = [analysis_root, attack, topology]
-    if location:
-        parts.append(location)
-    if scenario and scenario != "none":
-        parts.append(scenario)
-    ft = os.path.join(*parts, "feature_table.csv")
+    ft = os.path.join(analysis_root, run["rel"], "feature_table.csv")
     if not os.path.isfile(ft):
         return "missing"
     newest = max((os.path.getmtime(p) for p, _g in run["telem"] + run["arrivals"]),
@@ -286,15 +283,19 @@ PLAN_LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
 PLAN_TOPOLOGIES = ["linear", "star", "tree", "partial_mesh"]
 PLAN_ATTACKS = ["blackhole", "wormhole"]
 # Every scenario run.ps1 accepts (-Scenario ValidateSet).
-SCENARIO_POOL = ["none", "highload", "burst", "jitter", "mobility", "powercycle"]
+SCENARIO_POOL = ["stationary", "highload", "burst", "jitter", "mobility", "powercycle"]
 SCENARIOS_PER_CELL = 4
 
 # Scenarios whose attack runs require a matched benign run at the same scenario.
 PAIRED_SCENARIOS = {"burst"}
 
-# Display name only. The value stays "none" in run.ps1 -Scenario, the export
-# folders (no scenario folder) and the dataset's scenario column.
+# "stationary" is the no-variation scenario everywhere since sep. 24 2026;
+# "none" is its old name, still read (old plan files, pre-rename captures).
 SCENARIO_LABEL = {"none": "stationary"}
+
+
+def canon_scenario(scn):
+    return "stationary" if scn in (None, "", "-", "none") else scn
 
 
 def lbl(scn):
@@ -357,7 +358,7 @@ def load_plan(reshuffle=False, seed=None):
     plan = {}
     for k, s in data["cells"].items():
         loc, topo, atk = k.split("/")
-        plan[(loc, topo, atk)] = s
+        plan[(loc, topo, atk)] = [canon_scenario(x) for x in s]
     return plan
 
 
@@ -387,7 +388,7 @@ def report_plan(rows, assign, repeats=1):
         if in_scope(r, "live") and counts_as_done(r):
             have_n[(r["attack"], r["topology"],
                     r["location"] if r["location"] != "-" else "",
-                    r["scenario"] if r["scenario"] != "-" else "none")] += 1
+                    canon_scenario(r["scenario"]))] += 1
 
     # Count against the per-cell tally so N repeats need N captures, not one.
     remaining_need = defaultdict(int)
@@ -508,7 +509,7 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
     def _key(r):
         return (r["attack"], r["topology"],
                 r["location"] if r["location"] != "-" else "",
-                r["scenario"] if r["scenario"] != "-" else "none")
+                canon_scenario(r["scenario"]))
 
     out_of_scope = sum(1 for r in rows if not in_scope(r, scope))
     rows = [r for r in rows if in_scope(r, scope)]
@@ -720,7 +721,7 @@ def main():
         verdict, reasons, stats = judge(all_runs[key], args.sample_interval_ms)
         a_root = (ANALYSIS_ROOT if source == "live"
                   else os.path.join(args.archive, source.split("/", 1)[1], "analysis"))
-        analysis = analysis_status(all_runs[key], a_root, attack, topology, location, scenario)
+        analysis = analysis_status(all_runs[key], a_root)
         rows.append({
             "analysis": analysis,
             "source": source, "attack": attack, "topology": topology,

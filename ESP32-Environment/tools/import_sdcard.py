@@ -18,7 +18,7 @@ The board supplies attack, topology, location, role, node id and boot count. It
 cannot supply the remaining fields in the export filename/path: the repeat
 number and scenario (both campaign-level decisions) and a wall-clock date (an
 ESP32 with no RTC boots at 1970). So --repeat is required, --scenario defaults
-to "none", and the date is taken at import time.
+to "stationary" ("none" still accepted), and the date is taken at import time.
 
 A single card commonly spans MULTIPLE repeats (b1..b13 across two experiment
 runs, say) and one --repeat cannot cover the whole thing correctly. Each leaf
@@ -143,7 +143,7 @@ class _Args:
         self.attack_dir = None
         self.label = None
         self.port = None
-        self.scenario = "none"   # the SD card tree predates scenarios; host stamps it
+        self.scenario = "stationary"   # the SD card tree has no scenario; host stamps it
         for k, v in kw.items():
             setattr(self, k, v)
 
@@ -697,7 +697,7 @@ def _dest_args_for(m, attack_dir, topo_dir, location, roster, args):
         location=location,
         repeat=args.repeat,
         outdir=args.outdir,
-        scenario=args.scenario,
+        scenario=export_logs.canon_scenario(args.scenario),
     )
 
 
@@ -788,9 +788,12 @@ def main():
     p.add_argument("--repeat", required=True, type=int,
                    help="Repeat number for this run. The board cannot know it; "
                         "it must match the run_ledger.csv entry.")
-    p.add_argument("--scenario", choices=export_logs.SCENARIOS, default="none",
+    p.add_argument("--scenario",
+                   choices=export_logs.SCENARIOS + list(export_logs.SCENARIO_ALIASES),
+                   default="stationary",
                    help="Run scenario this card's capture used (run.ps1 -Scenario): "
-                        "none | burst | highload | mobility | powercycle. The SD "
+                        + " | ".join(export_logs.SCENARIOS) + " ('none' = old name "
+                        "for stationary). The SD "
                         "card tree has no scenario level (host-side only, like "
                         "--repeat) — one value applies to every file this import "
                         "copies.")

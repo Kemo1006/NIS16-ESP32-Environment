@@ -600,26 +600,35 @@ LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
 # Run-to-run variation (panel, sep. 2026 — see run.ps1 -Scenario). A FOLDER
 # level, deliberately never the filename: several tools downstream parse the
 # filename's fields by position (see _make_filename below), and a run's
-# scenario is not one of them. "none" is the pre-scenario default, so an
-# un-scenario'd run's export path is unchanged from before this feature existed.
-SCENARIOS = ["none", "burst", "highload", "mobility", "powercycle"]
+# scenario is not one of them.
+#
+# "stationary" (sep. 24 2026) is the no-variation scenario, formerly "none".
+# "none" is still ACCEPTED as an alias everywhere (old presets, commands, ledgers)
+# and converted by canon_scenario() - the one place that rename lives. Must stay
+# in sync with run.ps1 -Scenario's ValidateSet (jitter was missing here, so
+# every jitter run's export failed with "invalid choice").
+SCENARIOS = ["stationary", "burst", "highload", "jitter", "mobility", "powercycle"]
+SCENARIO_ALIASES = {"none": "stationary"}
+
+
+def canon_scenario(scenario):
+    """Canonical scenario name; empty/None/"none" -> "stationary"."""
+    s = scenario or "stationary"
+    return SCENARIO_ALIASES.get(s, s)
 
 
 def _subdir_for(args) -> str:
     """Route exports into
-    <outdir>/<attack-or-baseline>/<topology>/<location>/[<scenario>/]  so a run's
+    <outdir>/<attack-or-baseline>/<topology>/<location>/<scenario>/  so a run's
     CSVs land in a folder named for its attack, then its topology, then its
-    site, then (only for an actual scenario) its scenario — e.g. a
-    blackhole-on-star burst run captured at G402 -> exports/blackhole/star/G402/burst/.
+    site, then its scenario — e.g. a blackhole-on-star burst run captured at
+    G402 -> exports/blackhole/star/G402/burst/, a plain one -> .../G402/stationary/.
 
-    'none' does NOT get a real folder segment: it's the pre-scenario default,
-    so an un-scenario'd run (the vast majority) resolves to the exact path
-    this always used — exports/blackhole/star/G402/, no trailing \\none\\. A
-    real \\none\\ folder DID briefly get created this way and had to be found
-    (visible, unprompted, in the IDE) and migrated back by hand — that is
-    the failure mode this comment exists to prevent a repeat of. Must stay
-    byte-identical to Get-RunDirs in run_wizard.ps1/run.ps1 and cell_dir() in
-    run_matrix.py.
+    EVERY scenario gets a folder since sep. 24 2026, stationary included, so a
+    capture never sits loose beside other scenarios' subfolders. Captures from
+    before that have NO scenario folder; every reader treats that as
+    stationary. Must stay byte-identical to Get-RunDirs in run_wizard.ps1 /
+    menu.ps1, run.ps1's -Analyze paths and cell_dir() in run_matrix.py.
 
     --attack-dir overrides ONLY the attack folder (not the filename): a control
     victim in a blackhole run is flashed attack=none but belongs with that run's
@@ -631,11 +640,8 @@ def _subdir_for(args) -> str:
     attack_dir = getattr(args, "attack_dir", None) or args.attack
     attack_dir = attack_dir if attack_dir and attack_dir != "none" else "baseline"
     topo_dir = _TOPOLOGY_DIR.get(args.topology, args.topology)
-    scenario = getattr(args, "scenario", None) or "none"
-    parts = [args.outdir, attack_dir, topo_dir, args.location]
-    if scenario != "none":
-        parts.append(scenario)
-    return os.path.join(*parts)
+    scenario = canon_scenario(getattr(args, "scenario", None))
+    return os.path.join(args.outdir, attack_dir, topo_dir, args.location, scenario)
 
 
 def _make_filename(args, kind: str) -> str:
@@ -690,10 +696,11 @@ def main() -> int:
                         "Required for an actual export unless --flat.")
     p.add_argument("--attack", default="none",
                    help="none | blackhole | wormhole (for the filename)")
-    p.add_argument("--scenario", choices=SCENARIOS, default="none",
-                   help="Run scenario (run.ps1 -Scenario): none | burst | "
-                        "highload | mobility | powercycle. Folder level only, "
-                        "never the filename — see SCENARIOS above.")
+    p.add_argument("--scenario", choices=SCENARIOS + list(SCENARIO_ALIASES),
+                   default="stationary",
+                   help="Run scenario (run.ps1 -Scenario): " + " | ".join(SCENARIOS)
+                        + " ('none' = old name for stationary). Folder level "
+                        "only, never the filename — see SCENARIOS above.")
     p.add_argument("--repeat", default="1", help="Repeat number (for the filename)")
     # Resolve the default RELATIVE TO THIS SCRIPT, not the shell's CWD. This is
     # the most damaging of the four CWD-relative defaults that existed: it does
@@ -799,6 +806,7 @@ def main() -> int:
                         "refuses a file it has open right now. Standalone: exports "
                         "nothing.")
     args = p.parse_args()
+    args.scenario = canon_scenario(args.scenario)
 
     if args.delete_sd_path is not None:
         args.delete_sd_path = args.delete_sd_path.strip().strip("/\\").replace("\\", "/")

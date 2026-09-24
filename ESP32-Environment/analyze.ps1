@@ -48,7 +48,8 @@ param(
     [Parameter(Position = 2)]
     [string]$Location,
 
-    [ValidateSet('none', 'burst', 'highload', 'mobility', 'powercycle')]
+    # 'none' = old name for stationary (sep. 24 2026), still accepted.
+    [ValidateSet('stationary', 'none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')]
     [string]$Scenario,
 
     [switch]$All,
@@ -434,8 +435,17 @@ if ($Attack -and $Topology) {
     if ($Location -or $Scenario) {
         $segs = @($Attack, $Topology)
         if ($Location) { $segs += $Location }
+        if ($Scenario -eq 'none') { $Scenario = 'stationary' }
         if ($Scenario) { $segs += $Scenario }
         $dir = Join-Path $exportsRoot ($segs -join '\')
+        # A pre-rename stationary capture has no scenario folder - fall back to it.
+        if ($Scenario -eq 'stationary' -and -not (Test-Path $dir) -and $Location) {
+            $flatSegs = @($Attack, $Topology, $Location)
+            $flat = Join-Path $exportsRoot ($flatSegs -join '\')
+            if (Get-ChildItem $flat -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue) {
+                $segs = $flatSegs; $dir = $flat
+            }
+        }
         if (-not (Test-Path $dir) -or -not (Get-ChildItem $dir -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue)) {
             Write-Host ("No captured data at tools\exports\{0}. Here is what IS there for {1}/{2}:" -f ($segs -join '\'), $Attack, $Topology) -ForegroundColor Yellow
             Show-Targets -Targets (Get-DataTargets -Attack $Attack -Topology $Topology)

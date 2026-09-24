@@ -1,7 +1,7 @@
 {
   "seed": 892723747,
   "pool": [
-    "none",
+    "stationary",
     "highload",
     "burst",
     "jitter",
@@ -15,7 +15,7 @@
       "mobility",
       "jitter",
       "burst",
-      "none"
+      "stationary"
     ],
     "home/linear/wormhole": [
       "powercycle",
@@ -24,19 +24,19 @@
       "highload"
     ],
     "home/star/blackhole": [
-      "none",
+      "stationary",
       "mobility",
       "powercycle",
       "jitter"
     ],
     "home/star/wormhole": [
-      "none",
+      "stationary",
       "burst",
       "powercycle",
       "highload"
     ],
     "home/tree/blackhole": [
-      "none",
+      "stationary",
       "jitter",
       "burst",
       "mobility"
@@ -45,7 +45,7 @@
       "powercycle",
       "highload",
       "mobility",
-      "none"
+      "stationary"
     ],
     "home/partial_mesh/blackhole": [
       "highload",
@@ -61,14 +61,14 @@
     ],
     "G402/linear/blackhole": [
       "highload",
-      "none",
+      "stationary",
       "jitter",
       "mobility"
     ],
     "G402/linear/wormhole": [
       "burst",
       "mobility",
-      "none",
+      "stationary",
       "highload"
     ],
     "G402/star/blackhole": [
@@ -85,7 +85,7 @@
     ],
     "G402/tree/blackhole": [
       "burst",
-      "none",
+      "stationary",
       "mobility",
       "powercycle"
     ],
@@ -97,25 +97,25 @@
     ],
     "G402/partial_mesh/blackhole": [
       "powercycle",
-      "none",
+      "stationary",
       "burst",
       "jitter"
     ],
     "G402/partial_mesh/wormhole": [
-      "none",
+      "stationary",
       "mobility",
       "powercycle",
       "jitter"
     ],
     "DLSU_Library/linear/blackhole": [
-      "none",
+      "stationary",
       "powercycle",
       "mobility",
       "burst"
     ],
     "DLSU_Library/linear/wormhole": [
       "jitter",
-      "none",
+      "stationary",
       "mobility",
       "powercycle"
     ],
@@ -129,7 +129,7 @@
       "jitter",
       "highload",
       "mobility",
-      "none"
+      "stationary"
     ],
     "DLSU_Library/tree/blackhole": [
       "powercycle",
@@ -146,18 +146,18 @@
     "DLSU_Library/partial_mesh/blackhole": [
       "powercycle",
       "highload",
-      "none",
+      "stationary",
       "burst"
     ],
     "DLSU_Library/partial_mesh/wormhole": [
-      "none",
+      "stationary",
       "highload",
       "mobility",
       "jitter"
     ],
     "Goks/linear/blackhole": [
       "mobility",
-      "none",
+      "stationary",
       "powercycle",
       "burst"
     ],
@@ -171,25 +171,25 @@
       "burst",
       "powercycle",
       "jitter",
-      "none"
+      "stationary"
     ],
     "Goks/star/wormhole": [
       "powercycle",
       "jitter",
-      "none",
+      "stationary",
       "highload"
     ],
     "Goks/tree/blackhole": [
       "burst",
       "powercycle",
       "mobility",
-      "none"
+      "stationary"
     ],
     "Goks/tree/wormhole": [
       "mobility",
       "highload",
       "jitter",
-      "none"
+      "stationary"
     ],
     "Goks/partial_mesh/blackhole": [
       "powercycle",
@@ -199,7 +199,7 @@
     ],
     "Goks/partial_mesh/wormhole": [
       "burst",
-      "none",
+      "stationary",
       "highload",
       "jitter"
     ]

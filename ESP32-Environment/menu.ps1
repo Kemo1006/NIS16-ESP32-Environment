@@ -307,19 +307,26 @@ function Select-Location {
     return $locs[$idx - 1]
 }
 
+# 'stationary' is the no-variation scenario; 'none' is its pre-sep-24-2026 name,
+# still found in old presets and commands. The ONE place that rename lives.
+function ConvertTo-Scenario([string]$Name) {
+    if (-not $Name -or $Name -eq 'none') { return 'stationary' }
+    return $Name
+}
+
 function Select-Scenario {
-    # Run-to-run variation the panel asked for. 'none' is byte-identical to the
+    # Run-to-run variation the panel asked for. 'stationary' (formerly 'none') is byte-identical to the
     # old behaviour. Keep this option list in sync with run.ps1's ValidateSet.
     param([string]$Current, [switch]$AllowBack)
     $opts = @(
-        'none        (today''s behaviour -- no variation)',
+        'stationary  (no variation -- nodes stay put; called ''none'' in older runs)',
         'burst       (CODE: one child fires 100 probes back-to-back in the attack window)',
         'highload    (CODE: every child probes 4x faster for the whole run)',
         'jitter      (CODE: ROOT randomises baseline/attack window lengths each boot)',
         'mobility    (HUMAN: you move one child from spot A to spot B -- checklist only)',
         'powercycle  (HUMAN: you unplug/replug one child -- checklist only)'
     )
-    $vals = @('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
+    $vals = @('stationary', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
     $def  = [array]::IndexOf($vals, $Current) + 1
     if ($def -lt 1) { $def = 1 }
     $idx = Read-Choice -Title "Scenario for this run (every board in the run gets the SAME one)?" -Options $opts -Default $def -AllowBack:$AllowBack
@@ -915,7 +922,7 @@ function Get-RunDirs {
     # byte-identical to _subdir_for()/_TOPOLOGY_DIR in tools\export_logs.py and to
     # s_attack_dirs/s_topo_dirs in components\mesh_common\src\sd_status.c. Kept in
     # sync with run_wizard.ps1's identical function.
-    param([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario = 'none')
+    param([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario = 'stationary')
     $attackDir = $Attack
     if ($Attack -eq 'none') { $attackDir = 'baseline' }
     $topoDir = switch ($Topology) {
@@ -924,7 +931,19 @@ function Get-RunDirs {
         'linear'  { 'linear' }
         'partial' { 'partial_mesh' }
     }
-    $scenarioSeg = if ($Scenario -and $Scenario -ne 'none') { "\$Scenario" } else { '' }
+    # Every scenario is a folder, stationary included (sep. 24 2026) - must stay
+    # byte-identical to _subdir_for() in tools\export_logs.py. A pre-rename
+    # stationary capture has NO scenario folder: use that flat folder only when
+    # it holds CSVs and the new stationary folder does not exist yet.
+    $Scenario = ConvertTo-Scenario $Scenario
+    $scenarioSeg = "\$Scenario"
+    if ($Scenario -eq 'stationary') {
+        $flat = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location"
+        $new  = Join-Path $flat 'stationary'
+        if (-not (Test-Path $new) -and (Get-ChildItem -Path $flat -Filter '*.csv' -File -ErrorAction SilentlyContinue)) {
+            $scenarioSeg = ''
+        }
+    }
     return [pscustomobject]@{
         AttackDir = $attackDir
         TopoDir   = $topoDir
@@ -1582,7 +1601,7 @@ function Get-BuildDirSpec {
     if ($attack -eq 'blackhole' -and $role -ne 'root' -and $Params.BlackholeRole) { $suffix += "_$($Params.BlackholeRole)" }
     # SCENARIO TAG RULE (kept identical in run.ps1 and run_wizard.ps1's
     # Get-BoardBuildDir): only a board that actually gets -DTRAFFIC_PROFILE
-    # takes a suffix/flag, so 'none'/'mobility'/'powercycle' builds are untouched.
+    # takes a suffix/flag, so 'stationary'/'mobility'/'powercycle' builds are untouched.
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
     if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
@@ -1865,7 +1884,7 @@ if ($action -eq 2) {
     # given rather than its factory default.
     $topoIdx  = 1
     $attkIdx  = 1
-    $scenario = 'none'
+    $scenario = 'stationary'
     $flash    = $true
     $wipe     = $true
     $export   = $true
@@ -2720,7 +2739,7 @@ if ($action -eq 3) {
     $roleIdx  = 1
     $topoIdx  = 1
     $attkIdx  = 1
-    $scenario = 'none'
+    $scenario = 'stationary'
     $loc      = $null
     $label    = ''
     $repeat   = '1'
@@ -2843,7 +2862,7 @@ if ($action -eq 11) {
 
     $attkIdx  = 1
     $topoIdx  = 1
-    $scenario = 'none'
+    $scenario = 'stationary'
     $loc      = $null
 
     $step = 0
@@ -2881,7 +2900,7 @@ if ($action -eq 11) {
     $topoDir = if ($topo -eq 'partial') { 'partial_mesh' } else { $topo }
 
     $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
-    $scenarioSeg = if ($scenario -and $scenario -ne 'none') { "\$scenario" } else { '' }
+    $scenarioSeg = "\$(ConvertTo-Scenario $scenario)"
     $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$loc$scenarioSeg"
     $trimmedSub  = Join-Path $exportSub 'trimmed'
 
@@ -2918,7 +2937,7 @@ if ($action -eq 7) {
 
     $attkIdx  = 1
     $topoIdx  = 1
-    $scenario = 'none'
+    $scenario = 'stationary'
     $loc      = $null
 
     $step = 0
@@ -2956,7 +2975,7 @@ if ($action -eq 7) {
     $topoDir = if ($topo -eq 'partial') { 'partial_mesh' } else { $topo }
 
     $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
-    $scenarioSeg = if ($scenario -and $scenario -ne 'none') { "\$scenario" } else { '' }
+    $scenarioSeg = "\$(ConvertTo-Scenario $scenario)"
     $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$loc$scenarioSeg"
     $analysisSub = Join-Path $base "analysis\$attackDir\$topoDir\$loc$scenarioSeg"
 
@@ -3051,7 +3070,7 @@ if ($action -eq 8) {
 
     $attkIdx  = 1
     $topoIdx  = 1
-    $scenario = 'none'
+    $scenario = 'stationary'
     $loc      = $null
     $repeat   = '1'
 
@@ -3115,8 +3134,8 @@ if ($action -eq 8) {
             Sort-Object LastWriteTime -Descending |
             ForEach-Object {
                 try { $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json } catch { $cfg = $null }
-                # Older presets predate the scenario field -- treat a missing one as 'none'.
-                $cfgScenario = if ($cfg -and $cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario } else { 'none' }
+                # Older presets predate the scenario field -- treat a missing one (or 'none', its old name) as 'stationary'.
+                $cfgScenario = ConvertTo-Scenario $(if ($cfg -and $cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
                 if ($cfg -and [string]$cfg.attack -eq $attack -and [string]$cfg.topology -eq $topo -and [string]$cfg.location -eq $loc -and $cfgScenario -eq $scenario) {
                     # Owner = the member folder it sits in, falling back to the
                     # field inside the file for one that is still unfiled.
@@ -3228,7 +3247,7 @@ if ($action -eq 8) {
 $roleIdx  = 2
 $topoIdx  = 1
 $attkIdx  = 1
-$scenario = 'none'
+$scenario = 'stationary'
 $bhIdx    = 1
 $wIdx     = 2
 $isScenarioTarget = $true

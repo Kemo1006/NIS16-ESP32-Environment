@@ -156,8 +156,9 @@ param(
     # -ScenarioTarget, print a checklist naming which child to move/power-cycle:
     #   mobility    => move the target child from spot A to spot B
     #   powercycle  => unplug the target child, wait, replug it
-    # 'none' is byte-identical to pre-scenario firmware/behaviour.
-    [ValidateSet('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')][string]$Scenario = 'none',
+    # stationary = no variation, byte-identical to pre-scenario firmware.
+    # 'none' is its old name (sep. 24 2026 rename) - still accepted, converted below.
+    [ValidateSet('stationary', 'none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')][string]$Scenario = 'stationary',
     # Marks THIS child as the scenario's subject: the burst sender, the node you
     # will move, or the node you will unplug/replug. Exactly one child per run.
     # Ignored (and warned on) for -Scenario none/highload; invalid on the root.
@@ -249,14 +250,17 @@ if ($doExport -and -not $Location) {
     throw "-Location is required with -Export/-Clean/-Analyze (home | G402 | DLSU_Library | Goks)."
 }
 
+# One place the rename lives: every line below sees only 'stationary'.
+if ($Scenario -eq 'none') { $Scenario = 'stationary' }
+
 # -ScenarioTarget names the ONE child that is the scenario's subject; the root
 # is never the target. Warn (don't fail) if it's set for a scenario that
 # doesn't use it, since that's more likely a leftover flag than an error.
 if ($ScenarioTarget -and $Role -eq 'root') {
     throw "-ScenarioTarget is for a child board (the burst sender / the node you move or power-cycle), not the root."
 }
-if ($ScenarioTarget -and $Scenario -in @('none', 'highload')) {
-    Write-Host "NOTE: -ScenarioTarget has no effect with -Scenario $Scenario (highload applies to every child; none does nothing)." -ForegroundColor Yellow
+if ($ScenarioTarget -and $Scenario -in @('stationary', 'highload')) {
+    Write-Host "NOTE: -ScenarioTarget has no effect with -Scenario $Scenario (highload applies to every child; stationary does nothing)." -ForegroundColor Yellow
 }
 
 # 0-pre) Auto-free THIS port. The #1 cause of "Could not open COMxx ... Access
@@ -375,8 +379,8 @@ $topologyNum = switch ($Topology) {
 $topologyFlag = "-DMESH_TOPOLOGY=$topologyNum"
 
 # Map -Scenario to the TRAFFIC_PROFILE build flag (only meaningful when
-# flashing). Unlike -Attack/-Topology, 'none' passes NO flag at all -- the
-# mesh_config.h #ifndef default already IS "none", so a plain run's compile
+# flashing). Unlike -Attack/-Topology, 'stationary' passes NO flag at all -- the
+# mesh_config.h #ifndef default already IS "stationary", so a plain run's compile
 # command line (and build dir) stays byte-identical to before this feature
 # existed. Only the boards that actually change firmware get a flag/tag:
 #   burst    -> root (baseline-run window) + the -ScenarioTarget child (sender)
@@ -419,7 +423,7 @@ if ($Attack -eq 'wormhole'  -and $Role -ne 'root') { $buildSuffix += "_$Wormhole
 if ($Attack -eq 'blackhole' -and $Role -ne 'root') { $buildSuffix += "_$BlackholeRole" }
 # SCENARIO TAG RULE (kept identical in menu.ps1 Get-BuildDirSpec and
 # run_wizard.ps1 Get-BoardBuildDir): only a board that actually receives
-# -DTRAFFIC_PROFILE gets a suffix, so a plain 'none'/'mobility'/'powercycle'
+# -DTRAFFIC_PROFILE gets a suffix, so a plain 'stationary'/'mobility'/'powercycle'
 # board's build dir is untouched.
 if ($scenarioTag) { $buildSuffix += "_$scenarioTag" }
 # Per-COM-port build dir: append a sanitized port tag (COM25 -> COM25) so that
@@ -527,7 +531,7 @@ Push-Location (Join-Path $base $proj)
 try {
     if ($Flash) {
         $attackLabel = if ($Attack -eq 'wormhole' -and $Role -ne 'root') { "wormhole/$WormholeEnd" } else { $Attack }
-        $scenarioLabel = if ($Scenario -ne 'none') { $Scenario + $(if ($ScenarioTarget) { '+target' } else { '' }) } else { 'none' }
+        $scenarioLabel = if ($Scenario -ne 'stationary') { $Scenario + $(if ($ScenarioTarget) { '+target' } else { '' }) } else { 'stationary' }
         Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$attackLabel, scenario=$scenarioLabel, build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
         # flash and monitor run as two calls so a failed flash is caught HERE: the
         # old combined `flash monitor` fell through into export against a board
@@ -640,11 +644,10 @@ if ($Analyze) {
         'linear'  { 'linear' }
         'partial' { 'partial_mesh' }
     }
-    # 'none' must NOT become a real folder segment - it's the pre-scenario
-    # default, so an un-scenario'd run (the vast majority) resolves to the
-    # SAME path this always used. Must stay byte-identical to _subdir_for()
-    # in tools\export_logs.py and Get-RunDirs in run_wizard.ps1.
-    $scenarioSeg = if ($Scenario -and $Scenario -ne 'none') { "\$Scenario" } else { '' }
+    # Every scenario is a folder, stationary included (sep. 24 2026). Must stay
+    # byte-identical to _subdir_for() in tools\export_logs.py and Get-RunDirs
+    # in run_wizard.ps1 / menu.ps1.
+    $scenarioSeg = "\$Scenario"
     $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location$scenarioSeg"
     $analysisSub = Join-Path $base "analysis\$attackDir\$topoDir\$Location$scenarioSeg"
 

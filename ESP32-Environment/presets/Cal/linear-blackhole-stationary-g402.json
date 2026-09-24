@@ -2,7 +2,7 @@
     "attack":  "blackhole",
     "topology":  "linear",
     "location":  "G402",
-    "scenario":  "none",
+    "scenario":  "stationary",
     "owner":  "Cal",
     "repeat":  1,
     "savedAt":  "2026-09-24 11:24",

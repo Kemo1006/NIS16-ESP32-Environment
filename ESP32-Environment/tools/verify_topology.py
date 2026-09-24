@@ -221,11 +221,15 @@ def resolve_files(args, dir_is_default):
         # Scenario is one level deeper than location (see docs/2026-09-14_SETUP-
         # RULES-CONFIG.md C4) - narrows further when given; the recursive walk
         # below finds scenario subfolders either way, this just scopes it to
-        # one. 'none' is the pre-scenario default and is NEVER a real folder
-        # (see export_logs.py's _subdir_for), so an explicit `--scenario none`
-        # must not narrow the search at all.
-        if getattr(args, "scenario", None) and args.scenario != "none":
-            search_root = os.path.join(search_root, args.scenario)
+        # one. Every scenario is a folder since sep. 24 2026, stationary
+        # included ("none" = its old name). A pre-rename stationary capture has
+        # no folder, so if stationary/ is absent the search is not narrowed.
+        scn = getattr(args, "scenario", None)
+        if scn:
+            scn = "stationary" if scn == "none" else scn
+            narrowed = os.path.join(search_root, scn)
+            if scn != "stationary" or os.path.isdir(narrowed):
+                search_root = narrowed
     if not os.path.isdir(search_root):
         if dir_is_default:
             # --dir is still the script default and this attack+topology (nor
@@ -489,9 +493,9 @@ def discover_groups(exports_dir, topology, location):
     scenario is the first path component under the location folder (one level
     below --location, see docs/2026-09-14_SETUP-RULES-CONFIG.md C4) - a file
     found directly IN the location folder (no scenario subfolder at all, e.g.
-    a pre-scenario capture) groups as scenario='none', which is exactly what
-    such a capture's run.ps1 -Scenario would have been. Without this, a 'none'
-    r1 and a 'burst' r1 at the same attack/location would wrongly merge into
+    a pre-rename capture) groups as scenario='stationary' (formerly 'none'),
+    which is exactly what such a capture's run.ps1 -Scenario would have been.
+    Without this, a stationary r1 and a 'burst' r1 at the same attack/location would wrongly merge into
     one group — they are different runs that happen to share a repeat number."""
     topo_dirname = topology_dirname(topology)
     groups = defaultdict(list)
@@ -508,7 +512,9 @@ def discover_groups(exports_dir, topology, location):
             for path in _iter_telem_files(loc_path):
                 rel = os.path.relpath(path, loc_path)
                 parts = rel.split(os.sep)
-                scenario = parts[0] if len(parts) > 1 else "none"
+                scenario = parts[0] if len(parts) > 1 else "stationary"
+                if scenario == "none":
+                    scenario = "stationary"
                 m = REPEAT_RE.search(os.path.basename(path))
                 repeat = m.group(1) if m else "?"
                 groups[(attack_name, scenario, repeat)].append(path)
@@ -522,7 +528,7 @@ def discover_groups(exports_dir, topology, location):
             for path in file_iter:
                 m = REPEAT_RE.search(os.path.basename(path))
                 repeat = m.group(1) if m else "?"
-                groups[(attack_name, "none", repeat)].append(path)
+                groups[(attack_name, "stationary", repeat)].append(path)
     return groups
 
 
@@ -700,8 +706,9 @@ def main():
                     help="Location subfolder (home/G402/DLSU_Library/Goks). "
                          "Default: search every location under --dir/--attack/--topology.")
     ap.add_argument("--scenario", default=None,
-                    help="Scenario subfolder (none/burst/highload/mobility/"
-                         "powercycle), one level under --location. Needs "
+                    help="Scenario subfolder (stationary/burst/highload/jitter/"
+                         "mobility/powercycle; 'none' = stationary), one level "
+                         "under --location. Needs "
                          "--location to be given too. Default: search every "
                          "scenario under --location (the recursive walk finds "
                          "them regardless — this only narrows to one).")

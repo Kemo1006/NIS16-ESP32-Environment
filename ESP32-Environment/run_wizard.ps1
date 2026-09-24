@@ -28,7 +28,7 @@
   before anything is flashed.
 
   Presets are filed one folder per member: presets\<member>\<cell>.json, e.g.
-  presets\Bas\linear-blackhole-none-g402.json. The filename already spells the
+  presets\Bas\linear-blackhole-stationary-g402.json. The filename already spells the
   experiment cell (topology-attack-scenario-location), so the folder is what
   carries the one thing it cannot - WHOSE boards the roster describes. That is
   what lets your preset and an absent member's preset for the same cell both
@@ -48,7 +48,7 @@
 .EXAMPLE
   .\run_wizard.ps1 -DryRun
   .\run_wizard.ps1
-  .\run_wizard.ps1 -Preset presets\Bas\linear-blackhole-none-g402.json -Repeat 2
+  .\run_wizard.ps1 -Preset presets\Bas\linear-blackhole-stationary-g402.json -Repeat 2
 #>
 param(
     [switch]$DryRun,
@@ -85,17 +85,24 @@ $ATTACKS    = @('none', 'blackhole', 'wormhole')
 $TOPOLOGIES = @('linear', 'tree', 'star', 'partial')
 $LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
 
-# Run-to-run variation the panel asked for. 'none' is byte-identical to the
+# Run-to-run variation the panel asked for. 'stationary' (formerly 'none') is byte-identical to the
 # pre-scenario wizard. Keep the ValidateSet in run.ps1 in sync with this list.
-$SCENARIOS = @('none', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
+$SCENARIOS = @('stationary', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
 $SCENARIO_LABELS = @(
-    "stationary  - no variation, nodes stay put (passed as -Scenario none)",
+    "stationary  - no variation, nodes stay put (called 'none' in older runs)",
     'burst       - CODE: one child fires 100 probes back-to-back in the attack window',
     'highload    - CODE: every child probes 4x faster for the whole run',
     'jitter      - CODE: ROOT randomises baseline/attack window LENGTHS each boot, so elapsed time stops predicting the phase',
     'mobility    - HUMAN: you move one child from spot A to spot B (checklist only)',
     'powercycle  - HUMAN: you unplug/replug one child (checklist only)'
 )
+
+# 'stationary' is the no-variation scenario; 'none' is its pre-sep-24-2026 name,
+# still found in old presets and commands. The ONE place that rename lives.
+function ConvertTo-Scenario([string]$Name) {
+    if (-not $Name -or $Name -eq 'none') { return 'stationary' }
+    return $Name
+}
 
 # Bright role colors for a black console background -- root/child/attacker at a
 # glance in board summaries and roster listings. Named ConsoleColor values (Cyan/
@@ -1763,7 +1770,7 @@ function Import-OneSdCard {
     # this as ONE function is the point: two copies would drift, and the half
     # that is used less would be the one that rots.
     param([string]$Card, [string]$Port, [int]$Repeat, [string]$Boots, [switch]$IncludeAborted,
-          [string]$Roster, [switch]$DeleteSource, [string]$ExpectPrefix, [string]$Scenario = 'none')
+          [string]$Roster, [switch]$DeleteSource, [string]$ExpectPrefix, [string]$Scenario = 'stationary')
 
     if (-not $Card -and -not $Port) {
         Write-Host "  Import-OneSdCard needs -Card or -Port." -ForegroundColor Red
@@ -2026,7 +2033,7 @@ function Invoke-ImportSdCard {
     $rosterPath    = ''
     $presetMatches = @(Get-PresetFiles | ForEach-Object {
         $cfg = Read-PresetFile $_.FullName
-        $cfgScenario = if ($cfg -and $cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario } else { 'none' }
+        $cfgScenario = ConvertTo-Scenario $(if ($cfg -and $cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
         if ($cfg -and [string]$cfg.attack -eq $attack -and [string]$cfg.topology -eq $topology -and [string]$cfg.location -eq $location -and $cfgScenario -eq $scenario) {
             [pscustomobject]@{ File = $_; Cfg = $cfg }
         }
@@ -3277,7 +3284,7 @@ function Get-BoardBuildDir {
     }
     # SCENARIO TAG RULE (kept identical in run.ps1 and menu.ps1's Get-BuildDirSpec):
     # only a board that actually gets -DTRAFFIC_PROFILE takes a suffix, so
-    # 'none'/'mobility'/'powercycle' builds are untouched.
+    # 'stationary'/'mobility'/'powercycle' builds are untouched.
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
     if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
@@ -3549,7 +3556,7 @@ function New-RunParams {
     # Returns an ORDERED hashtable for splatting into run.ps1. Hashtable splatting
     # binds by parameter NAME; an array would bind positionally and shove the whole
     # thing into -Port.
-    param($Board, [string]$Attack, [string]$Topology, [string]$Location, [int]$RepeatNum, [string]$Scenario = 'none')
+    param($Board, [string]$Attack, [string]$Topology, [string]$Location, [int]$RepeatNum, [string]$Scenario = 'stationary')
 
     $h = [ordered]@{
         Port     = $Board.Port
@@ -3880,7 +3887,7 @@ function Get-RunDirs {
     # under baseline\ and 'partial' under partial_mesh\ - these MUST stay
     # byte-identical to _subdir_for()/_TOPOLOGY_DIR in tools\export_logs.py and to
     # s_attack_dirs/s_topo_dirs in components\mesh_common\src\sd_status.c.
-    param([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario = 'none')
+    param([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario = 'stationary')
     $attackDir = $Attack
     if ($Attack -eq 'none') { $attackDir = 'baseline' }
     $topoDir = switch ($Topology) {
@@ -3889,12 +3896,19 @@ function Get-RunDirs {
         'linear'  { 'linear' }
         'partial' { 'partial_mesh' }
     }
-    # 'none' must NOT become a real folder segment - it's the pre-scenario
-    # default, so an un-scenario'd run (the vast majority) has to resolve to
-    # the SAME path this always used, or preprocess.py's flat glob stops
-    # finding it and a fresh run orphans itself one level below old data.
-    # Must stay byte-identical to _subdir_for() in tools\export_logs.py.
-    $scenarioSeg = if ($Scenario -and $Scenario -ne 'none') { "\$Scenario" } else { '' }
+    # Every scenario is a folder, stationary included (sep. 24 2026) - must stay
+    # byte-identical to _subdir_for() in tools\export_logs.py. A pre-rename
+    # stationary capture has NO scenario folder: use that flat folder only when
+    # it holds CSVs and the new stationary folder does not exist yet.
+    $Scenario = ConvertTo-Scenario $Scenario
+    $scenarioSeg = "\$Scenario"
+    if ($Scenario -eq 'stationary') {
+        $flat = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location"
+        $new  = Join-Path $flat 'stationary'
+        if (-not (Test-Path $new) -and (Get-ChildItem -Path $flat -Filter '*.csv' -File -ErrorAction SilentlyContinue)) {
+            $scenarioSeg = ''
+        }
+    }
     return [pscustomobject]@{
         AttackDir = $attackDir
         TopoDir   = $topoDir
@@ -3970,7 +3984,7 @@ function Get-PresetFiles {
     # Newest first - the preset you used last is almost always the one you want.
     #
     # Recurses, because presets are filed one folder per member:
-    # presets\Bas\linear-blackhole-none-g402.json. The filename already spells
+    # presets\Bas\linear-blackhole-stationary-g402.json. The filename already spells
     # the experiment cell (topology-attack-scenario-location), so the ONE thing
     # it cannot express is whose boards the roster describes - and two members'
     # preset for the same cell collide on name. The folder carries the owner so
@@ -4167,7 +4181,7 @@ function Save-Preset {
     # can still say whose boards it describes. Omitted = keep whatever the file
     # already had (a re-save of an existing preset must not blank its owner).
     param([string]$Path, [string]$Attack, [string]$Topology, [string]$Location,
-          [int]$RepeatNum, $Roster, [string]$Scenario = 'none', [string]$Owner)
+          [int]$RepeatNum, $Roster, [string]$Scenario = 'stationary', [string]$Owner)
     if (-not $PSBoundParameters.ContainsKey('Owner')) {
         $Owner = Get-PresetOwnerFromPath -FullName $Path
         if (-not $Owner) {
@@ -4383,8 +4397,8 @@ function Show-PresetDetails {
     # port that is now a different board, or no board at all.
     param($Cfg, [string]$Path, [object[]]$Ports, $Roster)
 
-    # Older presets predate the scenario field - treat a missing one as 'none'.
-    $cfgScenario = if ($Cfg.PSObject.Properties['scenario']) { [string]$Cfg.scenario } else { 'none' }
+    # Older presets predate the scenario field - treat a missing one (or 'none', its old name) as 'stationary'.
+    $cfgScenario = ConvertTo-Scenario $(if ($Cfg.PSObject.Properties['scenario']) { [string]$Cfg.scenario })
     $dirs = Get-RunDirs -Attack ([string]$Cfg.attack) -Topology ([string]$Cfg.topology) -Location ([string]$Cfg.location) -Scenario $cfgScenario
     $live = @($Ports | Select-Object -ExpandProperty Port)
     $attackWord = [string]$Cfg.attack
@@ -4530,7 +4544,7 @@ $originalPreset = $Preset
 try {
 $Preset = $originalPreset
 
-$attack = ''; $topology = ''; $location = ''; $repeat = 1; $scenario = 'none'
+$attack = ''; $topology = ''; $location = ''; $repeat = 1; $scenario = 'stationary'
 $roster = @()
 
 # ------------------------------------------------------------ preset picker ----
@@ -4684,8 +4698,8 @@ if (-not $Preset) {
                 continue
             }
             $preview = (ConvertTo-Roster -Cfg $cfg).Roster
-            # Older presets predate the scenario field - treat a missing one as 'none'.
-            $cfgScenario = if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario } else { 'none' }
+            # Older presets predate the scenario field - treat a missing one (or 'none', its old name) as 'stationary'.
+            $cfgScenario = ConvertTo-Scenario $(if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
 
             $deciding = $true
             while ($deciding) {
@@ -4971,9 +4985,9 @@ if ($Preset) {
     $topology = [string]$cfg.topology
     $location = [string]$cfg.location
     $repeat   = [int]$cfg.repeat
-    # Older presets predate the scenario field - treat a missing one as 'none'
+    # Older presets predate the scenario field - treat a missing one (or 'none', its old name) as 'stationary'
     # so a pre-scenario preset still loads unchanged.
-    $scenario = if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario } else { 'none' }
+    $scenario = ConvertTo-Scenario $(if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
 
     if ($ATTACKS    -notcontains $attack)   { throw "Preset has invalid attack '$attack'." }
     if ($TOPOLOGIES -notcontains $topology) { throw "Preset has invalid topology '$topology'." }
@@ -6231,7 +6245,7 @@ if (-not $Preset) {
     if ($saveAns -eq 'y' -or $saveAns -eq 'Y') {
         # Whose boards this roster is, asked BEFORE the filename: it decides the
         # folder, which is what lets two members keep the same plain cell name
-        # (linear-blackhole-none-g402.json) instead of one having to be
+        # (linear-blackhole-stationary-g402.json) instead of one having to be
         # hand-renamed. Pre-answered from the MACs, so flashing an absent
         # member's boards files itself under THEM without you remembering to say so.
         $presetOwner = Select-PresetOwner -Roster $runRoster
