@@ -84,3 +84,8 @@ Thumbs.db
 
 
 how to run esp32.txt
+
+
+# Raw packet captures — large, kept local only (GitHub 100MB cap)
+PCAP/
+*.pcap

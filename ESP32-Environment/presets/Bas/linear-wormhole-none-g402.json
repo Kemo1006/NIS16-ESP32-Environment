@@ -1,36 +1,36 @@
 ﻿{
-    "attack":  "blackhole",
+    "attack":  "wormhole",
     "topology":  "linear",
     "location":  "G402",
-    "scenario":  "stationary",
+    "scenario":  "none",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-09-24 12:03",
+    "savedAt":  "2026-09-24 10:49",
     "boards":  [
                    {
-                       "Label":  "attacker_5",
-                       "Port":  "COM20",
+                       "Label":  "womrhole_A",
+                       "Port":  "COM4",
                        "Role":  "child",
-                       "Kind":  "attacker",
-                       "Display":  "blackhole ATTACKER",
+                       "Kind":  "A",
+                       "Display":  "wormhole Node A (exit)",
                        "Mac":  "20:50:0d:e7:1c:38",
                        "ScenarioTarget":  false
                    },
                    {
-                       "Label":  "child_6",
-                       "Port":  "COM14",
+                       "Label":  "womrhole_B",
+                       "Port":  "COM20",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "B",
+                       "Display":  "wormhole Node B (entry)",
                        "Mac":  "20:50:0d:e7:0c:80",
                        "ScenarioTarget":  false
                    },
                    {
-                       "Label":  "child_7",
+                       "Label":  "node4",
                        "Port":  "COM11",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
                        "Mac":  "f4:2d:c9:73:e6:18",
                        "ScenarioTarget":  false
                    }

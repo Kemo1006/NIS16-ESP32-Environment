@@ -15,17 +15,17 @@
             "name": "Bas",
             "boards": [
                 {
-                    "nickname": "attacker_5",
+                    "nickname": "child_1(node 2)",
                     "mac": "20:38",
                     "role": "attacker"
                 },
                 {
-                    "nickname": "child_6",
+                    "nickname": "child_2(node3)",
                     "mac": "20:80",
                     "role": "child"
                 },
                 {
-                    "nickname": "child_7",
+                    "nickname": "child_3(node4)",
                     "mac": "F4:18",
                     "role": "child"
                 }
@@ -35,22 +35,22 @@
             "name": "Kyle",
             "boards": [
                 {
-                    "nickname": "child_8",
+                    "nickname": "child_4(node5)",
                     "mac": "70:68",
                     "role": "child"
                 },
                 {
-                    "nickname": "child_9",
+                    "nickname": "child_5(node6)",
                     "mac": "28:B4",
                     "role": "child"
                 },
                 {
-                    "nickname": "child_10",
+                    "nickname": "child_6(node7)",
                     "mac": "B4:90",
                     "role": "child"
                 },
                 {
-                    "nickname": "child_11",
+                    "nickname": "child_7(node8)",
                     "mac": "B4:80",
                     "role": "child"
                 }
