@@ -8,6 +8,13 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** Boards have ONE USB port
+  (power+data), so moving a board from powerbank to laptop to export power-cycles it; every boot moves the previous boot's CSVs into
+  `_archive/` (`csv_logger.c:1166`), and LIST_SD (`:746`) + the importer skip `_archive/` - the run is hidden, a new ~1 KB live file shows.
+  After a power cut the card's "started" time = the LAST SET_TIME anchor, not the real boot time. User chose: do NOT show `_archive/`
+  in the wizard (live data only); the real fix is firmware (option B, not done). Dashboard is NOT hardcoded (per-board heartbeat
+  phase + LOG_CLOSED) but "ALL n DONE" ignores evicted boards. Host fixes: END_RUN reply matched anywhere in a line (it glues to
+  log output; old "predates END_RUN" msg was false); "already imported" over USB now says node+repeat match, maybe an OLDER run.
 - sep. 25, 2026 — **D-15 + DATA-DICTIONARY §2 rewrite.** `retry_count`/`tx_count` are APP-LAYER counters (no Wi-Fi driver stats read
   anywhere); paper Table 4.5 calls them MAC stats - re-describe in the paper, no re-capture. ⚠️ Wormhole Node B still writes its TUNNEL
   count into `retry_count` (Tunnel* features read it) - the one overload F3 did not remove. `leakage.py` reason TEXT is pre-C7 (code is fine).
@@ -56,13 +63,6 @@
 - sep. 24, 2026 — **Basti's laptop git identity is `xMiguelCarlosx`** — commits "by Miguel" from this clone are
   the user (VS Code auto-sync also runs `pull --autostash` mid-session). `PCAP/` + `*.pcap` git-ignored: a 120 MB
   Mac capture exceeds GitHub's 100 MB cap and blocked every push until removed from history.
-- sep. 24, 2026 — **`run_wizard.ps1` multi-laptop roster: "N boards need ports" warning was WRONG whenever the roster
-  is split** (step 6 always added +1 for root even after the operator had just said root is on ANOTHER laptop — said
-  "5 boards need ports" right after a "root not here" answer). Fixed: that warning only fires when NOT multi-laptop
-  (root/children are only sorted into local-vs-remote per-board, in step 7's `Select-PortOrRemote`, which already
-  handles it correctly). Also added 3 clarifying banners (root-remote confirmation, child-count multi-laptop example,
-  one-time "you'll be asked per board" notice before step 7) — the child COUNT is always the FULL experiment across
-  every laptop, never just this one's; per-board "is it here?" is what actually sorts local from remote.
 - sep. 23, 2026 — ⛔→✅ **`MESH_FORCE_HT20` first version BROKE mesh formation; FIXED + HARDWARE-VERIFIED same day.**
   Broken run: 0 nodes joined in 11 min (root `NODE COUNT` 1, children `AP:0`). Cause: `apply_rf_width()`
   forced 20 MHz AFTER `esp_wifi_start()` (no-op: STA iface not up, stayed 40 MHz) and AFTER `esp_mesh_start()`
@@ -73,9 +73,6 @@
   3 min, every board `STA 20 MHz, AP 20 MHz` from boot, no `forced to 20 MHz` corrections, phase 0 reached
   all children. ⚠️ Don't move the width call after `esp_wifi_start()` again. (`Root: NO` in the root's
   "Mesh connected" line is PRE-EXISTING cosmetic: routerless root never gets PARENT_CONNECTED.)
-- sep. 23, 2026 — **`MESH_FORCE_HT20 1` (mesh_config.h): all boards now run 20 MHz, not the ESP32-default HT40.** Why: the M1 Mac
-  Sniffer offers 20 MHz ONLY and can't decode 40 MHz data (real capture: beacons fine, root 0 / child 3 data frames). `apply_rf_width()`
-  in mesh_setup.c sets it at wifi/mesh start and re-checks on connect. ⚠️ HT40 captures (all before this) ≠ HT20 — label, don't pool. SD report [6] now prints 'RF width: ...'. CSV schema + analysis untouched (verifier is same-run relative; no absolute RSSI cut-offs). Builds clean; NOT hardware-verified.
 - sep. 23, 2026 — **Tree positions are NOT hardcoded**: each node self-reports its parent MAC + role in its heartbeat;
   the root links them. Early prints show a PARTIAL tree (nodes report ~1 s apart) → a FALSE `NO NODE IS DOWNSTREAM` error.
   Fixed in `mesh_setup.c`: exposure verdict waits until heartbeat entries >= `esp_mesh_get_routing_table_size()`.

@@ -1901,3 +1901,13 @@ Both still live as one-line warnings in STATUS.md.
 - (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`tools/check_pcap.py` + wizard "Check a Mac sniffer capture file"** (stdlib, pcap+pcapng): finds mesh nodes
   by behaviour — mesh beacons have a HIDDEN SSID (not `ESPM_*`) + scrambled IE, so node = hidden-SSID beacon whose MAC−1 also transmits.
   Verified on the real 126 MB M1 capture (sep. 23, `Downloads\Jose's MacBook Air_ch11_...pcap`): exactly 4 boards, 1848 mesh DATA frames, root sent 0 → likely 20 MHz width missed HT40 data.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`MESH_FORCE_HT20 1` (mesh_config.h): all boards now run 20 MHz, not the ESP32-default HT40.** Why: the M1 Mac
+  Sniffer offers 20 MHz ONLY and can't decode 40 MHz data (real capture: beacons fine, root 0 / child 3 data frames). `apply_rf_width()`
+  in mesh_setup.c sets it at wifi/mesh start and re-checks on connect. ⚠️ HT40 captures (all before this) ≠ HT20 — label, don't pool. SD report [6] now prints 'RF width: ...'. CSV schema + analysis untouched (verifier is same-run relative; no absolute RSSI cut-offs). Builds clean; NOT hardware-verified.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 24, 2026 — **`run_wizard.ps1` multi-laptop roster: "N boards need ports" warning was WRONG whenever the roster
+  is split** (step 6 always added +1 for root even after the operator had just said root is on ANOTHER laptop — said
+  "5 boards need ports" right after a "root not here" answer). Fixed: that warning only fires when NOT multi-laptop
+  (root/children are only sorted into local-vs-remote per-board, in step 7's `Select-PortOrRemote`, which already
+  handles it correctly). Also added 3 clarifying banners (root-remote confirmation, child-count multi-laptop example,
+  one-time "you'll be asked per board" notice before step 7) — the child COUNT is always the FULL experiment across
+  every laptop, never just this one's; per-board "is it here?" is what actually sorts local from remote.

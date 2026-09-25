@@ -1588,7 +1588,15 @@ function Select-CardFiles {
                 $noteColor = 'Yellow'
             }
             if ($noData) { $noteColor = 'Red' }
-            if ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
+            # With no row count (USB listing of an unclosed file, or any arrivals
+            # file) import_sdcard.py can only match node + repeat, NOT the boot -
+            # so this may be an older run with the same repeat number, not this
+            # file. Saying "already imported" there made a new run look done.
+            if ($f.already -and $null -eq $f.rows) {
+                $bits += "same node + repeat already in exports ($($f.already)) - may be an OLDER run; a new run needs a new repeat number"
+                $noteColor = 'Yellow'
+            }
+            elseif ($f.already) { $bits += "already imported as $($f.already)"; $noteColor = 'DarkGray' }
             Write-Host ("      {0}" -f ($bits -join '  |  ')) -ForegroundColor $noteColor
         }
     }
