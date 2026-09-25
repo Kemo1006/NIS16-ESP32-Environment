@@ -3579,17 +3579,29 @@ function Confirm-BoardLocations {
         [Parameter(Mandatory)] [string] $WantLocation
     )
     $mismatch = @()
+    $checked  = 0
+    $skipped  = @()
     Write-Host ""
     Write-Host ("Checking each board{0}s location.txt matches {1}{2}{1} ..." -f [char]39, [char]39, $WantLocation) -ForegroundColor DarkGray
     foreach ($b in $Boards) {
-        if (-not $b.Port) { continue }
-        if (-not (Test-PortSafeToTouch -Port $b.Port -Action 'read its location' -Quiet)) { continue }
+        if (-not $b.Port) { $skipped += $b.Label; continue }
+        if (-not (Test-PortSafeToTouch -Port $b.Port -Action 'read its location' -Quiet)) { $skipped += $b.Label; continue }
+        $checked++
         $cur = Get-SdLocation -TargetPort $b.Port
         if ($cur.State -eq 'OK' -and $cur.Value -eq $WantLocation) { continue }
         $mismatch += [pscustomobject]@{ Label=$b.Label; Port=$b.Port; Current=$cur }
     }
+    if ($skipped.Count -gt 0) {
+        Write-Host ("  NOT checked (no port here / port unsafe to touch): {0}" -f ($skipped -join ', ')) -ForegroundColor Yellow
+    }
+    if ($checked -eq 0) {
+        # Never print "All boards match" when nothing was read - that green line
+        # is exactly what made a skipped ROOT look verified (sep. 25, 2026).
+        Write-Host "  No board was read - location.txt is UNVERIFIED on this laptop." -ForegroundColor Yellow
+        return
+    }
     if ($mismatch.Count -eq 0) {
-        Write-Host ("  All boards already report {1}{0}{1}." -f $WantLocation, [char]39) -ForegroundColor Green
+        Write-Host ("  All {2} board(s) read report {1}{0}{1}." -f $WantLocation, [char]39, $checked) -ForegroundColor Green
         return
     }
     Write-Host ""
@@ -5064,10 +5076,11 @@ if (-not $Preset) {
                 ) -DefaultIndex 0) {
 
                     0 {
-                        # Before flashing, so a corrected location.txt is picked up by the
-                        # reboot the flash provides. Same check runs for the manual flow.
-                        Confirm-BoardLocations -Boards $preview -WantLocation ([string]$cfg.location)
-                        $locationPreflightDone = $true
+                        # The location pre-flight is NOT run here any more: $preview still
+                        # holds the preset's SAVED ports, so on renumbered COM ports it read
+                        # the wrong board, and a port-less board was skipped while it still
+                        # printed "All boards already report ...". It runs once, for both
+                        # paths, after the port-drift fix below (still before any flash).
                         $Preset = $file.FullName; $presetFromPicker = $true; $deciding = $false; $picking = $false
                     }
 
@@ -5378,10 +5391,44 @@ if ($Preset) {
     # edit a node. Same live snapshot the port-drift fix below already uses.
     $ports       = $livePorts
     $liveNames   = @($livePorts | Select-Object -ExpandProperty Port)
-    $missing     = @($roster | Where-Object { $liveNames -notcontains $_.Port })
+    # A board saved with NO port is one the preset records as on ANOTHER laptop
+    # (multi-laptop split) - it is not "unplugged", and the MAC match and the
+    # re-pick below both skip port-less boards. Listing it under "not plugged in"
+    # and then silently dropping it left a ROOT that WAS plugged in here filed
+    # as remote, with nothing flashed and no question asked (sep. 25, 2026).
+    $remapped    = $false
+    $remoteHere = @($roster | Where-Object { -not $_.Port })
+    if ($remoteHere.Count -gt 0) {
+        Write-Host ""
+        Write-Host "This preset records these boards as on ANOTHER laptop (no COM port saved):" -ForegroundColor Yellow
+        foreach ($r in $remoteHere) {
+            $lbl = if ($r.Label) { $r.Label } else { '(no label)' }
+            Write-Host ("  {0,-10} {1}" -f $lbl, $r.Display) -ForegroundColor Yellow
+        }
+        foreach ($r in $remoteHere) {
+            $lbl = if ($r.Label) { $r.Label } else { '(no label)' }
+            # Default NO: a genuine split preset must not walk the operator into a
+            # port picker (and a flash) for a board that really is elsewhere.
+            $hereAns = Read-Line "  Is $lbl ($($r.Display)) plugged into THIS laptop? [y/N] > "
+            if ($hereAns -ne 'y' -and $hereAns -ne 'Y') { continue }
+            $p = Select-Port -For "$lbl ($($r.Display))" -Ports $livePorts `
+                -Taken @($roster | Where-Object { $_.Port } | ForEach-Object { $_.Port })
+            if (-not $p) { continue }
+            $r.Port = $p
+            if (-not $r.Label) { $r.Label = Get-FreeNodeLabel -Taken @($roster | ForEach-Object { $_.Label }) }
+            # Same rule as the re-pick below: keep a MAC only if one was read on
+            # this port this session; otherwise leave it blank, never a stale one.
+            $r.Mac = ''
+            if ($script:IdentifiedPorts.ContainsKey($p)) {
+                $c = ($script:IdentifiedPorts[$p] -split ' -> ')[0].Trim()
+                if ($c -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $r.Mac = $c.ToLower() }
+            }
+            $remapped = $true
+        }
+    }
+    $missing     = @($roster | Where-Object { $_.Port -and $liveNames -notcontains $_.Port })
     $haveMacs    = @($roster | Where-Object { $_.Mac }).Count -gt 0
     $canReadMacs = $haveMacs -and -not ($DryRun -or $SkipMacCheck)
-    $remapped    = $false
     $toPick      = @()
 
     if ($missing.Count -gt 0) {
