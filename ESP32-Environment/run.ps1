@@ -163,6 +163,11 @@ param(
     # will move, or the node you will unplug/replug. Exactly one child per run.
     # Ignored (and warned on) for -Scenario none/highload; invalid on the root.
     [switch]$ScenarioTarget,
+    # ROOT ONLY - the roster gate: how many children (every non-root board in
+    # this run) must be in the mesh before the root starts Phase 0. 0 = off
+    # (the old fixed 60 s timer). run_wizard.ps1 passes its roster's count.
+    # See EXPECTED_CHILDREN in mesh_config.h.
+    [int]$ExpectedChildren = 0,
     [switch]$Flash,    # also (re)flash before monitoring — restarts the experiment
     [switch]$Export,   # after Ctrl+], pull the CSVs with export_logs.py. WITHOUT
                        # this the script just runs and exports NOTHING.
@@ -410,6 +415,18 @@ switch ($Scenario) {
             $scenarioTag = 'jitter'
         }
     }
+}
+
+# Roster gate (root only). ALWAYS passed on a root build, 0 included: CMake
+# caches -D values per build dir, so omitting it would silently keep whatever
+# count an earlier run used. Scoped to root_main.c (root_node/main/CMakeLists),
+# so a changed count recompiles one file, and it needs no build-dir suffix.
+if ($Role -eq 'root') {
+    if ($ExpectedChildren -lt 0) { throw "-ExpectedChildren must be 0 (off) or a positive child count." }
+    $scenarioFlags += "-DEXPECTED_CHILDREN=$ExpectedChildren"
+}
+elseif ($ExpectedChildren -gt 0) {
+    Write-Host "  -ExpectedChildren only affects the root - ignored for a $Role board." -ForegroundColor DarkGray
 }
 
 # Give each distinct firmware variant its OWN build directory. Without this,

@@ -1,4 +1,4 @@
-﻿column,group,meaning,unit_or_values,notes
+column,group,meaning,unit_or_values,notes
 window_start,Windowed (preprocess),"Start of this 1-second window, measured from the start of the node's log",seconds,
 node_id,Raw (board),Which board wrote the row,NODE_<12-hex Wi-Fi MAC>,
 source_file,Windowed (preprocess),Name of the raw capture CSV this window came from,,

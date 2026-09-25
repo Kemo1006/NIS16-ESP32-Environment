@@ -167,6 +167,27 @@
 #define PHASE_STABILISE_S   60U
 #endif
 
+/** ROSTER GATE - how many CHILDREN (every non-root board in the run) must be in
+ *  the mesh before the root starts Phase 0. After PHASE_STABILISE_S the root
+ *  keeps waiting, printing who is missing every ROSTER_GATE_LOG_S, until the
+ *  routing table holds all of them for ROSTER_GATE_STABLE_S in a row.
+ *
+ *  Why: the root used to start Phase 0 on a fixed 60 s timer without checking
+ *  that its children were there, so a run with missing children looked exactly
+ *  like a good one. A SAFEGUARD, not a fix for a known incident: the sep. 24,
+ *  2026 G402 run turned out to have all six children present (root arrivals),
+ *  so this gate would not have changed it.
+ *
+ *  run.ps1 -ExpectedChildren sets it for the root build (the wizard passes its
+ *  roster's child count). 0 = gate off, the old fixed-timer behaviour. A child
+ *  that is genuinely gone: type START_ANYWAY in the root's monitor (or send it
+ *  over serial) and the run starts with whoever is there - loudly marked. */
+#ifndef EXPECTED_CHILDREN
+#define EXPECTED_CHILDREN      0
+#endif
+#define ROSTER_GATE_STABLE_S   5U    /* all present this many 1 s checks in a row */
+#define ROSTER_GATE_LOG_S      10U   /* "still waiting" line cadence              */
+
 /** Phase 0 — Baseline: normal operation, no manipulation. */
 #ifndef PHASE_BASELINE_S
 #define PHASE_BASELINE_S    300U       /* 5 minutes */
@@ -365,6 +386,14 @@
 #ifndef TERMINATE_GRACE_S
 #define TERMINATE_GRACE_S       60U
 #endif
+
+/** After TERMINATE the root keeps re-sending it every TERMINATE_RESEND_GAP_S
+ *  for TERMINATE_RESEND_S. A child that was mid-reparent (not in the routing
+ *  table) when the first one went out still gets it once it re-joins. Kept
+ *  short: the old root must not end a NEW run's children that join it before
+ *  it is reflashed (the wizard parks the root first, which also prevents that). */
+#define TERMINATE_RESEND_S      60U
+#define TERMINATE_RESEND_GAP_S  5U
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * TELEMETRY SAMPLING

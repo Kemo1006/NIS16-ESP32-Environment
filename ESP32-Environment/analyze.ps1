@@ -236,7 +236,12 @@ function Invoke-Analyze {
         # every analysis tool; clearing first is the only way to be sure.
         if ($FreshTrim -and (Test-Path $trimmedDir)) { Remove-Item $trimmedDir -Recurse -Force }
         python (Join-Path $root 'tools\trim_run.py') $srcDir --apply
-        if (Test-Path $trimmedDir) { $srcDir = $trimmedDir }
+        # A failed trim can leave a PARTIAL trimmed\ behind; analysing that would
+        # silently drop nodes. Same fallback run.ps1's auto-analysis uses.
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ("  Trim failed (exit {0}) - analysing the RAW export instead." -f $LASTEXITCODE) -ForegroundColor Yellow
+        }
+        elseif (Test-Path $trimmedDir) { $srcDir = $trimmedDir }
     }
 
     $outDir = Get-OutDir $Target
@@ -246,9 +251,25 @@ function Invoke-Analyze {
     $features = Join-Path $outDir 'feature_table.csv'
     $edaOut   = Join-Path $outDir 'eda_output'
 
+    # Each stage is checked before the next runs. Unchecked, a failed M6/M7 let
+    # eda.py plot the PREVIOUS run's feature_table.csv and this function report
+    # its row count as if it were this run's - incomplete input shown as a
+    # finished analysis.
     python (Join-Path $analysisRoot 'preprocess.py') $srcDir -o $windowed
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ("  M6 preprocess FAILED (exit {0}) - features/EDA NOT run. Anything already in" -f $LASTEXITCODE) -ForegroundColor Red
+        Write-Host ("  {0} is from an EARLIER run, not this one." -f $outDir) -ForegroundColor Red
+        return 0
+    }
     python (Join-Path $analysisRoot 'features.py')   $srcDir -o $features
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ("  M7 features FAILED (exit {0}) - EDA NOT run; feature_table.csv there is from an EARLIER run." -f $LASTEXITCODE) -ForegroundColor Red
+        return 0
+    }
     python (Join-Path $analysisRoot 'eda.py')        $features -o $edaOut
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ("  M8 EDA FAILED (exit {0}) - feature_table.csv is fine; the plots are not." -f $LASTEXITCODE) -ForegroundColor Yellow
+    }
 
     if ($DoVerify) { Invoke-Validate -Target $Target }
 

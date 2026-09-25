@@ -118,6 +118,10 @@ PHASE_BASELINE_S = 300
 # The result would look plausible and be wrong. Both schemas therefore run
 # through the same rules, with 255 mapped to pre_baseline explicitly.
 PHASE_ID_UNSET = 255
+# The phases a run's schedule actually broadcasts (baseline, blackhole,
+# wormhole, cooldown). A telemetry file with no row in any of them never heard
+# the root - see _has_experiment_rows().
+EXPERIMENT_PHASE_IDS = (0, 1, 2, 3)
 GT_LABEL_UNSET = 255
 
 SEGMENT_PRE_BASELINE = "pre_baseline"
@@ -216,6 +220,9 @@ class PreprocessReport:
     files_skipped: list[str] = field(default_factory=list)
     unimported_card_files: list[str] = field(default_factory=list)
     duplicates_archived: list[str] = field(default_factory=list)
+    # Telemetry files with no row in any experiment phase - see
+    # _has_experiment_rows(). Skipped, never loaded as a node of the run.
+    files_no_experiment: list[str] = field(default_factory=list)
     # Nodes whose phase 0 was SHORTER than PHASE_BASELINE_S — see the block in
     # the segment assignment for why that silently corrupts the benign class.
     short_baseline: list[str] = field(default_factory=list)
@@ -271,6 +278,14 @@ class PreprocessReport:
                 lines.append(f"    {n}")
         if self.files_skipped:
             lines.append(f"  Skipped files: {self.files_skipped}")
+        if self.files_no_experiment:
+            lines.append(f"  SKIPPED - NO EXPERIMENT DATA (only phase {PHASE_ID_UNSET}, the root's "
+                         f"schedule never reached them): {len(self.files_no_experiment)}")
+            for name in self.files_no_experiment:
+                lines.append(f"    {name}")
+            lines.append("    -> these hold only pre-run rows: that boot never heard the root's schedule. "
+                         "Usually a different boot than the run itself - look in the card's _archive "
+                         "folder for the real run file before re-capturing anything.")
         if self.unimported_card_files:
             lines.append(f"  REFUSED (raw SD-card files, never imported): "
                           f"{len(self.unimported_card_files)}")
@@ -394,6 +409,37 @@ _CAPTURE_RE = re.compile(
 )
 
 
+def _has_experiment_rows(path: str):
+    """True if the file holds at least one row from an experiment phase,
+    False if it holds none, None if that cannot be told (unreadable, or no
+    phase_id column - e.g. a synthetic fixture).
+
+    A boot that never hears the root's schedule logs only phase 255 ("no
+    broadcast heard yet"). On sep. 24, 2026 five of the G402 children's imported
+    files were exactly that - and they were NOT the run itself: the root's
+    arrivals prove all six children ran the whole experiment, so these were
+    other (later) boots, and the run's own files sit in each card's _archive\
+    folder, which the importer skips. Such a file cannot yield one labelled
+    window, yet it used to load as a node of the run - and, being the NEWER
+    capture, it made _archive_duplicate_captures() move the node's complete
+    capture aside.
+    Reads only the phase_id column; stops at the first experiment row."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            header = f.readline().strip().split(",")
+            if "phase_id" not in header:
+                return None
+            idx = header.index("phase_id")
+            wanted = {str(p) for p in EXPERIMENT_PHASE_IDS}
+            for line in f:
+                fields = line.split(",")
+                if idx < len(fields) and fields[idx].strip() in wanted:
+                    return True
+        return False
+    except OSError:
+        return None
+
+
 def _archive_duplicate_captures(input_dir: str) -> list[str]:
     """
     Auto-archives the OLDER file(s) when two+ captures share the same board,
@@ -436,9 +482,25 @@ def _archive_duplicate_captures(input_dir: str) -> list[str]:
         if len(names_for_key) < 2:
             continue
         # date+time are both fixed-width digit strings, so lexicographic sort
-        # is chronological — newest last.
-        ordered = sorted(names_for_key)
+        # is chronological — newest last. A capture with NO experiment data
+        # never outranks one that has it, however new: "newest wins" alone
+        # archived node8's only complete G402 capture (949 s, every phase) in
+        # favour of a 161 s phase-255-only file from a later session.
+        # Unknown (None) ranks as data, so fixtures keep the old behaviour.
+        ordered = sorted(
+            names_for_key,
+            key=lambda n: (_has_experiment_rows(os.path.join(input_dir, n)) is not False, n))
         keep, stale = ordered[-1], ordered[:-1]
+        # The kept file is only the newest by DATA, not by time, when a newer one
+        # had no experiment rows. That older file may belong to a DIFFERENT
+        # session than the rest of the folder (node8's 13:41 file sat beside a
+        # 14:4x run) - say so, because nothing here can prove which run it is.
+        newest = sorted(names_for_key)[-1]
+        if keep != newest:
+            print(f"  [WARN] {keep} was KEPT over the newer {newest} because the newer one has "
+                  f"no experiment data. Confirm {keep} belongs to THIS run (compare seq_num "
+                  f"with the root's arrivals) - it may be from an earlier session.",
+                  file=sys.stderr)
         archive_dir = os.path.join(input_dir, "_archive")
         for name in stale:
             os.makedirs(archive_dir, exist_ok=True)
@@ -555,6 +617,15 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame
                 f"  [WARN] Skipping {fp}: missing columns {missing}",
                 file=sys.stderr,
             )
+            continue
+
+        # Numeric first: one UART-contaminated row types the column as text.
+        phases = pd.to_numeric(df["phase_id"], errors="coerce")
+        if phases.notna().any() and not phases.isin(EXPERIMENT_PHASE_IDS).any():
+            report.files_no_experiment.append(os.path.basename(fp))
+            print(f"  [SKIPPED] {os.path.basename(fp)}: NO EXPERIMENT DATA - only phase "
+                  f"{PHASE_ID_UNSET} rows (the board stopped logging before the root's "
+                  f"schedule reached it). Not loaded as a node of this run.", file=sys.stderr)
             continue
 
         df["_source_file"] = os.path.basename(fp)

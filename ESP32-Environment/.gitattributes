@@ -12,6 +12,9 @@ tools/exports/**/*.csv -text
 tools/exports/**/*.csv.orig -text
 sync_test/**/*.csv -text
 sync_conflicts/**/*.csv -text
+# Run logs are synced by tools/push_data.py --area logs, which verifies bytes
+run_logs/**/*.log -text
+sync_conflicts/**/*.log -text
 
 # Ledgers only ever gain rows; when two teammates each add runs, a normal
 # `git pull` keeps both sides' rows instead of stopping on a conflict.

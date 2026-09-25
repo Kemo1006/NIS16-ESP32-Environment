@@ -78,6 +78,12 @@ const char *sd_status_run_dir(void);
  *  CSVs in separate files. 0 if the boot check did not reach SD_STATUS_OK. */
 int sd_status_boot_count(void);
 
+/** Why this boot happened: POWERON, BROWNOUT, PANIC, TASK_WDT, INT_WDT, WDT,
+ *  SOFTWARE, EXT_PIN, DEEPSLEEP, SDIO or OTHER (UNKNOWN before the boot check
+ *  runs). Comma-free, so it goes into runs.csv as-is. Also written, with running
+ *  BROWNOUT / CRASH totals, into status_<node>.txt on every boot. */
+const char *sd_status_reset_reason_str(void);
+
 /** This FIRMWARE IMAGE's build date+time as "YYYY-MM-DD HH:MM:SS", read from
  *  the app descriptor the build system stamps into every image (esp_app_desc.h).
  *  Never NULL — an unparseable descriptor yields "unknown".

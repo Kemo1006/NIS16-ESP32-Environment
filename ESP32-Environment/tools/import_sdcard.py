@@ -214,6 +214,57 @@ def _manifest_when(row):
     return built, started, src
 
 
+def _manifest_reset(row):
+    """The reset_reason field of one runs.csv row (why THAT boot started:
+    POWERON / BROWNOUT / PANIC / TASK_WDT / ...), or None on firmware before it.
+
+    Appended as the 11th column, so on a reused card it sits positionally after
+    whatever extras that header generation already has (see _manifest_when):
+    7-column header -> extras[3], 8-column -> extras[2], 10-column -> extras[0],
+    11-column (new card) -> by name."""
+    if "reset_reason" in row:
+        return _clean_stamp(row.get("reset_reason"))
+    extra = [str(x) for x in (row.get(None) or [])]
+    if row.get("built") is None:
+        pos = 3
+    elif row.get("started") is None:
+        pos = 2
+    else:
+        pos = 0
+    return _clean_stamp(extra[pos]) if len(extra) > pos else None
+
+
+def _read_status(leaf_dir, node_id):
+    """What status_<node>.txt in this leaf says NOW: the board's latest boot
+    count, the reset reason of that latest boot, and the running BROWNOUT /
+    CRASH totals (firmware from sep. 25, 2026 on). None if there is no file.
+
+    It is rewritten on EVERY boot - including boots that die before logging
+    starts, which leave no CSV and no runs.csv row. So it is the only record of
+    a board that brownout-looped on its powerbank, and comparing its boot count
+    with a file's b<N> says how many boots happened after that file ended."""
+    path = os.path.join(leaf_dir, f"status_{node_id}.txt")
+    if not os.path.isfile(path):
+        return None
+    out = {"boot_count": None, "last_reset": None, "brownouts": None, "crashes": None}
+    keys = (("Boot count:", "boot_count", int),
+            ("Reset reason (why THIS boot started):", "last_reset", str),
+            ("Brownout resets (total):", "brownouts", int),
+            ("Crash resets (total):", "crashes", int))
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                for prefix, key, cast in keys:
+                    if line.startswith(prefix):
+                        try:
+                            out[key] = cast(line[len(prefix):].strip())
+                        except ValueError:
+                            pass
+    except OSError:
+        return None
+    return out
+
+
 def _manifest_built(row):
     """Back-compat shim: just the "built" field. See _manifest_when()."""
     return _manifest_when(row)[0]
@@ -273,7 +324,8 @@ def _parse_manifest_lines(lines):
             continue  # malformed line (e.g. a write torn by power loss) — skip it
         entry = manifest.setdefault(
             boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None,
-                   "started": None, "clock_src": None})
+                   "started": None, "clock_src": None, "reset": None,
+                   "ended_by": None})
         # Either row of a boot carries these and both say the same thing (one
         # flash cannot be relinked mid-run, and csv_logger.c reuses the run's
         # captured start time for the "clean" row), so the first row that has
@@ -285,12 +337,20 @@ def _parse_manifest_lines(lines):
             entry["started"] = started
         if entry["clock_src"] is None:
             entry["clock_src"] = clock_src
+        if entry["reset"] is None:
+            entry["reset"] = _manifest_reset(row)
         if row.get("event") == "clean":
             entry["rows"] = rows
             entry["uptime_s"] = uptime_s
             entry["clean"] = True
         elif not entry["clean"]:
             entry["uptime_s"] = uptime_s
+    # How each boot ENDED = why the next boot that reached logging started.
+    # Only meaningful for an aborted boot: BROWNOUT / PANIC / a watchdog names
+    # the cause; POWERON means the power was simply cut (unplugged).
+    boots = sorted(manifest)
+    for this_boot, next_boot in zip(boots, boots[1:]):
+        manifest[this_boot]["ended_by"] = manifest[next_boot]["reset"]
     return manifest
 
 
@@ -340,6 +400,30 @@ def _row_count(path):
         return max(sum(1 for _ in f) - 1, 0)  # minus the header
 
 
+def _phases_seen(path):
+    """Sorted distinct phase_id values in a telemetry file, or None if the
+    file has no phase_id column / cannot be read.
+
+    Lets the picker say what an ABORTED file actually holds. On sep. 24, 2026
+    "ABORTED - import anyway?" was answered yes for a file with only phase 255
+    rows (the board was unplugged before the root's schedule reached it): no
+    experiment data at all, imported under a normal-looking name."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            header = f.readline().strip().split(",")
+            if "phase_id" not in header:
+                return None
+            idx = header.index("phase_id")
+            seen = set()
+            for line in f:
+                fields = line.split(",")
+                if idx < len(fields) and fields[idx].strip().isdigit():
+                    seen.add(int(fields[idx]))
+            return sorted(seen)
+    except OSError:
+        return None
+
+
 # ── Card sources ────────────────────────────────────────────────────────────
 # Everything below the source is shared: the same filtering, the same naming,
 # the same duplicate rules, the same output. A source only has to answer three
@@ -365,6 +449,12 @@ class _MountedCard:
 
     def rows(self, rel, entry):
         return _row_count(self._abs(rel))
+
+    def phases(self, rel):
+        return _phases_seen(self._abs(rel))
+
+    def status(self, rel, node_id):
+        return _read_status(os.path.dirname(self._abs(rel)), node_id)
 
     def size(self, rel):
         try:
@@ -748,6 +838,10 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         "kind": m.group("kind"),
         "rows": rows,
         "bytes": size,
+        # Distinct phase_ids in the file (telemetry on a mounted card only;
+        # None = not known, e.g. over USB). [255] alone = NO experiment data.
+        "phases": (source.phases(rel) if hasattr(source, "phases") and m.group("kind") == "telem"
+                   else None),
         # True = the board is writing to this file RIGHT NOW (run in progress).
         # Distinct from clean=False, which cannot tell "still going" from "died".
         "live": source.live(rel) if hasattr(source, "live") else False,
@@ -762,6 +856,13 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         # None on a pre-anchor card, where "built" is all the picker can show.
         "started": (entry or {}).get("started"),
         "clock_src": (entry or {}).get("clock_src"),
+        # Why this boot started / how it ended (the next logged boot's reason) -
+        # None on firmware before sep. 25, 2026 or when no later boot logged.
+        "reset": (entry or {}).get("reset"),
+        "ended_by": (entry or {}).get("ended_by"),
+        # The board's status_<node>.txt as it is NOW (mounted card only): its
+        # boot count vs this file's boot shows boots that never reached logging.
+        "status": (source.status(rel, m.group("node")) if hasattr(source, "status") else None),
         # The name it was already imported under, if an identical capture (same
         # identity AND row count) is sitting in exports/ — so the picker can say
         # so before the operator picks it again.

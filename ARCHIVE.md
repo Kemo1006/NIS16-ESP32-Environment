@@ -1856,3 +1856,37 @@ Both still live as one-line warnings in STATUS.md.
 - sep. 24, 2026 — Rolled from STATUS.md: sep. 24, 2026 — **Campaign checklist: LIVE/ARCHIVE views, `[x]` needs capture + analysis, scenarios RANDOMISED per cell (`tools/campaign_plan.json`, 4 of 6, balanced), `none` shown as "stationary".** 144 planned runs. MEMORY.md.
 - sep. 24, 2026 — Rolled from MEMORY.md (full detail already in ARCHIVE.md): sep. 23, 2026 — **DE-HARDCODED machine paths.** `Get-EspMac.ps1` pinned IDF `v5.3.5`+`py3.11` — dead on a 5.5.4 box. It and `board_check.py` now discover via `IDF_PATH`/`IDF_TOOLS_PATH` then glob `<SystemDrive>\Espressif`. `py` launcher replaces `C:\Python314`. Board roster overridable by `presets/boards.json` (`--roster`). Detail: ARCHIVE.md.
 - sep. 24, 2026 — Rolled from MEMORY.md (full detail already in ARCHIVE.md): sep. 23, 2026 — **TIMESERIES WERE MISALIGNED — fixed.** `window_start` is each node's OWN boot clock (phase 0 at 60s on the root, **670s on node2**), so bands from whichever node sorted first were right for one line at most. `_align_to_baseline()` re-bases per node; **anchor on the RAW `segment` column**, not `_phase_names()`. ⚠️ **BOTH views are written and BOTH are wanted.** Detail: ARCHIVE.md.
+(rolled from MEMORY.md sep. 25, 2026) - sep. 22, 2026 — ⚠️ **M3 CONVERGENCE FAILS on the sep. 22 home run.** node2 (`B0CBD8F33218`, hop 1) took
+  **607.1s** to converge, 3 parent_switches, 6 layer_changes (others 0-31s / 0) — explains its 647s of
+  phase-255 idle, its 11906-row file and likely its ~8.6Hz attack/cooldown cadence. `verify_topology.py`:
+  "Converged within 60s: NO". Structure itself is CORRECT linear H00-H03. Run it with `--dir tools/exports`
+  (the exports ROOT, not a leaf cell).
+(rolled from MEMORY.md sep. 25, 2026) - sep. 22, 2026 — **`validate_integrity.py`: WARN separates LOST DATA from SLOW CADENCE; derived dirs skipped.**
+  It said "node was dropping samples" for pure cadence drift. Now reports median interval + gaps-vs-own-cadence
+  and names which. `_find_csvs()` prunes `trimmed/`,`_archive/`,`archive/` (`--include-derived` restores):
+  trimmed output is **byte-identical to raw when a capture holds ONE boot session — the HEALTHY case** (all 5
+  live captures verified: 1 session, 0 regressions). **`trimmed/` is correct — do not delete or "fix" it.**
+(rolled from MEMORY.md sep. 25, 2026) - sep. 22, 2026 — **DATA SYNC follows your CURRENT BRANCH; pushes ANALYSIS + EDA** (`--area analysis`).
+  ⚠️ **Two bugs it exposed — the push SILENTLY did nothing:** the private clone carries the same
+  `.gitignore` (needs `git add -f`), and "already on GitHub?" read the clone's WORKING TREE, so leftovers
+  from the failed push made every later run claim "identical" forever. **Verify against the REMOTE
+  (`git ls-tree origin/<branch>`), never the tool's summary.** Detail: ARCHIVE.md.
+(rolled from MEMORY.md sep. 25, 2026) - sep. 22, 2026 — **CAPTURE DATES ARE REAL: the board takes its clock from the laptop (`SET_TIME`).** The old
+  date was the link-time build stamp, identical on every boot of one flash. `/sdcard/clock.txt` anchor applied
+  **after mount, before the folder tree** (that ordering is what makes "Date modified" true). Detail: ARCHIVE.md.
+(rolled from MEMORY.md sep. 25, 2026) - sep. 22, 2026 — **FIXED: wizard [15] campaign checklist CRASHED at the end** — `run_wizard.ps1:2232`
+  called `Read-YesNo`, which is defined ONLY in `menu.ps1` and never dot-sourced here, so it threw
+  `CommandNotFoundException` AFTER printing the whole checklist. Now uses this file's own `Read-Line`
+  idiom. Swept for the same class: `Get-BuildDirSpec`/`Show-MainMenu` appear in run_wizard.ps1 but only
+  inside COMMENTS — `Read-YesNo` was the one real cross-script call.
+- sep. 24, 2026 — (rolled from STATUS.md sep. 25) Multi-laptop wizard fix: "N boards need ports" wrongly counted a remote root/child as needing a LOCAL port. Fixed + clarifying banners added.
+- sep. 24, 2026 — (rolled from STATUS.md sep. 25) Scenario `none` → `stationary` everywhere, with its own `stationary\` folder (`none` still accepted). Fixed: jitter runs could not export. 20 py + 19 PS checks + firmware build pass.
+- sep. 23, 2026 — (rolled from STATUS.md sep. 25) FIXED + HARDWARE-VERIFIED: `MESH_FORCE_HT20` had broken mesh joining (0 nodes in 11 min). HT20 now set BEFORE `esp_wifi_start()` (APSTA mode). 4-board test: all joined, correct chain, all 20 MHz, phases reach children.
+- sep. 25, 2026 — (rolled from MEMORY.md) sep. 22, 2026 — `status_NODE_<mac>.txt`/`runs.csv`/`location.txt`/`clock.txt` roles + why `DELETE_SD_FILE` only accepts `*_telem.csv`/`*_arrivals.csv` — full detail ARCHIVE.md.
+- (rolled from STATUS.md sep. 25, 2026) sep. 24, 2026 — **Root build fix** `%u` vs `uint32_t` on Xtensa (`cd7c212`); `PCAP/`+`*.pcap` git-ignored (120 MB > GitHub cap).
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`analysis/eda.py` plot readability overhaul + new `analysis/column_legend.py`.** Analysis-only, no reflash, Basti's clone (not `A:\Angelo\...`). **UNCOMMITTED.** **Bug fixed:** phase shading compared raw `Label` (NaN on unlabelled rows), stacking hundreds into one red block that read as the attack; now compares `segment`-derived names, and PCA/t-SNE drop unlabelled windows too — moved `blackhole/linear/home`'s PCA variance 30.5/23.0%→39.1/28.0%. ⚠️ Heatmap upper-triangle masking was tried and REJECTED — don't reintroduce. `column_legend.py`'s `_L` dict is now the single source of column meanings.
+- (rolled from STATUS.md sep. 25, 2026) sep. 24, 2026 — **Root dashboard EXPORT column** (`5f4443b`): per-board SAFE / not yet + summary line. MEMORY.md.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 22, 2026 — **WIZARD SMART ARCHIVE FRONT END** (`Invoke-ArchiveMenu`): per-cell tables, byte-identical duplicate detection across every `archive/*/`, COMPLETE-run warning, `-WhatIf`. ⚠️ **`archive.ps1` MOVES data, so git shows STAGED DELETIONS under `tools/exports/` — check `archive/` BEFORE `git checkout`-ing them back; doing that once recreated 9 files already safely archived.** Detail: ARCHIVE.md.
+- (rolled from STATUS.md sep. 25, 2026) sep. 24, 2026 — **TERMINATE-miss fixes:** cooldown watchdog (`4144d30`), root re-sends TERMINATE 60 s, serial `END_RUN` + wizard offer (`d122033`/`489709a`). Honest manifest rows `term_timeout` / `manual_end`. MEMORY.md.
+- (rolled from STATUS.md sep. 25, 2026) sep. 25, 2026 — **Wizard run logs:** filed `run_logs/<attack>/<topology>/<location>/<scenario>/`, page-by-page full view, keep/archive/delete, push after saving, `--area logs`; Data sync grouped + DELETE/RESTORE (undoable, sim-tested). NOT pushed live yet.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 22, 2026 — **`vTaskDelay`→`xTaskDelayUntil` IN ALL 4 TELEMETRY LOOPS — THE M5 COVERAGE BLOCKER'S ROOT CAUSE.** They slept 100ms AFTER the body, so the real period was body+100ms; with `CONFIG_FREERTOS_HZ=100` (10ms tick) any non-zero body cost a whole tick. Root measured **110.0ms = 9.09Hz → 93.6%** vs the 10Hz the validator assumes — **with ZERO gaps** (longest interval 0.36s). Nothing was lost; no node with a >0ms body could ever have passed. Fixed in `root_main.c`, `blackhole_victim.c`, `victim_main.c`, `wormhole_victim.c`; **6/6 `-Clean` build verified, 0 warnings.** ⚠️ **Re-measure coverage after the reflash before M5 is done.**
