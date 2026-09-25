@@ -241,6 +241,15 @@
  */
 #define PHASE_ID_UNSET          255
 
+/* NOT a phase: the root sends this every PHASE_PREPARE_INTERVAL_S during the
+ * PHASE_STABILISE_S window and the roster-gate wait, i.e. "a run is being set
+ * up - start logging". A node that hears it opens its CSV (LOG_ONLY_DURING_RUN)
+ * but KEEPS phase_id / gt_label at 255: the stabilisation rows the paper's
+ * "Baseline Stabilization" section records (layer, parent, parent switches,
+ * RSSI) are logged, never labelled as baseline. Never written to a CSV row. */
+#define PHASE_ID_PREPARE        254
+#define PHASE_PREPARE_INTERVAL_S 5U
+
 /* Ground-truth labels embedded in every CSV row (Table 4.8). */
 #define GT_LABEL_BASELINE       0
 #define GT_LABEL_BLACKHOLE      1
@@ -642,6 +651,33 @@
  * any telemetry/phase/sampling behaviour — only WHEN the export task starts.
  * See esp32-issues.md (terminate-gated export). (0 = only-after-terminate.) */
 #define CSV_EXPORT_ON_INIT     1
+
+/* Log NO telemetry/arrival rows until this boot knows a run is on: it heard
+ * the root's PREPARE signal (sent through the stabilisation window and the
+ * roster wait, so those rows ARE recorded, as phase 255) or a real experiment
+ * phase (phase_id 0-3; TERMINATE does not count). Applies to SPIFFS and the SD
+ * card alike (sep. 25, 2026, team decision).
+ *
+ * Why: a single-USB board that is unplugged from its powerbank to be exported,
+ * or reset by the monitor->export handoff, REBOOTS after the run. That boot
+ * never hears the root, so it used to open a fresh ~1 KB "STILL RUNNING" file
+ * of phase-255 rows (and append the same junk to SPIFFS behind the real run).
+ * With this on, such a boot writes nothing, and the run's own file stays the
+ * newest data on the board. Together with no longer archiving on boot (see
+ * csv_logger_init()) the run file stays where LIST_SD and the importer see it.
+ *
+ * What is NOT recorded: rows from before the root starts stabilising (a child
+ * flashed minutes before the root, searching for a mesh that does not exist
+ * yet), and rows before a child is in the routing table (it cannot hear the
+ * signal until it has joined). Formation convergence is therefore timed from
+ * the first PREPARE a node hears, not from its boot. A node that reboots
+ * MID-run starts logging again at the next phase broadcast it hears
+ * (tools/verify_topology.py reports its convergence as NOT MEASURED); its
+ * earlier file stays on the card, marked ABORTED.
+ * A ROOT that reboots starts a new stabilisation, so it does log again - an
+ * unplugged root leaves a phase-255-only file, which the tools already flag.
+ * 0 = log from boot, as before. */
+#define LOG_ONLY_DURING_RUN    1
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * SD CARD — status report + environment folder tree (diagnostic only)

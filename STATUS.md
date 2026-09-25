@@ -2,20 +2,19 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 25, 2026 — "tiny STILL RUNNING files" ROOT CAUSE found: boards REBOOT when moved to the laptop, run file goes to `_archive/`.
-Host fixes for END_RUN + "already imported" wording are UNCOMMITTED. **Next: team decision on firmware fix B (below).**
+**Updated:** sep. 25, 2026 — FIRMWARE FIX for the hidden-run bug: no boot-time archiving + `LOG_ONLY_DURING_RUN` (root PREPARE).
+**Next: `git pull`, REFLASH EVERY BOARD, one full test run** (unplug a board after SAFE, confirm its run file still lists over USB).
 
 ## ⚠️ Working copies
 Angelo's laptop: `A:\Angelo\Excelsior\THESIS\T`. Basti's laptop: `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3`.
 Both are clones of GitHub branch `THESIS3` — `git pull` before editing. Old `C:\...\NIS16-ESP32-Environment` = backup only.
 
 ## Next step
-1. ⛔ **Do NOT unplug/reset a board to export it.** One USB port = power + data: powerbank → laptop power-cycles it, and every boot
-   moves the previous boot's CSVs into `_archive/`, which LIST_SD and the importer skip. After SAFE, pull the CARD from the still-
-   powered board and import it in a reader (the run file is then still in the leaf), or export while it stays on laptop power.
+1. ⛔ **Until a board is reflashed, do NOT unplug/reset it to export** — old firmware moves the run into `_archive/` at boot.
+   New firmware (sep. 25): no boot archiving; logs from the root's PREPARE (stabilisation, phase 255) on. NOT hardware-tested.
 2. **Recover the sep. 24 + sep. 25 runs by hand:** pulled card → `blackhole\linear\G402\stationary\_archive\` → the large
    `victim_*_telem.csv`. User chose: the wizard shows LIVE data only, never `_archive/`. Match to the run by seq_num vs root.
-3. **Fix B (firmware, needs reflash, team decision):** stop archiving on every boot, or keep the last complete run visible.
+3. Formation is now timed from the first PREPARE a child hears (it must have joined), not from boot. Say so for Milestone 3.
 4. Import a NEW run under a NEW repeat number — same node+repeat as an older import is skipped as a duplicate over USB.
 5. ⚠️ **ROOT COVERAGE ≥95% still to re-measure** (`validate_integrity.py`). Then the campaign (`inventory_cells.py --plan`).
 
@@ -33,5 +32,6 @@ Both are clones of GitHub branch `THESIS3` — `git pull` before editing. Old `C
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
 - sep. 25, 2026 — **END_RUN reply found anywhere in a line** (it glued to log output; the "predates END_RUN" message was false),
   "already imported" over USB says node+repeat match / maybe OLDER run; importer no longer advises "reset it". Fake-serial tested.
-- sep. 25, 2026 — **Wizard: preset board with no port now ASKS "plugged into THIS laptop?"** (`68ba2b0`); D-15 + DATA-DICTIONARY (`7901ca2`).
+- sep. 25, 2026 — **Firmware: no boot-time `_archive/` move + `LOG_ONLY_DURING_RUN` + root PREPARE**; verify_topology NOT MEASURED for logs
+  starting inside a phase (old data: identical output). NOT committed - the user pushes it.
 - sep. 25, 2026 — **Power-cut/crash prevention:** root ROSTER GATE, reset reason + brownout/crash totals on card. Build-verified.

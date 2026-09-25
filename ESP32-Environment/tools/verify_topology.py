@@ -67,6 +67,9 @@ PHASE_BASELINE = 0
 # 5-minute baseline" — and counting formation as instability conflates them.
 STABILISE_S = 60.0
 
+# phase_id a v2 (14-column) board logs before it hears the root (F1).
+PHASE_UNSET = 255
+
 # ESP-WIFI-MESH reports the root at layer 1.
 ROOT_LAYER = 1
 
@@ -96,8 +99,16 @@ def node_id_to_sta_int(node_id: str):
 
 # ── Per-node summary ────────────────────────────────────────────────────────
 class NodeSummary:
-    def __init__(self, node_id, role, stabilise_s=STABILISE_S):
+    def __init__(self, node_id, role, stabilise_s=STABILISE_S, v2=False):
         self.node_id = node_id
+        # v2 firmware stamps pre-phase rows 255, so a v2 log whose FIRST row is
+        # already a real phase never recorded mesh formation: with
+        # LOG_ONLY_DURING_RUN (sep. 25, 2026) that is a node that missed every
+        # root PREPARE - it joined after Phase 0, or rebooted mid-run. Timing
+        # "convergence" from that first row would report ~0 s - a pass the data
+        # cannot support. (v1 logs stamped formation as phase 0, never flagged.)
+        self.v2 = v2
+        self.logs_from_phase = False
         self.role = role
         self.stabilise_s = stabilise_s
         # Changes seen during the formation window, excluded from the
@@ -121,6 +132,7 @@ class NodeSummary:
         self.samples += 1
         if self.first_ts is None:
             self.first_ts = ts
+            self.logs_from_phase = self.v2 and phase_id != PHASE_UNSET
         self.last_ts = ts
 
         # Seconds since THIS node started logging. Each board's esp_timer
@@ -128,7 +140,9 @@ class NodeSummary:
         # available here; children boot before the root, which is exactly
         # why their formation shows up inside their own first seconds.
         t_rel = (ts - self.first_ts) / 1e6
-        forming = t_rel < self.stabilise_s
+        # No formation window in a log that starts at the first phase: its
+        # first seconds are real baseline and must count toward stability.
+        forming = (not self.logs_from_phase) and t_rel < self.stabilise_s
 
         if self.layers and self.layers[-1][1] != layer:
             self.layer_changes += 1
@@ -172,6 +186,8 @@ class NodeSummary:
         self.converge_ts = conv
 
     def converge_seconds(self):
+        if self.logs_from_phase:
+            return None   # formation not recorded - see __init__
         if self.converge_ts is None or self.first_ts is None:
             return None
         return (self.converge_ts - self.first_ts) / 1e6
@@ -189,7 +205,8 @@ def load_files(paths, stabilise_s=STABILISE_S):
                 nid = row["node_id"]
                 if nid not in nodes:
                     nodes[nid] = NodeSummary(nid, row.get("role", "?"),
-                                             stabilise_s=stabilise_s)
+                                             stabilise_s=stabilise_s,
+                                             v2="recv_count" in reader.fieldnames)
                 try:
                     ts = int(row["timestamp_us"])
                     layer = int(row["layer"])
@@ -641,16 +658,27 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
     print("=== Per-node convergence & stability ===")
     all_converged = True
     baseline_stable = True
+    measured = 0          # non-root nodes whose formation WAS recorded
+    not_measured = 0      # non-root nodes logged from the first phase only
     for nid in sorted(nodes):
         n = nodes[nid]
         secs = n.converge_seconds()
         conv_str = f"{secs:5.1f}s" if secs is not None else "  n/a"
         ok = secs is not None and secs <= converge_limit
-        if not ok and n.final_layer != ROOT_LAYER:
-            all_converged = False
+        is_root = n.final_layer == ROOT_LAYER
+        if n.logs_from_phase:
+            # Neither a pass nor a fail: the data does not contain formation.
+            conv_str = "not recorded (log starts inside a phase)"
+            if not is_root:
+                not_measured += 1
+        else:
+            if not is_root:
+                measured += 1
+            if not ok and not is_root:
+                all_converged = False
         if n.baseline_parent_switches or n.baseline_layer_changes:
             baseline_stable = False
-        flag = "OK " if ok else "  ?"
+        flag = "OK " if ok else (" - " if n.logs_from_phase else "  ?")
         forming = (f"  formation {n.formation_changes}"
                    if n.formation_changes else "")
         print(f"  [{flag}] {nid}  layer={n.final_layer}  converge={conv_str}  "
@@ -680,8 +708,15 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
 
     # ── Verdict ─────────────────────────────────────────────────────────────
     print("=== Milestone-3 verdict ===")
-    print(f"  Converged within {converge_limit:.0f}s : "
-          f"{'YES' if all_converged else 'NO — see nodes marked ?'}")
+    if measured == 0 and not_measured > 0:
+        conv_verdict = ("NOT MEASURED — every log starts inside a phase, so mesh "
+                        "formation was not recorded (nodes missed the root's PREPARE)")
+    else:
+        conv_verdict = 'YES' if all_converged else 'NO — see nodes marked ?'
+        if not_measured:
+            conv_verdict += (f" ({not_measured} node(s) NOT MEASURED — "
+                             "log starts inside a phase)")
+    print(f"  Converged within {converge_limit:.0f}s : {conv_verdict}")
     print(f"  Baseline re-routing free            : "
           f"{'YES' if baseline_stable else 'NO — parent/layer changed during baseline'}")
     if expect:

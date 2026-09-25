@@ -240,10 +240,10 @@ const char *csv_logger_get_filepath(void);
  * @brief Archive (never delete) this boot's own SD-mirror CSVs out of their
  *        run folder and into <run_dir>/_archive/, on demand.
  *
- * Same folder-tidying policy as the automatic sweep csv_logger_init() already
- * runs at the START of the NEXT boot (sd_archive_prior_run_mirrors()) — this
- * just lets the host trigger it right after confirming a good USB download,
- * instead of waiting for the board's next power-cycle. Safe to call even
+ * The ONLY way files reach _archive/ since sep. 25, 2026: csv_logger_init()
+ * no longer archives the previous boot's files, because doing that on every
+ * boot hid a finished run when the board was power-cycled to be exported.
+ * The host triggers it right after confirming a good USB download. Safe to call even
  * though csv_logger_close() has already unmounted the card: it remounts just
  * for the move and unmounts again afterward.
  *

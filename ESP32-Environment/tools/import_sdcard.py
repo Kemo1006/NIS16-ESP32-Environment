@@ -371,8 +371,9 @@ def _scan(card_root):
     the empty folders of the 63-folder tree the firmware creates on every boot.
 
     Each leaf's _archive\\ subfolder is deliberately NOT read: it holds prior
-    runs csv_logger.c already moved out of the way (sd_archive_prior_run_mirrors()
-    at the next boot, or ARCHIVE_SD after a confirmed USB export), and importing
+    runs moved out of the way - by ARCHIVE_SD after a confirmed USB export, or,
+    on firmware before sep. 25, 2026, at EVERY boot (which is how a finished run
+    got hidden when a board was power-cycled to be exported), and importing
     them again mixed old captures into a new run's exports. Copy a file out of
     _archive\\ by hand if one is genuinely needed.
 
@@ -1050,8 +1051,8 @@ def _run(source, args):
                   f" - this board is mid-run.")
             print( "        Let it reach TERMINATE (or send END_RUN over USB), then export."
                    " Importing now captures a partial run that looks complete.")
-            print( "        Do NOT reset or unplug it: the next boot moves this file into"
-                   " _archive\\ and the importer no longer sees it.")
+            print( "        Do NOT reset or unplug it: that cuts the capture short (ABORTED),"
+                   " and firmware before sep. 25, 2026 also moves the file into _archive\\.")
             live_skipped += 1
             continue
 

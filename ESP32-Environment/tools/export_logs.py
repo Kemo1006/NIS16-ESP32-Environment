@@ -937,7 +937,8 @@ def main() -> int:
                 print("   no END_RUN reply within 10 s. The board may be busy, or its reply was "
                       "lost in its own log output. Open idf.py monitor on this port and type "
                       "END_RUN + Enter to see what it says. Do NOT reset it to 'fix' this - a "
-                      "reset moves this file into _archive\\ and starts a new one.", file=sys.stderr)
+                      "reset cuts the capture short (ABORTED), and on firmware before "
+                      "sep. 25, 2026 also moves the file into _archive\\.", file=sys.stderr)
                 return 1
             # The close runs on the board's main task; wait for its log line so
             # the caller never lists the card while the file is still open.
