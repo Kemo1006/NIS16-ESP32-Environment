@@ -343,7 +343,7 @@ function Get-AbortCauseText {
     if ($null -eq $st -or $null -eq $st.boot_count) { return $null }
     $after = [int]$st.boot_count - [int]$File.boot
     if ($after -le 0) {
-        return 'the board NEVER booted again with this card - its power was cut and never restored'
+        return 'this was the board''s LAST boot on this card and it ended without closing (power cut or card pulled)'
     }
     $txt = "the board booted $after more time(s) after this file and never logged again"
     if ($null -ne $st.brownouts) {
@@ -1576,7 +1576,7 @@ function Select-CardFiles {
             # $null over USB). Only phase 255 = the board stopped before the
             # root's schedule reached it: no experiment data at all.
             $noData = Test-NoExperimentData $f
-            if ($noData) { $bits += 'NO EXPERIMENT DATA (only pre-run phase 255 - board stopped before the run started)' }
+            if ($noData) { $bits += 'NO EXPERIMENT DATA (only pre-run phase 255 - not the run; check the card''s _archive\)' }
             elseif ($null -ne $f.phases) { $bits += ('phases ' + ((@($f.phases) | Where-Object { $_ -ne 255 }) -join ',')) }
             # live wins over clean=false: a run in progress is NOT an aborted one.
             if ($f.live -eq $true) {
@@ -1816,9 +1816,10 @@ function Select-CardFiles {
                 $cause = Get-AbortCauseText $a
                 if ($cause) { Write-Host ("  WHY: {0} {1}" -f $a.name, $cause) -ForegroundColor Yellow }
                 if (Test-NoExperimentData $a) {
-                    Write-Host ("  ABORTED: {0}  - NO EXPERIMENT DATA: only pre-run phase 255 rows. The board was" -f $a.name) -ForegroundColor Red
-                    Write-Host  "           unplugged / lost power before the root started. Importing it adds nothing -" -ForegroundColor Red
-                    Write-Host  "           validate_integrity FAILs it and analysis skips it. Re-capture this node." -ForegroundColor Red
+                    Write-Host ("  ABORTED: {0}  - NO EXPERIMENT DATA: only pre-run phase 255 rows. This boot never" -f $a.name) -ForegroundColor Red
+                    Write-Host  "           heard the root's schedule, so it is NOT the run. Importing it adds nothing -" -ForegroundColor Red
+                    Write-Host  "           validate_integrity FAILs it and analysis skips it. The run's own file is often" -ForegroundColor Red
+                    Write-Host  "           in this card's _archive\ folder (the importer skips it) - look there first." -ForegroundColor Red
                 } elseif ($null -ne $a.phases) {
                     Write-Host ("  ABORTED: {0}  - reached phase(s) {1}; ends early, the rest of the run is missing" -f $a.name, ((@($a.phases) | Where-Object { $_ -ne 255 }) -join ',')) -ForegroundColor Yellow
                 } else {

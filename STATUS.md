@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 25, 2026 — ABORTED-capture diagnosis + pipeline guards (UNCOMMITTED). **Next: REFLASH EVERY BOARD, then one full test run.**
+**Updated:** sep. 25, 2026 — ABORTED-capture diagnosis CORRECTED + pipeline guards (UNCOMMITTED). **Next: REFLASH EVERY BOARD, then one full test run.**
 
 ## ⚠️ Working copies
 Angelo's laptop: `A:\Angelo\Excelsior\THESIS\T`. Basti's laptop: `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3`.
@@ -14,9 +14,9 @@ Both are clones of GitHub branch `THESIS3` — `git pull` before editing. Old `C
    - root dashboard `EXPORT :` line flips to `ALL n BOARDS DONE - SAFE TO EXPORT`, rows show `SAFE`;
    - unplug the root during cooldown → child logs `No TERMINATE received 180 s into cooldown`, card lists it clean;
    - wizard export over USB on a STILL RUNNING file → offers END_RUN → re-export lists it closed.
-3. **G402 linear r1 (sep. 24) is NOT a usable run:** only attacker, node3 and an older-session node8 reached the phases;
-   node4-8's files are phase-255 only (unplugged before the root started - NOT a card pull, NOT a crash). Get the ROOT
-   file + each card's `status_NODE_*.txt` (Boot count) from the member, then RE-CAPTURE. 8 no-data files still in the folder.
+3. **G402 linear r1 (sep. 24): the RUN IS GOOD, our imported files were the wrong boots.** Root arrivals prove all 6 children ran the
+   whole run (blackhole worked). Phase-255 files = later boots; the run files are most likely in each card's `_archive/` (importer skips it).
+   **Do NOT re-capture or wipe cards.** Check `_archive/` + runs.csv on each card; match to the run by seq_num vs root, never file times.
 4. ⚠️ **ROOT COVERAGE ≥95% still to re-measure** after the reflash (`validate_integrity.py`; `xTaskDelayUntil` fix `7d1e066`).
 5. **Then the campaign** (`inventory_cells.py --plan --repeats N`).
 

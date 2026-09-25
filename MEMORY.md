@@ -8,15 +8,15 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 25, 2026 — **ROSTER GATE + RESET REASON (firmware, needs reflash).** Root waits after stabilise until `EXPECTED_CHILDREN` (routing table
+- sep. 25, 2026 — **ROSTER GATE + RESET REASON (firmware, needs reflash; a safeguard, NOT a fix for the G402 run).** Root waits after stabilise until `EXPECTED_CHILDREN` (routing table
   size - 1) are in the mesh for 5 s; `run.ps1 -ExpectedChildren` (always passed on root, 0 = off; wizard = local children + remote count it asks
   for on multi-laptop runs - plain remote children are NOT in the roster). `START_ANYWAY` on serial releases it. Every board writes its reset
   reason + `Brownout/Crash resets (total)` to status_*.txt and an 11th `reset_reason` column to runs.csv (importer reads it positionally).
-- sep. 25, 2026 — **ABORTED G402 files = boards UNPLUGGED to move onto powerbanks, not crashes.** Evidence: each file is continuous 10 Hz,
-  no uptime reset, ends in phase 255 BEFORE the root started; a crash reboots and the next boot moves the cut file to `_archive/`
-  (csv_logger_init, unconditional) - these sat at leaf level, so the board NEVER reached the logger again. Boot count (`status_*.txt`)
-  ticks before the radio, logger after: count > file's b-number = brownout loop on the powerbank; equal = never re-powered. Fixes:
-  validator FAIL + preprocess skip for no-experiment files, duplicate-archive prefers data over newest, picker shows it, analyze.ps1 gates.
+- sep. 25, 2026 — **ABORTED G402 files were NOT a power cut (first diagnosis WRONG, corrected same day).** Root arrivals show all 6 children
+  sent probes through the whole run; the phase-255 files are LATER BOOTS. csv_logger_init archives the previous boot's files into `_archive/` on
+  every boot and import_sdcard.py skips `_archive/` - so one restart after a run hides the real file. Tie children to the run by seq_num, not
+  file times. validator FAIL + preprocess skip for no-experiment files stay (still correct); preprocess now WARNs when it keeps an older
+  data file over a newer empty one (may be another session - node8's 13:41 file). OPEN: importer has no way to read `_archive/`.
 - sep. 25, 2026 — **RUN LOGS: filed by run, viewable start-to-end, syncable.** Wizard saves to `run_logs/<attack>/<topology>/<location>/<scenario>/`
   (`Get-RunLogDir`; old flat logs list as NOT FILED); viewer pages the whole run, keep/archive (`run_logs/_archive/`, never pushed)/delete/push.
   `push_data.py --area logs`: `*.log` is ignored by the THESIS3 root .gitignore, so logs are listed like analysis (no staging). Data-sync submenu grouped. Scripted-stdin tested, NOT pushed live.

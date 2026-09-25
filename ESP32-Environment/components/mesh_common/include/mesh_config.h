@@ -172,10 +172,11 @@
  *  keeps waiting, printing who is missing every ROSTER_GATE_LOG_S, until the
  *  routing table holds all of them for ROSTER_GATE_STABLE_S in a row.
  *
- *  Why (sep. 24, 2026, G402 linear): the root started Phase 0 on a fixed 60 s
- *  timer while five of seven children were unplugged/being moved onto
- *  powerbanks and never came back. The run completed, "cleanly", with two
- *  children - an 11-minute capture that was useless before it began.
+ *  Why: the root used to start Phase 0 on a fixed 60 s timer without checking
+ *  that its children were there, so a run with missing children looked exactly
+ *  like a good one. A SAFEGUARD, not a fix for a known incident: the sep. 24,
+ *  2026 G402 run turned out to have all six children present (root arrivals),
+ *  so this gate would not have changed it.
  *
  *  run.ps1 -ExpectedChildren sets it for the root build (the wizard passes its
  *  roster's child count). 0 = gate off, the old fixed-timer behaviour. A child

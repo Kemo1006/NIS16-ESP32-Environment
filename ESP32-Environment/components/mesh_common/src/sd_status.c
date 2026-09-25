@@ -329,11 +329,10 @@ int sd_status_boot_count(void)
  * runs.csv). esp_reset_reason() is kept in RTC memory, so it survives the very
  * reset it describes.
  *
- * Exists because of sep. 24, 2026: five G402 children stopped logging when they
- * were moved onto powerbanks and never logged again, and the card could not say
- * whether they were never re-powered or were brownout-looping at radio start-up.
- * A brownout there dies AFTER this boot check but BEFORE csv_logger_init(), so
- * it leaves no CSV - only a climbing boot count. Now every boot names its cause,
+ * Exists so a card can say WHY a board rebooted (power cut vs brownout vs
+ * crash) instead of leaving it to be guessed from file endings. A brownout at
+ * radio start-up dies AFTER this boot check but BEFORE csv_logger_init(), so it
+ * leaves no CSV - only a climbing boot count. Now every boot names its cause,
  * and the running BROWNOUT / CRASH totals below survive any number of loops. */
 static const char *s_reset_reason = "UNKNOWN";
 static bool        s_reset_is_brownout = false;

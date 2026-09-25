@@ -283,8 +283,9 @@ class PreprocessReport:
                          f"schedule never reached them): {len(self.files_no_experiment)}")
             for name in self.files_no_experiment:
                 lines.append(f"    {name}")
-            lines.append("    -> the board stopped logging before the run started (unplugged / "
-                         "power lost). Re-capture that node, or move the file out.")
+            lines.append("    -> these hold only pre-run rows: that boot never heard the root's schedule. "
+                         "Usually a different boot than the run itself - look in the card's _archive "
+                         "folder for the real run file before re-capturing anything.")
         if self.unimported_card_files:
             lines.append(f"  REFUSED (raw SD-card files, never imported): "
                           f"{len(self.unimported_card_files)}")
@@ -413,12 +414,15 @@ def _has_experiment_rows(path: str):
     False if it holds none, None if that cannot be told (unreadable, or no
     phase_id column - e.g. a synthetic fixture).
 
-    A board that loses power before the root's schedule reaches it logs only
-    phase 255 ("no broadcast heard yet"). On sep. 24, 2026 five of seven G402
-    children did exactly that when unplugged from the laptop to be moved onto
-    powerbanks. Such a file cannot yield one labelled window, yet it used to
-    load as a node of the run - and, being the NEWER capture, it made
-    _archive_duplicate_captures() move the node's complete capture aside.
+    A boot that never hears the root's schedule logs only phase 255 ("no
+    broadcast heard yet"). On sep. 24, 2026 five of the G402 children's imported
+    files were exactly that - and they were NOT the run itself: the root's
+    arrivals prove all six children ran the whole experiment, so these were
+    other (later) boots, and the run's own files sit in each card's _archive\
+    folder, which the importer skips. Such a file cannot yield one labelled
+    window, yet it used to load as a node of the run - and, being the NEWER
+    capture, it made _archive_duplicate_captures() move the node's complete
+    capture aside.
     Reads only the phase_id column; stops at the first experiment row."""
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
@@ -487,6 +491,16 @@ def _archive_duplicate_captures(input_dir: str) -> list[str]:
             names_for_key,
             key=lambda n: (_has_experiment_rows(os.path.join(input_dir, n)) is not False, n))
         keep, stale = ordered[-1], ordered[:-1]
+        # The kept file is only the newest by DATA, not by time, when a newer one
+        # had no experiment rows. That older file may belong to a DIFFERENT
+        # session than the rest of the folder (node8's 13:41 file sat beside a
+        # 14:4x run) - say so, because nothing here can prove which run it is.
+        newest = sorted(names_for_key)[-1]
+        if keep != newest:
+            print(f"  [WARN] {keep} was KEPT over the newer {newest} because the newer one has "
+                  f"no experiment data. Confirm {keep} belongs to THIS run (compare seq_num "
+                  f"with the root's arrivals) - it may be from an earlier session.",
+                  file=sys.stderr)
         archive_dir = os.path.join(input_dir, "_archive")
         for name in stale:
             os.makedirs(archive_dir, exist_ok=True)
