@@ -62,6 +62,11 @@ static volatile bool     s_manual_complete = false;
 /* Root only: keep receiving after TERMINATE (see
  * phase_listener_keep_running_after_terminate()). */
 static bool              s_keep_running = false;
+/* Latched by the root's PREPARE signal (PHASE_ID_PREPARE): a run is being
+ * set up, so csv_logger may start logging - see LOG_ONLY_DURING_RUN. */
+static volatile bool     s_prepare_heard = false;
+bool phase_listener_prepare_heard(void) { return s_prepare_heard; }
+
 /* Set by the START_ANYWAY serial command - see the root's roster gate. */
 static volatile bool     s_start_anyway = false;
 
@@ -225,6 +230,64 @@ void phase_listener_set_data_cb(phase_listener_data_cb_t cb)
     s_data_cb = cb;
 }
 
+/*
+ * One delivery round of a root message. ESP-WIFI-MESH has no single
+ * "broadcast to all nodes" call. To reach every node we:
+ *   1. Send to NULL — which the mesh stack delivers to the ROOT (us). This
+ *      is what keeps the root's OWN phase state and TERMINATE signal in
+ *      sync; it's a guaranteed local loopback.
+ *   2. Unicast P2P to every node in the routing table — this is the only
+ *      way packets actually travel DOWNSTREAM to the children. (The old
+ *      code did only step 1, so children never saw a single phase.)
+ * The listener deduplicates by seq_num, so the root receiving its own
+ * message twice (via NULL and possibly via its own routing-table entry) is
+ * harmless. Returns the number of failed esp_mesh_send() calls; quiet
+ * suppresses the per-send warnings (PREPARE, sent every few seconds while
+ * children are still joining, would otherwise flood the root's console).
+ */
+static int send_round(mesh_data_t *mdata, bool quiet)
+{
+    int failed = 0;
+
+    /* (1) Root's own copy — guaranteed loopback to our recv queue. */
+    esp_err_t err = esp_mesh_send(NULL, mdata, MESH_DATA_FROMDS, NULL, 0);
+    if (err != ESP_OK) {
+        failed++;
+        if (!quiet) {
+            ESP_LOGW(TAG, "Self broadcast failed: %s", esp_err_to_name(err));
+        }
+    }
+
+    /* (2) Downstream copies — one unicast per node in the routing table.
+     * Sized from the live table every time (plus headroom for a node that
+     * joins between the size query and the copy), so every node gets the
+     * message however large the mesh is. */
+    int want = esp_mesh_get_routing_table_size() + 4;
+    mesh_addr_t *route = malloc((size_t)want * sizeof(mesh_addr_t));
+    int table_size = 0;
+    err = route ? esp_mesh_get_routing_table(route, want * 6, &table_size)
+                : ESP_ERR_NO_MEM;
+    if (err != ESP_OK) {
+        failed++;
+        if (!quiet) {
+            ESP_LOGW(TAG, "get_routing_table failed: %s", esp_err_to_name(err));
+        }
+    } else {
+        for (int n = 0; n < table_size; n++) {
+            err = esp_mesh_send(&route[n], mdata, MESH_DATA_P2P, NULL, 0);
+            if (err != ESP_OK) {
+                failed++;
+                if (!quiet) {
+                    ESP_LOGW(TAG, "Broadcast to " MACSTR " failed: %s",
+                             MAC2STR(route[n].addr), esp_err_to_name(err));
+                }
+            }
+        }
+    }
+    free(route);
+    return failed;
+}
+
 int phase_listener_broadcast(uint8_t phase_id)
 {
     phase_msg_t msg = {
@@ -241,56 +304,11 @@ int phase_listener_broadcast(uint8_t phase_id)
         .tos   = MESH_TOS_P2P,
     };
 
+    /* All PHASE_BROADCAST_REPEAT rounds share one seq_num on purpose: repeats
+     * add reliability but apply the phase exactly once. */
     int failed = 0;
-
-    /*
-     * ESP-WIFI-MESH has no single "broadcast to all nodes" call. To reach every
-     * node we:
-     *   1. Send to NULL — which the mesh stack delivers to the ROOT (us). This
-     *      is what keeps the root's OWN phase state and TERMINATE signal in
-     *      sync; it's a guaranteed local loopback.
-     *   2. Unicast P2P to every node in the routing table — this is the only
-     *      way packets actually travel DOWNSTREAM to the children. (The old
-     *      code did only step 1, so children never saw a single phase.)
-     * The listener deduplicates by seq_num, so the root receiving its own
-     * message twice (via NULL and possibly via its own routing-table entry) is
-     * harmless. All PHASE_BROADCAST_REPEAT copies share one seq_num on purpose:
-     * repeats add reliability but apply the phase exactly once.
-     */
     for (int i = 0; i < PHASE_BROADCAST_REPEAT; i++) {
-        /* (1) Root's own copy — guaranteed loopback to our recv queue. */
-        esp_err_t err = esp_mesh_send(NULL, &mdata, MESH_DATA_FROMDS, NULL, 0);
-        if (err != ESP_OK) {
-            failed++;
-            ESP_LOGW(TAG, "Self broadcast failed (iter %d): %s",
-                     i, esp_err_to_name(err));
-        }
-
-        /* (2) Downstream copies — one unicast per node in the routing table.
-         * Sized from the live table every time (plus headroom for a node that
-         * joins between the size query and the copy), so every node gets the
-         * phase however large the mesh is. */
-        int want = esp_mesh_get_routing_table_size() + 4;
-        mesh_addr_t *route = malloc((size_t)want * sizeof(mesh_addr_t));
-        int table_size = 0;
-        err = route ? esp_mesh_get_routing_table(route, want * 6, &table_size)
-                    : ESP_ERR_NO_MEM;
-        if (err != ESP_OK) {
-            failed++;
-            ESP_LOGW(TAG, "get_routing_table failed (iter %d): %s",
-                     i, esp_err_to_name(err));
-        } else {
-            for (int n = 0; n < table_size; n++) {
-                err = esp_mesh_send(&route[n], &mdata, MESH_DATA_P2P, NULL, 0);
-                if (err != ESP_OK) {
-                    failed++;
-                    ESP_LOGW(TAG, "Broadcast to " MACSTR " failed (iter %d): %s",
-                             MAC2STR(route[n].addr), i, esp_err_to_name(err));
-                }
-            }
-        }
-        free(route);
-
+        failed += send_round(&mdata, false);
         vTaskDelay(pdMS_TO_TICKS(PHASE_BROADCAST_GAP_MS));
     }
 
@@ -299,6 +317,29 @@ int phase_listener_broadcast(uint8_t phase_id)
              phase_id_to_label(phase_id), failed);
 
     return failed;
+}
+
+void phase_listener_broadcast_prepare(void)
+{
+    /* Shares s_bcast_seq with real phases on purpose: the seq keeps rising, so
+     * the Phase 0 broadcast that follows always outranks every PREPARE in the
+     * listener's dedupe, and a late PREPARE can never be taken after it. */
+    phase_msg_t msg = {
+        .magic      = PHASE_MSG_MAGIC,
+        .phase_id   = PHASE_ID_PREPARE,
+        .seq_num    = ++s_bcast_seq,
+        .timestamp_us = esp_timer_get_time(),
+    };
+    mesh_data_t mdata = {
+        .data  = (uint8_t *)&msg,
+        .size  = sizeof(msg),
+        .proto = MESH_PROTO_BIN,
+        .tos   = MESH_TOS_P2P,
+    };
+    int failed = send_round(&mdata, true);
+    ESP_LOGD(TAG, "[ROOT] PREPARE seq=%lu (%d failed sends)",
+             (unsigned long)s_bcast_seq, failed);
+    (void)failed;   /* only read by ESP_LOGD, which a build may compile out */
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -362,6 +403,21 @@ static void phase_listener_task(void *arg)
         if (msg->seq_num <= s_last_seq) {
             /* Duplicate or out-of-order broadcast — ignore. */
             xSemaphoreGive(s_phase_mutex);
+            continue;
+        }
+
+        /* PREPARE is not a phase: latch it for the logger and leave phase_id /
+         * gt_label at 255, so stabilisation rows are logged but never labelled
+         * baseline. Nothing else changes (no phase timer, no terminate). */
+        if (msg->phase_id == PHASE_ID_PREPARE) {
+            bool first = !s_prepare_heard;
+            s_last_seq      = msg->seq_num;
+            s_prepare_heard = true;
+            xSemaphoreGive(s_phase_mutex);
+            if (first) {
+                ESP_LOGI(TAG, "Root is preparing a run (stabilisation) - logging starts, "
+                              "rows stay phase 255 until Phase 0.");
+            }
             continue;
         }
 

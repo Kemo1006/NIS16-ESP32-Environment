@@ -1828,6 +1828,7 @@ function Select-CardFiles {
                     Write-Host  "           heard the root's schedule, so it is NOT the run. Importing it adds nothing -" -ForegroundColor Red
                     Write-Host  "           validate_integrity FAILs it and analysis skips it. The run's own file is often" -ForegroundColor Red
                     Write-Host  "           in this card's _archive\ folder (the importer skips it) - look there first." -ForegroundColor Red
+                    Write-Host  "           (Only firmware before sep. 25, 2026 writes these files or archives at boot.)" -ForegroundColor DarkGray
                 } elseif ($null -ne $a.phases) {
                     Write-Host ("  ABORTED: {0}  - reached phase(s) {1}; ends early, the rest of the run is missing" -f $a.name, ((@($a.phases) | Where-Object { $_ -ne 255 }) -join ',')) -ForegroundColor Yellow
                 } else {

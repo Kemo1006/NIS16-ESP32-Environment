@@ -50,6 +50,11 @@ static uint32_t s_total_rows      = 0;     /* rows since boot, never reset by a 
 static bool     s_mounted         = false;
 static int64_t  s_boot_start_us   = 0;     /* esp_timer_get_time() at csv_logger_init(),
                                              * for the uptime column in runs.csv */
+/* Latched true once this boot knows a run is on (LOG_ONLY_DURING_RUN): the
+ * root's PREPARE signal, or a row carrying phase 0-3. Until then rows are
+ * dropped, so a boot that never hears the root - a board power-cycled onto the
+ * laptop to be exported - writes no file at all. */
+static bool     s_phase_seen      = false;
 
 /* SD mirror — best-effort copies of the two files above, written into
  * sd_status_run_dir() so a board deployed on a powerbank with no laptop can be
@@ -241,10 +246,9 @@ static void sd_sweep_empty_mirrors(void)
  * (see ARCHIVE-RUNBOOK.md, trim_run.py's stale-output warnings) — captures
  * are irreplaceable, so the fix is "file it out of the way", never "delete".
  *
- * Runs once per csv_logger_init(), right after sd_sweep_empty_mirrors() (so
- * it never sees the 0-byte leftovers that sweep already cleared) and before
- * this boot's own files are named — it can never archive what this boot is
- * about to write. Best-effort like the sweep above: any failure to create the
+ * ON DEMAND ONLY since sep. 25, 2026 (csv_logger_archive_sd_now / ARCHIVE_SD).
+ * It used to run on every boot, which hid a finished run the moment the board
+ * was power-cycled to be exported — see csv_logger_init(). Best-effort like the sweep above: any failure to create the
  * archive folder or move a file is logged and skipped, never fatal; worst
  * case an old file is simply left where it was. runs.csv is NOT touched — it
  * is the manifest that gives every boot its run number, and archiving it
@@ -317,17 +321,10 @@ static void sd_archive_mirrors_in(const char *run_dir)
     }
 }
 
-/* Thin wrapper over sd_archive_mirrors_in() for the boot-time call site —
- * see csv_logger_init(), which runs this before naming its own files. */
-static void sd_archive_prior_run_mirrors(void)
-{
-    sd_archive_mirrors_in(sd_status_run_dir());
-}
-
-/* On-demand counterpart: archives THIS boot's own just-written mirror CSVs,
- * right after the host has confirmed it downloaded them over USB (see
- * ARCHIVE_SD below / tools/export_logs.py --archive-sd), instead of waiting
- * for the NEXT boot's sd_archive_prior_run_mirrors() to do it. Same
+/* Archives this run folder's mirror CSVs on demand, right after the host has
+ * confirmed it downloaded them over USB (see ARCHIVE_SD below /
+ * tools/export_logs.py --archive-sd). The only caller since boot-time
+ * archiving was removed (sep. 25, 2026). Same
  * archive-never-delete policy, just triggered earlier so a run folder (e.g.
  * blackhole/linear/home/) doesn't sit cluttered with this run's CSVs between
  * sessions.
@@ -1072,6 +1069,32 @@ static void sd_mirror_sync_due(void)
     sd_mirror_sync(s_sd_arrivals_fp, "arrivals");
 }
 
+/* True once this boot may log (see LOG_ONLY_DURING_RUN in mesh_config.h).
+ * Opens on the root's PREPARE signal (stabilisation window, rows stay phase
+ * 255) or, for a node that missed every PREPARE (joined late, or rebooted
+ * mid-run), on the first row carrying phase 0-3. Telemetry and arrivals share
+ * the one latch. */
+static bool log_gate_open(uint8_t phase_id)
+{
+#if LOG_ONLY_DURING_RUN
+    /* TERMINATE (4) must NOT open the gate: the root re-sends it for
+     * TERMINATE_RESEND_S after a run, so a board power-cycled onto the laptop
+     * in that minute would otherwise open a fresh file of phase-4 rows - the
+     * very junk file this switch exists to prevent. */
+    if (!s_phase_seen
+            && (phase_listener_prepare_heard() || phase_id <= PHASE_ID_COOLDOWN)) {
+        s_phase_seen = true;
+        ESP_LOGI(TAG, "Run detected (%s) - logging starts now.",
+                 phase_id <= PHASE_ID_COOLDOWN ? "experiment phase heard"
+                                               : "root PREPARE heard, stabilisation window");
+    }
+    return s_phase_seen;
+#else
+    (void)phase_id;
+    return true;
+#endif
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * Public API — Initialisation
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -1163,7 +1186,17 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
     s_role_str = (role == CSV_ROLE_ROOT) ? "root" : "victim";
 
     sd_sweep_empty_mirrors();
-    sd_archive_prior_run_mirrors();
+    /* NO archiving here any more (sep. 25, 2026). Moving the previous boot's
+     * CSVs into _archive/ on EVERY boot hid the run the moment a board was
+     * power-cycled after it - unplugged from its powerbank to be exported, or
+     * reset by the monitor->export handoff - because LIST_SD and the importer
+     * both skip _archive/. File names carry _b<boot>, so files never collide;
+     * the operator archives on demand (ARCHIVE_SD) after a good import. */
+    s_phase_seen = false;
+#if LOG_ONLY_DURING_RUN
+    ESP_LOGI(TAG, "Logging starts when the root announces a run (PREPARE) or a phase is heard "
+                  "(LOG_ONLY_DURING_RUN) - nothing is written before that.");
+#endif
 
     /* Counted BEFORE this boot writes its own manifest lines, so the count of
      * prior runs + 1 is this run's number. */
@@ -1219,6 +1252,7 @@ esp_err_t csv_logger_append_telemetry(
     uint32_t    drop_count)
 {
     if (!s_log_fp) return ESP_ERR_INVALID_STATE;
+    if (!log_gate_open(phase_id)) return ESP_OK;
 
     char parent_str[18];
     snprintf(parent_str, sizeof(parent_str),
@@ -1299,6 +1333,7 @@ esp_err_t csv_logger_append_probe_arrival(
                       "(was csv_logger_init called with CSV_ROLE_ROOT?)");
         return ESP_ERR_INVALID_STATE;
     }
+    if (!log_gate_open(phase_id)) return ESP_OK;
 
     char parent_str[18], src_str[18];
     snprintf(parent_str, sizeof(parent_str),
@@ -1689,9 +1724,8 @@ static void serial_export_task(void *arg)
              * confirmed EXPORT_LOGS/EXPORT_ARRIVALS download (see
              * tools/export_logs.py --archive-sd), so a run's folder on the
              * card (e.g. blackhole/linear/home/) doesn't sit cluttered with
-             * this run's CSVs until the NEXT boot's own archive sweep gets to
-             * it. Archives, never deletes — same policy as
-             * sd_archive_prior_run_mirrors(), just triggered earlier. ── */
+             * this run's CSVs. Archives, never deletes. Since sep. 25, 2026
+             * this is the ONLY archive path - boots no longer archive. ── */
             } else if (strcmp(cmd_buf, "ARCHIVE_SD") == 0) {
                 switch (csv_logger_archive_sd_now()) {
                     case ESP_OK:

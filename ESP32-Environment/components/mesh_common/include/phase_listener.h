@@ -143,6 +143,21 @@ bool phase_listener_ended_manually(bool *complete);
  */
 int phase_listener_broadcast(uint8_t phase_id);
 
+/**
+ * @brief Root only: send one quiet PHASE_ID_PREPARE round ("a run is being set
+ *        up - start logging") to itself and every node in the routing table.
+ *
+ * Not a phase: receivers keep phase_id/gt_label at 255 and only latch
+ * phase_listener_prepare_heard(). One round, no repeats and no per-send
+ * warnings, because it is sent every PHASE_PREPARE_INTERVAL_S and a node that
+ * misses one simply hears the next. Deliberately NOT counted in the root's
+ * broadcast tx/retry columns, which count phase broadcasts.
+ */
+void phase_listener_broadcast_prepare(void);
+
+/** True once this boot has heard the root's PREPARE signal (see above). */
+bool phase_listener_prepare_heard(void);
+
 /* ── Non-phase data dispatch ─────────────────────────────────────────────── */
 
 /**

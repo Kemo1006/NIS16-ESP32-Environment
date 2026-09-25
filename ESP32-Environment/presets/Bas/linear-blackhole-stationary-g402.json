@@ -5,11 +5,11 @@
     "scenario":  "stationary",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-09-25 08:46",
+    "savedAt":  "2026-09-25 10:40",
     "boards":  [
                    {
-                       "Label":  "attacker",
-                       "Port":  "COM20",
+                       "Label":  "node2",
+                       "Port":  "COM9",
                        "Role":  "child",
                        "Kind":  "attacker",
                        "Display":  "blackhole ATTACKER",
@@ -18,7 +18,7 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM7",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",
@@ -27,7 +27,7 @@
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM8",
+                       "Port":  "COM20",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",

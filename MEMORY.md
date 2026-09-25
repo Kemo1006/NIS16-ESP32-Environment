@@ -8,13 +8,14 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
-- sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** Boards have ONE USB port
-  (power+data), so moving a board from powerbank to laptop to export power-cycles it; every boot moves the previous boot's CSVs into
-  `_archive/` (`csv_logger.c:1166`), and LIST_SD (`:746`) + the importer skip `_archive/` - the run is hidden, a new ~1 KB live file shows.
-  After a power cut the card's "started" time = the LAST SET_TIME anchor, not the real boot time. User chose: do NOT show `_archive/`
-  in the wizard (live data only); the real fix is firmware (option B, not done). Dashboard is NOT hardcoded (per-board heartbeat
-  phase + LOG_CLOSED) but "ALL n DONE" ignores evicted boards. Host fixes: END_RUN reply matched anywhere in a line (it glues to
-  log output; old "predates END_RUN" msg was false); "already imported" over USB now says node+repeat match, maybe an OLDER run.
+- sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** ONE USB port (power+data):
+  powerbank->laptop, or the idf.py monitor->export handoff (toggles reset), power-cycles it; old firmware then moved the run's CSVs into
+  `_archive/` at boot (LIST_SD + importer skip it) and opened a ~1 KB phase-255 file. After a power cut "started" = LAST SET_TIME anchor.
+  **FIXED IN FIRMWARE (team decision, NEEDS REFLASH + one hardware test):** no archiving at boot (ARCHIVE_SD only), and
+  `LOG_ONLY_DURING_RUN 1` = no rows until the root's PREPARE (sent every 5 s in stabilise + roster wait; rows stay phase 255 =
+  paper's "Baseline Stabilization" kept) or phase 0-3; TERMINATE never opens it. Late joiner -> verify_topology NOT MEASURED.
+  User chose: wizard never shows `_archive/`. Dashboard is NOT hardcoded (per-board heartbeat); "ALL n DONE" ignores evicted boards.
+  Host: END_RUN reply matched anywhere in a line (old "predates END_RUN" msg was false); USB "already imported" = node+repeat only.
 - sep. 25, 2026 — **D-15 + DATA-DICTIONARY §2 rewrite.** `retry_count`/`tx_count` are APP-LAYER counters (no Wi-Fi driver stats read
   anywhere); paper Table 4.5 calls them MAC stats - re-describe in the paper, no re-capture. ⚠️ Wormhole Node B still writes its TUNNEL
   count into `retry_count` (Tunnel* features read it) - the one overload F3 did not remove. `leakage.py` reason TEXT is pre-C7 (code is fine).

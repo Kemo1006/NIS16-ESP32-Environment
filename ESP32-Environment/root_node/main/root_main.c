@@ -349,6 +349,11 @@ static void wait_for_all_children(void)
             ESP_LOGW(TAG, "[CTRL]   A missing child is unpowered, brownout-looping (weak "
                           "powerbank/cable) or out of range. Fix it, or type START_ANYWAY.");
         }
+        /* Keep announcing while waiting: a child that joins late still
+         * starts logging before Phase 0. */
+        if (waited_s % PHASE_PREPARE_INTERVAL_S == 0) {
+            phase_listener_broadcast_prepare();
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
         waited_s++;
     }
@@ -383,7 +388,21 @@ static void experiment_controller_task(void *arg)
 
     ESP_LOGI(TAG, "[CTRL] Waiting %u s for mesh to stabilise...",
              PHASE_STABILISE_S);
-    vTaskDelay(pdMS_TO_TICKS(PHASE_STABILISE_S * 1000));
+    /* PREPARE every PHASE_PREPARE_INTERVAL_S: tells every node already in the
+     * mesh that a run is being set up, so it logs this stabilisation window
+     * (as phase 255) - the paper's "Baseline Stabilization" record. A board
+     * that reboots after the run never hears it, so it writes nothing
+     * (LOG_ONLY_DURING_RUN). xTaskDelayUntil keeps the window exactly
+     * PHASE_STABILISE_S long however long each send round takes. */
+    ESP_LOGI(TAG, "[CTRL] Sending PREPARE every %u s so children log the stabilisation window.",
+             (unsigned)PHASE_PREPARE_INTERVAL_S);
+    TickType_t stab_tick = xTaskGetTickCount();
+    for (uint32_t sec = 0; sec < PHASE_STABILISE_S; sec++) {
+        if (sec % PHASE_PREPARE_INTERVAL_S == 0) {
+            phase_listener_broadcast_prepare();
+        }
+        xTaskDelayUntil(&stab_tick, pdMS_TO_TICKS(1000));
+    }
     wait_for_all_children();
 
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
