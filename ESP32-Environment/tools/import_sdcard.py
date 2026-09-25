@@ -1048,8 +1048,10 @@ def _run(source, args):
             print(f"  SKIP  {rel}")
             print(f"        {run_tag}boot {boot} is STILL BEING WRITTEN"
                   f" - this board is mid-run.")
-            print( "        Let it reach TERMINATE (or reset it), then export."
+            print( "        Let it reach TERMINATE (or send END_RUN over USB), then export."
                    " Importing now captures a partial run that looks complete.")
+            print( "        Do NOT reset or unplug it: the next boot moves this file into"
+                   " _archive\\ and the importer no longer sees it.")
             live_skipped += 1
             continue
 
@@ -1085,6 +1087,15 @@ def _run(source, args):
         dest = _make_unique_filename(dest_args, m.group("kind"), used_this_run)
 
         clash = _already_imported(dest, rows)
+        if clash and rows is None:
+            # Identity-only match (see _already_imported): same node + repeat,
+            # boot unknown. Still skipped - copying it would double this node's
+            # rows if it IS the same capture - but never claimed as certain.
+            print(f"  SKIP  {rel}\n        same node + repeat already in exports as {clash}"
+                  f"\n        (row count unknown, so this may be an OLDER run - if this is a"
+                  f"\n        NEW run, import it again with a new --repeat number)")
+            skipped += 1
+            continue
         if clash:
             print(f"  SKIP  {rel}\n        already imported as {clash}")
             skipped += 1

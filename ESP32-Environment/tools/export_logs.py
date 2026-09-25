@@ -902,33 +902,45 @@ def main() -> int:
         if args.end_run:
             print("-> END_RUN ...")
             _send_command(ser, "END_RUN")
+            # The reply shares UART0 with the board's own log output, so it can
+            # arrive glued to a log line ("I (1234) mesh: ...END_RUN:OK:..."). An
+            # exact whole-line match missed that and reported "no answer" for
+            # boards whose firmware DOES have END_RUN (sep. 25, 2026: boards built
+            # 10:38 that day). Match the token anywhere in the line, and also take
+            # the board's own "END_RUN from USB" warning as proof it was accepted.
+            # Never resend: if the first END_RUN landed and only its reply was
+            # lost, a second one answers ALREADY_ENDED and hides that it worked.
             result = None
-            deadline = time.time() + 5
+            closed = False
+            deadline = time.time() + 10
             while time.time() < deadline and result is None:
                 raw = ser.readline()
                 if not raw:
                     continue
                 line = raw.decode("utf-8", errors="replace").strip()
-                if line == "END_RUN:OK:COMPLETE":
+                if "END_RUN:OK:COMPLETE" in line or "cooldown reached, data complete" in line:
                     result = "COMPLETE"
-                elif line == "END_RUN:OK:CUT_SHORT":
+                elif "END_RUN:OK:CUT_SHORT" in line or "BEFORE cooldown, capture is cut short" in line:
                     result = "CUT_SHORT"
-                elif line == "END_RUN:ALREADY_ENDED":
+                elif "END_RUN:ALREADY_ENDED" in line:
                     print("END_RUN_RESULT: ALREADY")
                     print("   the run had already ended on this board — nothing to do.")
                     return 0
-                elif line.startswith("ERROR:"):
+                elif "END_RUN_NOT_RUNNING" in line:
                     print("END_RUN_RESULT: FAIL")
                     print(f"   end-run FAILED: {line}", file=sys.stderr)
                     return 1
+                if "Telemetry file closed" in line:
+                    closed = True
             if result is None:
                 print("END_RUN_RESULT: FAIL")
-                print("   no answer — this board predates END_RUN. Reflash it, or "
-                      "reset it (the file then reads as ABORTED).", file=sys.stderr)
+                print("   no END_RUN reply within 10 s. The board may be busy, or its reply was "
+                      "lost in its own log output. Open idf.py monitor on this port and type "
+                      "END_RUN + Enter to see what it says. Do NOT reset it to 'fix' this - a "
+                      "reset moves this file into _archive\\ and starts a new one.", file=sys.stderr)
                 return 1
             # The close runs on the board's main task; wait for its log line so
             # the caller never lists the card while the file is still open.
-            closed = False
             deadline = time.time() + 20
             while time.time() < deadline:
                 raw = ser.readline()

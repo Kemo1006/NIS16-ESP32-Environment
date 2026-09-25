@@ -1890,3 +1890,24 @@ Both still live as one-line warnings in STATUS.md.
 - (rolled from STATUS.md sep. 25, 2026) sep. 24, 2026 — **TERMINATE-miss fixes:** cooldown watchdog (`4144d30`), root re-sends TERMINATE 60 s, serial `END_RUN` + wizard offer (`d122033`/`489709a`). Honest manifest rows `term_timeout` / `manual_end`. MEMORY.md.
 - (rolled from STATUS.md sep. 25, 2026) sep. 25, 2026 — **Wizard run logs:** filed `run_logs/<attack>/<topology>/<location>/<scenario>/`, page-by-page full view, keep/archive/delete, push after saving, `--area logs`; Data sync grouped + DELETE/RESTORE (undoable, sim-tested). NOT pushed live yet.
 - (rolled from MEMORY.md sep. 25, 2026) sep. 22, 2026 — **`vTaskDelay`→`xTaskDelayUntil` IN ALL 4 TELEMETRY LOOPS — THE M5 COVERAGE BLOCKER'S ROOT CAUSE.** They slept 100ms AFTER the body, so the real period was body+100ms; with `CONFIG_FREERTOS_HZ=100` (10ms tick) any non-zero body cost a whole tick. Root measured **110.0ms = 9.09Hz → 93.6%** vs the 10Hz the validator assumes — **with ZERO gaps** (longest interval 0.36s). Nothing was lost; no node with a >0ms body could ever have passed. Fixed in `root_main.c`, `blackhole_victim.c`, `victim_main.c`, `wormhole_victim.c`; **6/6 `-Clean` build verified, 0 warnings.** ⚠️ **Re-measure coverage after the reflash before M5 is done.**
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`run.ps1` now flashes and monitors as TWO calls; a failed flash retries once at `-b 115200`, then `exit 1`
+  before export.** Why: COM4 hit `Failed to leave compressed flash mode (C800)` (USB serial glitch) and the old combined
+  `flash monitor` fell through into exporting a freshly-erased board. ⚠️ Mesh runs at **HT40 (log: `channel 11, 40D`)** — Mac Sniffer width may need 40 MHz for data frames.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **MAC WIRELESS DIAGNOSTICS SNIFFER gave a 0-BYTE file (M1, full run).** Likely cause: the
+  guide said "turn Wi-Fi OFF" (true for Wireshark monitor mode only) — the Sniffer needs Wi-Fi ON but DISCONNECTED.
+  New wizard item **MacBook sniffer test** (`Invoke-MacSnifferTest`, ~2 min, no attack; listens to root serial to prove the air had traffic). ✅ sep. 23: short test PASSED (packets seen); full-run capture still unverified.
+- (rolled from STATUS.md sep. 25, 2026) sep. 25, 2026 — **Incomplete-capture guards:** validator FAILs phase-255-only files + `child` role fix; preprocess skips them
+  and no longer archives a complete capture for a newer empty one; import picker shows NO EXPERIMENT DATA; analyze.ps1 exit gates.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`tools/check_pcap.py` + wizard "Check a Mac sniffer capture file"** (stdlib, pcap+pcapng): finds mesh nodes
+  by behaviour — mesh beacons have a HIDDEN SSID (not `ESPM_*`) + scrambled IE, so node = hidden-SSID beacon whose MAC−1 also transmits.
+  Verified on the real 126 MB M1 capture (sep. 23, `Downloads\Jose's MacBook Air_ch11_...pcap`): exactly 4 boards, 1848 mesh DATA frames, root sent 0 → likely 20 MHz width missed HT40 data.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 23, 2026 — **`MESH_FORCE_HT20 1` (mesh_config.h): all boards now run 20 MHz, not the ESP32-default HT40.** Why: the M1 Mac
+  Sniffer offers 20 MHz ONLY and can't decode 40 MHz data (real capture: beacons fine, root 0 / child 3 data frames). `apply_rf_width()`
+  in mesh_setup.c sets it at wifi/mesh start and re-checks on connect. ⚠️ HT40 captures (all before this) ≠ HT20 — label, don't pool. SD report [6] now prints 'RF width: ...'. CSV schema + analysis untouched (verifier is same-run relative; no absolute RSSI cut-offs). Builds clean; NOT hardware-verified.
+- (rolled from MEMORY.md sep. 25, 2026) sep. 24, 2026 — **`run_wizard.ps1` multi-laptop roster: "N boards need ports" warning was WRONG whenever the roster
+  is split** (step 6 always added +1 for root even after the operator had just said root is on ANOTHER laptop — said
+  "5 boards need ports" right after a "root not here" answer). Fixed: that warning only fires when NOT multi-laptop
+  (root/children are only sorted into local-vs-remote per-board, in step 7's `Select-PortOrRemote`, which already
+  handles it correctly). Also added 3 clarifying banners (root-remote confirmation, child-count multi-laptop example,
+  one-time "you'll be asked per board" notice before step 7) — the child COUNT is always the FULL experiment across
+  every laptop, never just this one's; per-board "is it here?" is what actually sorts local from remote.
