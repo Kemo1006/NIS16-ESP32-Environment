@@ -1,6 +1,6 @@
 # Telemetry data dictionary — what every column actually contains
 
-**Created:** sep. 20, 2026 · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
+**Created:** sep. 20, 2026 · **Updated:** sep. 25, 2026 (§2 rewritten for post-C7 firmware; see `issue_logs/thesis-deviate.md` D-12, D-15) · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
 
 This file exists because three columns in the telemetry schema **mean different things depending on
 which board wrote the row**, and the manuscript currently describes them as something they are not.
@@ -55,7 +55,7 @@ Written by `csv_logger_append_telemetry()` (`components/mesh_common/src/csv_logg
 
 ---
 
-## 2. Telemetry schema v2 (14 columns) — F3, from the next capture onward
+## 2. Telemetry schema v2 (14 columns) — current firmware (F3 sep. 20 + C7 Option 1 sep. 21, 2026)
 
 Adds three counters that mean **the same thing on every role**, appended at the end so that any
 positional reader of v1 keeps working:
@@ -66,14 +66,34 @@ positional reader of v1 keeps working:
 | `forward_count` | frames this node **passed on** toward their destination |
 | `drop_count` | frames this node received for relay and **did not pass on** |
 
-Once v2 exists, `retry_count` reverts to one meaning (send failures) on every role, and
-`ForwardingRatio = forward_count / recv_count` becomes computable for any node that relays.
+**Since C7 Option 1 (D-12) these are populated on honest nodes too.** Every node sends its probes
+to its own parent with `MESH_DATA_P2P` and relays what it receives one hop further up
+(`components/mesh_common/src/probe_relay.c`), so an honest relay now counts its own forwarding.
+**Verified on real data**, G402 blackhole·linear r1, sep. 24, 2026: honest `node3` ended at
+`recv = forward = 1767, drop = 0`; the attacker at `recv 2322 / forward 1782 / drop 540`, with
+`drop_count` rising **only** during phase 1 (540 = 3 downstream children × 180 s).
+`ForwardingRatio = forward_count / recv_count` is therefore defined for every node that relays;
+a leaf (nothing below it) still has `recv_count = 0` and a NaN ratio, which is correct.
+`analysis/leakage.py` decides per dataset (`relay_features_are_gated()`): pre-C7 captures still
+exclude the relay features, post-C7 captures admit them.
 
-⚠️ **v2 alone does not clear the leakage.** Honest nodes send with `MESH_DATA_TODS`, so the mesh
-stack relays *below* the application layer and an honest node still observes `recv_count = 0`.
-Getting a populated ForwardingRatio distribution requires **Option 1 of `Plan/THESIS3-MEMBER-HOWTO.md`
-§1 C7** — every node explicitly relaying to its parent — which changes the traffic model and
-invalidates comparison with earlier runs. That is a design decision, not a code change.
+### The three older columns on v2 firmware, per role
+
+The `role` column reads `child` on honest nodes (renamed from `victim` sep. 23, 2026;
+`preprocess.py` treats both as `child`).
+
+| Column | `child` (`victim_main.c`) | `blackhole` attacker | `root` | `wormhole_b` (entry) | `wormhole_a` (exit) |
+|---|---|---|---|---|---|
+| `probes_count` | own probes the stack **accepted** | probes **received for relay** (= `recv_count`) | probes **received** (arrivals) | probes **generated** | probes **received from B over the tunnel** |
+| `tx_count` | own probes accepted (**equals `probes_count`**) | probes **forwarded** (= `forward_count`) | successful phase **broadcasts** | probes sent **direct to root** | probes **re-injected** into the mesh |
+| `retry_count` | **failed `esp_mesh_send()`** of own probes | **failed `esp_mesh_send()`** (F3; drops moved to `drop_count`) | **failed** phase broadcasts | ⚠️ probes **tunnelled** to A — still overloaded, read by the Tunnel* features | **failed re-injections** |
+
+On the root, `recv_count`/`forward_count`/`drop_count` are always 0: it is the destination, not a
+relay (`root_main.c`).
+
+⚠️ **`retry_count` is still not an 802.11 retransmission count on any role** — it is send
+failures seen by the application, or on Node B the tunnel count. That departure from Table 4.5 is
+documented as **D-15** in `issue_logs/thesis-deviate.md`. RetryRate stays excluded from model inputs.
 
 Both schemas are accepted by `tools/validate_integrity.py` (`ACCEPTED_HEADERS`).
 

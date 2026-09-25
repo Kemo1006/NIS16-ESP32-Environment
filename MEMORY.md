@@ -8,6 +8,18 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 25, 2026 — **D-15 + DATA-DICTIONARY §2 rewrite.** `retry_count`/`tx_count` are APP-LAYER counters (no Wi-Fi driver stats read
+  anywhere); paper Table 4.5 calls them MAC stats - re-describe in the paper, no re-capture. ⚠️ Wormhole Node B still writes its TUNNEL
+  count into `retry_count` (Tunnel* features read it) - the one overload F3 did not remove. `leakage.py` reason TEXT is pre-C7 (code is fine).
+- sep. 25, 2026 — **10 Hz sampling + 1 s windows are PANEL/ADVISER-MANDATED — never "restore" 1 Hz / 5 s** (D-1/D-9 "to restore
+  literally" notes are history, not a to-do). Only the paper text (Tables 4.4/4.10, §4.2.4.1) is behind and must be amended.
+- sep. 25, 2026 — **WIZARD: a preset board with NO port was silently treated as "on another laptop".** Angelo's G402
+  run showed ROOT under "not plugged in" (blank label/COM), then "Boards on ANOTHER laptop", "nothing to flash here" -
+  while [12] Identify read it fine on COM3. Cause: that laptop's preset file has ROOT with `Port: ""` (GitHub's
+  `presets/Cal/...g402.json` is fine: node1/COM20/MAC - so `git pull` or re-save it). Port-less boards skipped BOTH the MAC
+  match and the re-pick. Fix: preset path now asks per port-less board "plugged into THIS laptop? [y/N]" -> port picker.
+  Also: the preset path's location.txt check ran on the preset's SAVED ports (before drift fix) and printed "All boards
+  already report" after checking ZERO boards - it now runs once after the port fix and says UNVERIFIED if none read.
 - sep. 25, 2026 — **ROSTER GATE + RESET REASON (firmware, needs reflash; a safeguard, NOT a fix for the G402 run).** Root waits after stabilise until `EXPECTED_CHILDREN` (routing table
   size - 1) are in the mesh for 5 s; `run.ps1 -ExpectedChildren` (always passed on root, 0 = off; wizard = local children + remote count it asks
   for on multi-laptop runs - plain remote children are NOT in the roster). `START_ANYWAY` on serial releases it. Every board writes its reset
@@ -64,15 +76,6 @@
 - sep. 23, 2026 — **`MESH_FORCE_HT20 1` (mesh_config.h): all boards now run 20 MHz, not the ESP32-default HT40.** Why: the M1 Mac
   Sniffer offers 20 MHz ONLY and can't decode 40 MHz data (real capture: beacons fine, root 0 / child 3 data frames). `apply_rf_width()`
   in mesh_setup.c sets it at wifi/mesh start and re-checks on connect. ⚠️ HT40 captures (all before this) ≠ HT20 — label, don't pool. SD report [6] now prints 'RF width: ...'. CSV schema + analysis untouched (verifier is same-run relative; no absolute RSSI cut-offs). Builds clean; NOT hardware-verified.
-- sep. 23, 2026 — **`tools/check_pcap.py` + wizard "Check a Mac sniffer capture file"** (stdlib, pcap+pcapng): finds mesh nodes
-  by behaviour — mesh beacons have a HIDDEN SSID (not `ESPM_*`) + scrambled IE, so node = hidden-SSID beacon whose MAC−1 also transmits.
-  Verified on the real 126 MB M1 capture (sep. 23, `Downloads\Jose's MacBook Air_ch11_...pcap`): exactly 4 boards, 1848 mesh DATA frames, root sent 0 → likely 20 MHz width missed HT40 data.
-- sep. 23, 2026 — **`run.ps1` now flashes and monitors as TWO calls; a failed flash retries once at `-b 115200`, then `exit 1`
-  before export.** Why: COM4 hit `Failed to leave compressed flash mode (C800)` (USB serial glitch) and the old combined
-  `flash monitor` fell through into exporting a freshly-erased board. ⚠️ Mesh runs at **HT40 (log: `channel 11, 40D`)** — Mac Sniffer width may need 40 MHz for data frames.
-- sep. 23, 2026 — **MAC WIRELESS DIAGNOSTICS SNIFFER gave a 0-BYTE file (M1, full run).** Likely cause: the
-  guide said "turn Wi-Fi OFF" (true for Wireshark monitor mode only) — the Sniffer needs Wi-Fi ON but DISCONNECTED.
-  New wizard item **MacBook sniffer test** (`Invoke-MacSnifferTest`, ~2 min, no attack; listens to root serial to prove the air had traffic). ✅ sep. 23: short test PASSED (packets seen); full-run capture still unverified.
 - sep. 23, 2026 — **Tree positions are NOT hardcoded**: each node self-reports its parent MAC + role in its heartbeat;
   the root links them. Early prints show a PARTIAL tree (nodes report ~1 s apart) → a FALSE `NO NODE IS DOWNSTREAM` error.
   Fixed in `mesh_setup.c`: exposure verdict waits until heartbeat entries >= `esp_mesh_get_routing_table_size()`.

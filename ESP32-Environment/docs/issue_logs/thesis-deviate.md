@@ -14,6 +14,10 @@
 
 ## D-1 · Telemetry sampling rate: capture at 10 Hz, analyse at 1 Hz
 
+> ⚠️ **The "analyse at 1 Hz" half is SUPERSEDED by D-9** — analysis now runs on the 10 Hz grid
+> with 1-second windows, as the panel and adviser asked. The 10 Hz *capture* below still stands.
+> Do not follow "To restore literally": 10 Hz is the mandated configuration, not a deviation to undo.
+
 | | |
 |---|---|
 | **Thesis says** | "Raw telemetry logs collected at **1 Hz**" (§4.2.4.1; Tables 4.4/4.5 list every metric at 1 Hz). |
@@ -287,5 +291,19 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **⚠️ Effect on EXISTING captures** | **HT40 captures (everything before sep. 23 2026) are NOT comparable to HT20 captures** — the PHY differs (rates, airtime, possibly RSSI by a few dB). Label by width; never pool them unlabelled. The verifier compares within one run, so its verdicts are unaffected. **Re-check before citing: Table 3.3's absolute *Expected RSSI Ranges by Node Position* against HT20 data.** |
 | **To restore the default** | `MESH_FORCE_HT20 0` and reflash. The sniffer then goes back to seeing beacons only. |
 | **Status** | Mesh formation + width **hardware-verified** (sep. 24 2026, 3-min test). A full 11-min HT20 run and a sniffer capture of its data frames are **still to be validated**. |
+
+---
+## D-15 · `retry_count` / `tx_count` are application-layer counters, not 802.11 MAC statistics
+
+| | |
+|---|---|
+| **Thesis says** | Table 4.5 (*MAC Layer Metrics*): `retry_count` = "Cumulative MAC-layer retransmissions", `tx_count` = "Cumulative frames transmitted", both from the "ESP-IDF Wi-Fi statistics API". Its note, and §4.2.4.1 point 3, give a fallback: when the ESP-IDF version does not expose MAC counters, the fields are **recorded as zero and flagged in the metadata**, Retry Rate is **omitted from the Core Behavioral Set**, and an application-layer proxy *may* be used. The abstract, §1 and §3.4–3.5 list "retransmission counts" as the MAC-layer part of the cross-layer claim. |
+| **We do** | The firmware reads **no** Wi-Fi driver statistics at all (grep `esp_wifi_get_statistics` / `esp_wifi_statis` over `components/`, `child_node/`, `root_node/`: no hits). Both columns are **filled with application-layer counters**, not zeros, and their meaning depends on the role that wrote the row — see `docs/DATA-DICTIONARY.md` §2 for the per-role table. On every role except wormhole Node B, `retry_count` = **failed `esp_mesh_send()` calls** (a send the mesh stack refused, not a radio retransmission). |
+| **The one remaining overload** | **Wormhole Node B** (`wormhole_victim.c`, `WORMHOLE_END_B`) writes `s_probes_tunneled` — frames sent into the UART tunnel — into `retry_count`, because the Tunnel* features read it from there. So on B, `retry_count` is the attack's own activity counter. F3 removed the equivalent overload from the blackhole attacker (its drops now live in `drop_count`), but not from Node B. |
+| **Where this matches the paper's fallback** | RetryRate **is** excluded from model inputs (`analysis/leakage.py`), which is what §4.2.4.1 point 3 prescribes. That part is compliant. |
+| **Where it does not** | (1) The fields are **not zero** and are **not flagged in the metadata** — they carry a proxy under the MAC-layer column name. (2) No column in the dataset holds an 802.11 retransmission count, so the MAC layer of the "cross-layer" claim rests on **RSSI and link/parent state**, not on retransmissions. (3) Table 3.4's predicted rise in victim retransmissions cannot be observed with these counters — a blackhole that drops at the application layer still ACKs every frame, so the victim's radio never sees a failure (DATA-DICTIONARY §1, consequence 2). Report it as a pre-registered miss, not as missing data. |
+| **Why not read the driver's counters** | Not attempted in this firmware. Whether ESP-IDF 5.5 exposes a per-interface retry counter that application code can read at 10 Hz has **not been verified** — check that before claiming the API is unavailable. If one exists, adding it is a firmware change plus a new column, and pre-change captures would not have it. |
+| **Net effect on the thesis** | Rename or re-describe the two columns in Table 4.5 (e.g. "application-layer send failures" / "frames accepted for send"), state that no MAC retransmission counter is captured, and say that RetryRate is excluded per §4.2.4.1 point 3. The abstract's "retransmission counts" wording should match. **No re-capture is needed** for the re-description; the data is unchanged. |
+| **To restore literally** | Either (a) write `0` to both columns on every role, flag them in the metadata and move the proxies into renamed columns (a schema change, v3), or (b) read a real driver counter if one is verified to exist. Both need a re-flash, and older captures stay as they are. |
 
 ---
