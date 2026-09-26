@@ -2110,3 +2110,31 @@ Both still live as one-line warnings in STATUS.md.
 
 ## Rolled from STATUS.md "Recently done" — sep. 27, 2026 (Wireshark-menu session)
 - sep. 26 (night) — **21:11 vs 19:18 home comparison**: seq dedupe across root reboots, window-delta loss, KDE spike fixed.
+
+
+## Rolled from MEMORY.md - sep. 27, 2026 (blackhole review session)
+- sep. 26, 2026 (pm) — **G402 sep. 25 "topology FAIL" = node3's OWN REPORTS, not the tree; LINEAR IS enforced** (`MESH_TOPO_CHAIN` +
+  `max_connection` 1; dashboard tree + STATUS are live heartbeats, only `TYPE :` is the build label). The 7 other boards' layers give a
+  clean chain root-node5-ATTACKER-node7-node3-node6-node8-node2; node3 (20500DE70C80) claimed the attacker as parent at layer 5/6/11/12
+  and a loop via node8. node3 is broken 3 ways: phases 112 s AHEAD (follows a source ~ the crashed root boot's schedule), SD file ends
+  112 s early (681 vs seq 801 at root), and its counters break `seq = probes+retry+1` (drift -19..-5; every other board exactly +1).
+  Its flash FAILED once on COM3 that day (retried, result not logged). 2nd problem: the ROOT REBOOTED ~20 s before boot 1235 (node5 lost
+  parent 24 s) -> 406 s phase 0; labels still right (2100/1261/844 windows = 7 x 300/180/120) but Gate 2's re-routing flag counts it.
+  Attack itself clean: attacker dropped 900 = 5 downstream x 180, root 6/s -> 1/s (node5) -> 100% cooldown. Fixed: RetryRate NaN when
+  0 attempts (23% of windows; audit lift +0.06 from that NaN pattern), verify_attack ratio-of-sums RetryRate + ForwardingRatio on
+  forward/recv (was own tx/probes; z -9.50 -> -6.38, still PASS), verify_topology parent-vs-layer diagnostic (no verdict change).
+
+## Rolled from STATUS.md "Recently done" - sep. 27, 2026 (blackhole review)
+- sep. 26 (late) - **Root phase banners show start time** (`@ 22:03:15 PHT`, "(est.)" if unsynced); console only, not data.
+
+## Rolled from MEMORY.md - sep. 27, 2026 (archive PCAP/run_logs change)
+- sep. 26, 2026 — **DATA SYNC PUSH/PULL LISTS: time + GREEN/YELLOW, anchored on your latest SD IMPORT** (user asked: in scenario 1 a push's
+  pull-back listed teammates' sep. 24 leftovers and you couldn't tell new from old). One import batch = every card copied in ONE trip through
+  Import SD card, up to N at "Import another card?" (menu.ps1: its single card). `tools/ImportBatch.ps1` snapshots `tools/exports/` at the
+  start and, after each card, writes the new CSVs to `ESP32-Environment/.last_import_batch.json` (git-ignored, per laptop); the next import that
+  copies a file REPLACES it = previous batch turns yellow. `push_data.py` `Freshness`: capture time = the `_YYYYMMDD_HHMMSS_` import stamp in
+  the NAME (so a teammate's file is judged by when THEY imported it, not when pushed); GREEN = in your batch OR stamped >= batch start. No
+  batch file / other areas (analysis, logs, presets) -> `RECENT_MINUTES` 30 rule (was 24 h; delete uses it too). Grouped by folder, newest first.
+  SAME-RUN fix (user asked): a teammate's card imported <= `SAME_RUN_MINUTES` 30 BEFORE your batch is green iff same folder + same r<n> as a
+  batch file AND a board your batch lacks (one file per board per run, so a duplicate board = a redo). No run id exists in the CSVs
+  (headers have none), hence names. 12-case scratch test passed; not yet on live GitHub.

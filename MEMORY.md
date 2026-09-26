@@ -8,6 +8,24 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- sep. 27, 2026 (pm) — **ARCHIVE (wizard DATA [7] / `archive.ps1`) NOW ALSO MOVES `datasets/PCAP/` + `datasets/run_logs/`** (user: "include the
+  pcap and run logs so all of the info will be there"). PCAP moves WHOLE (cell folders + `standalone/`, .pcap + .json + _fixed) to
+  `archive/<date>_<label>/PCAP/`; run_logs moves to `.../run_logs/` EXCEPT `run_logs/_archive/` (the log viewer's own archive, stays).
+  Emptied PCAP/run_logs subfolders are removed (writers recreate them). Wizard menu no longer says "nothing to archive" when only
+  pcaps/logs are left, and shows an ALSO MOVES line. Archived pcaps stay git-ignored (`PCAP/` rule) = local to that laptop. Tested:
+  parse, `-WhatIf` on real data, real move in a scratch sandbox. ⚠️ The wizard's Wireshark capture picker + run-log viewer only scan the
+  LIVE folders - archived ones are reachable via "Another file". ⚠️ Leftover pcaps/logs from the 3 already-archived sep. 26-27 runs are
+  still live; archiving now would lump them into ONE new folder - file them into their matching archive by timestamp instead.
+- sep. 27, 2026 (Wireshark review + burst) — **02:05 blackhole/linear pcap = REAL LINEAR, attack WORKED** (user: "is it really linear / why no attack in the graph").
+  Chain ROOT(B0:18) -> node2(20:38) -> node4(F4:18 = BLACKHOLE per mesh_config.h) -> node3(20:80, victim). Proven twice: `verify_topology.py`
+  on the 4 telem CSVs (0 parent switches) AND pcap data frames (only 3 links, none skip a hop). ⚠️ `member_boards.json` still labels 20:38 as
+  attacker - STALE (real one is F4:18); wizard option 9 reads mesh_config.h so it picked the right board. Logs: attacker recv 180 / fwd 0 /
+  drop 180 in phase 1; root arrivals from node3 = 301 / 0 / 120 (base/attack/cool), node2 unaffected. Wireshark looked flat because (1) a
+  02:18:11-30 spike (attacker AP ~8,300 RTS + 757 retries to node3 at teardown) sets the Y axis, (2) 1 probe/s/child so the dip is ~20 -> 9
+  frames/10 s, (3) option 4 / "Attacker - all traffic" count beacons+ACKs. Zoom 0-680 s on the data-frame "Attacker -> parent" line.
+  **BURST_COUNT 100 -> 300** (user: "add 200 more") in `mesh_config.h:545` + "300 probes" text in run_wizard/menu/run.ps1 + memory/run-scenarios;
+  NOT compiled/flashed; burst size is not in the CSV (old 100-probe bursts not comparable). Stationary = 1 probe/s/child (~660/child/run);
+  highload 250 ms; run length is set only by root timers (60/300/180/120; jitter + burst-baseline add time), never by send rate.
 - sep. 27, 2026 — **Wireshark view menu (wizard WIRESHARK -> "Open a capture - pick a view"): DEFAULT SCOPE = ALL BOARDS OF THE RUN** (user:
   "my mesh boards" labels were wrong - the filters always covered every board check_pcap heard). New [2] **MY boards ( >)** submenu = the same
   7 views limited to one member's boards (`member_boards.json`, matched on first:last MAC byte; member = `my_member.txt`, asks via
@@ -92,26 +110,6 @@
   `SNIFF_BAUD` + sniff.py `BAUD` together). Then added: **P = pause/resume** (frames still read, not saved; each pause + frames skipped
   in the .json — the capture has gaps there), **keep/delete prompt** after check_pcap (default keep; 'd' removes .pcap/.json/_fixed —
   no restore, PCAP\ is git-ignored), Mac checklist shows Channel/Width as coloured chips. scapy pads radiotap MCS to 2 (spec 1) -> noise field.
-- sep. 26, 2026 (pm) — **G402 sep. 25 "topology FAIL" = node3's OWN REPORTS, not the tree; LINEAR IS enforced** (`MESH_TOPO_CHAIN` +
-  `max_connection` 1; dashboard tree + STATUS are live heartbeats, only `TYPE :` is the build label). The 7 other boards' layers give a
-  clean chain root-node5-ATTACKER-node7-node3-node6-node8-node2; node3 (20500DE70C80) claimed the attacker as parent at layer 5/6/11/12
-  and a loop via node8. node3 is broken 3 ways: phases 112 s AHEAD (follows a source ~ the crashed root boot's schedule), SD file ends
-  112 s early (681 vs seq 801 at root), and its counters break `seq = probes+retry+1` (drift -19..-5; every other board exactly +1).
-  Its flash FAILED once on COM3 that day (retried, result not logged). 2nd problem: the ROOT REBOOTED ~20 s before boot 1235 (node5 lost
-  parent 24 s) -> 406 s phase 0; labels still right (2100/1261/844 windows = 7 x 300/180/120) but Gate 2's re-routing flag counts it.
-  Attack itself clean: attacker dropped 900 = 5 downstream x 180, root 6/s -> 1/s (node5) -> 100% cooldown. Fixed: RetryRate NaN when
-  0 attempts (23% of windows; audit lift +0.06 from that NaN pattern), verify_attack ratio-of-sums RetryRate + ForwardingRatio on
-  forward/recv (was own tx/probes; z -9.50 -> -6.38, still PASS), verify_topology parent-vs-layer diagnostic (no verdict change).
-- sep. 26, 2026 — **DATA SYNC PUSH/PULL LISTS: time + GREEN/YELLOW, anchored on your latest SD IMPORT** (user asked: in scenario 1 a push's
-  pull-back listed teammates' sep. 24 leftovers and you couldn't tell new from old). One import batch = every card copied in ONE trip through
-  Import SD card, up to N at "Import another card?" (menu.ps1: its single card). `tools/ImportBatch.ps1` snapshots `tools/exports/` at the
-  start and, after each card, writes the new CSVs to `ESP32-Environment/.last_import_batch.json` (git-ignored, per laptop); the next import that
-  copies a file REPLACES it = previous batch turns yellow. `push_data.py` `Freshness`: capture time = the `_YYYYMMDD_HHMMSS_` import stamp in
-  the NAME (so a teammate's file is judged by when THEY imported it, not when pushed); GREEN = in your batch OR stamped >= batch start. No
-  batch file / other areas (analysis, logs, presets) -> `RECENT_MINUTES` 30 rule (was 24 h; delete uses it too). Grouped by folder, newest first.
-  SAME-RUN fix (user asked): a teammate's card imported <= `SAME_RUN_MINUTES` 30 BEFORE your batch is green iff same folder + same r<n> as a
-  batch file AND a board your batch lacks (one file per board per run, so a duplicate board = a redo). No run id exists in the CSVs
-  (headers have none), hence names. 12-case scratch test passed; not yet on live GitHub.
 - sep. 26, 2026 — **RETRY RATE = 0 IS A RESULT, NOT A BUG (G402 5 pm run traced raw -> validator).** Raw `retry_count`
   (= failed `esp_mesh_send()`, D-15) is non-zero only OUTSIDE the experiment: node5 24 fails at t -389..-366 s (root boot 1233
   dead, nothing to send to), node3 12 (unlabelled, desynced), node7 a constant 9 from before logging. 0 failures in baseline/attack/cooldown

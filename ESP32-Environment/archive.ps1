@@ -4,10 +4,13 @@
   clean empty scaffold ready for the next run.
 
 .DESCRIPTION
-  MOVES (never copies, never deletes) everything under tools/exports/ and
-  analysis/ into archive/<date>_<label>/, preserving the
-  <attack>/<topology>/[<location>/][<scenario>/] layout, then puts the working
-  tree back to the bare .gitkeep scaffold with a header-only run_ledger.csv.
+  MOVES (never copies, never deletes) everything under datasets/exports/,
+  datasets/analysis/, datasets/PCAP/ (sniffer .pcap + .json) and
+  datasets/run_logs/ (console .log) into datasets/archive/<date>_<label>/,
+  preserving the <attack>/<topology>/[<location>/][<scenario>/] layout, then puts
+  the working tree back to the bare .gitkeep scaffold with a header-only
+  run_ledger.csv. run_logs/_archive/ stays put: it is the wizard's own log
+  archive ("Archive it" in the log viewer), not live data.
 
   Code is never touched: analysis/*.py, *.md, *.txt and every .gitkeep stay put.
   Only captured data and generated output move.
@@ -51,6 +54,8 @@ $root         = $PSScriptRoot
 $exportsRoot  = Join-Path $root 'datasets\exports'
 $analysisRoot = Join-Path $root 'datasets\analysis'
 $archiveRoot  = Join-Path $root 'datasets\archive'
+$pcapRoot     = Join-Path $root 'datasets\PCAP'
+$logsRoot     = Join-Path $root 'datasets\run_logs'
 
 $ATTACKS    = @('baseline', 'blackhole', 'wormhole')
 $TOPOLOGIES = @('linear', 'star', 'tree', 'partial_mesh')
@@ -98,6 +103,35 @@ function Get-ArchivePlan {
         }
     }
 
+    # 3. Sniffer captures: every file under datasets/PCAP/ - the .pcap, its .json
+    #    sidecar (pauses/loss) and any check_pcap _fixed copy, standalone/ included.
+    if (Test-Path $pcapRoot) {
+        foreach ($f in Get-ChildItem $pcapRoot -Recurse -File -ErrorAction SilentlyContinue) {
+            if ($f.Name -eq '.gitkeep') { continue }
+            $rel = $f.FullName.Substring($pcapRoot.Length).TrimStart('\')
+            $plan += [PSCustomObject]@{
+                From = $f.FullName
+                To   = Join-Path $Dest "PCAP\$rel"
+                Kind = 'pcap'
+            }
+        }
+    }
+
+    # 4. Run console logs: everything under datasets/run_logs/ EXCEPT _archive/,
+    #    which the wizard's log viewer owns (Get-RunLogEntries -Archived).
+    if (Test-Path $logsRoot) {
+        foreach ($f in Get-ChildItem $logsRoot -Recurse -File -ErrorAction SilentlyContinue) {
+            if ($f.Name -eq '.gitkeep') { continue }
+            $rel = $f.FullName.Substring($logsRoot.Length).TrimStart('\')
+            if ($rel -like '_archive\*') { continue }
+            $plan += [PSCustomObject]@{
+                From = $f.FullName
+                To   = Join-Path $Dest "run_logs\$rel"
+                Kind = 'log'
+            }
+        }
+    }
+
     return $plan
 }
 
@@ -121,6 +155,19 @@ function Reset-Scaffold {
             Sort-Object { $_.FullName.Length } -Descending |
             ForEach-Object {
                 if (-not (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue)) {
+                    Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+    }
+
+    # PCAP/ and run_logs/ have no scaffold - sniff.py and the wizard create the
+    # <attack>/<topology>/... folders on demand - so just drop the emptied ones.
+    # The two roots themselves stay.
+    foreach ($base in @($pcapRoot, $logsRoot)) {
+        Get-ChildItem $base -Recurse -Directory -ErrorAction SilentlyContinue |
+            Sort-Object { $_.FullName.Length } -Descending |
+            ForEach-Object {
+                if (-not (Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue)) {
                     Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
                 }
             }
@@ -155,17 +202,21 @@ $plan = Get-ArchivePlan -Dest '<dest>'
 # holding nothing but a header row.
 $substantive = @($plan | Where-Object { $_.To -notlike '*run_ledger.csv' })
 if (-not $substantive) {
-    Write-Host "Nothing to archive - datasets\exports\ and datasets\analysis\ hold no captured data or output." -ForegroundColor Yellow
+    Write-Host "Nothing to archive - datasets\exports\, analysis\, PCAP\ and run_logs\ hold no captured data or output." -ForegroundColor Yellow
     exit 0
 }
 
 $nExport   = @($plan | Where-Object { $_.Kind -eq 'export' }).Count
 $nAnalysis = @($plan | Where-Object { $_.Kind -eq 'analysis' }).Count
+$nPcap     = @($plan | Where-Object { $_.Kind -eq 'pcap' }).Count
+$nLog      = @($plan | Where-Object { $_.Kind -eq 'log' }).Count
 
 Write-Host ""
 Write-Host "About to archive:" -ForegroundColor Cyan
 Write-Host ("   {0,4} captured file(s) from datasets\exports\" -f $nExport)
-Write-Host ("   {0,4} generated file(s) from analysis\" -f $nAnalysis)
+Write-Host ("   {0,4} generated file(s) from datasets\analysis\" -f $nAnalysis)
+Write-Host ("   {0,4} sniffer file(s) from datasets\PCAP\ (.pcap + .json)" -f $nPcap)
+Write-Host ("   {0,4} run log(s) from datasets\run_logs\ (not _archive\)" -f $nLog)
 Write-Host ""
 Write-Host "Cells:" -ForegroundColor Cyan
 $plan | Where-Object { $_.Kind -eq 'export' } | ForEach-Object {
@@ -175,6 +226,15 @@ $plan | Where-Object { $_.Kind -eq 'export' } | ForEach-Object {
 }
 if (@($plan | Where-Object { $_.To -like '*run_ledger.csv' }).Count) {
     Write-Host "   (+ run_ledger.csv)"
+}
+foreach ($k in @(@{ Kind = 'pcap'; Title = 'Captures (PCAP\):' }, @{ Kind = 'log'; Title = 'Run logs (run_logs\):' })) {
+    $files = @($plan | Where-Object { $_.Kind -eq $k.Kind })
+    if (-not $files.Count) { continue }
+    Write-Host ""
+    Write-Host $k.Title -ForegroundColor Cyan
+    foreach ($p in $files) {
+        Write-Host ("   {0}" -f ($p.To -replace '^<dest>\\(PCAP|run_logs)\\', ''))
+    }
 }
 
 if ($WhatIf) {
@@ -240,8 +300,12 @@ moved out whole so the next run starts from an empty scaffold.
   ``<attack>/<topology>/[<location>/][<scenario>/]`` layout, plus ``run_ledger.csv``
 - ``analysis/`` - ``windowed_dataset.csv``, ``feature_table.csv`` and ``eda_output/``
   for the same cells
+- ``PCAP/``     - ESP32 sniffer captures (``.pcap`` + ``.json`` sidecar with pauses/loss),
+  same cell layout plus ``standalone/``. Git-ignored: they exist only on the laptop
+  that archived them.
+- ``run_logs/`` - the wizard's console transcripts (``.log``) for the same runs
 
-$moved file(s): $nExport captured, $nAnalysis generated.
+$moved file(s): $nExport captured, $nAnalysis generated, $nPcap sniffer, $nLog run log(s).
 
 Everything here is reproducible from the raw CSVs with:
 

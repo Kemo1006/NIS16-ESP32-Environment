@@ -65,7 +65,7 @@
 
 .EXAMPLE
   # SCENARIO: BURST — the panel's "user sends 100 packets to root" test. ONE
-  # child fires 100 probes back-to-back 60s into the attack-length window; the
+  # child fires 300 probes back-to-back 60s into the attack-length window; the
   # root ALSO needs -Scenario burst so it holds that window on a baseline run
   # (matched pair: legit burst vs burst-under-attack). Only the target child
   # gets -ScenarioTarget.
@@ -148,7 +148,7 @@ param(
     # Run-to-run variation the panel asked for (see THESIS3-PANEL-PLAN.md P2/P7).
     # CODE scenarios pick a BUILD flag when -Flash is set:
     #   burst    => -DTRAFFIC_PROFILE=1 on the root + the -ScenarioTarget child
-    #               only. That child fires 100 probes back-to-back 60s into the
+    #               only. That child fires 300 probes back-to-back 60s into the
     #               attack-length window; the root's copy of the flag makes it
     #               hold that same window on a BASELINE run too (announced as
     #               PHASE_ID_BASELINE, gt_label unchanged) so the burst lands at

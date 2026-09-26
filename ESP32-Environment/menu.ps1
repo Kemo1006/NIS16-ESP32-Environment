@@ -336,7 +336,7 @@ function Select-Scenario {
     param([string]$Current, [switch]$AllowBack)
     $opts = @(
         'stationary  (no variation -- nodes stay put; called ''none'' in older runs)',
-        'burst       (CODE: one child fires 100 probes back-to-back in the attack window)',
+        'burst       (CODE: one child fires 300 probes back-to-back in the attack window)',
         'highload    (CODE: every child probes 4x faster for the whole run)',
         'jitter      (CODE: ROOT randomises baseline/attack window lengths each boot)',
         'mobility    (HUMAN: you move one child from spot A to spot B -- checklist only)',

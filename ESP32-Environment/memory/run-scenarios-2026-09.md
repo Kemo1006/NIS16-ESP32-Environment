@@ -14,7 +14,7 @@ Five scenarios, selectable in BOTH run_wizard.ps1 and menu.ps1, via `run.ps1
 
 - **none** — today's behaviour. No build flag at all (not `=0`), so a plain
   run's compile line and build dir are byte-identical to before this feature.
-- **burst** (code) — the `-ScenarioTarget` child fires 100 probes back-to-back
+- **burst** (code) — the `-ScenarioTarget` child fires 300 probes back-to-back
   60s into the attack-length window. Root also needs `-Scenario burst` so it
   holds that window on a BASELINE run too (gt_label unchanged, phase stays 0),
   giving a matched legit-burst-vs-attack-burst pair at the same offset.

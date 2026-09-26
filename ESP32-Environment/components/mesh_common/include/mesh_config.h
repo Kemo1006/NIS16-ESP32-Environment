@@ -542,7 +542,7 @@
 
 /** Burst profile: how many probes, how far into the window, and pacing. */
 #ifndef BURST_COUNT
-#define BURST_COUNT             100U       /* probes fired by the target child */
+#define BURST_COUNT             300U       /* probes fired by the target child */
 #endif
 #ifndef BURST_OFFSET_S
 #define BURST_OFFSET_S          60U        /* seconds after the window opens   */

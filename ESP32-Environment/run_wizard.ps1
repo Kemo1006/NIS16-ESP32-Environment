@@ -103,7 +103,7 @@ $LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
 $SCENARIOS = @('stationary', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
 $SCENARIO_LABELS = @(
     "stationary  - no variation, nodes stay put (called 'none' in older runs)",
-    'burst       - CODE: one child fires 100 probes back-to-back in the attack window',
+    'burst       - CODE: one child fires 300 probes back-to-back in the attack window',
     'highload    - CODE: every child probes 4x faster for the whole run',
     'jitter      - CODE: ROOT randomises baseline/attack window LENGTHS each boot, so elapsed time stops predicting the phase',
     'mobility    - HUMAN: you move one child from spot A to spot B (checklist only)',
@@ -390,7 +390,7 @@ function Show-CaptureWizardMenu {
             @{ Idx = 16; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, run logs, presets. Never code' }
             @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
-            @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
+            @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis+PCAP+run logs into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
             @{ Idx = 14; Text = 'View a saved run log (a past run''s console output start to end, filed by attack/topology/location - keep, archive, delete or push; no board/COM contact)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
@@ -2492,7 +2492,8 @@ function Invoke-ArchiveMenu {
     # the campaign is currently counting.
     Write-Host ""
     Write-Host "=== Archive captured data ===" -ForegroundColor Cyan
-    Write-Host "Archiving MOVES datasets\exports\ + generated datasets\analysis\ output into" -ForegroundColor DarkGray
+    Write-Host "Archiving MOVES datasets\exports\, generated datasets\analysis\ output, the sniffer" -ForegroundColor DarkGray
+    Write-Host "captures in datasets\PCAP\ and the run logs in datasets\run_logs\ (not _archive\) into" -ForegroundColor DarkGray
     Write-Host "archive\<date>_<label>\ and resets the working tree. Nothing is deleted." -ForegroundColor DarkGray
 
     $exportsRoot = Join-Path $base 'datasets\exports'
@@ -2501,9 +2502,23 @@ function Invoke-ArchiveMenu {
     $cells = Get-ArchiveLiveSummary -ExportsRoot $exportsRoot
     $dataCells = @($cells | Where-Object { $_.Cell -ne '(loose files)' })
 
-    if (-not $dataCells.Count) {
+    # The sniffer captures and run logs archive.ps1 also moves (PCAP\ whole,
+    # run_logs\ minus the log viewer's own _archive\).
+    $pcapRoot = Join-Path $base 'datasets\PCAP'
+    $logsRoot = Join-Path $base 'datasets\run_logs'
+    $pcapFiles = @()
+    if (Test-Path $pcapRoot) {
+        $pcapFiles = @(Get-ChildItem $pcapRoot -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne '.gitkeep' })
+    }
+    $logFiles = @()
+    if (Test-Path $logsRoot) {
+        $logFiles = @(Get-ChildItem $logsRoot -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -ne '.gitkeep' -and $_.FullName.Substring($logsRoot.Length).TrimStart('\') -notlike '_archive\*' })
+    }
+
+    if (-not $dataCells.Count -and -not $pcapFiles.Count -and -not $logFiles.Count) {
         Write-Host ""
-        Write-Host "  Nothing to archive - datasets\exports\ holds no capture data." -ForegroundColor Yellow
+        Write-Host "  Nothing to archive - datasets\exports\, PCAP\ and run_logs\ hold no capture data." -ForegroundColor Yellow
         Write-Host "  (run_ledger.csv and the .gitkeep scaffold are not captures.)" -ForegroundColor DarkGray
         Write-Host ""
         Read-Host "Press Enter to return to the menu" | Out-Null
@@ -2520,6 +2535,11 @@ function Invoke-ArchiveMenu {
         $rootMark = if ($c.Roots -gt 0) { 'yes' } else { 'NO' }
         Write-Host ("  {0,-34}{1,6}{2,10}{3,9}{4,10}" -f $c.Cell, $c.Files, $mb, $rootMark, $c.Arrivals)
     }
+    $pcapCount = @($pcapFiles | Where-Object { $_.Extension -eq '.pcap' -or $_.Extension -eq '.pcapng' }).Count
+    $pcapBytes = [long](($pcapFiles | Measure-Object Length -Sum).Sum)
+    Write-Host ""
+    Write-Host ("  ALSO MOVES: {0} capture(s) in datasets\PCAP\ ({1} file(s) incl. .json, {2})" -f $pcapCount, $pcapFiles.Count, (Format-ByteSize $pcapBytes)) -ForegroundColor Cyan
+    Write-Host ("              {0} run log(s) in datasets\run_logs\ (_archive\ stays)" -f $logFiles.Count) -ForegroundColor Cyan
 
     # ---- is any of it already archived? ------------------------------------
     Write-Host ""
@@ -2619,7 +2639,7 @@ function Invoke-ArchiveMenu {
                     try { & (Join-Path $base 'archive.ps1') -Label $label -Reason $reason -Force }
                     finally { Pop-Location }
                     Write-Host ""
-                    Write-Host "  Archived. datasets\exports\ is back to a clean scaffold." -ForegroundColor Green
+                    Write-Host "  Archived. datasets\exports\ is back to a clean scaffold; PCAP\ and run_logs\ are emptied." -ForegroundColor Green
                     Read-Host "Press Enter to return to the menu" | Out-Null
                     return
                 }
