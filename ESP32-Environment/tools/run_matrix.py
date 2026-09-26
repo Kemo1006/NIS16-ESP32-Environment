@@ -498,7 +498,7 @@ def main():
     # root, where a bare "exports" points at a non-existent .\exports\ and the
     # tool reports "No exported CSVs found" for a cell that is fully captured.
     # An explicit --outdir still overrides this.
-    ap.add_argument("--outdir", default=os.path.join(_THIS_DIR, "exports"),
+    ap.add_argument("--outdir", default=os.path.join(os.path.dirname(_THIS_DIR), "datasets", "exports"),
                     help="Where CSVs and the ledger live "
                          "(default: the exports/ folder next to this script).")
     ap.add_argument("--repeats", type=int, default=3, help="Target repeats per cell (>=3).")

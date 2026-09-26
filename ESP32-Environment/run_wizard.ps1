@@ -67,6 +67,19 @@ $base = $PSScriptRoot
 $repoTag   = (Split-Path (Split-Path $base -Parent) -Leaf) + '_' + ([math]::Abs($base.GetHashCode())).ToString('x8')
 $buildRoot = Join-Path $env:LOCALAPPDATA "esp32_builds\$repoTag"
 
+# WINDOWS 260-CHARACTER PATH LIMIT - same rule, same numbers as run.ps1's
+# Get-SafeBuildDir (see the comment there): a build dir longer than
+# $MaxBuildDirLen goes under the short root, or gcc fails on the bootloader's
+# .obj.d. Keep all three copies identical so they resolve the same dir.
+$shortBuildRoot  = Join-Path $env:SystemDrive "esp32b\$repoTag"
+$MaxBuildDirLen  = 110
+function Get-SafeBuildDir {
+    param([string]$Proj, [string]$DirName)
+    $d = Join-Path $buildRoot "$Proj\$DirName"
+    if ($d.Length -gt $MaxBuildDirLen) { $d = Join-Path $shortBuildRoot "$Proj\$DirName" }
+    return $d
+}
+
 # Capture -Repeat NOW, before anything assigns to $repeat. PowerShell variable names
 # are case-INSENSITIVE, so the $Repeat parameter and a local $repeat are one and the
 # same variable - loading a preset into $repeat would silently clobber the override.
@@ -128,6 +141,9 @@ function Colorize-Role {
 
 $memberBoardsTool = Join-Path $base 'tools\Show-MemberBoards.ps1'
 if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
+# Latest-import record behind the green/yellow push/pull lists (Invoke-ImportSdCard).
+$importBatchTool = Join-Path $base 'tools\ImportBatch.ps1'
+if (Test-Path $importBatchTool) { . $importBatchTool }
 
 # ---------------------------------------------------------------- helpers ----
 
@@ -389,8 +405,14 @@ function Show-CaptureWizardMenu {
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
             @{ Idx = 18; Text = 'Campaign progress checklist - which runs are DONE, scanned from the folders (no board/COM contact)' }
             @{ Idx = 19; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
+        ) }
+        @{ Name = 'WIRESHARK'; Items = @(
+            @{ Idx = 24; Text = 'Open a capture in Wireshark - pick a view (all boards, MY boards, one board, retries, joins, BLACKHOLE proof, WORMHOLE check...)' }
+            @{ Idx = 25; Text = 'Open the NEWEST capture in Wireshark (overview of ALL boards of the run - no questions)' }
+            @{ Idx = 26; Text = 'ESP32 sniffer board + watch LIVE in Wireshark (flash a SPARE board, record into datasets\PCAP\; Enter stops)' }
+            @{ Idx = 23; Text = 'ESP32 sniffer board - record only, into datasets\PCAP\ (no run; no Mac needed; Enter stops)' }
             @{ Idx = 21; Text = 'MacBook sniffer test (~2 min, no attack run - proves the Mac Wireless Diagnostics Sniffer records ESP32 frames)' }
-            @{ Idx = 22; Text = 'Check a Mac sniffer capture file (.pcap - mesh beacons/data, capture length, repairs a "cut short" file; no board contact)' }
+            @{ Idx = 22; Text = 'Check a sniffer capture file (Mac or ESP32 .pcap - mesh beacons/data, capture length, repairs a "cut short" file; then opens it)' }
         ) }
     )
     $exitIdx = 8
@@ -699,7 +721,16 @@ function Wait-ForNewPort {
     Write-Host ("Plug in {0} now (unplug another board first if you're out of free USB ports)." -f $For) -ForegroundColor Yellow
     $before = @(Get-PortList | Select-Object -ExpandProperty Port)
     Read-Line "Press Enter once it's plugged in > " | Out-Null
-    Start-Sleep -Milliseconds 800   # Windows needs a beat to enumerate a freshly-plugged device
+    # A CP210x/CH340 can take several seconds to enumerate after plug-in (driver
+    # load), so poll instead of one fixed 800 ms look - a single early look
+    # misses a slow board and reports "no new port" while it is still appearing.
+    $new = @()
+    for ($try = 0; $try -lt 12 -and $new.Count -eq 0; $try++) {
+        Start-Sleep -Milliseconds 700
+        $after = @(Get-PortList | Select-Object -ExpandProperty Port)
+        $new = @($after | Where-Object { $before -notcontains $_ })
+    }
+    if ($new.Count -gt 0) { Start-Sleep -Milliseconds 1200 }   # let a second new port (hub) show up too
     $after = @(Get-PortList | Select-Object -ExpandProperty Port)
     $new = @($after | Where-Object { $before -notcontains $_ })
 
@@ -714,7 +745,9 @@ function Wait-ForNewPort {
         $n = 0
         if ([int]::TryParse($which, [ref]$n) -and $n -ge 1 -and $n -le $new.Count) { return $new[$n - 1] }
     }
-    Write-Host "  No new port detected - type it manually instead." -ForegroundColor Yellow
+    Write-Host "  No new port detected after ~8 s." -ForegroundColor Yellow
+    Write-Host "  If the board was already plugged in before this prompt, or Windows gave it a COM number that was already listed," -ForegroundColor DarkGray
+    Write-Host "  it can't show up as 'new' - pick it from the list ([4] identify reads its MAC) or type it manually." -ForegroundColor DarkGray
     return $null
 }
 
@@ -1031,7 +1064,7 @@ function Invoke-FirmwareSelfTest {
     # Absolute path under $buildRoot (see top of file) -- keeps compiled output
     # off OneDrive; $proj (root_node/child_node) stays the CMake source dir.
     $portTag  = ($port -replace '[^A-Za-z0-9]', '')
-    $buildDir = Join-Path $buildRoot "$proj\build_${role}_none_tree_$portTag"
+    $buildDir = Get-SafeBuildDir -Proj $proj -DirName "build_${role}_none_tree_$portTag"
 
     # Same self-heal run.ps1 does before it builds/flashes: a build dir can be left
     # pointing at a different repo path (moved/re-cloned) or half-configured by an
@@ -1506,9 +1539,10 @@ function Select-CardFiles {
     # sends the firmware's DELETE_SD_FILE). Both give the operator the same 'd'
     # command; only the mechanism differs. -NoDelete still hides 'd' entirely
     # for any caller that wants a read-only picker.
-    # Note the board refuses to unlink a file it currently has OPEN, so the run
-    # in progress cannot be deleted out from under itself, and it accepts only
-    # *_telem.csv / *_arrivals.csv, so runs.csv is never reachable this way.
+    # A file the board currently has OPEN (the run in progress) is deleted too:
+    # the firmware closes its SD copy first, and that run carries on logging to
+    # SPIFFS only. The board accepts only *_telem.csv / *_arrivals.csv, so
+    # runs.csv is never reachable this way.
     param([Parameter(Mandatory)]$Files, [string]$Card, [string]$Port, [switch]$NoDelete)
 
     # Sorted newest-RUN-first; unknown stamps sink to the bottom (they can only
@@ -1650,7 +1684,10 @@ function Select-CardFiles {
 
             Write-Host ""
             Write-Host "  DELETE from the card (PERMANENT - not the exports/ copy, the SD card file itself):" -ForegroundColor Red
-            foreach ($d in $toDelete) { Write-Host ("    {0}" -f $d.name) -ForegroundColor Red }
+            foreach ($d in $toDelete) {
+                $tag = if ($d.live -eq $true) { '   << RUN IN PROGRESS - its card copy stops here (SPIFFS keeps logging)' } else { '' }
+                Write-Host ("    {0}{1}" -f $d.name, $tag) -ForegroundColor Red
+            }
             $confirm = Read-Line ("  Delete {0} file(s) from the card? [y/N] > " -f $toDelete.Count)
             if ($confirm -ne 'y' -and $confirm -ne 'Y') {
                 Write-Host "  Cancelled - nothing deleted." -ForegroundColor DarkGray
@@ -1699,8 +1736,9 @@ function Select-CardFiles {
                             # selection routinely mixes the live run with old captures.
                             if ($err -match 'SD_FILE_IN_USE') {
                                 Write-Host ("    SKIPPED {0}" -f $d.name) -ForegroundColor Yellow
-                                Write-Host "      The board is writing to this file RIGHT NOW (the run in progress)." -ForegroundColor Yellow
-                                Write-Host "      Let it reach TERMINATE, then delete it." -ForegroundColor Yellow
+                                Write-Host "      The board is writing to this file RIGHT NOW and did not release it" -ForegroundColor Yellow
+                                Write-Host "      within 5 s - or its firmware predates live-file delete (reflash it)." -ForegroundColor Yellow
+                                Write-Host "      Otherwise let it reach TERMINATE, then delete it." -ForegroundColor Yellow
                             }
                             else {
                                 if (-not $err) { $err = 'the board did not confirm the delete' }
@@ -1995,12 +2033,15 @@ function Import-OneSdCard {
             Write-Host "  Skipped - nothing copied." -ForegroundColor DarkGray
             return
         }
+        # NOT captured with 2>&1 like the dry run: capturing held every line
+        # until python exited (the screen looked frozen for the whole copy) and
+        # turned each '\r' redraw of the progress bar into its own line. Run
+        # straight on the console so the bar updates in place, live.
         $prevEap = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
-        try   { $realOut = & python @pyArgs 2>&1 }
+        try   { & python @pyArgs }
         finally { $ErrorActionPreference = $prevEap }
         $rc = $LASTEXITCODE
-        $realOut | ForEach-Object { Write-Host "  $_" }
         if ($rc -ne 0) { Write-Host ("  import_sdcard.py exited {0} - see above." -f $rc) -ForegroundColor Yellow }
     }
     catch {
@@ -2174,6 +2215,14 @@ function Invoke-ImportSdCard {
         Write-Host "`nNo saved preset matches this attack/topology/scenario/location - files keep the card's own victim_NODE_<MAC> naming." -ForegroundColor DarkGray
     }
 
+    # This whole trip - every card until N to "another card?" - is ONE import
+    # batch: what the Data sync push/pull lists show green (tools\ImportBatch.ps1).
+    # Snapshot what tools\exports\ already holds, so only files copied from here
+    # on count as this batch.
+    $batchOn      = [bool](Get-Command Save-ImportBatch -ErrorAction SilentlyContinue)
+    $batchBefore  = if ($batchOn) { @(Get-ExportCsvSet -Base $base) } else { @() }
+    $batchStarted = if ($batchOn) { Get-UnixNow } else { 0 }
+
     # BOARD ROUTE: pick a COM port instead of a drive letter, then hand off to
     # the same Import-OneSdCard the pulled-card route uses. Everything past the
     # source - picker, dry run, confirmation, naming, exports/ layout - is
@@ -2208,6 +2257,7 @@ function Invoke-ImportSdCard {
             # opt-in, and it is offered for this USB path now.
             Import-OneSdCard -Port $port -Repeat $repeat -Roster $rosterPath `
                              -ExpectPrefix $expectPrefix -Scenario $scenario
+            if ($batchOn) { Save-ImportBatch -Base $base -Before $batchBefore -Started $batchStarted }
 
             Write-Host ""
             Write-Host "  Note: importing never deletes. To free space, use 'd<numbers>' in the" -ForegroundColor DarkGray
@@ -2306,6 +2356,7 @@ function Invoke-ImportSdCard {
             }
             Import-OneSdCard -Card $cardRoot -Repeat $repeat -Roster $rosterPath -DeleteSource -ExpectPrefix $expectPrefix -Scenario $scenario
         }
+        if ($batchOn) { Save-ImportBatch -Base $base -Before $batchBefore -Started $batchStarted }
 
         # Multiple boards from the SAME run (root + victim + attacker cards,
         # say) share this one attack/topology/location/repeat, so offer
@@ -2345,7 +2396,7 @@ function Invoke-ShowTopologyStructure {
     # verify_topology.py takes the CLI topology name ('partial'); the wizard's
     # $TOPOLOGIES list already uses that vocabulary, so no translation needed
     # here - unlike analyze.ps1, which works in FOLDER names (partial_mesh).
-    $vtArgs = @('--dir', (Join-Path $base 'tools\exports'),
+    $vtArgs = @('--dir', (Join-Path $base 'datasets\exports'),
                 '--topology', $sTopology, '--attack', $sAttack,
                 '--expect', $sTopology, '--structure')
     if ($sLocation) { $vtArgs += @('--location', $sLocation) }
@@ -2441,18 +2492,18 @@ function Invoke-ArchiveMenu {
     # the campaign is currently counting.
     Write-Host ""
     Write-Host "=== Archive captured data ===" -ForegroundColor Cyan
-    Write-Host "Archiving MOVES tools\exports\ + generated analysis\ output into" -ForegroundColor DarkGray
+    Write-Host "Archiving MOVES datasets\exports\ + generated datasets\analysis\ output into" -ForegroundColor DarkGray
     Write-Host "archive\<date>_<label>\ and resets the working tree. Nothing is deleted." -ForegroundColor DarkGray
 
-    $exportsRoot = Join-Path $base 'tools\exports'
-    $archiveRoot = Join-Path $base 'archive'
+    $exportsRoot = Join-Path $base 'datasets\exports'
+    $archiveRoot = Join-Path $base 'datasets\archive'
 
     $cells = Get-ArchiveLiveSummary -ExportsRoot $exportsRoot
     $dataCells = @($cells | Where-Object { $_.Cell -ne '(loose files)' })
 
     if (-not $dataCells.Count) {
         Write-Host ""
-        Write-Host "  Nothing to archive - tools\exports\ holds no capture data." -ForegroundColor Yellow
+        Write-Host "  Nothing to archive - datasets\exports\ holds no capture data." -ForegroundColor Yellow
         Write-Host "  (run_ledger.csv and the .gitkeep scaffold are not captures.)" -ForegroundColor DarkGray
         Write-Host ""
         Read-Host "Press Enter to return to the menu" | Out-Null
@@ -2461,7 +2512,7 @@ function Invoke-ArchiveMenu {
 
     # ---- what is here -------------------------------------------------------
     Write-Host ""
-    Write-Host "  ON DISK NOW (tools\exports\)" -ForegroundColor Cyan
+    Write-Host "  ON DISK NOW (datasets\exports\)" -ForegroundColor Cyan
     Write-Host ("  {0,-34}{1,6}{2,10}{3,9}{4,10}" -f 'cell', 'files', 'size', 'root?', 'arrivals')
     Write-Host ("  " + ('-' * 70))
     foreach ($c in $cells) {
@@ -2483,7 +2534,7 @@ function Invoke-ArchiveMenu {
         }
         Write-Host "     Archiving again makes a SECOND copy of the same capture and" -ForegroundColor Yellow
         Write-Host "     inflates 'runs found' in the campaign checklist. A staged deletion" -ForegroundColor Yellow
-        Write-Host "     under tools\exports\ usually means archive.ps1 already moved it -" -ForegroundColor Yellow
+        Write-Host "     under datasets\exports\ usually means archive.ps1 already moved it -" -ForegroundColor Yellow
         Write-Host "     check archive\ before restoring anything with git." -ForegroundColor Yellow
     } else {
         Write-Host "  None - every file here is new to archive\." -ForegroundColor Green
@@ -2517,7 +2568,7 @@ function Invoke-ArchiveMenu {
         Write-Host ""
         Write-Host ("  NOTE: {0} COMPLETE run(s) are in here - they currently count toward M4." -f $completeLive) -ForegroundColor Yellow
         Write-Host "  Archiving keeps them counted (the checklist scans archive\ too), but" -ForegroundColor DarkGray
-        Write-Host "  they leave tools\exports\, so analyze.ps1 must be pointed at the" -ForegroundColor DarkGray
+        Write-Host "  they leave datasets\exports\, so analyze.ps1 must be pointed at the" -ForegroundColor DarkGray
         Write-Host "  archive folder afterwards." -ForegroundColor DarkGray
     }
 
@@ -2568,7 +2619,7 @@ function Invoke-ArchiveMenu {
                     try { & (Join-Path $base 'archive.ps1') -Label $label -Reason $reason -Force }
                     finally { Pop-Location }
                     Write-Host ""
-                    Write-Host "  Archived. tools\exports\ is back to a clean scaffold." -ForegroundColor Green
+                    Write-Host "  Archived. datasets\exports\ is back to a clean scaffold." -ForegroundColor Green
                     Read-Host "Press Enter to return to the menu" | Out-Null
                     return
                 }
@@ -2610,7 +2661,7 @@ function Invoke-CampaignChecklist {
     Write-Host ""
     Write-Host "=== Campaign progress checklist ===" -ForegroundColor Cyan
     Write-Host "Scanned from the folders only - no board/COM contact." -ForegroundColor DarkGray
-    Write-Host "  [1] LIVE    - tools\exports\ + analysis\ (what counts; archiving a run removes it)"
+    Write-Host "  [1] LIVE    - datasets\exports\ + datasets\analysis\ (what counts; archiving a run removes it)"
     Write-Host "  [2] ARCHIVE - archive\*\exports\ + archive\*\analysis\ (history)"
     $scope = 'live'
     $sAns = Read-Line "Which checklist? [1] > "
@@ -2701,15 +2752,30 @@ function Invoke-CheckSnifferFile {
     param([string]$Path)
     if (-not $Path) {
         Write-Host ""
-        Write-Host "Copy the Mac's capture (.pcap / .pcapng) to this laptop first - newer macOS keeps it in /var/tmp." -ForegroundColor DarkGray
+        Write-Host "Mac capture: copy the .pcap / .pcapng to this laptop first - newer macOS keeps it in /var/tmp." -ForegroundColor DarkGray
+        Write-Host "ESP32 sniffer capture: it is already here, under datasets\PCAP\." -ForegroundColor DarkGray
         $Path = Read-Line "Capture file path (drag the file into this window, then Enter) > "
     }
     if (-not $Path) { return }
     $Path = $Path.Trim().Trim('"').Trim("'")
     Write-Host ""
     & python (Join-Path $base 'tools\check_pcap.py') $Path
+    Request-OpenInWireshark -Path $Path
     Write-Host ""
     Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
+function Write-MacSnifferSettings {
+    # The two dropdowns in the Mac's Sniffer window, printed as highlighted
+    # "chips" so the values to pick are the first thing the eye lands on. A
+    # wrong channel is the #1 way a Mac capture comes back empty.
+    param([int]$Channel, [string]$Prefix = '  3. ')
+    Write-Host -NoNewline $Prefix
+    Write-Host -NoNewline 'Channel '
+    Write-Host -NoNewline (" {0} " -f $Channel) -ForegroundColor Black -BackgroundColor Yellow
+    Write-Host -NoNewline '    Width '
+    Write-Host -NoNewline ' 20 MHz ' -ForegroundColor Black -BackgroundColor Cyan
+    Write-Host '    (wrong channel = empty file)' -ForegroundColor Yellow
 }
 
 function Invoke-MacSnifferTest {
@@ -2733,7 +2799,7 @@ function Invoke-MacSnifferTest {
     Write-Host "     (Option-click the Wi-Fi icon -> 'Disconnect from <network>'. Do NOT switch Wi-Fi off -"
     Write-Host "      the Sniffer uses the Wi-Fi radio, so Wi-Fi OFF = nothing to capture with = empty file.)"
     Write-Host "  2. Option-click Wi-Fi icon -> Open Wireless Diagnostics -> menu bar Window -> Sniffer"
-    Write-Host ("  3. Channel: {0}    Width: 20 MHz    (wrong channel = empty file)" -f $chan) -ForegroundColor Yellow
+    Write-MacSnifferSettings -Channel $chan
     Write-Host "     (boards must run firmware with MESH_FORCE_HT20 - boot log 'RF width ... STA 20 MHz, AP 20 MHz'."
     Write-Host "      Older firmware talks at 40 MHz, which a 20 MHz Mac hears as beacons only.)"
     Write-Host "  4. Put the Mac within 1-2 metres of the boards."
@@ -2843,6 +2909,853 @@ function Invoke-MacSnifferTest {
         Write-Host "          re-run this test WITH the root plugged in here, so we can tell Mac-fault from mesh-fault." -ForegroundColor Yellow
     }
     Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
+# ---------------------------------------------------------- ESP32 sniffer ----
+# A spare ESP32 running sniffer_node\ (passive, never joins the mesh) streams
+# every frame it hears over USB; tools\sniff.py writes the .pcap. No SD card,
+# no Mac, no extra hardware. Captures go to PCAP\ (git-ignored: too big for
+# GitHub) with a .json beside each one saying how complete it is.
+
+function Get-MeshChannel {
+    $hdr = Join-Path $base 'components\mesh_common\include\mesh_config.h'
+    $hit = if (Test-Path $hdr) { Select-String -Path $hdr -Pattern '^\s*#define\s+MESH_CHANNEL\s+(\d+)' | Select-Object -First 1 }
+    if ($hit) { return [int]$hit.Matches[0].Groups[1].Value }
+    return 11
+}
+
+function Find-Wireshark {
+    $cmd = Get-Command Wireshark -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    # A custom install folder (Bas's laptop: S:\Main Programs\...) is only known
+    # to the installer's App Paths registry entry - the Program Files guess below
+    # missed it, which silently hid the "show it live in Wireshark?" prompt.
+    foreach ($key in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Wireshark.exe',
+                       'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Wireshark.exe')) {
+        try {
+            $p = ([string](Get-ItemProperty -Path $key -ErrorAction Stop).'(default)').Trim('"')
+            if ($p -and (Test-Path $p)) { return $p }
+        } catch { }
+    }
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if ($root) {
+            $p = Join-Path $root 'Wireshark\Wireshark.exe'
+            if (Test-Path $p) { return $p }
+        }
+    }
+    return $null
+}
+
+function Invoke-FlashSniffer {
+    # Builds + flashes sniffer_node\ onto one board. $true on success. Build dir
+    # is keyed by port like run.ps1's, under the same off-OneDrive build root.
+    param([string]$Port)
+    if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
+        Write-Host "  idf.py is not available in this window - run the wizard from the ESP-IDF PowerShell." -ForegroundColor Red
+        return $false
+    }
+    $proj = 'sniffer_node'
+    $dir  = Get-SafeBuildDir -Proj $proj -DirName ("build_sniffer_{0}" -f ($Port -replace '[^A-Za-z0-9]', ''))
+    # Same self-heal as run.ps1: a build dir configured for a moved/re-cloned
+    # repo path hard-fails idf.py, so wipe it and let it reconfigure.
+    $cache = Join-Path $dir 'CMakeCache.txt'
+    if (Test-Path $cache) {
+        $want = ((Join-Path $base $proj) -replace '\\', '/').TrimEnd('/')
+        $line = Select-String -Path $cache -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=' | Select-Object -First 1
+        if ($line -and (($line.Line -split '=', 2)[1].TrimEnd('/') -ne $want)) { Remove-Item -Recurse -Force $dir }
+    }
+    Write-Host ""
+    Write-Host ("Flashing the SNIFFER firmware to {0} (the first time compiles for ~1-2 min) ..." -f $Port) -ForegroundColor Cyan
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    Push-Location (Join-Path $base $proj)
+    try {
+        $global:LASTEXITCODE = 0
+        idf.py -B $dir -p $Port flash
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Flash failed (usually a USB serial glitch) - retrying once at 115200 baud ..." -ForegroundColor Yellow
+            idf.py -B $dir -p $Port -b 115200 flash
+        }
+        $ok = ($LASTEXITCODE -eq 0)
+    }
+    finally { Pop-Location; $ErrorActionPreference = $prevEap }
+    if ($ok) { Write-Host ("  Sniffer firmware is on {0}." -f $Port) -ForegroundColor Green }
+    else     { Write-Host ("  Could not flash the sniffer on {0} - plug it DIRECTLY into the laptop (no hub), short data cable." -f $Port) -ForegroundColor Red }
+    return $ok
+}
+
+function Start-SnifferCapture {
+    # Starts tools\sniff.py in its OWN window, so its live status line never
+    # mixes with the flash/monitor output in this one. Stopped by
+    # Stop-SnifferCapture dropping a .stop file next to the capture - a clean
+    # stop that writes the .json summary, unlike killing the window.
+    # Returns a handle for Stop-SnifferCapture, or $null if it did not start.
+    param([string]$Port, [string]$OutPath, [string]$Label, [switch]$Live)
+    # PS 5.1 silently DROPS an empty-string argument to a native exe, which
+    # would leave --label with no value and argparse would refuse to start.
+    if (-not $Label) { $Label = 'run' }
+    $py = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $py) { Write-Host "  python is not on PATH - run from the ESP-IDF PowerShell." -ForegroundColor Red; return $null }
+    $outDir = Split-Path $OutPath -Parent
+    if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
+    $stop = [IO.Path]::ChangeExtension($OutPath, '.stop')
+    if (Test-Path $stop) { Remove-Item -Force $stop }
+
+    # -EncodedCommand, not -Command: paths/labels with spaces or quotes survive
+    # untouched. The window stays open on an error so the reason can be read.
+    $q = { param($s) "'" + ([string]$s).Replace("'", "''") + "'" }
+    $cmd = "`$Host.UI.RawUI.WindowTitle = 'SNIFFER on $Port - recording, do not close'; " +
+           "& $(& $q $py.Source) $(& $q (Join-Path $base 'tools\sniff.py')) --port $Port --out $(& $q $OutPath) " +
+           "--stop-file $(& $q $stop) --label $(& $q $Label)" + $(if ($Live) { ' --live' } else { '' }) + "; " +
+           "`$rc = `$LASTEXITCODE; if (`$rc -ne 0) { Write-Host ''; Read-Host 'Sniffer ended with an error - read it above, then press Enter to close' | Out-Null }; exit `$rc"
+    $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+    $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-EncodedCommand', $enc) -WorkingDirectory $base -PassThru
+
+    # sniff.py creates the .pcap the moment it has the port open. No file after
+    # a few seconds = it could not open the port (busy, wrong COM, no pyserial).
+    $deadline = (Get-Date).AddSeconds(8)
+    while ((Get-Date) -lt $deadline -and -not (Test-Path $OutPath) -and -not $proc.HasExited) { Start-Sleep -Milliseconds 300 }
+    if (-not (Test-Path $OutPath)) {
+        Write-Host ("  The sniffer did not start on {0} - the reason is in the sniffer window." -f $Port) -ForegroundColor Red
+        return $null
+    }
+    Write-Host ("  Sniffer RECORDING in its own window -> {0}" -f $OutPath) -ForegroundColor Green
+    Write-Host "  Leave that window open - the wizard stops it after the root's export." -ForegroundColor DarkGray
+    return [pscustomobject]@{ Process = $proc; Out = $OutPath; Stop = $stop; Port = $Port }
+}
+
+function Confirm-KeepCapture {
+    # Asked right after check_pcap's RESULT, while it is still on screen. Yes/keep
+    # is the default (Enter); deleting needs an explicit 'n' - the capture is often the only
+    # independent record of the run. Removes the .pcap, its .json summary and a
+    # check_pcap _fixed copy if one was written. PCAP\ is git-ignored, so this
+    # is the ONLY copy: there is no restore.
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path $Path)) { return }
+    $json  = [IO.Path]::ChangeExtension($Path, '.json')
+    $fixed = Join-Path (Split-Path $Path -Parent) ([IO.Path]::GetFileNameWithoutExtension($Path) + '_fixed' + [IO.Path]::GetExtension($Path))
+    $files = @($Path, $json, $fixed) | Where-Object { Test-Path $_ }
+    Write-Host ""
+    $ans = Read-Line ("Keep this capture ({0})? [Y/n]  (n = DELETE it permanently) > " -f (Format-ByteSize (Get-Item $Path).Length))
+    # Only an explicit n/no deletes - Enter, y, or anything unrecognised keeps it.
+    if ($ans -notin @('n', 'N', 'no', 'No', 'NO')) {
+        Write-Host ("  Kept: {0}" -f $Path) -ForegroundColor Green
+        return
+    }
+    foreach ($f in $files) {
+        try { Remove-Item -LiteralPath $f -Force -ErrorAction Stop; Write-Host ("  Deleted {0}" -f $f) -ForegroundColor Yellow }
+        catch { Write-Host ("  Could not delete {0}: {1}" -f $f, $_.Exception.Message) -ForegroundColor Red }
+    }
+}
+
+function Stop-SnifferCapture {
+    # Stops a capture from Start-SnifferCapture, prints how complete it is (from
+    # sniff.py's .json) and runs check_pcap.py on it with the run's board MACs,
+    # so a bad capture is known NOW, while the boards are still on the table.
+    param($Capture, [string[]]$Macs = @())
+    if (-not $Capture) { return }
+    Write-Host ""
+    Write-Host "Stopping the sniffer capture ..." -ForegroundColor Cyan
+    New-Item -ItemType File -Force -Path $Capture.Stop | Out-Null
+    if (-not $Capture.Process.WaitForExit(20000)) {
+        # It only waits past 20 s if it is sitting on its own error prompt.
+        Write-Host "  The sniffer window did not close by itself - closing it (the file is flushed every second)." -ForegroundColor Yellow
+        try { Stop-Process -Id $Capture.Process.Id -Force -ErrorAction Stop } catch { }
+    }
+    Remove-Item -Force $Capture.Stop -ErrorAction SilentlyContinue
+
+    $json = [IO.Path]::ChangeExtension($Capture.Out, '.json')
+    if (Test-Path $json) {
+        try {
+            $s = Get-Content $json -Raw | ConvertFrom-Json
+            Write-Host ("  {0} frames ({1} data) over {2}, channel {3}." -f $s.frames_written, $s.frames_by_type.data, (Format-Duration ([int]$s.duration_s)), $s.channel) -ForegroundColor Green
+            $lost = [int]$s.loss.usb_link_lost_frames + [int]$s.loss.board_ring_dropped_frames
+            if ($lost -gt 0) { Write-Host ("  {0} frame(s) heard but not delivered - recorded in the .json, quote it with any figure from this capture." -f $lost) -ForegroundColor Yellow }
+            if ([int]$s.sniffer_reboots -gt 0) { Write-Host ("  The sniffer board rebooted {0} time(s) mid-capture (power/cable) - see the .json." -f $s.sniffer_reboots) -ForegroundColor Yellow }
+        } catch {
+            Write-Host ("  Could not read {0}: {1}" -f $json, $_.Exception.Message) -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  No .json summary (the sniffer was closed, not stopped) - the .pcap is still usable." -ForegroundColor Yellow
+    }
+    if (Test-Path $Capture.Out) {
+        $macArgs = @()
+        foreach ($m in $Macs) { if ($m) { $macArgs += @('--mac', $m) } }
+        Write-Host ""
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try { & python (Join-Path $base 'tools\check_pcap.py') $Capture.Out @macArgs }
+        finally { $ErrorActionPreference = $prevEap }
+        Confirm-KeepCapture -Path $Capture.Out
+    }
+}
+
+function Get-SnifferPcapPath {
+    # PCAP\<attack>\<topology>\<location>\<scenario>\<cell>_r<N>_<time>.pcap - the
+    # same folder names as tools\exports\ and run_logs\, so a capture sits beside
+    # "its" run on sight.
+    param([string]$AttackDir, [string]$TopoDir, [string]$Location, [string]$Scenario, [int]$RepeatNum)
+    $sc  = ConvertTo-Scenario $Scenario
+    $dir = Join-Path $base ("datasets\PCAP\{0}\{1}\{2}\{3}" -f $AttackDir, $TopoDir, $Location, $sc)
+    $name = "{0}-{1}-{2}-{3}_r{4}_{5}.pcap" -f $TopoDir, $AttackDir, $sc, $Location.ToLower(), $RepeatNum, (Get-Date -Format 'yyyy-MM-dd_HHmmss')
+    return (Join-Path $dir $name)
+}
+
+# NOT CALLED since sep. 26, 2026: Select-PacketCapture, Show-MacCaptureChecklist,
+# Start-SnifferCapture and Stop-SnifferCapture were the "packet capture for this
+# run?" step of main-menu [1], removed there as a duplicate of the VERIFY
+# category's sniffer entries. Kept (never committed anywhere else) so it can be
+# re-wired; delete once the team is sure it is not wanted back.
+$script:LastCaptureIdx = 0
+
+function Select-PacketCapture {
+    # Asked once per run, before anything is flashed. The MacBook is not always
+    # there, so the ESP32 board is the no-extra-hardware option; 'none' keeps
+    # the run exactly as it was before this existed.
+    # Returns @{ Mode = 'none'|'esp32'|'mac'; Port; Live }.
+    param([string[]]$Taken = @())
+    $chan = Get-MeshChannel
+    $idx = Show-Menu -Title 'Packet capture (Wireshark evidence) for this run?' -Options @(
+        'None - no packet capture this run',
+        "ESP32 sniffer board plugged into THIS laptop (spare board, flashed + recorded automatically into datasets\PCAP\, channel $chan)",
+        'MacBook Wireless Diagnostics sniffer (a teammate records it; the wizard tells you when to start and stop)'
+    ) -DefaultIndex $script:LastCaptureIdx
+    $script:LastCaptureIdx = $idx
+    if ($idx -eq 0) { return @{ Mode = 'none' } }
+    if ($idx -eq 2) { return @{ Mode = 'mac' } }
+
+    Write-Host ""
+    Write-Host "The sniffer must be an EXTRA board - not one of this run's mesh boards. It gets" -ForegroundColor DarkGray
+    Write-Host "the sniffer firmware, listens only (never transmits), and stays plugged in here." -ForegroundColor DarkGray
+    while ($true) {
+        $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+        $port = Select-Port -For 'the SNIFFER board (spare board - gets the sniffer firmware)' -Ports $ports -Taken $Taken
+        if ($Taken -contains $port) {
+            Write-Host ("  {0} is one of this run's MESH boards - flashing the sniffer there would take it out of the run. Pick the spare board." -f $port) -ForegroundColor Red
+            continue
+        }
+        break
+    }
+    $live = $false
+    if (Find-Wireshark) {
+        $ans = Read-Line "  Also show it live in Wireshark on this laptop while it records? [y/N] > "
+        $live = ($ans -eq 'y' -or $ans -eq 'Y')
+    }
+    return @{ Mode = 'esp32'; Port = $port; Live = $live }
+}
+
+function Show-MacCaptureChecklist {
+    $chan = Get-MeshChannel
+    Write-Host ""
+    Write-Host "=== MacBook sniffer - set it up now ===" -ForegroundColor Magenta
+    Write-Host "  1. Wi-Fi ON but NOT joined to any network (Option-click Wi-Fi -> Disconnect)." -ForegroundColor Magenta
+    Write-Host "  2. Option-click Wi-Fi -> Open Wireless Diagnostics -> Window -> Sniffer." -ForegroundColor Magenta
+    Write-MacSnifferSettings -Channel $chan
+    Write-Host "  4. Mac within 1-2 m of the boards." -ForegroundColor Magenta
+    Write-Host "  Untested Mac today? Run the main menu's 'MacBook sniffer test' first - a 0-byte capture" -ForegroundColor DarkGray
+    Write-Host "  after an 11-minute run is how sep. 23 was lost." -ForegroundColor DarkGray
+}
+
+$script:SniffFiling = @{ Attack = 1; Topology = 0; Location = 0; Scenario = 0; Repeat = 1 }
+
+function Select-SnifferFiling {
+    # Where a main-menu capture is saved: the same PCAP\<attack>\<topology>\
+    # <location>\<scenario>\ tree a wizard run files its capture in (folder
+    # names from Get-RunDirs, so baseline\ and partial_mesh\ match tools\exports\),
+    # or PCAP\standalone\ for a plain test. Last answers are this session's
+    # defaults, so recording several captures for one cell is Enter-Enter-Enter.
+    $f = $script:SniffFiling
+    $idx = Show-Menu -Title 'What is this capture for?' -Options @(
+        'A run cell - file it under datasets\PCAP\<attack>\<topology>\<location>\<scenario>\ (like the exports)',
+        'Just a test - datasets\PCAP\standalone\'
+    ) -DefaultIndex 0
+    $stamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
+    if ($idx -eq 1) { return (Join-Path $base "datasets\PCAP\standalone\esp32_sniffer_$stamp.pcap") }
+
+    $f.Attack = Show-Menu -Title 'Attack type:' -Options @('baseline  (no attack)', 'blackhole', 'wormhole') -DefaultIndex $f.Attack
+    $f.Topology = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex $f.Topology
+    $f.Location = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex $f.Location
+    $f.Scenario = Show-Menu -Title 'Scenario:' -Options $SCENARIO_LABELS -DefaultIndex $f.Scenario
+    while ($true) {
+        $raw = Read-Line ("Repeat number (the r<N> of the run it belongs to) > [{0}] " -f $f.Repeat)
+        $n = 0
+        if (-not $raw) { break }
+        if ([int]::TryParse($raw.Trim(), [ref]$n) -and $n -ge 1) { $f.Repeat = $n; break }
+        Write-Host "  Enter a positive whole number." -ForegroundColor Yellow
+    }
+    $dirs = Get-RunDirs -Attack $ATTACKS[$f.Attack] -Topology $TOPOLOGIES[$f.Topology] -Location $LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario]
+    return (Get-SnifferPcapPath -AttackDir $dirs.AttackDir -TopoDir $dirs.TopoDir -Location $LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario] -RepeatNum $f.Repeat)
+}
+
+function Invoke-Esp32SnifferStandalone {
+    # Main-menu entry: flash and/or record with the ESP32 sniffer outside a run
+    # (a first test, a demo, or a capture while another laptop drives the run).
+    # Runs sniff.py in THIS window; Enter stops it. -Live (the WIRESHARK
+    # category's "watch LIVE" entry) skips the question and always opens Wireshark.
+    param([switch]$Live)
+    $chan = Get-MeshChannel
+    Write-Host ""
+    $title = if ($Live) { "=== ESP32 sniffer board + LIVE Wireshark (no run) ===" } else { "=== ESP32 sniffer board (no run - just record) ===" }
+    Write-Host $title -ForegroundColor Cyan
+    Write-Host ("Use a SPARE board - it gets the sniffer firmware and listens on channel {0} only." -f $chan) -ForegroundColor DarkGray
+    $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
+    $port = Select-Port -For 'the SNIFFER board' -Ports $ports -AllowBack
+    if (-not $port -or $port -eq $script:BackSignal) { return }
+
+    $ans = Read-Line "`nFlash the sniffer firmware to $port first? (skip only if it already runs it) [Y/n] > "
+    if ($ans -ne 'n' -and $ans -ne 'N') {
+        if (-not (Invoke-FlashSniffer -Port $port)) { Read-Host "Press Enter to return to the menu" | Out-Null; return }
+        Start-Sleep -Seconds 2   # let it boot past the 115200 banner
+    }
+    $outPath = Select-SnifferFiling
+    # --start-paused: the capture begins PAUSED (nothing saved) so the operator starts it
+    # by hand with P at the moment the experiment does - a recording that opens before
+    # the run would otherwise fill the file with idle traffic (sep. 26, 2026 request).
+    $pyArgs = @((Join-Path $base 'tools\sniff.py'), '--port', $port, '--stop-on-enter', '--start-paused', '--out', $outPath,
+                '--label', ((Split-Path (Split-Path $outPath -Parent) -Leaf) + ' ' + [IO.Path]::GetFileNameWithoutExtension($outPath)))
+    if (Find-Wireshark) {
+        $ans = if ($Live) { 'y' } else { Read-Line "Also show it live in Wireshark? [y/N] > " }
+        if ($ans -eq 'y' -or $ans -eq 'Y') {
+            # sniff.py opens the live view with the thesis settings folder when it exists.
+            Initialize-WiresharkProfile -IoLines (Get-GenericIoLines)
+            $pyArgs += '--live'
+        }
+    } elseif ($Live) {
+        Write-Host "  Wireshark was not found on this laptop - recording to the file only." -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "  >>> It starts PAUSED - press  P  to START recording (and P again to pause/resume). <<<" -ForegroundColor Yellow
+    Write-Host "Recording - P = pause/resume, ENTER = stop (not Ctrl+C: that closes the wizard too)." -ForegroundColor Yellow
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & python @pyArgs }
+    finally { $ErrorActionPreference = $prevEap }
+    $out = $pyArgs[$pyArgs.IndexOf('--out') + 1]
+    if (Test-Path $out) {
+        Write-Host ""
+        $ErrorActionPreference = 'Continue'
+        try { & python (Join-Path $base 'tools\check_pcap.py') $out }
+        finally { $ErrorActionPreference = $prevEap }
+        Confirm-KeepCapture -Path $out
+        Request-OpenInWireshark -Path $out
+    }
+    Write-Host ""
+    Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
+# ------------------------------------------------------- WIRESHARK views ----
+# The WIRESHARK category's "open it for me" entries: pick a capture and a view
+# and Wireshark opens on it with the columns, filter and I/O-graph lines set.
+# All of it lives in its OWN Wireshark settings folder (%APPDATA%\Wireshark-
+# ThesisMesh, handed over as WIRESHARK_CONFIG_DIR), so the laptop's normal
+# Wireshark - other coursework uses it - is never touched. Not a profile (-C):
+# tested sep. 26, 2026, a -C launch made ThesisMesh the "last used profile", so
+# the next plain Wireshark start opened in the thesis layout. Board MACs come
+# from the capture itself (check_pcap.py --map-json), never from the guide's
+# tables: roles rotate per run, and a stale MAC makes a filter silently empty.
+
+$script:WsColors = @('#E6194B', '#4363D8', '#3CB44B', '#F58231', '#911EB4', '#42D4F4', '#F032E6', '#9A6324', '#469990', '#888888')
+
+function Get-WiresharkProfileDir { return (Join-Path $env:APPDATA 'Wireshark-ThesisMesh') }
+
+function Get-GenericIoLines {
+    # I/O-graph lines that need no MAC - for the live view and a capture with no
+    # mesh boards found.
+    return @(
+        @{ Name = 'Mesh data frames'; Filter = 'llc.oui == 0x18fe34' },
+        @{ Name = 'Retries (802.11 Retry bit)'; Filter = 'wlan.fc.retry == 1' }
+    )
+}
+
+function Initialize-WiresharkProfile {
+    # preferences and the filter buttons are written only when missing, so a
+    # column tweak made inside Wireshark survives (delete the profile folder to
+    # get these defaults back). io_graphs is rewritten on every launch with the
+    # chosen view's lines - that is what "already loaded" means.
+    # .NET WriteAllLines = UTF-8 without a BOM; Wireshark reads these as plain text.
+    param([object[]]$IoLines = @())
+    $dir = Get-WiresharkProfileDir
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+
+    $prefs = Join-Path $dir 'preferences'
+    if (-not (Test-Path $prefs)) {
+        [IO.File]::WriteAllLines($prefs, [string[]]@(
+            '# Written by run_wizard.ps1 (WIRESHARK category). Delete this profile folder to reset it.',
+            '# TA = who sent this hop, RA = the next hop (NOT the final target - ESP-MESH is hop-wise).',
+            'gui.column.format: ',
+            "`t""No."", ""%m"",",
+            "`t""Time"", ""%t"",",
+            "`t""RSSI"", ""%Cus:radiotap.dbm_antsignal:0:R"",",
+            "`t""TA (sender)"", ""%Cus:wlan.ta:0:R"",",
+            "`t""RA (next hop)"", ""%Cus:wlan.ra:0:R"",",
+            "`t""Seq"", ""%Cus:wlan.seq:0:R"",",
+            "`t""Retry"", ""%Cus:wlan.fc.retry:0:U"",",
+            "`t""Protocol"", ""%p"",",
+            "`t""Length"", ""%L"",",
+            "`t""Info"", ""%i""",
+            'nameres.mac_name: FALSE'
+        ))
+    }
+
+    # Window size and column widths live in the 'recent' file; without it this
+    # fresh settings folder opens a small window. Wireshark rewrites the file
+    # itself on exit, so it is only seeded once.
+    $recent = Join-Path $dir 'recent'
+    if (-not (Test-Path $recent)) {
+        [IO.File]::WriteAllLines($recent, [string[]]@(
+            '# Seeded by run_wizard.ps1 (WIRESHARK category): window + packet list column widths.',
+            'gui.geometry_main_maximized: TRUE',
+            'column.width:',
+            "`t%m, 70,",
+            "`t%t, 110,",
+            "`t""%Cus:radiotap.dbm_antsignal"", 80,",
+            "`t""%Cus:wlan.ta"", 170,",
+            "`t""%Cus:wlan.ra"", 170,",
+            "`t""%Cus:wlan.seq"", 60,",
+            "`t""%Cus:wlan.fc.retry"", 55,",
+            "`t%p, 70,",
+            "`t%L, 60,",
+            "`t%i, 900"
+        ))
+    }
+
+    $buttons = Join-Path $dir 'dfilter_buttons'
+    if (-not (Test-Path $buttons)) {
+        [IO.File]::WriteAllLines($buttons, [string[]]@(
+            '# Written by run_wizard.ps1 (WIRESHARK category): the filter bar buttons.',
+            '"TRUE","Mesh data","llc.oui == 0x18fe34","ESP-MESH data frames only"',
+            '"TRUE","Retries","wlan.fc.retry == 1","Real 802.11 retransmissions"',
+            '"TRUE","Joins/leaves","wlan.fc.type_subtype in {0x00, 0x02, 0x0a, 0x0c}","Association, reassociation, disassociation, deauthentication"',
+            '"TRUE","Beacons","wlan.fc.type_subtype == 0x08","Beacons only"',
+            '"TRUE","No beacons/ACKs","!(wlan.fc.type_subtype in {0x08, 0x1d})","Hide beacons and ACKs"',
+            '"TRUE","Weak signal","radiotap.dbm_antsignal < -80","Frames heard below -80 dBm"'
+        ))
+    }
+
+    $io = @(
+        '# Written by run_wizard.ps1 (WIRESHARK category) for the view it last opened.',
+        '#"Enabled","Graph Name","Display Filter","Color","Style","Y Axis","Y Field","SMA Period","Y Axis Factor","Avg over Time"',
+        '"Disabled","All Packets","","#2E3436","Line","Packets","","None","1","Disabled"'
+    )
+    for ($i = 0; $i -lt $IoLines.Count; $i++) {
+        $io += ('"Enabled","{0}","{1}","{2}","Line","Packets","","None","1","Disabled"' -f `
+                $IoLines[$i].Name, $IoLines[$i].Filter, $script:WsColors[$i % $script:WsColors.Count])
+    }
+    [IO.File]::WriteAllLines((Join-Path $dir 'io_graphs'), [string[]]$io)
+}
+
+function Open-InWireshark {
+    # Starts Wireshark on $Path with the thesis settings folder and $Filter applied,
+    # and does not wait - the wizard stays usable while it is open. $false when
+    # Wireshark is missing (the filter is printed for copy-paste instead).
+    param([string]$Path, [string]$Filter, [object[]]$IoLines = @())
+    $ws = Find-Wireshark
+    if (-not $ws) {
+        Write-Host "  Wireshark was not found on this laptop. Open the file by hand and paste this filter:" -ForegroundColor Yellow
+        if ($Filter) { Write-Host ("    {0}" -f $Filter) }
+        return $false
+    }
+    # Our filters never hold a double quote; one would break the quoting below.
+    if ($Filter -match '"') { throw "Internal: display filter contains a double quote: $Filter" }
+    Initialize-WiresharkProfile -IoLines $IoLines
+    # ONE pre-quoted string: PS 5.1's Start-Process joins an -ArgumentList array
+    # with spaces and does not quote its items, so a path with spaces would split.
+    $argLine = '-r "{0}"' -f $Path
+    if ($Filter) { $argLine += (' -Y "{0}"' -f $Filter) }
+    # PS 5.1's Start-Process has no -Environment: set it here, the child inherits
+    # it, then put this window's value back.
+    $prevCfg = $env:WIRESHARK_CONFIG_DIR
+    $env:WIRESHARK_CONFIG_DIR = Get-WiresharkProfileDir
+    try { Start-Process -FilePath $ws -ArgumentList $argLine | Out-Null }
+    finally { $env:WIRESHARK_CONFIG_DIR = $prevCfg }
+    Write-Host ""
+    Write-Host ("  Wireshark is opening {0}" -f (Split-Path $Path -Leaf)) -ForegroundColor Green
+    if ($Filter) { Write-Host ("  Filter: {0}" -f $Filter) -ForegroundColor DarkGray }
+    Write-Host "  Thesis layout: RSSI / TA / RA / Seq / Retry columns, full MACs, filter buttons right of the filter bar." -ForegroundColor DarkGray
+    if ($IoLines.Count -gt 0) {
+        Write-Host ("  Statistics -> I/O Graphs: lines already loaded - {0}" -f (($IoLines | ForEach-Object { "'" + $_.Name + "'" }) -join ', ')) -ForegroundColor DarkGray
+    }
+    return $true
+}
+
+function Request-OpenInWireshark {
+    # Asked after a capture is checked or recorded. Opens check_pcap's _fixed copy
+    # when it wrote one - the original ends in a partial packet Wireshark warns about.
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path) -or -not (Find-Wireshark)) { return }
+    $fixed = Join-Path (Split-Path $Path -Parent) ([IO.Path]::GetFileNameWithoutExtension($Path) + '_fixed' + [IO.Path]::GetExtension($Path))
+    if (Test-Path -LiteralPath $fixed) { $Path = $fixed }
+    Write-Host ""
+    $ans = Read-Line "Open it in Wireshark now (overview of all boards of the run)? [Y/n] > "
+    if ($ans -in @('n', 'N', 'no', 'No', 'NO')) { return }
+    Invoke-WiresharkViews -Path $Path -Overview
+}
+
+function Get-PcapMeshMap {
+    # check_pcap.py --map-json: every mesh board heard (STA + softAP MAC), whom
+    # each sent data up to, and a root guess. $null when the file has no mesh.
+    # stderr is left alone on purpose: it shows the file/packet count, or why it failed.
+    param([string]$Path)
+    Write-Host ""
+    Write-Host "Reading the capture for your boards' MACs (a big Mac capture takes ~10 s) ..." -ForegroundColor DarkGray
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $raw = & python (Join-Path $base 'tools\check_pcap.py') --map-json $Path }
+    finally { $ErrorActionPreference = $prevEap }
+    if (-not $raw) { return $null }
+    try { $map = ($raw -join "`n") | ConvertFrom-Json } catch { return $null }
+    if (@($map.nodes).Count -eq 0) { return $null }
+    return $map
+}
+
+function Get-MemberBoardLabels {
+    # member_boards.json stores first:last byte ("B0:18") or a full MAC; keyed
+    # here on first:last so a capture's full STA MAC finds its nickname.
+    $out = @{}
+    $p = Join-Path $base 'member_boards.json'
+    if (-not (Test-Path $p)) { return $out }
+    try { $j = Get-Content $p -Raw | ConvertFrom-Json } catch { return $out }
+    foreach ($m in @($j.members)) {
+        foreach ($b in @($m.boards)) {
+            $parts = @(([string]$b.mac).ToLower() -split '[:-]' | Where-Object { $_ })
+            if ($parts.Count -ge 2) { $out[$parts[0] + ':' + $parts[-1]] = ("{0} [{1}]" -f $b.nickname, $m.name) }
+        }
+    }
+    return $out
+}
+
+function Get-MemberBoardOwners {
+    # Same first:last keying as Get-MemberBoardLabels, but keeps the member and
+    # the bare nickname apart - the "whose boards" view groups on the member.
+    $out = @{}
+    $p = Join-Path $base 'member_boards.json'
+    if (-not (Test-Path $p)) { return $out }
+    try { $j = Get-Content $p -Raw | ConvertFrom-Json } catch { return $out }
+    foreach ($m in @($j.members)) {
+        foreach ($b in @($m.boards)) {
+            $parts = @(([string]$b.mac).ToLower() -split '[:-]' | Where-Object { $_ })
+            if ($parts.Count -ge 2) { $out[$parts[0] + ':' + $parts[-1]] = @{ Member = [string]$m.name; Nick = [string]$b.nickname } }
+        }
+    }
+    return $out
+}
+
+function Format-PcapNode {
+    param($Node, $Map, [hashtable]$Labels, [string]$Attacker)
+    $b = $Node.sta -split ':'
+    $label = $Labels[$b[0] + ':' + $b[-1]]
+    $txt = $Node.sta
+    # "nick:" = member_boards.json's name for the board, NOT its role in this capture.
+    if ($label) { $txt += ("  nick: {0}" -f $label) }
+    $tags = @()
+    if ($Node.sta -eq $Map.root_guess) { $tags += 'ROOT (sends nothing up)' }
+    if ($Attacker -and $Node.sta -eq $Attacker) { $tags += 'ATTACKER (mesh_config.h)' }
+    $ups = @($Node.parents)
+    if ($ups.Count -gt 0) {
+        $up = ($ups | ForEach-Object { "{0} ({1} frames)" -f $_.sta, $_.frames }) -join ', '
+        $tags += ("up to {0}" -f $up)
+    }
+    if (-not $Node.beaconed) { $tags += 'not beaconing - seen only as a parent' }
+    if ($tags.Count -gt 0) { $txt += ("  - {0}" -f ($tags -join '; ')) }
+    return $txt
+}
+
+function Select-PcapNode {
+    # Returns the chosen node object from the map, or $null on 'b'.
+    param($Map, [string]$Title, [hashtable]$Labels, [string]$Attacker, [string]$DefaultSta)
+    $nodes = @($Map.nodes)
+    $opts = @(); $def = 0
+    for ($i = 0; $i -lt $nodes.Count; $i++) {
+        $opts += (Format-PcapNode -Node $nodes[$i] -Map $Map -Labels $Labels -Attacker $Attacker)
+        if ($DefaultSta -and $nodes[$i].sta -eq $DefaultSta) { $def = $i }
+    }
+    $idx = Show-Menu -Title $Title -Options $opts -DefaultIndex $def -AllowBack
+    if ($idx -lt 0) { return $null }
+    return $nodes[$idx]
+}
+
+function Select-CaptureFile {
+    # Every capture under PCAP\, newest first, plus "another file" for a Mac
+    # capture copied from elsewhere. -Newest skips the question. $null = back.
+    param([switch]$Newest)
+    $root = Join-Path $base 'datasets\PCAP'
+    $files = @()
+    if (Test-Path $root) {
+        $files = @(Get-ChildItem -Path $root -Recurse -File -Include *.pcap, *.pcapng -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Descending)
+    }
+    if ($Newest) {
+        if ($files.Count -eq 0) { Write-Host "  No captures under datasets\PCAP\ yet - record one first (ESP32 sniffer board)." -ForegroundColor Yellow; return $null }
+        return $files[0].FullName
+    }
+    $shown = @($files | Select-Object -First 15)
+    $opts = @()
+    foreach ($f in $shown) {
+        $age = (Get-Date) - $f.LastWriteTime
+        $ageTxt = if ($age.TotalHours -lt 1) { "{0} min ago" -f [int]$age.TotalMinutes }
+                  elseif ($age.TotalDays -lt 1) { "{0} h ago" -f [int]$age.TotalHours }
+                  else { $f.LastWriteTime.ToString('MMM. dd, yyyy').ToLower() }
+        $opts += ("{0}   {1}, {2}" -f $f.FullName.Substring($root.Length + 1), (Format-ByteSize $f.Length), $ageTxt)
+    }
+    $opts += 'Another file (Mac capture copied from elsewhere - drag it into this window)'
+    $idx = Show-Menu -Title 'Which capture? (newest first)' -Options $opts -DefaultIndex 0 -AllowBack
+    if ($idx -lt 0) { return $null }
+    if ($idx -lt $shown.Count) { return $shown[$idx].FullName }
+    $p = Read-Line "Capture file path (drag the file into this window, then Enter) > "
+    if (-not $p) { return $null }
+    $p = $p.Trim().Trim('"').Trim("'")
+    if (-not (Test-Path -LiteralPath $p)) { Write-Host ("  Not found: {0}" -f $p) -ForegroundColor Red; return $null }
+    return $p
+}
+
+function Get-PcapBoardKey {
+    # first:last byte of a STA MAC - what member_boards.json is matched on.
+    param([string]$Sta)
+    $b = $Sta.ToLower() -split ':'
+    return $b[0] + ':' + $b[-1]
+}
+
+function Get-PcapMemberNodes {
+    # The capture's boards that member_boards.json files under $Member.
+    param([object[]]$Nodes, [hashtable]$Owners, [string]$Member)
+    return @($Nodes | Where-Object { $o = $Owners[(Get-PcapBoardKey $_.sta)]; $o -and $o.Member -eq $Member })
+}
+
+function Select-PcapMember {
+    # Whose boards, in roster order (Cal, Bas, Kyle); a name only in the file goes
+    # last. '' = back, or nobody's boards are recorded.
+    param([object[]]$Nodes, [hashtable]$Owners, [string]$Title = 'Whose boards?')
+    $inFile = @($Owners.Values | ForEach-Object { $_.Member } | Select-Object -Unique)
+    $names  = @(Get-PresetMemberNames | Where-Object { $inFile -contains $_ }) + @($inFile | Where-Object { (Get-PresetMemberNames) -notcontains $_ })
+    if ($names.Count -eq 0) {
+        Write-Host "  member_boards.json lists no boards yet - add them from the member board list menu." -ForegroundColor Yellow
+        return ''
+    }
+    $opts = @($names | ForEach-Object { "{0} - {1} board(s) heard in this capture" -f $_, @(Get-PcapMemberNodes -Nodes $Nodes -Owners $Owners -Member $_).Count })
+    $i = Show-Menu -Title $Title -Options $opts -DefaultIndex 0 -AllowBack
+    if ($i -lt 0) { return '' }
+    return $names[$i]
+}
+
+function Get-PcapScopedView {
+    # Filter + I/O lines for the views that work on any set of boards: every board
+    # of the run (main list, -All) or one member's boards (the MY boards submenu).
+    # $Who names the set in the I/O lines. $null = backed out of the board picker.
+    param([string]$View, $Map, [object[]]$Scope, [switch]$All, [string]$Who,
+          [hashtable]$Labels, [hashtable]$Owners, [string]$Attacker)
+    $macs = ($Scope | ForEach-Object { $_.sta, $_.softap }) -join ', '
+    $set  = "wlan.addr in {$macs}"
+    # Whole run: every ESP-MESH data frame, even one from a board the map could not place.
+    $data = if ($All) { 'llc.oui == 0x18fe34' } else { "llc.oui == 0x18fe34 && $set" }
+    switch ($View) {
+        'overview' {
+            return @{ Filter = $set
+                      Io = @(@{ Name = "$Who - all frames"; Filter = $set },
+                             @{ Name = "$Who - mesh data frames"; Filter = $data },
+                             @{ Name = "$Who - retries"; Filter = "wlan.fc.retry == 1 && $set" }) }
+        }
+        'one' {
+            $sub = [pscustomobject]@{ nodes = $Scope; root_guess = $Map.root_guess }
+            $n = Select-PcapNode -Map $sub -Title 'Which board?' -Labels $Labels -Attacker $Attacker
+            if (-not $n) { return $null }
+            return @{ Filter = "wlan.addr == $($n.sta) || wlan.addr == $($n.softap)"
+                      Io = @(@{ Name = "$($n.sta) sends"; Filter = "wlan.ta == $($n.sta) || wlan.ta == $($n.softap)" },
+                             @{ Name = "$($n.sta) receives"; Filter = "wlan.ra == $($n.sta) || wlan.ra == $($n.softap)" }) }
+        }
+        'side' {
+            $io = @()
+            foreach ($n in $Scope) {
+                $o = $Owners[(Get-PcapBoardKey $n.sta)]
+                $nm = if ($o -and $o.Nick) { $o.Nick } else { $n.sta }
+                $io += @{ Name = "$nm sends"; Filter = "wlan.ta == $($n.sta) || wlan.ta == $($n.softap)" }
+            }
+            return @{ Filter = $set; Io = $io }
+        }
+        'data' {
+            return @{ Filter = $data; Io = @(@{ Name = "$Who - mesh data frames"; Filter = $data }) }
+        }
+        'retry' {
+            $f = "wlan.fc.retry == 1 && $set"
+            return @{ Filter = $f
+                      Io = @(@{ Name = "$Who - retries"; Filter = $f },
+                             @{ Name = "$Who - mesh data frames"; Filter = $data }) }
+        }
+        'topo' {
+            return @{ Filter = "wlan.fc.type_subtype in {0x00, 0x02, 0x0a, 0x0c} && $set"
+                      Io = @(@{ Name = 'Joins / re-joins'; Filter = "wlan.fc.type_subtype in {0x00, 0x02} && $set" },
+                             @{ Name = 'Leaves'; Filter = "wlan.fc.type_subtype in {0x0a, 0x0c} && $set" }) }
+        }
+        'weak' {
+            $f = "radiotap.dbm_antsignal < -80 && wlan.ta in {$macs}"
+            return @{ Filter = $f; Io = @(@{ Name = "$Who below -80 dBm"; Filter = $f }) }
+        }
+    }
+    throw "Internal: unknown Wireshark view '$View'"
+}
+
+function Invoke-WiresharkMemberViews {
+    # The MY boards submenu: the scoped views again, limited to one member's boards.
+    # Starts on this laptop's member (my_member.txt) and asks when that is not set.
+    # Returns to the main list, whose views cover every board of the run.
+    param([string]$Path, $Map, [hashtable]$Owners, [hashtable]$Labels, [string]$Attacker, [string]$Member)
+    $nodes = @($Map.nodes)
+    if (-not $Member) {
+        $Member = Select-MyMember
+        if (-not $Member) { $Member = Select-PcapMember -Nodes $nodes -Owners $Owners }
+        if (-not $Member) { return }
+    }
+    $default = 0
+    while ($true) {
+        $scope = @(Get-PcapMemberNodes -Nodes $nodes -Owners $Owners -Member $Member)
+        $who = if ($Member -eq (Get-MyMember)) { "My boards ($Member)" } else { "$Member's boards" }
+        $sub = @()
+        if ($scope.Count -gt 0) {
+            $sub += @{ Key = 'overview'; Text = "Overview - $who only (every frame to or from them)" }
+            $sub += @{ Key = 'one';      Text = "One board - one of $who" }
+            $sub += @{ Key = 'side';     Text = "$who side by side - one I/O 'sends' line per board" }
+            $sub += @{ Key = 'data';     Text = "Mesh data frames to or from $who" }
+            $sub += @{ Key = 'retry';    Text = "Real MAC retransmissions on $who (802.11 Retry bit)" }
+            $sub += @{ Key = 'topo';     Text = "Topology - joins, re-joins and leaves of $who" }
+            $sub += @{ Key = 'weak';     Text = "Weak links - $who heard below -80 dBm" }
+        } else {
+            Write-Host ("  None of {0} in member_boards.json were heard in this capture (off, other channel, or MACs not recorded)." -f $who) -ForegroundColor Yellow
+        }
+        $sub += @{ Key = 'member'; Text = 'Another member''s boards instead' }
+        $sub += @{ Key = 'back';   Text = 'Back - ALL boards of the run' }
+        $title = "{0}: {1} of the {2} boards in this capture. Open which view?" -f $who, $scope.Count, $nodes.Count
+        $i = Show-Menu -Title $title -Options @($sub | ForEach-Object { $_.Text }) -DefaultIndex ([Math]::Min($default, $sub.Count - 1)) -AllowBack
+        if ($i -lt 0 -or $sub[$i].Key -eq 'back') { return }
+        if ($sub[$i].Key -eq 'member') {
+            $m = Select-PcapMember -Nodes $nodes -Owners $Owners
+            if ($m) { $Member = $m; $default = 0 }
+            continue
+        }
+        $r = Get-PcapScopedView -View $sub[$i].Key -Map $Map -Scope $scope -Who $who -Labels $Labels -Owners $Owners -Attacker $Attacker
+        if (-not $r) { continue }
+        Open-InWireshark -Path $Path -Filter $r.Filter -IoLines $r.Io | Out-Null
+        $default = $sub.Count - 1
+    }
+}
+
+function Invoke-WiresharkViews {
+    # WIRESHARK category: pick a capture (unless -Path), read its boards once,
+    # then open as many views of it as wanted. Every view here covers ALL boards
+    # heard in the capture; "MY boards" opens the same views limited to one
+    # member's boards. -Overview opens the overview straight away and returns
+    # (the "newest capture" entry, and after a check).
+    param([string]$Path, [switch]$Overview)
+    if (-not $Path) { $Path = Select-CaptureFile }
+    if (-not $Path) { return }
+
+    $map = Get-PcapMeshMap -Path $Path
+    if (-not $map) {
+        Write-Host "  No mesh boards found in this capture (wrong channel, too far, or not a mesh capture)." -ForegroundColor Yellow
+        Write-Host "  Opening it unfiltered - the filter buttons still work." -ForegroundColor Yellow
+        Open-InWireshark -Path $Path -IoLines (Get-GenericIoLines) | Out-Null
+        return
+    }
+    $nodes    = @($map.nodes)
+    $labels   = Get-MemberBoardLabels
+    $owners   = Get-MemberBoardOwners
+    $attacker = Get-ConfiguredAttackerMac
+    if ($attacker -and -not ($nodes | Where-Object { $_.sta -eq $attacker })) { $attacker = $null }
+    $meshSet  = 'wlan.addr in {' + (($nodes | ForEach-Object { $_.sta, $_.softap }) -join ', ') + '}'
+
+    Write-Host ""
+    Write-Host ("Boards in {0} (read from the capture itself):" -f (Split-Path $Path -Leaf)) -ForegroundColor Cyan
+    foreach ($n in $nodes) { Write-Host ("  {0}" -f (Format-PcapNode -Node $n -Map $map -Labels $labels -Attacker $attacker)) }
+    if (-not $map.root_guess) { Write-Host "  (root unclear from this capture - no single board that only receives)" -ForegroundColor DarkGray }
+
+    # Keyed, not numbered: the switch below cannot drift when an entry is added.
+    $views = @(
+        @{ Key = 'overview';  Text = 'Overview - ALL boards of the run (every frame to or from them)' },
+        @{ Key = 'mine';      Text = '' },
+        @{ Key = 'one';       Text = 'One board - everything to or from one board' },
+        @{ Key = 'side';      Text = 'All boards side by side - one I/O ''sends'' line per board' },
+        @{ Key = 'data';      Text = 'Mesh data frames only - all boards (the real traffic - no beacons, ACKs or other Wi-Fi)' },
+        @{ Key = 'retry';     Text = 'Real MAC retransmissions - all boards (802.11 Retry bit)' },
+        @{ Key = 'topo';      Text = 'Topology - joins, re-joins and leaves of all boards' },
+        @{ Key = 'weak';      Text = 'Weak links - all boards'' frames heard below -80 dBm' },
+        @{ Key = 'blackhole'; Text = 'BLACKHOLE proof - attacker -> its parent, with the I/O graph preloaded' },
+        @{ Key = 'wormhole';  Text = 'WORMHOLE check - node B''s direct sends vs node A''s uplink, plus joins' },
+        @{ Key = 'done';      Text = 'Done - back to the main menu' }
+    )
+    $doneIdx = $views.Count - 1
+    $default = 0
+    # Labelled: a bare 'continue' inside the switch below only leaves the switch.
+    :views while ($true) {
+        # Re-read each time: the submenu may have just set this laptop's member.
+        $mine = Get-MyMember
+        $views[1].Text = if ($mine) {
+            "MY boards ({0}) - {1} of {2} heard - the views above and below, only my boards  >" -f $mine, @(Get-PcapMemberNodes -Nodes $nodes -Owners $owners -Member $mine).Count, $nodes.Count
+        } else {
+            'MY boards - the views above and below, only my boards (asks whose - not set on this laptop)  >'
+        }
+        $v = if ($Overview) { 0 } else { Show-Menu -Title 'Open which view in Wireshark? (ALL boards of the run, unless you pick MY boards)' -Options @($views | ForEach-Object { $_.Text }) -DefaultIndex $default -AllowBack }
+        if ($v -lt 0 -or $v -eq $doneIdx) { return }
+        $filter = $null; $io = @()
+        switch ($views[$v].Key) {
+            'mine' {
+                Invoke-WiresharkMemberViews -Path $Path -Map $map -Owners $owners -Labels $labels -Attacker $attacker -Member $mine
+                continue views
+            }
+            'blackhole' {
+                if ($attacker) {
+                    Write-Host ("  Attacker from mesh_config.h (BLACKHOLE_ATTACKER_MAC): {0}" -f $attacker) -ForegroundColor DarkGray
+                    $a = $nodes | Where-Object { $_.sta -eq $attacker } | Select-Object -First 1
+                } else {
+                    Write-Host "  mesh_config.h's attacker was not heard in this capture - pick the attacker." -ForegroundColor Yellow
+                    $a = Select-PcapNode -Map $map -Title 'Which board is the ATTACKER?' -Labels $labels
+                    if (-not $a) { continue views }
+                }
+                $ups = @($a.parents)
+                if ($ups.Count -eq 0) {
+                    Write-Host "  The attacker sent no data up in this capture, so its parent is unknown - pick it." -ForegroundColor Yellow
+                    $p = Select-PcapNode -Map $map -Title "Which board is the attacker's PARENT?" -Labels $labels -Attacker $attacker -DefaultSta $map.root_guess
+                    if (-not $p) { continue views }
+                    $parentAp = $p.softap
+                } else {
+                    $parentAp = $ups[0].softap
+                    if ($ups.Count -gt 1) {
+                        Write-Host "  The attacker re-parented during this capture - its uplinks:" -ForegroundColor Yellow
+                        foreach ($u in $ups) { Write-Host ("    {0} ({1} frames)" -f $u.sta, $u.frames) -ForegroundColor Yellow }
+                        Write-Host ("  Using the busiest one, {0}. Filter the others with 'One board' if needed." -f $ups[0].sta) -ForegroundColor Yellow
+                    }
+                }
+                # Hop-wise: wlan.ra is the attacker's parent, never the root (see the quickstart).
+                # Data frames only (type 2) - the RTS handshakes to the parent are most of
+                # the raw rows and would pad the "forwarded" line.
+                $filter = "wlan.fc.type == 2 && wlan.ta == $($a.sta) && wlan.ra == $parentAp"
+                $io = @(@{ Name = 'Attacker -> parent (forwarded)'; Filter = $filter },
+                        @{ Name = 'Into attacker (still receiving)'; Filter = "wlan.fc.type == 2 && wlan.ra == $($a.softap)" },
+                        @{ Name = 'Attacker - all traffic'; Filter = "wlan.addr == $($a.sta) || wlan.addr == $($a.softap)" })
+                Write-Host "  In the I/O graph, 'Attacker -> parent' should fall during the attack window and recover in cooldown," -ForegroundColor DarkGray
+                Write-Host "  while 'Into attacker' stays up in every phase." -ForegroundColor DarkGray
+            }
+            'wormhole' {
+                Write-Host "  Wireshark cannot see the wired A<->B tunnel - only its Wi-Fi side effects." -ForegroundColor DarkGray
+                $na = Select-PcapNode -Map $map -Title 'Which board is wormhole node A (re-injects)?' -Labels $labels
+                if (-not $na) { continue views }
+                $nb = Select-PcapNode -Map $map -Title 'Which board is wormhole node B (tunnels its probes away)?' -Labels $labels
+                if (-not $nb) { continue views }
+                $aUp = @($na.parents)
+                $aFilter = if ($aUp.Count -gt 0) { "wlan.fc.type == 2 && wlan.ta == $($na.sta) && wlan.ra == $($aUp[0].softap)" } else { "wlan.fc.type == 2 && wlan.ta == $($na.sta)" }
+                $filter = "wlan.fc.type_subtype in {0x00, 0x02} && $meshSet"
+                $io = @(@{ Name = 'B direct sends'; Filter = "wlan.fc.type == 2 && wlan.ta == $($nb.sta)" },
+                        @{ Name = 'A -> its parent'; Filter = $aFilter },
+                        @{ Name = 'Joins / re-joins'; Filter = $filter })
+                Write-Host "  Expect: B's line drops in the wormhole phase, A's rises, and NO joins appear (topology unchanged)." -ForegroundColor DarkGray
+            }
+            default {
+                $r = Get-PcapScopedView -View $views[$v].Key -Map $map -Scope $nodes -All -Who 'All boards' -Labels $labels -Owners $owners -Attacker $attacker
+                if (-not $r) { continue views }
+                $filter = $r.Filter; $io = $r.Io
+            }
+        }
+        Open-InWireshark -Path $Path -Filter $filter -IoLines $io | Out-Null
+        if ($Overview) { return }
+        $default = $doneIdx
+    }
 }
 
 function Invoke-IdentifyAllBoards {
@@ -3135,7 +4048,7 @@ function Invoke-RunAnalysisOnly {
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "EDA failed (exit $LASTEXITCODE); feature_table.csv is fine, see the error above." -ForegroundColor Yellow
             } else {
-                Write-Host ("Done -> analysis\$($dirs.AttackDir)\$($dirs.TopoDir)\$rLocation\eda_output\") -ForegroundColor Green
+                Write-Host ("Done -> datasets\analysis\$($dirs.AttackDir)\$($dirs.TopoDir)\$rLocation\eda_output\") -ForegroundColor Green
             }
         } else {
             Write-Host "Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
@@ -3208,8 +4121,10 @@ function Invoke-DataSync {
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
     if ($Mode -eq 'delete') {
-        Write-Host "Removes the files you pick from GitHub (a normal commit - GitHub's history keeps them, so" -ForegroundColor DarkGray
-        Write-Host "'Restore deleted data' can undo it), then offers to delete this laptop's copies too." -ForegroundColor DarkGray
+        Write-Host "Removes ALL of that data or only SOME files (pick folders, then all or some of their files)" -ForegroundColor DarkGray
+        Write-Host "from GitHub. Each file shows when it was uploaded: green = last 30 min, yellow = older." -ForegroundColor DarkGray
+        Write-Host "A normal commit - GitHub's history keeps the files, so 'Restore deleted data' can undo it;" -ForegroundColor DarkGray
+        Write-Host "then offers to delete this laptop's copies too." -ForegroundColor DarkGray
         Write-Host "Teammates are asked on their next pull; their push never re-uploads a deleted file." -ForegroundColor DarkGray
         Write-Host "Asks you to type DELETE before anything goes." -ForegroundColor DarkGray
     } elseif ($Mode -eq 'restore') {
@@ -3221,12 +4136,12 @@ function Invoke-DataSync {
         Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
     } elseif ($Area -eq 'logs') {
         if ($Mode -eq 'pull') {
-            Write-Host "Copies teammates' saved run logs from GitHub into run_logs\<attack>\<topology>\<location>\" -ForegroundColor DarkGray
+            Write-Host "Copies teammates' saved run logs from GitHub into datasets\run_logs\<attack>\<topology>\<location>\" -ForegroundColor DarkGray
             Write-Host "(never code). Lists them and asks first; a log you already have - or archived - is never" -ForegroundColor DarkGray
             Write-Host "overwritten or brought back. Pushes nothing." -ForegroundColor DarkGray
         } else {
-            Write-Host "Pushes your saved run logs (.log console transcripts) under run_logs\ (never code)." -ForegroundColor DarkGray
-            Write-Host "Archived logs (run_logs\_archive\) stay local. Shows what will go up and asks first." -ForegroundColor DarkGray
+            Write-Host "Pushes your saved run logs (.log console transcripts) under datasets\run_logs\ (never code)." -ForegroundColor DarkGray
+            Write-Host "Archived logs (datasets\run_logs\_archive\) stay local. Shows what will go up and asks first." -ForegroundColor DarkGray
         }
     } elseif ($Area -eq 'presets') {
         if ($Mode -eq 'pull') {
@@ -3237,8 +4152,10 @@ function Invoke-DataSync {
             Write-Host "Shows what will go up and asks before pushing, then offers teammates' new presets." -ForegroundColor DarkGray
         }
     } elseif ($Mode -eq 'pull') {
-        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "Copies teammates' capture CSVs from GitHub into datasets\exports\ (never code). Lists them and" -ForegroundColor DarkGray
         Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+        Write-Host "Each file shows when it was imported: green = newer than your latest SD import, or a card" -ForegroundColor DarkGray
+        Write-Host "from that same run (same folder + repeat, a board you did not import), yellow = older." -ForegroundColor DarkGray
     } elseif ($Area -eq 'analysis') {
         if ($Mode -eq 'pull') {
             Write-Host "Copies teammates' analysis + EDA output from GitHub into analysis\<attack>\<topology>\<site>\" -ForegroundColor DarkGray
@@ -3251,8 +4168,10 @@ function Invoke-DataSync {
             Write-Host "Only .csv/.png/.json/.md at cell depth go up - the pipeline's own .py is never pushed." -ForegroundColor DarkGray
         }
     } else {
-        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\)." -ForegroundColor DarkGray
+        Write-Host "Pushes raw capture CSVs under datasets\exports\ (never code, never trimmed\)." -ForegroundColor DarkGray
         Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+        Write-Host "Each file shows when it was imported: green = your latest SD import (every card up to the" -ForegroundColor DarkGray
+        Write-Host "N to 'Import another card?') or newer, yellow = an earlier import." -ForegroundColor DarkGray
     }
     Push-Location $base
     try {
@@ -3276,15 +4195,15 @@ function Invoke-DataSyncMenu {
     # numbers stay one sequential run, so the headings are purely visual.
     while ($true) {
         switch (Show-Menu -Title 'Data sync (GitHub) - captures, analysis output, run logs and presets. NEVER code:' -Options @(
-            "Push my capture data to GitHub - merges with teammates' pushes",
-            "Pull teammates' capture data from GitHub - never overwrites your files",
+            "Push my capture data to GitHub - merges with teammates' pushes; green = latest import, yellow = older",
+            "Pull teammates' capture data from GitHub - never overwrites your files; green = your latest import's run or newer",
             'Push my analysis + EDA output - feature_table, windowed_dataset, eda_output\ plots',
             "Pull teammates' analysis + EDA output - never overwrites your files",
             'Push my saved run logs - console output of each run, filed by attack\topology\location',
             "Pull teammates' run logs - never overwrites your files",
             "Upload my saved presets to GitHub - shares presets\<you>\*.json, fetches teammates' new ones back too",
             'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
-            'Delete data from GitHub (+ this laptop) - pick captures, analysis, run logs or presets; always undoable',
+            'Delete data from GitHub (+ this laptop) - all or some files, upload times shown; always undoable',
             "Restore deleted data - undo a delete (yours or a teammate's) from GitHub's history",
             'Back to the main menu'
         ) -DefaultIndex 10 -GroupHeaders @{
@@ -3317,9 +4236,9 @@ function Select-DataSyncArea {
     param([string]$Verb)
     $areas = @('exports', 'analysis', 'logs', 'presets')
     $idx = Show-Menu -Title "$Verb which kind of data?" -Options @(
-        'Capture data (tools\exports\ CSVs)',
+        'Capture data (datasets\exports\ CSVs)',
         'Analysis + EDA output (analysis\<attack>\<topology>\<location>\)',
-        'Run logs (run_logs\)',
+        'Run logs (datasets\run_logs\)',
         'Presets (presets\<member>\*.json)',
         'Back'
     ) -DefaultIndex 4
@@ -3451,7 +4370,7 @@ function Get-BoardBuildDir {
     if ($Params.CommandCenter) { $suffix += '_cc' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
     $proj = if ($role -eq 'root') { 'root_node' } else { 'child_node' }
-    return Join-Path $buildRoot "$proj\build_${suffix}_$portTag"
+    return Get-SafeBuildDir -Proj $proj -DirName "build_${suffix}_$portTag"
 }
 
 function Get-BoardMac {
@@ -3469,6 +4388,16 @@ function Get-BoardMac {
     }
     catch { return $null }
     return $null
+}
+
+function Format-BoardMacTag {
+    # "MAC f4:2d:..." for the pre-build and run headers - the one thing that
+    # names the PHYSICAL board (the label is a name, the COM port a USB socket).
+    # Reads only what Resolve-BoardMac already stored, never the chip; empty
+    # under -SkipMacCheck/-DryRun, and says so rather than printing nothing.
+    param($Board)
+    if ($Board.PSObject.Properties['Mac'] -and $Board.Mac) { return "MAC $($Board.Mac)" }
+    return 'MAC not read'
 }
 
 function Resolve-BoardMac {
@@ -3745,7 +4674,12 @@ function New-RunParams {
 
     if ($Board.Role -eq 'root') {
         $h.Attack  = $Attack
-        $h.Analyze = $true
+        # What runs after the root's export - asked once per run ("after the root's export" block).
+        switch ($script:rootPostExport) {
+            'trim'  { $h.Trim = $true }
+            'none'  { $h.Export = $true }
+            default { $h.Analyze = $true }
+        }
         # Roster gate: the root will not start Phase 0 until this many children
         # are in the mesh (EXPECTED_CHILDREN in mesh_config.h).
         $h.ExpectedChildren = $ExpectedChildren
@@ -4078,7 +5012,7 @@ function Get-RunDirs {
     $Scenario = ConvertTo-Scenario $Scenario
     $scenarioSeg = "\$Scenario"
     if ($Scenario -eq 'stationary') {
-        $flat = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location"
+        $flat = Join-Path $base "datasets\exports\$attackDir\$topoDir\$Location"
         $new  = Join-Path $flat 'stationary'
         if (-not (Test-Path $new) -and (Get-ChildItem -Path $flat -Filter '*.csv' -File -ErrorAction SilentlyContinue)) {
             $scenarioSeg = ''
@@ -4087,8 +5021,8 @@ function Get-RunDirs {
     return [pscustomobject]@{
         AttackDir = $attackDir
         TopoDir   = $topoDir
-        Export    = (Join-Path $base "tools\exports\$attackDir\$topoDir\$Location$scenarioSeg")
-        Analysis  = (Join-Path $base "analysis\$attackDir\$topoDir\$Location$scenarioSeg")
+        Export    = (Join-Path $base "datasets\exports\$attackDir\$topoDir\$Location$scenarioSeg")
+        Analysis  = (Join-Path $base "datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg")
     }
 }
 
@@ -4276,7 +5210,7 @@ function Remove-AnsiEscapes {
     return $script:AnsiEscapeRegex.Replace($Line, '')
 }
 
-function Get-RunLogRoot { return (Join-Path $base 'run_logs') }
+function Get-RunLogRoot { return (Join-Path $base 'datasets\run_logs') }
 
 function Get-RunLogDir {
     # Where a run's console log is filed: run_logs\<attack>\<topology>\<location>\<scenario>\
@@ -4392,7 +5326,7 @@ function Invoke-RunLogActions {
         if ($Archived) {
             $opts += 'Restore it - move it back out of the archive into the live list'
         } else {
-            $opts += 'Archive it - moves to run_logs\_archive\<same folders>\ (still viewable, never pushed)'
+            $opts += 'Archive it - moves to datasets\run_logs\_archive\<same folders>\ (still viewable, never pushed)'
         }
         $opts += 'Delete it from this laptop - PERMANENT (a pushed copy stays on GitHub: Data sync -> Delete data)'
         $headers = @{ 0 = '-- VIEW'; 3 = '-- KEEP / ARCHIVE / DELETE' }
@@ -4455,7 +5389,7 @@ function Invoke-ViewRunLog {
                 continue
             }
             if ($archivedCount -eq 0) {
-                Write-Host "`nNo saved run logs yet - they're saved under run_logs\<attack>\<topology>\<location>\ when" -ForegroundColor Yellow
+                Write-Host "`nNo saved run logs yet - they're saved under datasets\run_logs\<attack>\<topology>\<location>\ when" -ForegroundColor Yellow
                 Write-Host "you answer yes to 'Save a full log of this run' before a capture." -ForegroundColor Yellow
                 return
             }
@@ -4484,7 +5418,7 @@ function Invoke-ViewRunLog {
         $opts += 'Back to the main menu'
         $headers[$(if ($toggleIdx -ge 0) { $toggleIdx } else { $backIdx })] = ''
 
-        $title = if ($showArchived) { 'ARCHIVED run logs (run_logs\_archive\) - view which?' } else { 'Saved run logs - view which? (newest is the default)' }
+        $title = if ($showArchived) { 'ARCHIVED run logs (datasets\run_logs\_archive\) - view which?' } else { 'Saved run logs - view which? (newest is the default)' }
         $default = if ($entries.Count -gt 0) { $newest } else { $backIdx }
         $idx = Show-Menu -Title $title -Options $opts -DefaultIndex $default -GroupHeaders $headers
         if ($idx -eq $backIdx) { return }
@@ -4946,6 +5880,10 @@ if (-not $Preset) {
         if ($modeIdx -eq 19) { Invoke-ShowTopologyStructure; continue }
         if ($modeIdx -eq 21) { Invoke-MacSnifferTest; continue }
         if ($modeIdx -eq 22) { Invoke-CheckSnifferFile; continue }
+        if ($modeIdx -eq 23) { Invoke-Esp32SnifferStandalone; continue }
+        if ($modeIdx -eq 24) { Invoke-WiresharkViews; continue }
+        if ($modeIdx -eq 25) { $newestPcap = Select-CaptureFile -Newest; if ($newestPcap) { Invoke-WiresharkViews -Path $newestPcap -Overview }; Read-Host "Press Enter to return to the menu" | Out-Null; continue }
+        if ($modeIdx -eq 26) { Invoke-Esp32SnifferStandalone -Live; continue }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember
@@ -5053,6 +5991,12 @@ if (-not $Preset) {
                     (@($head) + $boardLines) -join "`n"
                 }
             })
+            # A blank line after each preset's board list so the blocks don't run
+            # together - except where a member heading follows, since Show-Menu
+            # already prints a blank line above every heading.
+            for ($oi = 0; $oi -lt $opts.Count; $oi++) {
+                if (-not $headers.ContainsKey($oi + 1)) { $opts[$oi] += "`n" }
+            }
             $opts += 'No preset - answer the menus instead'
 
             $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers
@@ -5075,6 +6019,7 @@ if (-not $Preset) {
                 switch (Show-Menu -Title 'Use this preset?' -Options @(
                     'Yes - use it',
                     'Verify MACs now (reads each board, ~2s each, briefly resets them)',
+                    'Auto-detect ports (finds each board by its recorded MAC; plug in missing ones and rescan)',
                     'Write/update location.txt on all boards'' SD cards (over USB, needs each board already running)',
                     'Fix mesh_config.h attacker MAC now (reads the attacker board, updates the build)',
                     'Show raw preset JSON (just to double-check the file itself, no board access)',
@@ -5155,6 +6100,42 @@ if (-not $Preset) {
                     }
 
                     2 {
+                        # Dedicated entry for what Verify only offers after it spots drift:
+                        # find every board by MAC across whatever is plugged in now. Rescans
+                        # so a board plugged in mid-way is picked up; MACs already read this
+                        # session are cached, so each rescan only resets the new ports.
+                        Write-Host ""
+                        if ($DryRun -or $SkipMacCheck) {
+                            Write-Host "  Not reading boards ($(if ($DryRun) { 'dry run' } else { '-SkipMacCheck' })) - can't auto-detect." -ForegroundColor Yellow
+                            continue
+                        }
+                        $adChanged = $false
+                        while ($true) {
+                            $pickPorts = Get-PortList
+                            $adSync = Sync-RosterPortsByMac -Roster $preview -Ports $pickPorts
+                            if ($adSync.Applied) { $adChanged = $true }
+                            $liveNow = @($pickPorts | Select-Object -ExpandProperty Port)
+                            $absent = @($preview | Where-Object { $_.Mac -and $_.Port -and
+                                (($liveNow -notcontains $_.Port) -or ($adSync.Unresolved -contains $_)) })
+                            if ($absent.Count -eq 0) { break }
+                            Write-Host ""
+                            Write-Host ("  Not found yet: {0}" -f (($absent | ForEach-Object { $_.Label }) -join ', ')) -ForegroundColor Yellow
+                            $again = Read-Line "  Plug them in, then press Enter to rescan (or type s to stop) > "
+                            if ($again -eq 's' -or $again -eq 'S') { break }
+                        }
+                        if ($adChanged) {
+                            $ans = Read-Line "`n  Write these ports back into the preset? [y/N] > "
+                            if ($ans -eq 'y' -or $ans -eq 'Y') {
+                                Save-Preset -Path $file.FullName -Attack ([string]$cfg.attack) `
+                                    -Topology ([string]$cfg.topology) -Location ([string]$cfg.location) `
+                                    -RepeatNum ([int]$cfg.repeat) -Roster $preview -Scenario $cfgScenario
+                                $cfg = Read-PresetFile -Path $file.FullName
+                                Write-Host ("  Updated -> {0}" -f $file.Name) -ForegroundColor Green
+                            }
+                        }
+                    }
+
+                    3 {
                         Write-Host ""
                         Write-Host "This sends SET_LOCATION over USB to whatever is CURRENTLY running on each" -ForegroundColor DarkGray
                         Write-Host "port -- it only works if that board already booted this session (mesh" -ForegroundColor DarkGray
@@ -5215,7 +6196,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    3 {
+                    4 {
                         Write-Host ""
                         if ([string]$cfg.attack -ne 'blackhole') {
                             Write-Host ("This preset's attack is '{0}' - there is no attacker MAC to fix." -f [string]$cfg.attack) -ForegroundColor Yellow
@@ -5280,14 +6261,14 @@ if (-not $Preset) {
                         }
                     }
 
-                    4 {
+                    5 {
                         Write-Host ""
                         Write-Host ("--- {0} (raw file contents) ---" -f $file.Name) -ForegroundColor Cyan
                         Get-Content -Path $file.FullName -Raw | Write-Host
                         Write-Host "--- end of file ---" -ForegroundColor Cyan
                     }
 
-                    5 {
+                    6 {
                         # How a preset that predates the per-member folders (or one
                         # filed under the wrong member) gets sorted, one file at a
                         # time and always with the operator naming the member - no
@@ -5322,7 +6303,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    6 {
+                    7 {
                         Write-Host ""
                         $delAns = Read-Line ("Delete '{0}' permanently? [y/N] > " -f $file.Name)
                         if ($delAns -eq 'y' -or $delAns -eq 'Y') {
@@ -5336,8 +6317,8 @@ if (-not $Preset) {
                         $deciding = $false
                     }
 
-                    7 { $deciding = $false }
-                    8 { $deciding = $false; $picking = $false }
+                    8 { $deciding = $false }
+                    9 { $deciding = $false; $picking = $false }
                 }
             }
         }
@@ -6428,6 +7409,28 @@ if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt
     if ($ans -and [int]::TryParse($ans.Trim(), [ref]$n) -and $n -ge 0) { $script:remoteChildCount = $n }
 }
 
+# ---------------------------------------------- after the root's export ----
+# The root always exports (it is the last board); what runs AFTER that is the
+# operator's call (user request, sep. 26, 2026). Trim + M6-M8 on the root only
+# makes sense when every child's CSV is already in tools\exports\ - over USB
+# they are, with the SD-card workflow they arrive later. run.ps1 also refuses
+# M6-M8 when no child telemetry is present, so a wrong answer cannot overwrite
+# a complete analysis with a root-only one.
+$script:rootPostExport = 'analyze'
+if ($rootIsLocal) {
+    Write-Host ""
+    Write-Host "After the ROOT exports, what should run?" -ForegroundColor Cyan
+    Write-Host "   [1] Auto-trim + analyze (M6-M8)   - children's CSVs already exported over USB"
+    Write-Host "   [2] Auto-trim only                - children come in later from SD cards; run analyze.ps1 then"
+    Write-Host "   [3] Neither - export only"
+    $ans = Read-Line "Choice [1] > "
+    switch ("$ans".Trim()) {
+        '2'     { $script:rootPostExport = 'trim' }
+        '3'     { $script:rootPostExport = 'none' }
+        default { $script:rootPostExport = 'analyze' }
+    }
+}
+
 # --------------------------------------------------------- confirmation ----
 
 # Wrapped as a scriptblock (not just run inline) so the edit-a-node loop just
@@ -6478,7 +7481,9 @@ $buildAndPrintPlan = {
     foreach ($p in $plan) {
         $step++
         $tail = '-Export'
-        if ($p.Board.Role -eq 'root') { $tail = '-Analyze' }
+        if ($p.Board.Role -eq 'root') {
+            $tail = switch ($script:rootPostExport) { 'trim' { '-Trim' } 'none' { '-Export' } default { '-Analyze' } }
+        }
         if ($p.Board.ScenarioTarget) { $tail = "$tail  << $scenario TARGET" }
         $mac = Resolve-BoardMac -Board $p.Board -SkipLiveRead:($SkipMacCheck -or $DryRun)
         $macDisp = if ($mac) { $mac } else { '(unread)' }
@@ -6750,17 +7755,24 @@ if (-not $DryRun) {
     if ($pbAns -ne 'n' -and $pbAns -ne 'N') {
         if ($cleanBuild) {
             Write-Host ""
-            Write-Host "Removing build_* under $buildRoot ..." -ForegroundColor Yellow
-            Remove-Item -Recurse -Force (Join-Path $buildRoot 'child_node\build_*') -ErrorAction SilentlyContinue
-            Remove-Item -Recurse -Force (Join-Path $buildRoot 'root_node\build_*')  -ErrorAction SilentlyContinue
+            Write-Host "Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
+            foreach ($r in @($buildRoot, $shortBuildRoot)) {
+                Remove-Item -Recurse -Force (Join-Path $r 'child_node\build_*') -ErrorAction SilentlyContinue
+                Remove-Item -Recurse -Force (Join-Path $r 'root_node\build_*')  -ErrorAction SilentlyContinue
+            }
             $cleanBuild = $false
         }
 
         $buildPlan = @()
         $seenDirs  = @{}
+        # Build dir -> every board it will be flashed onto. Boards sharing a
+        # port share one build, so the header names ALL of them, not just the
+        # one that happened to be first.
+        $buildUsers = @{}
         foreach ($p in $plan) {
             $bd = Get-BoardBuildDir -Params $p.Params
-            if (-not $seenDirs.ContainsKey($bd)) { $seenDirs[$bd] = $true; $buildPlan += $p }
+            if (-not $seenDirs.ContainsKey($bd)) { $seenDirs[$bd] = $true; $buildPlan += $p; $buildUsers[$bd] = @() }
+            $buildUsers[$bd] += $p.Board
         }
 
         $failed = @()
@@ -6769,10 +7781,14 @@ if (-not $DryRun) {
         foreach ($p in $buildPlan) {
             $bi++
             Write-Host ""
-            Write-Host ("=== Pre-build [{0}/{1}] {2} - {3} ===" -f $bi, $buildPlan.Count, $p.Board.Label, $p.Board.Display) -ForegroundColor Cyan
+            Write-Host ("=== Pre-build [{0}/{1}] {2} - {3} on {4} ({5}) ===" -f $bi, $buildPlan.Count, $p.Board.Label, $p.Board.Display, $p.Board.Port, (Format-BoardMacTag $p.Board)) -ForegroundColor Cyan
+            foreach ($other in @($buildUsers[(Get-BoardBuildDir -Params $p.Params)] | Where-Object { $_ -ne $p.Board })) {
+                Write-Host ("    same firmware also goes to {0} - {1} ({2})" -f $other.Label, $other.Display, (Format-BoardMacTag $other)) -ForegroundColor DarkGray
+            }
             $buildParams = [ordered]@{}
             foreach ($k in $p.Params.Keys) { $buildParams[$k] = $p.Params[$k] }
             $buildParams.BuildOnly = $true
+            if ($p.Board.PSObject.Properties['Mac'] -and $p.Board.Mac) { $buildParams['Mac'] = [string]$p.Board.Mac }
             $global:LASTEXITCODE = 0
             & (Join-Path $base 'run.ps1') @buildParams
             if ($LASTEXITCODE -ne 0) { $failed += $p.Board.Label }
@@ -6822,7 +7838,7 @@ if ($DryRun) {
     Write-Host ""
     Write-Host "DRY RUN - exact commands that would run:" -ForegroundColor Yellow
     if ($cleanBuild) {
-        Write-Host "  (would first remove build_* under $buildRoot)" -ForegroundColor DarkGray
+        Write-Host "  (would first remove build_* under $buildRoot and $shortBuildRoot)" -ForegroundColor DarkGray
     }
     foreach ($p in $plan) {
         Write-Host ("  .\run.ps1 " + (Format-RunParams $p.Params)) -ForegroundColor DarkGray
@@ -6847,6 +7863,11 @@ if (-not $preBuilt) {
 # run_logs\<attack>\<topology>\<location>\<scenario>\ (Get-RunLogDir), like the
 # exports. Reviewable later from the wizard's DATA menu ("View a saved run log"
 # -> Invoke-ViewRunLog); offered for a GitHub push once it is closed off.
+# No packet-capture question here (removed sep. 26, 2026, user's call): the
+# VERIFY category's sniffer entries (MacBook sniffer test, ESP32 sniffer board,
+# Check a sniffer capture file) already cover it, and asking again on every run
+# was a duplicate.
+
 $saveLogAns = Read-Line "`nSave a full log of this run (console output incl. any errors, viewable later from the wizard)? [Y/n] > "
 $saveRunLog = ($saveLogAns -ne 'n' -and $saveLogAns -ne 'N')
 $runLogPath = $null
@@ -6876,11 +7897,14 @@ $script:NavLocked = $true
 
 if ($cleanBuild) {
     Write-Host ""
-    Write-Host "Removing build_* under $buildRoot ..." -ForegroundColor Yellow
+    Write-Host "Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
     # BLACKHOLE_ATTACKER_MAC lives in the shared mesh_common header, which BOTH
     # projects compile against - so both build trees have to go, not just child_node.
-    Remove-Item -Recurse -Force (Join-Path $buildRoot 'child_node\build_*') -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force (Join-Path $buildRoot 'root_node\build_*')  -ErrorAction SilentlyContinue
+    # Both roots: Get-SafeBuildDir puts over-long build dirs under the short one.
+    foreach ($r in @($buildRoot, $shortBuildRoot)) {
+        Remove-Item -Recurse -Force (Join-Path $r 'child_node\build_*') -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path $r 'root_node\build_*')  -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host ""
@@ -6897,6 +7921,7 @@ if ($children.Count -gt 0) {
 # FAILED-child `exit 1` below, since PowerShell unwinds finally blocks on exit
 # just like any other scope exit.
 try {
+
 # SILENCE THE OLD ROOT BEFORE ANY CHILD BOOTS. The root is flashed LAST, so
 # until its turn it is still running whatever it ran before - often the
 # previous 11-min experiment. When that one ends it broadcasts TERMINATE, and a
@@ -6944,7 +7969,7 @@ foreach ($p in $plan) {
     $b = $p.Board
 
     Write-Host ""
-    Write-Host ("=== [{0}/{1}] {2} - {3} on {4} ===" -f $step, $total, $b.Label, $b.Display, $b.Port) -ForegroundColor Cyan
+    Write-Host ("=== [{0}/{1}] {2} - {3} on {4} ({5}) ===" -f $step, $total, $b.Label, $b.Display, $b.Port, (Format-BoardMacTag $b)) -ForegroundColor Cyan
 
     if ($b.Role -eq 'root') {
         # Recomputed HERE, not reused from the up-front estimate: any board
@@ -6995,6 +8020,9 @@ foreach ($p in $plan) {
         }
     }
 
+    # Display-only (run.ps1 echoes it on its "Board:" line). Set HERE, after any
+    # port change above, and only when known - an empty -Mac would print nothing.
+    if ($b.PSObject.Properties['Mac'] -and $b.Mac) { $p.Params['Mac'] = [string]$b.Mac }
     Write-Host ("  .\run.ps1 " + (Format-RunParams $p.Params)) -ForegroundColor DarkGray
 
     $global:LASTEXITCODE = 0

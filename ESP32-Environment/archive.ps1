@@ -48,9 +48,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root         = $PSScriptRoot
-$exportsRoot  = Join-Path $root 'tools\exports'
-$analysisRoot = Join-Path $root 'analysis'
-$archiveRoot  = Join-Path $root 'archive'
+$exportsRoot  = Join-Path $root 'datasets\exports'
+$analysisRoot = Join-Path $root 'datasets\analysis'
+$archiveRoot  = Join-Path $root 'datasets\archive'
 
 $ATTACKS    = @('baseline', 'blackhole', 'wormhole')
 $TOPOLOGIES = @('linear', 'star', 'tree', 'partial_mesh')
@@ -155,7 +155,7 @@ $plan = Get-ArchivePlan -Dest '<dest>'
 # holding nothing but a header row.
 $substantive = @($plan | Where-Object { $_.To -notlike '*run_ledger.csv' })
 if (-not $substantive) {
-    Write-Host "Nothing to archive - tools\exports\ and analysis\ hold no captured data or output." -ForegroundColor Yellow
+    Write-Host "Nothing to archive - datasets\exports\ and datasets\analysis\ hold no captured data or output." -ForegroundColor Yellow
     exit 0
 }
 
@@ -164,7 +164,7 @@ $nAnalysis = @($plan | Where-Object { $_.Kind -eq 'analysis' }).Count
 
 Write-Host ""
 Write-Host "About to archive:" -ForegroundColor Cyan
-Write-Host ("   {0,4} captured file(s) from tools\exports\" -f $nExport)
+Write-Host ("   {0,4} captured file(s) from datasets\exports\" -f $nExport)
 Write-Host ("   {0,4} generated file(s) from analysis\" -f $nAnalysis)
 Write-Host ""
 Write-Host "Cells:" -ForegroundColor Cyan
@@ -250,7 +250,7 @@ Everything here is reproducible from the raw CSVs with:
 ``````
 
 (point it at this folder's ``exports/`` tree, or copy a cell back into
-``tools/exports/`` first).
+``datasets/exports/`` first).
 "@
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null

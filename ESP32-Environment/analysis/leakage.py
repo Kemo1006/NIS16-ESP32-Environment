@@ -103,15 +103,16 @@ LEAKING_COLUMNS: dict[str, str] = {
         "ForwardingRatio). Same role gate, same leak."
     ),
 
-    # --- The MAC-layer feature that is actually the attack's own switch ---
+    # --- The MAC-layer feature that WAS the attack's own switch (pre-F3) ---
+    # Excluded only while retry_count is still overloaded in THIS dataset -
+    # see retry_count_is_overloaded() / leaking_columns_for().
     "RetryRate": (
-        "Derived from retry_count, which blackhole_victim.c OVERLOADS as the "
-        "attacker's own DROP counter. On the attacker it goes 0.0033 to 0.9991 "
-        "across the attack window while victims go 0.0008 to 0.0000. It is the "
-        "manipulation's own control variable wearing a MAC-layer name, not an "
-        "802.11 retransmission count. See docs/DATA-DICTIONARY.md. Excluded "
-        "until F3 gives every node a dedicated drop_count and retry_count can "
-        "mean one thing."
+        "Derived from retry_count, which pre-F3 blackhole_victim.c OVERLOADED "
+        "as the attacker's own DROP counter (0.0033 to 0.9991 across the attack "
+        "window while victims went 0.0008 to 0.0000), and which the wormhole "
+        "Node B still overloads as its TUNNEL count. On such data it is the "
+        "manipulation's own control variable wearing a MAC-layer name. See "
+        "docs/DATA-DICTIONARY.md and D-15."
     ),
 
     # --- Role-gated tunnel features: defined ONLY on wormhole endpoints ---
@@ -209,12 +210,38 @@ def relay_features_are_gated(df: pd.DataFrame) -> bool:
     return True
 
 
+# Roles whose firmware still writes something other than send failures into
+# retry_count (wormhole_victim.c: Node B = frames tunnelled to A).
+_RETRY_OVERLOADING_ROLES = ("wormhole_b",)
+
+
+def retry_count_is_overloaded(df: pd.DataFrame) -> bool:
+    """Does retry_count still carry an attack counter anywhere in THIS dataset?
+
+    F3 (schema v2) moved the blackhole attacker's deliberate drops into
+    drop_count, so on a v2 capture retry_count = failed esp_mesh_send() calls on
+    every role (blackhole_victim.c F3 note) and RetryRate is an honest, if
+    app-layer, measurement. A v1 capture has no drop_count column at all - the
+    drops are still in retry_count. Wormhole Node B overloads it in every
+    schema. Measured per dataset, like relay_features_are_gated().
+    """
+    has_drop = ("drop_count_delta" in df.columns
+                and df["drop_count_delta"].notna().any())
+    if not has_drop:
+        return True
+    if "node_role" not in df.columns:
+        return True     # cannot rule out a wormhole_b -> assume the unsafe case
+    return df["node_role"].isin(_RETRY_OVERLOADING_ROLES).any()
+
+
 def leaking_columns_for(df: pd.DataFrame) -> dict[str, str]:
     """LEAKING_COLUMNS adjusted for what this particular dataset can support."""
     out = dict(LEAKING_COLUMNS)
     if not relay_features_are_gated(df):
         for col in _RELAY_GATED_BEFORE_C7:
             out.pop(col, None)
+    if not retry_count_is_overloaded(df):
+        out.pop("RetryRate", None)
     return out
 
 

@@ -29,6 +29,19 @@ $run  = Join-Path $base 'run.ps1'
 $repoTag   = (Split-Path (Split-Path $base -Parent) -Leaf) + '_' + ([math]::Abs($base.GetHashCode())).ToString('x8')
 $buildRoot = Join-Path $env:LOCALAPPDATA "esp32_builds\$repoTag"
 
+# WINDOWS 260-CHARACTER PATH LIMIT - same rule, same numbers as run.ps1's
+# Get-SafeBuildDir (see the comment there): a build dir longer than
+# $MaxBuildDirLen goes under the short root, or gcc fails on the bootloader's
+# .obj.d. Keep all three copies identical so they resolve the same dir.
+$shortBuildRoot  = Join-Path $env:SystemDrive "esp32b\$repoTag"
+$MaxBuildDirLen  = 110
+function Get-SafeBuildDir {
+    param([string]$Proj, [string]$DirName)
+    $d = Join-Path $buildRoot "$Proj\$DirName"
+    if ($d.Length -gt $MaxBuildDirLen) { $d = Join-Path $shortBuildRoot "$Proj\$DirName" }
+    return $d
+}
+
 # Same navigation contract as run_wizard.ps1 (identical mechanism, kept in sync):
 # EVERY prompt goes through Read-Line, so 'm' (back to the main menu) works
 # everywhere by construction -- no prompt you can get stuck on needing Ctrl+C.
@@ -195,6 +208,9 @@ function Colorize-Role {
 
 $memberBoardsTool = Join-Path $base 'tools\Show-MemberBoards.ps1'
 if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
+# Latest-import record behind the green/yellow push/pull lists (SD import below).
+$importBatchTool = Join-Path $base 'tools\ImportBatch.ps1'
+if (Test-Path $importBatchTool) { . $importBatchTool }
 
 function Invoke-Identify {
     # Reads the board's MAC via tools\board_check.py and names the node against
@@ -938,7 +954,7 @@ function Get-RunDirs {
     $Scenario = ConvertTo-Scenario $Scenario
     $scenarioSeg = "\$Scenario"
     if ($Scenario -eq 'stationary') {
-        $flat = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location"
+        $flat = Join-Path $base "datasets\exports\$attackDir\$topoDir\$Location"
         $new  = Join-Path $flat 'stationary'
         if (-not (Test-Path $new) -and (Get-ChildItem -Path $flat -Filter '*.csv' -File -ErrorAction SilentlyContinue)) {
             $scenarioSeg = ''
@@ -947,8 +963,8 @@ function Get-RunDirs {
     return [pscustomobject]@{
         AttackDir = $attackDir
         TopoDir   = $topoDir
-        Export    = (Join-Path $base "tools\exports\$attackDir\$topoDir\$Location$scenarioSeg")
-        Analysis  = (Join-Path $base "analysis\$attackDir\$topoDir\$Location$scenarioSeg")
+        Export    = (Join-Path $base "datasets\exports\$attackDir\$topoDir\$Location$scenarioSeg")
+        Analysis  = (Join-Path $base "datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg")
     }
 }
 
@@ -1607,7 +1623,7 @@ function Get-BuildDirSpec {
     if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
     if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
-    $buildDir = Join-Path $buildRoot "$proj\build_${suffix}_$portTag"
+    $buildDir = Get-SafeBuildDir -Proj $proj -DirName "build_${suffix}_$portTag"
 
     $flags = @()
     switch ($attack) {
@@ -2362,8 +2378,8 @@ if ($action -eq 6) {
             3 {
                 $attack = @('auto', 'blackhole', 'wormhole')[$attkIdx - 1]
                 $topo   = @('tree', 'star', 'linear', 'partial')[$topoIdx - 1]
-                $guess  = if ($attack -eq 'auto') { Join-Path $base "analysis\blackhole\$topo\$loc\feature_table.csv" }
-                          else                    { Join-Path $base "analysis\$attack\$topo\$loc\feature_table.csv" }
+                $guess  = if ($attack -eq 'auto') { Join-Path $base "datasets\analysis\blackhole\$topo\$loc\feature_table.csv" }
+                          else                    { Join-Path $base "datasets\analysis\$attack\$topo\$loc\feature_table.csv" }
                 $r = Read-Line "feature_table.csv path: " -Default $guess -AllowBack
                 if ($script:BackSignal -eq $r) { $step = 2; continue verify }
                 $table = if ([string]::IsNullOrWhiteSpace($r)) { $guess } else { $r }
@@ -2824,11 +2840,14 @@ if ($action -eq 15 -or $action -eq 16 -or $action -eq 17) {
         Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
         Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
     } elseif ($mode -eq 'pull') {
-        Write-Host "Copies teammates' capture CSVs from GitHub into tools\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "Copies teammates' capture CSVs from GitHub into datasets\exports\ (never code). Lists them and" -ForegroundColor DarkGray
         Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+        Write-Host "Each file shows when it was imported: green = newer than your latest SD import, or a card" -ForegroundColor DarkGray
+        Write-Host "from that same run (same folder + repeat, a board you did not import), yellow = older." -ForegroundColor DarkGray
     } else {
-        Write-Host "Pushes raw capture CSVs under tools\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
+        Write-Host "Pushes raw capture CSVs under datasets\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
         Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+        Write-Host "Each file shows when it was imported: green = your latest SD import or newer, yellow = older." -ForegroundColor DarkGray
     }
     Push-Location $base
     try {
@@ -2901,7 +2920,7 @@ if ($action -eq 11) {
 
     $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
     $scenarioSeg = "\$(ConvertTo-Scenario $scenario)"
-    $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$loc$scenarioSeg"
+    $exportSub   = Join-Path $base "datasets\exports\$attackDir\$topoDir\$loc$scenarioSeg"
     $trimmedSub  = Join-Path $exportSub 'trimmed'
 
     if (-not (Test-Path $exportSub)) {
@@ -2976,8 +2995,8 @@ if ($action -eq 7) {
 
     $attackDir   = if ($attack -eq 'none') { 'baseline' } else { $attack }
     $scenarioSeg = "\$(ConvertTo-Scenario $scenario)"
-    $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$loc$scenarioSeg"
-    $analysisSub = Join-Path $base "analysis\$attackDir\$topoDir\$loc$scenarioSeg"
+    $exportSub   = Join-Path $base "datasets\exports\$attackDir\$topoDir\$loc$scenarioSeg"
+    $analysisSub = Join-Path $base "datasets\analysis\$attackDir\$topoDir\$loc$scenarioSeg"
 
     if (-not (Test-Path $exportSub)) {
         Write-Host ""
@@ -3038,7 +3057,7 @@ if ($action -eq 7) {
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "EDA failed (exit $LASTEXITCODE); feature_table.csv is fine, see the error above." -ForegroundColor Yellow
             } else {
-                Write-Host ("Done -> analysis\$attackDir\$topoDir\$loc$scenarioSeg\eda_output\") -ForegroundColor Green
+                Write-Host ("Done -> datasets\analysis\$attackDir\$topoDir\$loc$scenarioSeg\eda_output\") -ForegroundColor Green
             }
         } else {
             Write-Host "Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
@@ -3226,8 +3245,14 @@ if ($action -eq 8) {
     try { python @imArgs --dry-run } finally { Pop-Location }
 
     if (Show-And-Confirm $cmdText) {
+        # menu.ps1 imports one card per trip, so that card IS the newest batch
+        # (tools\ImportBatch.ps1; run_wizard.ps1 groups several cards into one).
+        $batchOn      = [bool](Get-Command Save-ImportBatch -ErrorAction SilentlyContinue)
+        $batchBefore  = if ($batchOn) { @(Get-ExportCsvSet -Base $base) } else { @() }
+        $batchStarted = if ($batchOn) { Get-UnixNow } else { 0 }
         Push-Location (Join-Path $base 'tools')
         try { python @imArgs } finally { Pop-Location }
+        if ($batchOn) { Save-ImportBatch -Base $base -Before $batchBefore -Started $batchStarted }
     }
     continue menu
 }

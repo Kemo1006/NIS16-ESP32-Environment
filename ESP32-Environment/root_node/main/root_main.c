@@ -265,10 +265,21 @@ static void broadcast_and_count(uint8_t phase_id)
  * Visual phase banner — one separator line so each phase boundary is easy to
  * find when scanning the console (and in screenshots). Console-only cosmetics;
  * nothing is logged to the CSV here.
- */
+ *
+ * The wall-clock time is a VISUAL AID for the operator ("Phase 0 started at
+ * 22:03"), never data: it is only as good as sd_status's clock (real after a
+ * laptop SET_TIME, a build-stamp estimate otherwise), so it is tagged "est."
+ * when it is the estimate and stays out of every CSV. */
 static void phase_banner(const char *name)
 {
-    ESP_LOGI(TAG, "════════════════════ %s ════════════════════", name);
+    char stamp[24];
+    const char *hms = "--:--:--";
+    if (sd_status_now_stamp(stamp, sizeof(stamp))) {
+        hms = stamp + 11;   /* "YYYY-MM-DD HH:MM:SS" -> "HH:MM:SS" */
+    }
+    ESP_LOGI(TAG, "════════════════════ %s ════════════════════  @ %s " SD_CLOCK_TZ_LABEL "%s",
+             name, hms,
+             sd_status_clock_source() == SD_CLOCK_SRC_BUILD ? " (est.)" : "");
 }
 
 /* Draw this run's extra seconds for one window (TRAFFIC_PROFILE=jitter).

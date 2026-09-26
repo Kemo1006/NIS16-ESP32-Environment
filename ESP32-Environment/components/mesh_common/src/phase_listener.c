@@ -24,6 +24,7 @@
 #include "esp_mesh.h"
 #include "esp_timer.h"
 #include "esp_mac.h"
+#include "esp_random.h"
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
@@ -42,6 +43,8 @@ static SemaphoreHandle_t s_phase_mutex   = NULL;
 static uint8_t           s_phase_id      = PHASE_ID_UNSET;
 static uint8_t           s_gt_label      = GT_LABEL_UNSET;
 static uint32_t          s_last_seq      = 0;
+/* Session of the root whose seq_nums s_last_seq belongs to; 0 = none heard. */
+static uint32_t          s_session_id    = 0;
 
 /* Termination signal. */
 #define TERMINATE_BIT   BIT0
@@ -75,6 +78,17 @@ bool phase_listener_start_anyway_requested(void) { return s_start_anyway; }
 
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;
+
+/* Root-side: this boot's session id, drawn on the first broadcast. */
+static uint32_t s_root_session = 0;
+
+static uint32_t root_session(void)
+{
+    while (s_root_session == 0) {
+        s_root_session = esp_random();
+    }
+    return s_root_session;
+}
 
 /* Handler for non-phase packets (e.g. probe arrivals). NULL = drop them. */
 static phase_listener_data_cb_t s_data_cb = NULL;
@@ -295,6 +309,7 @@ int phase_listener_broadcast(uint8_t phase_id)
         .phase_id   = phase_id,
         .seq_num    = ++s_bcast_seq,
         .timestamp_us = esp_timer_get_time(),
+        .session_id = root_session(),
     };
 
     mesh_data_t mdata = {
@@ -329,6 +344,7 @@ void phase_listener_broadcast_prepare(void)
         .phase_id   = PHASE_ID_PREPARE,
         .seq_num    = ++s_bcast_seq,
         .timestamp_us = esp_timer_get_time(),
+        .session_id = root_session(),
     };
     mesh_data_t mdata = {
         .data  = (uint8_t *)&msg,
@@ -397,9 +413,43 @@ static void phase_listener_task(void *arg)
             continue;
         }
 
-        /* Sequence-number deduplication — discard older or duplicate msgs. */
         xSemaphoreTake(s_phase_mutex, portMAX_DELAY);
 
+        /* NEW ROOT SESSION. The root's seq_num restarts at 1 on every boot, and
+         * Phase 0 is always the same seq (13, after 12 PREPAREs). A node that
+         * joined an EARLIER root session kept that session's seq, so the new
+         * root's PREPAREs and its Phase 0 all failed the dedupe below and the
+         * node carried the dead session's phase on. 2026-09-26 21:11 home run:
+         * the root board booted its previous firmware before the wizard wiped
+         * it, reached Phase 0 with the children, was reflashed - and the
+         * children logged 129 s of "baseline" before the real root's Phase 0.
+         * A different session id means a different run: forget the old seq,
+         * and go back to UNSET until the new root announces Phase 0. */
+        if (msg->session_id != s_session_id) {
+            if (phase_listener_is_terminated()) {
+                /* This node's run is over; a new root session is a new run it
+                 * is not part of (its logs are already closed). */
+                xSemaphoreGive(s_phase_mutex);
+                continue;
+            }
+            bool restarted = (s_session_id != 0);
+            uint8_t old_phase = s_phase_id;
+            s_session_id = msg->session_id;
+            s_last_seq   = 0;
+            if (restarted && s_phase_id != PHASE_ID_UNSET) {
+                s_phase_id       = PHASE_ID_UNSET;
+                s_gt_label       = GT_LABEL_UNSET;
+                s_phase_since_us = esp_timer_get_time();
+            }
+            if (restarted) {
+                ESP_LOGW(TAG, "Root RESTARTED (new session %08lx) - dropped phase %u "
+                              "from the old session; rows stay phase 255 until the "
+                              "new root's Phase 0.",
+                         (unsigned long)s_session_id, old_phase);
+            }
+        }
+
+        /* Sequence-number deduplication — discard older or duplicate msgs. */
         if (msg->seq_num <= s_last_seq) {
             /* Duplicate or out-of-order broadcast — ignore. */
             xSemaphoreGive(s_phase_mutex);

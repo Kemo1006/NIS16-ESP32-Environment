@@ -60,9 +60,20 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Every python call below is piped to Out-Host. Without it, a native command's
+# output inside a function becomes that function's RETURN value, so
+# `$sum += Invoke-Analyze` received every line the pipeline printed: none of it
+# reached the screen (verify_attack's verdict included) and the sum failed with
+# "op_Addition". Piping decodes the text in PowerShell, so python writes UTF-8
+# and PowerShell reads UTF-8, or the report's box/plus-minus characters garble.
+$env:PYTHONUTF8 = '1'
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+
 $root         = $PSScriptRoot
-$exportsRoot  = Join-Path $root 'tools\exports'
-$analysisRoot = Join-Path $root 'analysis'
+$exportsRoot  = Join-Path $root 'datasets\exports'
+$analysisRoot = Join-Path $root 'datasets\analysis'
+$analysisCode = Join-Path $root 'analysis'   # the M6-M8 scripts; their output goes to $analysisRoot
 $ROW_TARGET   = 10000
 
 # ---------------------------------------------------------------- helpers ---
@@ -178,7 +189,7 @@ function Show-Targets {
     param([array]$Targets)
 
     if (-not $Targets) {
-        Write-Host "No captured data found under tools\exports\." -ForegroundColor Yellow
+        Write-Host "No captured data found under datasets\exports\." -ForegroundColor Yellow
         Write-Host "Run a capture first (menu.ps1 / run.ps1 -Export), then come back." -ForegroundColor DarkGray
         return
     }
@@ -235,7 +246,7 @@ function Invoke-Analyze {
         # Stale files in trimmed/ from an earlier partial run get silently loaded by
         # every analysis tool; clearing first is the only way to be sure.
         if ($FreshTrim -and (Test-Path $trimmedDir)) { Remove-Item $trimmedDir -Recurse -Force }
-        python (Join-Path $root 'tools\trim_run.py') $srcDir --apply
+        python (Join-Path $root 'tools\trim_run.py') $srcDir --apply | Out-Host
         # A failed trim can leave a PARTIAL trimmed\ behind; analysing that would
         # silently drop nodes. Same fallback run.ps1's auto-analysis uses.
         if ($LASTEXITCODE -ne 0) {
@@ -255,23 +266,23 @@ function Invoke-Analyze {
     # eda.py plot the PREVIOUS run's feature_table.csv and this function report
     # its row count as if it were this run's - incomplete input shown as a
     # finished analysis.
-    python (Join-Path $analysisRoot 'preprocess.py') $srcDir -o $windowed
+    python (Join-Path $analysisCode 'preprocess.py') $srcDir -o $windowed | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host ("  M6 preprocess FAILED (exit {0}) - features/EDA NOT run. Anything already in" -f $LASTEXITCODE) -ForegroundColor Red
         Write-Host ("  {0} is from an EARLIER run, not this one." -f $outDir) -ForegroundColor Red
         return 0
     }
-    python (Join-Path $analysisRoot 'features.py')   $srcDir -o $features
+    python (Join-Path $analysisCode 'features.py')   $srcDir -o $features | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host ("  M7 features FAILED (exit {0}) - EDA NOT run; feature_table.csv there is from an EARLIER run." -f $LASTEXITCODE) -ForegroundColor Red
         return 0
     }
-    python (Join-Path $analysisRoot 'eda.py')        $features -o $edaOut
+    python (Join-Path $analysisCode 'eda.py')        $features -o $edaOut | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host ("  M8 EDA FAILED (exit {0}) - feature_table.csv is fine; the plots are not." -f $LASTEXITCODE) -ForegroundColor Yellow
     }
 
-    if ($DoVerify) { Invoke-Validate -Target $Target }
+    if ($DoVerify) { $null = Invoke-Validate -Target $Target }
 
     return (Get-RowCount $features)
 }
@@ -312,7 +323,7 @@ function Invoke-Validate {
     # ---- Gate 1: capture integrity (M5) -----------------------------------
     Write-Host ""
     Write-Host ("--- Gate 1/3: capture integrity -- {0}" -f $label) -ForegroundColor Cyan
-    python (Join-Path $root 'tools\validate_integrity.py') $srcDir
+    python (Join-Path $root 'tools\validate_integrity.py') $srcDir | Out-Host
     $status.Integrity = if ($LASTEXITCODE -eq 0) { 'PASS' } else { 'FAIL' }
     if ($status.Integrity -eq 'FAIL') {
         Write-Host "  Gate 1 FAILED -- this capture has integrity errors, not just warnings." -ForegroundColor Red
@@ -333,7 +344,7 @@ function Invoke-Validate {
                   '--attack', $Target.Attack, '--expect', $topoName)
     if ($Target.Location) { $topoArgs += @('--location', $Target.Location) }
     if ($Target.Scenario) { $topoArgs += @('--scenario', $Target.Scenario) }
-    python (Join-Path $root 'tools\verify_topology.py') @topoArgs
+    python (Join-Path $root 'tools\verify_topology.py') @topoArgs | Out-Host
     $status.Topology = if ($LASTEXITCODE -eq 0) { 'PASS' } else { 'FAIL' }
     if ($status.Topology -eq 'FAIL') {
         Write-Host "  Gate 2 FAILED -- late convergence or baseline re-routing." -ForegroundColor Red
@@ -352,7 +363,7 @@ function Invoke-Validate {
         Write-Host ("No feature_table.csv for {0} yet -- analyze it first." -f $label) -ForegroundColor Yellow
     }
     else {
-        python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack
+        python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack | Out-Host
         $status.Attack = if ($LASTEXITCODE -eq 0) { 'CONFIRMED' } else { 'NOT CONFIRMED' }
     }
 
@@ -416,7 +427,7 @@ function Show-MainMenu {
             }
             3 {
                 $t = Select-Target -Targets $targets -Title "Validate which run?"
-                if ($t) { Invoke-Validate -Target $t }
+                if ($t) { $null = Invoke-Validate -Target $t }
             }
             4 {
                 $t = Select-Target -Targets $targets -Title "Analyze + validate which run?"
@@ -468,7 +479,7 @@ if ($Attack -and $Topology) {
             }
         }
         if (-not (Test-Path $dir) -or -not (Get-ChildItem $dir -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue)) {
-            Write-Host ("No captured data at tools\exports\{0}. Here is what IS there for {1}/{2}:" -f ($segs -join '\'), $Attack, $Topology) -ForegroundColor Yellow
+            Write-Host ("No captured data at datasets\exports\{0}. Here is what IS there for {1}/{2}:" -f ($segs -join '\'), $Attack, $Topology) -ForegroundColor Yellow
             Show-Targets -Targets (Get-DataTargets -Attack $Attack -Topology $Topology)
             exit 1
         }
@@ -477,7 +488,7 @@ if ($Attack -and $Topology) {
     } else {
         $targets += Get-DataTargets -Attack $Attack -Topology $Topology
         if (-not $targets) {
-            Write-Host ("No captured data under tools\exports\{0}\{1}." -f $Attack, $Topology) -ForegroundColor Yellow
+            Write-Host ("No captured data under datasets\exports\{0}\{1}." -f $Attack, $Topology) -ForegroundColor Yellow
             exit 0
         }
     }
@@ -488,7 +499,7 @@ if ($Attack -and $Topology) {
 }
 
 if (-not $targets) {
-    Write-Host "No captured data found under tools\exports\. Nothing to analyze." -ForegroundColor Yellow
+    Write-Host "No captured data found under datasets\exports\. Nothing to analyze." -ForegroundColor Yellow
     exit 0
 }
 

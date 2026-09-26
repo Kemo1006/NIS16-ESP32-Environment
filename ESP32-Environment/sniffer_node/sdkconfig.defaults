@@ -1,0 +1,12 @@
+# Default Kconfig values for the sniffer board. The generated sdkconfig is NOT
+# committed (see .gitignore): this board has no partition-table or FAT needs,
+# so the IDF defaults plus these lines are the whole configuration, and a
+# committed sdkconfig would only churn between IDF 5.3 and 5.5 laptops.
+
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+
+# The frame callback runs in the Wi-Fi task; more RX buffers = fewer frames
+# lost during a burst while the ring buffer hands off to the UART writer.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64

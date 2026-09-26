@@ -1,0 +1,47 @@
+﻿column,group,meaning,unit_or_values,notes
+window_start,Windowed (preprocess),"Start of this 1-second window, measured from the start of the node's log",seconds,
+node_id,Raw (board),Which board wrote the row,NODE_<12-hex Wi-Fi MAC>,
+source_file,Windowed (preprocess),Name of the raw capture CSV this window came from,,
+attack,Windowed (preprocess),"Attack scenario of the run, from the folder name",baseline | blackhole | wormhole,
+topology,Windowed (preprocess),"Mesh layout of the run, from the folder name",e.g. linear | star | tree,
+location,Windowed (preprocess),"Where the run was recorded, from the folder name",e.g. home | G402 | DLSU_Library | Goks; 'unrecorded' if the folder has none,
+scenario,Windowed (preprocess),Optional sub-scenario from the folder name,'stationary' if not given (= run.ps1 -Scenario none),
+run_repeat,Windowed (preprocess),"Repeat number of the run, from the _r1_/_r2_/_r3_ tag in the filename",integer,
+node_role,Windowed (preprocess),The board's role (copied from raw 'role'),victim | blackhole | wormhole_a | wormhole_b | root,
+layer,Raw (board),Depth of the node in the mesh tree (ESP-WIFI-MESH numbering),"1 = root, 2 = direct child of root, ... ; -1 = no parent","Mesh tree depth, NOT an OSI layer. hop = layer - 1."
+hop,Windowed (preprocess),How many hops this node is from the root,"0 = root, 1 = direct child, ...",hop = layer - 1. Use this in the paper rather than 'layer'.
+parent_mac,Raw (board),Wi-Fi address of the node this board is connected up to,MAC address,00:00:00:00:00:00 on the root and whenever the node has no parent.
+n_samples_present,Windowed (preprocess),How many raw samples actually landed in this window (boards log at 10 Hz),"count, 10 = complete window",Lower than n_samples_expected = rows missing (logging gap or reboot).
+n_samples_expected,Windowed (preprocess),How many raw samples a complete window should have,count (10 = 10 Hz x 1 s window),
+rssi_dbm_mean,Windowed (preprocess),Average signal strength to parent in this window,dBm,0 placeholders are blanked to empty before averaging.
+rssi_dbm_var,Windowed (preprocess),Variance of signal strength in this window,dBm²,
+rssi_dbm_min,Windowed (preprocess),Weakest signal reading in this window,dBm,
+rssi_dbm_max,Windowed (preprocess),Strongest signal reading in this window,dBm,
+retry_count_delta,Windowed (preprocess),How much retry_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'retry_count' for what is being counted on each role.
+retry_count_reset_detected,Windowed (preprocess),True if retry_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+retry_count_first,Windowed (preprocess),Running total retry_count at the first row of the window,count,
+retry_count_last,Windowed (preprocess),Running total retry_count at the last row of the window,count,
+tx_count_delta,Windowed (preprocess),How much tx_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'tx_count' for what is being counted on each role.
+tx_count_reset_detected,Windowed (preprocess),True if tx_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+tx_count_first,Windowed (preprocess),Running total tx_count at the first row of the window,count,
+tx_count_last,Windowed (preprocess),Running total tx_count at the last row of the window,count,
+probes_count_delta,Windowed (preprocess),How much probes_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'probes_count' for what is being counted on each role.
+probes_count_reset_detected,Windowed (preprocess),True if probes_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+probes_count_first,Windowed (preprocess),Running total probes_count at the first row of the window,count,
+probes_count_last,Windowed (preprocess),Running total probes_count at the last row of the window,count,
+recv_count_delta,Windowed (preprocess),How much recv_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'recv_count' for what is being counted on each role.
+recv_count_reset_detected,Windowed (preprocess),True if recv_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+recv_count_first,Windowed (preprocess),Running total recv_count at the first row of the window,count,
+recv_count_last,Windowed (preprocess),Running total recv_count at the last row of the window,count,
+forward_count_delta,Windowed (preprocess),How much forward_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'forward_count' for what is being counted on each role.
+forward_count_reset_detected,Windowed (preprocess),True if forward_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+forward_count_first,Windowed (preprocess),Running total forward_count at the first row of the window,count,
+forward_count_last,Windowed (preprocess),Running total forward_count at the last row of the window,count,
+drop_count_delta,Windowed (preprocess),How much drop_count went up during this window (last - first),count per window (never negative),The per-window version of the running total — see 'drop_count' for what is being counted on each role.
+drop_count_reset_detected,Windowed (preprocess),True if drop_count went DOWN inside the window (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+drop_count_first,Windowed (preprocess),Running total drop_count at the first row of the window,count,
+drop_count_last,Windowed (preprocess),Running total drop_count at the last row of the window,count,
+window_label,Windowed (preprocess),Ground-truth label for the window,0 normal | 1 blackhole | 2 wormhole | empty = unlabelled,"Empty outside the three real phases (e.g. pre_baseline), so those windows never enter a normal or attack group."
+window_phase_id,Windowed (preprocess),Most common phase_id among the window's raw rows,0 baseline | 1 blackhole | 2 wormhole | 3 cooldown | 4 terminate | 255 not heard yet,
+t_anchor_s,Windowed (preprocess),Time relative to the moment THIS node first left phase 0 (attack start as seen by this node),seconds (negative = before the attack started),Lets windows from different boards be lined up without shared clocks.
+segment,Windowed (preprocess),Which part of the experiment the window belongs to,pre_baseline | baseline | attack | cooldown | baseline_rebroadcast | no_phase_seen,"pre_baseline = node was up before the experiment's baseline started; unlabelled and excluded from analysis, but kept."

@@ -1911,3 +1911,202 @@ Both still live as one-line warnings in STATUS.md.
   handles it correctly). Also added 3 clarifying banners (root-remote confirmation, child-count multi-laptop example,
   one-time "you'll be asked per board" notice before step 7) — the child COUNT is always the FULL experiment across
   every laptop, never just this one's; per-board "is it here?" is what actually sorts local from remote.
+
+- sep. 25, 2026 — **Power-cut/crash prevention:** root ROSTER GATE, reset reason + brownout/crash totals on card. Build-verified.
+
+- sep. 23, 2026 — **AUDIT of groupmate `fac59c5`/`13b607c` (LAYER-HOP-MAC explainer): every load-bearing
+  number FACT-CHECKED and CORRECT** — `MESH_ROOT_LAYER (1)` (re-verified in 5.5.4), `layer -1 → NaN`, SoftAP
+  = STA+1 on all 4 values, attacker `recv 180/fwd 0/drop 180`, arrivals `301→0→121` vs `300→180→121`.
+  No errors. Also: baseline FR is genuinely n=600 sd=0.000000 (the lone `FR>1` is a pre_baseline queue
+  flush, EXCLUDED). Detail: ARCHIVE.md.
+- sep. 23, 2026 — ⚠️ **`WIRESHARK-GUIDE.md` had ROOT and a CHILD SWAPPED** — listed `b0:cb:d8:f3:32:18` as
+  ROOT; the real root is `70:4b:ca:25:b7:68` and `b0:cb…18` is the UPSTREAM child, so every "root" filter
+  pointed at a child. Fixed + a one-liner to re-derive. Filter 4 is **attacker → its PARENT**, not "→ root".
+  `simple_sniffer` DOES exist in 5.5.4. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **ROLE-GATE COVERAGE GUARD** (`features._warn_on_missing_attack_role`): manipulation
+  features are gated on `node_role == "<attacker>"` behind `if mask.any()`, so a ZERO-row gate computes
+  nothing and SAYS nothing — `ForwardingRatio` (PRIMARY) silently all-NaN. Now warns, naming roles present.
+  Detail: ARCHIVE.md.
+- sep. 25, 2026 — **Firmware: no boot-time `_archive/` move + `LOG_ONLY_DURING_RUN` + root PREPARE**; verify_topology NOT MEASURED for logs
+  starting inside a phase (old data: identical output). NOT committed - the user pushes it.
+- sep. 23, 2026 — **THE ROOT NAMES THE VICTIMS LIVE, DURING THE RUN** (`mesh_setup.c` EXPOSURE block):
+  ATTACKER / VICTIM / "not in the attack path" per node, and **errors when NO node is downstream** — catches
+  bad attacker placement BEFORE burning an 11-minute run. Console role `VICTIM`→`CHILD` (enum VALUE is on the
+  wire, unchanged). `verify_topology.py` gained an EXPOSURE column. Detail: ARCHIVE.md.
+- sep. 23, 2026 — **PHASE-SCHEDULE MISMATCH IS NO LONGER SILENT.** Host tools MEASURE phase durations from
+  `phase_id` transitions — warn SHORT (preprocess slices baseline BACKWARDS, so a short firmware baseline
+  labels formation noise BENIGN), note LONG (`jitter`). `--phase-durations` overrides. Detail: ARCHIVE.md.
+- sep. 24, 2026 — **Xtensa `uint32_t` is `long unsigned int`**: `%u` on `PHASE_*_S + jit_*` broke the root build
+  under `-Werror`. Cast to `(unsigned)` like `sd_status.c` (`cd7c212`).
+- sep. 25, 2026 — **END_RUN reply found anywhere in a line** (it glued to log output; the "predates END_RUN" message was false),
+  "already imported" over USB says node+repeat match / maybe OLDER run; importer no longer advises "reset it". Fake-serial tested.
+- sep. 25, 2026 — minor, left as is: run_wizard.ps1 Get-BoardBuildDir adds `_cc` (Command Center) but run.ps1 never does - only mis-predicts warm/cold build time.
+
+## Rolled from MEMORY.md (sep. 26, 2026; extended by the sep. 26 RETRY RATE entry)
+- sep. 23, 2026 — **KEEP `RetryRate` in the blackhole signature; the stale comment was the only problem.**
+  Its removal condition ("once retry_count means MAC-layer failure on every role") IS met — verified in
+  `blackhole_victim.c:378-386`, F3 moved deliberate drops to `drop_count`. But that killed the LEAK, which is
+  the argument for KEEPING it: the FAIL is now an honest clean negative, and Table 3.4's pre-registered
+  prediction missing is a result to REPORT, not to delete. Dropping it would read as hiding a failed prediction.
+- sep. 23, 2026 — **FIRMWARE ROLE `victim`→`child`.** ⚠️ `preprocess.py`'s `ROLE_ALIASES` folds BOTH
+  spellings to canonical `child` at the ONE place `node_role` is made, so old captures still work;
+  `features.py` gates on `CHILD_ROLE`, deliberately NOT both. Verified: only `node_role` changed, PDR
+  unchanged (it sits behind the gate, so that IS the proof). ⚠️ **REFLASH.** Detail: ARCHIVE.md.
+- sep. 25, 2026 (rolled from STATUS.md sep. 26) — **Wizard Data sync -> Delete: [a] ALL or [s] SOME files** with upload time (green <= 24 h, yellow older).
+
+## Rolled from MEMORY.md (sep. 26, 2026; making room for the DATA SYNC PUSH/PULL colours entry)
+- sep. 23, 2026 — ⛔→✅ **`MESH_FORCE_HT20` first version BROKE mesh formation; FIXED + HARDWARE-VERIFIED same day.**
+  Broken run: 0 nodes joined in 11 min (root `NODE COUNT` 1, children `AP:0`). Cause: `apply_rf_width()`
+  forced 20 MHz AFTER `esp_wifi_start()` (no-op: STA iface not up, stayed 40 MHz) and AFTER `esp_mesh_start()`
+  (hit the scan/AP as they came up; child scan aborted `SCAN_DONE status:fail`). Fix (`mesh_setup.c`):
+  `esp_wifi_set_mode(WIFI_MODE_APSTA)` + force HT20 BEFORE `esp_wifi_start()`; nothing after mesh start;
+  CONNECTED handlers still re-check (`only_if_ht40`). **Verified on 4 boards, wizard order (root parked,
+  children searching ~45 s alone):** all joined, chain root→attacker→node4→node2, `NODE COUNT 4` stable
+  3 min, every board `STA 20 MHz, AP 20 MHz` from boot, no `forced to 20 MHz` corrections, phase 0 reached
+  all children. ⚠️ Don't move the width call after `esp_wifi_start()` again. (`Root: NO` in the root's
+  "Mesh connected" line is PRE-EXISTING cosmetic: routerless root never gets PARENT_CONNECTED.)
+- sep. 23, 2026 — **Tree positions are NOT hardcoded**: each node self-reports its parent MAC + role in its heartbeat;
+  the root links them. Early prints show a PARTIAL tree (nodes report ~1 s apart) → a FALSE `NO NODE IS DOWNSTREAM` error.
+  Fixed in `mesh_setup.c`: exposure verdict waits until heartbeat entries >= `esp_mesh_get_routing_table_size()`.
+  ⚠️ sep. 24: a `NO NODE IS DOWNSTREAM` with ALL nodes reported (`REACHABLE` = `NODE COUNT`) is REAL, not this bug — LINEAR
+  = 1 child/node, so chain order = JOIN order (+RSSI). Attacker must sit at `H01`: place it nearest the root, reset victims to rejoin.
+
+## Rolled from MEMORY.md (sep. 26, 2026 pm, to hold the 200-line cap)
+- sep. 23, 2026 — **BOARD DATES ARE NOW PHILIPPINE TIME (PHT, UTC+8)** — user's choice. `SD_CLOCK_TZ "PHT-8"` in
+  `mesh_config.h`, set in `sd_status_seed_clock()`; stamps use `localtime_r`. Epoch (clock.txt/SET_TIME) stays true UTC.
+  ALSO FIXED: the build stamp (PH wall clock) was read as UTC → 8 h in the future → every SET_TIME anchor lost to it
+  (`card anchor is older than the build stamp`), so NO capture ever got a real date. Building outside UTC+8 breaks this.
+- sep. 23, 2026 — **PANEL EVIDENCE for hop/`parent_mac` is ESPRESSIF'S OWN HEADER — cite it, not our code:**
+  `#define MESH_ROOT_LAYER (1)` (`esp_mesh.h`, IDF v5.3.5) + the IDF MAC table ("Wi-Fi SoftAP: base_mac, +1 to
+  the last octet") answer both "why hop = layer−1" and "why `parent_mac` matches no `node_id`" (SoftAP vs STA).
+  Plain-language version (analogies, panel script, no code-reading required) written to
+  `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — companion to `REVIEWER-QUESTIONS.md` §3/§7, not a replacement.
+- (rolled from STATUS.md sep. 26) sep. 25 (eve) — **G402 5 pm run: node3 desynced -> unlabelled** (`phase_sync.py`); PDR PASS z -16.41, BLACKHOLE CONFIRMED 2/2 primary.
+- (rolled from MEMORY.md sep. 26) sep. 23, 2026 — ⚠️ **`exposure.py` MUST use the ATTACK-WINDOW parent, not the whole-run mode.** node2 sat
+  BELOW the attacker for its entire 671-window pre-baseline, then re-parented to the root. Whole-run mode is dominated by those rows and
+  returns the ATTACKER as its parent — labelling a node whose PDR was 1.000 as `downstream`. **Never simplify `_dominant_parent()` to a plain mode.**
+- (rolled from MEMORY.md sep. 26) sep. 23, 2026 — **`exposure` COLUMN: who the attack could actually reach** (`analysis/exposure.py`):
+  `root`/`attacker`/`downstream` (the REAL victims)/`upstream`/`no_attacker`/`unknown`. Verified: `downstream` → attack PDR 0.0000,
+  `upstream` → 1.0000. ⚠️ In `leakage.py` METADATA_COLUMNS.
+- (rolled from STATUS.md sep. 26) sep. 25 (night) — **260-char build fix + all 15 variants BUILD OK** (9 new scenario builds, cold, 0 warnings); analyze.ps1 output fixed.
+- (rolled from MEMORY.md sep. 26) sep. 23, 2026 — ⛔ **STALE-ROOT TERMINATE killed a run** (root table showed only itself). Root is flashed LAST, so
+  the OLD root keeps running; its TERMINATE (`phase_id=4 root_ts=667 s`) is accepted by fresh children (seq starts at 0).
+  Fix: `run_wizard.ps1` PARKS the root in its ROM bootloader (`esptool --after no_reset`, verified) before the first child, and
+  WAKES it (hard reset + 10 s) just before its run.ps1 call. NOT an early erase: that would break run.ps1's SET_TIME (real clock).
+- sep. 24, 2026 — **Root dashboard EXPORT column + `EXPORT :` line** ("ALL n BOARDS DONE - SAFE TO EXPORT").
+  Uses the spare heartbeat `export_status` = `EXPORT_STATUS_LOG_CLOSED` (0x04) once `csv_logger_is_closed()`;
+  children send 3 final beats 1 s apart then go quiet; root keeps LOG_CLOSED rows (no stale eviction) and its
+  listener keeps running after TERMINATE (`phase_listener_keep_running_after_terminate`), ignoring late probes.
+  Committed+pushed `5f4443b`. Needs a REFLASH of every board; old firmware stays "not yet".
+- sep. 25, 2026 — **WIZARD: a preset board with NO port was silently treated as "on another laptop".** Angelo's G402
+  run showed ROOT under "not plugged in" (blank label/COM), then "Boards on ANOTHER laptop", "nothing to flash here" -
+  while [12] Identify read it fine on COM3. Cause: that laptop's preset file has ROOT with `Port: ""` (GitHub's
+  `presets/Cal/...g402.json` is fine: node1/COM20/MAC - so `git pull` or re-save it). Port-less boards skipped BOTH the MAC
+  match and the re-pick. Fix: preset path now asks per port-less board "plugged into THIS laptop? [y/N]" -> port picker.
+  Also: the preset path's location.txt check ran on the preset's SAVED ports (before drift fix) and printed "All boards
+  already report" after checking ZERO boards - it now runs once after the port fix and says UNVERIFIED if none read.
+
+## Rolled from MEMORY.md (sep. 26, 2026 night, making room for the OPERATOR HOLD entry)
+
+- sep. 24, 2026 — **CAMPAIGN CHECKLIST: LIVE vs ARCHIVE, and `[x]` needs ANALYSIS** (`inventory_cells.py --scope`,
+  wizard option asks). User REVERSED sep. 22's "archives count by design": archiving now takes a run OFF the live
+  checklist. `[x]` = run in `tools/exports/` COMPLETE (M4/M5) + `analysis/<cell>/feature_table.csv` newer than the
+  capture; else `[~]` naming the fix ("run analyze.ps1" vs "RE-CAPTURE"). Archive view checks `archive/<x>/analysis/`
+  (git-ignored there → a fresh clone shows archives "not analysed"), dedupes copies. Summary/`--plan` count live only.
+  **RANDOMISED PLAN:** each (location, topology, attack) draws 4 of the 6 `run.ps1` scenarios, balanced (5-6 uses each per
+  location, bh≠wh per topology), saved ONCE in `tools/campaign_plan.json` (seed recorded; `--reshuffle` only pre-campaign). Slot order = run order. Benign row only where burst drawn.
+- sep. 24, 2026 — **SCENARIO `none` RENAMED `stationary` EVERYWHERE + it gets a REAL folder** (`<loc>/stationary/`). `none` = accepted
+  alias (canon_scenario / ConvertTo-Scenario, one per script). Pre-rename flat captures still read as stationary (fallbacks in
+  Get-RunDirs/cell_dir/analyze.ps1). `-Attack none` (baseline) UNCHANGED. Also fixed: `jitter` missing from export_logs/run_matrix/analyze.ps1 → every jitter export failed. 20 py + 19 PS checks + root/child build pass.
+
+## Rolled from STATUS.md (sep. 26, 2026 night)
+
+- sep. 26 — **RetryRate audit**: 0 in every labelled window (only pre-run/desynced fails); MAC back in correlation; baseline/attack views.
+- (was Next step 7) ESP32 sniffer PASSED standalone (sep. 26, 0 loss). In-run option REMOVED (user): sniff a full run from a 2nd wizard window via VERIFY.
+
+## Rolled from MEMORY.md — sep. 26, 2026 (cap)
+- sep. 24, 2026 — **STILL RUNNING / ABORTED root cause: a child misses TERMINATE** (root sends it P2P to every
+  node in its routing table, 5 repeats; a child mid-reparent isn't in the table). Its SD mirror stays open →
+  STILL RUNNING over USB, ABORTED once the card is pulled. **NOT HT20.** 4 layers now: (1) cooldown watchdog in
+  `phase_listener_wait_for_terminate()` — no TERMINATE 180 s into cooldown → ends locally, manifest `term_timeout`
+  +`clean` (PUSHED `4144d30`); (2) root re-sends TERMINATE every 5 s for 60 s (`TERMINATE_RESEND_S`); (3) serial
+  `END_RUN` (`export_logs.py --end-run`, offered by the wizard on a STILL RUNNING file over USB): in cooldown →
+  `manual_end`+`clean`; before cooldown → `manual_end` only (stays ABORTED — honest, cut short); (4) dashboard
+  below. (2)+(3) pushed `d122033`/`489709a`, build-verified root+child, NOT hardware-tested. Importer ignores
+  unknown manifest events; run numbers count distinct boots, so extra rows are safe. A card pulled mid-run
+  is still ABORTED — correct, not a bug.
+- sep. 25, 2026 — **RUN LOGS: filed by run, viewable start-to-end, syncable.** Wizard saves to `run_logs/<attack>/<topology>/<location>/<scenario>/`
+  (`Get-RunLogDir`; old flat logs list as NOT FILED); viewer pages the whole run, keep/archive (`run_logs/_archive/`, never pushed)/delete/push.
+  `push_data.py --area logs`: `*.log` is ignored by the THESIS3 root .gitignore, so logs are listed like analysis (no staging). Data-sync submenu grouped. Scripted-stdin tested, NOT pushed live.
+
+## Rolled from STATUS.md — sep. 26, 2026 (eve)
+- sep. 26 (night) — (claimed) Operator hold: root waits for `GO` (refused if children missing / no victim below the attacker; `GO_ANYWAY` overrides). Wizard asks [Y/n]. NOTE: the user REVERTED this on purpose (sep. 26 eve) - not in the tree, do not rebuild.
+
+## Rolled from MEMORY.md — sep. 26, 2026 (late)
+- sep. 25, 2026 — **D-15 + DATA-DICTIONARY §2 rewrite.** `retry_count`/`tx_count` are APP-LAYER counters (no Wi-Fi driver stats read
+  anywhere); paper Table 4.5 calls them MAC stats - re-describe in the paper, no re-capture. ⚠️ Wormhole Node B still writes its TUNNEL
+  count into `retry_count` (Tunnel* features read it) - the one overload F3 did not remove. `leakage.py` reason TEXT is pre-C7 (code is fine).
+- sep. 25, 2026 — **DATA SYNC DELETE / RESTORE** (`push_data.py delete|restore --area X`, wizard Data sync [9]/[10]): a delete is a normal
+  commit, so history keeps it and restore puts back the exact bytes. Only files GitHub HAS can be deleted (keeps it undoable). Push SKIPS a
+  file deleted on GitHub if local bytes match a past version (else it would undo the delete); pull/push OFFER (never auto, even --yes) to
+  remove such local copies; differing copies always kept. Ledgers + archive/ moves excluded. Sim-tested on a local bare repo, not real GitHub.
+  Later sep. 25: delete asks [a] ALL / [s] SOME (folders -> 'all' or numbers; Enter cancels everywhere) and shows each file's upload time
+  (newest add/modify commit, `upload_times()`), GREEN <= `RECENT_MINUTES` 30 (was 24 h, sep. 26), YELLOW older (ANSI via Windows VT; age text too). Wizard only.
+
+## Rolled from STATUS.md — sep. 26, 2026 (late)
+- sep. 26 (pm) — **sep. 25 run audit + RetryRate NaN/pooling + verify_topology layer check**; chain linear by layers.
+
+## Rolled from MEMORY.md — sep. 26, 2026 (to hold the 200-line cap)
+- sep. 25, 2026 — **Build-dir 260-char limit FIXED in code** (Angelo's highload child failed: bootloader `.obj.d` = 262 chars; username
+  with a space + `_highload`). run.ps1 / menu.ps1 / run_wizard.ps1 share `Get-SafeBuildDir`: a build dir > `$MaxBuildDirLen` 110 goes to
+  `C:\esp32b\<repoTag>` (else `%LOCALAPPDATA%\esp32_builds\<repoTag>`, unchanged) - keep the 3 copies identical; wizard clean-build
+  wipes both roots. Worst case after: 249 chars (156 variants x both laptops). Measured: Basti's laptop has `LongPathsEnabled=1` and
+  built the same 262-char `.obj.d` fine with the OLD naming, so Angelo's is probably 0 - enabling it (admin) likely also works.
+  Built the exact failing variant with new run.ps1 at Angelo's path length: OK. `build_all_variants.ps1` now also builds 9 scenario
+  variants (burst/highload/jitter): all 15 BUILD OK (the 9 new built cold, 0 warnings). Also fixed: `analyze.ps1` swallowed ALL python output into the
+  function return (`op_Addition` crash, verdict never shown) - now `| Out-Host` + PYTHONUTF8; eda PCA/correlation use
+  `leakage.leaking_columns_for(df)` (post-C7 ForwardingRatio is a real multi-role feature) but keep ConsistencyScore out (= |FR-1|).
+- sep. 25, 2026 — **ABORTED G402 files were NOT a power cut (first diagnosis WRONG, corrected same day).** Root arrivals show all 6 children
+  sent probes through the whole run; the phase-255 files are LATER BOOTS. csv_logger_init archives the previous boot's files into `_archive/` on
+  every boot and import_sdcard.py skips `_archive/` - so one restart after a run hides the real file. Tie children to the run by seq_num, not
+  file times. validator FAIL + preprocess skip for no-experiment files stay (still correct); preprocess now WARNs when it keeps an older
+  data file over a newer empty one (may be another session - node8's 13:41 file). OPEN: importer has no way to read `_archive/`.
+- sep. 25, 2026 — **The 5 pm G402 capture (imported root boot 1235 = the right pair, 6618 rows):** root card holds 14 boots
+  (1222-1235, all run 65) - boot 1233 died ~1 min before 1235, so 6 children sat 406 s in phase 0 (preprocess slices it right).
+  NOT linear: node3 hung off the ATTACKER (2 children) - verify_topology FAIL. Attack real: root got 6 probes/s baseline, 1 (only
+  node5, above the attacker) in attack, all back in cooldown. Before the next run: check no 2nd board runs ROOT firmware (sep. 23
+  stale-root entry) and look at node3's board (20500DE70C80) alone - it is the only desynced node, twice.
+
+## Rolled from STATUS.md "Recently done" — sep. 26, 2026
+- sep. 26 (night) — **Data sync colours (latest SD import, same-run fix, 30 min)**; MAC in pre-build/run headers; run-flow sniffer prompt removed; preset spacing; Y/n keep prompt.
+
+## Rolled from MEMORY.md — sep. 27, 2026 (cap, session summary)
+- sep. 26, 2026 (eve) — **Standalone sniffer (wizard menu entry "ESP32 sniffer board", Idx 23, shown as [19]) now STARTS PAUSED**
+  (user request): `tools/sniff.py --start-paused` (only that entry passes it; run-flow/Mac paths unchanged). Nothing is saved until P;
+  banner + status line are bold YELLOW TEXT, no background (ANSI, VT enabled on Windows; plain text when redirected) "PRESS P TO START". The initial pause is
+  logged in the .json like any pause. Tested with a fake serial board (start paused -> P -> pause -> resume -> Enter); wizard parse-checked, not run on hardware.
+- sep. 26, 2026 (eve) — **Import progress bar fixed**: wizard ran the import with `2>&1` (held output until exit = "frozen", each `\r` a new
+  line); now streamed live. `export_logs._render_progress`: final line only when stderr isn't a TTY; clamped to console width.
+- sep. 25, 2026 (eve) — **PHASE-SYNC CHECK + G402 5 pm re-analysis.** NODE_20500DE70C80 (node3) ran the schedule ~110 s AHEAD of
+  the root (105/296 probes sent in "attack" while the root was in baseline) - cause UNKNOWN (children have no local phase timer;
+  suspect a 2nd root-firmware board). Same board flagged in the sep. 18 folder too. New `analysis/phase_sync.py`: sender's OWN send
+  time = arrivals `timestamp_us - latency_us` (not a cross-clock join) vs the node's phase -> `validate_integrity.py` FAILs it,
+  `preprocess.py` UNLABELS it (phase/label 255; rows kept so exposure's parent chain holds). PDR now PASS z -16.41, 2/2 primary.
+  `features.py`: ParentSwitchRate / WINDOW_SECONDS (was / 0.9 s), edge switches counted, HopStabilityDuration = samples x 0.1 s.
+  `eda.py`: time series = ForwardingRatio_5w + PDR + RootArrivals + ParentSwitchRate; stats by phase AND role; PCA z clipped +-5;
+  overlay omits unlabelled nodes. Only G402/stationary re-analysed - other cells need a re-run. NOT committed.
+
+## Rolled from STATUS.md "Recently done" — sep. 27, 2026
+- sep. 26 (late) — **Wizard WIRESHARK category**: pick a capture + view -> Wireshark opens with columns, filter and I/O graph lines set (MACs read from the capture). Live view (item 26) not hardware-tested.
+- sep. 26 (eve) — **Home 19:18 run audited = GOOD** (tree, CSVs, arrivals, sniffer pcap agree); **LatencyHopRatio/TunnelLatency seq-join fix**; **root post-export [1]/[2]/[3] + run.ps1 -Trim + no-child guard**.
+
+## Rolled from MEMORY.md — sep. 27, 2026 (cap, Wireshark-menu session summary)
+- sep. 26, 2026 — **Pre-build + run headers show each board's MAC** (`Format-BoardMacTag`; a shared build lists every board) + run.ps1 `Board:` (new
+  DISPLAY-ONLY `run.ps1 -Mac`, passed by the wizard from the confirm table's `Resolve-BoardMac`). run.ps1 never reads it (a read resets the board).
+  Preset picker: blank line after each preset block (none before a member heading - Show-Menu adds one).
+- sep. 26, 2026 — **Run flow (wizard main [1]) NO LONGER asks "Packet capture for this run?"** (user: duplicate of VERIFY's sniffer
+  entries). Only the call sites were removed; `Select-PacketCapture`/`Show-MacCaptureChecklist`/`Start-`/`Stop-SnifferCapture` stay in
+  run_wizard.ps1, marked NOT CALLED — never committed anywhere, so deleting = unrecoverable. Sniff a run from a 2nd wizard window.
+
+## Rolled from STATUS.md "Recently done" — sep. 27, 2026 (Wireshark-menu session)
+- sep. 26 (night) — **21:11 vs 19:18 home comparison**: seq dedupe across root reboots, window-delta loss, KDE spike fixed.

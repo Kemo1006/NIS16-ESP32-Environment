@@ -238,6 +238,12 @@ class PreprocessReport:
     rssi_placeholders_blanked: int = 0
     segment_counts: dict[str, int] = field(default_factory=dict)
     nodes_without_phase_exit: list[str] = field(default_factory=list)
+    # Nodes that went back to phase 255 after holding a real phase: the root
+    # restarted (new session) mid-file. Everything up to it is pre_baseline.
+    root_restarts: list[str] = field(default_factory=list)
+    # Nodes whose phase labels disagree with the root's (phase_sync.py). Their
+    # rows are kept for the topology but UNLABELLED - see _unlabel_desynced().
+    desynced_nodes: list[str] = field(default_factory=list)
 
     def discard_fraction(self) -> float:
         if self.windows_total == 0:
@@ -276,6 +282,11 @@ class PreprocessReport:
                          f"left phase 0 — no baseline can be attributed to them:")
             for n in self.nodes_without_phase_exit:
                 lines.append(f"    {n}")
+        if self.root_restarts:
+            lines.append(f"  ROOT RESTARTED mid-file on {len(self.root_restarts)} node(s) - "
+                         f"rows from the earlier root session are pre_baseline (excluded):")
+            for n in self.root_restarts:
+                lines.append(f"    {n}")
         if self.files_skipped:
             lines.append(f"  Skipped files: {self.files_skipped}")
         if self.files_no_experiment:
@@ -301,6 +312,13 @@ class PreprocessReport:
                 f"start and mesh-formation noise is being labelled benign. Make the two agree.")
             for name in self.short_baseline:
                 lines.append(f"    {name}")
+        if self.desynced_nodes:
+            lines.append(f"  !! OUT OF SYNC WITH THE ROOT - {len(self.desynced_nodes)} node(s) UNLABELLED "
+                         f"(kept for the topology, excluded from every statistic):")
+            for line in self.desynced_nodes:
+                lines.append(f"    {line}")
+            lines.append("    -> its phase labels do not match the root's schedule, so its baseline/attack "
+                         "windows would be mislabelled. Re-capture; check no second root-firmware board was on.")
         if self.duplicates_archived:
             lines.append(f"  Duplicate captures archived: {len(self.duplicates_archived)} "
                           f"(older re-run of the same board+repeat -- see _archive/)")
@@ -640,7 +658,39 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame
 
     raw = pd.concat(frames, ignore_index=True)
     raw = _coerce_and_drop_malformed(raw, report)
+    raw = _unlabel_desynced(raw, input_dir, report)
     report.raw_rows_total = len(raw)
+    return raw
+
+
+def _unlabel_desynced(raw: pd.DataFrame, input_dir: str, report: PreprocessReport) -> pd.DataFrame:
+    """Unlabel every row of a node whose phases disagree with the root's.
+
+    phase_sync.py compares, probe by probe, the node's own phase at send time
+    with the root's phase at arrival. A DESYNCED node's gt_label is wrong for a
+    large slice of the run (G402, sep. 25: ~105 baseline windows labelled attack),
+    and relabelling it from another clock would be a new method, not a fix.
+
+    The rows are set to phase/label 255 instead of dropped: exposure.py walks
+    the parent chain through every node, and removing a relay makes everything
+    below it "unknown". Unlabelled rows are excluded exactly like pre-baseline.
+    """
+    try:
+        import phase_sync
+    except ImportError:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import phase_sync
+    by_file = {name: g for name, g in raw.groupby("_source_file")}
+    for res in phase_sync.check_run(by_file, input_dir):
+        if res["status"] != "DESYNCED":
+            continue
+        rows = raw["_source_file"] == res["file"]
+        raw.loc[rows, "phase_id"] = PHASE_ID_UNSET
+        raw.loc[rows, "gt_label"] = GT_LABEL_UNSET
+        msg = "{} ({}): {} - {}".format(res["node_id"], res["file"], res["reason"],
+                                        phase_sync.describe_pairs(res["stats"]["pairs"]))
+        report.desynced_nodes.append(msg)
+        print("  [UNLABELLED] " + msg, file=sys.stderr)
     return raw
 
 
@@ -934,6 +984,11 @@ def build_windows(
     df["window_start"] = df["window_idx"] * WINDOW_SECONDS
 
     rows = []
+    # Each counter's value at the END of the previous KEPT window, per node and
+    # file: {(node_id, source_file): (window_idx, {col: last value})}. It is
+    # the counter's value at the START edge of the next window - see the
+    # cumulative-counter block below for why the delta needs it.
+    prev_edge: dict = {}
 
     for (node_id, source_file, window_idx), wdf in df.groupby(
         ["node_id", "_source_file", "window_idx"]
@@ -989,36 +1044,62 @@ def build_windows(
             row[f"{col}_min"] = vals.min() if len(vals) else np.nan
             row[f"{col}_max"] = vals.max() if len(vals) else np.nan
 
-        # Cumulative counters: delta = last - first valid value in window
-        # (Equation 4.1). If the window also includes one sample from
-        # just before window start due to ffill carry-in, that's fine —
-        # we delta strictly within this window's own valid samples.
+        # Cumulative counters: delta = counter at the window's END edge minus
+        # counter at its START edge (Equation 4.1). The start edge is the
+        # previous window's last value when that window is the immediately
+        # preceding one and was kept; otherwise it falls back to this window's
+        # own first sample.
+        #
+        # It used to be last - first of this window's OWN samples. That drops
+        # every increment landing between one window's last sample and the
+        # next window's first (1 of the 10 sample intervals), and how many land
+        # there depends on where the probe timer happens to sit against the
+        # 100 ms sampling - so the loss varied run to run. Measured on the
+        # 2026-09-26 home runs: 0-7% of counts at 19:18, up to 15% at 21:11
+        # (attacker drop_count 151 of 177; 26 attack windows showed no drop,
+        # 29 showed recv 0 and so a NaN ForwardingRatio).
+        #
+        # A predecessor that was DISCARDED (too few samples / long gap) is not
+        # carried from: whatever happened across that gap would be dumped into
+        # this one window.
+        carry = prev_edge.get((node_id, source_file))
+        start_vals = carry[1] if carry and carry[0] == window_idx - 1 else {}
+        end_vals = {}
         wdf_sorted = wdf.sort_values("t_rel")
         for col in CUMULATIVE_COLUMNS:
             if col not in wdf_sorted.columns:
                 continue
             vals = wdf_sorted[col].dropna()
-            if len(vals) >= 2:
-                delta = vals.iloc[-1] - vals.iloc[0]
-                # Counters are monotonic; a negative delta means a
-                # device reboot occurred mid-window (counter reset).
-                # Flag rather than silently emit a negative value.
-                row[f"{col}_delta"] = max(delta, 0)
-                row[f"{col}_reset_detected"] = delta < 0
-            elif len(vals) == 1:
-                row[f"{col}_delta"] = 0
-                row[f"{col}_reset_detected"] = False
-            else:
+            if len(vals) == 0:
                 row[f"{col}_delta"] = np.nan
                 row[f"{col}_reset_detected"] = False
+                row[f"{col}_first"] = np.nan
+                row[f"{col}_last"] = np.nan
+                continue
+
+            first, last = vals.iloc[0], vals.iloc[-1]
+            start = start_vals.get(col, np.nan)
+            # Counters are monotonic; one that went DOWN since the previous
+            # window's end means a reboot at the boundary (counter reset).
+            boundary_reset = pd.notna(start) and start > first
+            if pd.isna(start) or boundary_reset:
+                start = first
+            delta = last - start
+            # A negative delta means a reboot inside the window. Flag rather
+            # than silently emit a negative value.
+            row[f"{col}_delta"] = max(delta, 0)
+            row[f"{col}_reset_detected"] = bool(delta < 0 or boundary_reset)
 
             # The counter's ABSOLUTE value at each window edge, not just the
             # delta. PDR joins the root's arrivals log on probe sequence number
             # (the boards share no clock, so a time-keyed join is impossible);
-            # reconstructing which sequence numbers a window covers needs the
-            # true counter values here. See features.compute_pdr_features.
-            row[f"{col}_first"] = vals.iloc[0] if len(vals) else np.nan
-            row[f"{col}_last"] = vals.iloc[-1] if len(vals) else np.nan
+            # a window covers seq range (_first, _last], so _first must be the
+            # START edge for consecutive windows to tile with no seq left out.
+            # See features.compute_pdr_features.
+            row[f"{col}_first"] = start
+            row[f"{col}_last"] = last
+            end_vals[col] = last
+        prev_edge[(node_id, source_file)] = (window_idx, end_vals)
 
         # Event counts: total events in window. layer_change_count and
         # parent_switch counts are derived in Milestone 7 from the raw
@@ -1102,8 +1183,29 @@ def assign_segments(
         ["node_id", "source_file"], sort=False
     ).groups.items():
         rows = out.loc[idx]
+
+        # ROOT RESTART. Since the phase-session fix (phase_listener.c, sep. 26,
+        # 2026) a child that hears a NEW root session drops back to phase 255,
+        # so a root rebooted/reflashed after the children joined its earlier
+        # session shows as  <old phases> -> 255 -> 0 -> 1 ...  in one file.
+        # The old session's phases are not this run's: if it had reached the
+        # attack, its exit from phase 0 would become the anchor below. Treat
+        # everything up to the LAST 255 that follows a real phase as
+        # pre_baseline and anchor on what comes after.
+        p_all = phase.loc[idx]
+        order_ix = rows.sort_values("window_start").index
+        seen_real = (~is_unset.loc[order_ix] & p_all.loc[order_ix].notna()).cummax()
+        restart = is_unset.loc[order_ix] & seen_real.shift(fill_value=False)
+        stale = pd.Series(False, index=idx)
+        if restart.any():
+            cut = rows.loc[restart[restart].index, "window_start"].max()
+            stale = rows["window_start"] <= cut
+            report.root_restarts.append(
+                f"{node_id} ({source_file}): {int(stale.sum())} window(s) before the "
+                f"restart at window_start={cut:g}s")
+
         exited = (phase.loc[idx].ne(0) & phase.loc[idx].notna()
-                  & ~is_unset.loc[idx])
+                  & ~is_unset.loc[idx] & ~stale)
         if not exited.any():
             report.nodes_without_phase_exit.append(f"{node_id} ({source_file})")
             continue
@@ -1142,6 +1244,7 @@ def assign_segments(
         # Applied LAST so it wins outright: an explicitly-unset phase is never
         # baseline, whatever t_anchor_s says about it.
         seg[is_unset.loc[idx]] = SEGMENT_PRE_BASELINE
+        seg[stale] = SEGMENT_PRE_BASELINE
         out.loc[idx, "segment"] = seg
 
     # Void the label everywhere the segment is not a real experimental phase.

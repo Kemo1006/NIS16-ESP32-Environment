@@ -290,7 +290,7 @@ Reviewers ask about these every time. Each has a specific cause:
 | LatencyHopRatio | 64.8% | ✅ Needs a matching arrival at the root. During the attack there are none — **the NaN IS the attack** |
 | PDR | 33.0% | ✅ Same reason |
 | RSSI_mean | 8.7% | ✅ `rssi_dbm == 0` is the "no parent" placeholder, blanked on purpose. 0 dBm would be a physically impossible perfect signal |
-| RetryRate, ParentSwitchRate, HopChangeCount, HopStabilityDuration, RSSI_var, RSSI_stability | **0%** | ✅ Complete |
+| RetryRate, ParentSwitchRate, HopChangeCount, HopStabilityDuration, RSSI_var, RSSI_stability | **0%** | ✅ Complete (this pre-C7 capture; since sep. 26, 2026 RetryRate is NaN in windows with no send attempt - G402 sep. 25: 23%) |
 
 ---
 

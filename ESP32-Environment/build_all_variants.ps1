@@ -78,6 +78,20 @@ $variants = @(
     @{ Name = "BLACKHOLE victim";   Bld = "bcbv"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0") }
     @{ Name = "WORMHOLE Node A";    Bld = "bcwa"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0") }
     @{ Name = "WORMHOLE Node B";    Bld = "bcwb"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0") }
+    # SCENARIO builds (run.ps1 -Scenario): each -DTRAFFIC_PROFILE compiles
+    # different code (burst: victim_main.c + root_main.c, jitter: root_main.c,
+    # highload: the probe interval in mesh_config.h), and none of it was ever
+    # built by this script. Same pairing rules as run.ps1: burst = root + the
+    # -ScenarioTarget child, highload = any non-root, jitter = root only.
+    @{ Name = "ROOT burst";               Bld = "bcrb";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=1") }
+    @{ Name = "ROOT jitter";              Bld = "bcrj";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=3") }
+    @{ Name = "CHILD burst target";       Bld = "bccb";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=1") }
+    @{ Name = "CHILD highload";           Bld = "bcch";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
+    @{ Name = "BLACKHOLE victim burst";   Bld = "bcbvb"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=1") }
+    @{ Name = "BLACKHOLE victim highload"; Bld = "bcbvh"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=1","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
+    @{ Name = "BLACKHOLE attacker highload"; Bld = "bcbah"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=1","-DBLACKHOLE_ROLE=0","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
+    @{ Name = "WORMHOLE Node A highload"; Bld = "bcwah"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=0","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
+    @{ Name = "WORMHOLE Node B highload"; Bld = "bcwbh"; Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=2","-DWORMHOLE_END=1","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
 )
 
 # Preflight: say it OUT LOUD if this checkout is too deep, instead of letting

@@ -3,7 +3,7 @@
 <!-- Update whenever files are added, moved, or deleted. Map meaning, not every file —
      skip generated/vendor dirs (build/, __pycache__, .git). Cap: 200 lines. -->
 
-**Updated:** sep. 16, 2026 (archive/ added — pre-restart data snapshot)
+**Updated:** sep. 26, 2026 (added sniffer_node/ + tools/sniff.py; added probe_relay/topology_graph firmware, member_boards, run_logs/, PCAP/, slides/, INSTRUCTION/, new docs + tools)
 
 ## What this workstation is
 
@@ -40,7 +40,7 @@ combined/                             ← workstation root (this anchor)
 ├── 0_Resources/     # GLOBAL/shared resources only — never loaded whole; see INDEX.md
 ├── Plan/            # THESIS 3 planning — THESIS3-PANEL-PLAN.md (the adviser-facing
 │                     # framework, 7 problems × 5 workstreams) + MEMBER-HOWTO/TASK-SPLIT
-├── Implementation Issues/   # panel Q&A: bugs + limitations along the way
+├── (Implementation Issues/ moved → ESP32-Environment/docs/Implementation Issues/)
 ├── Paper/           # the thesis deliverable (reference, not code)
 ├── Setups/          # SD-CARD-WIRING.md (the real wiring facts, incl. the VIN/5V and
 │                     # 4MHz-clock gotchas) + a stale runbook snapshot — prefer
@@ -64,9 +64,22 @@ combined/                             ← workstation root (this anchor)
     ├── archive.ps1                          # one command: MOVE captures+analysis into
     │                                        # archive/<date>_<label>/ + reset the scaffold
     │                                        # (-WhatIf to preview; sep. 16, 2026)
+    ├── build_all_variants.ps1               # compiles every firmware variant, counts warnings
+    │                                        # (M1 "compiles without warnings"); no board needed
+    ├── member_boards.json                   # who owns which ESP32 (Cal/Bas/Kyle) — shown atop
+    │                                        # menu.ps1 / run_wizard.ps1 via tools/Show-MemberBoards.ps1
+    ├── member_boards/                       # per-run board-assignment JSONs (e.g. linear-blackhole-G402)
+    ├── run_logs/<attack>/<topology>/        # saved wizard/run .log files (pushed via push_data.py --area logs)
+    ├── PCAP/                                # sniffer captures, Mac or ESP32 (git-ignored) — check with tools/check_pcap.py
+    ├── slides/                              # NIS16-defence-slides.html + refresh_slide_numbers.py
+    ├── INSTRUCTION/                         # panel Milestone Form + NIS16 paper PDFs (reference)
     ├── docs/                                # NIS16's 2026-09-14 dated redesign
     │   ├── 2026-09-14_START-HERE.md         # read this first
     │   ├── 2026-09-14_{MENU-WALKTHROUGH,SETUP-RULES-CONFIG,LOCATIONS,SD-CARD,REFERENCES}.md
+    │   ├── 2026-09-23_LAYER-HOP-MAC-EXPLAINER.md, SESSION-REPORT-2026-09-25.md
+    │   ├── DATA-DICTIONARY.md, WIRESHARK-GUIDE.md, EXPECTED-RESULTS.md, REVIEWER-QUESTIONS.md,
+    │   │   ATTACK-VALIDATION.md, DATASET-AUDIT-2026-09-18.md   # (see Key locations)
+    │   ├── Implementation Issues/           # INDEX.md + SD-CARD-AND-WORMHOLE-WIRING.md
     │   ├── runbooks/    2026-09-14_{BASELINE,BLACKHOLE,WORMHOLE,TOPOLOGIES}.md
     │   ├── issue_logs/  esp32-issues.md (+Part2/3), thesis-deviate.md, dated 2026-07-*.md
     │   └── _archive/    CC's OLDER guides/runbooks/setups — superseded, kept for reference
@@ -82,13 +95,19 @@ combined/                             ← workstation root (this anchor)
     │   ├── include/  (mesh_config.h ← MESH_ID/PASSWORD/BLACKHOLE_ATTACKER_MAC, csv_logger.h,
     │   │              mesh_setup.h ← now also heartbeat_start()/heartbeat_table_init()/
     │   │              heartbeat_ingest(), phase_listener.h, node_identity.h, sd_status.h,
-    │   │              mesh_messages.h ← MSG_TYPE_PHASE_SYNC + node_heartbeat_pkt_t, both live)
+    │   │              mesh_messages.h ← MSG_TYPE_PHASE_SYNC + node_heartbeat_pkt_t, both live,
+    │   │              probe_relay.h, topology_graph.h, blackhole_target.h)
     │   └── src/      (mesh_setup.c, csv_logger.c ← SD mirror woven in, phase_listener.c,
-    │                  node_identity.c, sd_status.c)
+    │                  node_identity.c, sd_status.c, blackhole_target.c ← NVS attacker MAC,
+    │                  probe_relay.c ← hop-by-hop app-layer probe relay (C7 Option 1),
+    │                  topology_graph.c ← pure-C layer derivation, host-testable)
     ├── root_node/     main/root_main.c      # ROOT firmware — timeline controller + arrivals
     ├── child_node/    main/victim_main.c    # VICTIM firmware (+ blackhole_/wormhole_victim.c)
+    ├── sniffer_node/  main/sniffer_main.c   # SNIFFER firmware — spare board, passive, streams frames over USB
     ├── uart_link_test/, sd_card_test/       # standalone bring-up tests (UART tunnel; SD reader)
-    ├── presets/                             # run_wizard.ps1 rosters — no `split` key on any
+    ├── presets/                             # per-member folders Bas/ Cal/ Kyle/ + shared
+    │                                         # <topology>-<attack>-<scenario>-<location>.json
+    │                                         # run_wizard.ps1 rosters — no `split` key on any
     │                                         # real preset (that field only existed for the
     │                                         # removed multi-laptop mode)
     ├── tools/                               # host-side Python (see Key locations)
@@ -120,7 +139,8 @@ combined/                             ← workstation root (this anchor)
 | Shared mesh config | `ESP32-Environment/components/mesh_common/include/mesh_config.h` | MESH_ID/PASSWORD (identical every board); `BLACKHOLE_ATTACKER_MAC` (per-rig, set from the attacker's boot banner); `TRAFFIC_PROFILE` (sep. 2026 — burst/highload run scenarios, `-DTRAFFIC_PROFILE=1/2`) |
 | CSV schema source of truth | `ESP32-Environment/components/mesh_common/src/csv_logger.c` | telem = **14 cols (schema v2, F3)** — v1's 11 unchanged and in place + `recv_count,forward_count,drop_count`; root arrivals = 14 cols; SD mirror lives here too. Both telem widths accepted by `validate_integrity.py` |
 | **What every column actually means** | `ESP32-Environment/docs/DATA-DICTIONARY.md` | per-role semantics of `retry_count`/`tx_count`/`probes_count`, the RSSI-is-per-link and root-is-layer-1 corrections, what is derived host-side. **Read before writing anything about the schema in the paper** |
-| **Model-input leakage guard** | `ESP32-Environment/analysis/leakage.py` | the single definition of which columns a model may see, with a written reason per exclusion; `single_feature_decidability()` scores the panel's "one feature decides it" objection numerically. `eda.py` imports it and writes `leakage_audit.csv` every pass |
+| **Model-input leakage guard** | `ESP32-Environment/analysis/leakage.py` | the single definition of which columns a model may see, with a written reason per exclusion; `single_feature_decidability()` scores the panel's "one feature decides it" objection numerically. `eda.py` imports it and writes `leakage_audit.csv` every pass. Exclusions are PER DATASET (`leaking_columns_for`): RetryRate only while `retry_count_is_overloaded()` (v1 capture / wormhole_b). EDA correlation = `correlation_{pearson,spearman}{,_baseline,_attack}` over labelled windows |
+| **Phase-sync check (sep. 25, 2026)** | `ESP32-Environment/analysis/phase_sync.py` | is each node's phase LABEL the root's phase? Compares, per probe, the node's phase at its own send time (arrivals `timestamp_us - latency_us`) with the root's. `validate_integrity.py` FAILs a desynced node; `preprocess.py` unlabels it (rows kept for the tree) |
 | Runtime attacker MAC (F2) | `ESP32-Environment/components/mesh_common/src/blackhole_target.c` | NVS override for `BLACKHOLE_ATTACKER_MAC`, read once at boot. Moving the attacker no longer means re-flashing every victim — what makes "vary the attacker position" affordable |
 | **What a good run looks like** | `ESP32-Environment/docs/EXPECTED-RESULTS.md` | post-capture checklist with REAL measured numbers per phase (PDR 0.999→0.001→0.997), the 3-sigma output to expect, why each NaN exists, red flags, and a paste-ready results paragraph. **Read right after every capture, before trusting the data** |
 | **Reviewer/adviser answer sheet** | `ESP32-Environment/docs/REVIEWER-QUESTIONS.md` | every adviser + panel side comment answered against verified code: why `timestamp_us`, MAC is eFuse not connector, hop vs OSI layer, how RSSI is read, what `tx_count` means, why each NaN exists. **Pre-defense answer sheet — each row names the file that proves it** |
@@ -133,11 +153,23 @@ combined/                             ← workstation root (this anchor)
 | Multi-board maintenance | `ESP32-Environment/run_wizard.ps1` | presets, MAC verify, bulk wipe/set-location, firmware self-test; **export captures from EITHER the board over USB or a pulled SD card** — both show the same numbered file list (sep. 22, 2026) |
 | Run engine | `ESP32-Environment/run.ps1` | `-Wipe -Flash -Export -Location <loc> -Analyze`; `-Location` is required with `-Export`/`-Clean`/`-Analyze`; `-Scenario {none\|burst\|highload\|mobility\|powercycle} -ScenarioTarget` (sep. 2026) |
 | Re-analyze existing captures | `ESP32-Environment/analyze.ps1` | shortcut for trim→M6→M7→M8 on `tools/exports/` data already on disk (no board needed); no args = every combo with data, or `.\analyze.ps1 <attack> <topology> [<location>]`; `-Verify` runs **three exit-code-checked gates** — integrity → topology → attack — and calls a NOT-CONFIRMED on a capture that failed either earlier gate INCONCLUSIVE rather than a negative result |
-| **Paper-backed attack verification** | `ESP32-Environment/tools/verify_attack.py` | 3-sigma normal-vs-attack (Zhukabayeva 2025; blackhole signature from Airehrour 2018) — the panel-cited check |
+| **Paper-backed attack verification** | `ESP32-Environment/tools/verify_attack.py` | 3-sigma normal-vs-attack (Zhukabayeva 2025; blackhole signature from Airehrour 2018) — the panel-cited check. Pools 5 windows; ratio-of-sums for ForwardingRatio (forward/recv on v2) and RetryRate. `verify_topology.py` adds a parent-vs-layer diagnostic |
 | Capture / integrity tools | `ESP32-Environment/tools/` | `export_logs.py` (+ `--set/--get/--clear-attacker-mac`, F2), `import_sdcard.py` (**`--card <drive>` for a pulled card OR `--port COMx` to read the card THROUGH the board over USB — one `--list-json` shape, one import pipeline**), `trim_run.py`, `validate_integrity.py`, `verify_topology.py`, `run_matrix.py`, `recover_spiffs.py`, `board_check.py` |
 | Raw evidence (tracked) | `ESP32-Environment/tools/exports/<attack>/<topology>/<location>/` | primary data; `run_ledger.csv` tracks the matrix |
 | Pre-restart snapshots | `ESP32-Environment/archive/<date>_<label>/` | e.g. `2026-09-16_pre-restart/` — everything captured before a board-wipe/restart, moved wholesale out of `tools/exports/`+`analysis/`; read its `README.md` first |
 | Archive a run + reset | `ESP32-Environment/archive.ps1` | one command: moves captures + analysis into a new dated archive, writes its README, resets the scaffold + ledger. `-WhatIf` previews; `-Label`/`-Reason`/`-Force` for scripting |
+| Who was really exposed | `ESP32-Environment/analysis/exposure.py` | derives from topology which nodes were actually exposed to the attacker (build-time `victim` role alone over-counts) |
+| Combine / legend / fake data | `ESP32-Environment/analysis/combine_all.py`, `column_legend.py`, `generate_*fake_data.py` | concat every `feature_table.csv` for the full-coverage EDA; plain-language `_legend.csv` beside a data CSV; synthetic CSVs for pipeline tests |
+| Topology from parent links | `ESP32-Environment/tools/topology_graph.py` (+ `topology_graph_host_test.c`, `test_topology_graph.py`) | layers by BFS from the root; judges each topology by structure only — Python mirror of `topology_graph.c` |
+| Single-feature audit | `ESP32-Environment/tools/feature_separability.py` | panel requirement: no one feature may decide attack vs normal |
+| Dataset audit | `ESP32-Environment/tools/audit_dataset.py` | proves which runs a folder holds by `seq_num`; see `docs/DATASET-AUDIT-2026-09-18.md` |
+| Campaign plan | `ESP32-Environment/tools/campaign_plan.json` | seeded random scenario slot order per cell, drawn once by `inventory_cells.py` — commit it; `--reshuffle` re-draws |
+| Sniffer capture check | `ESP32-Environment/tools/check_pcap.py` | did the capture record anything / hear our mesh / hear DATA frames; repairs a cut-short last record |
+| ESP32 sniffer recorder | `ESP32-Environment/tools/sniff.py` (+ `sniffer_node/`) | sniffer board's USB stream -> radiotap `.pcap` + `.json` (loss counts); wizard runs it per run or main menu [23] |
+| Data-only GitHub push/pull | `ESP32-Environment/tools/push_data.py` | `push`/`pull` of exports, analysis, run logs, presets — never code; lists dated, green = latest SD import |
+| Latest-import batch | `ESP32-Environment/tools/ImportBatch.ps1` → `.last_import_batch.json` (git-ignored) | dot-sourced by both launchers; records which CSVs the last SD import wrote |
+| Board discovery | `ESP32-Environment/tools/Get-EspMac.ps1`, `Show-MemberBoards.ps1` | read a board's MAC over USB; print who owns which board |
+| Compile-check all variants | `ESP32-Environment/build_all_variants.ps1` | no board attached; warning counts per variant |
 | Deps | `ESP32-Environment/analysis/requirements.txt` | pandas, numpy (M6/M7) + matplotlib, seaborn, scipy, scikit-learn (M8) |
 | Runbooks | `ESP32-Environment/docs/runbooks/2026-09-14_*.md` | current — BASELINE/BLACKHOLE/WORMHOLE/TOPOLOGIES |
 | Superseded docs | `ESP32-Environment/docs/_archive/` | CC's older guides/runbooks/setups — reference only |

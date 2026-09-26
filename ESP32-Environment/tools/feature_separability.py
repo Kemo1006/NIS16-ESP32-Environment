@@ -91,7 +91,7 @@ def audit(df):
     print(f"    rows: {n_rows}   normal (Label 0): {n_normal}   attack (Label>0): {n_attack}\n")
     if n_attack == 0 or n_normal == 0:
         print("Need BOTH normal and attack rows to audit separability. (Pool a baseline "
-              "table + an attack table, or point at analysis/.)")
+              "table + an attack table, or point at datasets/analysis/.)")
         sys.exit(0)
 
     rows = []

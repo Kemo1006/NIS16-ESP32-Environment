@@ -39,6 +39,10 @@ typedef struct __attribute__((packed)) {
     uint8_t  phase_id;      /**< Phase identifier (0–4, see mesh_config.h) */
     uint32_t seq_num;       /**< Monotonically increasing broadcast counter */
     int64_t  timestamp_us;  /**< Root's esp_timer_get_time() at broadcast   */
+    uint32_t session_id;    /**< Random per root BOOT, never 0. seq_num restarts
+                                 at 1 on every root boot, so a receiver can only
+                                 compare seq_nums within one session: a new id
+                                 means a new run - see phase_listener.c.     */
 } phase_msg_t;
 
 /* ── Public API ──────────────────────────────────────────────────────────── */

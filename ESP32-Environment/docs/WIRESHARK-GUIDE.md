@@ -106,7 +106,7 @@ Normal Wi-Fi adapters only show you *your own* traffic. To hear everything you n
 
 | Path | Difficulty | Verdict |
 |---|---|---|
-| **A. Spare ESP32 as sniffer** | ⭐⭐ Medium | ✅ **Recommended.** Same hardware you already own and can already flash |
+| **A. Spare ESP32 as sniffer** | ⭐ Easy | ✅ **Recommended.** Built into the wizard — any spare board, USB cable only, no SD card |
 | **B. Linux + monitor-capable USB adapter** | ⭐⭐⭐ Hard | Best data quality, needs specific hardware |
 | **C. macOS built-in** | ⭐ Easy | ✅ Do this **today** if anyone has a Mac |
 | **D. Windows laptop Wi-Fi** | 🚫 | **Does not work.** Don't burn a day on it |
@@ -119,22 +119,36 @@ is the single most common way a capture session gets wasted.
 
 ---
 
-### Path A — ESP32 sniffer (recommended)
+### Path A — ESP32 sniffer over USB (recommended; added sep. 26, 2026)
 
-ESP-IDF already ships this. On this machine:
+Any **spare** board becomes the sniffer. No SD card, no wiring, no Mac: it streams what it hears
+over its USB cable and the laptop writes the `.pcap`.
 
-```
-C:\Espressif\frameworks\esp-idf-v5.5.4\examples\network\simple_sniffer\
-```
+- **Firmware:** `sniffer_node/`. It never joins the mesh and never transmits. It listens on
+  `MESH_CHANNEL` (read from `mesh_config.h`, so it can't drift from the mesh) at 20 MHz.
+- **Laptop side:** `tools/sniff.py`. It writes a normal `.pcap`, and Wireshark shows signal, noise,
+  data rate and channel for every frame. Next to it, a `.json` records how complete the capture is.
+- **Recording:** main menu → WIRESHARK → *ESP32 sniffer board* (flash, then record; press Enter to stop).
+  *… + watch LIVE in Wireshark* opens Wireshark as it records. To read a capture afterwards, use
+  WIRESHARK → *Open a capture in Wireshark* (MACs read from the file, views preset — see QUICKSTART).
+  Filing it as a run cell puts it in `PCAP\<attack>\<topology>\<location>\<scenario>\`.
+  By hand: `python tools\sniff.py --port COM7` (add `--live` to watch it in Wireshark as it records).
+- **During a run:** the capture flow (main menu [1]) no longer asks about packet capture (removed
+  sep. 26, 2026; it duplicated the VERIFY entries). Start the sniffer in a **second** wizard window
+  before the first board is flashed, run the capture in the first, and press Enter in the second
+  after the root's export.
 
-It puts the ESP32's radio in promiscuous mode and writes a real `.pcap` to an SD card (or RAM /
-JTAG — **not** plain serial). ⚠️ Out of the box it expects SDMMC or SPI pins 15/2/14/13 at ~20 MHz;
-our boards are SPI on **23/19/18/5 at 4 MHz** (`mesh_config.h`), so it needs those edits first.
-Flash a spare board, set channel 11, run it beside your mesh during a capture, then open the
-file in Wireshark.
+Limits, so nobody over-claims:
 
-> Want this wired into `run.ps1` as a proper `pcap_sniffer/` project alongside `root_node/` and
-> `child_node/`, so a sniffer board just joins the normal run flow? Ask — it's a contained job.
+- It keeps the first 64 bytes of each data frame and 256 of each management frame. The payload is
+  encrypted anyway.
+- A frame the sniffer's own radio never decoded is invisible, as with any sniffer.
+- Frames it heard but could not deliver are counted in the `.json`, not hidden.
+- ⚠️ This has **not been tested on a real board yet**. It was tested on a simulated stream only.
+  The first real use should be the main-menu test, before a real run.
+
+> ⚠️ `idf.py monitor` on the sniffer board shows garbage after boot. That's by design: it switches
+> the port to a fast binary stream that only `sniff.py` reads.
 
 ### Path C — macOS (fastest if you have a Mac)
 

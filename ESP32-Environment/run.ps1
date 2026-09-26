@@ -97,6 +97,12 @@ param(
     # in the CSV filename (child_node5_..._telem.csv) instead of the COM number.
     # Does NOT affect the firmware, the build, or what is captured.
     [string]$Label = '',
+    # The board's MAC, when the caller already knows it (run_wizard.ps1 passes the
+    # one on its confirm table). DISPLAY ONLY - echoed on the "Board:" line so the
+    # operator can tell which physical board is being flashed, since -Label is a
+    # name and -Port is a USB socket. Never read here: that would reset the board,
+    # and on an export-only call a reset reboots a running board mid-capture.
+    [string]$Mac = '',
     # Mesh-position role. 'child' is the preferred name for a non-root board;
     # 'victim' is kept as a working alias (older commands/scripts still run). The
     # CSV `node_role` is written by the FIRMWARE (per thesis Table 4.12), NOT by
@@ -189,6 +195,13 @@ param(
                        # arrivals.csv (needed for PDR) — is present when it runs.
                        # (M8/EDA needs matplotlib/seaborn/scipy/scikit-learn; if
                        # those aren't installed it runs M6+M7 and skips M8.)
+                       # M6-M8 are SKIPPED (trim still runs) when the folder has
+                       # no child telemetry yet - see the guard in step 3.
+    [switch]$Trim,     # after a successful export, run ONLY tools/trim_run.py
+                       # (writes trimmed/ copies, raw export untouched) - no M6-M8.
+                       # Implies -Export. -Analyze already trims; this is for the
+                       # SD-card workflow, where the children arrive after the root
+                       # and the analysis is run later with .\analyze.ps1.
     [switch]$BuildOnly # compile this board's exact variant into its build dir and
                        # stop: no wipe, no flash, no monitor, no export, no port
                        # touched. Exit code = idf.py's. Used by run_wizard.ps1's
@@ -208,6 +221,27 @@ $base = $PSScriptRoot
 # clean rebuild -- it holds only regenerable ninja/CMake output.
 $repoTag   = (Split-Path (Split-Path $base -Parent) -Leaf) + '_' + ([math]::Abs($base.GetHashCode())).ToString('x8')
 $buildRoot = Join-Path $env:LOCALAPPDATA "esp32_builds\$repoTag"
+
+# WINDOWS 260-CHARACTER PATH LIMIT. Past 260 chars the build fails with
+# "opening dependency file ... .obj.d: No such file or directory" (sep. 25, 2026:
+# highload child builds on Angelo's laptop). Windows' LongPathsEnabled=1 lets it
+# through (the same 262-char .obj.d built fine on Basti's laptop, which has it
+# on), but it is OFF by default and needs admin, so do not rely on it. The deepest
+# file CMake does NOT shorten is the bootloader's
+#   bootloader\esp-idf\bootloader_support\CMakeFiles\...\bootloader_flash_config_esp32.c.obj.d
+# = 138 chars below the build dir, so a build dir longer than ~120 chars fails.
+# A username with a space plus _highload made it 124 there. Longer build dirs
+# go under a short root instead; shorter ones stay put (and stay ccache-warm).
+# SAME RULE, SAME NUMBERS in menu.ps1 and run_wizard.ps1 (Get-SafeBuildDir) -
+# keep all three identical so they resolve the same dir for the same board.
+$shortBuildRoot  = Join-Path $env:SystemDrive "esp32b\$repoTag"
+$MaxBuildDirLen  = 110
+function Get-SafeBuildDir {
+    param([string]$Proj, [string]$DirName)
+    $d = Join-Path $buildRoot "$Proj\$DirName"
+    if ($d.Length -gt $MaxBuildDirLen) { $d = Join-Path $shortBuildRoot "$Proj\$DirName" }
+    return $d
+}
 
 function Format-Elapsed {
     # Seconds -> "43s" / "2m 05s", for the export/M6/M7/M8 timing lines below.
@@ -244,15 +278,15 @@ $proj = if ($Role -eq 'root') { 'root_node' } else { 'child_node' }
 $env:CCACHE_BASEDIR   = $base
 $env:CCACHE_SLOPPINESS = 'pch_defines,time_macros,include_file_mtime'
 
-# -Clean and -Analyze both need the export to have happened first, so both imply
-# -Export (you can only wipe-after or analyze data you've actually pulled).
-$doExport = $Export.IsPresent -or $Clean.IsPresent -or $Analyze.IsPresent
+# -Clean, -Analyze and -Trim all need the export to have happened first, so all
+# imply -Export (you can only wipe-after or analyze data you've actually pulled).
+$doExport = $Export.IsPresent -or $Clean.IsPresent -or $Analyze.IsPresent -or $Trim.IsPresent
 
 # -Location is required for anything that writes to exports/ or analysis/ —
 # without it the CSVs would file under an unrecorded site. A plain flash-and-
-# monitor run (no -Export/-Clean/-Analyze) doesn't need it.
+# monitor run (no -Export/-Clean/-Analyze/-Trim) doesn't need it.
 if ($doExport -and -not $Location) {
-    throw "-Location is required with -Export/-Clean/-Analyze (home | G402 | DLSU_Library | Goks)."
+    throw "-Location is required with -Export/-Clean/-Analyze/-Trim (home | G402 | DLSU_Library | Goks)."
 }
 
 # One place the rename lives: every line below sees only 'stationary'.
@@ -457,12 +491,25 @@ $buildDirName = "build_${buildSuffix}_$portTag"
 # absolute path just as well as a relative one, and this is what actually
 # moves compiled output off OneDrive; $proj (root_node/child_node) stays the
 # CMake SOURCE dir, still under OneDrive, unchanged.
-$buildDir = Join-Path $buildRoot "$proj\$buildDirName"
+$buildDir = Get-SafeBuildDir -Proj $proj -DirName $buildDirName
+if (-not $buildDir.StartsWith($buildRoot)) {
+    # Fall back to the long path (and let the build explain itself) only if the
+    # short root cannot be created - e.g. a managed PC that locks C:\.
+    try { New-Item -ItemType Directory -Force -Path (Split-Path $buildDir -Parent) -ErrorAction Stop | Out-Null }
+    catch {
+        Write-Host ("  Could not create {0} ({1}) - building under the long path; a" -f $shortBuildRoot, $_.Exception.Message) -ForegroundColor Yellow
+        Write-Host "  260-char path error from gcc means: free a shorter folder and set it in run.ps1." -ForegroundColor Yellow
+        $buildDir = Join-Path $buildRoot "$proj\$buildDirName"
+    }
+}
 
 # Deliberately keyed by PORT, not by -Label: boards sharing a port also share
 # identical firmware, so one build dir serves all of them (faster, less disk).
 # Labelling per board would rebuild the same image five times.
-if ($Label) { Write-Host "Board: $Label (on $Port)" -ForegroundColor Cyan }
+if ($Label) {
+    $macPart = if ($Mac) { ", MAC $($Mac.ToLower())" } else { '' }
+    Write-Host "Board: $Label (on $Port$macPart)" -ForegroundColor Cyan
+}
 
 # Self-heal a build dir cached against a DIFFERENT absolute project path. CMake
 # bakes the absolute source path into CMakeCache.txt at configure time; if this
@@ -642,7 +689,7 @@ try {
 } finally {
     Pop-Location
 }
-Write-Host ("Done in {0}. Files are in tools\exports\." -f (Format-Elapsed ([int]$exportStopwatch.Elapsed.TotalSeconds))) -ForegroundColor Green
+Write-Host ("Done in {0}. Files are in datasets\exports\." -f (Format-Elapsed ([int]$exportStopwatch.Elapsed.TotalSeconds))) -ForegroundColor Green
 if ($Clean) { Write-Host "Board logs wiped (--delete) - next run starts empty. SD card mirror archived (--archive-sd), not deleted." -ForegroundColor Green }
 
 # 3) Optional auto-analysis (M6+M7+M8). The CSVs stay put in exports\; we just READ
@@ -651,7 +698,7 @@ if ($Clean) { Write-Host "Board logs wiped (--delete) - next run starts empty. S
 #    export_logs.py exactly: a control victim uses -DestAttack, otherwise -Attack;
 #    'none' -> baseline. Topology dir names mirror export_logs.py's _TOPOLOGY_DIR so
 #    exports\<a>\<t>\ <-> analysis\<a>\<t>\.
-if ($Analyze) {
+if ($Analyze -or $Trim) {
     $attackDir = if ($DestAttack -ne 'none') { $DestAttack }
                  elseif ($Attack -ne 'none') { $Attack }
                  else { 'baseline' }
@@ -665,8 +712,8 @@ if ($Analyze) {
     # byte-identical to _subdir_for() in tools\export_logs.py and Get-RunDirs
     # in run_wizard.ps1 / menu.ps1.
     $scenarioSeg = "\$Scenario"
-    $exportSub   = Join-Path $base "tools\exports\$attackDir\$topoDir\$Location$scenarioSeg"
-    $analysisSub = Join-Path $base "analysis\$attackDir\$topoDir\$Location$scenarioSeg"
+    $exportSub   = Join-Path $base "datasets\exports\$attackDir\$topoDir\$Location$scenarioSeg"
+    $analysisSub = Join-Path $base "datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg"
 
     # Pick a python for the pipeline. The ESP-IDF shell's `python` (the py3.11 IDF
     # env) may lack the analysis deps while a separate CPython has them, so scan a
@@ -740,46 +787,64 @@ if ($Analyze) {
             Write-Host "Trim produced no trimmed\ folder - analysing the RAW export." -ForegroundColor Yellow
         }
 
-        Write-Host "`nAuto-analysis (M6): $featuresPy preprocess.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
-        $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
-        Push-Location (Join-Path $base 'analysis')
-        try { & $featuresPy preprocess.py $analysisSrc -o $windowedOut } finally { Pop-Location }
-        $stageWatch.Stop()
-        $m6Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Preprocess step failed after $m6Elapsed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
-        } else {
-            Write-Host "Windowed dataset done in $m6Elapsed -> analysis\$attackDir\$topoDir\$Location$scenarioSeg\windowed_dataset.csv" -ForegroundColor Green
-
-            Write-Host "Auto-analysis (M7): $featuresPy features.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
+        # GUARD (sep. 26, 2026): in the SD-card workflow the root is exported
+        # BEFORE the children are imported, so -Analyze here saw only the root's
+        # two files - every relay/PDR feature all-NaN, the "NO node with role
+        # blackhole" warning - and overwrote any earlier complete analysis of the
+        # folder. M6-M8 now need at least one child *_telem.csv to be present;
+        # otherwise run .\analyze.ps1 once the children are in.
+        $childTelem = @(Get-ChildItem -Path $analysisSrc -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Name -notlike 'root_*' })
+        $analyzeCmd = ".\analyze.ps1 $attackDir $topoDir $Location $Scenario"
+        if (-not $Analyze) {
+            Write-Host "`nTrim only (-Trim): M6-M8 not run. Once every board's CSVs are in, run:  $analyzeCmd" -ForegroundColor Cyan
+        }
+        elseif ($childTelem.Count -eq 0) {
+            Write-Host "`nSkipping M6-M8: no child telemetry in $attackDir\$topoDir\$Location$scenarioSeg yet (root only)." -ForegroundColor Yellow
+            Write-Host "  A root-only table has every relay/PDR feature NaN. Import the children, then run:  $analyzeCmd" -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "`nAuto-analysis (M6): $featuresPy preprocess.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
             $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
             Push-Location (Join-Path $base 'analysis')
-            try { & $featuresPy features.py $analysisSrc -o $featOut } finally { Pop-Location }
+            try { & $featuresPy preprocess.py $analysisSrc -o $windowedOut } finally { Pop-Location }
             $stageWatch.Stop()
-            $m7Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "Feature step failed after $m7Elapsed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
-            } else {
-                Write-Host "Features done in $m7Elapsed -> analysis\$attackDir\$topoDir\$Location$scenarioSeg\feature_table.csv" -ForegroundColor Green
+            $m6Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
 
-                # M8 EDA — needs the full stack. Runs on the feature table we just wrote.
-                if ($edaPy) {
-                    $edaOut = Join-Path $analysisSub 'eda_output'
-                    Write-Host "Auto-analysis (M8): $edaPy eda.py -> $attackDir\$topoDir\$Location$scenarioSeg\eda_output ..." -ForegroundColor Cyan
-                    $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
-                    Push-Location (Join-Path $base 'analysis')
-                    try { & $edaPy eda.py $featOut -o $edaOut } finally { Pop-Location }
-                    $stageWatch.Stop()
-                    $m8Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "EDA done in $m8Elapsed -> analysis\$attackDir\$topoDir\$Location$scenarioSeg\eda_output\" -ForegroundColor Green
-                    } else {
-                        Write-Host "EDA step failed after $m8Elapsed (exit $LASTEXITCODE). feature_table.csv is fine; see the error above." -ForegroundColor Yellow
-                    }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Preprocess step failed after $m6Elapsed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
+            } else {
+                Write-Host "Windowed dataset done in $m6Elapsed -> datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg\windowed_dataset.csv" -ForegroundColor Green
+
+                Write-Host "Auto-analysis (M7): $featuresPy features.py over $attackDir\$topoDir\$Location$scenarioSeg ..." -ForegroundColor Cyan
+                $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
+                Push-Location (Join-Path $base 'analysis')
+                try { & $featuresPy features.py $analysisSrc -o $featOut } finally { Pop-Location }
+                $stageWatch.Stop()
+                $m7Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "Feature step failed after $m7Elapsed (exit $LASTEXITCODE). Data is still safe in exports\; see the error above." -ForegroundColor Yellow
                 } else {
-                    Write-Host "Skipping M8/EDA: python has pandas but not matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
-                    Write-Host "  Fix once:  pip install -r analysis\requirements.txt   then re-run with -Analyze." -ForegroundColor DarkGray
+                    Write-Host "Features done in $m7Elapsed -> datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg\feature_table.csv" -ForegroundColor Green
+
+                    # M8 EDA — needs the full stack. Runs on the feature table we just wrote.
+                    if ($edaPy) {
+                        $edaOut = Join-Path $analysisSub 'eda_output'
+                        Write-Host "Auto-analysis (M8): $edaPy eda.py -> $attackDir\$topoDir\$Location$scenarioSeg\eda_output ..." -ForegroundColor Cyan
+                        $stageWatch = [System.Diagnostics.Stopwatch]::StartNew()
+                        Push-Location (Join-Path $base 'analysis')
+                        try { & $edaPy eda.py $featOut -o $edaOut } finally { Pop-Location }
+                        $stageWatch.Stop()
+                        $m8Elapsed = Format-Elapsed ([int]$stageWatch.Elapsed.TotalSeconds)
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host "EDA done in $m8Elapsed -> datasets\analysis\$attackDir\$topoDir\$Location$scenarioSeg\eda_output\" -ForegroundColor Green
+                        } else {
+                            Write-Host "EDA step failed after $m8Elapsed (exit $LASTEXITCODE). feature_table.csv is fine; see the error above." -ForegroundColor Yellow
+                        }
+                    } else {
+                        Write-Host "Skipping M8/EDA: python has pandas but not matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
+                        Write-Host "  Fix once:  pip install -r analysis\requirements.txt   then re-run with -Analyze." -ForegroundColor DarkGray
+                    }
                 }
             }
         }

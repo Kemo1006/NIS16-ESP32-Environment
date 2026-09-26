@@ -20,9 +20,10 @@ Beacons that DO say ESPM_* still count; --mac adds any board by hand.
 Stdlib only. Handles pcap (usec/nsec, either byte order) and pcapng; link
 types radiotap (127), raw 802.11 (105), Prism (119), AVS (163).
 
-Usage: python tools/check_pcap.py <capture.pcap|.pcapng> [--no-fix] [--mac aa:bb:..]
+Usage: python tools/check_pcap.py <capture.pcap|.pcapng> [--no-fix] [--mac aa:bb:..] [--map-json]
 """
 import argparse
+import json
 import os
 import struct
 import sys
@@ -114,6 +115,88 @@ def mac_minus_one(m):
     return ":".join("%02x" % ((n >> s) & 0xFF) for s in range(40, -8, -8))
 
 
+def find_mesh(pkts, extra_macs=()):
+    """Mesh nodes (softAP MACs), frame counts and data links from parsed packets."""
+    mesh_bssids, hidden, senders = set(), set(), set()
+    types = {0: 0, 1: 0, 2: 0}
+    unsupported = 0
+    frames = []
+    for _, lt, pkt in pkts:
+        fr = strip_link_header(lt, pkt)
+        if fr is None:
+            unsupported += 1
+            continue
+        if len(fr) < 10:
+            continue
+        ftype, sub = (fr[0] >> 2) & 3, (fr[0] >> 4) & 0xF
+        types[ftype] = types.get(ftype, 0) + 1
+        frames.append((ftype, fr))
+        if ftype in (0, 2) and len(fr) >= 16:
+            senders.add(mac(fr[10:16]))
+        if ftype == 0 and sub == 8 and len(fr) >= 38 and fr[36] == 0:  # beacon SSID IE
+            ssid = fr[38: 38 + fr[37]]
+            if not ssid.strip(b"\x00"):
+                hidden.add(mac(fr[16:22]))
+            elif ssid.startswith(b"ESPM_"):
+                mesh_bssids.add(mac(fr[16:22]))
+
+    mesh_bssids |= {b for b in hidden if mac_minus_one(b) in senders}
+    for m in extra_macs:  # a board's STA MAC (what the wizard's Identify prints)
+        mesh_bssids.add(mac_plus_one(m.lower().replace("-", ":")))
+    mesh_macs = set(mesh_bssids) | {mac_minus_one(m) for m in mesh_bssids}
+    mesh_mgmt = mesh_data = 0
+    per_node, links = {}, {}
+    for ftype, fr in frames:
+        addrs = {mac(fr[4:10])}
+        if len(fr) >= 16:
+            addrs.add(mac(fr[10:16]))
+            if ftype == 2 and mac(fr[10:16]) in mesh_macs:
+                per_node[mac(fr[10:16])] = per_node.get(mac(fr[10:16]), 0) + 1
+                if not fr[4] & 1:  # one unicast hop: TA (addr2) -> RA (addr1)
+                    key = (mac(fr[10:16]), mac(fr[4:10]))
+                    links[key] = links.get(key, 0) + 1
+        if addrs & mesh_macs:
+            if ftype == 2:
+                mesh_data += 1
+            elif ftype == 0:
+                mesh_mgmt += 1
+    return {"bssids": mesh_bssids, "types": types, "unsupported": unsupported,
+            "per_node": per_node, "links": links, "mesh_mgmt": mesh_mgmt, "mesh_data": mesh_data}
+
+
+def mesh_map(m):
+    """JSON-ready view of find_mesh() for run_wizard.ps1's Wireshark views.
+
+    parents: the softAPs a node's STA sent data to (its uplink), most frames first -
+    more than one means it re-parented during the capture. A parent the capture never
+    saw beacon (sep. 26 211124: the root) is still listed, with beaconed false, so it
+    is not dropped from the filters. root_guess: the only node that sends nothing up
+    but receives from a child; null when that is ambiguous.
+    """
+    stas = {mac_minus_one(b) for b in m["bssids"]}
+    ups_of = {}
+    for (ta, ra), n in m["links"].items():
+        if ta in stas and ra not in stas:  # a STA only ever sends up, to a softAP
+            ups_of.setdefault(ta, []).append((ra, n))
+    softaps = set(m["bssids"]) | {ra for ups in ups_of.values() for ra, _ in ups}
+    nodes = []
+    for b in sorted(softaps):
+        sta = mac_minus_one(b)
+        ups = sorted(ups_of.get(sta, []), key=lambda x: -x[1])
+        nodes.append({"sta": sta, "softap": b, "beaconed": b in m["bssids"],
+                      "data_sent": m["per_node"].get(sta, 0) + m["per_node"].get(b, 0),
+                      "parents": [{"softap": ra, "sta": mac_minus_one(ra), "frames": n}
+                                  for ra, n in ups]})
+    fed = {ra for ups in ups_of.values() for ra, _ in ups}
+    roots = [n["sta"] for n in nodes if not n["parents"] and n["softap"] in fed]
+    return {"nodes": nodes,
+            "links": [{"ta": ta, "ra": ra, "frames": n}
+                      for (ta, ra), n in sorted(m["links"].items(), key=lambda x: -x[1])
+                      if ta in stas or ta in m["bssids"]],
+            "root_guess": roots[0] if len(roots) == 1 else None,
+            "mesh_data": m["mesh_data"], "mesh_mgmt": m["mesh_mgmt"]}
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -124,7 +207,12 @@ def main():
     ap.add_argument("--no-fix", action="store_true", help="don't write a _fixed copy")
     ap.add_argument("--mac", action="append", default=[],
                     help="add a board by its STA MAC (repeatable) if auto-detect misses it")
+    ap.add_argument("--map-json", action="store_true",
+                    help="print only the mesh nodes/links as JSON (for run_wizard.ps1); no repair")
     args = ap.parse_args()
+    out = sys.stdout
+    if args.map_json:  # keep stdout pure JSON - everything else goes to stderr
+        sys.stdout = sys.stderr
 
     path = args.file.strip().strip('"')
     if not os.path.isfile(path):
@@ -154,56 +242,22 @@ def main():
               % (len(data) - good_end))
         print("  'cut short in the middle of a packet' warning means. Everything before it is intact.")
 
+    m = find_mesh(pkts, args.mac)
+    if args.map_json:
+        out.write(json.dumps(mesh_map(m), indent=1) + "\n")
+        return 0 if m["bssids"] else 1
+
     ts = [t for t, _, _ in pkts if t is not None]
     if len(ts) >= 2:
         span = max(ts) - min(ts)
         print("Capture span: %d min %02d s  (a full run is ~11 min + flashing time)"
               % (span // 60, span % 60))
 
-    mesh_bssids, hidden, senders = set(), set(), set()
-    types = {0: 0, 1: 0, 2: 0}
-    unsupported = 0
-    frames = []
-    for _, lt, pkt in pkts:
-        fr = strip_link_header(lt, pkt)
-        if fr is None:
-            unsupported += 1
-            continue
-        if len(fr) < 10:
-            continue
-        ftype, sub = (fr[0] >> 2) & 3, (fr[0] >> 4) & 0xF
-        types[ftype] = types.get(ftype, 0) + 1
-        frames.append((ftype, fr))
-        if ftype in (0, 2) and len(fr) >= 16:
-            senders.add(mac(fr[10:16]))
-        if ftype == 0 and sub == 8 and len(fr) >= 38 and fr[36] == 0:  # beacon SSID IE
-            ssid = fr[38: 38 + fr[37]]
-            if not ssid.strip(b"\x00"):
-                hidden.add(mac(fr[16:22]))
-            elif ssid.startswith(b"ESPM_"):
-                mesh_bssids.add(mac(fr[16:22]))
-
-    mesh_bssids |= {b for b in hidden if mac_minus_one(b) in senders}
-    for m in args.mac:  # a board's STA MAC (what the wizard's Identify prints)
-        mesh_bssids.add(mac_plus_one(m.lower().replace("-", ":")))
-    mesh_macs = set(mesh_bssids) | {mac_minus_one(m) for m in mesh_bssids}
-    mesh_mgmt = mesh_data = 0
-    per_node = {}
-    for ftype, fr in frames:
-        addrs = {mac(fr[4:10])}
-        if len(fr) >= 16:
-            addrs.add(mac(fr[10:16]))
-            if ftype == 2 and mac(fr[10:16]) in mesh_macs:
-                per_node[mac(fr[10:16])] = per_node.get(mac(fr[10:16]), 0) + 1
-        if addrs & mesh_macs:
-            if ftype == 2:
-                mesh_data += 1
-            elif ftype == 0:
-                mesh_mgmt += 1
-
+    mesh_bssids, types, per_node = m["bssids"], m["types"], m["per_node"]
+    mesh_mgmt, mesh_data = m["mesh_mgmt"], m["mesh_data"]
     print("Frame types: management %d, control %d, data %d%s"
           % (types[0], types[1], types[2],
-             ("   (%d with unsupported link type)" % unsupported) if unsupported else ""))
+             ("   (%d with unsupported link type)" % m["unsupported"]) if m["unsupported"] else ""))
     print("Mesh nodes heard: %d" % len(mesh_bssids))
     for b in sorted(mesh_bssids):
         sta = mac_minus_one(b)

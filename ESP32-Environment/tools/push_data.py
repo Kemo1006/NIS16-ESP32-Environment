@@ -45,6 +45,7 @@ GitHub state, so two people pushing different nodes never lose each other's file
 
 import argparse
 import hashlib
+import json
 import os
 import random
 import re
@@ -58,13 +59,14 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 MARKER = "nis16-data-sync"
 LEDGERS = {"run_ledger.csv", "test_ledger.csv"}
-EXPORTS = "tools/exports"
+EXPORTS = "datasets/exports"
 TEST_AREA = "sync_test"
 PRESETS = "presets"
-ANALYSIS = "analysis"
+ANALYSIS = "datasets/analysis"
 # run_wizard.ps1's console transcripts, filed run_logs/<attack>/<topology>/<location>/<scenario>/.
 # run_logs/_archive/ is the wizard's "Archive it" - in_archive() keeps it local.
-LOGS = "run_logs"
+LOGS = "datasets/run_logs"
+ARCHIVE = "datasets/archive"
 CONFLICTS = "sync_conflicts"
 MAX_ATTEMPTS = 5
 # str.endswith() takes a tuple, so an area may accept several file types.
@@ -137,6 +139,214 @@ def _fmt_size(n):
 
 def tag(s):
     return re.sub(r"[^A-Za-z0-9-]", "-", s or "unknown").strip("-") or "unknown"
+
+
+# The delete list colours each file by when it reached GitHub: green = within
+# RECENT_MINUTES (the run just finished), yellow = older. Also the push/pull
+# fallback when no import batch is recorded. The age is also printed as text
+# ("3 h ago"), so nothing is lost where colour is off (piped output, NO_COLOR).
+RECENT_MINUTES = 30
+_color_on = None
+
+
+def _enable_vt():
+    """Windows consoles show raw escape codes unless VT processing is switched on."""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        handle = k32.GetStdHandle(-11)          # STD_OUTPUT_HANDLE
+        mode = ctypes.c_uint32()
+        if not k32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(k32.SetConsoleMode(handle, mode.value | 0x0004))   # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        return False
+
+
+def paint(s, color):
+    global _color_on
+    if _color_on is None:
+        _color_on = sys.stdout.isatty() and not os.environ.get("NO_COLOR") and _enable_vt()
+    if not _color_on or not color:
+        return s
+    return "\x1b[{}m{}\x1b[0m".format({"green": "92", "yellow": "93"}[color], s)
+
+
+def is_recent(ts, now):
+    return ts is not None and now - ts <= RECENT_MINUTES * 60
+
+
+def fmt_when(ts, now, color, unknown="time unknown"):
+    """'Sep 25 2026 17:18  (2 h ago)' padded to one width, painted `color`."""
+    if ts is None:
+        return paint(unknown.ljust(31), color)
+    s = max(now - ts, 0)
+    ago = ("{} min".format(s // 60) if s < 3600 else
+           "{} h".format(s // 3600) if s < 86400 else
+           "{} d".format(s // 86400))
+    label = "{}  ({} ago)".format(datetime.fromtimestamp(ts).strftime("%b %d %Y %H:%M"), ago)
+    return paint(label.ljust(31), color)
+
+
+def fmt_uploaded(ts, now):
+    """Delete list: green/yellow by the RECENT_MINUTES window."""
+    if ts is None:
+        return "upload time unknown"
+    return fmt_when(ts, now, "green" if is_recent(ts, now) else "yellow")
+
+
+# Push and pull colour files too, but for CAPTURE data "new" is not a fixed time
+# window: it is your LATEST SD-card import - every card copied before answering N
+# to "Import another card for this same run?" - plus anything imported after that
+# import started. run_wizard.ps1 / menu.ps1 record the batch in BATCH_FILE
+# (tools/ImportBatch.ps1; git-ignored, this laptop only). The next import that
+# copies a file replaces it, which is what turns the previous batch yellow.
+#
+# The time shown for a capture is the one in its NAME
+# (..._r1_20260925_171351_telem.csv): export_logs._make_filename() stamps the
+# host clock at import/export time, on whichever laptop did it. That is what
+# lets a TEAMMATE's file be judged against your batch - a file on GitHub only
+# carries the time it was pushed, and an old run can be pushed today.
+#
+# SAME RUN, imported by a teammate BEFORE your batch started (they pulled the
+# root card, you pulled the victims a few minutes later) is green too. The data
+# carries no run id (the CSV headers have none), so "same run" is read off the
+# name, and all three must hold:
+#   * same folder (attack/topology/location/scenario) and same r<n> as a file
+#     in your batch - one run is one repeat of one cell;
+#   * a BOARD your batch does not already have - a run holds one telem (and one
+#     arrivals) file per board, so a teammate's child_node2 beside your own
+#     child_node2 is another run (a redo under the same repeat), not this one;
+#   * imported at most SAME_RUN_MINUTES before your batch started. One run's
+#     phases alone take 11 min (mesh_config.h PHASE_*_S), so the previous run's
+#     cards are normally older than that - the board rule above covers a redo
+#     imported closer together.
+BATCH_FILE = ".last_import_batch.json"
+SAME_RUN_MINUTES = 30
+_NAME_STAMP = re.compile(r"(?<!\d)(\d{8})_(\d{6})(?!\d)")
+# <board>_r<repeat>_<YYYYMMDD>_<HHMMSS>_<kind>.csv - export_logs._make_filename().
+# <board> keeps role + node + topology + attack, which is all constant inside
+# one folder except the node, so it identifies the board.
+_CAPTURE_NAME = re.compile(r"^(?P<board>.+)_r(?P<rep>\d+)_\d{8}_\d{6}_(?P<kind>[A-Za-z]+)\.csv$")
+
+
+def capture_identity(rel):
+    """(folder, repeat, board, kind) of a capture file, or None for any other name."""
+    m = _CAPTURE_NAME.match(rel.rsplit("/", 1)[-1])
+    if not m:
+        return None
+    return rel.rsplit("/", 1)[0], int(m.group("rep")), m.group("board"), m.group("kind").lower()
+
+
+def name_stamp(rel):
+    """Unix time from a capture file name's _YYYYMMDD_HHMMSS_ stamp, or None."""
+    m = _NAME_STAMP.search(rel.rsplit("/", 1)[-1])
+    if not m:
+        return None
+    try:
+        return int(datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S").timestamp())
+    except (ValueError, OverflowError, OSError):
+        return None
+
+
+def load_batch():
+    """This laptop's latest import batch {files, started}, or None if none is recorded."""
+    p = BASE / BATCH_FILE
+    if not p.is_file():
+        return None
+    try:
+        d = json.loads(p.read_text(encoding="utf-8-sig"))
+        files = d["files"]
+        if isinstance(files, str):      # PS 5.1 ConvertTo-Json can unroll a 1-item array
+            files = [files]
+        started = int(d["started"])
+        files = {str(f).replace("\\", "/") for f in files}
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        print("  (couldn't read {} ({}) - colouring by the last {} min instead)".format(
+            BATCH_FILE, e, RECENT_MINUTES))
+        return None
+    return {"files": files, "started": started}
+
+
+class Freshness:
+    """Green/yellow for one push or pull listing - see BATCH_FILE above."""
+
+    def __init__(self, area, what):
+        self.now = int(time.time())
+        self.by_name = area == EXPORTS
+        self.batch = load_batch() if self.by_name else None
+        self.what = what
+        # {(folder, repeat): {(board, kind)}} - the runs your batch belongs to.
+        self.runs = {}
+        if self.batch:
+            for rel in self.batch["files"]:
+                ident = capture_identity(rel)
+                if ident:
+                    self.runs.setdefault(ident[:2], set()).add(ident[2:])
+
+    def when(self, rel, fallback):
+        """The time to show: a capture's name stamp, else `fallback`."""
+        ts = name_stamp(rel) if self.by_name else None
+        return ts if ts is not None else fallback
+
+    def same_run(self, rel, ts):
+        """A teammate's card from your batch's run, imported just before it - see SAME_RUN_MINUTES."""
+        ident = capture_identity(rel)
+        if not ident or ts is None:
+            return False
+        boards = self.runs.get(ident[:2])
+        return (boards is not None and ident[2:] not in boards
+                and ts >= self.batch["started"] - SAME_RUN_MINUTES * 60)
+
+    def is_new(self, rel, ts):
+        if self.batch:
+            return (rel in self.batch["files"] or (ts is not None and ts >= self.batch["started"])
+                    or self.same_run(rel, ts))
+        return is_recent(ts, self.now)
+
+    def label(self, rel, ts):
+        return fmt_when(ts, self.now, "green" if self.is_new(rel, ts) else "yellow")
+
+    def legend(self):
+        g, y = paint("green", "green"), paint("yellow", "yellow")
+        if self.batch:
+            rule = "{} = your latest SD import ({}, {} file(s)), the rest of that run, or newer, {} = older".format(
+                g, datetime.fromtimestamp(self.batch["started"]).strftime("%b %d %Y %H:%M"),
+                len(self.batch["files"]), y)
+        elif self.by_name:
+            rule = "{} = last {} min, {} = older (no SD import recorded on this laptop yet)".format(
+                g, RECENT_MINUTES, y)
+        else:
+            rule = "{} = last {} min, {} = older".format(g, RECENT_MINUTES, y)
+        return "  Time = {}.  {}".format(self.what, rule)
+
+    def counts(self, items):
+        n = sum(1 for rel, ts, _ in items if self.is_new(rel, ts))
+        return "{} new, {} old".format(paint(str(n), "green"), paint(str(len(items) - n), "yellow"))
+
+
+def print_dated(items, fresh):
+    """items = [(rel, ts, extra)]: one line per file under its folder, newest first."""
+    folders = []
+    for rel, _, _ in items:
+        if folder_of(rel) not in folders:
+            folders.append(folder_of(rel))
+    items = sorted(items, key=lambda it: (folders.index(folder_of(it[0])), -(it[1] or 0), it[0]))
+    shown = None
+    for rel, ts, extra in items:
+        if folder_of(rel) != shown:
+            shown = folder_of(rel)
+            print("    {}/".format(shown))
+        print("      {}  {}{}".format(fresh.label(rel, ts), rel.rsplit("/", 1)[-1], extra))
+
+
+def local_mtime(rel):
+    try:
+        return int((BASE / rel).stat().st_mtime)
+    except OSError:
+        return None
 
 
 def current_branch():
@@ -319,7 +529,7 @@ def is_area_payload(area, rel):
     if not rel.lower().endswith(AREA_EXT[area]):
         return False
     if rel.startswith(ANALYSIS + "/"):
-        return len(rel.split("/")) >= 5
+        return len(rel.split("/")) >= 6
     return True
 
 
@@ -380,7 +590,7 @@ def merge_ledger(remote, local, archived_rows):
 
 
 def archived_on_github(ctx):
-    names = remote_tree(ctx, "archive")
+    names = remote_tree(ctx, ARCHIVE)
     files = {n.rsplit("/", 1)[-1] for n in names if n.lower().endswith(".csv")} - LEDGERS
     ledger_rows = set()
     for n in names:
@@ -462,19 +672,30 @@ def build_plan(ctx, area):
 def print_plan(writes, notes, area=EXPORTS):
     print("")
     labels = {"new": "NEW", "ledger": "LEDGER (rows merged)", "conflict": "KEEP BOTH (name clash)"}
+    fresh = Freshness(area, "when it was imported (from the file name)" if area == EXPORTS
+                      else "last changed on this laptop")
+    if any(w[0] != "ledger" for w in writes):
+        print(fresh.legend())
     for kind in ("new", "ledger", "conflict"):
         items = [w for w in writes if w[0] == kind]
         if not items:
             continue
-        print("  {} - {} file(s):".format(labels[kind], len(items)))
+        if kind == "ledger":
+            print("  {} - {} file(s):".format(labels[kind], len(items)))
+            for _, rel, _, data in items:
+                print("    {}  ({} rows)".format(rel, rows(data)))
+            continue
+        dated = []
         for _, rel, repo_path, data in items:
-            extra = "" if kind != "conflict" else "   -> saved as " + repo_path
             # Row counts only mean something for text. A PNG "has" as many
             # rows as it happens to contain 0x0A bytes, which is noise dressed
             # up as a measurement - show its size instead.
             measure = ("{} rows".format(rows(data)) if rel.lower().endswith((".csv", ".md", ".json"))
                        else _fmt_size(len(data)))
-            print("    {}  ({}){}".format(rel, measure, extra))
+            extra = "  ({})".format(measure) + ("" if kind != "conflict" else "   -> saved as " + repo_path)
+            dated.append((rel, fresh.when(rel, local_mtime(rel)), extra))
+        print("  {} - {} file(s): {}".format(labels[kind], len(items), fresh.counts(dated)))
+        print_dated(dated, fresh)
     if notes["same"]:
         print("  already on GitHub, identical: {} file(s)".format(notes["same"]))
     if notes["older"]:
@@ -493,7 +714,7 @@ def print_plan(writes, notes, area=EXPORTS):
         print("    If that delete was a mistake, use 'restore' (wizard: Data sync -> Restore deleted data).")
     if notes["in_archive"] and area == LOGS:
         # Listed by count only: archiving a log is the operator saying "not this one".
-        print("  skipped - archived run logs (run_logs\\_archive\\), kept local: {} file(s)".format(
+        print("  skipped - archived run logs (datasets\\run_logs\\_archive\\), kept local: {} file(s)".format(
             len(notes["in_archive"])))
     elif notes["in_archive"]:
         print("  skipped - superseded captures sitting in an archive folder, not live "
@@ -562,8 +783,8 @@ def stage_locally(rels):
 
 def pull_back(ctx, area, yes):
     local_archived, archived_rows = set(), set()
-    if area == EXPORTS and (BASE / "archive").is_dir():
-        for folder, _, files in os.walk(BASE / "archive"):
+    if area == EXPORTS and (BASE / ARCHIVE).is_dir():
+        for folder, _, files in os.walk(BASE / ARCHIVE):
             local_archived.update(files)
             if "run_ledger.csv" in files:
                 archived_rows.update(split_ledger((Path(folder) / "run_ledger.csv").read_bytes())[0][1:])
@@ -614,8 +835,17 @@ def pull_back(ctx, area, yes):
         print("  ({} file(s) on GitHub sit in an archive folder - superseded, not copied)".format(skipped_nested))
     if incoming or ledgers:
         print("\n  Teammates' data on GitHub that you don't have yet:")
-        for rel in incoming:
-            print("    NEW     " + rel)
+        if incoming:
+            fresh = Freshness(area, "when it was imported (from the file name)" if area == EXPORTS
+                              else "when it was uploaded to GitHub")
+            up = upload_times(ctx, area)
+            dated = []
+            for rel in incoming:
+                ts, who = up.get(rel, (None, ""))
+                dated.append((rel, fresh.when(rel, ts), "  by " + who if who else ""))
+            print(fresh.legend())
+            print("  NEW - {} file(s): {}".format(len(incoming), fresh.counts(dated)))
+            print_dated(dated, fresh)
         for rel in ledgers:
             print("    LEDGER  {} (gains their rows, none of yours removed)".format(rel))
         if ask("Copy these into your folder? Existing capture files are never overwritten.", yes):
@@ -696,6 +926,28 @@ def deleted_on_github(ctx, area):
     return out
 
 
+def upload_times(ctx, area):
+    """{rel: (unix time, author)} - the commit that put each file's CURRENT version on GitHub.
+
+    Newest add/modify wins, so a restored file counts from its restore. Commit
+    time, not push time: push_data.py commits right before it pushes, so the two
+    are seconds apart. Trees are in the blob-less clone, so this stays offline.
+    """
+    p = git(["log", "--diff-filter=AM", "--no-renames", "--name-only",
+             "--format=%x01%ct%x09%an", "HEAD", "--", ctx.prefix + area],
+            ctx.sync, cfg=("core.quotepath=off",))
+    out, cur = {}, None
+    for line in text(p).splitlines():
+        if line.startswith("\x01"):
+            ts, _, who = line[1:].partition("\t")
+            cur = (int(ts), who)
+            continue
+        path = line.strip()
+        if path and cur is not None:
+            out.setdefault(path[len(ctx.prefix):], cur)
+    return out
+
+
 def parse_picks(raw, n):
     """'1,3-5' / 'all' -> sorted 0-based indexes, or None if it doesn't parse."""
     raw = raw.strip().lower().replace(" ", "")
@@ -740,21 +992,76 @@ def narrow(rels, verb):
     return [rels[i] for i in idx]
 
 
-def pick_by_folder(rels, verb):
+def folder_of(rel):
+    return rel.rsplit("/", 1)[0]
+
+
+def recent_legend():
+    return "{} = uploaded in the last {} min, {} = older".format(
+        paint("green", "green"), RECENT_MINUTES, paint("yellow", "yellow"))
+
+
+def pick_files_to_delete(rels, times):
+    """Delete picker: ALL files, or some - by folder, then all or only some of that folder's files.
+
+    Every folder and file line carries its upload time, coloured by age, so the
+    operator can see which data is today's and which is old before choosing.
+    Enter cancels at every step: a delete is never the default answer.
+    """
+    now = int(time.time())
     folders = []
     for rel in rels:
-        f = rel.rsplit("/", 1)[0]
-        if f not in folders:
-            folders.append(f)
-    print("\n  On GitHub now:")
+        if folder_of(rel) not in folders:
+            folders.append(folder_of(rel))
+    print("\n  On GitHub now - {} file(s) in {} folder(s)   ({})".format(len(rels), len(folders), recent_legend()))
     for i, f in enumerate(folders, 1):
-        print("    [{}] {}/  ({} file(s))".format(i, f, sum(1 for r in rels if r.rsplit("/", 1)[0] == f)))
-    idx = prompt_picks("\n  Which folder(s) to {} from? e.g. 1 or 2,4-5, 'all' - Enter cancels > ".format(
-        verb.lower()), len(folders))
-    if not idx:
-        return []
-    keep = {folders[i] for i in idx}
-    return narrow([r for r in rels if r.rsplit("/", 1)[0] in keep], verb)
+        stamps = [times.get(r, (None,))[0] for r in rels if folder_of(r) == f]
+        n_new = sum(1 for t in stamps if is_recent(t, now))
+        known = [t for t in stamps if t is not None]
+        print("    [{}] {}/".format(i, f))
+        print("          {} file(s): {} recent, {} old   newest {}".format(
+            len(stamps), paint(str(n_new), "green"), paint(str(len(stamps) - n_new), "yellow"),
+            fmt_uploaded(max(known) if known else None, now)))
+
+    print("\n  Delete what?")
+    print("    [a] ALL {} file(s) above ({} folder(s))".format(len(rels), len(folders)))
+    print("    [s] SOME files - pick the folder(s), then all or only some of their files")
+    while True:
+        try:
+            ans = input("  a / s, Enter cancels > ").strip().lower()
+        except EOFError:
+            return []
+        if ans in ("", "n", "no", "q"):
+            return []
+        if ans in ("a", "all"):
+            return list(rels)
+        if ans in ("s", "some"):
+            break
+        print("  Type a (all) or s (some).")
+
+    if len(folders) == 1:
+        keep = set(folders)
+    else:
+        idx = prompt_picks("\n  Which folder(s)? e.g. 1 or 2,4-5, 'all' - Enter cancels > ", len(folders))
+        if not idx:
+            return []
+        keep = {folders[i] for i in idx}
+    pool = [r for r in rels if folder_of(r) in keep]
+    # Newest first inside each folder, so today's files sit together at the top.
+    pool.sort(key=lambda r: (folders.index(folder_of(r)), -(times.get(r, (0,))[0] or 0), r))
+
+    print("\n  Files ({}):".format(recent_legend()))
+    shown = None
+    for i, rel in enumerate(pool, 1):
+        if folder_of(rel) != shown:
+            shown = folder_of(rel)
+            print("    {}/".format(shown))
+        ts, who = times.get(rel, (None, ""))
+        print("    [{:>{w}}] {}  {}{}".format(i, fmt_uploaded(ts, now), rel.rsplit("/", 1)[-1],
+                                           "  by " + who if who else "", w=len(str(len(pool)))))
+    idx = prompt_picks("\n  Delete which? 'all' = all {} file(s) listed, numbers = only those (e.g. 1,4-6), "
+                       "Enter cancels > ".format(len(pool)), len(pool))
+    return [pool[i] for i in idx]
 
 
 def prune_empty_dirs(rel):
@@ -814,12 +1121,13 @@ def delete_on_github(ctx, area):
     if not cands:
         print("\n  GitHub has no {} files to delete.".format(area))
         return
-    picked = pick_by_folder(cands, "Delete")
+    picked = pick_files_to_delete(cands, upload_times(ctx, area))
     if not picked:
         print("  Cancelled - nothing was deleted.")
         return
+    scope = "ALL {} {}".format(len(picked), area) if len(picked) == len(cands) else str(len(picked))
     print("\n  {} file(s) will be removed from GitHub branch '{}'. They stay in GitHub's history:".format(
-        len(picked), ctx.branch))
+        scope, ctx.branch))
     print("  'restore' (wizard: Data sync -> Restore deleted data) brings them back any time.")
     try:
         ans = input("  Type DELETE to confirm > ").strip()
@@ -1001,11 +1309,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("action", choices=["push", "pull", "delete", "restore", "test", "test-cleanup"])
     ap.add_argument("--area", choices=["exports", "presets", "analysis", "logs"], default="exports",
-                     help="what push/pull syncs: capture CSVs under tools/exports (default), "
+                     help="what push/pull syncs: capture CSVs under datasets/exports (default), "
                           "your saved presets under presets/<you>/, analysis + EDA output "
-                          "under analysis/<attack>/<topology>/<location>/ (.csv/.png/.json/.md "
+                          "under datasets/analysis/<attack>/<topology>/<location>/ (.csv/.png/.json/.md "
                           "only -- never the pipeline's own .py), or run_wizard.ps1's saved "
-                          "run logs (.log) under run_logs/. Ignored by test/test-cleanup.")
+                          "run logs (.log) under datasets/run_logs/. Ignored by test/test-cleanup.")
     ap.add_argument("--yes", action="store_true", help="answer yes to every prompt")
     ap.add_argument("--no-pull-back", action="store_true", help="don't offer teammates' files afterwards")
     ap.add_argument("--branch", default=None,

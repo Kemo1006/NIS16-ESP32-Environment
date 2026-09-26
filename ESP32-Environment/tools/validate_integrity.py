@@ -633,7 +633,9 @@ def _check_phase_durations(rows, header, kind, report):
         elif drift > PHASE_DURATION_TOLERANCE:
             report.info(
                 f"phase {ph} ran {measured:.0f}s vs nominal {nominal}s "
-                f"(longer — expected under the 'jitter' scenario)")
+                f"(longer — expected under the 'jitter' scenario; on any other "
+                f"scenario the root most likely restarted and its schedule began "
+                f"again, while this node stayed in phase {ph})")
 
 
 def _check_phase_coverage(phase_counts, attack, kind, sample_interval_ms, report):
@@ -857,8 +859,48 @@ def validate(target_dir, manifest_path, relock, sample_interval_ms,
 
         reports.append(report)
 
+    _check_phase_sync(reports)
     _save_manifest(manifest_path, manifest)
     return reports
+
+
+def _check_phase_sync(reports):
+    """FAIL a node whose phase labels disagree with the root's (analysis/phase_sync.py).
+
+    Per-file checks cannot see this: on G402 (sep. 25, 2026) a child ran a clean
+    60/300/180/120 s schedule ~110 s ahead of the root, so its file passed every
+    check above while ~105 of its attack windows were really baseline. Needs
+    pandas; without it the check is reported as skipped, never as passed.
+    """
+    by_dir = {}
+    for r in reports:
+        if r.path.endswith("_telem.csv"):
+            by_dir.setdefault(os.path.dirname(r.path), []).append(r)
+    try:
+        import pandas as pd
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "analysis"))
+        import phase_sync
+    except ImportError as e:
+        for rs in by_dir.values():
+            for r in rs:
+                r.info("phase-sync check SKIPPED ({}) - pip install -r analysis/requirements.txt".format(e))
+        return
+    for folder, rs in by_dir.items():
+        telem = {}
+        for r in rs:
+            try:
+                telem[os.path.basename(r.path)] = pd.read_csv(r.path, low_memory=False)
+            except Exception:
+                continue
+        by_name = {os.path.basename(r.path): r for r in rs}
+        for res in phase_sync.check_run(telem, folder):
+            r = by_name[res["file"]]
+            if res["status"] == "DESYNCED":
+                r.fail("OUT OF SYNC WITH THE ROOT: {} ({}). Its phase labels are wrong for that "
+                       "share of the run; preprocess unlabels this node.".format(
+                           res["reason"], phase_sync.describe_pairs(res["stats"]["pairs"])))
+            elif res["status"] == "unchecked":
+                r.info("phase sync not checked: " + res["reason"])
 
 
 def main():
@@ -867,7 +909,7 @@ def main():
     # "exports" validates whatever stray folder happens to sit in the directory
     # you ran from (usually nothing, so it reports 0 files and looks like a pass).
     p.add_argument("directory", nargs="?",
-                    default=os.path.join(_THIS_DIR, "exports"),
+                    default=os.path.join(os.path.dirname(_THIS_DIR), "datasets", "exports"),
                     help="Directory of exported CSVs to validate (recursive). "
                          "Default: the exports/ folder next to this script.")
     p.add_argument("--manifest", default=None,
