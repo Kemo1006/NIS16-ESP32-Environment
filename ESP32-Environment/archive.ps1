@@ -256,7 +256,11 @@ if (-not $Reason) {
 if (-not $Reason) { $Reason = '(no reason recorded)' }
 
 # Never overwrite an existing archive; suffix until the name is free.
-$stamp = Get-Date -Format 'yyyy-MM-dd'
+# Folder date is the readable sept27 form (see tools\name_stamp.py make_date);
+# explicit month list because ToString('MMM') is locale-dependent ("Sep").
+$months = @('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec')
+$now = Get-Date
+$stamp = '{0}{1:00}' -f $months[$now.Month - 1], $now.Day
 $dest = Join-Path $archiveRoot "${stamp}_${Label}"
 $n = 2
 while (Test-Path $dest) {

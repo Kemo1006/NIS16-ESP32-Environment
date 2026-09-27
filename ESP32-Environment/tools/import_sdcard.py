@@ -110,6 +110,7 @@ except ImportError:
 # Naming is reused, never reimplemented: the filename convention living in
 # exactly one place is what keeps a card import and a USB export identical.
 import export_logs  # noqa: E402
+import name_stamp  # noqa: E402
 
 # Card folder name -> the --attack CLI value export_logs.py would have been
 # given. Inverts _subdir_for()'s "none means baseline" mapping so the attack
@@ -663,18 +664,24 @@ _BOARD_LIST_TIMEOUT_S = 30
 _START_AFTER_EXPORT_SLACK_S = 120
 
 
-def _exported_before_start(existing, started, clock_src):
+def _exported_before_start(existing, started, clock_src, folder=None):
     """True if `existing` (an exports/ filename) was written BEFORE the card
     run began — so it cannot be that run, whatever else matches.
 
     Only a real clock ("host") counts: a "build" time is an extrapolation and
     could land anywhere. The export stamp is laptop local time and "started" is
-    the board's local (Philippine) wall clock — the same zone."""
+    the board's local (Philippine) wall clock — the same zone.
+
+    The readable stamp (sept27_0311AM, see name_stamp.py) drops the seconds,
+    so it is read as the END of its minute: truncating could only make an
+    export look earlier than it was and wrongly rule it out."""
     if clock_src != "host" or not started:
         return False
     try:
         _head, date, hms, _kind = existing.rsplit("_", 3)
-        exported = time.mktime(time.strptime(date + hms, "%Y%m%d%H%M%S"))
+        when, _seq = name_stamp.parse(
+            date + "_" + hms, os.path.join(folder, existing) if folder else None)
+        exported = time.mktime(when.timetuple()) + (0 if date.isdigit() else 59)
         began = time.mktime(time.strptime(started, "%Y-%m-%d %H:%M:%S"))
     except ValueError:
         return False   # a name or stamp we cannot read proves nothing
@@ -723,7 +730,7 @@ def _already_imported(dest, rows, started=None, clock_src=None):   # noqa: D401 
     head, _date, _time, kind = name.rsplit("_", 3)
     for existing in sorted(os.listdir(folder)):
         if existing.startswith(head + "_") and existing.endswith("_" + kind):
-            if _exported_before_start(existing, started, clock_src):
+            if _exported_before_start(existing, started, clock_src, folder):
                 continue
             if rows is None:
                 return existing
@@ -779,23 +786,15 @@ def _load_roster(path):
 
 
 def _make_unique_filename(dest_args, kind, used_this_run):
-    """export_logs._make_filename() stamps only second-granularity wall-clock
-    time. That was never a problem for a single USB export (one file per
-    invocation), but --boots exists precisely so several boots of the same
-    repeat get imported in one invocation — and generating their destination
-    names back-to-back can land two calls in the same second, producing
-    IDENTICAL paths. shutil.copy2() would then silently overwrite the first
-    boot's data with the second's.
-
-    _make_filename() itself is not touched (still the one place the naming
-    convention lives) — this just refuses to reuse a name this run already
-    claimed, sleeping the ~1s needed for the next call to land on a new
-    timestamp. A real card import is a few files, seconds apart in practice;
-    this only ever triggers on the fast, back-to-back multi-boot case."""
-    dest = export_logs._make_filename(dest_args, kind)
-    while dest in used_this_run:
-        time.sleep(1)
-        dest = export_logs._make_filename(dest_args, kind)
+    """export_logs._make_filename() stamps only minute-precision wall-clock
+    time (sept27_0311AM). --boots exists precisely so several boots of the
+    same repeat get imported in one invocation, and generating their
+    destination names back-to-back lands them in the same minute, producing
+    IDENTICAL paths - shutil.copy2() would then silently overwrite the first
+    boot's data with the second's. A name already on disk is caught by
+    _make_filename() itself; this passes the names THIS run has claimed but
+    not yet written, so the second boot gets ..._0311AM-2_telem.csv."""
+    dest = export_logs._make_filename(dest_args, kind, used_this_run)
     used_this_run.add(dest)
     return dest
 
@@ -1053,7 +1052,7 @@ def _run(source, args):
     copied = skipped = filtered_out = aborted_skipped = failed = live_skipped = 0
     deleted = delete_failed = 0
     used_this_run = set()  # see _make_unique_filename() — guards against a
-                            # same-second destination collision across boots
+                            # same-minute destination collision across boots
     for rel, attack_dir, topo_dir, location, m, entry in found:
         boot = int(m.group("boot"))
 

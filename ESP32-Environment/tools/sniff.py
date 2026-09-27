@@ -51,6 +51,8 @@ except ImportError:
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+sys.path.insert(0, HERE)
+import name_stamp  # noqa: E402
 
 BAUD = 921600            # MUST match SNIFF_BAUD in sniffer_node/main/sniffer_main.c
 
@@ -311,8 +313,8 @@ def main():
     if args.stop_on_enter is None:
         args.stop_on_enter = sys.stdin.isatty() and not args.stop_file
 
-    out = args.out or os.path.join(
-        REPO, "datasets", "PCAP", "esp32_sniffer_%s.pcap" % _dt.datetime.now().strftime("%Y%m%d_%H%M%S"))
+    out = args.out or name_stamp.unique_path(os.path.join(
+        REPO, "datasets", "PCAP", "esp32_sniffer_%s.pcap" % name_stamp.make()))
     out = os.path.abspath(out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     sidecar = os.path.splitext(out)[0] + ".json"

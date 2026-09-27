@@ -54,11 +54,13 @@ from collections import defaultdict
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_THIS_DIR)
+sys.path.insert(0, _THIS_DIR)
+import name_stamp  # noqa: E402
 
 # Same convention export_logs.py writes and validate_integrity.py checks.
 FILENAME_RE = re.compile(
     r"^(?P<role>root|victim|child)_(?P<nick>[^_]+)_(?P<topology>[^_]+)_(?P<attack>[^_]+)"
-    r"_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_(?P<kind>telem|arrivals)\.csv$"
+    r"_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_(?P<kind>telem|arrivals)\.csv$"
 )
 
 ANALYSIS_ROOT = os.path.join(_REPO, "datasets", "analysis")

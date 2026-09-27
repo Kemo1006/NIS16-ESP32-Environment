@@ -110,6 +110,36 @@ $SCENARIO_LABELS = @(
     'powercycle  - HUMAN: you unplug/replug one child (checklist only)'
 )
 
+# Readable stamp in datasets\ names: sept27_0311AM (month word + day, 12-hour
+# time, no year, no seconds). Mirrors make()/make_date() in tools\name_stamp.py -
+# keep the month list identical. Explicit list, never ToString('MMM'): that is
+# locale-dependent and gives "Sep", not "sept".
+$NAME_MONTHS = @('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec')
+function Get-NameStamp {
+    $t = Get-Date
+    $h = $t.Hour % 12
+    if ($h -eq 0) { $h = 12 }
+    $ampm = if ($t.Hour -lt 12) { 'AM' } else { 'PM' }
+    return ('{0}{1:00}_{2:00}{3:00}{4}' -f $NAME_MONTHS[$t.Month - 1], $t.Day, $h, $t.Minute, $ampm)
+}
+function Get-NameDate {
+    $t = Get-Date
+    return ('{0}{1:00}' -f $NAME_MONTHS[$t.Month - 1], $t.Day)
+}
+function Get-StampedPath {
+    # <Dir>\<Head>_<stamp><Ext>. The stamp is only minute-precise, so a name
+    # already taken gets -2, -3, ... after the stamp instead of being overwritten.
+    param([string]$Dir, [string]$Head, [string]$Ext)
+    $stamp = Get-NameStamp
+    $path = Join-Path $Dir ('{0}_{1}{2}' -f $Head, $stamp, $Ext)
+    $n = 2
+    while (Test-Path -LiteralPath $path) {
+        $path = Join-Path $Dir ('{0}_{1}-{2}{3}' -f $Head, $stamp, $n, $Ext)
+        $n++
+    }
+    return $path
+}
+
 # 'stationary' is the no-variation scenario; 'none' is its pre-sep-24-2026 name,
 # still found in old presets and commands. The ONE place that rename lives.
 function ConvertTo-Scenario([string]$Name) {
@@ -257,7 +287,13 @@ function Show-Menu {
         # index (e.g. @{ 0 = '-- YOURS (Bas)'; 3 = '-- Kyle' }). Purely visual:
         # the numbering stays one sequential 1..N run over $Options, exactly as
         # it is without headings, so a heading can never shift what "[3]" means.
-        [hashtable]$GroupHeaders
+        [hashtable]$GroupHeaders,
+        # Opt-in shortcut: typing d<N> (or del/delete <N>) returns -2 with the
+        # 0-based indexes left in $script:MenuDeleteIndexes, so the caller can
+        # delete entries without opening them first. Several at once: d3,5,7 /
+        # d 3 5 7 / d3-5 (all numbers refer to the list AS SHOWN). The caller
+        # MUST check for -2.
+        [switch]$AllowDelete
     )
     # Captured as a scriptblock (not just run inline) so it can be handed to
     # Read-Line as -Redraw: 'cls' Clear-Hosts the whole screen, and this is the
@@ -305,6 +341,7 @@ function Show-Menu {
         # advertised here (and on the other hand-written prompts) so it is
         # discoverable rather than a hidden keyword.
         $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'm' main menu, 'cls' clear" }
+        if ($AllowDelete) { $navHint = ", 'd<N>' delete (d3,5 or d3-5 for several)" + $navHint }
         # A one-option menu read as "type 1-1", which looks like a typo for a
         # range, and Enter was rejected there even though there was nothing else
         # it could have meant. Both are spelled for the single-option case.
@@ -322,6 +359,25 @@ function Show-Menu {
         # Enter on a single-option menu takes the only option - there is no other
         # answer it could resolve to, so demanding the keystroke was pure friction.
         if (-not $raw -and $Options.Count -eq 1) { return 0 }
+        if ($AllowDelete -and $raw -match '^(?i:d|del|delete)\s*(\d[\d,\s-]*)$') {
+            $picked = @()
+            $bad = $false
+            foreach ($tok in ($Matches[1] -split '[,\s]+' | Where-Object { $_ })) {
+                if ($tok -match '^(\d+)-(\d+)$') {
+                    $lo = [int]$Matches[1]; $hi = [int]$Matches[2]
+                    if ($lo -gt $hi -or ($hi - $lo) -gt 200) { $bad = $true; break }
+                    $picked += @($lo..$hi)
+                }
+                elseif ($tok -match '^\d+$') { $picked += [int]$tok }
+                else { $bad = $true; break }
+            }
+            if ($bad -or $picked.Count -eq 0) {
+                Write-Host "  Use d<N>, d3,5,7 or d3-5 (numbers from the list)." -ForegroundColor Yellow
+                continue
+            }
+            $script:MenuDeleteIndexes = @($picked | Sort-Object -Unique | ForEach-Object { $_ - 1 })
+            return -2
+        }
         $n = 0
         if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $Options.Count) {
             return ($n - 1)
@@ -2632,7 +2688,7 @@ function Invoke-ArchiveMenu {
                 $reason = Read-Line "  One line on WHY (recorded in the archive's README) > "
                 if (-not $reason) { $reason = 'archived from the capture wizard' }
                 Write-Host ""
-                Write-Host ("  Will create: archive\{0}_{1}\" -f (Get-Date -Format 'yyyy-MM-dd'), $label) -ForegroundColor Cyan
+                Write-Host ("  Will create: archive\{0}_{1}\" -f (Get-NameDate), $label) -ForegroundColor Cyan
                 $go = Read-Line "  Proceed? [y/N] > "
                 if ($go -eq 'y' -or $go -eq 'Y') {
                     Push-Location $base
@@ -3117,8 +3173,8 @@ function Get-SnifferPcapPath {
     param([string]$AttackDir, [string]$TopoDir, [string]$Location, [string]$Scenario, [int]$RepeatNum)
     $sc  = ConvertTo-Scenario $Scenario
     $dir = Join-Path $base ("datasets\PCAP\{0}\{1}\{2}\{3}" -f $AttackDir, $TopoDir, $Location, $sc)
-    $name = "{0}-{1}-{2}-{3}_r{4}_{5}.pcap" -f $TopoDir, $AttackDir, $sc, $Location.ToLower(), $RepeatNum, (Get-Date -Format 'yyyy-MM-dd_HHmmss')
-    return (Join-Path $dir $name)
+    $head = "{0}-{1}-{2}-{3}_r{4}" -f $TopoDir, $AttackDir, $sc, $Location.ToLower(), $RepeatNum
+    return (Get-StampedPath -Dir $dir -Head $head -Ext '.pcap')
 }
 
 # NOT CALLED since sep. 26, 2026: Select-PacketCapture, Show-MacCaptureChecklist,
@@ -3189,8 +3245,7 @@ function Select-SnifferFiling {
         'A run cell - file it under datasets\PCAP\<attack>\<topology>\<location>\<scenario>\ (like the exports)',
         'Just a test - datasets\PCAP\standalone\'
     ) -DefaultIndex 0
-    $stamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
-    if ($idx -eq 1) { return (Join-Path $base "datasets\PCAP\standalone\esp32_sniffer_$stamp.pcap") }
+    if ($idx -eq 1) { return (Get-StampedPath -Dir (Join-Path $base 'datasets\PCAP\standalone') -Head 'esp32_sniffer' -Ext '.pcap') }
 
     $f.Attack = Show-Menu -Title 'Attack type:' -Options @('baseline  (no attack)', 'blackhole', 'wormhole') -DefaultIndex $f.Attack
     $f.Topology = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex $f.Topology
@@ -3586,7 +3641,7 @@ function Get-PcapScopedView {
             $io = @()
             foreach ($n in $Scope) {
                 $o = $Owners[(Get-PcapBoardKey $n.sta)]
-                $nm = if ($o -and $o.Nick) { $o.Nick } else { $n.sta }
+                $nm = if ($o -and $o.Nick) { "$($o.Nick) [$($n.sta)]" } else { $n.sta }
                 $io += @{ Name = "$nm sends"; Filter = "wlan.ta == $($n.sta) || wlan.ta == $($n.softap)" }
             }
             return @{ Filter = $set; Io = $io }
@@ -3746,9 +3801,9 @@ function Invoke-WiresharkViews {
                 # Data frames only (type 2) - the RTS handshakes to the parent are most of
                 # the raw rows and would pad the "forwarded" line.
                 $filter = "wlan.fc.type == 2 && wlan.ta == $($a.sta) && wlan.ra == $parentAp"
-                $io = @(@{ Name = 'Attacker -> parent (forwarded)'; Filter = $filter },
-                        @{ Name = 'Into attacker (still receiving)'; Filter = "wlan.fc.type == 2 && wlan.ra == $($a.softap)" },
-                        @{ Name = 'Attacker - all traffic'; Filter = "wlan.addr == $($a.sta) || wlan.addr == $($a.softap)" })
+                $io = @(@{ Name = "Attacker [$($a.sta)] -> parent [$parentAp] (forwarded)"; Filter = $filter },
+                        @{ Name = "Into attacker [$($a.sta)] (still receiving)"; Filter = "wlan.fc.type == 2 && wlan.ra == $($a.softap)" },
+                        @{ Name = "Attacker [$($a.sta)] - all traffic"; Filter = "wlan.addr == $($a.sta) || wlan.addr == $($a.softap)" })
                 Write-Host "  In the I/O graph, 'Attacker -> parent' should fall during the attack window and recover in cooldown," -ForegroundColor DarkGray
                 Write-Host "  while 'Into attacker' stays up in every phase." -ForegroundColor DarkGray
             }
@@ -3761,8 +3816,8 @@ function Invoke-WiresharkViews {
                 $aUp = @($na.parents)
                 $aFilter = if ($aUp.Count -gt 0) { "wlan.fc.type == 2 && wlan.ta == $($na.sta) && wlan.ra == $($aUp[0].softap)" } else { "wlan.fc.type == 2 && wlan.ta == $($na.sta)" }
                 $filter = "wlan.fc.type_subtype in {0x00, 0x02} && $meshSet"
-                $io = @(@{ Name = 'B direct sends'; Filter = "wlan.fc.type == 2 && wlan.ta == $($nb.sta)" },
-                        @{ Name = 'A -> its parent'; Filter = $aFilter },
+                $io = @(@{ Name = "B [$($nb.sta)] direct sends"; Filter = "wlan.fc.type == 2 && wlan.ta == $($nb.sta)" },
+                        @{ Name = "A [$($na.sta)] -> its parent"; Filter = $aFilter },
                         @{ Name = 'Joins / re-joins'; Filter = $filter })
                 Write-Host "  Expect: B's line drops in the wormhole phase, A's rises, and NO joins appear (topology unchanged)." -ForegroundColor DarkGray
             }
@@ -3915,9 +3970,11 @@ function Get-CaptureSummary {
         ForEach-Object { $_.Name } | Where-Object { $_ -like '*_telem.csv' -or $_ -like '*_arrivals.csv' })
     $telem        = @($names | Where-Object { $_ -like '*_telem.csv' })
     $arrivals     = @($names | Where-Object { $_ -like '*_arrivals.csv' })
-    $arrivalHeads = @($arrivals | ForEach-Object { $_ -replace '_\d{8}_\d{6}_arrivals\.csv$', '' })
+    # Name stamp, old 20260927_031130 or readable sept27_0311AM[-2] (tools\name_stamp.py).
+    $stampRe      = '(\d{8}_\d{6}|[a-z]+\d{2}_\d{4}[AP]M(-\d+)?)'
+    $arrivalHeads = @($arrivals | ForEach-Object { $_ -creplace "_${stampRe}_arrivals\.csv$", '' })
     $rootsMissing = @($telem | Where-Object { $_ -like 'root_*' } |
-        Where-Object { ($_ -replace '_\d{8}_\d{6}_telem\.csv$', '') -notin $arrivalHeads })
+        Where-Object { ($_ -creplace "_${stampRe}_telem\.csv$", '') -notin $arrivalHeads })
     return [pscustomobject]@{
         Names                = $names
         Telem                = $telem
@@ -5956,30 +6013,72 @@ if (-not $Preset) {
             # Ordered YOUR member's presets first, then the other members, then
             # anything still unfiled - nothing is hidden, because flashing an
             # absent member's boards from their preset is a normal thing to do
-            # here and must stay one pick away. $presetFiles is re-ordered to
-            # match what is printed so index N of the menu is index N of the
-            # array, the same invariant the flat list relied on.
+            # here and must stay one pick away. WITHIN each member the presets
+            # are sorted by experiment cell: attack, then topology, then location,
+            # then scenario (the wizard's own list order), then newest. $presetFiles
+            # is re-ordered to match what is printed so index N of the menu is
+            # index N of the array, the same invariant the flat list relied on.
             $myMember = Get-MyMember
+            $cellOf = @{}
+            foreach ($pf in $presetFiles) {
+                $pc = Read-PresetFile -Path $pf.FullName
+                if (-not $pc) { $cellOf[$pf.FullName] = $null; continue }
+                $pa = [string]$pc.attack; if (-not $pa) { $pa = 'none' }
+                $cellOf[$pf.FullName] = [pscustomobject]@{
+                    Attack = $pa; Topology = [string]$pc.topology; Location = [string]$pc.location
+                    Scenario = (ConvertTo-Scenario $(if ($pc.PSObject.Properties['scenario']) { [string]$pc.scenario }))
+                }
+            }
+            # Position in the wizard's own option lists (baseline before blackhole,
+            # home before G402 ...); anything not listed sorts after them.
+            $rank = { param($list, $v) $i = [array]::IndexOf(@($list), $v); if ($i -lt 0) { 99 } else { $i } }
+            $byCell = {
+                param($items)
+                @($items | Sort-Object `
+                    @{ Expression = { if ($cellOf[$_.FullName]) { 0 } else { 1 } } }, `
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $ATTACKS $c.Attack } } }, `
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $TOPOLOGIES $c.Topology } } }, `
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $LOCATIONS $c.Location } } }, `
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $SCENARIOS $c.Scenario } } }, `
+                    @{ Expression = { $_.LastWriteTime }; Descending = $true })
+            }
             $groups = New-Object System.Collections.Specialized.OrderedDictionary
             if ($myMember) {
                 $lbl = "-- YOURS ({0})" -f $myMember
-                $groups[$lbl] = @($presetFiles | Where-Object { $_.Owner -eq $myMember })
+                $groups[$lbl] = & $byCell @($presetFiles | Where-Object { $_.Owner -eq $myMember })
             }
             foreach ($m in (Get-PresetMemberNames)) {
                 if ($myMember -and $m -eq $myMember) { continue }
                 $mine = @($presetFiles | Where-Object { $_.Owner -eq $m })
-                if ($mine.Count -gt 0) { $groups["-- $m"] = $mine }
+                if ($mine.Count -gt 0) { $groups["-- $m"] = & $byCell $mine }
             }
             $loose = @($presetFiles | Where-Object { -not $_.Owner })
-            if ($loose.Count -gt 0) { $groups['-- UNFILED (not in a member folder yet)'] = $loose }
+            if ($loose.Count -gt 0) { $groups['-- UNFILED (not in a member folder yet)'] = & $byCell $loose }
 
             $presetFiles = @()
             $headers = @{}
             foreach ($key in $groups.Keys) {
                 $items = @($groups[$key])
                 if ($items.Count -eq 0) { continue }
-                $headers[$presetFiles.Count] = $key
-                $presetFiles += $items
+                # Two levels: the member heading, then an indented sub-heading per
+                # cell (attack / topology / location / scenario) - the member heading
+                # and its first cell share one header entry, later cells get their own.
+                $lastCell = $null
+                $firstOfMember = $true
+                foreach ($pf in $items) {
+                    $c = $cellOf[$pf.FullName]
+                    $cellKey = if ($c) { '{0}|{1}|{2}|{3}' -f $c.Attack, $c.Topology, $c.Location, $c.Scenario } else { 'unreadable' }
+                    if ($firstOfMember -or $cellKey -ne $lastCell) {
+                        $sub = if ($c) {
+                            $ha = if ($c.Attack -eq 'none') { 'baseline' } else { $c.Attack }
+                            '  -- {0} / {1} / {2} / {3}' -f $ha.ToUpper(), $c.Topology, $c.Location, $c.Scenario
+                        } else { '  -- UNREADABLE' }
+                        $headers[$presetFiles.Count] = if ($firstOfMember) { $key + "`n  " + $sub } else { $sub }   # Show-Menu indents only a header's first line
+                        $lastCell = $cellKey
+                        $firstOfMember = $false
+                    }
+                    $presetFiles += $pf
+                }
             }
 
             # Show-Menu takes numbers only - there is no letter escape - so the
@@ -5993,11 +6092,9 @@ if (-not $Preset) {
                 $c = Read-PresetFile -Path $_.FullName
                 if (-not $c) { "{0,-26} (unreadable)" -f $_.Name }
                 else {
-                    $a = [string]$c.attack
-                    if ($a -eq 'none') { $a = 'baseline' }
-                    $head = "{0,-26} {1,-10} {2,-8} {3,-13} {4} board(s), {5}" -f
-                        $_.Name, $a, [string]$c.topology, [string]$c.location,
-                        @($c.boards).Count, $_.LastWriteTime.ToString('MMM dd')
+                    # attack / topology / location / scenario are the sub-heading above.
+                    $head = "{0,-44} {1} board(s), {2}" -f
+                        $_.Name, @($c.boards).Count, $_.LastWriteTime.ToString('MMM dd')
                     $boardLines = @((ConvertTo-Roster -Cfg $c).Roster | ForEach-Object {
                         $role = if ($_.Role -eq 'root') { 'root' } elseif ($_.Kind -eq 'attacker') { 'attacker' } else { 'child' }
                         $mac  = if ($_.Mac) { $_.Mac } else { 'MAC not recorded' }
@@ -6019,7 +6116,47 @@ if (-not $Preset) {
             }
             $opts += 'No preset - answer the menus instead'
 
-            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers
+            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers -AllowDelete
+            if ($idx -eq -2) {
+                # d<N> / d3,5 / d3-5 on the list: delete on the spot, no need to open
+                # the preset first. Numbers refer to the list as shown, so the whole
+                # set is resolved to files BEFORE anything is removed.
+                $delFiles = @()
+                $badNums = @()
+                foreach ($di in $script:MenuDeleteIndexes) {
+                    if ($di -lt 0 -or $di -ge $presetFiles.Count) { $badNums += ($di + 1) }
+                    else { $delFiles += $presetFiles[$di] }
+                }
+                if ($badNums.Count -gt 0) {
+                    Write-Host ("  Not a preset number: {0} (pick from 1 to {1}) - nothing deleted." -f ($badNums -join ', '), $presetFiles.Count) -ForegroundColor Yellow
+                    continue
+                }
+                Write-Host ""
+                foreach ($df in $delFiles) {
+                    Write-Host ("  - {0} ({1})" -f $df.Name, $(if ($df.Owner) { $df.Owner } else { 'unfiled' })) -ForegroundColor Yellow
+                }
+                $delAns = Read-Line ("Delete {0} permanently? [y/N] > " -f $(if ($delFiles.Count -eq 1) { 'this preset' } else { "these $($delFiles.Count) presets" }))
+                if ($delAns -eq 'y' -or $delAns -eq 'Y') {
+                    foreach ($df in $delFiles) {
+                        try {
+                            Remove-Item -LiteralPath $df.FullName -Force -ErrorAction Stop
+                            Write-Host ("  Deleted -> {0}" -f $df.Name) -ForegroundColor Green
+                        }
+                        catch {
+                            Write-Host ("  Could not delete {0}: {1}" -f $df.Name, $_.Exception.Message) -ForegroundColor Red
+                        }
+                    }
+                    $presetFiles = @(Get-PresetFiles)
+                    if ($presetFiles.Count -eq 0) {
+                        Write-Host "  No presets left - continuing with the menus." -ForegroundColor DarkGray
+                        break
+                    }
+                }
+                else {
+                    Write-Host "  Not deleted." -ForegroundColor DarkGray
+                }
+                continue
+            }
             if ($idx -eq $presetFiles.Count) { break }
 
             $file = $presetFiles[$idx]
@@ -7896,7 +8033,7 @@ if ($saveRunLog) {
     $runLogDir = Get-RunLogDir -AttackDir $attackDir -TopoDir $topoDir -Location $location -Scenario $scenario
     if (-not (Test-Path $runLogDir)) { New-Item -ItemType Directory -Force -Path $runLogDir | Out-Null }
     $logBaseName = if ($Preset) { [IO.Path]::GetFileNameWithoutExtension($Preset) } else { "$topoDir-$attackDir-$scenario-$($location.ToLower())" }
-    $runLogPath = Join-Path $runLogDir ("{0}_{1}.log" -f $logBaseName, (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
+    $runLogPath = Get-StampedPath -Dir $runLogDir -Head $logBaseName -Ext '.log'
     # Clear any stray transcript left running from an earlier aborted run before
     # starting a fresh one - Start-Transcript errors if one is already active.
     try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { }

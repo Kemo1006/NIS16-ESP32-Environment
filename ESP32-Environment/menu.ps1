@@ -702,9 +702,11 @@ function Get-CaptureSummary {
         ForEach-Object { $_.Name } | Where-Object { $_ -like '*_telem.csv' -or $_ -like '*_arrivals.csv' })
     $telem        = @($names | Where-Object { $_ -like '*_telem.csv' })
     $arrivals     = @($names | Where-Object { $_ -like '*_arrivals.csv' })
-    $arrivalHeads = @($arrivals | ForEach-Object { $_ -replace '_\d{8}_\d{6}_arrivals\.csv$', '' })
+    # Name stamp, old 20260927_031130 or readable sept27_0311AM[-2] (tools\name_stamp.py).
+    $stampRe      = '(\d{8}_\d{6}|[a-z]+\d{2}_\d{4}[AP]M(-\d+)?)'
+    $arrivalHeads = @($arrivals | ForEach-Object { $_ -creplace "_${stampRe}_arrivals\.csv$", '' })
     $rootsMissing = @($telem | Where-Object { $_ -like 'root_*' } |
-        Where-Object { ($_ -replace '_\d{8}_\d{6}_telem\.csv$', '') -notin $arrivalHeads })
+        Where-Object { ($_ -creplace "_${stampRe}_telem\.csv$", '') -notin $arrivalHeads })
     return [pscustomobject]@{
         Names                = $names
         Telem                = $telem

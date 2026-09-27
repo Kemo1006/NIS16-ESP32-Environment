@@ -107,6 +107,9 @@ import re
 import shutil
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import name_stamp  # noqa: E402
+
 TS_COL = 0  # timestamp_us is the first column in both schemas
 HEADER_TOKEN = "timestamp_us"
 ARRIVALS_MARKER = "src_mac"  # only the probe-arrival schema carries this column
@@ -486,7 +489,7 @@ def main():
 
 _CAPTURE_RE = re.compile(
     r"^(?P<role>root|child|victim)_(?P<label>[^_]+)_(?P<topology>[^_]+)_"
-    r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_"
+    r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_"
     r"(?P<kind>telem|arrivals)\.csv$"
 )
 

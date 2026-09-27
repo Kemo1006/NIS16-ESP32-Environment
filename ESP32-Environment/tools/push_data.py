@@ -57,6 +57,8 @@ from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import name_stamp as _stamp  # noqa: E402  (push_data has its own name_stamp())
 MARKER = "nis16-data-sync"
 LEDGERS = {"run_ledger.csv", "test_ledger.csv"}
 EXPORTS = "datasets/exports"
@@ -225,11 +227,13 @@ def fmt_uploaded(ts, now):
 #     imported closer together.
 BATCH_FILE = ".last_import_batch.json"
 SAME_RUN_MINUTES = 30
-_NAME_STAMP = re.compile(r"(?<!\d)(\d{8})_(\d{6})(?!\d)")
-# <board>_r<repeat>_<YYYYMMDD>_<HHMMSS>_<kind>.csv - export_logs._make_filename().
+# <board>_r<repeat>_<stamp>_<kind>.csv - export_logs._make_filename(). The stamp
+# is the old YYYYMMDD_HHMMSS or (sep. 27, 2026 on) the readable sept27_0311AM;
+# tools/name_stamp.py reads both.
 # <board> keeps role + node + topology + attack, which is all constant inside
 # one folder except the node, so it identifies the board.
-_CAPTURE_NAME = re.compile(r"^(?P<board>.+)_r(?P<rep>\d+)_\d{8}_\d{6}_(?P<kind>[A-Za-z]+)\.csv$")
+_CAPTURE_NAME = re.compile(r"^(?P<board>.+)_r(?P<rep>\d+)_(?P<stamp>" + _stamp.STAMP
+                           + r")_(?P<kind>[A-Za-z]+)\.csv$")
 
 
 def capture_identity(rel):
@@ -241,12 +245,15 @@ def capture_identity(rel):
 
 
 def name_stamp(rel):
-    """Unix time from a capture file name's _YYYYMMDD_HHMMSS_ stamp, or None."""
-    m = _NAME_STAMP.search(rel.rsplit("/", 1)[-1])
-    if not m:
+    """Unix time from a capture file name's stamp (either format), or None.
+    The readable stamp has no year; it comes from the local copy's modified
+    time when there is one (see name_stamp.parse)."""
+    stamp = _stamp.find(rel.rsplit("/", 1)[-1])
+    if not stamp:
         return None
     try:
-        return int(datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S").timestamp())
+        when, _seq = _stamp.parse(stamp, str(BASE / rel))
+        return int(when.timestamp())
     except (ValueError, OverflowError, OSError):
         return None
 

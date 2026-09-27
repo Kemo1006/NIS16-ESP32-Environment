@@ -48,6 +48,11 @@ if hasattr(sys.stdout, "reconfigure"):
 import numpy as np
 import pandas as pd
 
+# tools/name_stamp.py: the one place that reads the date/time stamp in export
+# names (old 20260927_031130 and readable sept27_0311AM).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
+import name_stamp  # noqa: E402
+
 # ─────────────────────────────────────────────────────────────────────────
 # Constants — kept here rather than scattered through the code so any
 # future window-length sensitivity analysis (CTTHES3) only touches one
@@ -335,7 +340,7 @@ class PreprocessReport:
 # Step 1 — Load raw CSVs
 # ─────────────────────────────────────────────────────────────────────────
 
-_REPEAT_RE = re.compile(r"_r(\d+)_\d{8}_\d{6}_(?:telem|arrivals)\.csv$")
+_REPEAT_RE = re.compile(r"_r(\d+)_" + name_stamp.STAMP + r"_(?:telem|arrivals)\.csv$")
 
 
 def _repeat_from_filename(source_file: str):
@@ -418,11 +423,12 @@ def _run_context_from_path(input_dir: str) -> dict:
 
 
 # Matches export_logs.py / import_sdcard.py's filename shape, e.g.
-# root_node1_linear_blackhole_r1_20260914_204207_telem.csv — same pattern
-# trim_run.py's _warn_on_duplicate_captures uses, kept in sync deliberately.
+# root_node1_linear_blackhole_r1_20260914_204207_telem.csv or (sep. 27, 2026
+# onward) ..._r1_sept27_0311AM_telem.csv — same pattern trim_run.py's
+# _warn_on_duplicate_captures uses, kept in sync deliberately.
 _CAPTURE_RE = re.compile(
     r"^(?P<role>root|child|victim)_(?P<label>[^_]+)_(?P<topology>[^_]+)_"
-    r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_"
+    r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_"
     r"(?P<kind>telem|arrivals)\.csv$"
 )
 
@@ -470,7 +476,7 @@ def _archive_duplicate_captures(input_dir: str) -> list[str]:
     this loader globs the whole folder, so every duplicate got counted (and
     analyzed, and fed into verify_attack.py) right alongside the real run,
     silently diluting/contaminating the dataset. Newest file (by the embedded
-    date_time, which sorts lexicographically) is kept in place; everything
+    stamp, parsed with name_stamp.parse) is kept in place; everything
     older for that same key is moved into <input_dir>/_archive/ — never
     deleted, matching this project's archive-not-delete convention elsewhere
     (trim_run.py, ARCHIVE-RUNBOOK.md, csv_logger.c's SD-card archive sweep).
@@ -499,21 +505,26 @@ def _archive_duplicate_captures(input_dir: str) -> list[str]:
     for names_for_key in groups.values():
         if len(names_for_key) < 2:
             continue
-        # date+time are both fixed-width digit strings, so lexicographic sort
-        # is chronological — newest last. A capture with NO experiment data
+        # Sorted on the PARSED stamp, never the name: the readable stamp
+        # (sept27_0311AM) is not chronological as text - 1012AM < 0312PM,
+        # aug < sept - and name order would archive the newer capture.
+        # Newest last. A capture with NO experiment data
         # never outranks one that has it, however new: "newest wins" alone
         # archived node8's only complete G402 capture (949 s, every phase) in
         # favour of a 161 s phase-255-only file from a later session.
         # Unknown (None) ranks as data, so fixtures keep the old behaviour.
+        def when(n):
+            return name_stamp.parse(_CAPTURE_RE.match(n).group("stamp"),
+                                    os.path.join(input_dir, n))
         ordered = sorted(
             names_for_key,
-            key=lambda n: (_has_experiment_rows(os.path.join(input_dir, n)) is not False, n))
+            key=lambda n: (_has_experiment_rows(os.path.join(input_dir, n)) is not False, when(n), n))
         keep, stale = ordered[-1], ordered[:-1]
         # The kept file is only the newest by DATA, not by time, when a newer one
         # had no experiment rows. That older file may belong to a DIFFERENT
         # session than the rest of the folder (node8's 13:41 file sat beside a
         # 14:4x run) - say so, because nothing here can prove which run it is.
-        newest = sorted(names_for_key)[-1]
+        newest = max(names_for_key, key=lambda n: (when(n), n))
         if keep != newest:
             print(f"  [WARN] {keep} was KEPT over the newer {newest} because the newer one has "
                   f"no experiment data. Confirm {keep} belongs to THIS run (compare seq_num "

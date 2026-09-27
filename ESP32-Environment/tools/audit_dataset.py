@@ -64,6 +64,7 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import topology_graph as tg  # noqa: E402
+import name_stamp  # noqa: E402
 
 TELEM_COLS = ["timestamp_us", "node_id", "role", "layer", "parent_mac", "rssi_dbm",
               "retry_count", "tx_count", "probes_count", "phase_id", "gt_label"]
@@ -75,7 +76,7 @@ ZERO_MAC = "00:00:00:00:00:00"
 NAME_RE = re.compile(
     r"^(?P<prefix>[a-z]+)_(?P<nick>.+?)_(?P<topology>linear|star|tree|partial_mesh|partial)_"
     r"(?P<attack>none|baseline|blackhole|wormhole)_r(?P<repeat>\d+)_"
-    r"(?P<date>\d{8})_(?P<time>\d{6})_(?P<kind>telem|arrivals)\.csv$")
+    r"(?P<stamp>" + name_stamp.STAMP + r")_(?P<kind>telem|arrivals)\.csv$")
 PHASE_NAMES = {0: "baseline", 1: "attack", 2: "attack", 3: "cooldown", 4: "terminate"}
 PHASE_TO_LABEL = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0}   # phase_listener.c phase_id_to_label()
 SEQ_TOL = 2   # the last probe(s) before a phase change may be lost in flight
@@ -220,7 +221,7 @@ def assemble_runs(caps):
         partner = [t for t in telems if t.role == "root" and t.node_id == a.node_id
                    and int(t.df["probes_count"].iloc[-1]) == last]
         run_id = "_".join([a.meta.get("topology", "?"), a.meta.get("attack", "?"),
-                           a.meta.get("date", "?"), a.meta.get("time", "?")])
+                           a.meta.get("stamp", "?")])
         runs[run_id] = {"arrivals": a, "root": partner[0] if len(partner) == 1 else None,
                         "members": []}
         a.run_id, a.assignment = run_id, "anchor"

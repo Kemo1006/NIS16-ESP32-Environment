@@ -40,6 +40,8 @@ import re
 import sys
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+import name_stamp  # noqa: E402
 
 # Telemetry schema v1 — the original 11 columns (every capture up to and
 # including 2026-09-18).
@@ -179,7 +181,7 @@ VICTIM_ROLE_ALIASES = {"victim", "child", "blackhole", "wormhole_a", "wormhole_b
 # --role choices in export_logs.py.
 FILENAME_RE = re.compile(
     r"^(?P<role>root|victim|child)_(?P<port>[^_]+)_(?P<topology>[^_]+)_(?P<attack>[^_]+)"
-    r"_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_(?P<kind>telem|arrivals)\.csv$"
+    r"_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_(?P<kind>telem|arrivals)\.csv$"
 )
 
 

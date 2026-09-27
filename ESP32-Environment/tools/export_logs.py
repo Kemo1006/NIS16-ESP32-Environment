@@ -62,7 +62,6 @@ export task shares UART0 with the console, so only one program can read it.
 """
 
 import argparse
-import datetime as _dt
 import os
 import re
 import shutil
@@ -70,6 +69,9 @@ import sys
 import time
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+import name_stamp  # noqa: E402
 
 try:
     import serial  # pyserial
@@ -659,9 +661,13 @@ def _subdir_for(args) -> str:
     return os.path.join(args.outdir, attack_dir, topo_dir, args.location, scenario)
 
 
-def _make_filename(args, kind: str) -> str:
-    date = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # e.g. exports/blackhole/star/root_COM3_star_blackhole_r1_20260629_..._telem.csv
+def _make_filename(args, kind: str, taken=()) -> str:
+    date = name_stamp.make()
+    # e.g. exports/blackhole/star/root_COM3_star_blackhole_r1_sept27_0311AM_telem.csv
+    #
+    # The stamp is readable but only minute-precise (see name_stamp.py), so a
+    # name already on disk or in `taken` gets -2, -3, ... instead of silently
+    # overwriting the earlier capture.
     #
     # The board tag is normally the COM port, but a COM number does NOT reliably
     # identify a board here: these CP210x bridges report duplicate/blank USB
@@ -678,7 +684,7 @@ def _make_filename(args, kind: str) -> str:
         f"{args.role}_{safe_tag}_{args.topology}_{args.attack}"
         f"_r{args.repeat}_{date}_{kind}.csv"
     )
-    return os.path.join(_subdir_for(args), name)
+    return name_stamp.unique_path(os.path.join(_subdir_for(args), name), taken)
 
 
 def _save(rows, path) -> int:

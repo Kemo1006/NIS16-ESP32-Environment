@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 27, 2026 (pm: 02:05 pcap = linear, attack worked; burst 300) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
+**Updated:** sep. 27, 2026 (pm: 02:05 pcap = linear, attack worked; burst 300) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu; **file/folder names now use a readable stamp `sept27_0311AM` (old files unchanged, tools read both; Angelo must pull CODE before he gets new-format files)**. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
 
 ## ⚠️ Working copies
 Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3`. Both clone GitHub branch `THESIS3` — `git pull` before editing; old `NIS16-ESP32-Environment` = backup only.
@@ -16,7 +16,7 @@ Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Document
 - **Night session:** `phase_listener.h/.c` (session_id), `analysis/preprocess.py`, `analysis/eda.py`, `analysis/column_legend.py`, regenerated home/stationary output (now under datasets/analysis).
 - **Eve session:** `analysis/features.py`, `run.ps1` (`-Trim` + no-child guard), `run_wizard.ps1` (root post-export question), `docs/issue_logs/thesis-deviate.md`.
 - Sniffer/WIRESHARK (+ sep. 27 ALL/MY-boards view menu, `run_wizard.ps1` only): `sniffer_node/`, `tools/sniff.py`, `tools/check_pcap.py`, `docs/WIRESHARK-GUIDE.md`, `docs/WIRESHARK-QUICKSTART.md` (NEW). Analysis: `analysis/phase_sync.py` (NEW), `leakage.py`, `verify_attack.py`, docs DATA-DICTIONARY + EXPECTED-RESULTS. Build: `build_all_variants.ps1`. Data sync: `tools/ImportBatch.ps1` (NEW).
-- **Sep. 27 pm:** `archive.ps1` + `run_wizard.ps1` archive now moves PCAP + run_logs too. `mesh_config.h` BURST_COUNT 100->300 (+ text in run_wizard/menu/run.ps1, memory/run-scenarios; not built) - it is the OWNER's file, review. NOT mine: `presets/Bas/linear-blackhole-highload-g402.json`. Someone else edited `run_wizard.ps1` on sep. 27 00:16 (+~52 lines) mid-session — review it too.
+- **Sep. 27 pm:** `archive.ps1` + `run_wizard.ps1` archive now moves PCAP + run_logs too. `mesh_config.h` BURST_COUNT 100->300 (+ text in run_wizard/menu/run.ps1, memory/run-scenarios; not built) - it is the OWNER's file, review. NOT mine: `presets/Bas/linear-blackhole-highload-g402.json`. Someone else edited `run_wizard.ps1` on sep. 27 00:16 (+~52 lines) mid-session — review it too. **Readable stamp (sep. 27 pm):** NEW `tools/name_stamp.py` + `test_name_stamp.py`; edited `tools/{export_logs,import_sdcard,sniff,push_data,trim_run,validate_integrity,audit_dataset,inventory_cells}.py`, `tools/README.md`, `analysis/preprocess.py`, `run_wizard/menu/archive.ps1` (not tested with a real capture/import/archive; `audit_dataset.py` crash 'No objects to concatenate' is pre-existing).
 
 ## Next step
 0. **Delete the old data folders** (verified identical copies are in `datasets/`), from `ESP32-Environment`: `Remove-Item -Recurse -Force archive, PCAP, run_logs, tools\exports, analysis\baseline, analysis\blackhole, analysis\wormhole`. Then commit; tell Angelo to pull CODE before his next data push/pull (GitHub paths moved).
