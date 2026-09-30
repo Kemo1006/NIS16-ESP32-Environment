@@ -2138,3 +2138,14 @@ Both still live as one-line warnings in STATUS.md.
   SAME-RUN fix (user asked): a teammate's card imported <= `SAME_RUN_MINUTES` 30 BEFORE your batch is green iff same folder + same r<n> as a
   batch file AND a board your batch lacks (one file per board per run, so a duplicate board = a redo). No run id exists in the CSVs
   (headers have none), hence names. 12-case scratch test passed; not yet on live GitHub.
+- sep. 30, 2026 — Rolled from MEMORY.md (cap):
+- sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** ONE USB port (power+data):
+  powerbank->laptop, or the idf.py monitor->export handoff (toggles reset), power-cycles it; old firmware then moved the run's CSVs into
+  `_archive/` at boot (LIST_SD + importer skip it) and opened a ~1 KB phase-255 file. After a power cut "started" = LAST SET_TIME anchor.
+  **FIXED IN FIRMWARE (team decision, NEEDS REFLASH + one hardware test):** no archiving at boot (ARCHIVE_SD only), and
+  `LOG_ONLY_DURING_RUN 1` = no rows until the root's PREPARE (sent every 5 s in stabilise + roster wait; rows stay phase 255 =
+  paper's "Baseline Stabilization" kept) or phase 0-3; TERMINATE never opens it. Late joiner -> verify_topology NOT MEASURED.
+  User chose: wizard never shows `_archive/`. Dashboard is NOT hardcoded (per-board heartbeat); "ALL n DONE" ignores evicted boards.
+  Host: END_RUN reply matched anywhere in a line (old "predates END_RUN" msg was false); USB "already imported" = node+repeat only.
+- sep. 30, 2026 — Rolled from STATUS.md Recently done:
+- sep. 27 pm — **02:05 blackhole pcap verified linear + attack worked** (attacker drop 180/180; node3 -> root 0 in phase 1); burst probes 100->300. Fix `member_boards.json` (20:38 attacker is stale, real = F4:18).

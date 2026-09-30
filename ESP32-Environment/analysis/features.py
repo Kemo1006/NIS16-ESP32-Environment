@@ -323,6 +323,147 @@ def load_arrivals(arrivals_dir: str) -> pd.DataFrame | None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# NeighbourForwardingRatio — a relay's forwarding as its NEIGHBOURS saw it
+# ─────────────────────────────────────────────────────────────────────────
+
+NEIGHBOUR_COLUMNS = ["NeighbourIn", "NeighbourOut", "NeighbourForwardingRatio"]
+
+
+def _originated(windowed: pd.DataFrame) -> pd.Series:
+    """Probes a node ORIGINATED per window, decoded per firmware (as in
+    _arrival_sender_window): a child's tx_count is its own successful sends;
+    wormhole_b's probes_count is probes generated; the blackhole firmware
+    originates none and reuses tx_count for FORWARDED frames, so reading its
+    tx_count here would double-count its relaying."""
+    num = lambda c: pd.to_numeric(windowed.get(c), errors="coerce").fillna(0)
+    role = windowed["node_role"].astype(str)
+    own = pd.Series(0.0, index=windowed.index)
+    own = own.where(role != CHILD_ROLE, num("tx_count_delta"))
+    own = own.where(role != "wormhole_b", num("probes_count_delta"))
+    return own
+
+
+def compute_neighbour_forwarding_features(
+    windowed: pd.DataFrame,
+    arrivals: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """
+    NeighbourForwardingRatio: ForwardingRatio measured WITHOUT the node's own
+    forward/drop counters, so a relay that lies about its forwarding cannot
+    hide (panel P6: the attacker's self-report is the only evidence it dropped).
+    Watchdog idea (Marti et al., 2000) built from counters honest neighbours
+    already log - no firmware change.
+
+    For relay N, per window (aligned across boards on floor(t_anchor_s), since
+    the boards share no clock):
+        NeighbourIn  = what N's children handed it: each child's originated
+                       probes + its forward_count  (reported by the CHILDREN)
+        NeighbourOut = N's children's traffic that N's PARENT then received:
+            parent is the root -> root arrivals whose ORIGINATOR is below N,
+                                  placed by sequence number (exact; N's own
+                                  probes excluded by src_mac);
+            parent is a relay whose only child is N -> parent's recv_count
+                                  minus N's originated probes (the one
+                                  self-reported term: N's own sends, not its
+                                  forwarding);
+            parent has several children -> NaN (its recv_count is not split
+                                  by sender).
+        NeighbourForwardingRatio = NeighbourOut / NeighbourIn
+
+    NaN on leaves and the root (nothing to relay) and wherever NeighbourIn = 0.
+    Tree = each node's dominant parent per run (exposure.py), not per window.
+    """
+    out = pd.DataFrame(np.nan, index=windowed.index, columns=NEIGHBOUR_COLUMNS)
+    need = ["node_id", "node_role", "parent_mac", "t_anchor_s",
+            "tx_count_delta", "forward_count_delta", "recv_count_delta"]
+    if any(c not in windowed.columns for c in need):
+        return out
+
+    num = lambda c: pd.to_numeric(windowed[c], errors="coerce").fillna(0)
+    own = _originated(windowed)
+    handed_up = own + num("forward_count_delta")
+    recv = num("recv_count_delta")
+    tick = np.floor(pd.to_numeric(windowed["t_anchor_s"], errors="coerce"))
+
+    # Root arrivals per (originator node_id, tick of the window that SENT it).
+    arrived = None
+    if arrivals is not None and not arrivals.empty:
+        a = arrivals.drop_duplicates(
+            subset=["_source_arrivals_file", "_src_mac_norm", "seq_num"])
+        placed = _arrival_sender_window(windowed, a)
+        rows = pd.Series(placed).dropna().astype(int)
+        if not rows.empty:
+            arrived = (pd.DataFrame({"node_id": windowed.loc[rows.values, "node_id"].values,
+                                     "tick": tick.loc[rows.values].values})
+                       .groupby(["node_id", "tick"]).size())
+
+    keys = [k for k in exposure.RUN_KEYS if k in windowed.columns]
+    groups = windowed.groupby(keys, dropna=False).groups if keys else {None: windowed.index}
+    for _, idx in groups.items():
+        g = windowed.loc[idx]
+        nodes = g["node_id"].dropna().unique().tolist()
+        sta_index = {v: n for n in nodes
+                     if (v := exposure.node_id_to_sta_int(n)) is not None}
+        parents_raw = exposure._dominant_parent(g).to_dict()
+        parent_of = {n: exposure.resolve_parent(parents_raw.get(n), sta_index) for n in nodes}
+        roles = g.groupby("node_id")["node_role"].agg(lambda s: s.mode().iloc[0]).to_dict()
+        children = {n: [c for c in nodes if parent_of.get(c) == n] for n in nodes}
+
+        def below(n):
+            seen, todo = set(), list(children.get(n, []))
+            while todo:
+                c = todo.pop()
+                if c not in seen:
+                    seen.add(c)
+                    todo.extend(children.get(c, []))
+            return seen
+
+        gt = tick.loc[idx]
+        by = lambda s: s.loc[idx].groupby([g["node_id"], gt]).sum()
+        handed, rcv, own_n = by(handed_up), by(recv), by(own)
+        present = by(pd.Series(1.0, index=windowed.index))
+
+        def at(series, node, ticks, fill):
+            """series[(node, tick)] for each tick; `fill` where that board has no window."""
+            if series is None or node not in series.index.get_level_values(0):
+                return np.full(len(ticks), fill, dtype=float)
+            return series.xs(node, level=0).reindex(ticks, fill_value=fill).to_numpy(dtype=float)
+
+        for n in nodes:
+            kids, parent = children.get(n, []), parent_of.get(n)
+            if not kids or parent is None or roles.get(n) == "root":
+                continue
+            n_rows = g.index[g["node_id"] == n]
+            n_ticks = gt.loc[n_rows].to_numpy()
+            # A board with no window at a tick (logging gap) is UNKNOWN there, not
+            # 0: NaN propagates so the ratio is left empty rather than skewed.
+            node_in = sum(at(handed, c, n_ticks, np.nan) for c in kids)
+            if roles.get(parent) == "root":
+                if arrived is None:
+                    continue
+                desc = below(n)
+                # An arrival is placed into its ORIGINATOR's window, so a
+                # descendant's missing window would silently drop its arrivals.
+                seen = np.prod([at(present, d, n_ticks, np.nan) for d in desc], axis=0)
+                node_out = sum((at(arrived, d, n_ticks, 0.0) for d in desc),
+                               np.zeros(len(n_rows))) * seen
+            elif children.get(parent) == [n]:
+                node_out = at(rcv, parent, n_ticks, np.nan) - at(own_n, n, n_ticks, 0.0)
+            else:
+                continue
+            # In and Out are blank TOGETHER, so a ratio-of-sums over several
+            # windows never pairs an In with a missing Out.
+            known = ~(np.isnan(node_in) | np.isnan(node_out))
+            node_in = np.where(known, node_in, np.nan)
+            node_out = np.where(known, node_out, np.nan)
+            out.loc[n_rows, "NeighbourIn"] = node_in
+            out.loc[n_rows, "NeighbourOut"] = node_out
+            out.loc[n_rows, "NeighbourForwardingRatio"] = np.where(
+                node_in > 0, node_out / np.where(node_in > 0, node_in, 1), np.nan)
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # B. Link Reliability Features (Equation 4.4, 4.5)
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -1047,6 +1188,8 @@ def compute_features(
     absence of signal — see module docstring for which three those are.
     """
     fwd = compute_forwarding_features(windowed)
+    nbr = compute_neighbour_forwarding_features(
+        windowed, load_arrivals(arrivals_dir) if arrivals_dir is not None else None)
     link = compute_link_reliability_features(windowed)
     topo = compute_topology_stability_features(windowed, filled_long)
     phy, rssi_stab = compute_physical_layer_features(windowed, filled_long)
@@ -1054,7 +1197,7 @@ def compute_features(
     tunnel = compute_tunnel_features(windowed)
 
     result = windowed.copy()
-    result = pd.concat([result, fwd, link, phy, cross, tunnel], axis=1)
+    result = pd.concat([result, fwd, nbr, link, phy, cross, tunnel], axis=1)
 
     # topo and rssi_stab are keyed by (node_id, source_file, window_start)
     # rather than positional index, since they're computed via groupby

@@ -140,6 +140,7 @@ FEATURE_UPPER_BOUND = {"PDR": 1.0, "ForwardingRatio": 1.0, "ConsistencyScore": 1
 RATIO_OF_SUMS = {
     "ForwardingRatio": [("forward_count_delta", ("recv_count_delta",)),
                         ("tx_count_delta", ("probes_count_delta",))],
+    "NeighbourForwardingRatio": [("NeighbourOut", ("NeighbourIn",))],
 }
 
 # (feature, direction, tier)
@@ -151,6 +152,7 @@ SIGNATURES = {
         ("PDR",                "down", "primary"),    # end-to-end delivery collapses (Airehrour)
         ("ConsistencyScore",   "up",   "secondary"),  # |FR - 1| rises (same delivered/sent measure)
         ("IngressEgressDelta", "up",   "secondary"),  # packets absorbed: received - forwarded (Airehrour "discard, don't forward")
+        ("NeighbourForwardingRatio", "down", "secondary"),  # same delivered/sent, measured by the attacker's NEIGHBOURS (not its self-report)
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
@@ -159,6 +161,38 @@ SIGNATURES = {
         ("LatencyHopRatio",    "down", "secondary"),  # shortcut copy arrives faster (informational)
     ],
 }
+
+# Signatures that describe the ATTACKING NODE's own behaviour, mapped to the
+# node_role that identifies it. Since C7 Option 1 every node relays, so pooling
+# ForwardingRatio averages the attacker (-> 0) with honest relays (stay 1) and a
+# perfect blackhole reads as z ~ -2.4 (sept30 G402: pooled 0.826, attacker
+# 0.002). For these only the attacker's windows are tested. No attacker rows ->
+# the pooled test is used (legacy tables without node_role).
+ATTACKER_SCOPED = {
+    "blackhole": {"ForwardingRatio": "blackhole", "NeighbourForwardingRatio": "blackhole"},
+}
+
+# Attacker-scoped features that ALSO get a whole-network (all relays) row, as
+# 'info' - shown for context, never counted, with a note saying how many honest
+# relays kept the average near 1.0.
+ALSO_POOLED = {"ForwardingRatio"}
+
+
+def _pooled_note(df_nodes, feat, label, attackers, status):
+    """Why the all-relays average did or did not move: count the honest relays."""
+    atk = df_nodes[pd.to_numeric(df_nodes["Label"], errors="coerce") == label]
+    per_node = pd.to_numeric(atk[feat], errors="coerce").groupby(atk["node_id"]).mean().dropna()
+    honest = per_node[~per_node.index.isin(attackers)]
+    kept = int((honest >= 0.9).sum())
+    atk_val = per_node[per_node.index.isin(attackers)]
+    atk_s = f"{atk_val.mean():.3f}" if not atk_val.empty else "n/a"
+    if status == "PASS":
+        return (f"average of all {len(per_node)} relays; not counted - the attacker "
+                f"row decides")
+    return (f"not counted. {kept} of {len(per_node)} relays are honest and kept "
+            f"forwarding (~1.0) during the attack; averaging them with the attacker "
+            f"({atk_s}) keeps the network average near 1, so it cannot reach 3-sigma "
+            f"wherever the attacker sits. The attacker row decides")
 
 
 
@@ -347,20 +381,38 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
 
     print(f"    aggregation: {agg_note}")
     print(f"    3-sigma normal-vs-attack test (Zhukabayeva et al. 2025)\n")
-    header = (f"  {'feature':<20}{'tier':<10}{'baseline mu+-sd (n)':<26}"
+    header = (f"  {'feature':<36}{'tier':<10}{'baseline mu+-sd (n)':<26}"
               f"{'attack mean (n)':<18}{'z':>7}  {'verdict':<13}ref")
     print(header)
     print("  " + "-" * (len(header) - 2))
+
+    scoped = ATTACKER_SCOPED.get(attack, {})
+    attacker_ids = {}
+    if "node_role" in df_nodes.columns and "node_id" in df_nodes.columns:
+        for feat, role in scoped.items():
+            ids = set(df_nodes.loc[df_nodes["node_role"] == role, "node_id"].dropna())
+            if ids:
+                attacker_ids[feat] = ids
+
+    rows = []
+    for feat, direction, tier in SIGNATURES[attack]:
+        if feat in attacker_ids:
+            if feat in ALSO_POOLED:
+                rows.append((f"{feat} (all relays)", feat, direction, "info", None))
+            rows.append((f"{feat} (attacker)", feat, direction, tier, attacker_ids[feat]))
+        else:
+            rows.append((feat, feat, direction, tier, None))
 
     primary_pass = 0
     primary_total = 0
     primary_excluded = 0
     footnotes = []  # (marker, feature, note) - printed below the table, not in-cell
-    for feat, direction, tier in SIGNATURES[attack]:
+    for name, feat, direction, tier, node_ids in rows:
         if feat not in df.columns:
-            print(f"  {feat:<20}{tier:<10}(column missing)")
+            print(f"  {name:<36}{tier:<10}(column missing)")
             continue
-        r = stat_verdict(df.loc[base_mask, feat], df.loc[atk_mask, feat],
+        scope = df["node_id"].isin(node_ids) if node_ids else pd.Series(True, index=df.index)
+        r = stat_verdict(df.loc[base_mask & scope, feat], df.loc[atk_mask & scope, feat],
                          direction, sigma, feature=feat)
 
         # A feature whose own baseline is broken cannot say anything about the
@@ -392,13 +444,15 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         atk_s = f"{am_s} ({r['n_attack']})"
         arrow = "v" if direction == "down" else "^"
 
+        if tier == "info":
+            r["note"] = _pooled_note(df_nodes, feat, label, attacker_ids[feat], r["status"])
         ref = ""
         if r["note"]:
-            footnotes.append((len(footnotes) + 1, feat, r["note"]))
+            footnotes.append((len(footnotes) + 1, name, r["note"]))
             ref = f"[{footnotes[-1][0]}]"
         flag = STATUS_FLAG.get(r["status"], r["status"])
         verdict_s = f"{flag} [{arrow}]"
-        print(f"  {feat:<20}{tier:<10}{base_s:<26}{atk_s:<18}{_fmt_z(r['z'])}  "
+        print(f"  {name:<36}{tier:<10}{base_s:<26}{atk_s:<18}{_fmt_z(r['z'])}  "
               f"{verdict_s:<13}{ref}")
 
     conclusive = primary_total > 0

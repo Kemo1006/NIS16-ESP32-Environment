@@ -212,6 +212,20 @@ _add("IngressEgressDelta", "Feature (features.py)",
 _add("ConsistencyScore", "Feature (features.py)",
      "How far ForwardingRatio is from 1", "0-1, = |ForwardingRatio - 1|",
      "Only defined on a relaying node.")
+_add("NeighbourIn", "Feature (features.py)",
+     "Packets this node's CHILDREN handed it to pass on (their own probes + what they forwarded)",
+     "packets per window",
+     "Reported by the children, not by this node. Empty on leaves and the root.")
+_add("NeighbourOut", "Feature (features.py)",
+     "Of that traffic, how much this node's PARENT then received from it",
+     "packets per window",
+     "Parent = root: root arrivals from nodes below this one (exact). Parent = a relay with this as its only child: "
+     "parent's recv_count minus this node's own probes. Empty if the parent has several children.")
+_add("NeighbourForwardingRatio", "Feature (features.py)",
+     "ForwardingRatio as the NEIGHBOURS saw it: NeighbourOut / NeighbourIn",
+     "0-1 (1 = passed on everything)",
+     "Never uses this node's own forward/drop counters, so a relay that lies about its forwarding cannot hide. "
+     "Boards share no clock: aligned on t_anchor_s, so a single window can read above 1 at a window edge.")
 _add("RetryRate", "Feature (features.py)",
      "Failed sends ÷ all send attempts in the window", "0-1",
      "Built from retry_count, so it is NOT a radio retransmission rate. "

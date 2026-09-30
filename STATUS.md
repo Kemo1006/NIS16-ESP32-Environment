@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 27, 2026 (pm: 02:05 pcap = linear, attack worked; burst 300) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu; **file/folder names now use a readable stamp `sept27_0311AM` (old files unchanged, tools read both; Angelo must pull CODE before he gets new-format files)**. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
+**Updated:** sep. 30, 2026 (Angelo: burst early-fire bug FIXED in code — reflash burst boards before any more burst runs) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu; **file/folder names now use a readable stamp `sept27_0311AM` (old files unchanged, tools read both; Angelo must pull CODE before he gets new-format files)**. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
 
 ## ⚠️ Working copies
 Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3`. Both clone GitHub branch `THESIS3` — `git pull` before editing; old `NIS16-ESP32-Environment` = backup only.
@@ -35,6 +35,6 @@ Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Document
 - ⚠️ PAPER behind the code: 10 Hz / 1 s is CORRECT (keep); Tables 4.4/4.10 + §4.2.4.1 say 1 Hz / 5 s; Table 4.5 -> D-15; RetryRate = Table 3.4 miss.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+- sep. 30 (Angelo) — Merged origin/THESIS3. **Burst early-fire bug fixed in `victim_main.c` (REFLASH burst boards)**; sept30 G402 blackhole "burst" run moved to `G402/stationary` + re-analysed (CONFIRMED); `combine_all.py` repointed to `datasets/analysis/`. Uncommitted. Details: MEMORY.md top.
 - sep. 27 — **Wireshark view menu: ALL boards by default + MY boards submenu** (member's boards, side-by-side I/O lines); stub-tested, not opened in real Wireshark.
 - sep. 27 — **Data moved to `datasets/`** (5 folders + analysis output; 375 files hash-verified; all writers/readers repointed, code untouched).
-- sep. 27 pm — **02:05 blackhole pcap verified linear + attack worked** (attacker drop 180/180; node3 -> root 0 in phase 1); burst probes 100->300. Fix `member_boards.json` (20:38 attacker is stale, real = F4:18).

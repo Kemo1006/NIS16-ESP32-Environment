@@ -249,12 +249,15 @@ static void probe_gen_task(void *arg)
     uint32_t seq = 0;
 
 #if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_BURST)
-    /* Window detection: a "window" is either an announced attack phase
-     * (blackhole/wormhole run) or the 2nd accepted phase broadcast (baseline
-     * run — root_main.c's burst branch re-announces PHASE_ID_BASELINE so this
-     * board sees a seq change even though phase_id never leaves 0). One-shot. */
-    uint32_t last_bcast_seq = phase_listener_get_bcast_seq();
-    int      n_bcasts_seen  = last_bcast_seq ? 1 : 0;
+    /* Window detection, one-shot. Attack build: the announced attack phase.
+     * Baseline build: root_main.c's burst branch re-announces PHASE_ID_BASELINE
+     * with a new seq ("Phase 0b"), so the window is a seq change WHILE phase_id
+     * is already 0. Counting raw seq changes instead fired the burst during
+     * stabilisation, because the root's PREPAREs advance the same seq
+     * (sep. 30, 2026: blackhole/linear/G402/burst burst landed pre-baseline). */
+#if (ACTIVE_ATTACK == ATTACK_NONE)
+    uint32_t baseline_seq   = 0;    /* seq of the Phase 0 broadcast; 0 = not heard */
+#endif
     bool     window_open    = false;
     bool     burst_done     = false;
     int64_t  window_t0_us   = 0;
@@ -299,25 +302,31 @@ static void probe_gen_task(void *arg)
                 continue;
             }
 
-            uint32_t s = phase_listener_get_bcast_seq();
-            if (s != last_bcast_seq) {
-                last_bcast_seq = s;
-                n_bcasts_seen++;
-            }
             uint8_t pid = phase_listener_get_phase_id();
 
             if (!window_open) {
-                bool attack_pid = (pid == PHASE_ID_BLACKHOLE || pid == PHASE_ID_WORMHOLE);
                 bool past_window = (pid == PHASE_ID_COOLDOWN || pid == PHASE_ID_TERMINATE);
+#if (ACTIVE_ATTACK != ATTACK_NONE)
+                bool opens = (pid == PHASE_ID_BLACKHOLE || pid == PHASE_ID_WORMHOLE);
+#else
+                bool opens = false;
+                uint32_t s = phase_listener_get_bcast_seq();
+                if (pid != PHASE_ID_BASELINE) {
+                    baseline_seq = 0;       /* not in Phase 0 yet, or root restarted */
+                } else if (baseline_seq == 0) {
+                    baseline_seq = s;
+                } else if (s != baseline_seq) {
+                    opens = true;
+                }
+#endif
                 if (past_window) {
                     ESP_LOGW(TAG, "BURST: window never detected before cooldown - skipped.");
                     burst_done = true;
-                } else if (attack_pid || n_bcasts_seen >= 2) {
+                } else if (opens) {
                     window_open  = true;
                     window_t0_us = esp_timer_get_time();
-                    ESP_LOGW(TAG, "BURST: window opened (bcast seq=%lu, phase=%u); "
-                                  "firing in %u s.",
-                             (unsigned long)s, pid, BURST_OFFSET_S);
+                    ESP_LOGW(TAG, "BURST: window opened (phase=%u); firing in %u s.",
+                             pid, BURST_OFFSET_S);
                 }
             } else if (esp_timer_get_time() - window_t0_us >=
                        (int64_t)BURST_OFFSET_S * 1000000LL) {
