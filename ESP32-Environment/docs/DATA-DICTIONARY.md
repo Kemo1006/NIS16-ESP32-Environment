@@ -93,9 +93,9 @@ relay (`root_main.c`).
 
 ⚠️ **`retry_count` is still not an 802.11 retransmission count on any role** — it is send
 failures seen by the application, or on Node B the tunnel count. That departure from Table 4.5 is
-documented as **D-15** in `issue_logs/thesis-deviate.md`. Since sep. 26, 2026 RetryRate is a model input on schema-v2 data
-(excluded only on v1 captures or when a wormhole Node B is present - `leakage.retry_count_is_overloaded()`), and a window with
-no send attempt is NaN, not 0 (`features.compute_link_reliability_features`).
+documented as **D-15** in `issue_logs/thesis-deviate.md`. Since sep. 30, 2026 RetryRate is a **dataset column only**:
+kept in `feature_table.csv`, but out of attack verification, EDA and every model input (no cited study backs it as an
+attack signature; it measured flat). A window with no send attempt is NaN, not 0 (`features.compute_link_reliability_features`).
 
 Both schemas are accepted by `tools/validate_integrity.py` (`ACCEPTED_HEADERS`).
 

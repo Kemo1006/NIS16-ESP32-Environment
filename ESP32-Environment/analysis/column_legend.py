@@ -215,8 +215,9 @@ _add("ConsistencyScore", "Feature (features.py)",
 _add("RetryRate", "Feature (features.py)",
      "Failed sends ÷ all send attempts in the window", "0-1",
      "Built from retry_count, so it is NOT a radio retransmission rate. "
-     "Excluded as label leakage only on pre-F3 captures (no drop_count) or "
-     "when a wormhole Node B is present (leakage.retry_count_is_overloaded).")
+     "Kept in the dataset for completeness but NOT used in EDA, attack "
+     "verification or any model: no cited study backs it as an attack "
+     "indicator and it measured flat in every phase (D-15).")
 _add("PDR", "Feature (features.py)",
      "Packet Delivery Ratio: share of this victim's probes the root received",
      "0-1 (1 = all delivered)",

@@ -6,8 +6,9 @@ Implements the five analyses specified in thesis Section 4.2.6:
   1. Descriptive statistics — mean/median/variance/range per feature,
      across all nodes and phases.
   2. Distribution visualization — histograms/box plots for
-     ForwardingRatio, RetryRate, RSSI-Hop Diff, stratified by phase
-     and node role.
+     ForwardingRatio and RSSI-Hop Diff, stratified by phase and node role.
+     (Section 4.2.6 also names RetryRate; it is a dataset column only since
+     sep. 30, 2026 — see FEATURE_COLUMNS.)
   3. Time-series plots — selected feature trajectories (parent switch
      events, PDR) over run duration.
   4. Cross-layer correlation analysis — Pearson and Spearman matrices
@@ -93,11 +94,14 @@ sns.set_theme(style="whitegrid")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import leakage  # noqa: E402
 
-# The 16 Table 4.11 feature names, in the order the thesis presents them.
+# The Table 4.11 feature names, in the order the thesis presents them.
 # Used to decide which columns count as "features" for stats/correlation/
 # PCA purposes, as opposed to identity/metadata columns like node_id.
+# RetryRate is left out on purpose (team decision sep. 30, 2026): it stays in
+# feature_table.csv, but no cited study backs it as an attack indicator and it
+# measured flat in every phase, so no EDA output describes it (D-15).
 FEATURE_COLUMNS = [
-    "ForwardingRatio", "IngressEgressDelta", "RetryRate", "PDR",
+    "ForwardingRatio", "IngressEgressDelta", "PDR",
     "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
     "RSSI_mean", "RSSI_var", "RSSI_stability",
     "RSSI_Hop_Diff", "LatencyHopRatio", "ConsistencyScore",
@@ -110,7 +114,6 @@ FEATURE_COLUMNS = [
 # appear in the full correlation matrix.
 LAYER_GROUPS = {
     "PHY": ["RSSI_mean", "RSSI_var", "RSSI_stability"],
-    "MAC": ["RetryRate"],
     "Network": [
         "ForwardingRatio", "IngressEgressDelta", "PDR",
         "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
@@ -126,9 +129,6 @@ FEATURE_DESCRIPTIONS = {
     "ForwardingRatio_5w": "forwarded ÷ received, summed over the last 5 windows",
     "RootArrivals": "probes arriving at the root per window",
     "IngressEgressDelta": "packets received − forwarded",
-    # App-layer (D-15): retry_count = failed esp_mesh_send() calls, not 802.11
-    # retransmissions - the paper's "MAC" name is what Table 4.5 must amend.
-    "RetryRate": "failed sends ÷ send attempts (0–1, app-layer)",
     "PDR": "share of probes that reached the root (0–1)",
     "ParentSwitchRate": "parent changes per second",
     "HopChangeCount": "tree-depth changes in the window",
@@ -166,14 +166,6 @@ PHASE_COLORS = {
     "Cooldown (after attack)": "#ff7f0e",
 }
 UNLABELLED_COLOR = "#9e9e9e"
-# Why a feature that is flat across every labelled window is a finding, printed
-# on its distribution plot so the empty-looking figure explains itself.
-FLAT_RESULT_NOTES = {
-    "RetryRate": ("No send failed in baseline, attack or cooldown: the attacker still\n"
-                  "accepts every frame, so a victim's send never fails (paper 3.3.1.2).\n"
-                  "Table 3.4 predicted a rise - a pre-registered MISS to report\n"
-                  "(docs/EXPECTED-RESULTS.md 6a)."),
-}
 # PCA/t-SNE input is standardised, then clipped to +-this many sd (see
 # run_dimensionality_reduction for why).
 PCA_Z_CLIP = 5.0
@@ -336,9 +328,9 @@ def plot_distributions(
 ) -> list[str]:
     """
     Histogram + box plot, stratified by phase label and node role, for
-    the features the thesis names explicitly: ForwardingRatio,
-    RetryRate, RSSI-Hop Diff (Section 4.2.6). Defaults to exactly those
-    three; pass `features` to plot others.
+    the features Section 4.2.6 names: ForwardingRatio and RSSI-Hop Diff
+    (its third, RetryRate, is a dataset column only - see FEATURE_COLUMNS).
+    Pass `features` to plot others.
 
     If a named feature is entirely NaN (e.g. ForwardingRatio right now),
     the plot is still produced — it will show empty axes with a visible
@@ -348,7 +340,7 @@ def plot_distributions(
     should exist.
     """
     if features is None:
-        features = ["ForwardingRatio", "ForwardingRatio_5w", "RetryRate", "RSSI_Hop_Diff"]
+        features = ["ForwardingRatio", "ForwardingRatio_5w", "RSSI_Hop_Diff"]
 
     role_col = "node_role" if "node_role" in df.columns else "role"
 
@@ -392,8 +384,8 @@ def plot_distributions(
             hist_df = valid.assign(Phase=phase.values)
             # Cap the bin count explicitly. Seaborn's automatic (Freedman–Diaconis)
             # bin rule sets width from the IQR, which collapses toward zero when a
-            # feature is nearly constant with a few outliers — RetryRate is 0.0
-            # everywhere, ForwardingRatio piles at 0 and 1. A near-zero bin width
+            # feature is nearly constant with a few outliers — ForwardingRatio
+            # piles at 0 and 1. A near-zero bin width
             # over a non-zero range asks for astronomically many bins and seaborn
             # tries to allocate gigabytes for the step polygons, killing the whole
             # M8 run. A fixed, distinct-value-aware cap keeps the histogram honest
@@ -417,7 +409,7 @@ def plot_distributions(
                 )
             except (np.linalg.LinAlgError, MemoryError, ValueError):
                 # A phase group with zero variance (e.g. a feature that's constant
-                # across a clean baseline run, like RetryRate = 0 everywhere) gives
+                # across a clean baseline run) gives
                 # seaborn's gaussian_kde a singular covariance matrix (LinAlgError);
                 # a degenerate spread can also blow up bin allocation (MemoryError)
                 # or trip a ValueError. In any of these, drop the KDE overlay and
@@ -457,8 +449,6 @@ def plot_distributions(
                 if n_other:
                     note += (f"\n{n_other} unlabelled window(s) outside the experiment "
                              "differ and are not shown.")
-                if feat in FLAT_RESULT_NOTES:
-                    note += "\n" + FLAT_RESULT_NOTES[feat]
                 for ax in axes:
                     ax.text(0.5, 0.5, note, ha="center", va="center", fontsize=10,
                             color="darkred", transform=ax.transAxes,
@@ -810,8 +800,8 @@ def _correlate(df: pd.DataFrame, exclude_leaking: bool = True, view: str = ""):
     """(pearson, spearman, all-NaN columns, constant columns, n windows) for one view.
 
     A column that is constant over the view's windows has no correlation (0/0)
-    and is dropped from the matrix but NAMED, so a flat feature - RetryRate on a
-    stationary blackhole run - reads as the result it is, not as missing data.
+    and is dropped from the matrix but NAMED, so a flat feature reads as the
+    result it is, not as missing data.
     """
     rows = df[CORRELATION_VIEWS[view][1](_phase_names(df)).values]
     candidate_cols = [c for c in FEATURE_COLUMNS if c in df.columns]
@@ -1467,7 +1457,7 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     # model still get audited, so the report shows what was excluded AND what
     # excluding it was worth.
     try:
-        audit = leakage.single_feature_decidability(df)
+        audit = leakage.single_feature_decidability(df, candidates=FEATURE_COLUMNS)
         audit_path = os.path.join(output_dir, "leakage_audit.csv")
         audit.to_csv(audit_path, index=False)
         summary["leakage_audit"] = audit_path

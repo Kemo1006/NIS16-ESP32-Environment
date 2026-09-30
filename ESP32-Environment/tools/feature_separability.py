@@ -45,9 +45,10 @@ except Exception:
     print("ERROR: scikit-learn required. Run: pip install -r analysis/requirements.txt")
     sys.exit(2)
 
+# RetryRate is a dataset column only, not analysed (sep. 30, 2026; D-15).
 FEATURES = [
     "ForwardingRatio", "IngressEgressDelta", "ConsistencyScore",
-    "RetryRate", "PDR",
+    "PDR",
     "ParentSwitchRate", "LayerChangeCount", "HopStabilityDuration",
     "RSSI_mean", "RSSI_var", "RSSI_stability",
     "RSSI_Hop_Diff", "LatencyHopRatio",
