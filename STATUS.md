@@ -35,6 +35,6 @@ Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Document
 - ⚠️ PAPER behind the code: 10 Hz / 1 s is CORRECT (keep); Tables 4.4/4.10 + §4.2.4.1 say 1 Hz / 5 s; Table 4.5 -> D-15; RetryRate = Table 3.4 miss.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- sep. 30 (Angelo) — Merged origin/THESIS3. **Burst early-fire bug fixed in `victim_main.c` (REFLASH burst boards)**; sept30 G402 blackhole "burst" run moved to `G402/stationary` + re-analysed (CONFIRMED); `combine_all.py` repointed to `datasets/analysis/`. Uncommitted. Details: MEMORY.md top.
+- sep. 30 (Angelo) — Merged origin/THESIS3. **Burst early-fire bug fixed in `victim_main.c` (REFLASH burst boards)**; sept30 G402 blackhole "burst" run moved to `G402/stationary` + re-analysed (CONFIRMED); `combine_all.py` repointed; attacker-only ForwardingRatio + NEW NeighbourForwardingRatio. PUSHED (d5fd89a, 7374bcf) — pull, then re-run `analyze.ps1` on your cells. Details: MEMORY.md top.
 - sep. 27 — **Wireshark view menu: ALL boards by default + MY boards submenu** (member's boards, side-by-side I/O lines); stub-tested, not opened in real Wireshark.
 - sep. 27 — **Data moved to `datasets/`** (5 folders + analysis output; 375 files hash-verified; all writers/readers repointed, code untouched).
