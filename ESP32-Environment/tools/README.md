@@ -58,10 +58,13 @@ Files are routed into `tools/exports/<attack-or-baseline>/<topology>/<location>/
 (override the root with `--outdir`, or `--flat` to skip the subfolders — which also
 skips the `--location` requirement), named with the full run metadata:
 ```
-exports/blackhole/star/home/root_COM20_star_blackhole_r1_20260629_143022_telem.csv
-exports/blackhole/star/home/root_COM20_star_blackhole_r1_20260629_143022_arrivals.csv
-exports/baseline/tree/home/victim_COM26_tree_none_r1_20260629_143105_telem.csv
+exports/blackhole/star/home/root_COM20_star_blackhole_r1_sept27_0230PM_telem.csv
+exports/blackhole/star/home/root_COM20_star_blackhole_r1_sept27_0230PM_arrivals.csv
+exports/baseline/tree/home/victim_COM26_tree_none_r1_sept27_0231PM_telem.csv
 ```
+The stamp is readable (`sept27_0230PM`, see `name_stamp.py`); a second export of the
+same board in the same minute gets `-2`. Files from before sep. 27, 2026 keep the old
+`20260629_143022` stamp, and every tool reads both.
 So each run's CSVs group by attack, then topology, then site, and none of them
 mix. The `--topology`, `--location`, `--attack`, and `--repeat` flags set both the
 folder and the filename metadata. (Topology folder names — `star`, `tree`,

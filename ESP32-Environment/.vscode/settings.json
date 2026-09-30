@@ -12,7 +12,7 @@
     "**/managed_components": true,
     "**/__pycache__": true,
     "**/.git/**": true,
-    "**/tools/exports/**": true,
+    "**/datasets/exports/**": true,
     "**/analysis/**/eda_output/**": true
   },
 
@@ -22,7 +22,7 @@
     "**/build_*": true,
     "**/managed_components": true,
     "**/__pycache__": true,
-    "**/tools/exports": true,
+    "**/datasets/exports": true,
     "**/analysis/**/eda_output": true,
     "**/*.pyc": true
   },

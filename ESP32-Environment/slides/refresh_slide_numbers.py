@@ -36,7 +36,7 @@ REPEATS = 3
 
 def _ledger():
     """(topology, attack, repeat) -> status, straight from the M4 ledger."""
-    path = os.path.join(_ROOT, "tools", "exports", "run_ledger.csv")
+    path = os.path.join(_ROOT, "datasets", "exports", "run_ledger.csv")
     done = {}
     if not os.path.exists(path):
         return done
@@ -85,9 +85,9 @@ def datasets():
     # directly under analysis/<attack>/<topology>/ (every run recorded so far,
     # predating the location field) AND under .../<topology>/<location>/ (any
     # run recorded with -Location going forward) with one pattern.
-    for path in sorted(glob.glob(os.path.join(_ROOT, "analysis", "*", "*", "**", "feature_table.csv"),
+    for path in sorted(glob.glob(os.path.join(_ROOT, "datasets", "analysis", "*", "*", "**", "feature_table.csv"),
                                   recursive=True)):
-        rel = os.path.relpath(os.path.dirname(path), os.path.join(_ROOT, "analysis")).replace(os.sep, " · ")
+        rel = os.path.relpath(os.path.dirname(path), os.path.join(_ROOT, "datasets", "analysis")).replace(os.sep, " · ")
         with open(path, newline="", encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
         if not rows:
@@ -104,7 +104,7 @@ def scale():
     files = rows = size = 0
     # "**" covers both exports/<attack>/<topology>/*.csv (pre-location captures)
     # and exports/<attack>/<topology>/<location>/*.csv (with -Location).
-    for p in glob.glob(os.path.join(_ROOT, "tools", "exports", "*", "*", "**", "*.csv"), recursive=True):
+    for p in glob.glob(os.path.join(_ROOT, "datasets", "exports", "*", "*", "**", "*.csv"), recursive=True):
         if "_archive" in p or os.sep + "trimmed" + os.sep in p:
             continue
         files += 1
@@ -112,10 +112,10 @@ def scale():
         with open(p, errors="replace", encoding="utf-8") as f:
             rows += max(0, sum(1 for _ in f) - 1)
     windows = 0
-    for p in glob.glob(os.path.join(_ROOT, "analysis", "*", "*", "**", "feature_table.csv"), recursive=True):
+    for p in glob.glob(os.path.join(_ROOT, "datasets", "analysis", "*", "*", "**", "feature_table.csv"), recursive=True):
         with open(p, encoding="utf-8") as f:
             windows += max(0, sum(1 for _ in f) - 1)
-    eda = len(glob.glob(os.path.join(_ROOT, "analysis", "*", "*", "**", "eda_output", "*"), recursive=True))
+    eda = len(glob.glob(os.path.join(_ROOT, "datasets", "analysis", "*", "*", "**", "eda_output", "*"), recursive=True))
     return files, size / 1e6, rows, windows, eda
 
 

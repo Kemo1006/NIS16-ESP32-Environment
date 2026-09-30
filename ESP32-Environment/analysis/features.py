@@ -96,7 +96,7 @@ EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 # window_start % 5 == 0 — a merge-key artefact, not a property of the data.
 # It also made eda.py drop 12 of 16 features from PCA/t-SNE.
 # Importing it makes divergence impossible.
-from preprocess import WINDOW_SECONDS  # noqa: E402
+from preprocess import GRID_HZ, WINDOW_SECONDS  # noqa: E402
 
 # Wire size of one wormhole tunnel frame, for TunnelBytes. Mirrors
 # sizeof(tunnel_pkt_t) in wormhole_victim.c: __attribute__((packed)) struct of
@@ -341,12 +341,23 @@ def compute_link_reliability_features(windowed: pd.DataFrame) -> pd.DataFrame:
     PDR is intentionally NOT computed here — it needs the root's
     probe-arrival log joined against each victim's own probes_count,
     which is a cross-node operation. See compute_pdr_features() below.
+
+    A window with NO send attempt (tx + retry == 0) gets NaN, not 0. Eq 4.4's
+    epsilon only guards the division; left in, it turned "nothing was sent"
+    into "0% of sends failed" - on G402 (sep. 25, 2026) that was almost every
+    root window, the attacker's whole attack window (it forwards nothing, so
+    it attempts nothing) and ~10% of each child's 1 s windows.
+
+    At 1 probe/s and 1 s windows a child makes ~1 attempt per window, so per
+    window this is 0 or 1; verify_attack.py pools it as a ratio of sums over
+    5 windows (RATIO_OF_SUMS) for the 3-sigma test.
     """
     out = pd.DataFrame(index=windowed.index)
 
     retry = windowed["retry_count_delta"]
     tx = windowed["tx_count_delta"]
-    out["RetryRate"] = retry / (tx + retry + EPSILON)
+    attempts = tx + retry
+    out["RetryRate"] = (retry / attempts).where(attempts > 0)
 
     return out
 
@@ -527,6 +538,78 @@ def compute_pdr_features(
     return out
 
 
+def _arrival_sender_window(windowed: pd.DataFrame, arrivals: pd.DataFrame) -> np.ndarray:
+    """
+    For each arrivals row, the index label of the SENDER's window whose probe
+    sequence range (seq_first, seq_last] holds its seq_num; NaN when none
+    does. No timestamps are compared — the boards share no clock (see
+    compute_pdr_features for the full argument and the seq reconstruction).
+
+    Only nodes that ORIGINATE probes can be placed:
+      child       seq == probes_count + retry_count  (victim_main.c counts a
+                  failed send in retry_count and still advances seq)
+      wormhole_b  seq == probes_count  (wormhole_victim.c: probes generated;
+                  its retry_count holds the tunnel count, not send failures)
+    A window with a counter reset is skipped: a reboot restarts seq numbering.
+    A MAC with windows in more than one source_file is skipped with a warning —
+    two runs' sequence ranges overlap and the arrival cannot be placed.
+    """
+    placed = np.full(len(arrivals), np.nan)
+    edge_cols = ["probes_count_first", "probes_count_last",
+                 "retry_count_first", "retry_count_last", "node_role"]
+    missing = [c for c in edge_cols if c not in windowed.columns]
+    if missing:
+        warnings.warn(
+            f"[features] windowed dataset is missing {missing}; latency features "
+            f"left NaN (they join arrivals to windows by sequence number). "
+            f"Rebuild it with the current preprocess.py.",
+            stacklevel=2,
+        )
+        return placed
+
+    num = lambda c: pd.to_numeric(windowed[c], errors="coerce")
+    role = windowed["node_role"]
+    is_child = role == CHILD_ROLE
+    is_wh_b = role == "wormhole_b"
+    seq_first = (num("probes_count_first") + num("retry_count_first")).where(is_child)
+    seq_first = seq_first.where(~is_wh_b, num("probes_count_first"))
+    seq_last = (num("probes_count_last") + num("retry_count_last")).where(is_child)
+    seq_last = seq_last.where(~is_wh_b, num("probes_count_last"))
+
+    reset = pd.Series(False, index=windowed.index)
+    for col in ("probes_count_reset_detected", "retry_count_reset_detected"):
+        if col in windowed.columns:
+            reset |= windowed[col].fillna(False).astype(bool)
+
+    usable = seq_first.notna() & seq_last.notna() & ~reset & (seq_last > seq_first)
+    macs = windowed["node_id"].apply(node_id_to_mac_norm)
+    arr_seq = pd.to_numeric(arrivals["seq_num"], errors="coerce").to_numpy()
+    arr_mac = arrivals["_src_mac_norm"].to_numpy()
+
+    for mac, rows in windowed[usable].groupby(macs[usable]):
+        if "source_file" in rows.columns and rows["source_file"].nunique() > 1:
+            warnings.warn(
+                f"[features] {mac} has windows in {rows['source_file'].nunique()} "
+                f"telemetry files; their sequence ranges overlap, so its arrivals "
+                f"cannot be placed and its latency features stay NaN. Analyse one "
+                f"run per folder.",
+                stacklevel=2,
+            )
+            continue
+        order = seq_first[rows.index].sort_values().index
+        lo = seq_first[order].to_numpy()
+        hi = seq_last[order].to_numpy()
+        sel = np.flatnonzero(arr_mac == mac)
+        s = arr_seq[sel]
+        pos = np.searchsorted(hi, s, side="left")
+        inside = pos < len(hi)
+        pos_c = np.where(inside, pos, 0)
+        inside &= (lo[pos_c] < s) & (s <= hi[pos_c])
+        placed[sel[inside]] = np.asarray(order)[pos_c[inside]]
+
+    return placed
+
+
 def compute_latency_features(
     windowed: pd.DataFrame,
     arrivals_dir: str,
@@ -598,6 +681,16 @@ def compute_latency_features(
     Windows with no arrivals (or no duplicates, for TunnelLatency) stay
     NaN rather than 0 — absence of a measurement is not a measurement of
     zero, the same rule the PDR coverage set follows above.
+
+    WHICH WINDOW AN ARRIVAL BELONGS TO. Each arrival is placed in the
+    SENDER's window whose probe sequence range holds its seq_num
+    (_arrival_sender_window) — the same clock-free join PDR uses. Until
+    sep. 26, 2026 this merged on window_start instead: the arrivals'
+    window_start is on the ROOT's rebased clock and the sender's on its OWN,
+    so every value landed as many windows off as the two boards' first
+    samples were apart. On blackhole/linear/home that was 63 windows, which
+    put cooldown latencies on the last 63 s of the attack — windows in
+    which the root received nothing from those victims at all.
     """
     out = pd.DataFrame(index=windowed.index)
     out["LatencyHopRatio"] = np.nan
@@ -615,48 +708,25 @@ def compute_latency_features(
         a["latency_us"] - a.groupby(grp)["latency_us"].transform("min")
     ) / 1000.0
 
-    lat_win = (
-        a.groupby(["_src_mac_norm", "window_start"])["_lat_rel_ms"]
-        .mean()
-        .rename("_lat_rel_ms_mean")
-        .reset_index()
-    )
+    a["_win_row"] = pd.Series(_arrival_sender_window(windowed, a)).astype("Int64").values
+
+    lat_mean = a.dropna(subset=["_win_row"]).groupby("_win_row")["_lat_rel_ms"].mean()
 
     # ── TunnelLatency ────────────────────────────────────────────────
+    # Both copies of a duplicated probe share (src_mac, seq_num), so they map
+    # to the same sender window.
     dup = a.groupby(grp + ["seq_num"]).agg(
         _spread_us=("latency_us", lambda s: s.max() - s.min()),
         _n=("latency_us", "size"),
-        window_start=("window_start", "min"),
-        _src=("_src_mac_norm", "first"),
+        _win_row=("_win_row", "first"),
     ).reset_index(drop=True)
-    dup = dup[dup["_n"] > 1]
+    dup = dup[(dup["_n"] > 1) & dup["_win_row"].notna()]
+    tun_mean = dup.groupby("_win_row")["_spread_us"].mean().div(1000.0)
 
-    if not dup.empty:
-        tun_win = (
-            dup.groupby(["_src", "window_start"])["_spread_us"]
-            .mean()
-            .div(1000.0)
-            .rename("_tunnel_latency_ms")
-            .reset_index()
-            .rename(columns={"_src": "_src_mac_norm"})
-        )
-    else:
-        tun_win = pd.DataFrame(
-            columns=["_src_mac_norm", "window_start", "_tunnel_latency_ms"])
-
-    # ── Merge onto the windowed rows ─────────────────────────────────
-    w = windowed.copy()
-    w["_node_mac_norm"] = w["node_id"].apply(node_id_to_mac_norm)
-    w["_row_order"] = np.arange(len(w))
-
-    merged = w.merge(
-        lat_win, left_on=["_node_mac_norm", "window_start"],
-        right_on=["_src_mac_norm", "window_start"], how="left",
-    ).merge(
-        tun_win, left_on=["_node_mac_norm", "window_start"],
-        right_on=["_src_mac_norm", "window_start"], how="left",
-        suffixes=("", "_tun"),
-    ).sort_values("_row_order")
+    # ── Place onto the windowed rows ─────────────────────────────────
+    merged = windowed.copy()
+    merged["_lat_rel_ms_mean"] = lat_mean.reindex(merged.index).values
+    merged["_tunnel_latency_ms"] = tun_mean.reindex(merged.index).values
 
     # Hop count = how many layers below the root this node sits. Derive the
     # root's own layer from the data rather than hard-coding it: the firmware
@@ -719,39 +789,43 @@ def compute_topology_stability_features(
     long_df["window_idx"] = (long_df["t_rel"] // WINDOW_SECONDS).astype(int)
     long_df["window_start"] = long_df["window_idx"] * WINDOW_SECONDS
 
+    # Changes are found on each node's WHOLE timeline, then counted in the window
+    # where the new value first appears. Comparing only inside a window (the old
+    # code) never saw a switch that landed between one window's last sample and
+    # the next window's first - at 10 samples per 1 s window, 1 in 10 switches.
+    long_df = long_df.sort_values(["node_id", "_source_file", "t_rel"])
+    by_node = long_df.groupby(["node_id", "_source_file"], sort=False)
+    prev_layer = by_node["layer"].shift()
+    prev_parent = by_node["parent_mac"].shift()
+    long_df["_layer_changed"] = prev_layer.notna() & (long_df["layer"] != prev_layer)
+    long_df["_parent_changed"] = prev_parent.notna() & (long_df["parent_mac"] != prev_parent)
+
+    # Each sample stands for one grid period. Durations used to be last-sample
+    # minus first-sample (0.9 s for a full 1 s window at 10 Hz), which inflated
+    # every rate by 11% (ParentSwitchRate peaked at 1.1/s) and capped
+    # HopStabilityDuration at 0.9 s.
+    sample_s = 1.0 / GRID_HZ
+
     rows = []
     for (node_id, source_file, window_idx), grp in long_df.groupby(
         ["node_id", "_source_file", "window_idx"]
     ):
-        grp = grp.sort_values("t_rel")
-        layers = grp["layer"].to_numpy()
-        parents = grp["parent_mac"].to_numpy()
+        n_layer_changes = int(grp["_layer_changed"].sum())
+        n_parent_changes = int(grp["_parent_changed"].sum())
+        parent_switch_rate = n_parent_changes / WINDOW_SECONDS
 
-        n_layer_changes = int(np.sum(layers[1:] != layers[:-1])) if len(layers) > 1 else 0
-        n_parent_changes = int(np.sum(parents[1:] != parents[:-1])) if len(parents) > 1 else 0
-
-        window_duration_s = max(grp["t_rel"].max() - grp["t_rel"].min(), EPSILON)
-        parent_switch_rate = n_parent_changes / window_duration_s
-
-        # HopStabilityDuration: longest run where (layer, parent) constant
-        same_as_prev = np.ones(len(grp), dtype=bool)
-        if len(grp) > 1:
-            same_as_prev[1:] = (layers[1:] == layers[:-1]) & (parents[1:] == parents[:-1])
-        run_lengths = []
-        run = 0
-        t_vals = grp["t_rel"].to_numpy()
-        run_start_t = t_vals[0] if len(t_vals) else 0
-        for i, same in enumerate(same_as_prev):
-            if same:
-                run += 1
-            else:
-                if run > 0:
-                    run_lengths.append(t_vals[i - 1] - run_start_t)
-                run = 1
-                run_start_t = t_vals[i]
-        if run > 0:
-            run_lengths.append(t_vals[-1] - run_start_t)
-        hop_stability_duration = max(run_lengths) if run_lengths else 0.0
+        # HopStabilityDuration: longest run of samples, within the window, over
+        # which (layer, parent) stayed constant. A run starts at every change,
+        # including one on the window's first sample.
+        run_lengths, run = [], 0
+        for changed in (grp["_layer_changed"] | grp["_parent_changed"]).to_numpy():
+            if changed and run:
+                run_lengths.append(run)
+                run = 0
+            run += 1
+        if run:
+            run_lengths.append(run)
+        hop_stability_duration = max(run_lengths) * sample_s if run_lengths else 0.0
 
         rows.append({
             "node_id": node_id,

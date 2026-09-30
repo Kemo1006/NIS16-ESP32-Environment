@@ -129,8 +129,17 @@ FEATURE_UPPER_BOUND = {"PDR": 1.0, "ForwardingRatio": 1.0, "ConsistencyScore": 1
 # biased, outlier-dominated estimator; the correct statistic over a block is the
 # ratio of the summed numerator to the summed denominator. Maps
 # feature -> (numerator column, denominator column) in the feature table.
+# Each entry is a list of (numerator, denominator columns) options, first match
+# wins; a denominator of several columns is their sum.
+#   ForwardingRatio: features.py uses forward/recv on schema v2 (every relay);
+#     tx/probes is the v1 attacker-only form. On v2, tx/probes is a node's OWN
+#     sends, so pooling on it tested honest relays against their own traffic.
+#   RetryRate: failures / attempts (Eq 4.4). Per 1 s window it is 0 or 1 at one
+#     probe per second; summed over the block it is a real proportion.
 RATIO_OF_SUMS = {
-    "ForwardingRatio": ("tx_count_delta", "probes_count_delta"),
+    "ForwardingRatio": [("forward_count_delta", ("recv_count_delta",)),
+                        ("tx_count_delta", ("probes_count_delta",))],
+    "RetryRate": [("retry_count_delta", ("tx_count_delta", "retry_count_delta"))],
 }
 
 # (feature, direction, tier)
@@ -142,18 +151,16 @@ SIGNATURES = {
         ("PDR",                "down", "primary"),    # end-to-end delivery collapses
         ("ConsistencyScore",   "up",   "secondary"),  # |FR - 1| rises
         ("IngressEgressDelta", "up",   "secondary"),  # packets absorbed
-        # NOT "victims retry". Measured on 2026-09-18 G402: victim RetryRate
-        # FALLS 0.0008 -> 0.0000 during the attack, because the attacker is
-        # alive and still ACKing at the link layer, so the sender never learns
-        # of the loss - exactly as the paper's own S3.3.1.2 predicts. The only
-        # row that moves is the ATTACKER's, and only because blackhole_victim.c
-        # overloads retry_count as its drop counter (0.003 -> 0.999). That makes
-        # this feature the attack's own switch, not a MAC-layer observable, so
-        # its PASS is a LEAK, not evidence. Kept only to keep reporting paper
-        # Table 3.4's pre-registered prediction (which MISSES - report that,
-        # do not edit the table). Remove once the firmware logs a dedicated
-        # drop_count and retry_count means MAC-layer failure on every role.
-        ("RetryRate",          "up",   "secondary"),  # LEAKY - see note above
+        # Paper Table 3.4's pre-registered "victims retry more". KEEP it (team
+        # decision sep. 23, 2026): its FAIL is the result to report. Victims
+        # never see a failure - the attacker is alive and accepts every frame,
+        # exactly as the paper's own S3.3.1.2 predicts - so on F3 (schema v2)
+        # data retry_count = failed esp_mesh_send() calls on every role and
+        # stays flat (G402 sep. 25: 0 failures in baseline AND attack).
+        # Pre-F3 captures (no drop_count column) still carry the attacker's
+        # drops in retry_count, so a PASS there is a LEAK, not evidence -
+        # see RETRY_LEAK_NOTE below.
+        ("RetryRate",          "up",   "secondary"),
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
@@ -162,6 +169,13 @@ SIGNATURES = {
         ("LatencyHopRatio",    "down", "secondary"),  # shortcut copy arrives faster (informational)
     ],
 }
+
+
+# What a RetryRate verdict means, appended to its footnote (see SIGNATURES).
+RETRY_MISS_NOTE = ("paper Table 3.4 predicted victims retry more; not observed - a "
+                   "pre-registered miss to REPORT, not edit (docs/EXPECTED-RESULTS.md 6a)")
+RETRY_LEAK_NOTE = ("pre-F3 capture (no drop_count): retry_count still holds the "
+                   "attacker's own drops, so this PASS is LEAKAGE, not evidence")
 
 
 def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0.0):
@@ -269,13 +283,18 @@ def block_aggregate(df, feats, block):
     # 3-sigma test then divides by. Summing the numerator and denominator across
     # the block first is the standard estimator for a rate and is immune to it.
     notes = []
-    for feat, (num_col, den_col) in RATIO_OF_SUMS.items():
+    for feat, options in RATIO_OF_SUMS.items():
         if feat not in pooled.columns:
             continue
-        if num_col not in d.columns or den_col not in d.columns:
+        chosen = next(((n, dc) for n, dc in options
+                       if n in d.columns and all(c in d.columns for c in dc)
+                       and d[n].notna().any()), None)
+        if chosen is None:
             continue
-        sums = d.groupby(keys, as_index=False)[[num_col, den_col]].sum()
-        den = pd.to_numeric(sums[den_col], errors="coerce")
+        num_col, den_cols = chosen
+        cols = list(dict.fromkeys([num_col, *den_cols]))
+        sums = d.groupby(keys, as_index=False)[cols].sum()
+        den = sum(pd.to_numeric(sums[c], errors="coerce") for c in den_cols)
         num = pd.to_numeric(sums[num_col], errors="coerce")
         ratio = (num / den).where(den > 0, np.nan)
         merged = pooled.merge(sums[keys].assign(_ros=ratio), on=keys, how="left")
@@ -388,6 +407,14 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         am_s = "n/a" if math.isnan(r["attack_mean"]) else f"{r['attack_mean']:.3f}"
         atk_s = f"{am_s} ({r['n_attack']})"
         arrow = "v" if direction == "down" else "^"
+
+        if feat == "RetryRate" and r["status"] in ("PASS", "FAIL"):
+            pre_f3 = ("drop_count_delta" not in df.columns
+                      or df["drop_count_delta"].isna().all())
+            extra = RETRY_LEAK_NOTE if (pre_f3 and r["status"] == "PASS") else (
+                RETRY_MISS_NOTE if r["status"] == "FAIL" else "")
+            if extra:
+                r["note"] = f"{r['note']}; {extra}" if r["note"] else extra
 
         ref = ""
         if r["note"]:

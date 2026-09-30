@@ -110,6 +110,7 @@ except ImportError:
 # Naming is reused, never reimplemented: the filename convention living in
 # exactly one place is what keeps a card import and a USB export identical.
 import export_logs  # noqa: E402
+import name_stamp  # noqa: E402
 
 # Card folder name -> the --attack CLI value export_logs.py would have been
 # given. Inverts _subdir_for()'s "none means baseline" mapping so the attack
@@ -656,7 +657,38 @@ class _BoardCard:
 _BOARD_LIST_TIMEOUT_S = 30
 
 
-def _already_imported(dest, rows):   # noqa: D401 — docstring below is the spec
+# How far a board's "started" may run AHEAD of this laptop's clock and still be
+# trusted. SET_TIME comes from a laptop, so the two agree to within a transfer;
+# an unpowered board only ever falls BEHIND (it resumes from its last anchor),
+# which errs toward "may be a duplicate", never away from it.
+_START_AFTER_EXPORT_SLACK_S = 120
+
+
+def _exported_before_start(existing, started, clock_src, folder=None):
+    """True if `existing` (an exports/ filename) was written BEFORE the card
+    run began — so it cannot be that run, whatever else matches.
+
+    Only a real clock ("host") counts: a "build" time is an extrapolation and
+    could land anywhere. The export stamp is laptop local time and "started" is
+    the board's local (Philippine) wall clock — the same zone.
+
+    The readable stamp (sept27_0311AM, see name_stamp.py) drops the seconds,
+    so it is read as the END of its minute: truncating could only make an
+    export look earlier than it was and wrongly rule it out."""
+    if clock_src != "host" or not started:
+        return False
+    try:
+        _head, date, hms, _kind = existing.rsplit("_", 3)
+        when, _seq = name_stamp.parse(
+            date + "_" + hms, os.path.join(folder, existing) if folder else None)
+        exported = time.mktime(when.timetuple()) + (0 if date.isdigit() else 59)
+        began = time.mktime(time.strptime(started, "%Y-%m-%d %H:%M:%S"))
+    except ValueError:
+        return False   # a name or stamp we cannot read proves nothing
+    return began > exported + _START_AFTER_EXPORT_SLACK_S
+
+
+def _already_imported(dest, rows, started=None, clock_src=None):   # noqa: D401 — docstring below is the spec
     """Returns the matching filename if a capture with the same run identity
     (role, node, topology, attack, repeat, kind) AND the same row count
     already sits in the destination folder — i.e. this exact capture was
@@ -684,13 +716,22 @@ def _already_imported(dest, rows):   # noqa: D401 — docstring below is the spe
     to an IDENTITY-only match and the caller is told it is a likely, not
     certain, duplicate. Erring toward "you have probably already got this"
     matches the mounted-card behaviour for the operator, and the file is still
-    importable by naming it explicitly in --files."""
+    importable by naming it explicitly in --files.
+
+    Row count is a weak disambiguator in practice, though: every full-length
+    run on one flash logs almost exactly the same number of rows (sep. 27,
+    2026: boots 113 and 119 of one node both logged 6616), so two different
+    complete runs routinely "match". `started` / `clock_src` (the card run's
+    runs.csv time) rule a candidate out when that export was written before the
+    run even began — an export cannot contain a run from its own future."""
     folder, name = os.path.split(dest)
     if not os.path.isdir(folder):
         return None
     head, _date, _time, kind = name.rsplit("_", 3)
     for existing in sorted(os.listdir(folder)):
         if existing.startswith(head + "_") and existing.endswith("_" + kind):
+            if _exported_before_start(existing, started, clock_src, folder):
+                continue
             if rows is None:
                 return existing
             if _row_count(os.path.join(folder, existing)) == rows:
@@ -745,23 +786,15 @@ def _load_roster(path):
 
 
 def _make_unique_filename(dest_args, kind, used_this_run):
-    """export_logs._make_filename() stamps only second-granularity wall-clock
-    time. That was never a problem for a single USB export (one file per
-    invocation), but --boots exists precisely so several boots of the same
-    repeat get imported in one invocation — and generating their destination
-    names back-to-back can land two calls in the same second, producing
-    IDENTICAL paths. shutil.copy2() would then silently overwrite the first
-    boot's data with the second's.
-
-    _make_filename() itself is not touched (still the one place the naming
-    convention lives) — this just refuses to reuse a name this run already
-    claimed, sleeping the ~1s needed for the next call to land on a new
-    timestamp. A real card import is a few files, seconds apart in practice;
-    this only ever triggers on the fast, back-to-back multi-boot case."""
-    dest = export_logs._make_filename(dest_args, kind)
-    while dest in used_this_run:
-        time.sleep(1)
-        dest = export_logs._make_filename(dest_args, kind)
+    """export_logs._make_filename() stamps only minute-precision wall-clock
+    time (sept27_0311AM). --boots exists precisely so several boots of the
+    same repeat get imported in one invocation, and generating their
+    destination names back-to-back lands them in the same minute, producing
+    IDENTICAL paths - shutil.copy2() would then silently overwrite the first
+    boot's data with the second's. A name already on disk is caught by
+    _make_filename() itself; this passes the names THIS run has claimed but
+    not yet written, so the second boot gets ..._0311AM-2_telem.csv."""
+    dest = export_logs._make_filename(dest_args, kind, used_this_run)
     used_this_run.add(dest)
     return dest
 
@@ -867,7 +900,8 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         # The name it was already imported under, if an identical capture (same
         # identity AND row count) is sitting in exports/ — so the picker can say
         # so before the operator picks it again.
-        "already": _already_imported(dest, rows),
+        "already": _already_imported(dest, rows, (entry or {}).get("started"),
+                                     (entry or {}).get("clock_src")),
         "archived": os.path.basename(os.path.dirname(rel)) == "_archive",
     }
 
@@ -899,7 +933,7 @@ def main():
                         "card tree has no scenario level (host-side only, like "
                         "--repeat) — one value applies to every file this import "
                         "copies.")
-    p.add_argument("--outdir", default=os.path.join(_THIS_DIR, "exports"),
+    p.add_argument("--outdir", default=os.path.join(os.path.dirname(_THIS_DIR), "datasets", "exports"),
                    help="Export root (default: the exports/ folder next to this "
                         "script — the same default export_logs.py uses).")
     p.add_argument("--boots", default=None,
@@ -1018,7 +1052,7 @@ def _run(source, args):
     copied = skipped = filtered_out = aborted_skipped = failed = live_skipped = 0
     deleted = delete_failed = 0
     used_this_run = set()  # see _make_unique_filename() — guards against a
-                            # same-second destination collision across boots
+                            # same-minute destination collision across boots
     for rel, attack_dir, topo_dir, location, m, entry in found:
         boot = int(m.group("boot"))
 
@@ -1087,7 +1121,8 @@ def _run(source, args):
 
         dest = _make_unique_filename(dest_args, m.group("kind"), used_this_run)
 
-        clash = _already_imported(dest, rows)
+        clash = _already_imported(dest, rows, (entry or {}).get("started"),
+                                  (entry or {}).get("clock_src"))
         if clash and rows is None:
             # Identity-only match (see _already_imported): same node + repeat,
             # boot unknown. Still skipped - copying it would double this node's

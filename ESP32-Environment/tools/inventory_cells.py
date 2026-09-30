@@ -54,14 +54,16 @@ from collections import defaultdict
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_THIS_DIR)
+sys.path.insert(0, _THIS_DIR)
+import name_stamp  # noqa: E402
 
 # Same convention export_logs.py writes and validate_integrity.py checks.
 FILENAME_RE = re.compile(
     r"^(?P<role>root|victim|child)_(?P<nick>[^_]+)_(?P<topology>[^_]+)_(?P<attack>[^_]+)"
-    r"_r(?P<repeat>\d+)_(?P<date>\d{8})_(?P<time>\d{6})_(?P<kind>telem|arrivals)\.csv$"
+    r"_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_(?P<kind>telem|arrivals)\.csv$"
 )
 
-ANALYSIS_ROOT = os.path.join(_REPO, "analysis")
+ANALYSIS_ROOT = os.path.join(_REPO, "datasets", "analysis")
 
 MIN_CHILDREN = 3            # below this the topology is not meaningfully exercised
 COVERAGE_FLOOR = 0.95       # Milestone 5
@@ -556,8 +558,8 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
             first_open.setdefault(loc, (atk, topo, scn))
     print()
     print("=" * 96)
-    where = ("tools\\exports\\ + analysis\\" if scope == "live"
-             else "archive\\*\\exports\\ + archive\\*\\analysis\\")
+    where = ("datasets\\exports\\ + datasets\\analysis\\" if scope == "live"
+             else "datasets\\archive\\*\\exports\\ + archive\\*\\analysis\\")
     print(f"  CAMPAIGN PROGRESS - {scope.upper()}   "
           f"({'x' if repeats == 1 else str(repeats) + ' repeats'} per cell)   - from {where}")
     print("  [x] = captured + complete + analysed   [~] = data here, not done yet   "
@@ -669,9 +671,9 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
 def main():
     ap = argparse.ArgumentParser(
         description="Inventory every experimental cell against the M4/M5 criteria.")
-    ap.add_argument("--exports", default=os.path.join(_THIS_DIR, "exports"),
-                    help="Live exports root (default: tools/exports).")
-    ap.add_argument("--archive", default=os.path.join(_REPO, "archive"),
+    ap.add_argument("--exports", default=os.path.join(_REPO, "datasets", "exports"),
+                    help="Live exports root (default: datasets/exports).")
+    ap.add_argument("--archive", default=os.path.join(_REPO, "datasets", "archive"),
                     help="Archive root scanned for <archive>/*/exports (default: archive/).")
     ap.add_argument("--live-only", action="store_true",
                     help="Skip archived captures.")
@@ -683,7 +685,7 @@ def main():
                     help="Print the tick-box campaign progress table (what "
                          "run_wizard.ps1's Campaign progress option shows).")
     ap.add_argument("--scope", choices=["live", "archive"], default="live",
-                    help="Checklist to print: live (tools/exports + analysis, the "
+                    help="Checklist to print: live (datasets/exports + datasets/analysis, the "
                          "default) or archive (archive/*/exports + their analysis).")
     ap.add_argument("--reshuffle", action="store_true",
                     help="Re-draw the randomised scenario plan (campaign_plan.json). "
@@ -758,7 +760,7 @@ def main():
 
     print()
     print("=" * 118)
-    print(f"  LIVE (tools/exports)  runs: {len(live):<4} complete captures: {len(live_complete):<4}"
+    print(f"  LIVE (datasets/exports)  runs: {len(live):<4} complete captures: {len(live_complete):<4}"
           f" DONE (complete + analysed): {len(live_done)}   (M4 target: 24)")
     print(f"  ARCHIVE (archive/*)   runs: {len(arch):<4} complete captures: {len(arch_complete):<4}"
           f" (never counted on the live checklist)")
@@ -766,7 +768,7 @@ def main():
           f"({', '.join(sorted(locations)) if locations else 'none'})")
     print("=" * 118)
     print("  Archived runs are real captures - archive.ps1 MOVES them, it does not discard")
-    print("  them - but only tools/exports/ counts toward the live checklist.")
+    print("  them - but only datasets/exports/ counts toward the live checklist.")
     print()
 
     if args.checklist or args.plan or args.reshuffle:

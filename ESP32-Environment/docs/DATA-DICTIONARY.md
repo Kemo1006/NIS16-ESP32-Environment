@@ -43,7 +43,7 @@ Written by `csv_logger_append_telemetry()` (`components/mesh_common/src/csv_logg
 1. **`retry_count` on the blackhole attacker is the manipulation's own control variable.** It goes
    `0.0033 → 0.9991` across the attack window while victims go `0.0008 → 0.0000`. Any feature
    derived from it (`RetryRate`) is label leakage, not a measurement. `analysis/leakage.py` excludes
-   it from model inputs for this reason.
+   it from model inputs on such (pre-F3, v1) captures.
 2. **Table 3.4's prediction of increased victim retransmissions is a pre-registered MISS.**
    Victims show **zero** change. Report it as a miss; do **not** edit the table. §3.3.1.2 already
    explains why — the attacker still ACKs every frame at the link layer, so the victims' radios
@@ -93,7 +93,9 @@ relay (`root_main.c`).
 
 ⚠️ **`retry_count` is still not an 802.11 retransmission count on any role** — it is send
 failures seen by the application, or on Node B the tunnel count. That departure from Table 4.5 is
-documented as **D-15** in `issue_logs/thesis-deviate.md`. RetryRate stays excluded from model inputs.
+documented as **D-15** in `issue_logs/thesis-deviate.md`. Since sep. 26, 2026 RetryRate is a model input on schema-v2 data
+(excluded only on v1 captures or when a wormhole Node B is present - `leakage.retry_count_is_overloaded()`), and a window with
+no send attempt is NaN, not 0 (`features.compute_link_reliability_features`).
 
 Both schemas are accepted by `tools/validate_integrity.py` (`ACCEPTED_HEADERS`).
 

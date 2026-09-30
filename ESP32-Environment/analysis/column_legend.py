@@ -167,17 +167,19 @@ _add("rssi_dbm_max", "Windowed (preprocess)",
 for _base in ("retry_count", "tx_count", "probes_count",
               "recv_count", "forward_count", "drop_count"):
     _add(f"{_base}_delta", "Windowed (preprocess)",
-         f"How much {_base} went up during this window (last - first)",
+         f"How much {_base} went up during this window (_last - _first)",
          "count per window (never negative)",
          f"The per-window version of the running total — see '{_base}' for "
          "what is being counted on each role.")
     _add(f"{_base}_reset_detected", "Windowed (preprocess)",
-         f"True if {_base} went DOWN inside the window (board rebooted and "
-         "the counter restarted from 0)",
+         f"True if {_base} went DOWN inside the window or since the previous "
+         "window ended (board rebooted and the counter restarted from 0)",
          "True | False",
          "When True, the _delta for this window was forced to 0 and is not trustworthy.")
     _add(f"{_base}_first", "Windowed (preprocess)",
-         f"Running total {_base} at the first row of the window", "count")
+         f"Running total {_base} at the START edge of the window (the previous "
+         "window's last row; this window's first row when there is no "
+         "directly preceding kept window)", "count")
     _add(f"{_base}_last", "Windowed (preprocess)",
          f"Running total {_base} at the last row of the window", "count")
 
@@ -213,7 +215,8 @@ _add("ConsistencyScore", "Feature (features.py)",
 _add("RetryRate", "Feature (features.py)",
      "Failed sends ÷ all send attempts in the window", "0-1",
      "Built from retry_count, so it is NOT a radio retransmission rate. "
-     "Excluded from models as label leakage (see leakage.py).")
+     "Excluded as label leakage only on pre-F3 captures (no drop_count) or "
+     "when a wormhole Node B is present (leakage.retry_count_is_overloaded).")
 _add("PDR", "Feature (features.py)",
      "Packet Delivery Ratio: share of this victim's probes the root received",
      "0-1 (1 = all delivered)",

@@ -56,6 +56,14 @@ The offset is **constant per (arrivals file, src_mac)**, so subtracting that gro
 minimum cancels it, leaving delay relative to that node's fastest observed delivery in the
 run. Implemented in `features.py :: compute_latency_features`.
 
+**Which window an arrival lands in (fixed sep. 26, 2026).** Each arrival is placed in the
+sender's window whose probe sequence range holds its `seq_num` — the clock-free join PDR
+uses. Before this it merged on `window_start`, mixing the root's rebased clock with the
+sender's: on blackhole·linear·home (sep. 26) every value sat 63 windows early and cooldown
+latencies showed up in attack windows where the root had received nothing. The per-layer
+table below is a whole-run median on a baseline-only capture, so the shift barely moves it;
+any per-phase LatencyHopRatio figure from before the fix must be regenerated.
+
 **Measured result — 2026-07-25 baseline·linear**, median LatencyHopRatio per layer:
 
 | layer | hops | ms/hop |

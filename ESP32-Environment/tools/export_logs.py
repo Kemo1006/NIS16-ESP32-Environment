@@ -62,13 +62,16 @@ export task shares UART0 with the console, so only one program can read it.
 """
 
 import argparse
-import datetime as _dt
 import os
 import re
+import shutil
 import sys
 import time
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+import name_stamp  # noqa: E402
 
 try:
     import serial  # pyserial
@@ -271,7 +274,21 @@ def _render_progress(received: int, total: int, rows: int,
     # (ETA counting down through fewer digits, or the final line dropping the
     # field entirely) must not leave fragments of a longer previous one on
     # the terminal.
-    sys.stderr.write("\r" + msg.ljust(90))
+    #
+    # Only redraw in place on a real console. When stderr is captured (a
+    # PowerShell `2>&1`), '\r' does not return to anything: each redraw lands
+    # as its own line, so a 540 KB import printed ~500 progress lines, all at
+    # once after python exited. Captured -> the final line only.
+    if not sys.stderr.isatty():
+        if final:
+            sys.stderr.write(msg + "\n")
+            sys.stderr.flush()
+        return
+    # Never let the line reach the window's last column: a line that wraps
+    # makes '\r' return to the start of the WRAPPED row, so every redraw
+    # leaves a fresh copy behind (the same spam in a narrow window).
+    width = max(40, shutil.get_terminal_size((100, 24)).columns - 1)
+    sys.stderr.write("\r" + msg[:width].ljust(min(90, width)))
     if final:
         sys.stderr.write("\n")
     sys.stderr.flush()
@@ -644,9 +661,13 @@ def _subdir_for(args) -> str:
     return os.path.join(args.outdir, attack_dir, topo_dir, args.location, scenario)
 
 
-def _make_filename(args, kind: str) -> str:
-    date = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # e.g. exports/blackhole/star/root_COM3_star_blackhole_r1_20260629_..._telem.csv
+def _make_filename(args, kind: str, taken=()) -> str:
+    date = name_stamp.make()
+    # e.g. exports/blackhole/star/root_COM3_star_blackhole_r1_sept27_0311AM_telem.csv
+    #
+    # The stamp is readable but only minute-precise (see name_stamp.py), so a
+    # name already on disk or in `taken` gets -2, -3, ... instead of silently
+    # overwriting the earlier capture.
     #
     # The board tag is normally the COM port, but a COM number does NOT reliably
     # identify a board here: these CP210x bridges report duplicate/blank USB
@@ -663,7 +684,7 @@ def _make_filename(args, kind: str) -> str:
         f"{args.role}_{safe_tag}_{args.topology}_{args.attack}"
         f"_r{args.repeat}_{date}_{kind}.csv"
     )
-    return os.path.join(_subdir_for(args), name)
+    return name_stamp.unique_path(os.path.join(_subdir_for(args), name), taken)
 
 
 def _save(rows, path) -> int:
@@ -710,7 +731,7 @@ def main() -> int:
     # root_node\exports\ and child_node\exports\ and filed a whole
     # baseline-tree run in there, invisible to every analysis command. An
     # explicit --outdir still wins.
-    p.add_argument("--outdir", default=os.path.join(_THIS_DIR, "exports"),
+    p.add_argument("--outdir", default=os.path.join(os.path.dirname(_THIS_DIR), "datasets", "exports"),
                    help="Output directory (default: the exports/ folder next "
                         "to this script, NOT one relative to your shell).")
     p.add_argument("--flat", action="store_true",
@@ -810,8 +831,9 @@ def main() -> int:
                         "_telem.csv. The per-file counterpart to --delete-sd-path, for "
                         "clearing an aborted run without taking the rest of the folder "
                         "with it. The board accepts only *_telem.csv / *_arrivals.csv, "
-                        "so runs.csv and location.txt cannot be removed this way, and "
-                        "refuses a file it has open right now. Standalone: exports "
+                        "so runs.csv and location.txt cannot be removed this way. A file "
+                        "it has open right now (the run in progress) is closed and "
+                        "deleted too; that run keeps logging to SPIFFS only. Standalone: exports "
                         "nothing.")
     args = p.parse_args()
     args.scenario = canon_scenario(args.scenario)
@@ -1160,8 +1182,10 @@ def main() -> int:
                             "*_arrivals.csv under <attack>/<topology>/<location>[/<scenario>] "
                             "- runs.csv and location.txt are deliberately out of reach.",
                         "ERROR:SD_FILE_IN_USE":
-                            "the board has that file OPEN - it is the run in progress. Let it "
-                            "reach TERMINATE (or reboot the board) first.",
+                            "the board has that file OPEN (the run in progress) and its logger "
+                            "did not release it within 5 s - or the board runs firmware older "
+                            "than sep. 27, 2026, which never deletes a live file. Reflash, or "
+                            "let it reach TERMINATE (or reboot the board), then retry.",
                         "ERROR:SD_NO_CARD":
                             "the SD card could not be mounted - reseat it and check wiring/power.",
                         "ERROR:SD_FILE_NOT_FOUND":

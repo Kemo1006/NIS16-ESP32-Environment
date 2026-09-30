@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>   /* strtoll(): SET_TIME=<unix_epoch> */
 #include <string.h>
@@ -75,6 +76,29 @@ static char  s_sd_log_path[192]      = {0};
 static char  s_sd_arrivals_path[192] = {0};
 static bool  s_sd_log_failed      = false;  /* latched: don't retry every row */
 static bool  s_sd_arrivals_failed = false;
+
+/* DELETE_SD_FILE on a mirror this boot still has OPEN (the run in progress).
+ * The command arrives on the serial export task, but each FILE* belongs to the
+ * task that appends to it, and there is no lock around them — so the export
+ * task never fclose()s one itself. It posts REQ here and waits; the owning
+ * append path sees REQ on its next row, closes + unlinks the file, latches the
+ * mirror off (so the next row cannot recreate it) and answers OK / FAILED.
+ * SPIFFS logging is untouched: the run itself carries on. See
+ * sd_delete_live_mirror() and sd_mirror_service_delete(). */
+enum {
+    SD_LIVE_DEL_IDLE = 0,
+    SD_LIVE_DEL_REQ,
+    SD_LIVE_DEL_BUSY,   /* owner claimed it and is closing/unlinking now */
+    SD_LIVE_DEL_OK,
+    SD_LIVE_DEL_FAILED,
+};
+static atomic_int s_sd_log_del      = SD_LIVE_DEL_IDLE;
+static atomic_int s_sd_arrivals_del = SD_LIVE_DEL_IDLE;
+
+/* How long the export task waits for the owning task to act. Telemetry appends
+ * at SAMPLING_INTERVAL_MS, so it answers within one tick; arrivals only append
+ * when a probe reaches the root, hence the generous margin. */
+#define SD_LIVE_DELETE_WAIT_MS 5000
 
 /* esp_timer_get_time() at the last sd_mirror_sync_due(). 0 = never synced this
  * boot, which makes the first call sync immediately — that is deliberate: it
@@ -665,6 +689,49 @@ static bool sd_rel_capture_file_valid(const char *rel)
            (len > 13 && strcasecmp(rel + len - 13, "_arrivals.csv") == 0);
 }
 
+/* Which hand-off slot covers `full_path`, or NULL if it is not a mirror this
+ * boot has open. Same test as sd_is_live_mirror(), split per file. */
+static atomic_int *sd_live_mirror_slot(const char *full_path)
+{
+    if (s_sd_log_fp != NULL && s_sd_log_path[0] != '\0'
+            && strcasecmp(full_path, s_sd_log_path) == 0) {
+        return &s_sd_log_del;
+    }
+    if (s_sd_arrivals_fp != NULL && s_sd_arrivals_path[0] != '\0'
+            && strcasecmp(full_path, s_sd_arrivals_path) == 0) {
+        return &s_sd_arrivals_del;
+    }
+    return NULL;
+}
+
+/* Asks the owning append path to close + unlink its live mirror (see
+ * s_sd_log_del) and waits for the answer. Returns false if nobody claimed the
+ * request in time — it is withdrawn atomically, so a late append can never act
+ * on it afterwards. */
+static bool sd_delete_live_mirror(atomic_int *slot, sd_delete_result_t *result)
+{
+    atomic_store(slot, SD_LIVE_DEL_REQ);
+    int64_t deadline = esp_timer_get_time() + (int64_t)SD_LIVE_DELETE_WAIT_MS * 1000;
+    while (esp_timer_get_time() < deadline) {
+        if (atomic_load(slot) != SD_LIVE_DEL_REQ) {
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    int state = SD_LIVE_DEL_REQ;
+    if (atomic_compare_exchange_strong(slot, &state, SD_LIVE_DEL_IDLE)) {
+        return false;   /* withdrawn unclaimed */
+    }
+    /* Claimed: one fclose() + unlink away from an answer. */
+    while (state == SD_LIVE_DEL_BUSY) {
+        vTaskDelay(1);
+        state = atomic_load(slot);
+    }
+    atomic_store(slot, SD_LIVE_DEL_IDLE);
+    *result = (state == SD_LIVE_DEL_OK) ? SD_DEL_OK : SD_DEL_FAILED;
+    return true;
+}
+
 static sd_delete_result_t sd_delete_rel_file(const char *rel)
 {
     if (!sd_rel_capture_file_valid(rel)) {
@@ -675,13 +742,22 @@ static sd_delete_result_t sd_delete_rel_file(const char *rel)
         return SD_DEL_BAD_PATH;
     }
 
-    /* The one guard that matters most: never unlink a file this boot still has
-     * OPEN. The export task takes commands from boot (CSV_EXPORT_ON_INIT), so
-     * this can arrive mid-run, and deleting the mirror out from under a live
-     * FILE* loses the run in progress. Same reasoning as SD_DEL_IN_USE in
-     * sd_delete_rel_path(), narrowed from "folder" to "this exact file". */
-    if (sd_is_live_mirror(s_del_path)) {
-        return SD_DEL_IN_USE;
+    /* A file this boot still has OPEN — the run in progress. The operator asked
+     * for it gone, so it goes, but never by unlinking it out from under a live
+     * FILE* from this task: the task that owns the handle closes it first (see
+     * s_sd_log_del). The run keeps logging to SPIFFS; only the card copy stops. */
+    atomic_int *slot = sd_live_mirror_slot(s_del_path);
+    if (slot) {
+        sd_delete_result_t live_result;
+        if (sd_delete_live_mirror(slot, &live_result)) {
+            return live_result;
+        }
+        /* Unanswered. If TERMINATE closed the file meanwhile it is now an
+         * ordinary closed capture and the plain unlink below is safe; if it is
+         * still open, the owning task has stalled — refuse rather than guess. */
+        if (sd_is_live_mirror(s_del_path)) {
+            return SD_DEL_IN_USE;
+        }
     }
 
     bool took_mount = false;
@@ -1030,6 +1106,35 @@ static void sd_mirror_drop(FILE **fp, const char *what)
     }
 }
 
+/* Owner-side half of a live DELETE_SD_FILE (see s_sd_log_del). Called from the
+ * append path that owns *fp, before it touches the handle, so the close can
+ * never race a write. Latches *failed so sd_mirror_ensure() does not recreate
+ * the file the operator just deleted; SPIFFS keeps the run either way. */
+static void sd_mirror_service_delete(atomic_int *slot, FILE **fp, const char *path,
+                                     bool *failed, const char *what)
+{
+    /* Claim it first: once BUSY, the export task can no longer withdraw the
+     * request and waits for the answer instead. */
+    int expected = SD_LIVE_DEL_REQ;
+    if (!atomic_compare_exchange_strong(slot, &expected, SD_LIVE_DEL_BUSY)) {
+        return;
+    }
+    if (*fp) {
+        fclose(*fp);
+        *fp = NULL;
+    }
+    *failed = true;
+    bool ok = (remove(path) == 0 || errno == ENOENT);
+    if (ok) {
+        ESP_LOGW(TAG, "DELETE_SD_FILE: live %s mirror deleted on request (%s) - "
+                      "this run continues on SPIFFS only.", what, path);
+    } else {
+        ESP_LOGW(TAG, "DELETE_SD_FILE: could not remove live %s (errno %d) - "
+                      "mirror closed, file left on the card.", path, errno);
+    }
+    atomic_store(slot, ok ? SD_LIVE_DEL_OK : SD_LIVE_DEL_FAILED);
+}
+
 /* Push one mirror file all the way down to the card, directory entry included.
  *
  * fflush() only empties the stdio buffer into FatFs; fsync() is what reaches
@@ -1291,6 +1396,8 @@ esp_err_t csv_logger_append_telemetry(
         return ESP_FAIL;
     }
 
+    sd_mirror_service_delete(&s_sd_log_del, &s_sd_log_fp, s_sd_log_path,
+                             &s_sd_log_failed, "telemetry");
     sd_mirror_ensure(&s_sd_log_fp, s_sd_log_path, TELEMETRY_HEADER,
                      &s_sd_log_failed, s_node_id, s_role_str, s_run_number, true);
     if (s_sd_log_fp && fputs(row, s_sd_log_fp) < 0) {
@@ -1374,6 +1481,8 @@ esp_err_t csv_logger_append_probe_arrival(
         return ESP_FAIL;
     }
 
+    sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
+                             &s_sd_arrivals_failed, "arrivals");
     sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
                      &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
     if (s_sd_arrivals_fp && fputs(row, s_sd_arrivals_fp) < 0) {

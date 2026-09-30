@@ -1,0 +1,20 @@
+﻿{
+    "attack":  "blackhole",
+    "topology":  "linear",
+    "location":  "home",
+    "scenario":  "stationary",
+    "owner":  "Cal",
+    "repeat":  1,
+    "savedAt":  "2026-09-26 16:00",
+    "boards":  [
+                   {
+                       "Label":  "node1",
+                       "Port":  "COM25",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

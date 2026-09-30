@@ -613,6 +613,41 @@ def interactive_run(args):
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
+def print_layer_crosscheck(graph, nodes):
+    """Diagnostic only - never changes the verdict.
+
+    parent_mac and layer both come live from the ESP-MESH stack
+    (esp_mesh_get_parent_bssid / esp_mesh_get_layer), so a real child sits at
+    exactly its parent's layer + 1. A final parent claim that breaks that rule
+    is a report the node's own stack contradicts. G402 sep. 25, 2026: node3
+    (20500DE70C80) claimed the ATTACKER (layer 3) while logging layer 6 and
+    being named parent by a layer-6 board - the "2 children" FAIL on a
+    1-child LINEAR build rested on that one claim. Each board's FINAL parent
+    is also read at a different moment (its own log end), so a board whose
+    log ended early describes an older tree.
+    """
+    bad = []
+    for nid in sorted(nodes):
+        par = graph.parent.get(nid)
+        if par is None or par not in nodes:
+            continue
+        n, p = nodes[nid], nodes[par]
+        if n.final_layer is None or p.final_layer is None:
+            continue
+        if n.final_layer != p.final_layer + 1:
+            bad.append((nid, par, n.final_layer, p.final_layer))
+    if not bad:
+        return
+    print("=== Parent-vs-layer cross-check (diagnostic, not part of the verdict) ===")
+    for nid, par, lyr, plyr in bad:
+        print(f"  (!) {nid} logs layer {lyr} but claims parent {par} at layer {plyr} "
+              f"- a real child of it would be layer {plyr + 1}.")
+    print("  These parent claims contradict the boards' own layer numbers. A structure")
+    print("  FAIL that rests on one of them may be a logging anomaly on that board, not")
+    print("  the real tree - compare the root's live PARENT/CHILD dashboard for this run.")
+    print()
+
+
 def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=False):
     """Load, reconstruct, and report on exactly one run. Returns 0/1/2."""
     print(f"Loaded {len(paths)} telemetry file(s):")
@@ -706,6 +741,8 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         structure_ok = status != topology_graph.FAIL
         print()
 
+    print_layer_crosscheck(graph, nodes)
+
     # ── Verdict ─────────────────────────────────────────────────────────────
     print("=== Milestone-3 verdict ===")
     if measured == 0 and not_measured > 0:
@@ -731,7 +768,7 @@ def main():
     # "exports" silently scans (and lets other tools create) a stray .\exports\
     # wherever you happen to be standing — the repo root, most often. Real
     # captures always live in tools/exports/. An explicit --dir still wins.
-    ap.add_argument("--dir", default=os.path.join(_THIS_DIR, "exports"),
+    ap.add_argument("--dir", default=os.path.join(os.path.dirname(_THIS_DIR), "datasets", "exports"),
                     help="Folder of exported CSVs "
                          "(default: the exports/ folder next to this script).")
     ap.add_argument("--topology", choices=TOPOLOGIES, default="star")

@@ -122,9 +122,13 @@ LABEL_NAMES = {0: "Baseline", 1: "Blackhole", 2: "Wormhole"}
 # Plain-language axis text, so a plot can be read without opening features.py.
 # Windows are 1 s (preprocess.WINDOW_SECONDS), so "per window" = "per second".
 FEATURE_DESCRIPTIONS = {
-    "ForwardingRatio": "packets forwarded ÷ received (0–1)",
+    "ForwardingRatio": "forwarded ÷ received per 1 s window (>1 = backlog from the previous window)",
+    "ForwardingRatio_5w": "forwarded ÷ received, summed over the last 5 windows",
+    "RootArrivals": "probes arriving at the root per window",
     "IngressEgressDelta": "packets received − forwarded",
-    "RetryRate": "MAC retries ÷ transmissions (0–1)",
+    # App-layer (D-15): retry_count = failed esp_mesh_send() calls, not 802.11
+    # retransmissions - the paper's "MAC" name is what Table 4.5 must amend.
+    "RetryRate": "failed sends ÷ send attempts (0–1, app-layer)",
     "PDR": "share of probes that reached the root (0–1)",
     "ParentSwitchRate": "parent changes per second",
     "HopChangeCount": "tree-depth changes in the window",
@@ -162,9 +166,23 @@ PHASE_COLORS = {
     "Cooldown (after attack)": "#ff7f0e",
 }
 UNLABELLED_COLOR = "#9e9e9e"
+# Why a feature that is flat across every labelled window is a finding, printed
+# on its distribution plot so the empty-looking figure explains itself.
+FLAT_RESULT_NOTES = {
+    "RetryRate": ("No send failed in baseline, attack or cooldown: the attacker still\n"
+                  "accepts every frame, so a victim's send never fails (paper 3.3.1.2).\n"
+                  "Table 3.4 predicted a rise - a pre-registered MISS to report\n"
+                  "(docs/EXPECTED-RESULTS.md 6a)."),
+}
+# PCA/t-SNE input is standardised, then clipped to +-this many sd (see
+# run_dimensionality_reduction for why).
+PCA_Z_CLIP = 5.0
+# A distribution plot draws its KDE curve only when every phase has at least
+# this many distinct values (see plot_distributions).
+MIN_KDE_DISTINCT = 5
 # Fixed per role so "victim" is the same colour in every figure; seaborn's
 # default assigns colours by first appearance, which differs per feature.
-ROLE_COLORS = {"victim": "#4c72b0", "root": "#55a868", "blackhole": "#dd8452",
+ROLE_COLORS = {"victim": "#4c72b0", "child": "#4c72b0", "root": "#55a868", "blackhole": "#dd8452",
                "wormhole": "#8172b3", "wormhole_entry": "#8172b3",
                "wormhole_exit": "#937860"}
 
@@ -208,6 +226,23 @@ def _phase_order_palette(names) -> tuple[list[str], dict]:
 def _axis_label(feat: str) -> str:
     desc = FEATURE_DESCRIPTIONS.get(feat)
     return f"{feat}\n{desc}" if desc else feat
+
+
+def _leaking_for(df: pd.DataFrame) -> set[str]:
+    """Columns kept out of correlation and PCA for THIS dataset.
+
+    leakage.leaking_columns_for(), not the fixed LEAKING_COLUMNS: since C7 every
+    node relays, so ForwardingRatio / IngressEgressDelta are real multi-role
+    measurements and leakage.py's own audit already treats them that way. The
+    fixed list dropped the one primary signature that measures the attacker.
+    ConsistencyScore stays out whenever ForwardingRatio is in: it IS
+    |ForwardingRatio - 1| (Eq 4.15), so keeping both adds a duplicate axis and a
+    correlation that is the formula, not the network.
+    """
+    out = set(leakage.leaking_columns_for(df))
+    if "ForwardingRatio" not in out:
+        out.add("ConsistencyScore")
+    return out
 
 
 def _ensure_dir(path: str):
@@ -257,20 +292,29 @@ def descriptive_statistics(df: pd.DataFrame) -> pd.DataFrame:
 def descriptive_statistics_by_phase(df: pd.DataFrame) -> pd.DataFrame:
     """
     Same statistics as above, but broken out per ground-truth label
-    (baseline/blackhole/wormhole) — useful for spotting which features
-    shift between phases before formal distribution plots.
+    (baseline/blackhole/wormhole) AND node role — useful for spotting which
+    features shift between phases before formal distribution plots.
+
+    Per role because a phase-only mean describes no real node: on G402
+    (sep. 25, 2026) "attack ForwardingRatio 0.80" averaged the attacker's 0.0
+    with every honest relay's ~1.0.
     """
     present = [c for c in FEATURE_COLUMNS if c in df.columns]
     label_col = "Label" if "Label" in df.columns else "window_label"
+    keys = [label_col] + (["node_role"] if "node_role" in df.columns else [])
 
     rows = []
-    for label_val, group in df.groupby(label_col):
+    for key, group in df.groupby(keys):
+        label_val, role = (key if isinstance(key, tuple) else (key,)) + ((None,) if len(keys) == 1 else ())
         label_name = LABEL_NAMES.get(label_val, str(label_val))
         for col in present:
             series = group[col]
             n_valid = series.notna().sum()
+            if not n_valid:
+                continue    # a feature undefined for this role is not a statistic
             rows.append({
                 "label": label_name,
+                "node_role": role,
                 "feature": col,
                 "mean": series.mean(),
                 "median": series.median(),
@@ -304,7 +348,7 @@ def plot_distributions(
     should exist.
     """
     if features is None:
-        features = ["ForwardingRatio", "RetryRate", "RSSI_Hop_Diff"]
+        features = ["ForwardingRatio", "ForwardingRatio_5w", "RetryRate", "RSSI_Hop_Diff"]
 
     role_col = "node_role" if "node_role" in df.columns else "role"
 
@@ -355,11 +399,20 @@ def plot_distributions(
             # M8 run. A fixed, distinct-value-aware cap keeps the histogram honest
             # and bounded.
             nbins = int(min(50, max(10, valid[feat].nunique())))
+            # A KDE only means something for a phase whose values actually
+            # spread. On a (nearly) constant phase gaussian_kde does not always
+            # raise: with one or two outliers it fits a ~1e-16 bandwidth and
+            # draws a ~1e15 spike that flattens every other phase to nothing
+            # (2026-09-26 21:11 home run: ForwardingRatio 1.0 in almost every
+            # baseline window, attack all 0 and invisible). Draw it only when
+            # every phase has MIN_KDE_DISTINCT distinct values.
+            use_kde = all(g.nunique() >= MIN_KDE_DISTINCT
+                          for _, g in valid[feat].groupby(phase.values))
             try:
                 sns.histplot(
                     data=hist_df,
                     x=feat, hue="Phase", hue_order=order, palette=palette,
-                    kde=True, ax=axes[0], bins=nbins,
+                    kde=use_kde, ax=axes[0], bins=nbins,
                     element="step", stat="density", common_norm=False,
                 )
             except (np.linalg.LinAlgError, MemoryError, ValueError):
@@ -397,8 +450,15 @@ def plot_distributions(
             axes[1].tick_params(axis="x", labelsize=9)
 
             if valid[feat].nunique() == 1:
-                note = (f"Every window has {feat} = {valid[feat].iloc[0]:g}.\n"
-                        "Nothing varies, so there is no distribution to compare.")
+                value = valid[feat].iloc[0]
+                n_other = int((has_value & unlabelled & (df[feat] != value)).sum())
+                note = (f"Every labelled window has {feat} = {value:g}: a flat RESULT,\n"
+                        "not missing data - there is no spread to draw.")
+                if n_other:
+                    note += (f"\n{n_other} unlabelled window(s) outside the experiment "
+                             "differ and are not shown.")
+                if feat in FLAT_RESULT_NOTES:
+                    note += "\n" + FLAT_RESULT_NOTES[feat]
                 for ax in axes:
                     ax.text(0.5, 0.5, note, ha="center", va="center", fontsize=10,
                             color="darkred", transform=ax.transAxes,
@@ -536,6 +596,13 @@ def _draw_timeseries(plot_df, features, title, out_path, single_node=False):
         axes = [axes]
     fig.suptitle(title, fontsize=10)
     phase_spans = _phase_spans(plot_df)
+    # One colour per NODE for the whole figure. Letting matplotlib cycle per
+    # axis gave the same board a different colour in each panel (each panel
+    # skips the nodes it has no data for), so a line could not be followed
+    # from ForwardingRatio down to PDR.
+    palette = sns.color_palette("tab10", 10) + sns.color_palette("Dark2", 8)
+    node_color = {n: palette[i % len(palette)]
+                  for i, n in enumerate(sorted(plot_df["node_id"].astype(str).unique()))}
 
     for ax, feat in zip(axes, features):
         if feat not in plot_df.columns:
@@ -551,7 +618,8 @@ def _draw_timeseries(plot_df, features, title, out_path, single_node=False):
                         if "node_role" in node_df.columns else None)
                 ax.plot(
                     node_df["_t"], node_df[feat],
-                    linewidth=1.2, color="#222222" if single_node else None,
+                    linewidth=1.2,
+                    color="#222222" if single_node else node_color[str(node_id)],
                     label=f"{node_id} ({role})" if role else node_id,
                 )
                 plotted_any = True
@@ -595,8 +663,17 @@ def plot_time_series(
     features: list[str] | None = None,
 ) -> list[str]:
     """
-    Selected feature trajectories over the run — per the thesis: "Selected
-    feature trajectories (e.g., parent switch events, PDR)". Defaults to those.
+    Selected feature trajectories over the run — per the thesis (Section
+    4.2.6): "Selected feature trajectories (e.g., parent switch events, PDR)".
+    The paper's two are kept; the "e.g." leaves room for two more, added so
+    EVERY role gets a line (with only those two the attacker's and the root's
+    figures were blank panels):
+      ForwardingRatio_5w  the attacker-side primary signature, smoothed over
+                          5 windows = verify_attack.py's pooling (display only,
+                          see add_display_columns).
+      RootArrivals        the root's received-probe count, the independent
+                          root-side view of the same drop (display only).
+    Neither is a Table 4.11 feature and neither enters stats/correlation/PCA.
 
     TWO VIEWS, both written, because they answer different questions:
 
@@ -617,7 +694,10 @@ def plot_time_series(
     are true for every line on the axis.
     """
     if features is None:
-        features = ["ParentSwitchRate", "PDR"]
+        # ForwardingRatio is the one PRIMARY signature that measures the
+        # attacker itself; with only ParentSwitchRate + PDR the attacker's and
+        # the root's figures were blank panels. RootArrivals gives the root a line.
+        features = ["ForwardingRatio_5w", "PDR", "RootArrivals", "ParentSwitchRate"]
 
     df = df.copy()
     # Group by the RUN, using the columns preprocess.py already resolved.
@@ -642,12 +722,27 @@ def plot_time_series(
         safe_run = str(run_id).replace(".csv", "").replace("/", "_")
 
         # ── view 1: the whole run, every node on one axis ──
+        # A node with NO labelled window (preprocess unlabels one whose phases
+        # disagree with the root's, phase_sync.py) has no baseline to align on,
+        # so it would sit on its own clock and stripe the shared phase bands.
+        # It keeps its per-node figure below; the overlay names it instead.
+        label_col = "Label" if "Label" in run_df.columns else "window_label"
+        overlay_df, left_out = run_df, []
+        if label_col in run_df.columns and "node_id" in run_df.columns:
+            has_label = run_df[label_col].notna().groupby(run_df["node_id"]).any()
+            left_out = sorted(has_label.index[~has_label])
+            if left_out and len(left_out) < len(has_label):
+                overlay_df = run_df[~run_df["node_id"].isin(left_out)]
+            else:
+                left_out = []
+        note = ("\nNot shown - no labelled window (out of sync with the root, see "
+                "preprocess report): " + ", ".join(left_out)) if left_out else ""
         written.append(_draw_timeseries(
-            run_df, features,
+            overlay_df, features,
             f"Feature trajectories over the run — {run_id}\n"
             "Background colour = experiment phase.  t=0 is when BASELINE starts on "
             "each node;\nnegative t is pre-baseline idle (node booted, root had not "
-            "announced a phase yet) and is excluded from analysis.",
+            "announced a phase yet) and is excluded from analysis." + note,
             os.path.join(output_dir, f"timeseries_{safe_run}.png")))
 
         # ── view 2: one figure per capture file, same names as before ──
@@ -689,31 +784,75 @@ def compute_correlations(
     were excluded and why, so the exclusion is never silent.
 
     exclude_leaking (default True) additionally drops the label-equivalent
-    columns listed in leakage.LEAKING_COLUMNS. Correlating a feature against
+    columns from _leaking_for(df) (leakage.py, per dataset). Correlating a feature against
     the attack's own switch measures the switch, not a cross-layer
     relationship: ConsistencyScore is |ForwardingRatio - 1| to 1.1e-16, so
     leaving both in manufactures a perfect correlation that says nothing about
     the network. Pass False for the attacker-side diagnostic view.
     """
+    pearson, spearman, excluded, _constant, _n = _correlate(df, exclude_leaking)
+    return pearson, spearman, excluded
+
+
+# Which windows each correlation view uses. Section 4.2.6 asks for "cross-layer
+# consistency during baseline and its breakdown during manipulation", so the
+# baseline and attack windows each get their own matrix; "" pools every
+# experiment window. Unlabelled windows (mesh forming, root not up, a node out of
+# sync) are never used - the same rule as the distribution plots and PCA.
+CORRELATION_VIEWS = {
+    "": ("all experiment phases", lambda names: ~names.map(_is_unlabelled)),
+    "_baseline": ("baseline only", lambda names: names == "Baseline"),
+    "_attack": ("attack only", lambda names: names.str.endswith(" attack")),
+}
+
+
+def _correlate(df: pd.DataFrame, exclude_leaking: bool = True, view: str = ""):
+    """(pearson, spearman, all-NaN columns, constant columns, n windows) for one view.
+
+    A column that is constant over the view's windows has no correlation (0/0)
+    and is dropped from the matrix but NAMED, so a flat feature - RetryRate on a
+    stationary blackhole run - reads as the result it is, not as missing data.
+    """
+    rows = df[CORRELATION_VIEWS[view][1](_phase_names(df)).values]
     candidate_cols = [c for c in FEATURE_COLUMNS if c in df.columns]
     if exclude_leaking:
-        candidate_cols = [c for c in candidate_cols if c not in leakage.LEAKING_COLUMNS]
-    excluded = _detect_allnan_columns(df, candidate_cols)
+        candidate_cols = [c for c in candidate_cols if c not in _leaking_for(df)]
+    excluded = _detect_allnan_columns(rows, candidate_cols)
     usable_cols = [c for c in candidate_cols if c not in excluded]
 
-    numeric_df = df[usable_cols].apply(pd.to_numeric, errors="coerce")
+    numeric_df = rows[usable_cols].apply(pd.to_numeric, errors="coerce")
+    constant = [c for c in usable_cols if numeric_df[c].nunique() <= 1]
+    numeric_df = numeric_df.drop(columns=constant)
 
-    pearson = numeric_df.corr(method="pearson")
-    spearman = numeric_df.corr(method="spearman")
-
-    return pearson, spearman, excluded
+    return (numeric_df.corr(method="pearson"), numeric_df.corr(method="spearman"),
+            excluded, constant, len(rows))
 
 
 def plot_correlation_heatmaps(
     df: pd.DataFrame,
     output_dir: str,
 ) -> tuple[str, str, list[str]]:
-    pearson, spearman, excluded = compute_correlations(df)
+    """correlation_{pearson,spearman}{,_baseline,_attack}.png + .csv (see
+    CORRELATION_VIEWS). Returns the pooled pair's paths and all-NaN columns."""
+    excluded = []
+    for view in CORRELATION_VIEWS:
+        pearson, spearman, view_excluded, constant, n_rows = _correlate(df, view=view)
+        if not view:
+            excluded = view_excluded
+        if n_rows == 0:
+            continue    # e.g. a baseline-only capture has no attack view
+        for name, matrix in [("pearson", pearson), ("spearman", spearman)]:
+            matrix.to_csv(os.path.join(output_dir, f"correlation_{name}{view}.csv"))
+        _draw_correlation_pair(pearson, spearman, view, view_excluded, constant,
+                               n_rows, output_dir)
+
+    pearson_path = os.path.join(output_dir, "correlation_pearson.png")
+    spearman_path = os.path.join(output_dir, "correlation_spearman.png")
+    return pearson_path, spearman_path, excluded
+
+
+def _draw_correlation_pair(pearson, spearman, view, excluded, constant, n_rows,
+                           output_dir):
 
     layer_of = {f: layer for layer, feats in LAYER_GROUPS.items() for f in feats}
     method_blurb = {
@@ -748,15 +887,21 @@ def plot_correlation_heatmaps(
         plt.setp(ax.get_xticklabels(), ha="right", rotation_mode="anchor")
         ax.tick_params(axis="y", labelsize=9)
 
-        title = (f"{name.capitalize()} correlation between features "
-                 f"({len(df)} windows, all nodes and phases)\n{method_blurb[name]}")
+        title = (f"{name.capitalize()} correlation between features - "
+                 f"{CORRELATION_VIEWS[view][0]} ({n_rows} labelled windows, all nodes)"
+                 f"\n{method_blurb[name]}")
+        # Wrap the lists manually rather than relying on matplotlib's title
+        # auto-wrap (which doesn't wrap titles by default and was clipping the
+        # last column name off the right edge of the figure).
         if excluded:
-            # Wrap the excluded-columns list manually rather than relying
-            # on matplotlib's title auto-wrap (which doesn't wrap titles
-            # by default and was clipping the last column name off the
-            # right edge of the figure).
-            excluded_text = "Not shown (no data in this run): " + ", ".join(excluded)
+            excluded_text = "Not shown (no data in these windows): " + ", ".join(excluded)
             title += "\n" + textwrap.fill(excluded_text, width=110)
+        if constant:
+            constant_text = ("Not shown (same value in every window, so no correlation "
+                             "exists - a result, not a gap): "
+                             + ", ".join(f"{c} [{layer_of.get(c, 'Cross-layer')}]"
+                                         for c in constant))
+            title += "\n" + textwrap.fill(constant_text, width=110)
         ax.set_title(title, fontsize=10, loc="left")
 
         fig.text(
@@ -770,13 +915,9 @@ def plot_correlation_heatmaps(
             fontsize=8.5, color="#444444", ha="left", va="bottom",
         )
         fig.tight_layout(rect=(0, 0.05, 1, 1))
-        out_path = os.path.join(output_dir, f"correlation_{name}.png")
+        out_path = os.path.join(output_dir, f"correlation_{name}{view}.png")
         fig.savefig(out_path, dpi=120)
         plt.close(fig)
-
-    pearson_path = os.path.join(output_dir, "correlation_pearson.png")
-    spearman_path = os.path.join(output_dir, "correlation_spearman.png")
-    return pearson_path, spearman_path, excluded
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -851,7 +992,7 @@ def run_dimensionality_reduction(
     # and the reason for each entry. Pass exclude_leaking=False for the
     # attacker-side diagnostic view.
     leaking_excluded = (
-        [c for c in candidate_cols if c in leakage.LEAKING_COLUMNS]
+        [c for c in candidate_cols if c in _leaking_for(df)]
         if exclude_leaking else []
     )
 
@@ -958,8 +1099,12 @@ def run_dimensionality_reduction(
             f"refusing to run PCA/t-SNE on it. Affected columns: {', '.join(bad_cols)}."
         )
 
+    # Clipped after standardising: the topology features are ~constant, so the
+    # handful of windows where a node switched parent sat 40-48 sd out (G402,
+    # sep. 25, 2026) and PC1 described those few windows instead of the run.
+    # Clipping keeps the events visible without letting them own an axis.
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = np.clip(scaler.fit_transform(X), -PCA_Z_CLIP, PCA_Z_CLIP)
 
     pca = PCA(n_components=2, random_state=random_state)
     pca_proj = pca.fit_transform(X_scaled)
@@ -1071,7 +1216,8 @@ def _pca_title(result: dict) -> str:
     var_explained = result["pca_explained_variance_ratio"]
     if len(var_explained) < 2 or not np.isfinite(var_explained[:2]).all():
         return "PCA (explained variance undefined — no variance in inputs)"
-    return f"PCA (PC1: {var_explained[0]:.1%} var, PC2: {var_explained[1]:.1%} var)"
+    return (f"PCA (PC1: {var_explained[0]:.1%} var, PC2: {var_explained[1]:.1%} var; "
+            f"z clipped at ±{PCA_Z_CLIP:g})")
 
 
 def plot_dimensionality_reduction(
@@ -1231,6 +1377,32 @@ def plot_tunnel_end_projection(
 # Orchestration
 # ─────────────────────────────────────────────────────────────────────────
 
+def add_display_columns(df: pd.DataFrame, n: int = 5) -> pd.DataFrame:
+    """Plot-only columns. Never written back to the feature table.
+
+    ForwardingRatio_5w: forwarded / received summed over the last n windows of
+      the same file - the same ratio-of-sums verify_attack.py tests
+      (it uses fixed 5-window blocks; this slides, which suits a time series). Per 1 s window
+      a probe received just before the edge is forwarded just after it, so the
+      raw feature flips 0 -> 2 on an honest relay (values up to 3.0 on G402).
+    RootArrivals: the root's probes_count_delta, which on the root counts
+      probes RECEIVED (root_main.c s_probes_received).
+    """
+    df = df.copy()
+    if {"recv_count_delta", "forward_count_delta", "source_file", "window_start"} <= set(df.columns):
+        order = df.sort_values(["source_file", "window_start"]).index
+        g = df.loc[order].groupby("source_file")
+        recv = g["recv_count_delta"].transform(lambda s: s.rolling(n, min_periods=1).sum())
+        fwd = g["forward_count_delta"].transform(lambda s: s.rolling(n, min_periods=1).sum())
+        ratio = (fwd / recv).where(recv > 0)
+        # Only where the per-window feature is defined for that node at all.
+        relay = df.loc[order].groupby("source_file")["ForwardingRatio"].transform(lambda s: s.notna().any())
+        df["ForwardingRatio_5w"] = ratio.where(relay).reindex(df.index)
+    if {"node_role", "probes_count_delta"} <= set(df.columns):
+        df["RootArrivals"] = df["probes_count_delta"].where(df["node_role"] == "root")
+    return df
+
+
 def run_eda(feature_table_path: str, output_dir: str) -> dict:
     """
     Runs all five thesis-specified analyses against a feature_table.csv
@@ -1239,6 +1411,9 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     """
     _ensure_dir(output_dir)
     df = pd.read_csv(feature_table_path)
+    # Display columns feed the plots only: stats, correlation, PCA and the
+    # leakage audit select FEATURE_COLUMNS, so they never see them.
+    df = add_display_columns(df)
 
     summary = {}
 
@@ -1268,9 +1443,6 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     summary["correlation_spearman_plot"] = spearman_path
     summary["correlation_excluded_columns"] = corr_excluded
 
-    pearson_df, spearman_df, _ = compute_correlations(df)
-    pearson_df.to_csv(os.path.join(output_dir, "correlation_pearson.csv"))
-    spearman_df.to_csv(os.path.join(output_dir, "correlation_spearman.csv"))
 
     # 5. PCA / t-SNE
     dimred_path, dimred_result = plot_dimensionality_reduction(df, output_dir)
@@ -1355,6 +1527,12 @@ def _find_orphan_timeseries(df: pd.DataFrame, output_dir: str) -> list[str]:
     if "source_file" not in df.columns:
         return []
     current = {os.path.splitext(str(s))[0] for s in df["source_file"].unique()}
+    # The whole-run overlay is named after the run, not a file (plot_time_series
+    # view 1). Without this every overlay was reported stale on every pass.
+    id_cols = [c for c in ("attack", "topology", "location", "run_repeat") if c in df.columns]
+    if id_cols:
+        runs = df[id_cols].astype(str).agg("_".join, axis=1).unique()
+        current |= {str(r).replace(".csv", "").replace("/", "_") for r in runs}
     prefix = "timeseries_"
     orphans = []
     for path in sorted(glob.glob(os.path.join(output_dir, prefix + "*.png"))):

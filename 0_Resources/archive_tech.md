@@ -28,9 +28,4 @@ Read only when the user asks for install history; otherwise this file is write-o
 
 | Date | Package | Version | Type | Action Type | Status | Purpose |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-<!-- Example rows — delete on first real use:
-| Jul. 12, 2026 | matplotlib | 3.10.0 | Python / Pip | New Install | Downloaded & Installed | Local data-viz script rendering. |
-| Jul. 15, 2026 | numpy | 1.26.4 | Python / Pip | Update (from 1.24.0) | Downloaded & Installed | Resolve matplotlib compat issue. |
-| Jul. 15, 2026 | graphviz | 12.0.0 | System / Homebrew | New Install | Failed | Missing C++ compiler flags during build. |
-| Aug. 02, 2026 | git | 2.45.2 | Global Binary | Retain (No Change) | Verified (Existing) | Confirmed version matches repo requirement. |
--->
+| Sep. 26, 2026 | scapy | 2.7.0 | Python / Pip | New Install | Downloaded & Installed | Throwaway venv in the Claude session scratchpad only (not the IDF env, not the repo): independent radiotap decoder to test tools/sniff.py output. |
