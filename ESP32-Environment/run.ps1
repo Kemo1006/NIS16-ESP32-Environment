@@ -576,8 +576,9 @@ function Show-ScenarioChecklist {
     Write-Host " $verb." -ForegroundColor Magenta
     Write-Host " WHEN: as soon as the ROOT console prints 'PHASE -- ATTACK'  (attack run)" -ForegroundColor Magenta
     Write-Host "       or about halfway through 'PHASE 0 -- BASELINE'        (baseline run)" -ForegroundColor Magenta
-    Write-Host " Do it ONCE, in one motion; keep the board powered afterward -- it keeps" -ForegroundColor Magenta
-    Write-Host " logging (CSV_EXPORT_ON_INIT, append mode). Note both spots / the exact time" -ForegroundColor Magenta
+    Write-Host " Do it ONCE, in one motion; keep the board powered afterward -- it rejoins," -ForegroundColor Magenta
+    Write-Host " re-learns the phase from the root within ~10 s (root flashed sep. 30 or later)" -ForegroundColor Magenta
+    Write-Host " and keeps logging (append mode). Note both spots / the exact time" -ForegroundColor Magenta
     Write-Host " in the ledger yourself -- this tooling does NOT time or beep this for you." -ForegroundColor Magenta
     if ($IsTarget) {
         Write-Host " THIS board ($Role on $Port) IS the $Scenario target." -ForegroundColor Magenta

@@ -2,7 +2,7 @@
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
 
-**Updated:** sep. 30, 2026 (Angelo: burst early-fire bug FIXED in code — reflash burst boards before any more burst runs) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu; **file/folder names now use a readable stamp `sept27_0311AM` (old files unchanged, tools read both; Angelo must pull CODE before he gets new-format files)**. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
+**Updated:** sep. 30, 2026 (Angelo: burst + powercycle FIXED in firmware — REFLASH the ROOT and burst boards before the next run) — **ALL DATA NOW UNDER `ESP32-Environment/datasets/`** (code stayed; originals NOT yet deleted); Wireshark view menu now defaults to ALL boards + a MY boards submenu; **file/folder names now use a readable stamp `sept27_0311AM` (old files unchanged, tools read both; Angelo must pull CODE before he gets new-format files)**. **Next: user deletes originals, reviews + COMMITS/PUSHES, then Angelo `git pull`s.**
 
 ## ⚠️ Working copies
 Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3`. Both clone GitHub branch `THESIS3` — `git pull` before editing; old `NIS16-ESP32-Environment` = backup only.

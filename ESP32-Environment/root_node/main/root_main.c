@@ -185,6 +185,9 @@ void app_main(void)
     /* ── 2. Phase listener (the root also receives its own broadcasts via
      *       the mesh receive queue, keeping its own state consistent) ─────── */
     ESP_ERROR_CHECK(phase_listener_start());
+    /* Powercycle scenario: a child that reboots mid-phase re-learns the phase
+     * within PHASE_RESYNC_INTERVAL_S instead of waiting for the next phase. */
+    ESP_ERROR_CHECK(phase_listener_start_resync());
     /* Keep hearing the children after TERMINATE: their final heartbeats are
      * what fill the dashboard's EXPORT column. */
     phase_listener_keep_running_after_terminate();

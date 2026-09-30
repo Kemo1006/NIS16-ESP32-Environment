@@ -162,6 +162,13 @@ void phase_listener_broadcast_prepare(void);
 /** True once this boot has heard the root's PREPARE signal (see above). */
 bool phase_listener_prepare_heard(void);
 
+/**
+ * @brief Root only: start re-sending the current phase every 10 s, same
+ *        seq_num, so a node that rebooted mid-phase re-syncs (others dedupe it).
+ *        Stops once TERMINATE has been broadcast.
+ */
+esp_err_t phase_listener_start_resync(void);
+
 /* ── Non-phase data dispatch ─────────────────────────────────────────────── */
 
 /**

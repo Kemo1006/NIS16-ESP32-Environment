@@ -90,6 +90,18 @@ static uint32_t root_session(void)
     return s_root_session;
 }
 
+/* Root-side: the last real phase broadcast, re-sent UNCHANGED (same seq_num)
+ * every PHASE_RESYNC_INTERVAL_S by phase_resync_task. A node that heard it
+ * drops the copy in the seq dedupe; a node that rebooted mid-phase (powercycle
+ * scenario) has s_last_seq == 0, accepts it, and its log gate reopens - before
+ * this, it logged nothing until the NEXT phase started. */
+#ifndef PHASE_RESYNC_INTERVAL_S
+#define PHASE_RESYNC_INTERVAL_S 10U
+#endif
+static phase_msg_t  s_current_msg;
+static bool         s_current_valid = false;
+static portMUX_TYPE s_current_mux   = portMUX_INITIALIZER_UNLOCKED;
+
 /* Handler for non-phase packets (e.g. probe arrivals). NULL = drop them. */
 static phase_listener_data_cb_t s_data_cb = NULL;
 
@@ -319,6 +331,11 @@ int phase_listener_broadcast(uint8_t phase_id)
         .tos   = MESH_TOS_P2P,
     };
 
+    taskENTER_CRITICAL(&s_current_mux);
+    s_current_msg   = msg;
+    s_current_valid = true;
+    taskEXIT_CRITICAL(&s_current_mux);
+
     /* All PHASE_BROADCAST_REPEAT rounds share one seq_num on purpose: repeats
      * add reliability but apply the phase exactly once. */
     int failed = 0;
@@ -356,6 +373,42 @@ void phase_listener_broadcast_prepare(void)
     ESP_LOGD(TAG, "[ROOT] PREPARE seq=%lu (%d failed sends)",
              (unsigned long)s_bcast_seq, failed);
     (void)failed;   /* only read by ESP_LOGD, which a build may compile out */
+}
+
+static void phase_resync_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(PHASE_RESYNC_INTERVAL_S * 1000U));
+        phase_msg_t msg;
+        bool valid;
+        taskENTER_CRITICAL(&s_current_mux);
+        msg   = s_current_msg;
+        valid = s_current_valid;
+        taskEXIT_CRITICAL(&s_current_mux);
+        if (!valid) {
+            continue;
+        }
+        if (msg.phase_id == PHASE_ID_TERMINATE) {
+            break;      /* root_main.c re-sends TERMINATE on its own schedule */
+        }
+        mesh_data_t mdata = {
+            .data  = (uint8_t *)&msg,
+            .size  = sizeof(msg),
+            .proto = MESH_PROTO_BIN,
+            .tos   = MESH_TOS_P2P,
+        };
+        send_round(&mdata, true);
+    }
+    vTaskDelete(NULL);
+}
+
+esp_err_t phase_listener_start_resync(void)
+{
+    BaseType_t rc = xTaskCreate(phase_resync_task, "phase_resync",
+                                STACK_PHASE_LISTENER, NULL,
+                                TASK_PRIO_PHASE_LISTENER, NULL);
+    return rc == pdPASS ? ESP_OK : ESP_FAIL;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -371,7 +371,8 @@ def compute_neighbour_forwarding_features(
         NeighbourForwardingRatio = NeighbourOut / NeighbourIn
 
     NaN on leaves and the root (nothing to relay) and wherever NeighbourIn = 0.
-    Tree = each node's dominant parent per run (exposure.py), not per window.
+    Tree = each window's own parent_mac, so a node that moves (mobility)
+    is attributed to whichever parent it had at that second.
     """
     out = pd.DataFrame(np.nan, index=windowed.index, columns=NEIGHBOUR_COLUMNS)
     need = ["node_id", "node_role", "parent_mac", "t_anchor_s",
@@ -404,62 +405,70 @@ def compute_neighbour_forwarding_features(
         nodes = g["node_id"].dropna().unique().tolist()
         sta_index = {v: n for n in nodes
                      if (v := exposure.node_id_to_sta_int(n)) is not None}
-        parents_raw = exposure._dominant_parent(g).to_dict()
-        parent_of = {n: exposure.resolve_parent(parents_raw.get(n), sta_index) for n in nodes}
         roles = g.groupby("node_id")["node_role"].agg(lambda s: s.mode().iloc[0]).to_dict()
-        children = {n: [c for c in nodes if parent_of.get(c) == n] for n in nodes}
+        gt = tick.loc[idx]
 
-        def below(n):
-            seen, todo = set(), list(children.get(n, []))
+        # The tree PER TICK, from each window's own parent_mac: a node that is
+        # moved (mobility scenario) re-parents mid-run, and its new parent is
+        # who observes it from then on. A board with no window at a tick falls
+        # back to its usual (dominant) parent, so it still counts as a child -
+        # an unknown one, which blanks the value - instead of vanishing.
+        dominant = exposure._dominant_parent(g).to_dict()
+        usual = {n: exposure.resolve_parent(dominant.get(n), sta_index) for n in nodes}
+        row_parent = [exposure.resolve_parent(m, sta_index) for m in g["parent_mac"]]
+        parent_now = {(n, t): p for n, t, p in zip(g["node_id"], gt, row_parent)
+                      if not np.isnan(t)}
+
+        def parent_at(n, t):
+            return parent_now[(n, t)] if (n, t) in parent_now else usual.get(n)
+
+        def children_at(n, t):
+            return [c for c in nodes if c != n and parent_at(c, t) == n]
+
+        def below_at(n, t):
+            seen, todo = set(), children_at(n, t)
             while todo:
                 c = todo.pop()
                 if c not in seen:
                     seen.add(c)
-                    todo.extend(children.get(c, []))
+                    todo.extend(children_at(c, t))
             return seen
 
-        gt = tick.loc[idx]
-        by = lambda s: s.loc[idx].groupby([g["node_id"], gt]).sum()
-        handed, rcv, own_n = by(handed_up), by(recv), by(own)
-        present = by(pd.Series(1.0, index=windowed.index))
+        def sums(s):
+            return s.loc[idx].groupby([g["node_id"], gt]).sum().to_dict()
+        handed, rcv, own_n = sums(handed_up), sums(recv), sums(own)
+        present = set(parent_now)
+        arrived_d = arrived.to_dict() if arrived is not None else None
 
-        def at(series, node, ticks, fill):
-            """series[(node, tick)] for each tick; `fill` where that board has no window."""
-            if series is None or node not in series.index.get_level_values(0):
-                return np.full(len(ticks), fill, dtype=float)
-            return series.xs(node, level=0).reindex(ticks, fill_value=fill).to_numpy(dtype=float)
-
-        for n in nodes:
-            kids, parent = children.get(n, []), parent_of.get(n)
-            if not kids or parent is None or roles.get(n) == "root":
+        for r, n, t in zip(idx, g["node_id"], gt):
+            if np.isnan(t) or roles.get(n) == "root":
                 continue
-            n_rows = g.index[g["node_id"] == n]
-            n_ticks = gt.loc[n_rows].to_numpy()
-            # A board with no window at a tick (logging gap) is UNKNOWN there, not
-            # 0: NaN propagates so the ratio is left empty rather than skewed.
-            node_in = sum(at(handed, c, n_ticks, np.nan) for c in kids)
+            kids, parent = children_at(n, t), parent_at(n, t)
+            if not kids or parent is None:
+                continue
+            # A board with no window at a tick (logging gap) is UNKNOWN there,
+            # not 0: NaN propagates so the value is blank rather than skewed.
+            node_in = sum(handed.get((c, t), np.nan) for c in kids)
             if roles.get(parent) == "root":
-                if arrived is None:
+                if arrived_d is None:
                     continue
-                desc = below(n)
+                desc = below_at(n, t)
                 # An arrival is placed into its ORIGINATOR's window, so a
                 # descendant's missing window would silently drop its arrivals.
-                seen = np.prod([at(present, d, n_ticks, np.nan) for d in desc], axis=0)
-                node_out = sum((at(arrived, d, n_ticks, 0.0) for d in desc),
-                               np.zeros(len(n_rows))) * seen
-            elif children.get(parent) == [n]:
-                node_out = at(rcv, parent, n_ticks, np.nan) - at(own_n, n, n_ticks, 0.0)
+                if any((d, t) not in present for d in desc):
+                    continue
+                node_out = sum(arrived_d.get((d, t), 0) for d in desc)
+            elif children_at(parent, t) == [n]:
+                node_out = rcv.get((parent, t), np.nan) - own_n.get((n, t), 0.0)
             else:
                 continue
             # In and Out are blank TOGETHER, so a ratio-of-sums over several
             # windows never pairs an In with a missing Out.
-            known = ~(np.isnan(node_in) | np.isnan(node_out))
-            node_in = np.where(known, node_in, np.nan)
-            node_out = np.where(known, node_out, np.nan)
-            out.loc[n_rows, "NeighbourIn"] = node_in
-            out.loc[n_rows, "NeighbourOut"] = node_out
-            out.loc[n_rows, "NeighbourForwardingRatio"] = np.where(
-                node_in > 0, node_out / np.where(node_in > 0, node_in, 1), np.nan)
+            if np.isnan(node_in) or np.isnan(node_out):
+                continue
+            out.loc[r, "NeighbourIn"] = node_in
+            out.loc[r, "NeighbourOut"] = node_out
+            out.loc[r, "NeighbourForwardingRatio"] = node_out / node_in if node_in > 0 else np.nan
     return out
 
 
