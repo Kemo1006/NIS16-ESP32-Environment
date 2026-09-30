@@ -170,11 +170,44 @@ static void test_star(void)
         CHECK(g.child_count[0] == (int)n - 1, "star n=%zu: center children %d", n, g.child_count[0]);
         topo_free(&g);
 
-        /* re-hang the last node under another leaf = layer 3 */
-        link_to(nodes, n - 1, 1);
-        st = run(nodes, n, TOPO_KIND_STAR, &g, reason);
-        CHECK(st == TOPO_FAIL, "star layer-3 n=%zu: %s", n, topo_status_str(st));
+        /* re-hang the last node under another leaf = layer 3 while the root
+         * still has other children (n=3 would leave the root ONE child = a
+         * valid hub star, tested below) */
+        if (n >= 4) {
+            link_to(nodes, n - 1, 1);
+            st = run(nodes, n, TOPO_KIND_STAR, &g, reason);
+            CHECK(st == TOPO_FAIL, "star layer-3 n=%zu: %s", n, topo_status_str(st));
+            topo_free(&g);
+        }
+        free(nodes);
+    }
+}
+
+/* HUB STAR (star + blackhole, D-16): root -> hub -> every other node. */
+static void test_star_hub(void)
+{
+    const size_t sizes[] = {3, 4, 7, 10, 50};
+    for (size_t s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++) {
+        size_t n = sizes[s];
+        topo_node_t *nodes = gen_star(n);
+        for (size_t i = 2; i < n; i++) {
+            link_to(nodes, i, 1);
+        }
+        topo_graph_t g;
+        char reason[256];
+        topo_status_t st = run(nodes, n, TOPO_KIND_STAR, &g, reason);
+        CHECK(st == TOPO_OK, "hub star n=%zu: %s (%s)", n, topo_status_str(st), reason);
+        CHECK(g.max_layer == 3, "hub star n=%zu: max_layer %d", n, g.max_layer);
+        CHECK(g.child_count[1] == (int)n - 2, "hub star n=%zu: hub children %d", n, g.child_count[1]);
         topo_free(&g);
+
+        /* one node a hop below another victim = layer 4 */
+        if (n >= 4) {
+            link_to(nodes, n - 1, 2);
+            st = run(nodes, n, TOPO_KIND_STAR, &g, reason);
+            CHECK(st == TOPO_FAIL, "hub star layer-4 n=%zu: %s", n, topo_status_str(st));
+            topo_free(&g);
+        }
         free(nodes);
     }
 }
@@ -318,6 +351,7 @@ int main(void)
 {
     test_linear();
     test_star();
+    test_star_hub();
     test_tree();
     test_root_is_dynamic();
     test_partial();

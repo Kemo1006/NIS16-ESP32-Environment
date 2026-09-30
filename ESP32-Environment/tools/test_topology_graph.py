@@ -48,9 +48,31 @@ class StarTests(unittest.TestCase):
             self.assertEqual(len(g.children[g.root]), n - 1)
 
     def test_layer_three_fails(self):
-        for n in (3, 10, 50):
+        # n >= 4: with 3 nodes, re-hanging one leaves the root ONE child, which
+        # is a valid hub star (test_hub_star_passes).
+        for n in (4, 10, 50):
             links, _ = tg.generate("star", n)
             links[n - 1] = 1
+            _, (st, _) = check("star", links)
+            self.assertEqual(st, tg.FAIL, f"n={n}")
+
+    def test_hub_star_passes(self):
+        # star + blackhole (D-16): root -> attacker hub -> every victim
+        for n in (3, 4, 7, 50):
+            links, _ = tg.generate("star", n)
+            for i in range(2, n):
+                links[i] = 1
+            g, (st, reason) = check("star", links)
+            self.assertEqual(st, tg.OK, f"n={n}: {reason}")
+            self.assertEqual(g.max_layer, 3)
+            self.assertIn("hub 1", reason)
+
+    def test_hub_star_layer_four_fails(self):
+        for n in (4, 10):
+            links, _ = tg.generate("star", n)
+            for i in range(2, n):
+                links[i] = 1
+            links[n - 1] = 2
             _, (st, _) = check("star", links)
             self.assertEqual(st, tg.FAIL, f"n={n}")
 

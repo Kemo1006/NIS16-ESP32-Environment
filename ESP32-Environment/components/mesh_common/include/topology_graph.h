@@ -7,7 +7,9 @@
  * layers come from a breadth-first walk from whichever node turns out to be
  * the root, and each topology is judged by its STRUCTURE only:
  *
- *   STAR    - every node is a direct child of the center (max layer 2, any N)
+ *   STAR    - every node is a direct child of the center (max layer 2, any N);
+ *             or HUB STAR (star + blackhole, D-16): the center is the root's
+ *             only child and everyone else hangs off it (max layer 3)
  *   LINEAR  - every node has at most one child (a chain, any length)
  *   TREE    - one root, no cycles, any depth
  *   PARTIAL - a tree right now, but nodes have been seen under more than one

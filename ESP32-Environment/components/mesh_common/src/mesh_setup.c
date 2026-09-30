@@ -12,6 +12,7 @@
 #include "phase_listener.h"
 #include "csv_logger.h"
 #include "topology_graph.h"
+#include "blackhole_target.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -63,6 +64,34 @@ static void apply_rf_width(const char *when, bool only_if_ht40);
 static void heartbeat_table_print(void);
 static void heartbeat_request_print(void);
 static void heartbeat_mark_offline(const uint8_t mac[6]);
+
+/* ── STAR + BLACKHOLE: the attacker is the star's HUB (thesis-deviate D-16) ──
+ * Thesis §4.2.2.1 (Fig. 4.17) makes the central node the blackhole. Our root
+ * cannot be it: with no router the root is the probes' DESTINATION (nothing to
+ * forward onward), it runs the phases, and PDR is measured there. And a plain
+ * star (max layer 2) leaves a layer-2 attacker with no children, so nothing
+ * ever transits it. So in this one build the star is rebuilt one hop down:
+ *
+ *     root (sink/referee) -> ATTACKER (hub, layer 2) -> every victim (layer 3)
+ *
+ * Victims do not self-organise here: they scan for the attacker's mesh SoftAP
+ * (its STA MAC + 1, from blackhole_target_get) and pin it as their parent with
+ * esp_mesh_set_parent() - the sequence of IDF's examples/mesh/manual_networking.
+ * A victim that cannot find it keeps scanning and never joins the root
+ * directly: a victim above the attacker would be a silent bystander. The root's
+ * roster gate then holds Phase 0, so a wrong attacker MAC shows up before the
+ * run instead of as an attack with no victims. The root and the attacker
+ * self-organise as usual; only max_layer changes for them (2 -> 3). */
+#define STAR_HUB_BLACKHOLE \
+    (MESH_TOPOLOGY == NIS_TOPO_STAR && ACTIVE_ATTACK == PHASE_ID_BLACKHOLE)
+
+#if STAR_HUB_BLACKHOLE
+static bool     s_pin_to_hub = false;
+static uint8_t  s_hub_bssid[6];
+static uint32_t s_hub_scans  = 0;
+static void star_hub_scan(void);
+static void star_hub_scan_done(int num);
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Public API
@@ -139,7 +168,10 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     int max_layer    = MESH_STACK_MAX_LAYER_TREE;
     int max_children = MESH_MAX_CHILDREN;
     const char *topo_name = topo_kind_str((topo_kind_t)MESH_TOPOLOGY);
-#if (MESH_TOPOLOGY == NIS_TOPO_STAR)
+#if STAR_HUB_BLACKHOLE
+    max_layer = 3;                           /* root(L1) -> attacker hub(L2) -> victims(L3) */
+    topo_name = "STAR (attacker hub)";
+#elif (MESH_TOPOLOGY == NIS_TOPO_STAR)
     max_layer = 2;                           /* structural: center(L1) + direct nodes(L2) */
 #elif (MESH_TOPOLOGY == NIS_TOPO_LINEAR)
     ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
@@ -219,6 +251,21 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 #endif
 
     ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
+
+#if STAR_HUB_BLACKHOLE
+    if (role == MESH_ROLE_VICTIM) {
+        uint8_t atk[6];
+        bh_target_source_t src = blackhole_target_get(atk);
+        /* Mesh SoftAP BSSID = STA MAC + 1 (with carry), as in parent_mac. */
+        memcpy(s_hub_bssid, atk, 6);
+        for (int i = 5; i >= 0 && ++s_hub_bssid[i] == 0; i--) {
+        }
+        s_pin_to_hub = true;
+        ESP_LOGW(TAG, "STAR HUB: this victim joins ONLY the attacker " MACSTR
+                 " (%s; its mesh AP " MACSTR "), never the root directly.",
+                 MAC2STR(atk), blackhole_target_source_str(src), MAC2STR(s_hub_bssid));
+    }
+#endif
 
     /* ── 9. Start mesh ───────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_start());
@@ -362,7 +409,21 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
     case MESH_EVENT_STARTED:
         ESP_LOGI(TAG, "Mesh stack started.");
         s_is_root = false;
+#if STAR_HUB_BLACKHOLE
+        if (s_pin_to_hub) {
+            ESP_ERROR_CHECK(esp_mesh_set_self_organized(false, false));
+            star_hub_scan();
+        }
+#endif
         break;
+
+#if STAR_HUB_BLACKHOLE
+    case MESH_EVENT_SCAN_DONE:
+        if (s_pin_to_hub) {
+            star_hub_scan_done(((mesh_event_scan_done_t *)data)->number);
+        }
+        break;
+#endif
 
     case MESH_EVENT_ROOT_ADDRESS: {
         mesh_event_root_address_t *ra = (mesh_event_root_address_t *)data;
@@ -389,6 +450,14 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         ESP_LOGW(TAG, "Parent disconnected — reason %d.", (int)ed->reason);
         s_is_root = false;
         xEventGroupClearBits(s_mesh_event_group, MESH_CONNECTED_BIT);
+#if STAR_HUB_BLACKHOLE
+        /* The stack keeps retrying a pinned parent by itself; only a full AP
+         * needs a fresh scan (as in IDF's manual_networking example). */
+        if (s_pin_to_hub && ed->reason == WIFI_REASON_ASSOC_TOOMANY) {
+            ESP_LOGW(TAG, "STAR HUB: attacker's AP is full (max_connection) - rescanning.");
+            star_hub_scan();
+        }
+#endif
         break;
     }
 
@@ -455,6 +524,89 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         break;
     }
 }
+
+#if STAR_HUB_BLACKHOLE
+static void star_hub_scan(void)
+{
+    wifi_scan_config_t sc = {0};
+    sc.show_hidden = 1;                     /* mesh SoftAPs are hidden */
+    sc.scan_type   = WIFI_SCAN_TYPE_PASSIVE;
+    esp_wifi_scan_stop();
+    esp_err_t err = esp_wifi_scan_start(&sc, false);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "STAR HUB: scan start failed: %s", esp_err_to_name(err));
+    }
+}
+
+static void star_hub_scan_done(int num)
+{
+    mesh_assoc_t assoc, hub_assoc = {0};
+    wifi_ap_record_t rec, hub_rec = {0};
+    bool seen = false, joinable = false;
+
+    /* Every record must be read out before the flush, match or not. */
+    for (int i = 0; i < num; i++) {
+        int ie_len = 0;
+        esp_mesh_scan_get_ap_ie_len(&ie_len);
+        esp_mesh_scan_get_ap_record(&rec, &assoc);
+        if (ie_len != sizeof(assoc) || memcmp(rec.bssid, s_hub_bssid, 6) != 0) {
+            continue;
+        }
+        seen = true;
+        /* The attacker's AP only takes children once it has joined the root. */
+        if (assoc.mesh_type != MESH_IDLE && assoc.layer_cap && assoc.assoc < assoc.assoc_cap) {
+            joinable = true;
+            hub_rec = rec;
+            hub_assoc = assoc;
+        }
+    }
+    esp_mesh_flush_scan_result();
+    /* A rescan that lands after the join already succeeded: never re-pin a
+     * connected victim (victims are leaves, so this bit is only its parent). */
+    if (xEventGroupGetBits(s_mesh_event_group) & MESH_CONNECTED_BIT) {
+        return;
+    }
+    s_hub_scans++;
+
+    if (!joinable) {
+        /* Once, then every 10th scan - a missing attacker must be loud but
+         * not flood the monitor. */
+        if (s_hub_scans == 1 || s_hub_scans % 10 == 0) {
+            ESP_LOGW(TAG, "STAR HUB: scan %lu - attacker AP " MACSTR " %s. Waiting "
+                     "(check the attacker is powered + in the mesh, and "
+                     "BLACKHOLE_ATTACKER_MAC / SET_ATTACKER_MAC names it).",
+                     (unsigned long)s_hub_scans, MAC2STR(s_hub_bssid),
+                     seen ? "seen but not joinable yet (not in the mesh / full)"
+                          : "not seen");
+        }
+        star_hub_scan();
+        return;
+    }
+
+    wifi_config_t parent = {0};
+    parent.sta.channel   = hub_rec.primary;
+    memcpy(parent.sta.ssid, hub_rec.ssid, sizeof(hub_rec.ssid));
+    parent.sta.bssid_set = 1;
+    memcpy(parent.sta.bssid, hub_rec.bssid, 6);
+    esp_mesh_set_ap_authmode(hub_rec.authmode);
+    if (hub_rec.authmode != WIFI_AUTH_OPEN) {
+        memcpy(parent.sta.password, MESH_PASSWORD, strlen(MESH_PASSWORD));
+    }
+    mesh_type_t my_type = (hub_assoc.layer_cap != 1) ? MESH_NODE : MESH_LEAF;
+    int my_layer = hub_assoc.layer + 1;
+    ESP_LOGW(TAG, "STAR HUB: joining attacker " MACSTR " (layer %d, rssi %d, ch %u) "
+             "as layer %d.", MAC2STR(hub_rec.bssid), hub_assoc.layer, hub_rec.rssi,
+             (unsigned)hub_rec.primary, my_layer);
+    /* Not ESP_ERROR_CHECK: a refused parent is a retry, not a reboot. */
+    esp_err_t err = esp_mesh_set_parent(&parent, (mesh_addr_t *)&hub_assoc.mesh_id,
+                                        my_type, my_layer);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "STAR HUB: esp_mesh_set_parent failed (%s) - rescanning.",
+                 esp_err_to_name(err));
+        star_hub_scan();
+    }
+}
+#endif
 
 static void ip_event_handler(void *arg, esp_event_base_t base,
                               int32_t id, void *data)

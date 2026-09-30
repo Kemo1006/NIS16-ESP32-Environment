@@ -5814,6 +5814,17 @@ function Show-PresetDetails {
         # healthy. This cannot be checked from the roster (placement is physical),
         # so it is stated here, before flashing, where it can still be acted on.
         Write-Host ""
+        if ([string]$Cfg.topology -eq 'star') {
+            # STAR + BLACKHOLE (D-16): victims are firmware-pinned to the attacker's
+            # AP, so here the MAC below is load-bearing again - a wrong one means
+            # the victims never join and the root holds Phase 0.
+            Write-Host "STAR + BLACKHOLE = ATTACKER IS THE HUB (D-16):" -ForegroundColor Cyan
+            Write-Host "  Root -> attacker -> every victim. Put the attacker in the middle, the root ~1 m" -ForegroundColor Cyan
+            Write-Host "  beside it, victims in a ring around the ATTACKER. Power: root, attacker, victims." -ForegroundColor Cyan
+            Write-Host "  Victims ONLY join the MAC below - it MUST be this preset's attacker, or no" -ForegroundColor Yellow
+            Write-Host "  victim joins at all (the mismatch warning below is NOT bookkeeping for star)." -ForegroundColor Yellow
+            Write-Host "  Check after the run: tools\verify_topology.py ... --expect star" -ForegroundColor DarkGray
+        }
         Write-Host "PLACEMENT MATTERS NOW (C7 Option 1):" -ForegroundColor Cyan
         Write-Host "  The attacker only drops traffic that PASSES THROUGH it. Put it BETWEEN the" -ForegroundColor Cyan
         Write-Host "  victims and the root - near the root (hop 1-2) is safest. An attacker at the" -ForegroundColor Cyan

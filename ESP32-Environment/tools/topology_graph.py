@@ -152,6 +152,14 @@ def validate(topology, graph, union_edges=None):
 
     status = OK
     if topology == "star":
+        # HUB STAR (star + blackhole, thesis-deviate D-16): the center is the
+        # root's only child and everyone else hangs off it - root -> hub ->
+        # direct nodes. Same rule as topology_graph.c.
+        top = graph.children[graph.root]
+        if graph.max_layer == 3 and len(top) == 1:
+            hub = top[0]
+            return status, (f"hub {hub} (behind the root) + "
+                            f"{len(graph.children[hub])} direct node(s)")
         deep = [n for n, ly in graph.layer.items() if ly > 2]
         if deep:
             n = deep[0]

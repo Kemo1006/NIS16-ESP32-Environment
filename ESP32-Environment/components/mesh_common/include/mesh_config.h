@@ -79,6 +79,9 @@
  *   NIS_TOPO_STAR    — §4.2.2.1: central hub. Cap depth at 2 so every node is a
  *                      direct child of the root (root=layer 1, leaves=layer 2);
  *                      minimal routing complexity, direct RSSI relationships.
+ *                      STAR + BLACKHOLE (D-16): max layer 3 and the attacker is
+ *                      the hub - root -> attacker -> victims (victims pin it as
+ *                      parent; mesh_setup.c STAR_HUB_BLACKHOLE).
  *   NIS_TOPO_TREE    — §4.2.2.2: native self-organising ESP-MESH tree, multi-hop
  *                      layering beneath the root (unchanged M1 behaviour).
  *   NIS_TOPO_LINEAR  — §4.2.2.3: force a CHAIN (MESH_TOPO_CHAIN) AND cap fan-out

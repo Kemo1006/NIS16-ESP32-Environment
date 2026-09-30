@@ -133,6 +133,9 @@ OVER_TOLERANCE = 2.0    # > 200% of nominal -> suspiciously stuck/duplicated
 # drop never really took hold and the run does not show the attack.
 # Applies to DROP-signature attacks only — see ATTACK_SIGNATURE.
 ATTACK_LEAK_TOLERANCE = 0.5
+# A source delivering at most this fraction of its OWN baseline count during a
+# blackhole phase counts as silenced (per-source check in _check_attack_phase).
+SOURCE_SILENCED_MAX = 0.1
 
 # What the attack does to the root's arrivals log — the two are opposites, and a
 # check written for one declares a perfect capture of the other broken:
@@ -349,6 +352,14 @@ def _phase_stats(rows, header):
     return stats
 
 
+def _per_mac_counts(st):
+    """Arrivals per src_mac in one phase (from the (src_mac, seq_num) multiset)."""
+    out = {}
+    for (mac, _), n in st.get("pairs", {}).items():
+        out[mac] = out.get(mac, 0) + n
+    return out
+
+
 def _check_attack_phase(phase_id, st, count, base, base_rate, attack, report):
     """Did the attack actually happen? Judged by ITS OWN signature."""
     name = PHASE_NAMES[phase_id]
@@ -409,6 +420,26 @@ def _check_attack_phase(phase_id, st, count, base, base_rate, attack, report):
     leak = count / expected if expected else 0.0
     msg = (f"phase {phase_id} ({name}): {count} probes still reached the root — "
            f"{leak:.1%} of the ~{expected:.0f} expected at the baseline rate")
+
+    # Judge each SOURCE, not the pooled total. A blackhole only silences the
+    # nodes below it; nodes above it keep delivering by construction. sept30
+    # partial_mesh G402: 3 of 6 sources went to 0, 3 were upstream -> pooled
+    # 50.1%, just over the tolerance, and this warned "did not take effect".
+    per_mac = _per_mac_counts(st)
+    base_mac = _per_mac_counts(base)
+    if base_mac and base["span_s"] > 0:
+        silenced, flowing = [], []
+        for mac, n0 in sorted(base_mac.items()):
+            exp_mac = n0 / base["span_s"] * nominal_s
+            got = per_mac.get(mac, 0)
+            (silenced if exp_mac and got / exp_mac <= SOURCE_SILENCED_MAX else flowing).append(mac)
+        if silenced and flowing:
+            report.info(
+                f"{msg} — {len(silenced)} of {len(base_mac)} source(s) silenced "
+                f"({', '.join(silenced)}); the other {len(flowing)} kept delivering "
+                f"({', '.join(flowing)}), i.e. not in the attacker's path. Per-source "
+                f"drop = attack took effect; check exposure in verify_attack.py")
+            return
     if leak > ATTACK_LEAK_TOLERANCE:
         report.warn(msg + " — the attack did not take effect; check the "
                           "attacker's tx_count is flat across this phase")

@@ -8,7 +8,7 @@
 > Spacing guide: **~3-5 m between adjacent boards** in the lab (from the thesis setup). Legend:
 > `(R)`=root, `(v)`=victim, `(A)`=attacker/Node A, `(B)`=Node B, `~`=Wi-Fi link, `===`=UART cable.
 
-Build flags (menu sets these): star=depth-capped 2, tree=default self-organising, linear=forced
+Build flags (menu sets these): star=depth-capped 2 (3 for star+blackhole: attacker hub), tree=default self-organising, linear=forced
 chain, partial=physical placement. Days map: **Mon=Tree, Wed=Linear, Thu=Partial, Fri=Star.**
 
 ---
@@ -42,8 +42,21 @@ Every node is a direct child of the root (depth capped at 2). Simplest routing.
 ```
 - **Placement:** root in the middle; all others in a ring ~3-5 m around it, each with a clear line
   to the root and weaker links to each other, so everyone parents directly off the root.
-- **Blackhole:** place the **attacker centrally** (a strong-signal ring node) so victims prefer it;
-  they address probes to its MAC and it drops during the attack.
+- **Blackhole (D-16, sep. 30 2026): the ATTACKER is the hub, the root sits beside it.**
+  ```
+        (R)  root: sink + phases, ~1 m from the attacker
+         |
+        (A)  attacker = HUB, centre of the room
+      / |  | \
+    (v)(v)(v)(v)  victims in a ring 3-5 m around (A)
+  ```
+  Victims are firmware-pinned to the attacker (they scan for its AP and never join the root
+  directly), so placement only has to keep them in range of (A). **Before flashing:**
+  `BLACKHOLE_ATTACKER_MAC` (mesh_config.h) or `SET_ATTACKER_MAC` must name the attacker board -
+  a wrong MAC means victims never join (the root holds Phase 0). **Power order:** root, then
+  attacker, then victims. Victims print `STAR HUB: joining attacker ...`. Check with
+  `verify_topology.py --expect star` (OK = "hub <attacker> ... is the blackhole attacker").
+  Why not the thesis's "root = attacker": the root is the destination and the referee - see D-16.
 - **Wormhole:** **Node A adjacent to the root**, **Node B at the far side of the ring** (the
   farthest victim group). The UART cable spans the star diameter - use a longer cable, or accept A
   and B a few meters apart. Root logs the fast tunnel copy vs the slow hub copy.

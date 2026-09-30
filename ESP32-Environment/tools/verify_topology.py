@@ -739,6 +739,26 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         status, reason = topology_graph.validate(expect, graph, union_edges)
         print(f"  {status} {expect}: {reason}")
         structure_ok = status != topology_graph.FAIL
+        # HUB STAR (star + blackhole, D-16): the shape alone passes whoever sits
+        # in the middle, but the run only means something if the hub IS the
+        # blackhole - otherwise every victim is upstream of nothing.
+        top = graph.children.get(graph.root, []) if graph.root is not None else []
+        if expect == "star" and graph.max_layer == 3 and len(top) == 1:
+            hub = top[0]
+            hub_role = canonical_role(getattr(nodes.get(hub), "role", ""))
+            atk = sorted(nid for nid, n in nodes.items()
+                         if canonical_role(getattr(n, "role", "")) == "blackhole")
+            if hub_role == "blackhole":
+                print(f"  {topology_graph.OK} hub {hub} is the blackhole attacker - every "
+                      f"other child sits behind it")
+            elif atk:
+                print(f"  {topology_graph.FAIL} hub {hub} is a {hub_role or '?'}, not the "
+                      f"attacker ({', '.join(atk)}) - victims are not behind the attacker. "
+                      f"Check BLACKHOLE_ATTACKER_MAC / SET_ATTACKER_MAC on the victims")
+                structure_ok = False
+            else:
+                print(f"  {topology_graph.WARN} hub {hub} ({hub_role or '?'}) - no blackhole "
+                      f"attacker log loaded, so the hub's role cannot be confirmed")
         print()
 
     print_layer_crosscheck(graph, nodes)

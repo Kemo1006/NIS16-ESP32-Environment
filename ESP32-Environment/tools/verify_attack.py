@@ -80,6 +80,7 @@ Usage : python tools/verify_attack.py analysis/blackhole/linear_topology/feature
 import argparse
 import math
 import sys
+import textwrap
 
 import os
 
@@ -177,22 +178,95 @@ ATTACKER_SCOPED = {
 # relays kept the average near 1.0.
 ALSO_POOLED = {"ForwardingRatio"}
 
+# Row marker: an attacker-scoped feature on a table whose attacker is absent.
+MISSING_ATTACKER = object()
 
-def _pooled_note(df_nodes, feat, label, attackers, status):
-    """Why the all-relays average did or did not move: count the honest relays."""
+# ForwardingRatio (attacker) = the attacker's OWN counters (forward / recv).
+# NeighbourForwardingRatio (attacker) = the same ratio rebuilt WITHOUT them, from
+# what its children say they handed it and what the root then received from
+# below it (features.compute_neighbour_forwarding_features). Two sources, one
+# quantity: identical rows mean the attacker's self-report was honest, not that
+# one row was copied. sept30 partial_mesh G402: 612 of 616 attacker windows had
+# recv == NeighbourIn and forward == NeighbourOut; the 4 others were clock
+# jitter at window edges and cancel over a 5-window block.
+NEIGHBOUR_NOTE = ("independent of the attacker's own counters: in = what its children "
+                  "report handing it, out = what its parent (the root's arrivals) received "
+                  "from below it. If this matches the ForwardingRatio (attacker) row, the "
+                  "attacker's self-report is confirmed by its neighbours - two sources "
+                  "agreeing, not one value printed twice")
+
+
+EXPOSURE_LABEL = {"downstream": "VICTIM", "upstream": "not in path",
+                  "attacker": "ATTACKER", "root": "root", "no_attacker": "no attacker"}
+
+
+def _with_exposure(df):
+    if "exposure" in df.columns:
+        return df
+    df = df.copy()
+    try:
+        df["exposure"] = _exposure.compute_exposure(df).values
+    except Exception:
+        df["exposure"] = "unknown"
+    return df
+
+
+def _pooled_note(df_nodes, feat, label, attackers, res, sigma):
+    """Footnote for the 'all relays' row: how many honest relays it averages in.
+
+    Only the attacker stops forwarding; every honest relay - a victim that
+    relays included, since it forwards INTO the attacker - stays near 1.0. So
+    the average passes or fails with the NUMBER of honest relays, not with the
+    attack: linear G402 (5 honest) 0.826 FAIL, tree G402 (2 honest) 0.578 PASS.
+    """
+    status = res["status"]
     atk = df_nodes[pd.to_numeric(df_nodes["Label"], errors="coerce") == label]
     per_node = pd.to_numeric(atk[feat], errors="coerce").groupby(atk["node_id"]).mean().dropna()
     honest = per_node[~per_node.index.isin(attackers)]
-    kept = int((honest >= 0.9).sum())
     atk_val = per_node[per_node.index.isin(attackers)]
-    atk_s = f"{atk_val.mean():.3f}" if not atk_val.empty else "n/a"
+    n_h = len(honest)
+    head = (f"average of all {len(per_node)} relays ({len(atk_val)} attacker + {n_h} "
+            f"honest); not counted - the attacker row decides.")
+    if atk_val.empty or any(math.isnan(res[k]) for k in ("mu", "sd", "attack_mean", "z")):
+        return head
+
+    a = float(atk_val.mean())
+    h = float(honest.mean()) if n_h else 1.0
+    line = res["mu"] - sigma * res["sd"]
+    if h <= line:
+        cap = "any number of honest relays"
+    elif line <= a:
+        cap = "no honest relays at all"
+    else:
+        k = int(math.floor((line - a) / (h - line)))
+        cap = f"at most about {k} honest relay{'s' if k != 1 else ''}"
+    who = ", ".join(f"{n} {v:.3f}" for n, v in honest.sort_values().items())
+    pts = [
+        f"Attacker {', '.join(atk_val.index)} fell to {a:.3f}; the {n_h} honest relay(s) "
+        f"averaged {h:.3f}" + (f" ({who})." if n_h else "."),
+        "During a blackhole only the attacker stops forwarding. Every honest relay keeps "
+        "passing traffic on - victims that relay included, because they forward INTO the "
+        "attacker - so this average is the attacker's drop diluted by the honest relays.",
+        f"To pass it must fall below {res['mu']:.3f} - {sigma:g} x {res['sd']:.3f} = {line:.3f}. "
+        f"At these values that allows {cap} (approximate: relays contribute different "
+        f"numbers of windows).",
+    ]
     if status == "PASS":
-        return (f"average of all {len(per_node)} relays; not counted - the attacker "
-                f"row decides")
-    return (f"not counted. {kept} of {len(per_node)} relays are honest and kept "
-            f"forwarding (~1.0) during the attack; averaging them with the attacker "
-            f"({atk_s}) keeps the network average near 1, so it cannot reach 3-sigma "
-            f"wherever the attacker sits. The attacker row decides")
+        pts += [f"This run has {n_h}, so the drop still shows network-wide ({res['attack_mean']:.3f}, "
+                f"z {res['z']:.2f}): supporting evidence for the attacker row.",
+                "Still not counted: it is the same measurement as the attacker row, so counting "
+                "it too would count one fact twice."]
+    else:
+        pts += [f"This run has {n_h}, so the average only reached {res['attack_mean']:.3f} "
+                f"(z {res['z']:.2f}) and fails.",
+                f"This is NOT evidence against the attack: the attacker's own ratio fell to "
+                f"{a:.3f} (attacker row). Whether this row passes depends on how many honest "
+                f"relays the topology puts around the attacker, which is why the verdict uses "
+                f"the attacker row instead."]
+    indent = " " * 6
+    body = "\n".join(textwrap.fill(p, width=92, initial_indent=indent + "- ",
+                                   subsequent_indent=indent + "  ") for p in pts)
+    return head + "\n" + body
 
 
 
@@ -394,26 +468,49 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
             if ids:
                 attacker_ids[feat] = ids
 
+    # A table that HAS node_role but no attacker rows = the attacker's telemetry
+    # was never imported. Falling back to the pooled test there tests only the
+    # honest relays (sept30 partial_mesh G402, before its attacker SD card was
+    # imported: 70C80 alone, 357/357 forwarded -> FAIL counted as primary).
+    # Report the row as missing instead; only legacy tables without node_role
+    # still use the pooled test.
+    has_roles = "node_role" in df_nodes.columns
     rows = []
     for feat, direction, tier in SIGNATURES[attack]:
         if feat in attacker_ids:
             if feat in ALSO_POOLED:
                 rows.append((f"{feat} (all relays)", feat, direction, "info", None))
             rows.append((f"{feat} (attacker)", feat, direction, tier, attacker_ids[feat]))
+        elif feat in scoped and has_roles:
+            rows.append((f"{feat} (attacker)", feat, direction, tier, MISSING_ATTACKER))
         else:
             rows.append((feat, feat, direction, tier, None))
 
     primary_pass = 0
     primary_total = 0
     primary_excluded = 0
+    primary_missing = 0
     footnotes = []  # (marker, feature, note) - printed below the table, not in-cell
     for name, feat, direction, tier, node_ids in rows:
-        if feat not in df.columns:
+        if feat not in df.columns and node_ids is not MISSING_ATTACKER:
             print(f"  {name:<36}{tier:<10}(column missing)")
             continue
-        scope = df["node_id"].isin(node_ids) if node_ids else pd.Series(True, index=df.index)
-        r = stat_verdict(df.loc[base_mask & scope, feat], df.loc[atk_mask & scope, feat],
-                         direction, sigma, feature=feat)
+        if node_ids is MISSING_ATTACKER:
+            empty = pd.Series(dtype=float)
+            r = stat_verdict(empty, empty, direction, sigma, feature=feat)
+            r["status"] = "INCONCLUSIVE"
+            r["note"] = (f"no '{scoped[feat]}' node in this table - the attacker's telemetry "
+                         f"was not imported. Honest relays cannot stand in for it (they keep "
+                         f"forwarding), so this row is left out of the verdict. Import the "
+                         f"attacker's SD card and re-run analyze.ps1")
+            if tier == "primary":
+                primary_missing += 1
+        else:
+            scope = df["node_id"].isin(node_ids) if node_ids else pd.Series(True, index=df.index)
+            r = stat_verdict(df.loc[base_mask & scope, feat], df.loc[atk_mask & scope, feat],
+                             direction, sigma, feature=feat)
+            if feat == "NeighbourForwardingRatio" and node_ids and not r["note"]:
+                r["note"] = NEIGHBOUR_NOTE
 
         # A feature whose own baseline is broken cannot say anything about the
         # attack; counting its FAIL would read as evidence of no attack.
@@ -445,7 +542,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         arrow = "v" if direction == "down" else "^"
 
         if tier == "info":
-            r["note"] = _pooled_note(df_nodes, feat, label, attacker_ids[feat], r["status"])
+            r["note"] = _pooled_note(df_nodes, feat, label, attacker_ids[feat], r, sigma)
         ref = ""
         if r["note"]:
             footnotes.append((len(footnotes) + 1, name, r["note"]))
@@ -459,6 +556,9 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     confirmed = conclusive and primary_pass > 0
     excluded_note = (f" {primary_excluded} primary feature(s) excluded on an invalid "
                      f"baseline - see notes below." if primary_excluded else "")
+    if primary_missing:
+        excluded_note += (f" {primary_missing} primary feature(s) not tested: the "
+                          f"attacker's telemetry is missing - see notes below.")
     if footnotes:
         print("\n  NOTES:")
         for marker, feat, note in footnotes:
@@ -507,14 +607,9 @@ def print_per_node_pdr(df, label, sigma_note=""):
     # what a board WAS BUILT as; exposure says whether the attacker actually sat
     # on its path to the root. A child above the attacker logs itself "victim"
     # and is never touched -- see analysis/exposure.py.
-    df = df.copy()
-    if "exposure" not in df.columns:
-        # Older feature tables have no column; derive it here so this report is
-        # correct on them too rather than silently falling back to the role.
-        try:
-            df["exposure"] = _exposure.compute_exposure(df).values
-        except Exception:
-            df["exposure"] = "unknown"
+    # Older feature tables have no exposure column; derive it so this report is
+    # correct on them too rather than silently falling back to the role.
+    df = _with_exposure(df)
     lab = df["Label"] if "Label" in df.columns else df.get("window_label")
     if lab is None:
         return
@@ -524,6 +619,8 @@ def print_per_node_pdr(df, label, sigma_note=""):
     if atk.empty:
         return
 
+    # One row per (node, hop): a node that moved mid-run (mobility, or a tree
+    # re-shuffle) shows each position it held. The summary below counts NODES.
     keys = ["node_id"]
     for extra in ("node_role", "exposure", "hop"):
         if extra in df.columns:
@@ -563,9 +660,7 @@ def print_per_node_pdr(df, label, sigma_note=""):
         # "victim" is printed for downstream nodes ONLY. Every other child is
         # named for what it actually was during the run, so the table can never
         # be read as "two victims, one of which somehow survived".
-        exp_s = {"downstream": "VICTIM", "upstream": "not in path",
-                 "attacker": "ATTACKER", "root": "root",
-                 "no_attacker": "no attacker"}.get(str(exp), str(exp))
+        exp_s = EXPOSURE_LABEL.get(str(exp), str(exp))
         print("  {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
             str(node), str(role), exp_s, hop_s, b_s, f"{amean:.4f}", n))
 
@@ -573,11 +668,21 @@ def print_per_node_pdr(df, label, sigma_note=""):
     def exposure_of(r):
         return str(r[0][ei]) if ei is not None and ei < len(r[0]) else "unknown"
 
-    victims = [r for r in rows if exposure_of(r) == "downstream"]
-    bystanders = [r for r in rows if exposure_of(r) == "upstream"]
+    def distinct(rs):
+        """One entry per node - a node that changed hop has several rows."""
+        seen, out = set(), []
+        for r in rs:
+            if r[0][0] not in seen:
+                seen.add(r[0][0])
+                out.append(r)
+        return out
+
+    victim_rows = [r for r in rows if exposure_of(r) == "downstream"]
+    victims = distinct(victim_rows)
+    bystanders = distinct([r for r in rows if exposure_of(r) == "upstream"])
     print()
     if victims:
-        worst = min(r[2] for r in victims)
+        worst = min(r[2] for r in victim_rows)
         print("  ** {} VICTIM(S) — the attacker sits on their path to the root. "
               "Worst attack PDR {:.4f}.".format(len(victims), worst))
         print("     " + ", ".join(str(r[0][0]) for r in victims))

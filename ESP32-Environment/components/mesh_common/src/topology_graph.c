@@ -343,6 +343,17 @@ topo_status_t topo_validate(const topo_graph_t *g, const topo_node_t *nodes,
 
     switch (kind) {
     case TOPO_KIND_STAR:
+        /* HUB STAR (star + blackhole build, thesis-deviate D-16): the center is
+         * the root's ONLY child and every other node hangs off it, so the
+         * shape is one hop deeper - root -> hub -> direct nodes. Judged by
+         * structure alone, like every rule here. */
+        if (g->max_layer == 3 && g->child_count[g->root] == 1) {
+            int hub = g->first_child[g->root];
+            mac_str(nodes[hub].mac, mac);
+            snprintf(reason, reason_len, "hub %s (behind the root) + %d direct node(s)",
+                     mac, g->child_count[hub]);
+            break;
+        }
         for (size_t i = 0; i < g->n; i++) {
             if (g->layer[i] > 2) {
                 mac_str(nodes[i].mac, mac);
