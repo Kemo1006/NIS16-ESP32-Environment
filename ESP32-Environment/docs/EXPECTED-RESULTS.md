@@ -264,9 +264,11 @@ check that boards were actually re-flashed.
 **What to look for:** both *primary* features PASS with |z| far beyond 3. `PDR` and
 `ForwardingRatio` at −39 and −40 are not a marginal result — the pattern is unmistakable.
 
-⚠️ **A PASS on `RetryRate` is NOT good news** (pre-C7 data): that feature was reading the attacker's
-own drop counter, so it "detected" the attack by looking at the attack's own switch. That's the
-leakage F3 fixed — see §5 and `analysis/leakage.py`.
+**No `RetryRate` row — on purpose (sep. 30, 2026).** The verifier tests only signatures a cited
+study names (Airehrour 2018 blackhole; Zhukabayeva 2025 / Ramírez Gómez 2019 wormhole). None names
+retry rate, and it measured flat anyway, so it is a dataset column only — not verified, not in EDA
+(thesis-deviate D-15). Older printouts that show a RetryRate row predate this; on pre-C7 data a PASS
+there was the attacker's own drop counter leaking (§5), never evidence.
 
 **If you instead see:**
 

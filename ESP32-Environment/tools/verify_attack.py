@@ -12,9 +12,12 @@ verification method of:
   Wireless Sensor Networks. Technologies, 13(8), 348.
   -> 3-sigma anomaly detection comparing routing behaviour under normal vs attack.
 
-Signature features grounded in the literature:
+Signature features grounded in the literature - ONLY these, nothing home-grown:
   - Blackhole: forwarding-ratio / PDR collapse  (Airehrour et al. 2018).
   - Wormhole : duplicate arrivals + tunnel activity  (Zhukabayeva 2025; Ramirez 2019).
+RetryRate is deliberately NOT a signature (team decision sep. 30, 2026): no cited
+study names it as a blackhole or wormhole indicator, and it measured flat in every
+phase. It stays in feature_table.csv as a dataset column only (thesis-deviate D-15).
 
 Two measurement guards sit in front of that test. Both exist because the dataset
 uses 1-second windows (thesis-deviate D-9) while the firmware emits one probe per
@@ -134,12 +137,9 @@ FEATURE_UPPER_BOUND = {"PDR": 1.0, "ForwardingRatio": 1.0, "ConsistencyScore": 1
 #   ForwardingRatio: features.py uses forward/recv on schema v2 (every relay);
 #     tx/probes is the v1 attacker-only form. On v2, tx/probes is a node's OWN
 #     sends, so pooling on it tested honest relays against their own traffic.
-#   RetryRate: failures / attempts (Eq 4.4). Per 1 s window it is 0 or 1 at one
-#     probe per second; summed over the block it is a real proportion.
 RATIO_OF_SUMS = {
     "ForwardingRatio": [("forward_count_delta", ("recv_count_delta",)),
                         ("tx_count_delta", ("probes_count_delta",))],
-    "RetryRate": [("retry_count_delta", ("tx_count_delta", "retry_count_delta"))],
 }
 
 # (feature, direction, tier)
@@ -148,19 +148,9 @@ RATIO_OF_SUMS = {
 SIGNATURES = {
     "blackhole": [
         ("ForwardingRatio",    "down", "primary"),    # attacker forwards -> drops (delivered/sent, Airehrour)
-        ("PDR",                "down", "primary"),    # end-to-end delivery collapses
-        ("ConsistencyScore",   "up",   "secondary"),  # |FR - 1| rises
-        ("IngressEgressDelta", "up",   "secondary"),  # packets absorbed
-        # Paper Table 3.4's pre-registered "victims retry more". KEEP it (team
-        # decision sep. 23, 2026): its FAIL is the result to report. Victims
-        # never see a failure - the attacker is alive and accepts every frame,
-        # exactly as the paper's own S3.3.1.2 predicts - so on F3 (schema v2)
-        # data retry_count = failed esp_mesh_send() calls on every role and
-        # stays flat (G402 sep. 25: 0 failures in baseline AND attack).
-        # Pre-F3 captures (no drop_count column) still carry the attacker's
-        # drops in retry_count, so a PASS there is a LEAK, not evidence -
-        # see RETRY_LEAK_NOTE below.
-        ("RetryRate",          "up",   "secondary"),
+        ("PDR",                "down", "primary"),    # end-to-end delivery collapses (Airehrour)
+        ("ConsistencyScore",   "up",   "secondary"),  # |FR - 1| rises (same delivered/sent measure)
+        ("IngressEgressDelta", "up",   "secondary"),  # packets absorbed: received - forwarded (Airehrour "discard, don't forward")
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
@@ -170,12 +160,6 @@ SIGNATURES = {
     ],
 }
 
-
-# What a RetryRate verdict means, appended to its footnote (see SIGNATURES).
-RETRY_MISS_NOTE = ("paper Table 3.4 predicted victims retry more; not observed - a "
-                   "pre-registered miss to REPORT, not edit (docs/EXPECTED-RESULTS.md 6a)")
-RETRY_LEAK_NOTE = ("pre-F3 capture (no drop_count): retry_count still holds the "
-                   "attacker's own drops, so this PASS is LEAKAGE, not evidence")
 
 
 def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0.0):
@@ -407,14 +391,6 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         am_s = "n/a" if math.isnan(r["attack_mean"]) else f"{r['attack_mean']:.3f}"
         atk_s = f"{am_s} ({r['n_attack']})"
         arrow = "v" if direction == "down" else "^"
-
-        if feat == "RetryRate" and r["status"] in ("PASS", "FAIL"):
-            pre_f3 = ("drop_count_delta" not in df.columns
-                      or df["drop_count_delta"].isna().all())
-            extra = RETRY_LEAK_NOTE if (pre_f3 and r["status"] == "PASS") else (
-                RETRY_MISS_NOTE if r["status"] == "FAIL" else "")
-            if extra:
-                r["note"] = f"{r['note']}; {extra}" if r["note"] else extra
 
         ref = ""
         if r["note"]:
