@@ -179,9 +179,6 @@
   → 7 problems: single-feature decidability, no attack parameter variation, redundant r1–r3, one
   environment, no declared IoT scenario, no attack provenance, uncharacterised benign baseline. Plan:
   `Plan/THESIS3-PANEL-PLAN.md`. Attack-provenance answer is DONE: `docs/attack-validation/ATTACK-VALIDATION.md`.
-- ⚠️ **Known leak (panel P1)** — role-gated features made "is this NaN?" a perfect label; ✅ root cause removed by C7 Option 1 (`leakage.py` now decides per dataset). ⚠️ PDR's 0.9987 single-feature score is SEPARATE and still open (sep. 20 entry). Panel-P6 attack-validation framing (definitional conformance, signature SHAPE not values): `docs/attack-validation/ATTACK-VALIDATION.md`, full text ARCHIVE.md.
-- ⚠️ **Known circularity (panel P6):** the blackhole attacker counts its OWN drops — the evidence the attack occurred comes from the node performing it. Needs an independent observer (sniffer node / monitor-mode adapter) or root-side accounting.
-- Attack/traffic parameters are compile-time constants: drop rate 100% (`blackhole_victim.c`), `PROBE_INTERVAL_MS 1000`, `SAMPLING_INTERVAL_MS 100`, phases 60/300/180/120 s = 11 min (`mesh_config.h`). `run.ps1` exposes topology/role but **no attack-intensity flags**, so r1/r2/r3 still differ only in RF noise — the panel's 12:45-16:00 objection, unanswered. ✅ **Attacker POSITION is the one exception since F2**: it is a runtime NVS value now, no re-flash. Full pre-F2 text in ARCHIVE.md.
 
 ## Failed approaches — do not retry
 - Passing `idf.py -D` flags as `@($spec.Flags)` — that is an array SUBEXPRESSION, not a splat, so both
