@@ -2268,3 +2268,11 @@ Angelo: `A:\Angelo\Excelsior\THESIS\T`. Basti: `C:\Users\Basti\OneDrive\Document
 - ⚠️ **Known circularity (panel P6):** the blackhole attacker counts its OWN drops — the evidence the attack occurred comes from the node performing it. Needs an independent observer (sniffer node / monitor-mode adapter) or root-side accounting.
 
 - ⚠️ **Known leak (panel P1)** — role-gated features made "is this NaN?" a perfect label; ✅ root cause removed by C7 Option 1 (`leakage.py` now decides per dataset). ⚠️ PDR's 0.9987 single-feature score is SEPARATE and still open (sep. 20 entry). Panel-P6 attack-validation framing (definitional conformance, signature SHAPE not values): `docs/attack-validation/ATTACK-VALIDATION.md`, full text ARCHIVE.md.
+
+## Rolled from MEMORY.md — oct. 1, 2026 (cap)
+- Thesis: DLSU CCS, CTTHES2/THES3. Proponents: Calpoporo, Carlos, Ong, Reinante. Adviser: Cu, Gregory G.
+- Toolchain: ESP-IDF **v5.3.5** (bundles Python 3.11 + compiler); boards enumerate as "Silicon Labs CP210x USB to UART Bridge"; Windows reassigns COM numbers every plug — always re-check.
+- **THESIS 3 DRIVER — `Paper/Improvements.pdf`** (CTTHES2 panel comments, ~aug. 2026). 8 timestamped rows
+  → 7 problems: single-feature decidability, no attack parameter variation, redundant r1–r3, one
+  environment, no declared IoT scenario, no attack provenance, uncharacterised benign baseline. Plan:
+  `Plan/THESIS3-PANEL-PLAN.md`. Attack-provenance answer is DONE: `docs/attack-validation/ATTACK-VALIDATION.md`.

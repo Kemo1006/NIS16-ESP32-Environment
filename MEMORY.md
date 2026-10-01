@@ -176,12 +176,6 @@
   (was `Unified` before sep. 2026), remote `origin` =
   `https://github.com/Kemo1006/NIS16-ESP32-Environment`. GitHub IS the laptop-to-laptop transport: a `git pull`
   elsewhere gets the same MEMORY.md/STATUS.md/code. (Corrected sep. 17, 2026; was stale before that.)
-- Thesis: DLSU CCS, CTTHES2/THES3. Proponents: Calpoporo, Carlos, Ong, Reinante. Adviser: Cu, Gregory G.
-- Toolchain: ESP-IDF **v5.3.5** (bundles Python 3.11 + compiler); boards enumerate as "Silicon Labs CP210x USB to UART Bridge"; Windows reassigns COM numbers every plug — always re-check.
-- **THESIS 3 DRIVER — `Paper/Improvements.pdf`** (CTTHES2 panel comments, ~aug. 2026). 8 timestamped rows
-  → 7 problems: single-feature decidability, no attack parameter variation, redundant r1–r3, one
-  environment, no declared IoT scenario, no attack provenance, uncharacterised benign baseline. Plan:
-  `Plan/THESIS3-PANEL-PLAN.md`. Attack-provenance answer is DONE: `docs/attack-validation/ATTACK-VALIDATION.md`.
 
 ## Failed approaches — do not retry
 - Passing `idf.py -D` flags as `@($spec.Flags)` — that is an array SUBEXPRESSION, not a splat, so both
