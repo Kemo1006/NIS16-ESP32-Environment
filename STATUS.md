@@ -7,7 +7,7 @@
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; docs filed by topic (`docs/README.md`). PCAP + run logs are git-ignored (local only). Backup tag of Angelo's work: `backup/angelo-2026-10-01`.
 
 ## Where things stand
-- **Star + blackhole = attacker is the HUB (D-16), WORKS ON HARDWARE.** First clean run `blackhole/star/G402/stationary` r1 (oct01 12:24): root → attacker `20:50:0d:e7:1c:38` → 5 victims, CONFIRMED 2/2, integrity 8/8, hub verified. Captured as "burst" but NO burst fired → moved to stationary; campaign plan G402/star/blackhole highload→stationary.
+- **Star + blackhole = attacker is the HUB (D-16), WORKS ON HARDWARE.** `star/G402/stationary` r1 is now the oct01 2 PM run (6 victims, all gates PASS/CONFIRMED) - replaced the 12:24 run (5 victims; archived locally). Star BURST still NOT captured: 2 attempts, no board built with -ScenarioTarget.
 - **node8 (`F4:2D:C9:73:E6:18`)** telemetry lost from its board: 6 victims, 5 with telemetry. Data unchanged — state it in the write-up.
 - **Wizard builds the picked attacker MAC into every blackhole board** (`run.ps1 -AttackerMac`), so `mesh_config.h` no longer decides it. Victims-only laptops get a numbered list of known attackers (newest real run first) PLUS every other known board (to pick a NEW attacker) — type the number.
 - Multi-laptop: no crash on a missing burst target (asks y/N); root must be told the TOTAL child count across laptops.
@@ -16,7 +16,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Next step
 1. **Everyone `git pull`, then REFLASH via the wizard** (firmware changed: attacker-MAC build flag, Basti's RXSTALL/heartbeat tree). Every laptop picks the SAME attacker.
-2. **Re-run star G402 BURST** — before flashing, the wizard plan must show one victim as BURST TARGET (last time nobody was).
+2. **Re-run star G402 BURST** — exactly ONE laptop's plan must show a victim `<< burst TARGET`; others answer y. Basti/Kyle: delete local `exports/blackhole/star/G402/burst/` first.
 3. **Basti: delete local copies** of `linear/G402/burst` + `linear/G402/highload` (`push_data.py delete-local --area exports`) — his push re-added them once already (re-deleted in `ff8059f`).
 4. **Highload collapse test:** 7-board highload with the root's `[RXSTALL]` log saved; read against `docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md` §12.6. Highload r2/r3 baselines are broken (PDR 0.86-0.94); r1/r4 alone CONFIRM.
 5. **First wormhole run on current firmware** (last hardware-confirmed: Jul 20). Pre-flight passed: all 4 wormhole builds clean, analysis tested on archived runs. Test the UART cable with `uart_link_test` first; Node A's end-of-run "TUNNEL CARRIED NOTHING" banner = unusable run.
