@@ -2314,3 +2314,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - sep. 30 — Star+blackhole hub designed (D-16); verifier/validator fixes (missing attacker → INCONCL, per-source drop check); duplicate/incomplete linear G402 data removed; G402 partial_mesh + tree runs completed on GitHub.
 - sep. 30 — Docs reorganized by topic (Basti); highload collapse cause found + RXSTALL instrumentation (Basti).
 
+
+## Rolled from STATUS (oct. 1, 2026 night)
+- sep. 30 — Star+blackhole hub designed (D-16); verifier fixes; G402 partial_mesh + tree runs completed.

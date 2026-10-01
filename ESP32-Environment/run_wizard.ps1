@@ -5564,8 +5564,8 @@ function Remove-BoardInteractive {
         if ($eligible.Count -eq 0) {
             Write-Host "   That node was the $Scenario target and no remaining child can carry it - pick a different scenario, or add a node before confirming." -ForegroundColor Yellow
         } else {
-            $labels = @($eligible | ForEach-Object { "$($_.Label)  ($($_.Port))  -  $($_.Display)" })
-            $tIdx = Show-Menu -Title "Which node is now the $Scenario TARGET? (exactly one)" -Options $labels -DefaultIndex 0
+            $tIdx = Show-ScenarioTargetMenu -Title "Which node is now the $Scenario TARGET? (exactly one)" `
+                -Scenario $Scenario -Eligible $eligible -Roster $remaining -DefaultIndex 0
             if ($tIdx -ge 0) {
                 $eligible[$tIdx].ScenarioTarget = $true
                 $eligible[$tIdx].Display += " + $($Scenario.ToUpper()) TARGET"
@@ -6209,6 +6209,68 @@ function Sync-RosterPortsByMac {
     return [pscustomobject]@{ Applied = $true; Unresolved = $unresolved; MacMap = $macMap }
 }
 
+function Show-ScenarioTargetMenu {
+    # Every "which node is the <scenario> TARGET?" prompt goes through here, so
+    # each board shows whether its port is plugged in RIGHT NOW, and the menu
+    # can re-find boards by MAC before you commit. A burst/powercycle/mobility
+    # target that isn't connected can't be flashed with the target build -
+    # before oct. 1, 2026 'NOT PRESENT' showed only in the preset summary, never
+    # at this prompt, so you could pick an unplugged board without noticing.
+    # Returns the index into ($Eligible + $ExtraOptions), or -1 for 'b' (only
+    # with -AllowBack). Port moves found by Detect are applied to $Roster's
+    # board objects in place (the same objects $Eligible holds).
+    param(
+        [string]$Title,
+        [string]$Scenario,
+        [object[]]$Eligible,
+        [string[]]$ExtraOptions = @(),
+        $Roster,
+        [int]$DefaultIndex = -1,
+        [switch]$AllowBack
+    )
+    while ($true) {
+        $live = @(Get-PortList | Select-Object -ExpandProperty Port)
+        $labels = @($Eligible | ForEach-Object {
+            $portText = if (-not $_.Port) { 'other laptop' }
+                        elseif ($live -contains $_.Port) { "$($_.Port) plugged in" }
+                        else { "$($_.Port) NOT PRESENT" }
+            $tag = ''
+            if ($_.Port -and $script:IdentifiedPorts.ContainsKey($_.Port)) { $tag = "  [$($script:IdentifiedPorts[$_.Port])]" }
+            "{0}  ({1}){2}  -  {3}" -f $_.Label, $portText, $tag, $_.Display
+        })
+        $labels += $ExtraOptions
+        $detectIdx = $labels.Count
+        $labels += 'Detect ports - plugged a board in or moved a cable? Find each board by its MAC and redraw this list'
+
+        $idx = if ($AllowBack) { Show-Menu -Title $Title -Options $labels -DefaultIndex $DefaultIndex -AllowBack }
+               else            { Show-Menu -Title $Title -Options $labels -DefaultIndex $DefaultIndex }
+
+        if ($idx -eq $detectIdx) {
+            if ($DryRun -or $SkipMacCheck) {
+                Write-Host ("  Not reading boards ({0}) - can't detect ports. List refreshed from what Windows sees." -f $(if ($DryRun) { 'dry run' } else { '-SkipMacCheck' })) -ForegroundColor Yellow
+                continue
+            }
+            $sync = Sync-RosterPortsByMac -Roster $Roster -Ports @(Get-PortList)
+            if ($sync.Unresolved.Count -gt 0) {
+                Write-Host ("  Still not found: {0} - plug it in and pick Detect again." -f (($sync.Unresolved | ForEach-Object { $_.Label }) -join ', ')) -ForegroundColor Yellow
+            }
+            continue
+        }
+        if ($idx -ge 0 -and $idx -lt $Eligible.Count) {
+            $b = $Eligible[$idx]
+            if ($b.Port -and $live -notcontains $b.Port) {
+                Write-Host ""
+                Write-Host ("  {0} is recorded on {1}, which is NOT plugged in right now." -f $b.Label, $b.Port) -ForegroundColor Yellow
+                Write-Host ("  The {0} target has to be connected to be flashed with the target build." -f $Scenario) -ForegroundColor Yellow
+                Write-Host "  Plug it in and pick 'Detect ports' - its COM number may have changed." -ForegroundColor Yellow
+                $ans = Read-Line "  Use it anyway (you'll plug it in before flashing)? [y/N] > "
+                if ($ans -ne 'y' -and $ans -ne 'Y') { continue }
+            }
+        }
+        return $idx
+    }
+}
+
 function Read-RepeatNumber {
     # Shared by the menu flow and the preset picker so the explanation lives once.
     # -AllowBack (menu flow only) returns -1 for 'b'/'back' - a real repeat
@@ -6357,17 +6419,15 @@ function Edit-PresetInteractive {
         # `&` gets its own child scope: `$draft += ...` in there would rebind
         # only that scope's copy, not this function's.
         $eligible = @($draft | Where-Object { $_.Role -ne 'root' -and ($scenario -ne 'burst' -or (Test-BurstEligible $_)) })
-        $labels = @($eligible | ForEach-Object {
-            "{0}  ({1})  -  {2}" -f $_.Label, $(if ($_.Port) { $_.Port } else { 'other laptop' }), $_.Display
-        })
-        $escapeIdx = $labels.Count
-        $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
+        $escapeIdx = $eligible.Count
+        $escapeText = "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
         if ($eligible.Count -eq 0) {
             Write-Host ("   No node here can carry {0} - marking the target as on another laptop." -f $scenario) -ForegroundColor Yellow
             $tIdx = $escapeIdx
         }
         else {
-            $tIdx = Show-Menu -Title ("Which node is the {0} TARGET? (exactly one)" -f $scenario) -Options $labels -DefaultIndex 0
+            $tIdx = Show-ScenarioTargetMenu -Title ("Which node is the {0} TARGET? (exactly one)" -f $scenario) `
+                -Scenario $scenario -Eligible $eligible -ExtraOptions @($escapeText) -Roster $draft -DefaultIndex 0
         }
         if ($tIdx -lt 0) { return $draft }
         foreach ($b in $draft) { $b.ScenarioTarget = $false }
@@ -8214,12 +8274,7 @@ else {
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
                     continue flow
                 }
-                $labels = @($eligible | ForEach-Object {
-                    $tag = ''
-                    if ($_.Port -and $script:IdentifiedPorts.ContainsKey($_.Port)) { $tag = "  [$($script:IdentifiedPorts[$_.Port])]" }
-                    $portText = if ($_.Port) { $_.Port } else { 'remote - not on this laptop' }
-                    "$($_.Label)  ($portText)$tag  -  $($_.Display)"
-                })
+                $labels = @()
                 # MULTI-LAPTOP SPLIT: same reasoning as the attacker/wormhole escapes
                 # above - the scenario target may be a board on a teammate's laptop,
                 # never listed here at all. Without this, "which child is the target?"
@@ -8228,10 +8283,11 @@ else {
                 # the one place in the wizard that can't say "not here".
                 $escapeIdx = -1
                 if ($multiLaptop) {
-                    $escapeIdx = $labels.Count
+                    $escapeIdx = $eligible.Count
                     $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
                 }
-                $idx = Show-Menu -Title "Which child is the $scenario TARGET? (exactly one)" -Options $labels -AllowBack
+                $idx = Show-ScenarioTargetMenu -Title "Which child is the $scenario TARGET? (exactly one)" `
+                    -Scenario $scenario -Eligible $eligible -ExtraOptions $labels -Roster $children -AllowBack
                 if ($idx -eq -1) {
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
                     continue flow
