@@ -552,6 +552,24 @@ static void probe_data_cb(const uint8_t *data, size_t len,
      * This keeps the schema consistent with victim rows and lets the
      * post-processing pipeline join on the same columns.
      */
+    /* ── RXSTALL INSTRUMENTATION — TEMPORARY, REMOVE ONCE ANSWERED ──────────────
+     * Question (COOLDOWN-RECOVERY-2026-09-30.md §12.4-12.5): does THIS
+     * callback's inline SPIFFS+SD write stall the single esp_mesh_recv()
+     * reader long enough for the root's mesh RX queue (default 32) to fill and
+     * throttle the children? The header above this function already requires
+     * "keep it short and non-blocking" - this measures whether it is.
+     *
+     * Measures only; changes no behaviour. Costs one esp_timer_get_time() pair
+     * per probe plus one log line every REPORT_EVERY arrivals (~10 s at the
+     * 20/s highload rate). */
+    #define RXS_REPORT_EVERY 200U
+    static int64_t  rxs_max_us   = 0;    /* worst single write since last report */
+    static int64_t  rxs_sum_us   = 0;
+    static uint32_t rxs_n        = 0;
+    static int      rxs_rxq_max  = 0;    /* worst RX backlog seen (queue is 32)  */
+
+    int64_t rxs_t0 = esp_timer_get_time();
+
     csv_logger_append_probe_arrival(
         now,
         s_node_id,
@@ -567,6 +585,32 @@ static void probe_data_cb(const uint8_t *data, size_t len,
         pkt->seq_num,
         latency
     );
+
+    int64_t rxs_dt = esp_timer_get_time() - rxs_t0;
+    rxs_sum_us += rxs_dt;
+    rxs_n++;
+    if (rxs_dt > rxs_max_us) rxs_max_us = rxs_dt;
+
+    /* How many packets the mesh stack is holding for us RIGHT NOW. This is the
+     * number that matters: it climbing toward 32 (esp_mesh_set_xon_qsize()'s
+     * default, never raised in this project) is the throttle firing. */
+    mesh_rx_pending_t rxs_pend = {0};
+    if (esp_mesh_get_rx_pending(&rxs_pend) == ESP_OK &&
+        rxs_pend.toSelf > rxs_rxq_max) {
+        rxs_rxq_max = rxs_pend.toSelf;
+    }
+
+    if (rxs_n >= RXS_REPORT_EVERY) {
+        ESP_LOGW(TAG, "[RXSTALL] write avg %lld us / max %lld us over %lu probes | "
+                      "RXQ max %d of 32 (now %d) | phase %u",
+                 (long long)(rxs_sum_us / (int64_t)rxs_n),
+                 (long long)rxs_max_us,
+                 (unsigned long)rxs_n,
+                 rxs_rxq_max, rxs_pend.toSelf,
+                 (unsigned)phase_listener_get_phase_id());
+        rxs_max_us = 0; rxs_sum_us = 0; rxs_n = 0; rxs_rxq_max = 0;
+    }
+    /* ── end RXSTALL instrumentation ──────────────────────────────────────────── */
 
     ESP_LOGD(TAG, "Probe from " MACSTR " seq=%lu lat=%lld us",
              MAC2STR(pkt->src_mac),
