@@ -6542,12 +6542,13 @@ function Show-PresetDetails {
         Write-Host "  victims and the root - near the root (hop 1-2) is safest. An attacker at the" -ForegroundColor Cyan
         Write-Host "  far end of a chain, or as a leaf, intercepts nothing and the run will show NO" -ForegroundColor Cyan
         Write-Host "  attack even though every board looks healthy." -ForegroundColor Cyan
-        Write-Host "  Check after the run: toolserify_topology.py ... --structure" -ForegroundColor DarkGray
+        Write-Host "  Check after the run: tools\verify_topology.py ... --structure" -ForegroundColor DarkGray
 
         $wantMac = Get-ConfiguredAttackerMac
         Write-Host ""
         if (-not $att) {
-            Write-Host "  WARNING: blackhole preset with no attacker board." -ForegroundColor Red
+            Write-Host "  No attacker board on THIS laptop's preset. Fine on a multi-laptop run (the" -ForegroundColor Yellow
+            Write-Host "  wizard asks for its MAC before flashing victims); otherwise there is no attack." -ForegroundColor Yellow
         }
         elseif (-not $wantMac) {
             Write-Host "  Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h." -ForegroundColor Yellow
@@ -7340,8 +7341,19 @@ if ($Preset) {
     # A target-needing scenario with no board marked ScenarioTarget is a preset
     # that would silently do nothing on run - fail loudly instead of flashing a
     # 'burst'/'mobility'/'powercycle' run where nobody actually carries it out.
+    # Multi-laptop split presets (oct. 1, 2026): a laptop holding only the root,
+    # or only plain victims, legitimately has no target - it is on another
+    # laptop. Throwing here killed the wizard for every such laptop, so ask.
     if ((Test-ScenarioNeedsTarget $scenario) -and -not ($roster | Where-Object { $_.ScenarioTarget })) {
-        throw "Preset's scenario is '$scenario' but no board is marked as the ScenarioTarget."
+        Write-Host ""
+        Write-Host ("No board in this preset is marked as the '{0}' TARGET." -f $scenario) -ForegroundColor Yellow
+        Write-Host "  Fine on a multi-laptop run if the target board is flashed on ANOTHER laptop." -ForegroundColor DarkGray
+        Write-Host "  On a single-laptop run it means nobody carries out the scenario - edit the preset." -ForegroundColor DarkGray
+        $ans = Read-Line ("Is the {0} target on another laptop? [y/N] > " -f $scenario)
+        if ($ans -ne 'y' -and $ans -ne 'Y') {
+            throw "Preset's scenario is '$scenario' but no board is marked as the ScenarioTarget - mark one (Edit this preset) or answer y if it is on another laptop."
+        }
+        Write-Host ("  OK - the {0} target runs on another laptop." -f $scenario) -ForegroundColor Green
     }
 
     if (-not $bannerShown) {
@@ -8261,10 +8273,32 @@ if ($attack -eq 'blackhole') {
         # Neither local nor recorded elsewhere in the full roster - nothing
         # blackhole-specific on THIS laptop to verify (root-only laptop, etc).
         if ($victimCount -gt 0) {
+            # A split preset often records no attacker at all (e.g. a laptop with
+            # only victims). Its victims still need the attacker's MAC built in -
+            # load-bearing for STAR (D-16): without it they fall back to this
+            # laptop's mesh_config.h and, if stale, never join (oct. 1, 2026).
             Write-Host ""
-            Write-Host "WARNING: local victim(s) present but no attacker anywhere in the roster." -ForegroundColor Red
-            Write-Host "No node will drop transiting traffic, so there is no blackhole to observe" -ForegroundColor Red
-            Write-Host "and the capture carries no attack signature." -ForegroundColor Red
+            Write-Host "No attacker board is recorded in this roster, but it has local victim(s)." -ForegroundColor Yellow
+            Write-Host "  If the attacker is on ANOTHER laptop, type its MAC (printed by that laptop's" -ForegroundColor DarkGray
+            Write-Host "  wizard) so it is built into the victims here. Blank = there is no attacker." -ForegroundColor DarkGray
+            if ($SkipMacCheck -or $DryRun) {
+                Write-Host "  (not asking - dry run / -SkipMacCheck)" -ForegroundColor DarkGray
+            }
+            else {
+                $tries = 0
+                while ($true) {
+                    $tries++
+                    if ($tries -gt $script:MaxPromptTries) { break }
+                    $raw = Read-Line "`nAttacker's MAC (aa:bb:cc:dd:ee:ff), blank if none > "
+                    if (-not $raw) { break }
+                    if ($raw.Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $typedMac = $raw.Trim().ToLower(); break }
+                    Write-Host "  Not a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
+                }
+            }
+            if (-not $typedMac) {
+                Write-Host "WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
+                Write-Host "blackhole to observe and the capture carries no attack signature." -ForegroundColor Red
+            }
         }
     }
     else {
