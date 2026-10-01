@@ -249,15 +249,20 @@ static void probe_gen_task(void *arg)
     uint32_t seq = 0;
 
 #if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_BURST)
-    /* Window detection, one-shot. Attack build: the announced attack phase.
-     * Baseline build: root_main.c's burst branch re-announces PHASE_ID_BASELINE
-     * with a new seq ("Phase 0b"), so the window is a seq change WHILE phase_id
-     * is already 0. Counting raw seq changes instead fired the burst during
-     * stabilisation, because the root's PREPAREs advance the same seq
-     * (sep. 30, 2026: blackhole/linear/G402/burst burst landed pre-baseline). */
-#if (ACTIVE_ATTACK == ATTACK_NONE)
+    /* Window detection, one-shot, decided at RUN time from what the root
+     * announces - either signal opens it:
+     *   - attack run:   the announced attack phase (blackhole / wormhole);
+     *   - baseline run: root_main.c's burst branch re-announces PHASE_ID_BASELINE
+     *     with a new seq ("Phase 0b"), so a seq change WHILE phase_id is
+     *     already 0. Counting raw seq changes instead fired the burst during
+     *     stabilisation, because the root's PREPAREs advance the same seq
+     *     (sep. 30, 2026: blackhole/linear/G402/burst burst landed pre-baseline).
+     * This used to be an #if on ACTIVE_ATTACK, but child_node/main never
+     * received that define - every victim compiled as ATTACK_NONE, waited for
+     * a "Phase 0b" an attack root never sends, and skipped the burst at
+     * cooldown (oct. 1, 2026: both star/G402 burst runs). A wormhole 'control'
+     * sender is built as 255 on purpose, so a build flag can't decide this. */
     uint32_t baseline_seq   = 0;    /* seq of the Phase 0 broadcast; 0 = not heard */
-#endif
     bool     window_open    = false;
     bool     burst_done     = false;
     int64_t  window_t0_us   = 0;
@@ -306,19 +311,15 @@ static void probe_gen_task(void *arg)
 
             if (!window_open) {
                 bool past_window = (pid == PHASE_ID_COOLDOWN || pid == PHASE_ID_TERMINATE);
-#if (ACTIVE_ATTACK != ATTACK_NONE)
                 bool opens = (pid == PHASE_ID_BLACKHOLE || pid == PHASE_ID_WORMHOLE);
-#else
-                bool opens = false;
                 uint32_t s = phase_listener_get_bcast_seq();
                 if (pid != PHASE_ID_BASELINE) {
                     baseline_seq = 0;       /* not in Phase 0 yet, or root restarted */
                 } else if (baseline_seq == 0) {
                     baseline_seq = s;
                 } else if (s != baseline_seq) {
-                    opens = true;
+                    opens = true;           /* baseline run's "Phase 0b" */
                 }
-#endif
                 if (past_window) {
                     ESP_LOGW(TAG, "BURST: window never detected before cooldown - skipped.");
                     burst_done = true;

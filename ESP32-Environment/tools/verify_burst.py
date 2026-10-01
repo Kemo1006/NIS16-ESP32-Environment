@@ -85,8 +85,10 @@ def main():
         else:
             all_fired = False
             print("  NO BURST FIRED - no victim sent the ~%d extra probes." % BURST_COUNT)
-            print("  No board was built as the burst TARGET (run.ps1 -ScenarioTarget). This capture")
-            print("  is effectively STATIONARY - do not file or report it as burst.")
+            print("  Either no board was built as the burst TARGET (run.ps1 -ScenarioTarget), or the")
+            print("  sender's firmware predates the oct. 1, 2026 burst-window fix (victim_main.c never")
+            print("  opened the window on an attack run). This capture is effectively STATIONARY -")
+            print("  do not file or report it as burst.")
     return 0 if all_fired else 1
 
 

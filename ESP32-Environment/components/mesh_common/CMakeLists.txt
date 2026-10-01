@@ -35,8 +35,9 @@ if(DEFINED MESH_TOPOLOGY)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE MESH_TOPOLOGY=${MESH_TOPOLOGY})
 endif()
 
-# ACTIVE_ATTACK is also defined in root_node/main and child_node/main, but those
-# are PRIVATE to the main component — sd_status.c lives here, so without this it
+# ACTIVE_ATTACK is also defined in root_node/main (NOT child_node/main - no
+# child source branches on it; victim_main.c's burst window is decided at run
+# time, oct. 1, 2026), but that define is PRIVATE to the main component — sd_status.c lives here, so without this it
 # would read the #ifndef ATTACK_NONE fallback in mesh_config.h and file every run
 # under baseline/ regardless of the actual build. Same scoping rationale as
 # MESH_TOPOLOGY above: a mode switch recompiles this component, not the IDF tree.
