@@ -20,8 +20,14 @@
 /** 6-byte mesh network identifier (must be identical on every node). */
 #define MESH_ID             {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45}
 
-/** Mesh network password (WPA2-PSK style; 8–64 printable ASCII chars). */
+/** Mesh network password (WPA2-PSK style; 8–64 printable ASCII chars).
+ *  Kept in the repo ON PURPOSE: every board in a run must share it, and the
+ *  boards are built on three laptops - a per-laptop secret would split the
+ *  mesh. It is a lab-only mesh key; never reuse it anywhere real. Override per
+ *  build with  idf.py -DMESH_PASSWORD='"..."'  (all boards of a run together). */
+#ifndef MESH_PASSWORD
 #define MESH_PASSWORD       "MeshSecure2026!"
+#endif
 
 /** Wi-Fi channel for the routerless mesh (1–13; must be identical on every
  *  node). Use a non-overlapping channel (1, 6, or 11) that is QUIET in your
@@ -124,8 +130,15 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 #define MESH_USE_ROUTER     0          /**< 1 = root connects to an AP; 0 = standalone */
+/* Placeholders - unused while MESH_USE_ROUTER is 0. Never commit a real
+ * network's credentials here: pass them per build with -DROUTER_SSID='"..."'
+ * -DROUTER_PASSWORD='"..."' instead. */
+#ifndef ROUTER_SSID
 #define ROUTER_SSID         "YourRouterSSID"
+#endif
+#ifndef ROUTER_PASSWORD
 #define ROUTER_PASSWORD     "YourRouterPassword"
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * EXPERIMENT PHASE TIMING  (seconds)
@@ -762,7 +775,8 @@
  *  node_identity.c. Two keys, one per line, '#' comments allowed:
  *      nickname=Node-3-BH
  *      role=blackhole
- *  Absent file / absent key / bad value each fall through to the MAC table. */
+ *  Absent file / absent key / bad value each fall back to "Board-<first>:<last>"
+ *  from the board's own MAC. */
 #define SD_NODE_CONFIG_FILE     SD_MOUNT_POINT "/node_config.txt"
 
 /* ═══════════════════════════════════════════════════════════════════════════

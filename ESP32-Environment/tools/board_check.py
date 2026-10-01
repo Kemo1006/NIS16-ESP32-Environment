@@ -52,37 +52,33 @@ except ImportError:
 BAUD = 115200          # must match the firmware console baud (mesh_config/sdkconfig)
 EXPECTED_FLASH = "4MB"  # partitions.csv needs the 4MB layout
 
-# Known boards in this project, by STA MAC. The AP MAC is normally STA+1, so we
-# match on a prefix-of-5-octets basis too. Sourced from captured telemetry
-# (node_id = NODE_<MAC>) and mesh_config.h's BLACKHOLE_ATTACKER_MAC.
-#
-# Labelled by NODE NUMBER, not COM port. Every board now reports through the one
-# port you happen to plug it into, so answering "COM26" for a board sitting on
-# COM20 reads like a contradiction — and the node number is what you actually
-# type (--label node5 -> child_node5_*.csv) and what the runbooks name boards by
-# ("Boards are identified by -Label, not by COM", LINEAR-RUNBOOK.md).
-# Old port names, kept only so the pre-2026-07-26 tables still decode:
-#   node1=COM20  node2=COM21  node3=COM22  node4=COM25  node5=COM26  node6=COM27
-# Bare node NUMBER only - no role (ROOT/ATTACKER/etc). A role here used to be a
-# fixed guess from one old campaign layout and never reflected what was actually
-# flashed: it survived a wipe, a reflash to a different role, even a full erase,
-# because it's keyed on the MAC (burned in at the factory, permanent) while the
-# role is decided by -Role/-Attack at flash time (or by nothing at all on a
-# blank board). See identify_firmware()/short_firmware_tag() below for what IS
-# live: a role read from the board's own boot banner, right now.
-KNOWN = {
-    "28:05:a5:32:d7:b4": "node1",
-    "b0:cb:d8:f3:32:18": "node5",
-    "f4:2d:c9:73:e6:18": "node6",
-    # node2/node4 UNCONFIRMED: ATTACKS-Commands.md's board table has these two
-    # MACs the other way round (its COM25 is our COM21). Nothing in the campaign
-    # depends on it - both are plain victims and all telemetry keys on the MAC -
-    # but the NUMBER could be swapped. Confirm once by plugging one in and
-    # reading the MAC here, then make ATTACKS-Commands.md agree.
-    "b4:bf:e9:34:ed:80": "node2",
-    "b4:bf:e9:32:fe:90": "node4",
-    "70:4b:ca:25:b7:68": "node3",
-}
+# Board names are NOT kept in this file any more (oct. 1, 2026 hardcode audit):
+# the old built-in KNOWN table listed six MACs as node1..node6 from the jul. 2026
+# layout and silently went stale as boards were swapped. Names now come from
+#   1. presets/boards.json (optional full-MAC roster, see load_roster), then
+#   2. member_boards.json at the repo root - the team's one board list, edited
+#      from menu.ps1 - matched on the first:last MAC byte it records.
+# A board in neither is reported as new/spare, never guessed.
+KNOWN = {}
+
+MEMBER_BOARDS_JSON = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "member_boards.json")
+
+
+def _member_board_names(path=MEMBER_BOARDS_JSON):
+    """'first:last' MAC byte pair (lowercase) -> 'Member nickname'."""
+    try:
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for member in data.get("members", []):
+        for b in member.get("boards", []):
+            parts = str(b.get("mac", "")).lower().split(":")
+            if len(parts) >= 2 and b.get("nickname"):
+                out[f"{parts[0]}:{parts[-1]}"] = f"{member.get('name', '?')} {b['nickname']}"
+    return out
 
 
 # Default location for an operator-maintained roster. Deliberately its own file,
@@ -138,7 +134,7 @@ def load_roster(path=None):
         print(f"  roster: {added} board(s) from {path}")
     except (OSError, ValueError, AttributeError) as e:
         print(f"  WARNING: could not read roster {path} ({e}); using the "
-              f"built-in table only.", file=sys.stderr)
+              f"member_boards.json only.", file=sys.stderr)
     return roster
 
 
@@ -418,19 +414,28 @@ def identify(mac, roster=None):
         return roster[m]
     # try AP-side MAC (usually STA + 1 in the last octet)
     head, last = m.rsplit(":", 1)
+    alt = None
     try:
         alt = f"{head}:{int(last, 16) - 1:02x}"
         if alt in roster:
             return roster[alt] + "  [AP-side MAC]"
     except ValueError:
         pass
+    # member_boards.json records only the first:last byte of each MAC.
+    names = _member_board_names()
+    for cand, tag in ((m, ""), (alt, "  [AP-side MAC]")):
+        if cand:
+            parts = cand.split(":")
+            key = f"{parts[0]}:{parts[-1]}"
+            if key in names:
+                return f"{names[key]}  (member_boards.json){tag}"
     return "NOT in the known roster - a spare/new board"
 
 
 def short_firmware_tag(variant, how):
     """One short word/phrase for run_wizard.ps1's identify feature - a LIVE
     read of what's actually running, to replace the old KNOWN-roster role
-    guess that never updated on wipe/reflash (see the KNOWN dict comment
+    guess that never updated on wipe/reflash (see the KNOWN comment
     above). variant/how are identify_firmware()'s own return values.
     """
     if variant:

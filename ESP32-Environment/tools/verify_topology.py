@@ -65,7 +65,9 @@ PHASE_BASELINE = 0
 # like a baseline re-route unless this window is excluded. Milestone 3 asks
 # two separate questions — "converges within 60 s" and "stable through the
 # 5-minute baseline" — and counting formation as instability conflates them.
-STABILISE_S = 60.0
+from mesh_constants import mesh_config_int  # noqa: E402  (same folder)
+
+STABILISE_S = float(mesh_config_int("PHASE_STABILISE_S", 60))
 
 # phase_id a v2 (14-column) board logs before it hears the root (F1).
 PHASE_UNSET = 255

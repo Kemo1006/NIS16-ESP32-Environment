@@ -2317,3 +2317,8 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS (oct. 1, 2026 night)
 - sep. 30 — Star+blackhole hub designed (D-16); verifier fixes; G402 partial_mesh + tree runs completed.
+
+## Rolled from MEMORY (oct. 1, 2026 night)
+- sep. 24, 2026 — **Basti's laptop git identity is `xMiguelCarlosx`** — commits "by Miguel" from this clone are
+  the user (VS Code auto-sync also runs `pull --autostash` mid-session). `PCAP/` + `*.pcap` git-ignored: a 120 MB
+  Mac capture exceeds GitHub's 100 MB cap and blocked every push until removed from history.

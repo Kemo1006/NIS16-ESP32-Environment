@@ -89,14 +89,13 @@ TOPO_DIR = {
     "partial": "partial_mesh",
 }
 
-# Default port per board. Override with --root-port / --attacker-port /
-# --nodeb-port / --control-port if your layout differs.
-DEFAULT_PORTS = {
-    "root": "COM20",
-    "attacker": "COM25",   # blackhole attacker / wormhole Node A
-    "nodeb": "COM26",      # blackhole control  / wormhole Node B
-    "control": "COM21",    # control in every attack run
-}
+# No default COM ports (oct. 1, 2026 hardcode audit): a COM number belongs to
+# the USB socket, not the board, and differs on every laptop - the old fixed
+# COM20/21/25/26 table printed wrong commands on any other layout. Pass
+# --root-port / --attacker-port / --nodeb-port / --control-port (the wizard's
+# 'Auto-detect ports' finds them by MAC); anything not passed is printed as a
+# visible placeholder, e.g. <ROOT_PORT>, to fill in by hand.
+PORT_ROLES = ("root", "attacker", "nodeb", "control")
 
 LEDGER = "run_ledger.csv"
 LEDGER_COLS = ["topology", "attack", "location", "scenario", "scenario_target",
@@ -552,19 +551,18 @@ def main():
                     help="Passed to validate_integrity.py (use 1000 for pre-2026-07-12 "
                          "1 Hz captures; omit for the firmware default).")
 
-    ap.add_argument("--root-port", default=DEFAULT_PORTS["root"])
-    ap.add_argument("--attacker-port", default=DEFAULT_PORTS["attacker"])
-    ap.add_argument("--nodeb-port", default=DEFAULT_PORTS["nodeb"])
-    ap.add_argument("--control-port", default=DEFAULT_PORTS["control"])
+    ap.add_argument("--root-port", default=None)
+    ap.add_argument("--attacker-port", default=None,
+                    help="blackhole attacker / wormhole Node A")
+    ap.add_argument("--nodeb-port", default=None,
+                    help="blackhole control / wormhole Node B")
+    ap.add_argument("--control-port", default=None,
+                    help="control victim in every attack run")
     args = ap.parse_args()
     args.scenario = canon_scenario(args.scenario)
 
-    ports = {
-        "root": args.root_port,
-        "attacker": args.attacker_port,
-        "nodeb": args.nodeb_port,
-        "control": args.control_port,
-    }
+    ports = {role: getattr(args, f"{role}_port") or f"<{role.upper()}_PORT>"
+             for role in PORT_ROLES}
 
     # burst/mobility/powercycle need a target board; wormhole's Node B can't
     # carry a burst (only victim_main.c-based boards can — see mesh_config.h

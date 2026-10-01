@@ -111,7 +111,9 @@ def _canonical_role(role):
     return ROLE_ALIASES.get(str(role).strip().lower(), role)
 
 
-PHASE_BASELINE_S = 300
+from mesh_constants import mesh_config_int  # noqa: E402  (tools/, on sys.path above)
+
+PHASE_BASELINE_S = mesh_config_int("PHASE_BASELINE_S", 300)
 
 # F1 (firmware, 2026-09-20): from this capture onward the board RECORDS the
 # "not heard a phase broadcast yet" state instead of logging it as phase 0.

@@ -13,6 +13,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Burst can't fail silently any more:** `tools/verify_burst.py`; `analyze.ps1` prints `burst : FIRED|NOT FIRED`; wizard blocks a burst target on the attacker and names the sender in the plan.
 - **star/G402/stationary r1 = the oct01 2 PM run** (6 victims, integrity/topology PASS, BLACKHOLE CONFIRMED, sniffer paired). Old 12:24 run archived locally (`archive/2026-10-01_star-G402-stationary-replaced/`). star/G402/burst NOT captured yet.
 - **linear/G402/jitter r1 ANALYZED + CHECKED (oct. 1 night): integrity 9/9, topology linear OK, BLACKHOLE CONFIRMED 2/2, jitter fired (312.5/190.5 s), pcap PASS.** Root's 2 files now pushed. Full re-verify: analysis rebuilt = identical. EDA PCA/t-SNE bug fixed (attack class was missing; jitter + star stationary plots regenerated). Open: preprocess drops jitter's extra baseline (MEMORY).
+- Hardcode audit DONE + pushed: IDF `%d` bug, phase constants from mesh_config.h (`tools/mesh_constants.py`), stale firmware nickname table removed (`Board-XX:YY`), board_check/run_matrix no hardcoded MACs/COMs, `.mcp.json` untracked. Firmware nickname change shows after the next reflash.
 - Wizard: scenario-TARGET prompts show `plugged in`/`NOT PRESENT` + a 'Detect ports' option (pushed, not yet used on real boards). Attacker picker lists every known board.
 - Campaign: 5/144 + jitter pending (G402: linear/tree/partial/star stationary; home linear burst).
 
@@ -29,6 +30,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⛔⛔ Boards DIRECT into the laptop, never dock/hub (BSOD 0xB8). Never pull an SD card mid-run.
 - ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself.
 - ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
+- ⚠️ 7 `partial_mesh/G402/jitter` export files were found STAGED on Angelo's laptop (not by Claude) - left staged, NOT committed; owner to push or unstage.
 - Presets with star/burst content under a LINEAR name: `Bas/` + `Cal/linear-blackhole-stationary-g402.json` — not pushed; fix/rename.
 - Uncommitted on Angelo's laptop, on purpose: `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, 4 presets, `archive/*` folders.
 

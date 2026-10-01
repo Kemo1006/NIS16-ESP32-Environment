@@ -98,7 +98,11 @@ def _read_header(path):
 # disagreed -- so these are now treated as an EXPECTATION to check against the
 # data, not as ground truth. Override with --phase-durations when a campaign
 # deliberately runs a different schedule.
-PHASE_DURATION_S = {0: 300, 1: 180, 2: 180, 3: 120}
+from mesh_constants import mesh_config_int  # noqa: E402  (same folder)
+
+_ATTACK_S = mesh_config_int("PHASE_ATTACK_S", 180)
+PHASE_DURATION_S = {0: mesh_config_int("PHASE_BASELINE_S", 300), 1: _ATTACK_S,
+                    2: _ATTACK_S, 3: mesh_config_int("PHASE_COOLDOWN_S", 120)}
 
 # How far a measured phase may drift from nominal before it is called out. The
 # `jitter` scenario extends phases on purpose, so a phase running LONG is normal

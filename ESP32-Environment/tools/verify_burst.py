@@ -31,7 +31,10 @@ import os
 import re
 import sys
 
-BURST_COUNT = 300            # mesh_config.h BURST_COUNT
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mesh_constants import mesh_config_int  # noqa: E402
+
+BURST_COUNT = mesh_config_int("BURST_COUNT", 300)
 PROBE_INTERVAL_S = 1.0       # burst runs use the normal 1000 ms interval (never highload)
 FIRED_AT = BURST_COUNT // 2  # half the burst is unmistakable; normal victims stay within a few
 

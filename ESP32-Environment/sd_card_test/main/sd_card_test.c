@@ -104,12 +104,14 @@ void app_main(void)
         "[3] SD CARD\r\n"
         "  Name: %s\r\n"
         "  Type: %s\r\n"
-        "  Speed: %d kHz (limit %d kHz)\r\n"
+        "  Speed: %lu kHz (limit %lu kHz)\r\n"
         "  Size: %llu MB\r\n"
         "  Status: OK\r\n\r\n",
         card->cid.name,
         (card->ocr & (1 << 30)) ? "SDHC/SDXC" : "SDSC",
-        card->real_freq_khz, card->max_freq_khz,
+        /* Cast: these fields are uint32_t on one IDF install and int on
+         * another (5.3.5 vs 5.5.4) - see CLAUDE.md, same as sd_status.c. */
+        (unsigned long)card->real_freq_khz, (unsigned long)card->max_freq_khz,
         (unsigned long long)((uint64_t)card->csd.capacity) * card->csd.sector_size / (1024 * 1024));
 
     // ---- [4] Read/write integrity check — catches silent corruption, not just total failure ----

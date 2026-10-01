@@ -5,8 +5,8 @@
  * Resolution order for the NICKNAME:
  *   1. /sdcard/node_config.txt  → "nickname=..."   (read by sd_status.c while
  *                                                   the card is still mounted)
- *   2. MAC lookup table in node_identity.c
- *   3. "Unassigned"
+ *   2. "Board-<first>:<last>" built from the board's own MAC (no table -
+ *      a hardcoded MAC table went stale; see node_identity.c)
  *
  * The ROLE is NOT resolved from the SD card. Behaviour still comes from the
  * build flags (ACTIVE_ATTACK / BLACKHOLE_ROLE / WORMHOLE_END) because the three
@@ -37,8 +37,8 @@ typedef struct {
  * @brief Resolve this board's identity. Call once from app_main, AFTER
  *        sd_status_run_boot_check() and BEFORE heartbeat_start().
  *
- * Never fails: with no SD card and no MAC-table match the nickname becomes
- * "Unassigned" and the run continues, matching sd_status.c's report-and-continue
+ * Never fails: with no SD card nickname the name is derived from the MAC
+ * ("Board-20:38") and the run continues, matching sd_status.c's report-and-continue
  * behaviour.
  *
  * @param build_role This binary's role (node_role_t), from the caller's own
