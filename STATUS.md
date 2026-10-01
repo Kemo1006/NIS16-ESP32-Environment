@@ -30,7 +30,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⛔⛔ Boards DIRECT into the laptop, never dock/hub (BSOD 0xB8). Never pull an SD card mid-run.
 - ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself.
 - ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
-- ⚠️ **star/G402/burst duplicates RE-ADDED a 3rd time** by Basti's `589af2d` (oct. 1 15:46, merged `ffe25a5`). Deleted + staged on Angelo's laptop (not by Claude), NOT committed - user to confirm before deleting again; Basti must delete his LOCAL copies first. partial_mesh/G402/jitter r1 children now on GitHub (Basti + ongky).
+- ⚠️ **BASTI: delete your LOCAL `datasets/exports/blackhole/star/G402/burst/` BEFORE your next data push.** The 3 duplicates (byte-identical to star/G402/stationary) were re-added by your `589af2d` (3rd time) and removed again oct. 1 night. partial_mesh/G402/jitter r1 children are on GitHub (Basti + ongky).
 - Presets with star/burst content under a LINEAR name: `Bas/` + `Cal/linear-blackhole-stationary-g402.json` — not pushed; fix/rename.
 - Uncommitted on Angelo's laptop, on purpose: `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, 4 presets, `archive/*` folders.
 
