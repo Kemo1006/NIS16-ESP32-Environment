@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-Full write-up: `docs/DATASET-AUDIT-2026-09-18.md`. Tool: `tools/audit_dataset.py`
+Full write-up: `docs/dataset-integrity/DATASET-AUDIT-2026-09-18.md`. Tool: `tools/audit_dataset.py`
 (read-only; outputs in `analysis/dataset_audit_2026-09-18/`, clean_telemetry.csv is
 57 MB - not gitignored, think before `git add`).
 

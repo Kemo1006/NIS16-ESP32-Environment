@@ -758,7 +758,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   the NEXT boot — power-cycle the victim.** Makes "vary the attacker position" affordable: it used to cost a
   re-flash of every victim. Rejects all-zero/broadcast/multicast (those reproduce the silent failure).
 
-- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md` written**: per-role meaning of every column, **no column holds an
+- sep. 20, 2026 — **`docs/data-and-results/DATA-DICTIONARY.md` written**: per-role meaning of every column, **no column holds an
   802.11 MAC retry**, RSSI-is-per-link, root-is-layer-1. The cheap half of "rename honestly" — renaming costs
   a re-capture, writing down what they contain costs nothing. **Read before writing schema text in the paper.**
 
@@ -892,7 +892,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   `export_logs.py --set/--get/--clear-attacker-mac`. **Takes effect on the NEXT boot — power-cycle the
   victim.** Full rationale in `components/mesh_common/include/blackhole_target.h`.
 
-- **aug. 29, 2026 — honest nodes cannot observe their own forwarding.** Victims send `esp_mesh_send(NULL, ..., MESH_DATA_TODS)`, so the mesh stack relays *below the app layer* and only the blackhole attacker sees transit packets (victims address it explicitly). ⇒ un-gating the relay features is **not** a mask widening — there is no honest-relay data to un-gate, and F3's dedicated counters do not create any. That is what C7 Option 1 exists to change. Per-role column meanings: `docs/DATA-DICTIONARY.md`. Full text in ARCHIVE.md.
+- **aug. 29, 2026 — honest nodes cannot observe their own forwarding.** Victims send `esp_mesh_send(NULL, ..., MESH_DATA_TODS)`, so the mesh stack relays *below the app layer* and only the blackhole attacker sees transit packets (victims address it explicitly). ⇒ un-gating the relay features is **not** a mask widening — there is no honest-relay data to un-gate, and F3's dedicated counters do not create any. That is what C7 Option 1 exists to change. Per-role column meanings: `docs/data-and-results/DATA-DICTIONARY.md`. Full text in ARCHIVE.md.
 
 - ⚠️ **Known leak (panel P1), now ENFORCED in code:** the role-gated features are non-NaN only for their attacker role, so "is this column NaN?" is a perfect label. `analysis/leakage.py` excludes them from model inputs and documents why per column. ⚠️ **But see the PDR 0.9987 entry above — exclusion is not sufficient.** Full pre-fix text in ARCHIVE.md.
 
@@ -947,7 +947,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   counts how many `node_role`s carry each relay column: pre-C7 (1 role) excludes them, post-C7 (>=2)
   re-admits them. Both firmware generations coexist for months. Before/after score = deliverable E2.
 
-- sep. 21, 2026 — **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against
+- sep. 21, 2026 — **`docs/panel-answers/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against
   verified source. Key: the MAC is `esp_read_mac(ESP_MAC_WIFI_STA)`, an **eFuse read** — the CP210x
   USB bridge has no MAC and cannot be the source; RSSI is read from the driver, not computed by us;
   PDR/LatencyHopRatio going NaN during the attack are **results, not gaps**.
@@ -970,7 +970,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   `Get-EspIdfActivation` reads the real Start Menu shortcut's `-IdfId` at runtime (never hardcode it —
   a reinstall changes it).
 
-- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (added after the
+- sep. 21, 2026 — **`docs/data-and-results/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (added after the
   team said the numbers were unreadable). Covers: ratios are percentages with the % removed
   (0.001 = 0.1%, and **NaN ≠ 0** — NaN means "nothing to measure here", 0.001 means "measured, almost
   nothing got through"); RSSI dBm is negative and **closer to zero = stronger** (0 is the no-parent
@@ -1070,7 +1070,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   that instead of claiming baseline. ⚠️ **Host handling is NOT optional** (255 is non-zero). Handled in
   `preprocess.assign_segments()` + `validate_integrity.PHASE_TO_LABEL`; `analysis/test_segments.py` proves
   v1/v2 give IDENTICAL segments (`python test_segments.py`, no pytest here). Full entry in ARCHIVE.md.
-- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (the team could
+- sep. 21, 2026 — **`docs/data-and-results/EXPECTED-RESULTS.md` §0 explains HOW TO READ every number** (the team could
   not read them). Key points: **NaN ≠ 0** (NaN = nothing to measure; 0.001 = measured, almost nothing
   got through); RSSI dBm negative, **closer to zero = stronger**, and `0` is the no-parent
   placeholder; `*_delta` = rise in THAT window; **`z` = how many normal wobbles from normal**
@@ -1095,7 +1095,7 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
   NOT-CONFIRMED after a failed gate reads **INCONCLUSIVE, not a negative result**.
 - sep. 20, 2026 — `member_boards.json` child_8/child_10 were **transposed**; corrected against the boards'
   own telemetry (**the boards are ground truth**). Every other entry verified. Details in ARCHIVE.md.
-- sep. 20, 2026 — **`docs/DATA-DICTIONARY.md`**: per-role meaning of every column; **no column holds an
+- sep. 20, 2026 — **`docs/data-and-results/DATA-DICTIONARY.md`**: per-role meaning of every column; **no column holds an
   802.11 MAC retry**. **Read it before writing schema text.**
 - sep. 20, 2026 — **Testbed scenario EVIDENCE-BACKED** (Khan 2022, Sustainability 14(24):16630 — campus
   ESP-MESH, PDR >97%; ours 0.998±0.025 sits inside). ⇒ gap is a floor plan + traffic profile, NOT literature.
@@ -1113,14 +1113,14 @@ F2 (runtime attacker MAC via NVS) removes the 're-flash every victim' half of th
 ## Rolled from STATUS.md — sep. 22, 2026 (cap pressure)
 
 - sep. 21, 2026 — **C7 Option 1 (D-12)** + `probe_relay.{h,c}`; `leakage.py` dataset-aware.
-  (full D-12 detail already in ARCHIVE.md and docs/issue_logs/thesis-deviate.md.)
+  (full D-12 detail already in ARCHIVE.md and docs/deviations-limitations/thesis-deviate.md.)
 
 ## Rolled from MEMORY.md - sep. 22, 2026 (export-fix batch needed room)
 
 - sep. 20, 2026 — **Resolved sep. 20 reference entries moved to ARCHIVE.md**: `analyze.ps1 -Verify`'s three
   exit-code gates (a NOT-CONFIRMED after a failed gate = **INCONCLUSIVE, not negative**), the
   `member_boards.json` child_8/child_10 transposition (**boards are ground truth**),
-  `docs/DATA-DICTIONARY.md` (**read before writing schema text**), the evidence-backed testbed
+  `docs/data-and-results/DATA-DICTIONARY.md` (**read before writing schema text**), the evidence-backed testbed
   scenario, the "realistic data" resolution (⚠️ keep the probe at **1 Hz**), and P1/P2/P3
   (sigma still 3; `BASELINE_FLOOR` raised 0.50→0.90).
 - sep. 22, 2026 — ⚠️ **Over USB, row counts come from `runs.csv`, not by counting the file.** Picker shows
@@ -1146,7 +1146,7 @@ still-load-bearing annotations.
   (c) Table 3.4's victim-retransmission rise is a pre-registered **MISS — REPORT it, don't edit the table.**
 - sep. 20, 2026 — ⚠️ **Attacker PLACEMENT still matters post-C7:** an attacker at the far end of a chain
   intercepts nothing, because it only drops what transits it. Full entry in ARCHIVE.md; the operational
-  warning lives in `run_wizard.ps1` and `docs/EXPECTED-RESULTS.md`.
+  warning lives in `run_wizard.ps1` and `docs/data-and-results/EXPECTED-RESULTS.md`.
 
 ## Rolled out of MEMORY.md — sep. 22, 2026 (line cap, 2nd pass)
 Both still live as one-line warnings in STATUS.md.
@@ -1163,7 +1163,7 @@ Both still live as one-line warnings in STATUS.md.
   by construction.** Only attack-parameter variation fixes it, which collides with R-B (§1.4.1 excludes
   selective forwarding). **Adviser decides.** `eda.py` prints this every pass.
 - sep. 20, 2026 - **CORRECTION (ARCHIVE.md): "only ONE cell has data"/"zero wormhole captures" were WRONG** - `inventory_cells.py` is the source of truth; `archive.ps1` MOVES data out of exports/.
-- sep. 21, 2026 - **`docs/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
+- sep. 21, 2026 - **`docs/panel-answers/REVIEWER-QUESTIONS.md`** answers every adviser/panel side comment against verified code.
 - sep. 21, 2026 - **`verify_topology.py --structure`** rebuilds the parent/child table from CSVs (wizard VERIFY menu).
 - sep. 22, 2026 — **All 4 boards reflashed** with `ab74ec4` (COM3 ROOT/bcr, COM10+COM9 victim/bcbv, COM11
   attacker/bcba; MACs re-read via `esptool read_mac`, matched to `presets/Cal/TRY.json`, hashes verified).
@@ -1173,7 +1173,7 @@ Both still live as one-line warnings in STATUS.md.
 - sep. 21, 2026 — **A stale `BLACKHOLE_ATTACKER_MAC` is NO LONGER a run-killer** — bookkeeping only.
 
 ## Rolled out of MEMORY.md — sep. 22, 2026 (room for the 0xB8 BSOD entry)
-- sep. 21, 2026 — **`docs/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
+- sep. 21, 2026 — **`docs/data-and-results/EXPECTED-RESULTS.md` §0 = how to READ every number.** **NaN ≠ 0** (NaN = nothing
   to measure); RSSI closer to zero = stronger, `0` = no-parent placeholder; **`z` = normal wobbles from
   normal**, threshold 3 from Zhukabayeva 2025. Full text in ARCHIVE.md.
 - sep. 21, 2026 - **`leakage.py` is DATASET-AWARE**: it asks how many roles carry each relay column, never hardcodes.
@@ -1712,7 +1712,7 @@ Both still live as one-line warnings in STATUS.md.
 ## Durable facts & constraints
 
 ### Rolled from MEMORY.md — sep. 23, 2026 (cap): groupmate audit, full detail
-- sep. 23, 2026 — **AUDIT of groupmate `fac59c5`/`13b607c` (`docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md`):
+- sep. 23, 2026 — **AUDIT of groupmate `fac59c5`/`13b607c` (`docs/panel-answers/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md`):
   every load-bearing number FACT-CHECKED and CORRECT** — `MESH_ROOT_LAYER (1)` (re-verified in 5.5.4, not
   just the 5.3.5 cited), `layer -1 → NaN`, SoftAP = STA+1 on all 4 values, attacker `recv 180/fwd 0/drop
   180`, arrivals `301→0→121` downstream vs `300→180→121` upstream. No errors; their MEMORY edits held both
@@ -1774,7 +1774,7 @@ Both still live as one-line warnings in STATUS.md.
   (per-run overlay AND one per capture file). Detail: ARCHIVE.md.
 
 ### Rolled from MEMORY.md — sep. 23, 2026 (cap): wireshark guide MAC fix
-- sep. 23, 2026 — ⚠️ **`docs/WIRESHARK-GUIDE.md` had ROOT and a CHILD SWAPPED** — it listed
+- sep. 23, 2026 — ⚠️ **`docs/packet-capture/WIRESHARK-GUIDE.md` had ROOT and a CHILD SWAPPED** — it listed
   `b0:cb:d8:f3:32:18` as ROOT, but since at least sep. 22 the root is `70:4b:ca:25:b7:68` and `b0:cb…18` is
   the UPSTREAM child. Every "the root" filter pointed at a child and would have shown plausible-but-wrong
   traffic. Corrected against the capture + a one-liner to re-derive it. Also: filter 4 is **attacker → its
@@ -1851,7 +1851,7 @@ Both still live as one-line warnings in STATUS.md.
 - sep. 23, 2026 — Rolled from STATUS.md "Recently done": `run.ps1` failed-flash retry at 115200 (never exports a blank board) shipped; wizard MacBook sniffer test passed (Wi-Fi ON-but-disconnected); mesh was HT40 at the time, was going to try 40 MHz width for the sniffer instead — superseded same day by MESH_FORCE_HT20 (see MEMORY.md), which then broke mesh joining outright (see MEMORY.md's newest Decisions entry) and was partially reverted.
 - sep. 24, 2026 — Rolled from MEMORY.md: the old "verify the attacker MAC before EVERY blackhole run" run-killer is RETIRED by C7 Option 1 — victims no longer address the attacker by MAC, so a stale value is bookkeeping only; its old symptom (all-NaN PDR + empty arrivals + root probes_count stuck at 0) now means something else.
 - sep. 24, 2026 — Rolled from STATUS.md "Recently done": sep. 23 wizard PARKS the root (bootloader) before flashing children and wakes it at its turn — the old root's stale TERMINATE was killing fresh children. Hardware-exercised sep. 24 (4-board join test ran in exactly that order).
-- sep. 24, 2026 — Rolled from MEMORY.md (fully written up in docs/ATTACK-VALIDATION.md): **Two conformance gaps, both now MEASURED and written up** in `docs/ATTACK-VALIDATION.md`: (a) the blackhole is a *placed* relay — it does not ATTRACT traffic by false route advertisement; (b) the wormhole duplicates arrivals but does **NOT** re-form parent selection (0 switches, r2 and r3). The paper's own functional naming (§4.2.1.2/4.2.1.3, Tables 4.6/4.7) already makes the defensible claim.
+- sep. 24, 2026 — Rolled from MEMORY.md (fully written up in docs/attack-validation/ATTACK-VALIDATION.md): **Two conformance gaps, both now MEASURED and written up** in `docs/attack-validation/ATTACK-VALIDATION.md`: (a) the blackhole is a *placed* relay — it does not ATTRACT traffic by false route advertisement; (b) the wormhole duplicates arrivals but does **NOT** re-form parent selection (0 switches, r2 and r3). The paper's own functional naming (§4.2.1.2/4.2.1.3, Tables 4.6/4.7) already makes the defensible claim.
 - sep. 24, 2026 — Rolled from STATUS.md: sep. 23, 2026 — **board dates now PHT (UTC+8) + fixed build-stamp-8h bug that made every capture keep the build-time date.** Root+child build clean. Also: false early `NO NODE IS DOWNSTREAM` now waits for all nodes. ⚠️ **REFLASH.** MEMORY.md.
 - sep. 24, 2026 — Rolled from STATUS.md: sep. 24, 2026 — **Campaign checklist: LIVE/ARCHIVE views, `[x]` needs capture + analysis, scenarios RANDOMISED per cell (`tools/campaign_plan.json`, 4 of 6, balanced), `none` shown as "stationary".** 144 planned runs. MEMORY.md.
 - sep. 24, 2026 — Rolled from MEMORY.md (full detail already in ARCHIVE.md): sep. 23, 2026 — **DE-HARDCODED machine paths.** `Get-EspMac.ps1` pinned IDF `v5.3.5`+`py3.11` — dead on a 5.5.4 box. It and `board_check.py` now discover via `IDF_PATH`/`IDF_TOOLS_PATH` then glob `<SystemDrive>\Espressif`. `py` launcher replaces `C:\Python314`. Board roster overridable by `presets/boards.json` (`--roster`). Detail: ARCHIVE.md.
@@ -1980,7 +1980,7 @@ Both still live as one-line warnings in STATUS.md.
   `#define MESH_ROOT_LAYER (1)` (`esp_mesh.h`, IDF v5.3.5) + the IDF MAC table ("Wi-Fi SoftAP: base_mac, +1 to
   the last octet") answer both "why hop = layer−1" and "why `parent_mac` matches no `node_id`" (SoftAP vs STA).
   Plain-language version (analogies, panel script, no code-reading required) written to
-  `docs/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — companion to `REVIEWER-QUESTIONS.md` §3/§7, not a replacement.
+  `docs/panel-answers/2026-09-23_LAYER-HOP-MAC-EXPLAINER.md` — companion to `REVIEWER-QUESTIONS.md` §3/§7, not a replacement.
 - (rolled from STATUS.md sep. 26) sep. 25 (eve) — **G402 5 pm run: node3 desynced -> unlabelled** (`phase_sync.py`); PDR PASS z -16.41, BLACKHOLE CONFIRMED 2/2 primary.
 - (rolled from MEMORY.md sep. 26) sep. 23, 2026 — ⚠️ **`exposure.py` MUST use the ATTACK-WINDOW parent, not the whole-run mode.** node2 sat
   BELOW the attacker for its entire 671-window pre-baseline, then re-parented to the root. Whole-run mode is dominated by those rows and
@@ -2140,6 +2140,48 @@ Both still live as one-line warnings in STATUS.md.
   (headers have none), hence names. 12-case scratch test passed; not yet on live GitHub.
 - sep. 30, 2026 — Rolled from MEMORY.md (cap):
 - sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** ONE USB port (power+data):
+- sep. 25, 2026 — (rolled from MEMORY.md sep. 27) ROSTER GATE + RESET REASON (firmware): root waits after stabilise until EXPECTED_CHILDREN (routing table size - 1) are in the mesh for 5 s; run.ps1 -ExpectedChildren (always passed on root, 0 = off; wizard = local children + remote count it asks for on multi-laptop runs - plain remote children are NOT in the roster). START_ANYWAY on serial releases it. Every board writes its reset reason + Brownout/Crash resets (total) to status_*.txt and an 11th reset_reason column to runs.csv (importer reads it positionally).
+- sep. 27, 2026 — (rolled from STATUS.md) 02:05 blackhole pcap verified linear + attack worked (attacker drop 180/180; node3 -> root 0 in phase 1); burst probes 100->300. Fix member_boards.json (20:38 attacker is stale, real = F4:18).
+- sep. 26, 2026 - (rolled from MEMORY.md sep. 28; the sniffer is built, hardware-tested and documented in docs/packet-capture/WIRESHARK-GUIDE.md + FILEMAP - full original notes) - sep. 26, 2026 (night) — **Sniffer keep prompt is now `[Y/n]`** (`Confirm-KeepCapture`): only explicit n/no DELETES the .pcap+.json (no
+restore, PCAP\ is git-ignored); Enter/y/anything else keeps. Supersedes the eve entry's in-run "None/ESP32/Mac after Proceed" (removed).
+- sep. 26, 2026 (eve) — **ESP32 SNIFFER OVER USB (no SD, no Mac) + wizard asks "packet capture?" every run** (user: the Mac owner
+is not always there; SD pins stay the data logger's). `sniffer_node/` = a SPARE board, `WIFI_MODE_NULL` + promiscuous on
+`MESH_CHANNEL` (read from mesh_config.h) at 20 MHz — passive, never transmits. Streams checksummed binary records on UART0 at
+**921600** (boot text at 115200 is skipped by checksum; `idf.py monitor` shows garbage on it BY DESIGN). `tools/sniff.py` ->
+radiotap `.pcap` + `.json` (USB loss = rec_seq gaps, board ring drops, reboots — quote them with any figure). Snap mgmt 256 / data 64.
+Wizard: after "Proceed?" -> None / ESP32 / Mac. ESP32: spare port (run's mesh ports refused), flash `build_sniffer_<port>`, sniff.py
+in its OWN window from BEFORE the first child, stopped by a `.stop` file in the run's `finally` (failed child too) + check_pcap with
+the boards' MACs. Mac: checklist + START/STOP prompts. Menu [23] = standalone, filed by cell (asks) or standalone\. Output `PCAP/<atk>/<topo>/<loc>/<scen>/`
+(git-ignored). Answers the P6 circularity (independent observer). ✅ **HARDWARE-TESTED sep. 26** (menu [23], COM9, 3 min 45 s):
+9430 frames, 3 mesh nodes, 2995 mesh DATA, usb loss 0, board drops 0 -> CP210x holds 921600 (if a .json ever shows USB loss, lower
+`SNIFF_BAUD` + sniff.py `BAUD` together). Then added: **P = pause/resume** (frames still read, not saved; each pause + frames skipped
+in the .json — the capture has gaps there), **keep/delete prompt** after check_pcap (default keep; 'd' removes .pcap/.json/_fixed —
+no restore, PCAP\ is git-ignored), Mac checklist shows Channel/Width as coloured chips. scapy pads radiotap MCS to 2 (spec 1) -> noise field.
+
+
+### Rolled out of MEMORY.md sep. 28, 2026 (panel P1 leak + P6 validation framing, superseded by docs/)
+- ⚠️ **Known leak (panel P1)** — role-gated features made "is this NaN?" a perfect label.
+  ✅ **Root cause removed by C7 Option 1**; `leakage.py` now decides per dataset. ⚠️ PDR's 0.9987
+  single-feature score is a SEPARATE problem and still open (see the sep. 20 entry).
+- **Attack-validation framing (panel P6):** validate by *definitional conformance* (canonical criteria vs
+  what we implement, failures declared), matching signature SHAPE not absolute values — so LEACH/AODV/RPL
+  sources are valid and need not be ESP32-specific. **Now written up in `docs/attack-validation/ATTACK-VALIDATION.md`.**
+- sep. 27, 2026 — (rolled from STATUS.md sep. 28) sep. 27 eve — **Real 802.11 retries from the sniffer** (`tools/pcap_retry.py`; no ESP-IDF counter exists) **joined into feature_table.csv as `MacRetryRate`/`MacFramesHeard`** (not a model input; NaN = not measured). Flat through the attack = Table 3.4 miss, independently observed. Open: wormhole fit.
+- sep. 28, 2026 — (rolled from MEMORY.md gotchas) SD reader module VCC/format-specifier wiring & build gotchas — both fixed in code; full text ARCHIVE.md.
+- sep. 28, 2026 — (rolled from STATUS.md) sep. 28 — **`MacRetryRate` recovered for runs whose console log lost its `Starting PHASE` lines** — phases + roles from the run's **own exported CSVs** (validated to 40 ms). Caught a real mis-pairing on the way — see the ⚠️ MEMORY entry. 23:39 refuses (its export is not under `datasets/`); 21:11 refuses (no attack step in its traffic).
+- sep. 29, 2026 — (rolled from MEMORY.md gotchas) Non-ASCII in a Python tool's **module docstring** passed to `argparse(description=)` — cp1252 console ⇒ `--help` dies with `UnicodeEncodeError`. Keep them ASCII; `sys.stdout.reconfigure(encoding="utf-8")` first.
+
+- sep. 26, 2026 — (rolled from MEMORY.md sep. 30) **Wizard WIRESHARK category** — full text:
+- sep. 26, 2026 (late) — **Wizard WIRESHARK category** (user: "choose an option and it opens Wireshark"). Sniffer entries 21/22/23 moved
+  OUT of VERIFY into it + NEW 24 *Open a capture - pick a view* (overview / one board / mesh data / retries / joins+leaves / weak links /
+  BLACKHOLE attacker->parent / WORMHOLE B vs A), 25 *Open the NEWEST capture* (overview), 26 *ESP32 sniffer + watch LIVE*. MACs come
+  from the CAPTURE, never a table: `check_pcap.py --map-json` = nodes + uplinks (TA->RA) + root_guess (a parent that never beaconed is
+  still listed); attacker from mesh_config.h. Launch = `Wireshark -r <f> -Y <filter>` with `WIRESHARK_CONFIG_DIR=%APPDATA%\Wireshark-ThesisMesh`
+  (RSSI/TA/RA/Seq/Retry columns, filter buttons, `io_graphs` rewritten per view). NOT a `-C` profile: tested, `-C` becomes the laptop's
+  "last used profile" (Bas's NSCOM3 Wireshark would open in it). Filter sets NEED COMMAS (`{a, b}`; `{a b}` rejected for MACs). Find-Wireshark
+  + sniff.py now read the App Paths registry (Bas's install is under S:\Main Programs\ - the live prompt was silently hidden). tshark IS
+  installed, just not on PATH. Verified: every view's filter via tshark on the 3 PCAP files, a real launch + I/O graph screenshot, Default profile unchanged. Item 26 not hardware-tested.
+- sep. 30, 2026 — (moved from MEMORY.md, fixed in firmware sep. 25) sep. 25, 2026 — **WHY IMPORTS SHOW TINY "STILL RUNNING" FILES (recurring since sep. 24): the board REBOOTED.** ONE USB port (power+data):
   powerbank->laptop, or the idf.py monitor->export handoff (toggles reset), power-cycles it; old firmware then moved the run's CSVs into
   `_archive/` at boot (LIST_SD + importer skip it) and opened a ~1 KB phase-255 file. After a power cut "started" = LAST SET_TIME anchor.
   **FIXED IN FIRMWARE (team decision, NEEDS REFLASH + one hardware test):** no archiving at boot (ARCHIVE_SD only), and
@@ -2156,3 +2198,14 @@ Both still live as one-line warnings in STATUS.md.
   (Tunnel* features empty, both boards look healthy). ⚠️ **Node B CANNOT detect it** —
   `uart_write_bytes()` succeeds into an unterminated line; only Node A can prove a frame crossed.
   Guard on A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner.
+- sep. 30, 2026 — (rolled from STATUS.md Recently done) sep. 28 (night) — **Wizard main menu gained "MAC retry rate of a run"** (WIRESHARK group, last item; Exit moved up one number): pairs every capture, lists the usable runs newest-first, prints the per-link baseline/attack/cooldown table + how to read it. No board contact; scripted-stdin tested. Also fixed `pcap_retry.py`'s cache: it now notices when the exports it read are moved/changed (it still called r3 usable after r3's raw exports left the cell). **Data notes for the user:** raw r3 exports are gone from `exports\...\home\highload` (only `trimmed\` copies left; node5/node6 r3 also sit in `...\G402\highload\`), so r3 now has no retry data; the sep. 27 r2 exports are gone too; today's r2 mesh had a 7th board (`..:ed:80`, child of node2) with no export.
+- sep. 30, 2026 — (rolled from STATUS.md Recently done) sep. 28 (pm) — **A saved preset can now be EDITED from the picker** (option [2]): cell (attack/topology/location/scenario/repeat) and roster (label/port/root/attack seat/scenario target, add, remove), written back to the same file, offered a rename when the cell changes, validated first so it can't save a preset the loader refuses. Fixed same day: validation wrongly required a LOCAL attacker/A/B/target and blocked Kyle's real preset (attacker is a teammate's board, never listed here) - now 0 just warns, matching ROOT's own rule; scenario-target picker gained the missing "on another laptop" escape. Touches no board. Scripted-stdin tested, not a live run. Also added a Replace-a-node option (swap in a different board, keeps the seat, clears the old MAC).
+- sep. 30, 2026 — (rolled from STATUS.md Recently done, sep. 30 late) `docs/packet-capture/WIRESHARK-TERMS.md` (NEW) — the Wireshark vocabulary dictionary, so nobody searches YouTube mid-defense: the 3-layer answer to "what protocol does the ESP32 use?" (802.11 → ESP-WIFI-MESH → our probe protocol), every management frame explained (auth/assoc/deauth vs disassoc) + the 4 reason codes our own captures contain (5 = parent full, 3/8 = board left, 6 = stale link), RTS/CTS/ACK, LLC/SNAP/OUI, To DS direction, the `....R..T` flags string, radiotap, and a tshark-verified filter cheat card. All counts measured from our r2 sep. 28 capture. Also: `run_wizard.ps1` retry view now preloads phase-split I/O graph lines (baseline/attack/cooldown, data-frames-only) read from `pcap_retry.py`'s `_retry.json` — confirmed working in real Wireshark by the user.
+- sep. 28, 2026 — **MAC retry report rewritten to be readable** (`pcap_retry.py report()`): full MAC on every board and link, a BOARDS table (hop/role/parent), each link as its own block with a plain verdict (WORSE / better / about the same / too few frames / 100% = unreliable), and a BOTTOM LINE; sep. 29: the original side-by-side RESULTS TABLE + its how-to-read restored (full MACs), and roles/MACs COLOUR-CODED to match `run_wizard.ps1`'s own palette (root gold, child teal, attacker pink; UNKNOWN/OUTSIDE plain) — own ANSI helpers, off when not a real console. Output only - CSV/JSON/features unchanged. Tested on the sep. 28 20:06 and sep. 27 18:36 captures.
+
+
+## Rolled from STATUS.md "Recently done" - oct. 1, 2026 (Angelo's sep. 30 entries; all three are PUSHED, superseded in STATUS by the docs-reorg session)
+
+- sep. 30 night (Angelo) — **Star blackhole redesigned: attacker = hub, victims firmware-pinned to it (D-16).** Firmware + topology checks + docs; builds clean, PUSHED, NOT hardware-tested. Details: MEMORY.md top.
+- sep. 30 eve (Angelo) — partial_mesh G402 CONFIRMED 2/2. `verify_attack.py`: missing attacker → INCONCL (not a fake FR FAIL) + NFR footnote; `validate_integrity.py`: per-source blackhole check. PUSHED. linear/tree analysis restored + regenerated; ⚠️ linear/home/highload now INCONCLUSIVE (4 repeats pooled, noisy baseline — open); duplicate `linear/G402/burst` files deleted (5f9221c). Details: MEMORY.md top.
+- sep. 30 (Angelo) — Merged origin/THESIS3. **Burst early-fire bug fixed in `victim_main.c` (REFLASH burst boards)**; sept30 G402 blackhole "burst" run moved to `G402/stationary` + re-analysed (CONFIRMED); `combine_all.py` repointed; attacker-only ForwardingRatio + NEW NeighbourForwardingRatio. PUSHED (d5fd89a, 7374bcf) — pull, then re-run `analyze.ps1` on your cells. Details: MEMORY.md top.

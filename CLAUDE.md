@@ -106,5 +106,5 @@ Post this before acting, then wait for "Proceed" or an actual model switch:
   Same logic applies to any other IDF-version-sensitive assumption, not just this one field.
 - Run: `ESP32-Environment\menu.ps1` (one board, ~7 prompts) or `run_wizard.ps1` (multi-board: presets, MAC verify, bulk wipe/set-location). Both call `run.ps1`, which requires `-Location` with `-Export`/`-Clean`/`-Analyze`.
 - Test: `python tools\validate_integrity.py`, `verify_topology.py`, `verify_attack.py` (paper-backed 3-sigma).
-- Entry point: `ESP32-Environment\docs\2026-09-14_START-HERE.md`.
+- Entry point: `ESP32-Environment\docs\operations\2026-09-14_START-HERE.md`.
 - Purpose: ESP-WIFI-MESH testbed capturing labeled blackhole/wormhole attack datasets for CTTHES2/3 exploratory analysis. `combined` merges CC's firmware/tooling (SD-card logging, wizard) with NIS16's onboarding redesign and panel-cited attack verification — see [STATUS.md](STATUS.md).
