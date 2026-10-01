@@ -5,10 +5,10 @@
     "scenario":  "stationary",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-09-30 11:28",
+    "savedAt":  "2026-09-25 10:57",
     "boards":  [
                    {
-                       "Label":  "node1",
+                       "Label":  "root",
                        "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",
