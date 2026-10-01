@@ -72,7 +72,7 @@
       "highload"
     ],
     "G402/star/blackhole": [
-      "highload",
+      "stationary",
       "powercycle",
       "burst",
       "mobility"

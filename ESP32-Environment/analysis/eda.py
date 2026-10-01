@@ -994,9 +994,24 @@ def run_dimensionality_reduction(
     # Role-exclusive / structurally-sparse columns: too many NaNs to share a
     # complete matrix with the rest. Excluding them is what prevents the
     # all-rows-dropped empty projection (see docstring point 3).
+    #
+    # Tested PER CLASS as well as overall. A column can be under the threshold
+    # overall yet NaN in most windows of ONE class, and then the dropna below
+    # deletes that whole class. Seen on blackhole/linear/G402/jitter
+    # (2026-10-01): LatencyHopRatio was 43% NaN overall but 87% NaN in attack
+    # windows (no probe reaches the root, so there is no latency to measure).
+    # Every attack window was dropped, and the plot showed only baseline and
+    # cooldown. The stationary cell happened to be over 50% overall, so it
+    # was not affected.
+    _lbl = "Label" if "Label" in df.columns else "window_label"
+    _class_masks = ([df[_lbl] == v for v in df[_lbl].dropna().unique()]
+                    if _lbl in df.columns else [])
     sparse_excluded = [
         c for c in candidate_cols
-        if c not in allnan_excluded and df[c].isna().mean() > max_nan_fraction
+        if c not in allnan_excluded and (
+            df[c].isna().mean() > max_nan_fraction
+            or any(m.any() and df.loc[m, c].isna().mean() > max_nan_fraction
+                   for m in _class_masks))
     ]
 
     excluded = sorted(set(allnan_excluded) | set(tunnel_excluded)

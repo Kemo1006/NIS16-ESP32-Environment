@@ -231,7 +231,15 @@ def _pooled_note(df_nodes, feat, label, attackers, res, sigma):
         return head
 
     a = float(atk_val.mean())
-    h = float(honest.mean()) if n_h else 1.0
+    if n_h == 0:
+        # Star + blackhole (D-16): every victim is a leaf under the attacker, so
+        # the attacker is the ONLY relay and this row is the attacker row again.
+        # The old wording ("the 0 honest relay(s) averaged 1.000") described
+        # relays that do not exist.
+        return head + ("\n      - The attacker is the only relay in this run (e.g. a star hub: every "
+                       "victim is a leaf),\n        so this row is the attacker row itself - no "
+                       "dilution to explain.")
+    h = float(honest.mean())
     line = res["mu"] - sigma * res["sd"]
     if h <= line:
         cap = "any number of honest relays"

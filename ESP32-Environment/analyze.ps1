@@ -367,6 +367,20 @@ function Invoke-Validate {
         $status.Attack = if ($LASTEXITCODE -eq 0) { 'CONFIRMED' } else { 'NOT CONFIRMED' }
     }
 
+    # ---- Burst runs: did the burst actually fire? --------------------------
+    # oct. 1, 2026: two star/G402 'burst' captures were analysed and pushed with
+    # no board built as the burst target - nothing burst, nothing said so.
+    if ($Target.Scenario -eq 'burst') {
+        Write-Host ""
+        Write-Host ("--- Burst check -- {0}" -f $label) -ForegroundColor Cyan
+        python (Join-Path $root 'tools\verify_burst.py') $srcDir | Out-Host
+        $status.Burst = switch ($LASTEXITCODE) { 0 { 'FIRED' } 1 { 'NOT FIRED' } default { 'unknown' } }
+        if ($status.Burst -eq 'NOT FIRED') {
+            Write-Host "  NO BURST - this capture is a stationary run, not burst. Re-run with one" -ForegroundColor Red
+            Write-Host "  victim marked as the burst TARGET on exactly one laptop." -ForegroundColor Red
+        }
+    }
+
     # ---- Combined verdict --------------------------------------------------
     # The ordering matters: a NOT-CONFIRMED verdict on a capture that failed
     # gate 1 or 2 is not evidence about the attack, and saying so here is the
@@ -376,6 +390,10 @@ function Invoke-Validate {
     Write-Host ("    integrity : {0}" -f $status.Integrity)
     Write-Host ("    topology  : {0}" -f $status.Topology)
     Write-Host ("    attack    : {0}" -f $status.Attack)
+    if ($status.Contains('Burst')) {
+        $bc = if ($status.Burst -eq 'FIRED') { 'Green' } else { 'Red' }
+        Write-Host ("    burst     : {0}" -f $status.Burst) -ForegroundColor $bc
+    }
 
     $gatesOk = ($status.Integrity -eq 'PASS') -and ($status.Topology -eq 'PASS')
     if (-not $gatesOk -and $status.Attack -eq 'NOT CONFIRMED') {

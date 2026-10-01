@@ -24,6 +24,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/queue.h"
 
 #include "esp_log.h"
 #include "esp_mesh.h"
@@ -147,7 +148,42 @@ static volatile uint32_t s_broadcast_failures = 0;
  */
 static volatile uint32_t s_broadcast_sends = 0;
 
+/*
+ * Arrival rows waiting for the writer task (highload collapse fix, oct. 1, 2026;
+ * see ROOT_ARRIVAL_QUEUE_LEN in mesh_config.h). probe_data_cb runs in the single
+ * esp_mesh_recv() task, so it only snapshots the row and queues it; the SPIFFS +
+ * SD write happens in arrival_writer_task at a lower priority. Every field is
+ * captured AT ARRIVAL, so a row written seconds later is identical to the old
+ * inline write.
+ */
+typedef struct {
+    int64_t  ts_us;
+    int64_t  latency_us;
+    uint32_t retry;
+    uint32_t tx;
+    uint32_t probes;
+    uint32_t seq;
+    int      layer;
+    int      rssi;
+    uint8_t  phase;
+    uint8_t  label;
+    uint8_t  parent[6];
+    uint8_t  src[6];
+} arrival_row_t;
+
+static QueueHandle_t     s_arrival_q         = NULL;
+static volatile uint32_t s_arrivals_queued   = 0;   /* rows handed to the writer      */
+static volatile uint32_t s_arrivals_written  = 0;   /* rows the writer has finished   */
+static volatile uint32_t s_arrivals_dropped  = 0;   /* queue full - row NOT logged    */
+static volatile int      s_rxq_max           = 0;   /* worst mesh RX backlog, [RXSTALL] */
+/* RSSI for arrival rows, refreshed by telemetry_task (10 Hz) instead of a Wi-Fi
+ * driver call per probe on the receive path. The root has no parent AP, so this
+ * reads 0 either way - the analysis blanks rssi_dbm == 0 as missing. */
+static volatile int      s_last_rssi         = 0;
+
 /* ── Forward declarations ─────────────────────────────────────────────────── */
+static void arrival_writer_task(void *arg);
+static void arrival_queue_drain(uint32_t timeout_ms);
 static void experiment_controller_task(void *arg);
 static void probe_data_cb(const uint8_t *data, size_t len,
                           const uint8_t from_addr[6]);
@@ -202,6 +238,18 @@ void app_main(void)
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_ROOT));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 
+    /* Arrival writer BEFORE the probe sink is registered, so the first probe
+     * already has somewhere to go. Below the phase listener (8): a slow card
+     * write now delays only this task, never esp_mesh_recv(). */
+    s_arrival_q = xQueueCreate(ROOT_ARRIVAL_QUEUE_LEN, sizeof(arrival_row_t));
+    if (s_arrival_q == NULL) {
+        ESP_LOGE(TAG, "Arrival queue (%u rows) could not be allocated - out of heap.",
+                 (unsigned)ROOT_ARRIVAL_QUEUE_LEN);
+        abort();
+    }
+    xTaskCreate(arrival_writer_task, "arr_writer", STACK_ARRIVAL_WRITER,
+                NULL, TASK_PRIO_PROBE_SINK, NULL);
+
     /* ── 4. Probe sink: register a handler for incoming probe packets.
      *       esp_mesh_recv() must be called from ONE task only, so instead of a
      *       competing receive loop the phase listener (the single reader) hands
@@ -224,6 +272,9 @@ void app_main(void)
 
     /* ── 8. Finalise ─────────────────────────────────────────────────────── */
     ESP_LOGI(TAG, "Experiment complete. Flushing and closing log.");
+    /* The writer may still hold queued arrivals - write them before the file
+     * closes (no new ones: probe_data_cb ignores probes after TERMINATE). */
+    arrival_queue_drain(10000);
     csv_logger_flush();
     csv_logger_close();
 
@@ -540,82 +591,132 @@ static void probe_data_cb(const uint8_t *data, size_t len,
     int64_t latency = now - pkt->send_ts_us;
     s_probes_received++;
 
-    /* Cross-layer snapshot at time of arrival */
-    uint8_t pmac[6] = {0};
-    mesh_setup_get_parent_mac(pmac);  /* root has no parent → all zeros */
-    int rssi = 0;
-    esp_wifi_sta_get_rssi(&rssi);
-
-    /*
+    /* Cross-layer snapshot at time of arrival, queued for arrival_writer_task.
+     * NOTHING here touches SPIFFS, the SD card or the Wi-Fi driver: this runs
+     * in the single esp_mesh_recv() task, and blocking it is what collapsed
+     * 7-board highload runs (COOLDOWN-RECOVERY-2026-09-30.md §12.4).
+     *
      * retry_count and tx_count in the arrivals row reflect the root's
      * own outbound activity (phase broadcasts), not the incoming probe.
      * This keeps the schema consistent with victim rows and lets the
-     * post-processing pipeline join on the same columns.
-     */
-    /* ── RXSTALL INSTRUMENTATION — TEMPORARY, REMOVE ONCE ANSWERED ──────────────
-     * Question (COOLDOWN-RECOVERY-2026-09-30.md §12.4-12.5): does THIS
-     * callback's inline SPIFFS+SD write stall the single esp_mesh_recv()
-     * reader long enough for the root's mesh RX queue (default 32) to fill and
-     * throttle the children? The header above this function already requires
-     * "keep it short and non-blocking" - this measures whether it is.
-     *
-     * Measures only; changes no behaviour. Costs one esp_timer_get_time() pair
-     * per probe plus one log line every REPORT_EVERY arrivals (~10 s at the
-     * 20/s highload rate). */
-    #define RXS_REPORT_EVERY 200U
-    static int64_t  rxs_max_us   = 0;    /* worst single write since last report */
-    static int64_t  rxs_sum_us   = 0;
-    static uint32_t rxs_n        = 0;
-    static int      rxs_rxq_max  = 0;    /* worst RX backlog seen (queue is 32)  */
+     * post-processing pipeline join on the same columns. */
+    arrival_row_t row = {
+        .ts_us      = now,
+        .latency_us = latency,
+        .retry      = s_broadcast_failures,
+        .tx         = s_broadcast_sends,
+        .probes     = s_probes_received,
+        .seq        = pkt->seq_num,
+        .layer      = mesh_setup_get_layer(),
+        .rssi       = s_last_rssi,
+        .phase      = phase_listener_get_phase_id(),
+        .label      = phase_listener_get_label(),
+    };
+    mesh_setup_get_parent_mac(row.parent);  /* root has no parent → all zeros */
+    memcpy(row.src, pkt->src_mac, 6);
 
-    int64_t rxs_t0 = esp_timer_get_time();
-
-    csv_logger_append_probe_arrival(
-        now,
-        s_node_id,
-        mesh_setup_get_layer(),
-        pmac,
-        rssi,
-        s_broadcast_failures,
-        s_broadcast_sends,
-        s_probes_received,
-        phase_listener_get_phase_id(),
-        phase_listener_get_label(),
-        (uint8_t *)pkt->src_mac,
-        pkt->seq_num,
-        latency
-    );
-
-    int64_t rxs_dt = esp_timer_get_time() - rxs_t0;
-    rxs_sum_us += rxs_dt;
-    rxs_n++;
-    if (rxs_dt > rxs_max_us) rxs_max_us = rxs_dt;
-
-    /* How many packets the mesh stack is holding for us RIGHT NOW. This is the
-     * number that matters: it climbing toward 32 (esp_mesh_set_xon_qsize()'s
-     * default, never raised in this project) is the throttle firing. */
-    mesh_rx_pending_t rxs_pend = {0};
-    if (esp_mesh_get_rx_pending(&rxs_pend) == ESP_OK &&
-        rxs_pend.toSelf > rxs_rxq_max) {
-        rxs_rxq_max = rxs_pend.toSelf;
+    if (xQueueSend(s_arrival_q, &row, 0) == pdTRUE) {
+        s_arrivals_queued++;
+    } else {
+        /* Never block the receive path - count it instead. A full queue means
+         * the card stalled for ~ROOT_ARRIVAL_QUEUE_LEN/20 s; these probes DID
+         * arrive but have no arrivals row, so root-side PDR undercounts. */
+        s_arrivals_dropped++;
+        if (s_arrivals_dropped == 1 || s_arrivals_dropped % 50 == 0) {
+            ESP_LOGE(TAG, "[RXSTALL] arrival queue FULL - %lu row(s) not logged so far "
+                          "(the SD/SPIFFS writer is stalled)",
+                     (unsigned long)s_arrivals_dropped);
+        }
     }
 
-    if (rxs_n >= RXS_REPORT_EVERY) {
-        ESP_LOGW(TAG, "[RXSTALL] write avg %lld us / max %lld us over %lu probes | "
-                      "RXQ max %d of 32 (now %d) | phase %u",
-                 (long long)(rxs_sum_us / (int64_t)rxs_n),
-                 (long long)rxs_max_us,
-                 (unsigned long)rxs_n,
-                 rxs_rxq_max, rxs_pend.toSelf,
-                 (unsigned)phase_listener_get_phase_id());
-        rxs_max_us = 0; rxs_sum_us = 0; rxs_n = 0; rxs_rxq_max = 0;
+    /* [RXSTALL]: how many packets the mesh stack is holding for us right now.
+     * Climbing toward ROOT_MESH_XON_QSIZE = flow control about to throttle the
+     * children; reported by arrival_writer_task. */
+    mesh_rx_pending_t pend = {0};
+    if (esp_mesh_get_rx_pending(&pend) == ESP_OK && pend.toSelf > s_rxq_max) {
+        s_rxq_max = pend.toSelf;
     }
-    /* ── end RXSTALL instrumentation ──────────────────────────────────────────── */
 
     ESP_LOGD(TAG, "Probe from " MACSTR " seq=%lu lat=%lld us",
              MAC2STR(pkt->src_mac),
              (unsigned long)pkt->seq_num,
              (long long)latency);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Arrival writer task — the SPIFFS + SD half of the probe sink
+ *
+ * Drains s_arrival_q into csv_logger_append_probe_arrival(). Runs BELOW the
+ * phase listener, so a slow write (SD latency spike, SPIFFS garbage collection)
+ * only lets the queue grow; esp_mesh_recv() keeps being called.
+ *
+ * [RXSTALL] line every RXS_REPORT_EVERY rows (~10 s at highload) - the §12.6
+ * measurement, now reporting the queue too:
+ *   write avg/max   per-row SPIFFS+SD time (the stall the old code put on RX)
+ *   queued max      worst backlog in s_arrival_q since the last line
+ *   dropped         rows lost to a full queue, whole run (should stay 0)
+ *   RXQ max         worst mesh RX backlog (of ROOT_MESH_XON_QSIZE)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+#define RXS_REPORT_EVERY 200U
+
+static void arrival_writer_task(void *arg)
+{
+    (void)arg;
+    arrival_row_t r;
+    int64_t  max_us = 0, sum_us = 0;
+    uint32_t n = 0;
+    UBaseType_t q_max = 0;
+
+    for (;;) {
+        if (xQueueReceive(s_arrival_q, &r, portMAX_DELAY) != pdTRUE) continue;
+
+        UBaseType_t waiting = uxQueueMessagesWaiting(s_arrival_q) + 1;
+        if (waiting > q_max) q_max = waiting;
+
+        int64_t t0 = esp_timer_get_time();
+        csv_logger_append_probe_arrival(r.ts_us, s_node_id, r.layer, r.parent,
+                                        r.rssi, r.retry, r.tx, r.probes,
+                                        r.phase, r.label, r.src, r.seq,
+                                        r.latency_us);
+        int64_t dt = esp_timer_get_time() - t0;
+        s_arrivals_written++;
+
+        sum_us += dt;
+        if (dt > max_us) max_us = dt;
+        if (++n >= RXS_REPORT_EVERY) {
+            ESP_LOGW(TAG, "[RXSTALL] write avg %lld us / max %lld us over %lu rows | "
+                          "queued max %u of %u | dropped %lu | RXQ max %d of %d | phase %u",
+                     (long long)(sum_us / (int64_t)n), (long long)max_us,
+                     (unsigned long)n, (unsigned)q_max, (unsigned)ROOT_ARRIVAL_QUEUE_LEN,
+                     (unsigned long)s_arrivals_dropped, s_rxq_max, ROOT_MESH_XON_QSIZE,
+                     (unsigned)r.phase);
+            max_us = 0; sum_us = 0; n = 0; q_max = 0; s_rxq_max = 0;
+        }
+    }
+}
+
+/* Wait (bounded) until every queued arrival is on disk - called after
+ * TERMINATE, before the log closes. probe_data_cb stops queueing at TERMINATE,
+ * so s_arrivals_queued is final and written catching up to it means done. */
+static void arrival_queue_drain(uint32_t timeout_ms)
+{
+    int64_t deadline = esp_timer_get_time() + (int64_t)timeout_ms * 1000;
+    while (s_arrivals_written < s_arrivals_queued &&
+           esp_timer_get_time() < deadline) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    uint32_t left = s_arrivals_queued - s_arrivals_written;
+    if (left) {
+        ESP_LOGE(TAG, "Arrival writer still %lu row(s) behind after %lu ms - they are lost.",
+                 (unsigned long)left, (unsigned long)timeout_ms);
+    }
+    if (s_arrivals_dropped) {
+        ESP_LOGE(TAG, "=== %lu ARRIVAL ROW(S) NOT LOGGED (queue full mid-run) - root-side "
+                      "PDR for this run undercounts. ===", (unsigned long)s_arrivals_dropped);
+    } else {
+        ESP_LOGI(TAG, "Arrival log complete: %lu row(s), 0 dropped.",
+                 (unsigned long)s_arrivals_written);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -654,6 +755,7 @@ static void telemetry_task(void *arg)
         /* ── Physical layer ───────────────────────────────────────────────── */
         int rssi = 0;
         esp_wifi_sta_get_rssi(&rssi);
+        s_last_rssi = rssi;   /* reused by arrival rows - no driver call per probe */
 
         /* ── Network layer ────────────────────────────────────────────────── */
         int layer = mesh_setup_get_layer();

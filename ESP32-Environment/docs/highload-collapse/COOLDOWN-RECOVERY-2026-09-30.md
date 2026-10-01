@@ -568,3 +568,26 @@ where the collapse appears in the arrivals data.
 **If confirmed → §12.5 item 2** (move the write onto a queue + lower-priority writer task). **If
 refuted**, the next suspects are the phase-listener task's other work and ESP-MESH's own internal
 scheduling — neither examined yet.
+
+## 13. FIX APPLIED — oct. 1, 2026 (§12.5 items 2, 3, 4) — built, NOT yet run on hardware
+
+Before the fix, Angelo's laptop's linear highload runs reached the root at these rates (per second, from each root `arrivals.csv`):
+
+| run | children send | baseline, 1st min | cooldown, last min |
+|---|---|---|---|
+| baseline r1 (NO attack) | 24/s | 23.3/s | **7.1/s** |
+| blackhole r3 | 20/s | 19.8/s | **6.5/s** |
+| blackhole r4 | 20/s | 19.9/s | **2.9/s** |
+| blackhole r1 (2 children) | 8/s | 8.0/s | 8.0/s (fine) |
+
+What changed (root only, plus one root-only line in `mesh_setup.c`):
+
+1. **Item 2, the actual fix:** `probe_data_cb` no longer writes. It snapshots the row (every field captured at arrival, so rows are identical to before) and `xQueueSend(…, 0)` into a 256-row queue (`ROOT_ARRIVAL_QUEUE_LEN`, ~13 s at 20/s). `arrival_writer_task` (priority 6, below the phase listener's 8) does the SPIFFS + SD write. It never blocks the receive path: a full queue drops and **counts** the row, logs `[RXSTALL] arrival queue FULL`, and the end of the run prints `N ARRIVAL ROW(S) NOT LOGGED`. Before the log closes, `arrival_queue_drain()` writes whatever is still queued.
+2. **Item 3:** `esp_mesh_set_xon_qsize(ROOT_MESH_XON_QSIZE = 64)` on the root, before `esp_mesh_start()` (default 32).
+3. **Item 4:** arrival rows reuse the telemetry task's 10 Hz RSSI reading (`s_last_rssi`) instead of an `esp_wifi_sta_get_rssi()` call per probe. Every root arrival row in every run so far has `rssi_dbm = 0` (the root has no parent AP), so the data is unchanged.
+
+The `[RXSTALL]` line now comes from the writer, every 200 rows:
+`[RXSTALL] write avg … us / max … us over 200 rows | queued max Q of 256 | dropped D | RXQ max R of 64 | phase P`
+
+**How to read the next 7-board highload run:** arrivals stay at about the send rate (about 20/s) through cooldown, `RXQ max` stays low, and `dropped` stays 0 means the fix worked. `queued max` climbing toward 256 means the card is slower than the arrival rate on average (a bigger queue or less SD work is next). Arrivals still collapsing while `RXQ max` and `queued max` stay low means §12.4 was not the cause, so re-open the diagnosis.
+Built clean (`-Werror`, IDF 5.5.4): root blackhole, root baseline+burst, child blackhole-victim burst. Static RAM 51 KB used / 129 KB free; the queue takes ~14 KB of heap.

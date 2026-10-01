@@ -4623,6 +4623,210 @@ function Select-DataSyncArea {
     return $areas[$idx]
 }
 
+function Get-KnownAttackerMacs {
+    # Every attacker MAC this laptop knows of, best evidence first (oct. 1, 2026:
+    # a victims-only laptop had to type the remote attacker's MAC from memory).
+    #   1. RUNS: boards that actually logged role=blackhole in datasets\exports -
+    #      the truth about who attacked, newest run first.
+    #   2. PRESETS: attackers named in any member's preset (planned, may be stale).
+    #   3. This laptop's mesh_config.h BLACKHOLE_ATTACKER_MAC.
+    # Read-only and cheap: only the first data row of each telem CSV is read.
+    $found = @{}
+    function Add-Hit($mac, $rank, $when, $why) {
+        $m = "$mac".Trim().ToLower()
+        if ($m -notmatch '^[0-9a-f]{2}(:[0-9a-f]{2}){5}$') { return }
+        if (-not $found.ContainsKey($m)) {
+            $found[$m] = [pscustomobject]@{ Mac = $m; Rank = $rank; When = $when; Why = $why; Seen = 1 }
+        } else {
+            $e = $found[$m]; $e.Seen++
+            if ($rank -lt $e.Rank -or ($rank -eq $e.Rank -and $when -gt $e.When)) {
+                $e.Rank = $rank; $e.When = $when; $e.Why = $why
+            }
+        }
+    }
+    $exp = Join-Path $base 'datasets\exports\blackhole'
+    if (Test-Path $exp) {
+        Get-ChildItem -Path $exp -Recurse -Filter '*_telem.csv' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch '\\trimmed\\' } | ForEach-Object {
+                try {
+                    $two = @(Get-Content -Path $_.FullName -TotalCount 2)
+                    if ($two.Count -lt 2) { return }
+                    $cols = $two[0].Split(','); $vals = $two[1].Split(',')
+                    $ri = [array]::IndexOf($cols, 'role'); $ni = [array]::IndexOf($cols, 'node_id')
+                    if ($ri -lt 0 -or $ni -lt 0 -or $vals[$ri] -ne 'blackhole') { return }
+                    $hex = ($vals[$ni] -replace '^NODE_', '')
+                    if ($hex -notmatch '^[0-9A-Fa-f]{12}$') { return }
+                    $mac = (($hex -split '(..)' | Where-Object { $_ }) -join ':')
+                    $cell = (Split-Path (Split-Path $_.FullName -Parent) -NoQualifier) -replace '.*\\exports\\', '' -replace '\\', '/'
+                    # Capture time from the file NAME (oct01_1239PM / 20260927_031130),
+                    # not LastWriteTime: a git pull rewrites file times.
+                    $when = $_.LastWriteTime
+                    if ($_.Name -match '_(jan|feb|mar|apr|may|jun|jul|aug|sept|sep|oct|nov|dec)(\d{2})_(\d{2})(\d{2})(AM|PM)_') {
+                        $mo = @{jan=1;feb=2;mar=3;apr=4;may=5;jun=6;jul=7;aug=8;sep=9;sept=9;oct=10;nov=11;dec=12}[$Matches[1]]
+                        $hh = [int]$Matches[3] % 12; if ($Matches[5] -eq 'PM') { $hh += 12 }
+                        try { $when = Get-Date -Year $_.LastWriteTime.Year -Month $mo -Day ([int]$Matches[2]) -Hour $hh -Minute ([int]$Matches[4]) -Second 0 } catch { }
+                    }
+                    elseif ($_.Name -match '_(\d{8})_(\d{6})_') {
+                        try { $when = [datetime]::ParseExact($Matches[1] + $Matches[2], 'yyyyMMddHHmmss', $null) } catch { }
+                    }
+                    Add-Hit $mac 1 $when ("attacker in run {0} ({1})" -f $cell, $when.ToString('MMM dd HH:mm'))
+                } catch { }
+            }
+    }
+    $pre = Join-Path $base 'presets'
+    if (Test-Path $pre) {
+        Get-ChildItem -Path $pre -Recurse -Filter '*.json' -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json
+                foreach ($b in @($cfg.boards)) {
+                    if ($b.Kind -eq 'attacker' -and $b.Mac) {
+                        $name = ($_.FullName -replace '.*\\presets\\', '' -replace '\\', '/')
+                        Add-Hit $b.Mac 2 $_.LastWriteTime ("attacker in preset {0}" -f $name)
+                    }
+                }
+            } catch { }
+        }
+    }
+    $cfgMac = Get-ConfiguredAttackerMac
+    if ($cfgMac) { Add-Hit $cfgMac 3 ([datetime]::MinValue) "this laptop's mesh_config.h" }
+
+    $nick = Get-BoardNicknames
+    foreach ($e in $found.Values) {
+        $p = $e.Mac -split ':'
+        $e | Add-Member -NotePropertyName Name -NotePropertyValue $nick["$($p[0]):$($p[-1])"] -Force
+    }
+    return @($found.Values | Sort-Object Rank, @{ Expression = 'When'; Descending = $true })
+}
+
+function Get-BoardNicknames {
+    # "first:last" byte (lower case) -> "Member nickname", from member_boards.json
+    # (it stores first:last byte only).
+    $nick = @{}
+    $mb = Join-Path $base 'member_boards.json'
+    if (Test-Path $mb) {
+        try {
+            foreach ($m in @((Get-Content -Raw $mb | ConvertFrom-Json).members)) {
+                foreach ($bd in @($m.boards)) {
+                    $p = "$($bd.mac)".Trim().ToLower() -split ':'
+                    if ($p.Count -ge 2) { $nick["$($p[0]):$($p[-1])"] = "$($m.name) $($bd.nickname)" }
+                }
+            }
+        } catch { }
+    }
+    return $nick
+}
+
+function Get-KnownBoardMacs {
+    # Every NON-root board this laptop has a full MAC for, newest sighting first -
+    # so a fresh board can be picked as the attacker instead of re-using a past
+    # one (oct. 1, 2026). Sources: the first data row of every telem CSV in
+    # datasets\exports (any attack, any role but root) + every preset board.
+    # -Exclude: MACs to leave out (already-listed attackers, this laptop's boards).
+    param([string[]]$Exclude = @())
+    $skip = @{}; foreach ($x in $Exclude) { if ($x) { $skip["$x".Trim().ToLower()] = $true } }
+    $found = @{}
+    function Add-Seen($mac, $when, $why) {
+        $m = "$mac".Trim().ToLower()
+        if ($m -notmatch '^[0-9a-f]{2}(:[0-9a-f]{2}){5}$' -or $skip[$m]) { return }
+        if (-not $found.ContainsKey($m) -or $when -gt $found[$m].When) {
+            $found[$m] = [pscustomobject]@{ Mac = $m; When = $when; Why = $why }
+        }
+    }
+    $roots = @{}
+    $exp = Join-Path $base 'datasets\exports'
+    if (Test-Path $exp) {
+        Get-ChildItem -Path $exp -Recurse -Filter '*_telem.csv' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch '\\trimmed\\' } | ForEach-Object {
+                try {
+                    $two = @(Get-Content -Path $_.FullName -TotalCount 2)
+                    if ($two.Count -lt 2) { return }
+                    $cols = $two[0].Split(','); $vals = $two[1].Split(',')
+                    $ri = [array]::IndexOf($cols, 'role'); $ni = [array]::IndexOf($cols, 'node_id')
+                    if ($ri -lt 0 -or $ni -lt 0) { return }
+                    $hex = ($vals[$ni] -replace '^NODE_', '')
+                    if ($hex -notmatch '^[0-9A-Fa-f]{12}$') { return }
+                    $mac = (($hex -split '(..)' | Where-Object { $_ }) -join ':').ToLower()
+                    if ($vals[$ri] -eq 'root') { $roots[$mac] = $true; return }
+                    $cell = (Split-Path (Split-Path $_.FullName -Parent) -NoQualifier) -replace '.*\\exports\\', '' -replace '\\', '/'
+                    Add-Seen $mac $_.LastWriteTime ("{0} in run {1}" -f $vals[$ri], $cell)
+                } catch { }
+            }
+    }
+    $pre = Join-Path $base 'presets'
+    if (Test-Path $pre) {
+        Get-ChildItem -Path $pre -Recurse -Filter '*.json' -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json
+                $name = ($_.FullName -replace '.*\\presets\\', '' -replace '\\', '/')
+                foreach ($b in @($cfg.boards)) {
+                    if (-not $b.Mac) { continue }
+                    if ($b.Kind -eq 'root') { $roots["$($b.Mac)".Trim().ToLower()] = $true; continue }
+                    Add-Seen $b.Mac $_.LastWriteTime ("{0} in preset {1}" -f $b.Kind, $name)
+                }
+            } catch { }
+        }
+    }
+    $nick = Get-BoardNicknames
+    $out = @($found.Values | Where-Object { -not $roots[$_.Mac] })
+    foreach ($e in $out) {
+        $p = $e.Mac -split ':'
+        $e | Add-Member -NotePropertyName Name -NotePropertyValue $nick["$($p[0]):$($p[-1])"] -Force
+    }
+    return @($out | Sort-Object @{ Expression = 'When'; Descending = $true })
+}
+
+function Read-RemoteAttackerMac {
+    # Pick-or-paste prompt for an attacker on ANOTHER laptop: lists
+    # Get-KnownAttackerMacs so the operator types a number instead of a MAC
+    # from memory. Returns the MAC (lower case) or $null for "no attacker".
+    # -LocalMacs: boards on THIS laptop (victims here, so never offered).
+    param([string]$Who = 'the attacker', [string[]]$LocalMacs = @())
+    $loc = @($LocalMacs | Where-Object { $_ } | ForEach-Object { "$_".Trim().ToLower() })
+    $attackers = @(Get-KnownAttackerMacs | Where-Object { $loc -notcontains $_.Mac })
+    # Second list: every other known board, so a NEW attacker can be picked by
+    # number too (oct. 1, 2026: operator wanted a fresh board, not a past one).
+    $others = @(Get-KnownBoardMacs -Exclude (@($attackers | ForEach-Object { $_.Mac }) + $loc))
+    $list = @($attackers) + @($others)
+    if ($attackers.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Attacker boards this laptop knows of (best evidence first):" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $attackers.Count; $i++) {
+            $e = $attackers[$i]
+            $name = if ($e.Name) { " ($($e.Name))" } else { '' }
+            $tag = if ($i -eq 0) { '  <- most likely' } else { '' }
+            Write-Host ("  [{0}] {1}{2} - {3}{4}" -f ($i + 1), $e.Mac, $name, $e.Why, $tag)
+        }
+    }
+    if ($others.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Other known boards (never an attacker yet - pick one for a NEW attacker):" -ForegroundColor Cyan
+        for ($j = 0; $j -lt $others.Count; $j++) {
+            $e = $others[$j]
+            $name = if ($e.Name) { " ($($e.Name))" } else { '' }
+            Write-Host ("  [{0}] {1}{2} - last seen as {3} ({4})" -f ($attackers.Count + $j + 1), $e.Mac, $name, $e.Why, $e.When.ToString('MMM dd'))
+        }
+    }
+    if ($list.Count -gt 0) {
+        Write-Host "  Confirm with the attacker's laptop (its wizard prints 'Attacker for this run: ...')." -ForegroundColor DarkGray
+    }
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt $script:MaxPromptTries) { Write-Host "  No valid answer - continuing without an attacker MAC." -ForegroundColor Yellow; return $null }
+        $hint = if ($list.Count -gt 0) { "number 1-$($list.Count), " } else { '' }
+        $raw = Read-Line ("`n{0}'s MAC - {1}or paste aa:bb:cc:dd:ee:ff, blank if none > " -f $Who, $hint)
+        if (-not $raw) { return $null }
+        $raw = $raw.Trim()
+        $n = 0
+        if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $list.Count) {
+            Write-Host ("  Using {0}" -f $list[$n - 1].Mac) -ForegroundColor Green
+            return $list[$n - 1].Mac
+        }
+        if ($raw -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { return $raw.ToLower() }
+        Write-Host "  Not a list number or a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
+    }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -5360,8 +5564,8 @@ function Remove-BoardInteractive {
         if ($eligible.Count -eq 0) {
             Write-Host "   That node was the $Scenario target and no remaining child can carry it - pick a different scenario, or add a node before confirming." -ForegroundColor Yellow
         } else {
-            $labels = @($eligible | ForEach-Object { "$($_.Label)  ($($_.Port))  -  $($_.Display)" })
-            $tIdx = Show-Menu -Title "Which node is now the $Scenario TARGET? (exactly one)" -Options $labels -DefaultIndex 0
+            $tIdx = Show-ScenarioTargetMenu -Title "Which node is now the $Scenario TARGET? (exactly one)" `
+                -Scenario $Scenario -Eligible $eligible -Roster $remaining -DefaultIndex 0
             if ($tIdx -ge 0) {
                 $eligible[$tIdx].ScenarioTarget = $true
                 $eligible[$tIdx].Display += " + $($Scenario.ToUpper()) TARGET"
@@ -6005,6 +6209,68 @@ function Sync-RosterPortsByMac {
     return [pscustomobject]@{ Applied = $true; Unresolved = $unresolved; MacMap = $macMap }
 }
 
+function Show-ScenarioTargetMenu {
+    # Every "which node is the <scenario> TARGET?" prompt goes through here, so
+    # each board shows whether its port is plugged in RIGHT NOW, and the menu
+    # can re-find boards by MAC before you commit. A burst/powercycle/mobility
+    # target that isn't connected can't be flashed with the target build -
+    # before oct. 1, 2026 'NOT PRESENT' showed only in the preset summary, never
+    # at this prompt, so you could pick an unplugged board without noticing.
+    # Returns the index into ($Eligible + $ExtraOptions), or -1 for 'b' (only
+    # with -AllowBack). Port moves found by Detect are applied to $Roster's
+    # board objects in place (the same objects $Eligible holds).
+    param(
+        [string]$Title,
+        [string]$Scenario,
+        [object[]]$Eligible,
+        [string[]]$ExtraOptions = @(),
+        $Roster,
+        [int]$DefaultIndex = -1,
+        [switch]$AllowBack
+    )
+    while ($true) {
+        $live = @(Get-PortList | Select-Object -ExpandProperty Port)
+        $labels = @($Eligible | ForEach-Object {
+            $portText = if (-not $_.Port) { 'other laptop' }
+                        elseif ($live -contains $_.Port) { "$($_.Port) plugged in" }
+                        else { "$($_.Port) NOT PRESENT" }
+            $tag = ''
+            if ($_.Port -and $script:IdentifiedPorts.ContainsKey($_.Port)) { $tag = "  [$($script:IdentifiedPorts[$_.Port])]" }
+            "{0}  ({1}){2}  -  {3}" -f $_.Label, $portText, $tag, $_.Display
+        })
+        $labels += $ExtraOptions
+        $detectIdx = $labels.Count
+        $labels += 'Detect ports - plugged a board in or moved a cable? Find each board by its MAC and redraw this list'
+
+        $idx = if ($AllowBack) { Show-Menu -Title $Title -Options $labels -DefaultIndex $DefaultIndex -AllowBack }
+               else            { Show-Menu -Title $Title -Options $labels -DefaultIndex $DefaultIndex }
+
+        if ($idx -eq $detectIdx) {
+            if ($DryRun -or $SkipMacCheck) {
+                Write-Host ("  Not reading boards ({0}) - can't detect ports. List refreshed from what Windows sees." -f $(if ($DryRun) { 'dry run' } else { '-SkipMacCheck' })) -ForegroundColor Yellow
+                continue
+            }
+            $sync = Sync-RosterPortsByMac -Roster $Roster -Ports @(Get-PortList)
+            if ($sync.Unresolved.Count -gt 0) {
+                Write-Host ("  Still not found: {0} - plug it in and pick Detect again." -f (($sync.Unresolved | ForEach-Object { $_.Label }) -join ', ')) -ForegroundColor Yellow
+            }
+            continue
+        }
+        if ($idx -ge 0 -and $idx -lt $Eligible.Count) {
+            $b = $Eligible[$idx]
+            if ($b.Port -and $live -notcontains $b.Port) {
+                Write-Host ""
+                Write-Host ("  {0} is recorded on {1}, which is NOT plugged in right now." -f $b.Label, $b.Port) -ForegroundColor Yellow
+                Write-Host ("  The {0} target has to be connected to be flashed with the target build." -f $Scenario) -ForegroundColor Yellow
+                Write-Host "  Plug it in and pick 'Detect ports' - its COM number may have changed." -ForegroundColor Yellow
+                $ans = Read-Line "  Use it anyway (you'll plug it in before flashing)? [y/N] > "
+                if ($ans -ne 'y' -and $ans -ne 'Y') { continue }
+            }
+        }
+        return $idx
+    }
+}
+
 function Read-RepeatNumber {
     # Shared by the menu flow and the preset picker so the explanation lives once.
     # -AllowBack (menu flow only) returns -1 for 'b'/'back' - a real repeat
@@ -6153,17 +6419,15 @@ function Edit-PresetInteractive {
         # `&` gets its own child scope: `$draft += ...` in there would rebind
         # only that scope's copy, not this function's.
         $eligible = @($draft | Where-Object { $_.Role -ne 'root' -and ($scenario -ne 'burst' -or (Test-BurstEligible $_)) })
-        $labels = @($eligible | ForEach-Object {
-            "{0}  ({1})  -  {2}" -f $_.Label, $(if ($_.Port) { $_.Port } else { 'other laptop' }), $_.Display
-        })
-        $escapeIdx = $labels.Count
-        $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
+        $escapeIdx = $eligible.Count
+        $escapeText = "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
         if ($eligible.Count -eq 0) {
             Write-Host ("   No node here can carry {0} - marking the target as on another laptop." -f $scenario) -ForegroundColor Yellow
             $tIdx = $escapeIdx
         }
         else {
-            $tIdx = Show-Menu -Title ("Which node is the {0} TARGET? (exactly one)" -f $scenario) -Options $labels -DefaultIndex 0
+            $tIdx = Show-ScenarioTargetMenu -Title ("Which node is the {0} TARGET? (exactly one)" -f $scenario) `
+                -Scenario $scenario -Eligible $eligible -ExtraOptions @($escapeText) -Roster $draft -DefaultIndex 0
         }
         if ($tIdx -lt 0) { return $draft }
         foreach ($b in $draft) { $b.ScenarioTarget = $false }
@@ -6542,12 +6806,13 @@ function Show-PresetDetails {
         Write-Host "  victims and the root - near the root (hop 1-2) is safest. An attacker at the" -ForegroundColor Cyan
         Write-Host "  far end of a chain, or as a leaf, intercepts nothing and the run will show NO" -ForegroundColor Cyan
         Write-Host "  attack even though every board looks healthy." -ForegroundColor Cyan
-        Write-Host "  Check after the run: toolserify_topology.py ... --structure" -ForegroundColor DarkGray
+        Write-Host "  Check after the run: tools\verify_topology.py ... --structure" -ForegroundColor DarkGray
 
         $wantMac = Get-ConfiguredAttackerMac
         Write-Host ""
         if (-not $att) {
-            Write-Host "  WARNING: blackhole preset with no attacker board." -ForegroundColor Red
+            Write-Host "  No attacker board on THIS laptop's preset. Fine on a multi-laptop run (the" -ForegroundColor Yellow
+            Write-Host "  wizard asks for its MAC before flashing victims); otherwise there is no attack." -ForegroundColor Yellow
         }
         elseif (-not $wantMac) {
             Write-Host "  Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h." -ForegroundColor Yellow
@@ -7340,8 +7605,26 @@ if ($Preset) {
     # A target-needing scenario with no board marked ScenarioTarget is a preset
     # that would silently do nothing on run - fail loudly instead of flashing a
     # 'burst'/'mobility'/'powercycle' run where nobody actually carries it out.
+    # Multi-laptop split presets (oct. 1, 2026): a laptop holding only the root,
+    # or only plain victims, legitimately has no target - it is on another
+    # laptop. Throwing here killed the wizard for every such laptop, so ask.
     if ((Test-ScenarioNeedsTarget $scenario) -and -not ($roster | Where-Object { $_.ScenarioTarget })) {
-        throw "Preset's scenario is '$scenario' but no board is marked as the ScenarioTarget."
+        Write-Host ""
+        Write-Host ("No board in this preset is marked as the '{0}' TARGET." -f $scenario) -ForegroundColor Yellow
+        Write-Host "  Fine on a multi-laptop run if the target board is flashed on ANOTHER laptop." -ForegroundColor DarkGray
+        Write-Host "  On a single-laptop run it means nobody carries out the scenario - edit the preset." -ForegroundColor DarkGray
+        $ans = Read-Line ("Is the {0} target on another laptop? [y/N] > " -f $scenario)
+        if ($ans -ne 'y' -and $ans -ne 'Y') {
+            throw "Preset's scenario is '$scenario' but no board is marked as the ScenarioTarget - mark one (Edit this preset) or answer y if it is on another laptop."
+        }
+        Write-Host ("  OK - the {0} target runs on another laptop." -f $scenario) -ForegroundColor Green
+    }
+    # A burst TARGET mark left on the attacker (e.g. the old target was later
+    # picked as attacker - that picker keeps the mark) builds no burst code at all:
+    # blackhole_victim.c has none, so the run silently becomes stationary.
+    $burstTgt = @($roster | Where-Object { $_.ScenarioTarget }) | Select-Object -First 1
+    if ($scenario -eq 'burst' -and $burstTgt -and -not (Test-BurstEligible $burstTgt)) {
+        throw ("This preset's burst TARGET is {0}, the {1} - that firmware has no burst code, so NOTHING would burst. Edit the preset and mark a VICTIM as the burst target." -f $burstTgt.Label, $burstTgt.Kind)
     }
 
     if (-not $bannerShown) {
@@ -7991,12 +8274,7 @@ else {
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
                     continue flow
                 }
-                $labels = @($eligible | ForEach-Object {
-                    $tag = ''
-                    if ($_.Port -and $script:IdentifiedPorts.ContainsKey($_.Port)) { $tag = "  [$($script:IdentifiedPorts[$_.Port])]" }
-                    $portText = if ($_.Port) { $_.Port } else { 'remote - not on this laptop' }
-                    "$($_.Label)  ($portText)$tag  -  $($_.Display)"
-                })
+                $labels = @()
                 # MULTI-LAPTOP SPLIT: same reasoning as the attacker/wormhole escapes
                 # above - the scenario target may be a board on a teammate's laptop,
                 # never listed here at all. Without this, "which child is the target?"
@@ -8005,10 +8283,11 @@ else {
                 # the one place in the wizard that can't say "not here".
                 $escapeIdx = -1
                 if ($multiLaptop) {
-                    $escapeIdx = $labels.Count
+                    $escapeIdx = $eligible.Count
                     $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
                 }
-                $idx = Show-Menu -Title "Which child is the $scenario TARGET? (exactly one)" -Options $labels -AllowBack
+                $idx = Show-ScenarioTargetMenu -Title "Which child is the $scenario TARGET? (exactly one)" `
+                    -Scenario $scenario -Eligible $eligible -ExtraOptions $labels -Roster $children -AllowBack
                 if ($idx -eq -1) {
                     if ($attack -ne 'none') { $step = 8 } else { Undo-LastChild; $step = 7 }
                     continue flow
@@ -8206,16 +8485,7 @@ if ($attack -eq 'blackhole') {
         else {
             Write-Host "Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
             Write-Host "board', run on the ATTACKER'S laptop), then type the printed MAC back here." -ForegroundColor DarkGray
-            $typedMac = $null
-            $tries = 0
-            while ($true) {
-                $tries++
-                if ($tries -gt $script:MaxPromptTries) { Write-Host "  No valid MAC entered - continuing unverified." -ForegroundColor Yellow; break }
-                $raw = Read-Line ("`n{0}'s MAC (aa:bb:cc:dd:ee:ff), blank to skip verification > " -f $remoteAttacker.Label)
-                if (-not $raw) { break }
-                if ($raw.Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $typedMac = $raw.Trim().ToLower(); break }
-                Write-Host "  Not a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
-            }
+            $typedMac = Read-RemoteAttackerMac -Who $remoteAttacker.Label -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
 
             if (-not $typedMac) {
                 Write-Host "  Skipped - verify mesh_config.h matches the other laptop's attacker by hand." -ForegroundColor Yellow
@@ -8261,10 +8531,24 @@ if ($attack -eq 'blackhole') {
         # Neither local nor recorded elsewhere in the full roster - nothing
         # blackhole-specific on THIS laptop to verify (root-only laptop, etc).
         if ($victimCount -gt 0) {
+            # A split preset often records no attacker at all (e.g. a laptop with
+            # only victims). Its victims still need the attacker's MAC built in -
+            # load-bearing for STAR (D-16): without it they fall back to this
+            # laptop's mesh_config.h and, if stale, never join (oct. 1, 2026).
             Write-Host ""
-            Write-Host "WARNING: local victim(s) present but no attacker anywhere in the roster." -ForegroundColor Red
-            Write-Host "No node will drop transiting traffic, so there is no blackhole to observe" -ForegroundColor Red
-            Write-Host "and the capture carries no attack signature." -ForegroundColor Red
+            Write-Host "No attacker board is recorded in this roster, but it has local victim(s)." -ForegroundColor Yellow
+            Write-Host "  If the attacker is on ANOTHER laptop, type its MAC (printed by that laptop's" -ForegroundColor DarkGray
+            Write-Host "  wizard) so it is built into the victims here. Blank = there is no attacker." -ForegroundColor DarkGray
+            if ($SkipMacCheck -or $DryRun) {
+                Write-Host "  (not asking - dry run / -SkipMacCheck)" -ForegroundColor DarkGray
+            }
+            else {
+                $typedMac = Read-RemoteAttackerMac -Who 'Attacker' -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
+            }
+            if (-not $typedMac) {
+                Write-Host "WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
+                Write-Host "blackhole to observe and the capture carries no attack signature." -ForegroundColor Red
+            }
         }
     }
     else {
@@ -8511,6 +8795,22 @@ $buildAndPrintPlan = {
                   else { '(none picked!)' }
         Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
         Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
+    }
+    elseif ($scenario -eq 'burst') {
+        # oct. 1, 2026: two burst runs had NO sender because every laptop assumed
+        # another one had it. Say plainly who sends it - or that nobody here does.
+        $tgt = $plan | Where-Object { $_.Board.ScenarioTarget } | Select-Object -First 1
+        $remoteTgt = $fullRoster | Where-Object { $_.ScenarioTarget -and -not $_.Port } | Select-Object -First 1
+        if ($tgt) {
+            Write-Host ("  BURST    : {0} on THIS laptop is the burst sender - no other laptop may mark one." -f $tgt.Board.Label) -ForegroundColor Magenta
+        }
+        elseif ($remoteTgt) {
+            Write-Host ("  BURST    : sender {0} is on another laptop - CHECK its plan shows '<< burst TARGET'." -f $remoteTgt.Label) -ForegroundColor Magenta
+        }
+        else {
+            Write-Host "  BURST    : NO burst sender on this laptop. Exactly ONE other laptop's plan must" -ForegroundColor Red
+            Write-Host "             show a victim with '<< burst TARGET' - if none does, nothing bursts." -ForegroundColor Red
+        }
     }
     Write-Host ""
     Write-Host "  Order (root is always last):"

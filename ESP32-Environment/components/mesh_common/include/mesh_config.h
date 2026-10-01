@@ -797,6 +797,23 @@
 #define STACK_PROBE_SINK        4096U
 #define STACK_SERIAL_EXPORT     6144U
 #define STACK_HEARTBEAT         6144U   /* root: also builds, renders and checks the topology graph */
+#define STACK_ARRIVAL_WRITER    6144U   /* root: SPIFFS + SD arrival writes (fopen on the card) */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ROOT RECEIVE PATH  (highload collapse fix, oct. 1, 2026)
+ * docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md §12.4-12.5: the root
+ * wrote every arrival to SPIFFS + SD INSIDE the single esp_mesh_recv() task, so
+ * a write stall stopped the root draining its mesh RX queue (default 32), flow
+ * control throttled every child, and 7-board highload runs collapsed (~20/s in,
+ * falling to 3-7/s by cooldown) - with or without an attack.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+/** Arrival rows the receive callback may queue for the writer task. 256 rows =
+ *  ~13 s of writes at the 20/s highload rate - a stall has to last that long
+ *  before a row is lost (and a lost row is counted + reported, never silent). */
+#define ROOT_ARRIVAL_QUEUE_LEN  256U
+/** Root's mesh RX queue (esp_mesh_set_xon_qsize, default 32, min 16): headroom
+ *  so a short stall does not trigger flow control on the children. */
+#define ROOT_MESH_XON_QSIZE     64
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * NODE IDENTIFICATION

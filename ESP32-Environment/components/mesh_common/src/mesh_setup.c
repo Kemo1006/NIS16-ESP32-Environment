@@ -267,6 +267,20 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     }
 #endif
 
+    /* Root only: a deeper mesh RX queue (must be set before esp_mesh_start).
+     * Every probe in the mesh ends at the root, so it is the one node whose
+     * queue fills under highload - see ROOT_MESH_XON_QSIZE. Not fatal: the
+     * default 32 still works, only with less headroom. */
+    if (role == MESH_ROLE_ROOT) {
+        esp_err_t xe = esp_mesh_set_xon_qsize(ROOT_MESH_XON_QSIZE);
+        if (xe == ESP_OK) {
+            ESP_LOGI(TAG, "Root mesh RX queue: %d (default 32).", ROOT_MESH_XON_QSIZE);
+        } else {
+            ESP_LOGW(TAG, "esp_mesh_set_xon_qsize(%d) failed: %s - keeping the default 32.",
+                     ROOT_MESH_XON_QSIZE, esp_err_to_name(xe));
+        }
+    }
+
     /* ── 9. Start mesh ───────────────────────────────────────────────────── */
     ESP_ERROR_CHECK(esp_mesh_start());
     /* No width change here - see "before wifi start" above. */
