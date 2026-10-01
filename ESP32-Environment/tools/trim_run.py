@@ -115,6 +115,17 @@ HEADER_TOKEN = "timestamp_us"
 ARRIVALS_MARKER = "src_mac"  # only the probe-arrival schema carries this column
 
 
+def _shown(path: str) -> str:
+    """Path for display: relative to the cwd when possible. On Windows
+    os.path.relpath raises ValueError when the data is on another drive than
+    the cwd (e.g. a run folder on C: analysed from an A: checkout), which used
+    to abort the trim after the first file - display must never do that."""
+    try:
+        return os.path.relpath(path)
+    except ValueError:
+        return path
+
+
 def _is_arrivals_header(header: str) -> bool:
     return ARRIVALS_MARKER in header
 
@@ -396,7 +407,7 @@ def process(path, apply_changes, in_place, out_dir):
             target = os.path.join(out_dir, name)
             shutil.copy2(path, target)
             print(f"      single session — copied unchanged -> "
-                  f"{os.path.relpath(target)}")
+                  f"{_shown(target)}")
             return {"file": name, "kept": b - a, "dropped": 0,
                     "changed": False, "copied": True}
         print("      already a single session — nothing to trim")
@@ -420,7 +431,7 @@ def process(path, apply_changes, in_place, out_dir):
         for _, raw in body[a:b]:
             f.write(raw if raw.endswith("\n") else raw + "\n")
 
-    where = "in place (.orig saved)" if in_place else os.path.relpath(target)
+    where = "in place (.orig saved)" if in_place else _shown(target)
     print(f"      wrote {b - a} row(s), dropped {dropped} -> {where}")
     return {"file": name, "kept": b - a, "dropped": dropped, "changed": True}
 

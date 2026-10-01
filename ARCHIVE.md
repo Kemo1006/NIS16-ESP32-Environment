@@ -2151,3 +2151,8 @@ Both still live as one-line warnings in STATUS.md.
 - sep. 27 pm — **02:05 blackhole pcap verified linear + attack worked** (attacker drop 180/180; node3 -> root 0 in phase 1); burst probes 100->300. Fix `member_boards.json` (20:38 attacker is stale, real = F4:18).
 - sep. 27 — **Data moved to `datasets/`** (5 folders + analysis output; 375 files hash-verified; all writers/readers repointed, code untouched).
 - sep. 27 — **Wireshark view menu: ALL boards by default + MY boards submenu** (member's boards, side-by-side I/O lines); stub-tested, not opened in real Wireshark.
+
+- ⚠️ **WORMHOLE's run-killer: the tunnel is a WIRED UART link, so its silent failure is a dead cable**
+  (Tunnel* features empty, both boards look healthy). ⚠️ **Node B CANNOT detect it** —
+  `uart_write_bytes()` succeeds into an unterminated line; only Node A can prove a frame crossed.
+  Guard on A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner.
