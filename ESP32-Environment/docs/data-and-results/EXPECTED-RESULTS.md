@@ -343,5 +343,5 @@ didn't fit the analysis to the data. An edited table is misconduct.
 > forwarding layer and did not perturb the mesh tree — consistent with §3.3.1.2, and contrary to the
 > retransmission increase predicted in Table 3.4, which was tested and **not** observed.
 
-**Related:** `docs/ATTACK-VALIDATION.md` (conformance to literature) ·
-`docs/DATA-DICTIONARY.md` (what each column means) · `docs/REVIEWER-QUESTIONS.md` (panel Q&A)
+**Related:** `docs/attack-validation/ATTACK-VALIDATION.md` (conformance to literature) ·
+`docs/data-and-results/DATA-DICTIONARY.md` (what each column means) · `docs/panel-answers/REVIEWER-QUESTIONS.md` (panel Q&A)

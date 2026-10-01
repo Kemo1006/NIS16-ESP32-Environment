@@ -1,6 +1,6 @@
 # Telemetry data dictionary — what every column actually contains
 
-**Created:** sep. 20, 2026 · **Updated:** sep. 25, 2026 (§2 rewritten for post-C7 firmware; see `issue_logs/thesis-deviate.md` D-12, D-15) · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
+**Created:** sep. 20, 2026 · **Updated:** sep. 25, 2026 (§2 rewritten for post-C7 firmware; see `deviations-limitations/thesis-deviate.md` D-12, D-15) · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
 
 This file exists because three columns in the telemetry schema **mean different things depending on
 which board wrote the row**, and the manuscript currently describes them as something they are not.
@@ -12,6 +12,8 @@ misrepresentation. Do the second immediately, the first at the next capture.
 > **No column in this dataset contains an 802.11 MAC-layer retransmission count.**
 > `retry_count` is an application-layer counter on every role. The ESP-IDF Wi-Fi statistics API is
 > not read anywhere in this firmware — grep for `esp_wifi_get_statistics`, there are no hits.
+> It cannot be: ESP-IDF 5.3/5.5 only *print* Wi-Fi stats (`esp_wifi_statis_dump`). Real 802.11
+> retries come from the sniffer's Retry bit — `tools/pcap_retry.py`, see D-15.
 
 ---
 
@@ -93,7 +95,7 @@ relay (`root_main.c`).
 
 ⚠️ **`retry_count` is still not an 802.11 retransmission count on any role** — it is send
 failures seen by the application, or on Node B the tunnel count. That departure from Table 4.5 is
-documented as **D-15** in `issue_logs/thesis-deviate.md`. Since sep. 30, 2026 RetryRate is a **dataset column only**:
+documented as **D-15** in `deviations-limitations/thesis-deviate.md`. Since sep. 30, 2026 RetryRate is a **dataset column only**:
 kept in `feature_table.csv`, but out of attack verification, EDA and every model input (no cited study backs it as an
 attack signature; it measured flat). A window with no send attempt is NaN, not 0 (`features.compute_link_reliability_features`).
 
@@ -137,6 +139,8 @@ this is why `LatencyHopRatio` is a *relative one-way* measure (D-2), not RTT.
 | `segment` | `preprocess.assign_segments()` | `pre_baseline` · `baseline` · `attack` · `cooldown`. **`pre_baseline` rows are excluded from the labelled dataset** (`window_label = NaN`) — they are the window between a node booting and the root's first phase broadcast, which v1 firmware records as an ordinary phase 0. Rows are kept, never deleted. |
 | `t_anchor_s` | `preprocess.assign_segments()` | seconds relative to this node's own phase-0 exit |
 | `window_label` | `preprocess` | ground truth for the window; `NaN` outside the three real phases |
+| `MacRetryRate` | `features.compute_mac_retry_features()` + `tools/pcap_retry.py` | **real 802.11 retry rate** of this node's frames to its parent, from the sniffer (Retry bit). Sniffer runs only; **NaN = not measured**, never "no retries". Not a model input. D-15 |
+| `MacFramesHeard` | same | frames the sniffer heard from this node to its parent that second (0 = covered but silent, NaN = not covered) |
 | `rssi_dbm` (windowed) | `preprocess` | **`rssi_dbm == 0` is blanked to NaN** — it is the firmware's "no parent link" placeholder, not a reading (6,446 rows in the sep. 18 G402 capture) |
 
 ---

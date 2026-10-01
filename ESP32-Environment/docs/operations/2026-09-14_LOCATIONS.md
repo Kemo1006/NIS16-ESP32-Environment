@@ -2,7 +2,7 @@
 
 > We run the same experiments across **several real indoor sites** on purpose: different Wi-Fi
 > interference at each location is **natural, defensible variance** (a panel requirement) and fits
-> our scenario. Hub: `docs/2026-09-14_START-HERE.md`.
+> our scenario. Hub: `docs/operations/2026-09-14_START-HERE.md`.
 
 ## The scenario (say this to the panel)
 An **indoor environmental / ambient-monitoring mesh** deployed across two realistic indoor

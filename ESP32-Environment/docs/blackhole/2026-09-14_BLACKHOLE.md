@@ -1,8 +1,8 @@
 # Runbook: BLACKHOLE attack run - v2026-09-14
 
 > One **attacker** board relays victim probes; during the attack window it **silently drops**
-> them so they never reach the root. Ground-truth: `0 -> 1 -> 0`. Hub: `docs/2026-09-14_START-HERE.md`.
-> Placement per topology: `docs/runbooks/2026-09-14_TOPOLOGIES.md`.
+> them so they never reach the root. Ground-truth: `0 -> 1 -> 0`. Hub: `docs/operations/2026-09-14_START-HERE.md`.
+> Placement per topology: `docs/operations/2026-09-14_TOPOLOGIES.md`.
 > **Paper basis:** drop-after-attract + forwarding-ratio/PDR collapse - Airehrour et al. 2018 (`memory/thesis-citations.md`).
 
 ## Boards needed
@@ -104,7 +104,7 @@ Handled if you chose Export. Manual/later, one board at a time:
 ### Way B - by SD card
 After the run: power off -> pop each microSD into your laptop's reader ->
 `python tools\import_sdcard.py --card E:\ --repeat <n>` -> re-insert. No board plugged in.
-Setup: `docs/2026-09-14_SD-CARD.md`.
+Setup: `docs/operations/2026-09-14_SD-CARD.md`.
 
 ---
 

@@ -72,7 +72,7 @@ Your paper's Table 4.5 says `retry_count` and `tx_count` are *"cumulative MAC re
 the *"ESP-IDF Wi-Fi statistics API."*
 
 **They are not.** They're application counters, and they mean three different things depending on
-which board wrote the row (see `docs/DATA-DICTIONARY.md`). No column in your dataset contains a real
+which board wrote the row (see `docs/data-and-results/DATA-DICTIONARY.md`). No column in your dataset contains a real
 802.11 retry.
 
 The 802.11 header has a **Retry bit** — one bit, set by the radio itself, meaning "this is a
@@ -492,7 +492,7 @@ you already know before it matters.
 
 ## 9. Using this to validate the blackhole and wormhole SPECIFICALLY
 
-`docs/ATTACK-VALIDATION.md` already proves both attacks conform to their published definitions —
+`docs/attack-validation/ATTACK-VALIDATION.md` already proves both attacks conform to their published definitions —
 but every bit of evidence there comes from the boards' **own CSV logs**. A board reporting on
 itself is still one witness. Wireshark is a **second, independent** witness that doesn't depend on
 any board telling the truth about itself. This section shows exactly which filter proves which
@@ -544,6 +544,6 @@ an effect," and it's the strongest form of evidence this thesis can produce.
 
 ---
 
-**Related:** `docs/DATA-DICTIONARY.md` (what your CSV columns really contain) ·
-`docs/ATTACK-VALIDATION.md` (how the attacks are validated against literature; §9 above adds
+**Related:** `docs/data-and-results/DATA-DICTIONARY.md` (what your CSV columns really contain) ·
+`docs/attack-validation/ATTACK-VALIDATION.md` (how the attacks are validated against literature; §9 above adds
 independent packet-capture corroboration to those same claims)

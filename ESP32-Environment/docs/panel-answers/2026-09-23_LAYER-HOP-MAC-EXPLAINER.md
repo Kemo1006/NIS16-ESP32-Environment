@@ -1,6 +1,6 @@
 # "Layer vs hop" and "MAC mismatch" — plain-language explainer + dataset check
 
-**Created:** sep. 23, 2026. Companion to `docs/REVIEWER-QUESTIONS.md` §3 and §7, which have the
+**Created:** sep. 23, 2026. Companion to `docs/panel-answers/REVIEWER-QUESTIONS.md` §3 and §7, which have the
 technical/code-cited version of the same two answers. **This file is the dumbed-down version** —
 written so anyone on the team (or a panelist mid-question) can follow it without reading code first.
 Also logs the dataset spot-check done the same day. Session details: `STATUS.md` / `MEMORY.md`
@@ -203,8 +203,8 @@ measured value in the dataset — both are presentation-layer clarifications onl
 
 | What | File |
 |---|---|
-| Technical/code-cited version of both answers | `docs/REVIEWER-QUESTIONS.md` §3, §7 |
-| Raw vs corrected column definitions | `docs/DATA-DICTIONARY.md` |
+| Technical/code-cited version of both answers | `docs/panel-answers/REVIEWER-QUESTIONS.md` §3, §7 |
+| Raw vs corrected column definitions | `docs/data-and-results/DATA-DICTIONARY.md` |
 | The `hop` conversion itself | `analysis/preprocess.py` → `_layer_to_hop()` |
 | The MAC resolution itself | `tools/verify_topology.py` → `_resolve_parent()` |
 | Today's session log (facts/decisions) | `STATUS.md`, `MEMORY.md` (sep. 23, 2026 entries) |

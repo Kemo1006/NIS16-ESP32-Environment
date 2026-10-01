@@ -21,7 +21,7 @@ COM = USB socket, not board. Identify by MAC: `.\menu.ps1` → *Identify a board
 ### A4. SD-card logging — IMPLEMENTED
 CSVs mirror to a microSD over SPI alongside internal SPIFFS → bigger storage + fast export
 (pop the card, no slow per-node serial pull). Wiring: `CS→GPIO5, SCK→GPIO18, MOSI→GPIO23,
-MISO→GPIO19, VCC→VIN/5V (not 3V3), GND→GND` — see `docs/2026-09-14_SD-CARD.md` and
+MISO→GPIO19, VCC→VIN/5V (not 3V3), GND→GND` — see `docs/operations/2026-09-14_SD-CARD.md` and
 `../../Setups/SD-CARD-WIRING.md` for the two gotchas that aren't obvious from the pin table.
 Export with `python tools\import_sdcard.py --card E:\ --repeat N`.
 
@@ -77,6 +77,6 @@ Topology folder names: `star`, `tree`, `linear`, `partial_mesh`. Location: `home
 `tools\validate_integrity.py` (schema/phases/coverage/labels) · `tools\verify_topology.py` (parent/layer structure) · `tools\board_check.py` (MAC/node id) · `tools\verify_attack.py` (paper-backed 3-sigma attack signature).
 
 ### C6. Pending config
-- ~~SD-card logging build flag~~ — **implemented** (see `docs/2026-09-14_SD-CARD.md`).
+- ~~SD-card logging build flag~~ — **implemented** (see `docs/operations/2026-09-14_SD-CARD.md`).
 - Attack-variance knobs: randomized probe interval/jitter + configurable attacker position + `run_seed` in metadata.
 - Benign-load levels (low/normal/high).

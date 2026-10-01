@@ -148,13 +148,13 @@ python tools\inventory_cells.py --plan
 ## 6. Independent corroboration via packet capture (once one exists)
 
 Everything above comes from the boards' **own CSV logs** — a real, valid, and now paper-backed
-form of evidence, but a board still reporting on itself. `docs/WIRESHARK-GUIDE.md` §9 maps each
+form of evidence, but a board still reporting on itself. `docs/packet-capture/WIRESHARK-GUIDE.md` §9 maps each
 claim in §1 and §2 above to a specific Wireshark filter that proves the same thing from a source
 that doesn't depend on any board's telemetry being honest — e.g. the blackhole's PDR collapse
 (§1, measured from CSVs) paired with an I/O Graph showing the attacker→root traffic physically
 stop on the wire, or the wormhole's "0 parent switches" (§2, measured from CSVs) paired with zero
 unencrypted association/reassociation frames during the same window. No pcap has been captured yet
-(see `docs/WIRESHARK-GUIDE.md` §0) — this section exists so that once one is, the pairing is a
+(see `docs/packet-capture/WIRESHARK-GUIDE.md` §0) — this section exists so that once one is, the pairing is a
 5-minute exercise instead of a redesign.
 
 ---

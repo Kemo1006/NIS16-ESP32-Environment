@@ -19,7 +19,7 @@ be shown, not asserted.
 2. It is not a wall clock, and calling it seconds would imply it was. **Boards never synchronise
    their clocks** — every board's `timestamp_us` starts at *its own* boot. Cross-node alignment is
    done on each node's own first phase-0 exit (`preprocess.assign_segments()`), the one event all
-   nodes observe, never on raw timestamp arithmetic. See `docs/DATA-DICTIONARY.md` §4.
+   nodes observe, never on raw timestamp arithmetic. See `docs/data-and-results/DATA-DICTIONARY.md` §4.
 
 ---
 
@@ -45,7 +45,7 @@ network interface. There is nothing for it to contribute.
 
 ## 3. "Change layer to hop" / "make it topology layer, not OSI layer"
 
-**Done — see `docs/issue_logs/thesis-deviate.md` D-11.** Two reviewers raised this independently,
+**Done — see `docs/deviations-limitations/thesis-deviate.md` D-11.** Two reviewers raised this independently,
 which made it a naming defect rather than a misreading.
 
 - `hop` is now a column in the analysis output: **root = hop 0**, its children = hop 1, and so on.
@@ -77,14 +77,14 @@ passes it through unchanged). No weighting, no smoothing, no conversion.
 
 ⚠️ Related known error to own, not hide: the manuscript's claim that **"RSSI drops 5–10 dB per
 hop"** is wrong — RSSI is per-link, so a layer-6 node one metre from its parent reads *strong*. See
-`docs/DATA-DICTIONARY.md` §3.
+`docs/data-and-results/DATA-DICTIONARY.md` §3.
 
 ---
 
 ## 5. "How about retry_count? What does tx_count = 0, 1, 2 mean?"
 
 **This is the schema's weakest point and it has been fixed — declare both the old state and the
-fix.** Full table in `docs/DATA-DICTIONARY.md` §1.
+fix.** Full table in `docs/data-and-results/DATA-DICTIONARY.md` §1.
 
 `tx_count` is **cumulative, not per-event**: it counts probes since boot. So `2` does not mean "sent
 twice just now", it means "2 probes sent in total so far". The analysis uses per-window **deltas**
@@ -100,7 +100,7 @@ meaning the same thing on every role, and `retry_count` means one thing everywhe
 
 ⚠️ **No column in this dataset contains a real 802.11 MAC retransmission** — old schema or new. The
 manuscript's Table 4.5 says otherwise and must be corrected. Genuine MAC retries need a packet
-capture (`wlan.fc.retry == 1`); see `docs/WIRESHARK-GUIDE.md`.
+capture (`wlan.fc.retry == 1`); see `docs/packet-capture/WIRESHARK-GUIDE.md`.
 
 ---
 
@@ -163,7 +163,7 @@ the −1 by hand.
 The point that matters for this thesis: **ESP-WIFI-MESH operates below IP.** It is a self-organising
 layer-2 tree with its own header — there is no routing protocol like AODV or RPL involved, and no IP
 layer to attack. That is exactly why the classical blackhole/wormhole definitions had to be adapted
-rather than applied directly (`docs/ATTACK-VALIDATION.md` §0), and why calling `layer` an OSI layer
+rather than applied directly (`docs/attack-validation/ATTACK-VALIDATION.md` §0), and why calling `layer` an OSI layer
 was wrong (§3 above).
 
 ---
@@ -196,10 +196,10 @@ and states the reason per column. That is the panel's 2:40–4:50 objection, han
 
 | Question | File |
 |---|---|
-| timestamps, per-role column meanings, RSSI placeholder | `docs/DATA-DICTIONARY.md` |
+| timestamps, per-role column meanings, RSSI placeholder | `docs/data-and-results/DATA-DICTIONARY.md` |
 | hop vs layer, and the off-by-one | `analysis/preprocess.py` `_layer_to_hop()`, `thesis-deviate.md` D-11 |
 | parent/child MAC resolution | `tools/verify_topology.py` `_resolve_parent()` |
 | topology readable from data | `tools/verify_topology.py --structure` |
 | why each NaN exists / which are excluded | `analysis/leakage.py` |
-| attack conformance to literature | `docs/ATTACK-VALIDATION.md` |
-| real MAC-layer retries | `docs/WIRESHARK-GUIDE.md` |
+| attack conformance to literature | `docs/attack-validation/ATTACK-VALIDATION.md` |
+| real MAC-layer retries | `docs/packet-capture/WIRESHARK-GUIDE.md` |

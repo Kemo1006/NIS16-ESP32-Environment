@@ -2,7 +2,7 @@
 
 > The topology option (menu / `-Topology`) sets a firmware shaping flag, but **physical placement
 > matters most** - the mesh self-organizes from RSSI. Space boards so the links you want are the
-> strongest. Verify every run with `python tools\verify_topology.py`. Hub: `docs/2026-09-14_START-HERE.md`.
+> strongest. Verify every run with `python tools\verify_topology.py`. Hub: `docs/operations/2026-09-14_START-HERE.md`.
 >
 > **Rule that never changes:** flash EVERY board in a run with the SAME topology + attack.
 > Spacing guide: **~3-5 m between adjacent boards** in the lab (from the thesis setup). Legend:

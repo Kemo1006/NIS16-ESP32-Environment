@@ -25,7 +25,7 @@ Every board logs telemetry to a CSV, tagged with a **ground-truth label**:
 
 **Our current job (Sept 2026):** the panel told us to **redo all runs** with more realism -
 a defined scenario, variation between runs, and paper-backed verification. See
-`docs/2026-09-14_SETUP-RULES-CONFIG.md` Part B for the rules. Old data is archived.
+`docs/operations/2026-09-14_SETUP-RULES-CONFIG.md` Part B for the rules. Old data is archived.
 
 ## 2. The mental model of one "run"
 
@@ -85,13 +85,13 @@ just launching a run.
 
 | You want to run... | Open this | Boards needed |
 |---|---|---|
-| Normal / baseline (no attack) | `docs/runbooks/2026-09-14_BASELINE.md` | root + 1+ victim (2 min) |
-| **Blackhole** attack | `docs/runbooks/2026-09-14_BLACKHOLE.md` | root + attacker + 1+ victim (3 min) |
-| **Wormhole** attack | `docs/runbooks/2026-09-14_WORMHOLE.md` | root + Node A + Node B + UART cable (3 min) |
-| Where to place boards for each **topology** | `docs/runbooks/2026-09-14_TOPOLOGIES.md` | - |
-| **Verify** a run is real (paper-backed 3-sigma) | `docs/runbooks/2026-09-15_VERIFY.md` | none - no board touched |
-| What's different at each **location** (G402/Library/Goks/Home) | `docs/2026-09-14_LOCATIONS.md` | - |
-| Setup / rules / all config knobs | `docs/2026-09-14_SETUP-RULES-CONFIG.md` | - |
+| Normal / baseline (no attack) | `docs/operations/2026-09-14_BASELINE.md` | root + 1+ victim (2 min) |
+| **Blackhole** attack | `docs/blackhole/2026-09-14_BLACKHOLE.md` | root + attacker + 1+ victim (3 min) |
+| **Wormhole** attack | `docs/wormhole/2026-09-14_WORMHOLE.md` | root + Node A + Node B + UART cable (3 min) |
+| Where to place boards for each **topology** | `docs/operations/2026-09-14_TOPOLOGIES.md` | - |
+| **Verify** a run is real (paper-backed 3-sigma) | `docs/attack-validation/2026-09-15_VERIFY.md` | none - no board touched |
+| What's different at each **location** (G402/Library/Goks/Home) | `docs/operations/2026-09-14_LOCATIONS.md` | - |
+| Setup / rules / all config knobs | `docs/operations/2026-09-14_SETUP-RULES-CONFIG.md` | - |
 
 ## 6. Golden rules (memorize these 5)
 
@@ -158,8 +158,8 @@ python tools\verify_attack.py analysis\blackhole\linear\home\feature_table.csv
 Zhukabayeva et al. 2025): blackhole -> ForwardingRatio/PDR collapse >3 sigma during label 1;
 wormhole -> tunnel activity / duplicate-arrival spread >3 sigma during label 2. Run it on every
 attack run's `feature_table.csv`. Full walkthrough (reading the report, troubleshooting a
-NOT CONFIRMED/INCONCLUSIVE result): `docs/runbooks/2026-09-15_VERIFY.md` and
-`docs/2026-09-14_REFERENCES.md`.
+NOT CONFIRMED/INCONCLUSIVE result): `docs/attack-validation/2026-09-15_VERIFY.md` and
+`docs/references/2026-09-14_REFERENCES.md`.
 
 ---
 *Lost? The single most useful command is `.\menu.ps1`. It walks you through everything.*
