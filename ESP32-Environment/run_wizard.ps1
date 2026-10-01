@@ -7559,6 +7559,13 @@ if ($Preset) {
         }
         Write-Host ("  OK - the {0} target runs on another laptop." -f $scenario) -ForegroundColor Green
     }
+    # A burst TARGET mark left on the attacker (e.g. the old target was later
+    # picked as attacker - that picker keeps the mark) builds no burst code at all:
+    # blackhole_victim.c has none, so the run silently becomes stationary.
+    $burstTgt = @($roster | Where-Object { $_.ScenarioTarget }) | Select-Object -First 1
+    if ($scenario -eq 'burst' -and $burstTgt -and -not (Test-BurstEligible $burstTgt)) {
+        throw ("This preset's burst TARGET is {0}, the {1} - that firmware has no burst code, so NOTHING would burst. Edit the preset and mark a VICTIM as the burst target." -f $burstTgt.Label, $burstTgt.Kind)
+    }
 
     if (-not $bannerShown) {
         Write-Host ""
@@ -8732,6 +8739,22 @@ $buildAndPrintPlan = {
                   else { '(none picked!)' }
         Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
         Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
+    }
+    elseif ($scenario -eq 'burst') {
+        # oct. 1, 2026: two burst runs had NO sender because every laptop assumed
+        # another one had it. Say plainly who sends it - or that nobody here does.
+        $tgt = $plan | Where-Object { $_.Board.ScenarioTarget } | Select-Object -First 1
+        $remoteTgt = $fullRoster | Where-Object { $_.ScenarioTarget -and -not $_.Port } | Select-Object -First 1
+        if ($tgt) {
+            Write-Host ("  BURST    : {0} on THIS laptop is the burst sender - no other laptop may mark one." -f $tgt.Board.Label) -ForegroundColor Magenta
+        }
+        elseif ($remoteTgt) {
+            Write-Host ("  BURST    : sender {0} is on another laptop - CHECK its plan shows '<< burst TARGET'." -f $remoteTgt.Label) -ForegroundColor Magenta
+        }
+        else {
+            Write-Host "  BURST    : NO burst sender on this laptop. Exactly ONE other laptop's plan must" -ForegroundColor Red
+            Write-Host "             show a victim with '<< burst TARGET' - if none does, nothing bursts." -ForegroundColor Red
+        }
     }
     Write-Host ""
     Write-Host "  Order (root is always last):"
