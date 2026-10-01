@@ -221,9 +221,40 @@ def analysis_status(run, analysis_root):
     ft = os.path.join(analysis_root, run["rel"], "feature_table.csv")
     if not os.path.isfile(ft):
         return "missing"
+    # CONTENT, not clock (oct. 1, 2026): comparing modification times called
+    # linear/G402/jitter 'stale' after a plain `git pull` - git rewrites a
+    # pulled file's mtime even when its bytes are unchanged, so every pull made
+    # finished analysis look out of date. The feature table records which
+    # capture files went into it (source_file); the analysis is current when
+    # every telemetry file of this run is in that list. mtime remains only as a
+    # fallback for a feature table too old to carry source_file.
+    analysed = _analysed_sources(ft)
+    if analysed is not None:
+        mine = {os.path.basename(p) for p, _g in run["telem"]}
+        return "ok" if mine <= analysed else "stale"
     newest = max((os.path.getmtime(p) for p, _g in run["telem"] + run["arrivals"]),
                  default=0)
     return "ok" if os.path.getmtime(ft) >= newest else "stale"
+
+
+_SOURCES_CACHE: dict = {}
+
+
+def _analysed_sources(ft):
+    """Set of source_file basenames in a feature_table.csv, or None if it has
+    no source_file column. Cached: several runs can share one cell's table."""
+    if ft not in _SOURCES_CACHE:
+        found = None
+        try:
+            with open(ft, newline="", encoding="utf-8-sig") as fh:
+                reader = csv.DictReader(fh)
+                if reader.fieldnames and "source_file" in reader.fieldnames:
+                    found = {os.path.basename(row["source_file"])
+                             for row in reader if row.get("source_file")}
+        except (OSError, csv.Error):
+            found = None
+        _SOURCES_CACHE[ft] = found
+    return _SOURCES_CACHE[ft]
 
 
 def counts_as_done(r):
@@ -605,8 +636,10 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
     if off_plan:
         print()
         print("  OFF-PLAN (real data, but not one of that cell's drawn scenarios - not counted):")
+        ow = max(len(t) for _a, t, _l, _s in off_plan) + 2
+        lw = max(len(l or '-') for _a, _t, l, _s in off_plan) + 2
         for atk, topo, loc, scn in off_plan:
-            print(f"    {atk:<10}{topo:<24}{loc or '-':<14}{lbl(scn)}")
+            print(f"    {atk:<10}{topo:<{ow}}{loc or '-':<{lw}}{lbl(scn)}")
 
     if have_src:
         print()
@@ -615,7 +648,7 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         for k in sorted(have_src):
             atk, topo, loc, scn = k
             reps = ", ".join(f"r{r['repeat']}" for r in have_src[k])
-            print(f"    [x] {atk:<10}{topo:<{tw}}{loc or '-':<8}{lbl(scn):<10} {reps}")
+            print(f"    [x] {atk:<10}{topo:<{tw}}{loc or '-':<8}{lbl(scn):<11} {reps}")
 
     # ---- what to do next, cheapest first -------------------------------------
     # A complete capture that only lacks analysis costs one analyze.ps1 call, so
@@ -640,7 +673,7 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         print()
         print(f"  NEXT ACTIONS ({scope} cells with data, cheapest fix first):")
         tw2 = max([len(k[1]) for _r, k, _b in near[:12]] + [len("topology")]) + 2
-        print(f"    {'attack':<11}{'topology':<{tw2}}{'loc':<8}{'scn':<10}{'what is missing'}")
+        print(f"    {'attack':<11}{'topology':<{tw2}}{'loc':<8}{'scn':<11}{'what is missing'}")
         for _rank, k, r in near[:12]:
             atk, topo, loc, scn = k
             if r["verdict"] == "COMPLETE":
@@ -648,7 +681,7 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
             else:
                 why = "RE-CAPTURE: " + _blocker_summary(r["reasons"])
             src = "" if scope == "live" else f"   [{r['source']}]"
-            print(f"    {atk:<11}{topo:<{tw2}}{loc or '-':<8}{lbl(scn):<10}{why}{src}")
+            print(f"    {atk:<11}{topo:<{tw2}}{loc or '-':<8}{lbl(scn):<11}{why}{src}")
         if len(near) > 12:
             print(f"    ... and {len(near) - 12} more - run with --plan for every reason.")
 
@@ -739,15 +772,24 @@ def main():
     print("=" * 118)
     print("  EXPERIMENTAL CELL INVENTORY  —  M4 (>=24 complete runs) / M5 (>=95% coverage)")
     print("=" * 118)
-    width = max([len(r["source"]) for r in rows] + [6]) + 2
-    print(f"  {'source':<{width}}{'attack':<11}{'topology':<14}{'loc':<8}{'scn':<10}"
-          f"{'r':<3}{'kids':<6}{'arr':<8}{'v'}")
-    print("  " + "-" * 114)
+    # Every column sized from its widest value + 2 spaces. Fixed widths broke
+    # the table (oct. 1, 2026): 'stationary' is exactly 10 chars and ran into
+    # the repeat number ('stationary1'), and the pre-redesign archive's long
+    # topology folder names pushed every later column out of line.
+    def _w(key, title):
+        return max([len(str(r[key])) for r in rows] + [len(title)]) + 2
+    w_src, w_atk, w_top = _w("source", "source"), _w("attack", "attack"), _w("topology", "topology")
+    w_loc, w_scn, w_rep = _w("location", "loc"), _w("scenario", "scn"), _w("repeat", "r")
+    w_kid, w_arr = _w("children", "kids"), _w("arrivals_rows", "arr")
+    header = (f"  {'source':<{w_src}}{'attack':<{w_atk}}{'topology':<{w_top}}{'loc':<{w_loc}}"
+              f"{'scn':<{w_scn}}{'r':<{w_rep}}{'kids':<{w_kid}}{'arr':<{w_arr}}{'v'}")
+    print(header)
+    print("  " + "-" * (len(header) - 2))
     for r in rows:
         mark = "OK " if r["verdict"] == "COMPLETE" else "-- "
-        print(f"  {r['source']:<{width}}{r['attack']:<11}{r['topology']:<14}"
-              f"{r['location']:<8}{r['scenario']:<10}{r['repeat']:<3}"
-              f"{r['children']:<6}{r['arrivals_rows']:<8}{mark}")
+        print(f"  {r['source']:<{w_src}}{r['attack']:<{w_atk}}{r['topology']:<{w_top}}"
+              f"{r['location']:<{w_loc}}{r['scenario']:<{w_scn}}{str(r['repeat']):<{w_rep}}"
+              f"{str(r['children']):<{w_kid}}{str(r['arrivals_rows']):<{w_arr}}{mark}")
         if r["reasons"]:
             print(f"      why: {r['reasons']}")
 
