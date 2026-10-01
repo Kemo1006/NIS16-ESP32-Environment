@@ -45,25 +45,3 @@ window_label,Windowed (preprocess),Ground-truth label for the window,0 normal | 
 window_phase_id,Windowed (preprocess),Most common phase_id among the window's raw rows,0 baseline | 1 blackhole | 2 wormhole | 3 cooldown | 4 terminate | 255 not heard yet,
 t_anchor_s,Windowed (preprocess),Time relative to the moment THIS node first left phase 0 (attack start as seen by this node),seconds (negative = before the attack started),Lets windows from different boards be lined up without shared clocks.
 segment,Windowed (preprocess),Which part of the experiment the window belongs to,pre_baseline | baseline | attack | cooldown | baseline_rebroadcast | no_phase_seen,"pre_baseline = node was up before the experiment's baseline started; unlabelled and excluded from analysis, but kept."
-ForwardingRatio,Feature (features.py),Share of relay packets the node actually passed on,0-1 (1 = forwarded everything),Only defined on a node that relays (the blackhole attacker); empty elsewhere.
-IngressEgressDelta,Feature (features.py),Relay packets received minus forwarded,packets per window,Only defined on a relaying node.
-ConsistencyScore,Feature (features.py),How far ForwardingRatio is from 1,"0-1, = |ForwardingRatio - 1|",Only defined on a relaying node.
-RetryRate,Feature (features.py),Failed sends ÷ all send attempts in the window,0-1,"Built from retry_count, so it is NOT a radio retransmission rate. Excluded as label leakage only on pre-F3 captures (no drop_count) or when a wormhole Node B is present (leakage.retry_count_is_overloaded)."
-RSSI_mean,Feature (features.py),Average signal strength to parent (same as rssi_dbm_mean),dBm,
-RSSI_var,Feature (features.py),Signal strength variance (same as rssi_dbm_var),dBm²,
-RSSI_Hop_Diff,Feature (features.py),How far the signal is from what's normal for this depth,"dB, = |RSSI - baseline median RSSI at this layer|",Baseline median comes from the same run's baseline windows.
-LatencyHopRatio,Feature (features.py),"Extra delivery delay per hop, compared with this victim's fastest delivery in the run",milliseconds per hop,"Relative one-way delay, not round-trip (no reply leg exists)."
-TunnelIntensity,Feature (features.py),Messages sent through the wormhole tunnel,messages per second,Wormhole tunnel ends only; empty elsewhere.
-TunnelBytes,Feature (features.py),Data sent through the wormhole tunnel,bytes per window,Wormhole tunnel ends only.
-TunnelLatency,Feature (features.py),Time gap between two copies of the same probe arriving at the root (slow mesh path vs fast tunnel),milliseconds,Empty when no duplicate arrivals.
-MacRetryRate,Sniffer (features.py + tools/pcap_retry.py),"REAL 802.11 retry rate of this node's frames to its parent, seen by the sniffer",0-1 (share of heard frames carrying the Retry bit),"Only on runs with a sniffer capture + the root's run log. NaN = NOT measured (no capture, root, pause, nothing heard) - never 'no retries'. Not a model input (D-15)."
-MacFramesHeard,Sniffer (features.py + tools/pcap_retry.py),802.11 data frames from this node to its parent the sniffer heard in the window,count (0 = covered but silent; NaN = not covered),"Support for MacRetryRate. Frames, not probes: the sniffer misses some and the radio can bundle several probes in one frame."
-ParentSwitchRate,Feature (features.py),How often the node changed parent,parent changes per second,
-HopChangeCount,Feature (features.py),How many times the node's tree depth changed in the window,count,
-HopStabilityDuration,Feature (features.py),Longest stretch in the window with the same parent AND same depth,seconds,
-RSSI_stability,Feature (features.py),Longest stretch in the window where signal stayed within ±3 dBm of its mean,seconds,
-PDR,Feature (features.py),Packet Delivery Ratio: share of this victim's probes the root received,0-1 (1 = all delivered),"Victims only. Matched by sequence number, not by time."
-_pdr_clipped,Feature (features.py),True if PDR came out above 1 and was capped,True | False,Happens when duplicates (e.g. wormhole copies) arrive; worth checking.
-Label,Feature (features.py),Final ground-truth label used for analysis (copy of window_label),0 normal | 1 blackhole | 2 wormhole | empty = unlabelled,
-exposure,Unknown,(no legend entry — add one in analysis/column_legend.py),,
-missing_firmware_fields,Feature (features.py),Features that are only defined on relaying nodes and may be empty here,comma-separated feature names,Same text on every row; informational only.
