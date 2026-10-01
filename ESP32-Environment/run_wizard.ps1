@@ -4623,6 +4623,128 @@ function Select-DataSyncArea {
     return $areas[$idx]
 }
 
+function Get-KnownAttackerMacs {
+    # Every attacker MAC this laptop knows of, best evidence first (oct. 1, 2026:
+    # a victims-only laptop had to type the remote attacker's MAC from memory).
+    #   1. RUNS: boards that actually logged role=blackhole in datasets\exports -
+    #      the truth about who attacked, newest run first.
+    #   2. PRESETS: attackers named in any member's preset (planned, may be stale).
+    #   3. This laptop's mesh_config.h BLACKHOLE_ATTACKER_MAC.
+    # Read-only and cheap: only the first data row of each telem CSV is read.
+    $found = @{}
+    function Add-Hit($mac, $rank, $when, $why) {
+        $m = "$mac".Trim().ToLower()
+        if ($m -notmatch '^[0-9a-f]{2}(:[0-9a-f]{2}){5}$') { return }
+        if (-not $found.ContainsKey($m)) {
+            $found[$m] = [pscustomobject]@{ Mac = $m; Rank = $rank; When = $when; Why = $why; Seen = 1 }
+        } else {
+            $e = $found[$m]; $e.Seen++
+            if ($rank -lt $e.Rank -or ($rank -eq $e.Rank -and $when -gt $e.When)) {
+                $e.Rank = $rank; $e.When = $when; $e.Why = $why
+            }
+        }
+    }
+    $exp = Join-Path $base 'datasets\exports\blackhole'
+    if (Test-Path $exp) {
+        Get-ChildItem -Path $exp -Recurse -Filter '*_telem.csv' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch '\\trimmed\\' } | ForEach-Object {
+                try {
+                    $two = @(Get-Content -Path $_.FullName -TotalCount 2)
+                    if ($two.Count -lt 2) { return }
+                    $cols = $two[0].Split(','); $vals = $two[1].Split(',')
+                    $ri = [array]::IndexOf($cols, 'role'); $ni = [array]::IndexOf($cols, 'node_id')
+                    if ($ri -lt 0 -or $ni -lt 0 -or $vals[$ri] -ne 'blackhole') { return }
+                    $hex = ($vals[$ni] -replace '^NODE_', '')
+                    if ($hex -notmatch '^[0-9A-Fa-f]{12}$') { return }
+                    $mac = (($hex -split '(..)' | Where-Object { $_ }) -join ':')
+                    $cell = (Split-Path (Split-Path $_.FullName -Parent) -NoQualifier) -replace '.*\\exports\\', '' -replace '\\', '/'
+                    # Capture time from the file NAME (oct01_1239PM / 20260927_031130),
+                    # not LastWriteTime: a git pull rewrites file times.
+                    $when = $_.LastWriteTime
+                    if ($_.Name -match '_(jan|feb|mar|apr|may|jun|jul|aug|sept|sep|oct|nov|dec)(\d{2})_(\d{2})(\d{2})(AM|PM)_') {
+                        $mo = @{jan=1;feb=2;mar=3;apr=4;may=5;jun=6;jul=7;aug=8;sep=9;sept=9;oct=10;nov=11;dec=12}[$Matches[1]]
+                        $hh = [int]$Matches[3] % 12; if ($Matches[5] -eq 'PM') { $hh += 12 }
+                        try { $when = Get-Date -Year $_.LastWriteTime.Year -Month $mo -Day ([int]$Matches[2]) -Hour $hh -Minute ([int]$Matches[4]) -Second 0 } catch { }
+                    }
+                    elseif ($_.Name -match '_(\d{8})_(\d{6})_') {
+                        try { $when = [datetime]::ParseExact($Matches[1] + $Matches[2], 'yyyyMMddHHmmss', $null) } catch { }
+                    }
+                    Add-Hit $mac 1 $when ("attacker in run {0} ({1})" -f $cell, $when.ToString('MMM dd HH:mm'))
+                } catch { }
+            }
+    }
+    $pre = Join-Path $base 'presets'
+    if (Test-Path $pre) {
+        Get-ChildItem -Path $pre -Recurse -Filter '*.json' -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json
+                foreach ($b in @($cfg.boards)) {
+                    if ($b.Kind -eq 'attacker' -and $b.Mac) {
+                        $name = ($_.FullName -replace '.*\\presets\\', '' -replace '\\', '/')
+                        Add-Hit $b.Mac 2 $_.LastWriteTime ("attacker in preset {0}" -f $name)
+                    }
+                }
+            } catch { }
+        }
+    }
+    $cfgMac = Get-ConfiguredAttackerMac
+    if ($cfgMac) { Add-Hit $cfgMac 3 ([datetime]::MinValue) "this laptop's mesh_config.h" }
+
+    # Nicknames from member_boards.json (it stores first:last byte only).
+    $nick = @{}
+    $mb = Join-Path $base 'member_boards.json'
+    if (Test-Path $mb) {
+        try {
+            foreach ($m in @((Get-Content -Raw $mb | ConvertFrom-Json).members)) {
+                foreach ($bd in @($m.boards)) {
+                    $p = "$($bd.mac)".Trim().ToLower() -split ':'
+                    if ($p.Count -ge 2) { $nick["$($p[0]):$($p[-1])"] = "$($m.name) $($bd.nickname)" }
+                }
+            }
+        } catch { }
+    }
+    foreach ($e in $found.Values) {
+        $p = $e.Mac -split ':'
+        $e | Add-Member -NotePropertyName Name -NotePropertyValue $nick["$($p[0]):$($p[-1])"] -Force
+    }
+    return @($found.Values | Sort-Object Rank, @{ Expression = 'When'; Descending = $true })
+}
+
+function Read-RemoteAttackerMac {
+    # Pick-or-paste prompt for an attacker on ANOTHER laptop: lists
+    # Get-KnownAttackerMacs so the operator types a number instead of a MAC
+    # from memory. Returns the MAC (lower case) or $null for "no attacker".
+    param([string]$Who = 'the attacker')
+    $list = @(Get-KnownAttackerMacs)
+    if ($list.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Attacker boards this laptop knows of (best evidence first):" -ForegroundColor Cyan
+        for ($i = 0; $i -lt $list.Count; $i++) {
+            $e = $list[$i]
+            $name = if ($e.Name) { " ($($e.Name))" } else { '' }
+            $tag = if ($i -eq 0) { '  <- most likely' } else { '' }
+            Write-Host ("  [{0}] {1}{2} - {3}{4}" -f ($i + 1), $e.Mac, $name, $e.Why, $tag)
+        }
+        Write-Host "  Confirm with the attacker's laptop (its wizard prints 'Attacker for this run: ...')." -ForegroundColor DarkGray
+    }
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt $script:MaxPromptTries) { Write-Host "  No valid answer - continuing without an attacker MAC." -ForegroundColor Yellow; return $null }
+        $hint = if ($list.Count -gt 0) { "number 1-$($list.Count), " } else { '' }
+        $raw = Read-Line ("`n{0}'s MAC - {1}or paste aa:bb:cc:dd:ee:ff, blank if none > " -f $Who, $hint)
+        if (-not $raw) { return $null }
+        $raw = $raw.Trim()
+        $n = 0
+        if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $list.Count) {
+            Write-Host ("  Using {0}" -f $list[$n - 1].Mac) -ForegroundColor Green
+            return $list[$n - 1].Mac
+        }
+        if ($raw -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { return $raw.ToLower() }
+        Write-Host "  Not a list number or a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
+    }
+}
+
 function Get-ConfiguredAttackerMac {
     # Parses  #define BLACKHOLE_ATTACKER_MAC   {0xB0, 0xCB, ...}  out of mesh_config.h
     # and returns it in lowercase colon form, or $null if it can't be read.
@@ -8218,16 +8340,7 @@ if ($attack -eq 'blackhole') {
         else {
             Write-Host "Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
             Write-Host "board', run on the ATTACKER'S laptop), then type the printed MAC back here." -ForegroundColor DarkGray
-            $typedMac = $null
-            $tries = 0
-            while ($true) {
-                $tries++
-                if ($tries -gt $script:MaxPromptTries) { Write-Host "  No valid MAC entered - continuing unverified." -ForegroundColor Yellow; break }
-                $raw = Read-Line ("`n{0}'s MAC (aa:bb:cc:dd:ee:ff), blank to skip verification > " -f $remoteAttacker.Label)
-                if (-not $raw) { break }
-                if ($raw.Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $typedMac = $raw.Trim().ToLower(); break }
-                Write-Host "  Not a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
-            }
+            $typedMac = Read-RemoteAttackerMac -Who $remoteAttacker.Label
 
             if (-not $typedMac) {
                 Write-Host "  Skipped - verify mesh_config.h matches the other laptop's attacker by hand." -ForegroundColor Yellow
@@ -8285,15 +8398,7 @@ if ($attack -eq 'blackhole') {
                 Write-Host "  (not asking - dry run / -SkipMacCheck)" -ForegroundColor DarkGray
             }
             else {
-                $tries = 0
-                while ($true) {
-                    $tries++
-                    if ($tries -gt $script:MaxPromptTries) { break }
-                    $raw = Read-Line "`nAttacker's MAC (aa:bb:cc:dd:ee:ff), blank if none > "
-                    if (-not $raw) { break }
-                    if ($raw.Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') { $typedMac = $raw.Trim().ToLower(); break }
-                    Write-Host "  Not a MAC (expected aa:bb:cc:dd:ee:ff)." -ForegroundColor Yellow
-                }
+                $typedMac = Read-RemoteAttackerMac -Who 'Attacker'
             }
             if (-not $typedMac) {
                 Write-Host "WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
