@@ -1,38 +1,38 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 1, 2026 (Angelo, session summary) — **GitHub `THESIS3` = `3891315`, everything pushed, laptop in sync.** Previous STATUS archived in ARCHIVE.md (bottom). Facts + reasons: MEMORY.md top ~15 entries.
+**Updated:** oct. 1, 2026 evening (Angelo, session summary) — **GitHub `THESIS3` = `4a00a3b`+summary, all session work pushed.** Previous STATUS in ARCHIVE.md (bottom). Facts + reasons: MEMORY.md top ~8 entries.
 
 ## ⚠️ Working copies / layout
-Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; docs filed by topic (`docs/README.md`). PCAP + run logs are git-ignored (local only). Backup tag of Angelo's work: `backup/angelo-2026-10-01`.
+Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored (local only). Backup tag: `backup/angelo-2026-10-01`.
 
 ## Where things stand
-- **Star + blackhole = attacker is the HUB (D-16), WORKS ON HARDWARE.** `star/G402/stationary` r1 is now the oct01 2 PM run (6 victims, all gates PASS/CONFIRMED) - replaced the 12:24 run (5 victims; archived locally). Star BURST still NOT captured: 2 attempts failed from a firmware bug (fixed oct. 1, untested on hardware).
-- **node8 (`F4:2D:C9:73:E6:18`)** telemetry lost from its board: 6 victims, 5 with telemetry. Data unchanged — state it in the write-up.
-- **Wizard builds the picked attacker MAC into every blackhole board** (`run.ps1 -AttackerMac`), so `mesh_config.h` no longer decides it. Victims-only laptops get a numbered list of known attackers (newest real run first) PLUS every other known board (to pick a NEW attacker) — type the number.
-- Multi-laptop: no crash on a missing burst target (asks y/N); root must be told the TOTAL child count across laptops.
-- **Campaign:** 5/144 done (G402: linear/tree/partial/star stationary; home linear burst). Verifier matrix over all 33 runs: 0 crashes, every verdict correct.
-- Basti's 7 commits merged + audited: nothing broken (15/15 firmware variants + wormhole root + sniffer build clean, analysis values identical).
+- **TWO FIRMWARE FIXES pushed, both BUILT CLEAN but NOT YET RUN ON HARDWARE:**
+  - **Burst** (`6b90df5`): burst never fired on ANY attack run (victim_main.c never got ACTIVE_ATTACK, so it waited for a baseline-only signal). Window now opens at run time.
+  - **Highload root overwhelm** (`cb22106`): root wrote arrivals inside its mesh receive task, the RX queue filled, the mesh throttled all children (20/s fell to 3-7/s). Now a queue + separate writer task; root RX queue 64.
+- **Burst can't fail silently any more:** `tools/verify_burst.py`; `analyze.ps1` prints `burst : FIRED|NOT FIRED`; wizard blocks a burst target on the attacker and names the sender in the plan.
+- **star/G402/stationary r1 = the oct01 2 PM run** (6 victims, integrity/topology PASS, BLACKHOLE CONFIRMED, sniffer paired). Old 12:24 run archived locally (`archive/2026-10-01_star-G402-stationary-replaced/`). star/G402/burst NOT captured yet.
+- **linear/G402/jitter r1 (~3 PM) INCOMPLETE on GitHub:** 7 child files pushed; the root's 2 files (`root_node1_linear_blackhole_r1_oct01_0259PM_*`) only on Angelo's laptop — push when the user says so.
+- Wizard attacker picker also lists every known non-attacker board (pick a NEW attacker by number).
+- Campaign: 5/144 + jitter pending (G402: linear/tree/partial/star stationary; home linear burst).
 
 ## Next step
-1. **Everyone `git pull`, then REFLASH via the wizard** (firmware changed: attacker-MAC build flag, Basti's RXSTALL/heartbeat tree). Every laptop picks the SAME attacker.
-2. **Re-run star G402 BURST** — burst firmware bug FIXED oct. 1 (victim never opened the window on attack runs). `git pull` + REFLASH the target victim; exactly ONE laptop's plan shows `<< burst TARGET`. Afterwards the analysis prints `burst : FIRED`. Basti/Kyle: delete local `exports/blackhole/star/G402/burst/` first.
-3. **Basti: delete local copies** of `linear/G402/burst` + `linear/G402/highload` (`push_data.py delete-local --area exports`) — his push re-added them once already (re-deleted in `ff8059f`).
-4. **Highload collapse FIX built (oct. 1, untested):** root writes arrivals from a queue, not the receive task. `git pull`, REFLASH THE ROOT, run 7-board highload, save the run log: `[RXSTALL] … dropped 0` + arrivals ~20/s through cooldown = fixed (doc §13). Old highload r2/r3 baselines stay broken.
-5. **First wormhole run on current firmware** (last hardware-confirmed: Jul 20). Pre-flight passed: all 4 wormhole builds clean, analysis tested on archived runs. Test the UART cable with `uart_link_test` first; Node A's end-of-run "TUNNEL CARRIED NOTHING" banner = unusable run.
-6. Not yet captured anywhere: jitter, mobility, powercycle scenarios.
-7. Paper: §4.2.2.1 / Fig. 4.17 → "hub is the attacker, root one hop behind" (D-16 + framing sentence in `memory/star-hub-forcing-2026-10.md`).
+1. **Everyone `git pull` + REFLASH** (both firmware fixes). Every laptop picks the SAME attacker.
+2. **Re-run star G402 BURST:** exactly ONE laptop's plan shows a victim `<< burst TARGET`. Analysis must print `burst : FIRED` (= burst fix proven).
+3. **7-board highload run:** reflash the ROOT, save the run log. Fixed if arrivals stay ~20/s through cooldown and `[RXSTALL] ... dropped 0` (`docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md` §13).
+4. **Push the jitter root files**, then analyze linear/G402/jitter.
+5. **Basti: delete local `datasets/exports/blackhole/star/G402/burst/`** (his push re-added it; removed again in `4a00a3b`) + local `linear/G402/burst` + `linear/G402/highload`.
+6. First wormhole run on current firmware (pre-flight passed; test the UART cable with `uart_link_test` first).
+7. Not yet captured: mobility, powercycle. Paper: §4.2.2.1 / Fig. 4.17 hub framing (D-16).
 
 ## Blockers / open questions
 - ⛔⛔ Boards DIRECT into the laptop, never dock/hub (BSOD 0xB8). Never pull an SD card mid-run.
-- ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself (the code folder was deleted once on oct. 1; restored from git).
-- ⚠️ Checklist "analysis older than capture" after a `git pull` = file-time false alarm → re-run `analyze.ps1` for that cell.
-- ⚠️ PDR/LatencyHopRatio single-feature perfect (framing decision). LatencyHopRatio direction vs Zhukabayeva — leave as-is.
-- ⚠️ HT20 vs HT40 captures don't pool (D-14). D-12 vs the signed Milestone Form — adviser decision.
-- `Bas/linear-blackhole-stationary-g402.json` holds STAR/BURST content (name mismatch) — deliberately not pushed; Basti to fix.
-- Uncommitted on Angelo's laptop, on purpose: `mesh_config.h` attacker line, `sdkconfig` ×2, `dependencies.lock`, 4 re-saved presets, staged `tools/exports/run_ledger.csv` deletion.
+- ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself.
+- ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
+- Presets with star/burst content under a LINEAR name: `Bas/` + `Cal/linear-blackhole-stationary-g402.json` — not pushed; fix/rename.
+- Uncommitted on Angelo's laptop, on purpose: `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, 4 presets, `archive/*` folders.
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 1 — Star hub proven on hardware; attacker MAC from the wizard (+ known-attacker list); split-preset fixes; star run moved burst→stationary; Basti's merge audited; verifier matrix 33/33; wormhole pre-flight; `trim_run` cross-drive fix.
-- sep. 30 — Star+blackhole hub designed (D-16); verifier/validator fixes (missing attacker → INCONCL, per-source drop check); duplicate/incomplete linear G402 data removed; G402 partial_mesh + tree runs completed on GitHub.
-- sep. 30 — Docs reorganized by topic (Basti); highload collapse cause found + RXSTALL instrumentation (Basti).
+- oct. 1 (eve) — Burst firmware bug found + fixed; highload root fix; verify_burst + wizard burst checks; star stationary replaced by 2 PM run; burst duplicates removed twice.
+- oct. 1 — Star hub proven on hardware; attacker MAC from the wizard; split-preset fixes; Basti's merge audited; verifier matrix 33/33; wormhole pre-flight.
+- sep. 30 — Star+blackhole hub designed (D-16); verifier fixes; G402 partial_mesh + tree runs completed.
