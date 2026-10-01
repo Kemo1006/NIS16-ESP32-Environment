@@ -2216,3 +2216,7 @@ no restore, PCAP\ is git-ignored), Mac checklist shows Channel/Width as coloured
 - sep. 30 night (Angelo) — **Star blackhole redesigned: attacker = hub, victims firmware-pinned to it (D-16).** Firmware + topology checks + docs; builds clean, PUSHED, NOT hardware-tested. Details: MEMORY.md top.
 - sep. 30 eve (Angelo) — partial_mesh G402 CONFIRMED 2/2. `verify_attack.py`: missing attacker → INCONCL (not a fake FR FAIL) + NFR footnote; `validate_integrity.py`: per-source blackhole check. PUSHED. linear/tree analysis restored + regenerated; ⚠️ linear/home/highload now INCONCLUSIVE (4 repeats pooled, noisy baseline — open); duplicate `linear/G402/burst` files deleted (5f9221c). Details: MEMORY.md top.
 - sep. 30 (Angelo) — Merged origin/THESIS3. **Burst early-fire bug fixed in `victim_main.c` (REFLASH burst boards)**; sept30 G402 blackhole "burst" run moved to `G402/stationary` + re-analysed (CONFIRMED); `combine_all.py` repointed; attacker-only ForwardingRatio + NEW NeighbourForwardingRatio. PUSHED (d5fd89a, 7374bcf) — pull, then re-run `analyze.ps1` on your cells. Details: MEMORY.md top.
+
+- I-017 recurring hazard: children left powered through a run's later phases overfill SPIFFS (~1.1 MB) and
+  become unreadable on export → carry each child back UNPLUGGED; `board_check.py --port COMxx --wait 75`
+  before a run (≥50% SPIFFS → wipe+flash first).
