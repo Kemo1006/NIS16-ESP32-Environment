@@ -1,0 +1,65 @@
+﻿{
+    "attack":  "none",
+    "topology":  "linear",
+    "location":  "home",
+    "scenario":  "highload",
+    "owner":  "Bas",
+    "repeat":  1,
+    "savedAt":  "2026-09-30 02:12",
+    "boards":  [
+                   {
+                       "Label":  "node2",
+                       "Port":  "COM26",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node3",
+                       "Port":  "COM22",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "20:50:0d:e7:1c:38",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node4",
+                       "Port":  "COM24",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node5",
+                       "Port":  "COM21",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node6",
+                       "Port":  "COM23",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM5",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

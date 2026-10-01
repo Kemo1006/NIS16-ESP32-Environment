@@ -1,11 +1,11 @@
 ﻿{
-    "attack":  "blackhole",
+    "attack":  "none",
     "topology":  "linear",
     "location":  "home",
     "scenario":  "highload",
     "owner":  "Cal",
-    "repeat":  4,
-    "savedAt":  "2026-09-30 00:58",
+    "repeat":  1,
+    "savedAt":  "2026-09-30 02:28",
     "boards":  [
                    {
                        "Label":  "node1",

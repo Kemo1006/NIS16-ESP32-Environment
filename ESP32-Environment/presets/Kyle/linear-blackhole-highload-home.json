@@ -3,35 +3,35 @@
     "topology":  "linear",
     "location":  "home",
     "scenario":  "highload",
-    "owner":  "Bas",
-    "repeat":  1,
-    "savedAt":  "2026-09-27 16:52",
+    "owner":  "Kyle",
+    "repeat":  2,
+    "savedAt":  "2026-09-28 19:59",
     "boards":  [
                    {
-                       "Label":  "node2",
+                       "Label":  "node5",
                        "Port":  "COM22",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",
-                       "Mac":  "20:50:0d:e7:0c:80",
+                       "Mac":  "28:05:a5:32:d7:b4",
                        "ScenarioTarget":  false
                    },
                    {
-                       "Label":  "node3",
-                       "Port":  "COM21",
-                       "Role":  "child",
-                       "Kind":  "attacker",
-                       "Display":  "blackhole ATTACKER",
-                       "Mac":  "f4:2d:c9:73:e6:18",
-                       "ScenarioTarget":  false
-                   },
-                   {
-                       "Label":  "node4",
+                       "Label":  "node6",
                        "Port":  "COM5",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",
-                       "Mac":  "20:50:0d:e7:1c:38",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM21",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "b4:bf:e9:34:ed:80",
                        "ScenarioTarget":  false
                    }
                ]

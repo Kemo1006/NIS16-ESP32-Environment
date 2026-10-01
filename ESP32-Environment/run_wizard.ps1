@@ -94,6 +94,13 @@ $script:MaxPromptTries = 8
 # menus - without re-reading it (each read briefly resets the board).
 $script:IdentifiedPorts = @{}
 
+# Sources (COM port or drive root) an SD-import copy has actually succeeded from
+# this session, so the next port/drive picker can mark them - easy to tell which
+# boards/cards are already pulled without keeping a mental list by hand.
+# Import-OneSdCard sets $script:LastImportOk; each caller then keys this on
+# whichever source it passed (-Port or -Card).
+$script:ImportedSources = @{}
+
 $ATTACKS    = @('none', 'blackhole', 'wormhole')
 $TOPOLOGIES = @('linear', 'tree', 'star', 'partial')
 $LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
@@ -469,6 +476,7 @@ function Show-CaptureWizardMenu {
             @{ Idx = 23; Text = 'ESP32 sniffer board - record only, into datasets\PCAP\ (no run; no Mac needed; Enter stops)' }
             @{ Idx = 21; Text = 'MacBook sniffer test (~2 min, no attack run - proves the Mac Wireless Diagnostics Sniffer records ESP32 frames)' }
             @{ Idx = 22; Text = 'Check a sniffer capture file (Mac or ESP32 .pcap - mesh beacons/data, capture length, repairs a "cut short" file; then opens it)' }
+            @{ Idx = 27; Text = 'MAC retry rate of a run - REAL 802.11 retries per link, baseline vs attack vs cooldown, from the sniffer (no board/COM contact)' }
         ) }
     )
     $exitIdx = 8
@@ -850,8 +858,11 @@ function Select-Port {
                 $tag = "  [{0}]" -f $script:IdentifiedPorts[$shown[$i].Port]
             }
             $kindTag = Format-PortKindTag $shown[$i].Kind
-            $color   = switch ($shown[$i].Kind) { 'BLOCKED' { 'DarkGray' } 'UNKNOWN' { 'Yellow' } default { 'Gray' } }
-            Write-Host ("  [{0}] {1,-7} - {2}{3}{4}" -f ($i + 1), $shown[$i].Port, $shown[$i].Description, $tag, $kindTag) -ForegroundColor $color
+            $imported = $script:ImportedSources.ContainsKey($shown[$i].Port)
+            $importedTag = if ($imported) { '  << imported this session' } else { '' }
+            $color = switch ($shown[$i].Kind) { 'BLOCKED' { 'DarkGray' } 'UNKNOWN' { 'Yellow' } default { 'Gray' } }
+            if ($imported) { $color = 'Green' }
+            Write-Host ("  [{0}] {1,-7} - {2}{3}{4}{5}" -f ($i + 1), $shown[$i].Port, $shown[$i].Description, $tag, $kindTag, $importedTag) -ForegroundColor $color
         }
         # Actions continue the same numbering as the ports above - one flat numbered
         # list, same convention as every other menu in this wizard (Show-Menu).
@@ -1974,6 +1985,13 @@ function Import-OneSdCard {
     param([string]$Card, [string]$Port, [int]$Repeat, [string]$Boots, [switch]$IncludeAborted,
           [string]$Roster, [switch]$DeleteSource, [string]$ExpectPrefix, [string]$Scenario = 'stationary')
 
+    # Set true only once a real (non-dry-run) copy exits 0 below. A script-scoped
+    # flag, not a return value: the real-copy call further down is deliberately
+    # left uncaptured (see its own comment) so its progress bar draws live -
+    # giving this function a return value would risk that same call being
+    # captured by a caller that assigns Import-OneSdCard's result.
+    $script:LastImportOk = $false
+
     if (-not $Card -and -not $Port) {
         Write-Host "  Import-OneSdCard needs -Card or -Port." -ForegroundColor Red
         return
@@ -2099,6 +2117,7 @@ function Import-OneSdCard {
         finally { $ErrorActionPreference = $prevEap }
         $rc = $LASTEXITCODE
         if ($rc -ne 0) { Write-Host ("  import_sdcard.py exited {0} - see above." -f $rc) -ForegroundColor Yellow }
+        else { $script:LastImportOk = $true }
     }
     catch {
         Write-Host ("  Could not run import_sdcard.py: {0}" -f $_.Exception.Message) -ForegroundColor Red
@@ -2313,6 +2332,7 @@ function Invoke-ImportSdCard {
             # opt-in, and it is offered for this USB path now.
             Import-OneSdCard -Port $port -Repeat $repeat -Roster $rosterPath `
                              -ExpectPrefix $expectPrefix -Scenario $scenario
+            if ($script:LastImportOk) { $script:ImportedSources[$port] = Get-Date }
             if ($batchOn) { Save-ImportBatch -Base $base -Before $batchBefore -Started $batchStarted }
 
             Write-Host ""
@@ -2353,10 +2373,12 @@ function Invoke-ImportSdCard {
             }
             for ($di = 0; $di -lt $drives.Count; $di++) {
                 $d = $drives[$di]
+                $imported = $script:ImportedSources.ContainsKey($d.Root)
                 $tag   = if ($d.LooksLikeCard) { '  [has baseline/blackhole/wormhole folders - looks like ours]' }
                          elseif ($d.IsRepoDrive) { '  << this project lives here - almost certainly not the card' }
                          else { '  << no attack folders found at its root' }
-                $color = if ($d.LooksLikeCard) { 'Green' } else { 'DarkGray' }
+                if ($imported) { $tag += '  << imported this session' }
+                $color = if ($imported) { 'Green' } elseif ($d.LooksLikeCard) { 'Green' } else { 'DarkGray' }
                 Write-Host ("  [{0}] {1}{2}" -f ($di + 1), $d.Root, $tag) -ForegroundColor $color
             }
             # Numbered in the order they are PRINTED. The bulk option only
@@ -2411,6 +2433,7 @@ function Invoke-ImportSdCard {
                 Write-Host ("=== {0} ===" -f $cardRoot) -ForegroundColor Cyan
             }
             Import-OneSdCard -Card $cardRoot -Repeat $repeat -Roster $rosterPath -DeleteSource -ExpectPrefix $expectPrefix -Scenario $scenario
+            if ($script:LastImportOk) { $script:ImportedSources[$cardRoot] = Get-Date }
         }
         if ($batchOn) { Save-ImportBatch -Base $base -Before $batchBefore -Started $batchStarted }
 
@@ -2766,6 +2789,44 @@ function Invoke-CampaignChecklist {
     Read-Host "Press Enter to return to the menu" | Out-Null
 }
 
+function Select-VerifyTable {
+    # Which attempt's feature table to verify: feature_table_rN.csv is one
+    # attempt (Select-AnalysisAttempt), feature_table.csv is every attempt
+    # pooled or a single-attempt folder. Returns a path (possibly not yet
+    # existing - the caller says so), or $null to go back.
+    param([string]$AnalysisDir, [string]$ExportDir)
+    $pooled = Join-Path $AnalysisDir 'feature_table.csv'
+    $reps = @{}
+    foreach ($n in @((Get-AttemptGroups -Dir $ExportDir).Keys)) { $reps[[int]$n] = $true }
+    foreach ($f in @(Get-ChildItem -LiteralPath $AnalysisDir -Filter 'feature_table_r*.csv' -File -ErrorAction SilentlyContinue)) {
+        if ($f.Name -match '^feature_table_r(\d+)\.csv$') { $reps[[int]$Matches[1]] = $true }
+    }
+    $hasPerAttempt = @(Get-ChildItem -LiteralPath $AnalysisDir -Filter 'feature_table_r*.csv' -File -ErrorAction SilentlyContinue).Count -gt 0
+    if ($reps.Count -le 1 -and -not $hasPerAttempt) { return $pooled }
+
+    $sorted = @($reps.Keys | Sort-Object)
+    $paths = @(); $opts = @(); $default = -1
+    foreach ($n in $sorted) {
+        $p = Join-Path $AnalysisDir "feature_table_r$n.csv"
+        $paths += $p
+        if (Test-Path -LiteralPath $p) {
+            $opts += ("r{0}  -> feature_table_r{0}.csv (analysed {1:MMM. dd, yyyy h:mm tt})" -f $n, (Get-Item -LiteralPath $p).LastWriteTime)
+            $default = $opts.Count - 1
+        } else {
+            $opts += ("r{0}  -> not analysed yet - run 'Run analysis only' for r{0} first" -f $n)
+        }
+    }
+    if (Test-Path -LiteralPath $pooled) {
+        $paths += $pooled
+        $opts += 'all attempts together -> feature_table.csv  (PDR too high + latency blank if it pools attempts)'
+    }
+    if ($default -lt 0) { $default = $sorted.Count - 1 }
+
+    $idx = Show-Menu -Title 'Which attempt (repeat) to verify?' -Options $opts -DefaultIndex $default -AllowBack
+    if ($idx -lt 0) { return $null }
+    return $paths[$idx]
+}
+
 function Invoke-VerifyRun {
     # Paper-backed 3-sigma check (tools\verify_attack.py): compares a captured
     # run's feature_table.csv (M7/features.py output) against the published
@@ -2799,7 +2860,8 @@ function Invoke-VerifyRun {
     $location    = $LOCATIONS[$locationIdx]
 
     $dirs  = Get-RunDirs -Attack $folderAttack -Topology $topology -Location $location -Scenario $scenario
-    $table = Join-Path $dirs.Analysis 'feature_table.csv'
+    $table = Select-VerifyTable -AnalysisDir $dirs.Analysis -ExportDir $dirs.Export
+    if ($null -eq $table) { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
     if (-not (Test-Path $table)) {
         Write-Host ("`n  {0} doesn't exist yet - run M7 (features.py) for this run first, or type a different path below." -f $table) -ForegroundColor Yellow
     }
@@ -2839,6 +2901,67 @@ function Invoke-CheckSnifferFile {
     Request-OpenInWireshark -Path $Path
     Write-Host ""
     Read-Host "Press Enter to return to the menu" | Out-Null
+}
+
+function Invoke-MacRetryReport {
+    # The REAL 802.11 retry rate per radio link and phase, from the sniffer's own
+    # captures (tools\pcap_retry.py, deviation D-15). The boards cannot measure it -
+    # ESP-IDF only PRINTS its Wi-Fi stats - so the CSVs' retry_count is a software
+    # counter that reads 0; the sniffer sees the Retry bit on every resent frame.
+    # No board/COM contact. Same numbers features.py puts in MacRetryRate.
+    $tool     = Join-Path $base 'tools\pcap_retry.py'
+    $datasets = Join-Path $base 'datasets'
+    while ($true) {
+        Write-Host ""
+        Write-Host "=== MAC retry rate (from the sniffer) ===" -ForegroundColor Cyan
+        Write-Host "Pairing every capture in datasets\PCAP\ with its run (cached - only new/changed captures are re-read) ..." -ForegroundColor DarkGray
+        & python $tool --all
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ("pcap_retry.py --all failed (exit {0}) - see the error above." -f $LASTEXITCODE) -ForegroundColor Red
+            Read-Host "Press Enter to return to the menu" | Out-Null
+            return
+        }
+
+        # One _retry.json per capture sits beside it; refused captures were listed above with the reason.
+        $usable = @()
+        foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $datasets 'PCAP') -Recurse -Filter '*_retry.json' -File -ErrorAction SilentlyContinue)) {
+            try { $m = Get-Content -LiteralPath $f.FullName -Raw | ConvertFrom-Json } catch { continue }
+            if ($m.refused -or -not $m.run_log) { continue }
+            $stem = $f.FullName.Substring(0, $f.FullName.Length - '_retry.json'.Length)
+            $pcap = @("$stem.pcap", "$stem.pcapng") | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+            if (-not $pcap) { continue }
+            $runLog = if ([System.IO.Path]::IsPathRooted($m.run_log)) { $m.run_log } else { Join-Path $datasets $m.run_log }
+            $usable += [pscustomobject]@{ Meta = $m; Pcap = $pcap; RunLog = $runLog; Start = [double]$m.attack_start_epoch }
+        }
+        if ($usable.Count -eq 0) {
+            Write-Host ""
+            Write-Host "No capture has retry data yet (the reasons are listed above). Record a run with the ESP32 sniffer first." -ForegroundColor Yellow
+            Read-Host "Press Enter to return to the menu" | Out-Null
+            return
+        }
+        $usable = @($usable | Sort-Object Start -Descending)   # newest run first
+
+        $opts = foreach ($u in $usable) {
+            $i = $u.Meta.identity
+            $when = [DateTimeOffset]::FromUnixTimeSeconds([long]$u.Start).ToOffset([TimeSpan]::FromHours(8)).ToString('MMM. dd, yyyy h:mm tt')
+            # 'root run log' is the one normal source; anything else is the exported-CSV fallback.
+            $src = if ($u.Meta.phase_source -and "$($u.Meta.phase_source)" -ne 'root run log') { '  [phases from exported CSVs]' } else { '' }
+            "{0}/{1}/{2}/{3} r{4} - attack started {5}  ({6}){7}" -f $i.attack, $i.topology, $i.location, $i.scenario, $i.repeat, $when, (Split-Path $u.Pcap -Leaf), $src
+        }
+        $pick = Show-Menu -Title "Which run's MAC retry rate? (newest first)" -Options @($opts) -DefaultIndex 0 -AllowBack
+        if ($pick -eq -1) { return }
+        $u = $usable[$pick]
+
+        Write-Host ""
+        & python $tool $u.Pcap --run-log $u.RunLog --no-csv
+        Write-Host ""
+        # The report above explains itself (boards table, per-link verdicts, bottom line).
+        Write-Host "  - Per-second values: the capture's _retry.csv, and MacRetryRate / MacFramesHeard in feature_table.csv." -ForegroundColor DarkGray
+        Write-Host "    Blank there = NOT MEASURED (no sniffer for that run), never 'no retries'. Background: D-15 in" -ForegroundColor DarkGray
+        Write-Host "    docs\deviations-limitations\thesis-deviate.md." -ForegroundColor DarkGray
+        Write-Host ""
+        Read-Host "Press Enter to pick another run (then 'b' to go back)" | Out-Null
+    }
 }
 
 function Write-MacSnifferSettings {
@@ -2980,7 +3103,7 @@ function Invoke-MacSnifferTest {
     if ($rootAlive) {
         Write-Host "          the mesh WAS transmitting (proved above), so the fault is on the MAC: re-check" -ForegroundColor Yellow
         Write-Host "          Wi-Fi ON-but-disconnected, then reboot the Mac. Still failing -> use an ESP32 sniffer" -ForegroundColor Yellow
-        Write-Host "          board instead (docs\WIRESHARK-GUIDE.md section 4, Path A)." -ForegroundColor Yellow
+        Write-Host "          board instead (docs\packet-capture\WIRESHARK-GUIDE.md section 4, Path A)." -ForegroundColor Yellow
     } else {
         Write-Host "          re-run this test WITH the root plugged in here, so we can tell Mac-fault from mesh-fault." -ForegroundColor Yellow
     }
@@ -3612,12 +3735,47 @@ function Select-PcapMember {
     return $names[$i]
 }
 
+function Get-PcapPhaseSegments {
+    # baseline/attack/cooldown as (Name, RelStart, RelEnd) in Wireshark's own
+    # frame.time_relative convention - seconds since this PCAP's first frame -
+    # read from tools/pcap_retry.py's sidecar <name>_retry.json (segments are
+    # epoch seconds there; capture_epoch[0] is that same first-frame epoch, so
+    # subtracting it lines up exactly with what Wireshark itself will show).
+    # $null when the sidecar doesn't exist yet (pcap_retry.py never ran on this
+    # capture - menu [27] / --all writes it) - callers fall back silently.
+    param([string]$Path)
+    $side = Join-Path (Split-Path $Path -Parent) `
+                       ([IO.Path]::GetFileNameWithoutExtension($Path) + '_retry.json')
+    if (-not (Test-Path -LiteralPath $side)) { return $null }
+    try { $j = Get-Content -LiteralPath $side -Raw | ConvertFrom-Json } catch { return $null }
+    if (-not $j.segments -or -not $j.capture_epoch) { return $null }
+    $zero = [double]$j.capture_epoch[0]
+    $order = @('baseline', 'attack', 'cooldown')
+    $out = @()
+    foreach ($name in $order) {
+        $seg = $j.segments.$name
+        if (-not $seg -or $seg.Count -lt 2) { continue }
+        $out += @{ Name = $name; Start = [double]$seg[0] - $zero; End = [double]$seg[1] - $zero }
+    }
+    if ($out.Count -eq 0) { return $null }
+    return $out
+}
+
+function Format-WsTime {
+    # Invariant-culture decimal so the filter string is "123.4", never "123,4"
+    # on a laptop set to a comma-decimal locale.
+    param([double]$Seconds)
+    return [Math]::Round($Seconds, 1).ToString('0.0', [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Get-PcapScopedView {
     # Filter + I/O lines for the views that work on any set of boards: every board
     # of the run (main list, -All) or one member's boards (the MY boards submenu).
-    # $Who names the set in the I/O lines. $null = backed out of the board picker.
+    # $Who names the set in the I/O lines. $Path is only needed to find the
+    # capture's _retry.json sidecar (phase-split retries); $null = backed out
+    # of the board picker.
     param([string]$View, $Map, [object[]]$Scope, [switch]$All, [string]$Who,
-          [hashtable]$Labels, [hashtable]$Owners, [string]$Attacker)
+          [hashtable]$Labels, [hashtable]$Owners, [string]$Attacker, [string]$Path)
     $macs = ($Scope | ForEach-Object { $_.sta, $_.softap }) -join ', '
     $set  = "wlan.addr in {$macs}"
     # Whole run: every ESP-MESH data frame, even one from a board the map could not place.
@@ -3651,9 +3809,27 @@ function Get-PcapScopedView {
         }
         'retry' {
             $f = "wlan.fc.retry == 1 && $set"
-            return @{ Filter = $f
-                      Io = @(@{ Name = "$Who - retries"; Filter = $f },
-                             @{ Name = "$Who - mesh data frames"; Filter = $data }) }
+            $io = @(@{ Name = "$Who - retries"; Filter = $f },
+                    @{ Name = "$Who - mesh data frames"; Filter = $data })
+            # Phase-split lines, only when tools/pcap_retry.py has already run on this
+            # capture (its _retry.json sidecar has the baseline/attack/cooldown times).
+            # Scoped to llc.oui data frames only - the SAME population MacRetryRate /
+            # feature_table.csv counts, not the mixed mgmt+data $f line above. Filter
+            # bar / packet list stay on $f (the whole run); this only adds Statistics ->
+            # I/O Graphs lines so baseline/attack/cooldown are visibly separated there
+            # without a manual frame.time_relative edit or a Time Reference click.
+            $segs = if ($Path) { Get-PcapPhaseSegments -Path $Path } else { $null }
+            if ($segs) {
+                foreach ($seg in $segs) {
+                    $a = Format-WsTime $seg.Start
+                    $z = Format-WsTime $seg.End
+                    $pf = "wlan.fc.retry == 1 && $data && frame.time_relative >= $a && frame.time_relative < $z"
+                    $io += @{ Name = "$Who - {0} data retries" -f $seg.Name.ToUpper(); Filter = $pf }
+                }
+            } else {
+                Write-Host "  (Phase-split retry lines need tools/pcap_retry.py to have run on this capture first - menu [27] / --all.)" -ForegroundColor DarkGray
+            }
+            return @{ Filter = $f; Io = $io }
         }
         'topo' {
             return @{ Filter = "wlan.fc.type_subtype in {0x00, 0x02, 0x0a, 0x0c} && $set"
@@ -3705,7 +3881,7 @@ function Invoke-WiresharkMemberViews {
             if ($m) { $Member = $m; $default = 0 }
             continue
         }
-        $r = Get-PcapScopedView -View $sub[$i].Key -Map $Map -Scope $scope -Who $who -Labels $Labels -Owners $Owners -Attacker $Attacker
+        $r = Get-PcapScopedView -View $sub[$i].Key -Map $Map -Scope $scope -Who $who -Labels $Labels -Owners $Owners -Attacker $Attacker -Path $Path
         if (-not $r) { continue }
         Open-InWireshark -Path $Path -Filter $r.Filter -IoLines $r.Io | Out-Null
         $default = $sub.Count - 1
@@ -3822,7 +3998,7 @@ function Invoke-WiresharkViews {
                 Write-Host "  Expect: B's line drops in the wormhole phase, A's rises, and NO joins appear (topology unchanged)." -ForegroundColor DarkGray
             }
             default {
-                $r = Get-PcapScopedView -View $views[$v].Key -Map $map -Scope $nodes -All -Who 'All boards' -Labels $labels -Owners $owners -Attacker $attacker
+                $r = Get-PcapScopedView -View $views[$v].Key -Map $map -Scope $nodes -All -Who 'All boards' -Labels $labels -Owners $owners -Attacker $attacker -Path $Path
                 if (-not $r) { continue views }
                 $filter = $r.Filter; $io = $r.Io
             }
@@ -3965,9 +4141,10 @@ function Get-CaptureSummary {
     # *.csv non-recursively). PDR, LatencyHopRatio and TunnelLatency come only from
     # a root's *_arrivals.csv, so a folder without one yields those columns as NaN.
     # Mirrored in menu.ps1 - keep the two in sync.
-    param([string]$Dir)
+    param([string]$Dir, $Repeat = $null)
     $names = @(Get-ChildItem -Path $Dir -Filter *.csv -File -ErrorAction SilentlyContinue |
         ForEach-Object { $_.Name } | Where-Object { $_ -like '*_telem.csv' -or $_ -like '*_arrivals.csv' })
+    if ($null -ne $Repeat) { $names = @($names | Where-Object { $_ -match "_r${Repeat}_" }) }
     $telem        = @($names | Where-Object { $_ -like '*_telem.csv' })
     $arrivals     = @($names | Where-Object { $_ -like '*_arrivals.csv' })
     # Name stamp, old 20260927_031130 or readable sept27_0311AM[-2] (tools\name_stamp.py).
@@ -3988,11 +4165,11 @@ function Select-AnalysisInput {
     # cleaned copies Invoke-TrimOnly writes), refuses to use it silently when it
     # is missing boards the raw export has, and stops before a run that would
     # produce no PDR. Mirrors menu.ps1's Select-AnalysisInput - keep in sync.
-    param([string]$Export)
+    param([string]$Export, $Repeat = $null)
 
     $trimmedDir = Join-Path $Export 'trimmed'
-    $raw  = Get-CaptureSummary -Dir $Export
-    $trim = Get-CaptureSummary -Dir $trimmedDir
+    $raw  = Get-CaptureSummary -Dir $Export -Repeat $Repeat
+    $trim = Get-CaptureSummary -Dir $trimmedDir -Repeat $Repeat
     $inputDir = $Export
     $in = $raw
 
@@ -4066,7 +4243,13 @@ function Invoke-RunAnalysisOnly {
         return
     }
 
-    $inputDir = Select-AnalysisInput -Export $dirs.Export
+    $attempt = Select-AnalysisAttempt -ExportDir $dirs.Export -AnalysisDir $dirs.Analysis
+    if ($null -eq $attempt) { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
+    $rep   = $attempt.Repeat
+    $sfx   = if ($null -ne $rep) { "_r$rep" } else { '' }
+    $repArgs = @(if ($null -ne $rep) { '--repeat'; [string]$rep })
+
+    $inputDir = Select-AnalysisInput -Export $dirs.Export -Repeat $rep
     if (-not $inputDir) { return }
 
     # Same two-tier python scan run.ps1's -Analyze uses: prefer a python with the
@@ -4094,13 +4277,14 @@ function Invoke-RunAnalysisOnly {
     }
 
     if (-not (Test-Path $dirs.Analysis)) { New-Item -ItemType Directory -Force -Path $dirs.Analysis | Out-Null }
-    $windowedOut = Join-Path $dirs.Analysis 'windowed_dataset.csv'
-    $featOut     = Join-Path $dirs.Analysis 'feature_table.csv'
-    $edaOut      = Join-Path $dirs.Analysis 'eda_output'
+    $windowedOut = Join-Path $dirs.Analysis "windowed_dataset$sfx.csv"
+    $featOut     = Join-Path $dirs.Analysis "feature_table$sfx.csv"
+    $edaOut      = Join-Path $dirs.Analysis "eda_output$sfx"
+    $repText     = if ($repArgs.Count) { ' ' + ($repArgs -join ' ') } else { '' }
 
     Write-Host ""
-    Write-Host ("Running: python analysis\preprocess.py {0} -o {1}" -f $inputDir, $windowedOut) -ForegroundColor DarkGray
-    Write-Host ("     ->  python analysis\features.py {0} -o {1}" -f $inputDir, $featOut) -ForegroundColor DarkGray
+    Write-Host ("Running: python analysis\preprocess.py {0} -o {1}{2}" -f $inputDir, $windowedOut, $repText) -ForegroundColor DarkGray
+    Write-Host ("     ->  python analysis\features.py {0} -o {1}{2}" -f $inputDir, $featOut, $repText) -ForegroundColor DarkGray
     if ($edaPy) {
         Write-Host ("     ->  python analysis\eda.py {0} -o {1}" -f $featOut, $edaOut) -ForegroundColor DarkGray
     } else {
@@ -4112,26 +4296,117 @@ function Invoke-RunAnalysisOnly {
     Push-Location (Join-Path $base 'analysis')
     try {
         Write-Host "`nM6: preprocess.py ..." -ForegroundColor Cyan
-        & $featuresPy preprocess.py $inputDir -o $windowedOut
+        & $featuresPy preprocess.py $inputDir -o $windowedOut @repArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "Preprocess failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
         Write-Host "M7: features.py ..." -ForegroundColor Cyan
-        & $featuresPy features.py $inputDir -o $featOut
+        & $featuresPy features.py $inputDir -o $featOut @repArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "Features step failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
         if ($edaPy) {
             Write-Host "M8: eda.py ..." -ForegroundColor Cyan
             & $edaPy eda.py $featOut -o $edaOut
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "EDA failed (exit $LASTEXITCODE); feature_table.csv is fine, see the error above." -ForegroundColor Yellow
+                Write-Host ("EDA failed (exit $LASTEXITCODE); feature_table$sfx.csv is fine, see the error above.") -ForegroundColor Yellow
             } else {
-                Write-Host ("Done -> datasets\analysis\$($dirs.AttackDir)\$($dirs.TopoDir)\$rLocation\eda_output\") -ForegroundColor Green
+                Write-Host ("Done -> {0}" -f $edaOut) -ForegroundColor Green
             }
         } else {
             Write-Host "Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
             Write-Host "  Fix once: pip install -r analysis\requirements.txt" -ForegroundColor DarkGray
         }
     } finally { Pop-Location }
+}
+
+function Get-AttemptGroups {
+    # Attempt number (the _rN_ in the name) -> that attempt's CSVs in $Dir.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param([string]$Dir)
+    $groups = @{}
+    foreach ($f in @(Get-ChildItem -LiteralPath $Dir -Filter '*.csv' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.csv' })) {
+        if ($f.Name -match '_r(\d+)_') {
+            $n = [int]$Matches[1]
+            if (-not $groups.ContainsKey($n)) { $groups[$n] = @() }
+            $groups[$n] += $f
+        }
+    }
+    return $groups
+}
+
+function Select-AnalysisAttempt {
+    # Which attempt to analyse. Every run restarts seq_num at 1, so pooling
+    # attempts lets one run's arrivals count as another's deliveries (PDR too
+    # high) and blanks latency (features.py _arrival_sender_window).
+    # One attempt -> feature_table_rN.csv beside the pooled feature_table.csv;
+    # the suffix keeps combine_all/feature_separability's **/feature_table.csv
+    # glob from counting it twice.
+    # Returns @{ Repeat = N }, @{ Repeat = $null } for all, or $null to go back.
+    # Mirrored in menu.ps1 - keep the two in sync.
+    param([string]$ExportDir, [string]$AnalysisDir)
+    $groups = Get-AttemptGroups -Dir $ExportDir
+    if ($groups.Count -le 1) {
+        if ($groups.Count -eq 1) {
+            Write-Host ("`n  Only attempt r{0} in this folder - analysing it into feature_table.csv." -f @($groups.Keys)[0]) -ForegroundColor DarkGray
+        }
+        return @{ Repeat = $null }
+    }
+
+    $reps = @($groups.Keys | Sort-Object)
+    $opts = @()
+    foreach ($n in $reps) {
+        $done  = Test-Path -LiteralPath (Join-Path $AnalysisDir "feature_table_r$n.csv")
+        $state = if ($done) { "analysed before -> feature_table_r$n.csv (will be replaced)" } else { "not analysed yet -> feature_table_r$n.csv" }
+        $opts += ("r{0}  - {1} file(s), {2}" -f $n, @($groups[$n]).Count, $state)
+    }
+    $opts += 'all attempts together -> feature_table.csv  (WARNING: PDR too high + latency blank when attempts are pooled)'
+
+    $idx = Show-Menu -Title 'Which attempt (repeat) to analyse?' -Options $opts -DefaultIndex ($reps.Count - 1) -AllowBack
+    if ($idx -lt 0) { return $null }
+    if ($idx -eq $reps.Count) { return @{ Repeat = $null } }
+    return @{ Repeat = $reps[$idx] }
+}
+
+function Select-TrimAttempt {
+    # Which attempt (the _rN_ in the file name) to trim, so trimming a new repeat
+    # doesn't re-trim and overwrite attempts already sitting in trimmed\.
+    # Returns @{ Repeat = N } for one attempt, @{ Repeat = $null } for all of
+    # them, or $null if the operator backed out.
+    # Mirrored in menu.ps1's trim action - keep the two in sync.
+    param([string]$ExportDir)
+    $trimmedDir = Join-Path $ExportDir 'trimmed'
+    $groups = Get-AttemptGroups -Dir $ExportDir
+    if ($groups.Count -eq 0) {
+        Write-Host "  No _rN_ attempt number in these file names - trimming the whole folder." -ForegroundColor Yellow
+        return @{ Repeat = $null }
+    }
+
+    $reps = @($groups.Keys | Sort-Object)
+    $opts = @()
+    $fullyTrimmed = @{}
+    $default = -1
+    foreach ($n in $reps) {
+        $files = @($groups[$n])
+        $done  = @($files | Where-Object { Test-Path -LiteralPath (Join-Path $trimmedDir $_.Name) }).Count
+        $fullyTrimmed[$n] = ($done -eq $files.Count)
+        $state = if ($done -eq 0) { 'not trimmed yet' }
+                 elseif ($done -eq $files.Count) { 'already trimmed' }
+                 else { "partly trimmed ($done of $($files.Count) in trimmed\)" }
+        $opts += ("r{0}  - {1} file(s), {2}" -f $n, $files.Count, $state)
+        if (-not $fullyTrimmed[$n]) { $default = $opts.Count - 1 }
+    }
+    if ($default -lt 0) { $default = $opts.Count - 1 }
+    $opts += 'all attempts  (re-trims every one, overwriting their trimmed\ copies)'
+
+    $idx = Show-Menu -Title 'Which attempt (repeat) is this capture?' -Options $opts -DefaultIndex $default -AllowBack
+    if ($idx -lt 0) { return $null }
+    if ($idx -eq $reps.Count) { return @{ Repeat = $null } }
+
+    $pick = $reps[$idx]
+    if ($fullyTrimmed[$pick]) {
+        $ans = Read-Line ("  r{0} is already in trimmed\. Trim it again and overwrite those copies? [y/N] > " -f $pick)
+        if ($ans -ne 'y' -and $ans -ne 'Y') { return $null }
+    }
+    return @{ Repeat = $pick }
 }
 
 function Invoke-TrimOnly {
@@ -4173,16 +4448,21 @@ function Invoke-TrimOnly {
         return
     }
 
+    $attempt = Select-TrimAttempt -ExportDir $dirs.Export
+    if ($null -eq $attempt) { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
+    $trimArgs = @($dirs.Export, '--apply')
+    if ($null -ne $attempt.Repeat) { $trimArgs += @('--repeat', [string]$attempt.Repeat) }
+
     $trimmedDir = Join-Path $dirs.Export 'trimmed'
     Write-Host ""
-    Write-Host ("Running: python tools\trim_run.py {0} --apply" -f $dirs.Export) -ForegroundColor DarkGray
+    Write-Host ("Running: python tools\trim_run.py {0}" -f ($trimArgs -join ' ')) -ForegroundColor DarkGray
     Write-Host ("     ->  {0}" -f $trimmedDir) -ForegroundColor DarkGray
     $goAns = Read-Line "`nRun this now? [Y/n] > "
     if ($goAns -eq 'n' -or $goAns -eq 'N') { Write-Host "  Skipped." -ForegroundColor DarkGray; return }
 
     Push-Location $base
     try {
-        python (Join-Path $base 'tools\trim_run.py') $dirs.Export --apply
+        python (Join-Path $base 'tools\trim_run.py') @trimArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "Trim failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
         Write-Host ("`nDone -> {0}" -f $trimmedDir) -ForegroundColor Green
         Write-Host "  'Run analysis only' will offer this trimmed\ folder as its input." -ForegroundColor DarkGray
@@ -4193,7 +4473,7 @@ function Invoke-DataSync {
     # tools\push_data.py does all git work in a private clone, so this folder's
     # code/staged changes/stash are never touched. Mirrors menu.ps1's data-sync
     # actions - keep the two in sync.
-    param([ValidateSet('push', 'pull', 'test', 'delete', 'restore')][string]$Mode,
+    param([ValidateSet('push', 'pull', 'test', 'delete', 'delete-local', 'restore')][string]$Mode,
           [ValidateSet('exports', 'presets', 'analysis', 'logs')][string]$Area = 'exports')
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
@@ -4204,6 +4484,16 @@ function Invoke-DataSync {
         Write-Host "then offers to delete this laptop's copies too." -ForegroundColor DarkGray
         Write-Host "Teammates are asked on their next pull; their push never re-uploads a deleted file." -ForegroundColor DarkGray
         Write-Host "Asks you to type DELETE before anything goes." -ForegroundColor DarkGray
+    } elseif ($Mode -eq 'delete-local') {
+        Write-Host "Removes files from THIS LAPTOP only - GitHub is never touched and teammates see nothing." -ForegroundColor DarkGray
+        Write-Host "This is the one for clearing out junk: a botched run, a duplicate import, files you" -ForegroundColor DarkGray
+        Write-Host "never want to share. Pick ALL or SOME (folders first, then all or some of their files);" -ForegroundColor DarkGray
+        Write-Host "each file says whether GitHub has a copy." -ForegroundColor DarkGray
+        Write-Host "A file GitHub already has can come back with a pull. A file only this laptop has is GONE" -ForegroundColor DarkGray
+        Write-Host "- and if the SD card was cleared on import, that was the last copy, so it is listed by" -ForegroundColor DarkGray
+        Write-Host "name before you confirm." -ForegroundColor DarkGray
+        Write-Host "Asks you to type DELETE before anything goes. Ledgers (the run registry) and archive" -ForegroundColor DarkGray
+        Write-Host "folders are never offered." -ForegroundColor DarkGray
     } elseif ($Mode -eq 'restore') {
         Write-Host "Lists every delete on GitHub (yours or a teammate's), newest first. The files you pick go" -ForegroundColor DarkGray
         Write-Host "back on GitHub exactly as they were, and back on this laptop unless you have a different copy." -ForegroundColor DarkGray
@@ -4250,6 +4540,10 @@ function Invoke-DataSync {
         Write-Host "Each file shows when it was imported: green = your latest SD import (every card up to the" -ForegroundColor DarkGray
         Write-Host "N to 'Import another card?') or newer, yellow = an earlier import." -ForegroundColor DarkGray
     }
+    if ($Mode -eq 'push') {
+        Write-Host "At the confirm prompt, 'd' deletes unnecessary files from this laptop first - nothing is" -ForegroundColor DarkGray
+        Write-Host "pushed until you answer y, so it doubles as a way to prune what the listing shows." -ForegroundColor DarkGray
+    }
     Push-Location $base
     try {
         python $py $Mode --area $Area
@@ -4281,16 +4575,17 @@ function Invoke-DataSyncMenu {
             "Upload my saved presets to GitHub - shares presets\<you>\*.json, fetches teammates' new ones back too",
             'Test the sync - push 3 dummy animal CSVs to prove two laptops never overwrite each other',
             'Delete data from GitHub (+ this laptop) - all or some files, upload times shown; always undoable',
+            'Delete data from THIS LAPTOP only - clear out unnecessary files; GitHub is never touched',
             "Restore deleted data - undo a delete (yours or a teammate's) from GitHub's history",
             'Back to the main menu'
-        ) -DefaultIndex 10 -GroupHeaders @{
+        ) -DefaultIndex 11 -GroupHeaders @{
             0  = '-- CAPTURE DATA'
             2  = '-- ANALYSIS + EDA'
             4  = '-- RUN LOGS'
             6  = '-- PRESETS'
             7  = '-- TEST'
             8  = '-- DELETE / RESTORE'
-            10 = ''
+            11 = ''
         }) {
             0  { Invoke-DataSync -Mode push -Area exports }
             1  { Invoke-DataSync -Mode pull -Area exports }
@@ -4301,8 +4596,10 @@ function Invoke-DataSyncMenu {
             6  { Invoke-DataSync -Mode push -Area presets }
             7  { Invoke-DataSync -Mode test }
             8  { $a = Select-DataSyncArea -Verb 'Delete';  if ($a) { Invoke-DataSync -Mode delete -Area $a } }
-            9  { $a = Select-DataSyncArea -Verb 'Restore'; if ($a) { Invoke-DataSync -Mode restore -Area $a } }
-            10 { return }
+            9  { $a = Select-DataSyncArea -Verb 'Delete from this laptop'
+                 if ($a) { Invoke-DataSync -Mode 'delete-local' -Area $a } }
+            10 { $a = Select-DataSyncArea -Verb 'Restore'; if ($a) { Invoke-DataSync -Mode restore -Area $a } }
+            11 { return }
         }
     }
 }
@@ -4836,7 +5133,7 @@ function Edit-BoardInteractive {
         [Parameter(Mandatory)]$Roster,
         [Parameter(Mandatory)][string]$Attack,
         [Parameter(Mandatory)][string]$Scenario,
-        [Parameter(Mandatory)][object[]]$Ports,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Ports,
         [bool]$HasRemoteAttackRole = $false
     )
 
@@ -4960,7 +5257,7 @@ function Add-BoardInteractive {
     param(
         [Parameter(Mandatory)]$Roster,
         [Parameter(Mandatory)][string]$Attack,
-        [Parameter(Mandatory)][object[]]$Ports
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Ports
     )
 
     $taken     = @($Roster | Where-Object { $_.Port } | ForEach-Object { $_.Port })
@@ -5728,7 +6025,7 @@ function Read-RepeatNumber {
     Write-Host "  boot count for this board+location, not your answer here) and will" -ForegroundColor DarkGray
     Write-Host "  usually show a different, higher number - that's expected, not an error." -ForegroundColor DarkGray
     Write-Host "  Your real repeat number is applied later, when you import the card with" -ForegroundColor DarkGray
-    Write-Host "  'import_sdcard.py --repeat N' - see docs/2026-09-14_SD-CARD.md." -ForegroundColor DarkGray
+    Write-Host "  'import_sdcard.py --repeat N' - see docs/operations/2026-09-14_SD-CARD.md." -ForegroundColor DarkGray
     if ($Attack -eq 'none') {
         Write-Host "  Baseline is the control run and is NOT part of the 24-run M4 matrix," -ForegroundColor DarkGray
         Write-Host "  so 1 is almost always right here." -ForegroundColor DarkGray
@@ -5749,6 +6046,414 @@ function Read-RepeatNumber {
         $n = 0
         if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1) { return $n }
         Write-Host "  Enter a positive whole number." -ForegroundColor Yellow
+    }
+}
+
+function Edit-PresetInteractive {
+    # "Edit it" from the picker's "Use this preset?" menu: change the experiment
+    # cell (attack / topology / location / scenario / repeat) or the roster
+    # itself (a node's fields, add a node, remove a node) and write the result
+    # back into the SAME file. Before this, changing a saved preset meant either
+    # abandoning it and answering every menu from scratch, or loading it and
+    # fixing it in the pre-flash "Adjust the plan?" step - which only ever
+    # affected THAT run unless the separate write-back prompt at the very end
+    # was answered.
+    #
+    # Edits a CLONE and validates before writing. The preset LOAD path below
+    # throws on two roots and on a target-needing scenario with nothing marked
+    # as its target, and the run itself depends on "exactly one attacker" /
+    # "exactly one A and one B" - so a half-finished edit must never reach the
+    # file. A preset that saves but can no longer be loaded is worse than no
+    # edit at all. Validation runs at SAVE time, not per field, so an edit can
+    # pass through a temporarily broken state (swap the attacker, then fix the
+    # burst target) without being blocked halfway.
+    #
+    # Touches no board: every hardware read stays behind the picker's own
+    # entries (Verify MACs / Auto-detect ports / Fix mesh_config.h), same rule
+    # as the rest of the wizard. A port change deliberately leaves the recorded
+    # MAC alone - the MAC is WHICH board it is, the port is only where it is
+    # plugged in today.
+    #
+    # Returns Saved (did the file change) and Path (the file, which the rename
+    # step may have moved - the caller re-resolves its $file from it).
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)]$Cfg,
+        [Parameter(Mandatory)]$Roster,
+        [object[]]$Ports = @()
+    )
+
+    $attack = [string]$Cfg.attack
+    if (-not $attack) { $attack = 'none' }
+    $topology = [string]$Cfg.topology
+    $location = [string]$Cfg.location
+    # Same "missing or 'none' means stationary" rule the rest of the picker uses.
+    $scenario = ConvertTo-Scenario $(if ($Cfg.PSObject.Properties['scenario']) { [string]$Cfg.scenario })
+    $repeat   = [int]$Cfg.repeat
+    if ($repeat -lt 1) { $repeat = 1 }
+
+    # Same field set ConvertTo-Roster loads and Save-Preset writes - a CLONE, so
+    # "discard" really discards: the caller's own roster is what the picker's
+    # other actions and 'Yes - use it' keep using.
+    $draft = @($Roster | ForEach-Object {
+        [pscustomobject]@{
+            Label          = [string]$_.Label
+            Port           = [string]$_.Port
+            Role           = [string]$_.Role
+            Kind           = [string]$_.Kind
+            Display        = [string]$_.Display
+            Mac            = [string]$_.Mac
+            ScenarioTarget = [bool]$_.ScenarioTarget
+        }
+    })
+
+    # Re-enumerated here (instant, no board contact) instead of reusing the
+    # picker's snapshot: a board plugged in since the picker opened should be
+    # pickable without leaving this screen. Falls back to the caller's list if
+    # nothing is enumerable at all.
+    $portList = @(Get-PortList)
+    if ($portList.Count -eq 0) { $portList = @($Ports | Where-Object { $_ }) }
+
+    # Children first, root last - the ordering invariant every preset reader
+    # downstream assumes, and which a role change or an added node breaks.
+    $reorder = { param($R) @(@($R | Where-Object { $_.Role -ne 'root' }) + @($R | Where-Object { $_.Role -eq 'root' })) }
+
+    # Display carries a ' + <SCENARIO> TARGET' suffix on the marked node, and the
+    # seat rewrites (Set-AttackSubRoles, an attack change) overwrite Display
+    # wholesale - re-stamped every pass so the suffix can neither be lost nor
+    # left naming the previous scenario. Skipped when Display already SAYS
+    # "TARGET" on its own (the $pickTarget remote escape's own
+    # "$scenario TARGET (other laptop)" wording) - otherwise this doubles up
+    # into "burst TARGET (other laptop) + BURST TARGET".
+    $restamp = {
+        foreach ($b in $draft) {
+            $b.Display = ($b.Display -replace ' \+ .* TARGET$', '')
+            if ($b.ScenarioTarget -and $b.Display -notmatch 'TARGET') { $b.Display += " + $($scenario.ToUpper()) TARGET" }
+        }
+    }
+
+    $pickTarget = {
+        # Exactly one node carries burst / mobility / powercycle - but a preset
+        # only ever describes ONE member's boards (see Kyle's own blackhole
+        # presets, which never carry an attacker board at all because Kyle's
+        # attacker is a DIFFERENT member's board), so "on another laptop" must
+        # stay reachable even when nothing local qualifies - same escape the
+        # pre-flash "Adjust the plan" step's own scenario menu offers, here
+        # reached from Edit-PresetInteractive's own local $draft instead.
+        # Returns the (possibly appended) roster - invoked as
+        # `$draft = & $pickTarget`, never bare `& $pickTarget`, since the
+        # remote branch below has to ADD a board, and a scriptblock run via
+        # `&` gets its own child scope: `$draft += ...` in there would rebind
+        # only that scope's copy, not this function's.
+        $eligible = @($draft | Where-Object { $_.Role -ne 'root' -and ($scenario -ne 'burst' -or (Test-BurstEligible $_)) })
+        $labels = @($eligible | ForEach-Object {
+            "{0}  ({1})  -  {2}" -f $_.Label, $(if ($_.Port) { $_.Port } else { 'other laptop' }), $_.Display
+        })
+        $escapeIdx = $labels.Count
+        $labels += "None of these - the $($scenario.ToUpper()) TARGET is on ANOTHER laptop"
+        if ($eligible.Count -eq 0) {
+            Write-Host ("   No node here can carry {0} - marking the target as on another laptop." -f $scenario) -ForegroundColor Yellow
+            $tIdx = $escapeIdx
+        }
+        else {
+            $tIdx = Show-Menu -Title ("Which node is the {0} TARGET? (exactly one)" -f $scenario) -Options $labels -DefaultIndex 0
+        }
+        if ($tIdx -lt 0) { return $draft }
+        foreach ($b in $draft) { $b.ScenarioTarget = $false }
+        if ($tIdx -eq $escapeIdx) {
+            $remoteLabel = Get-FreeNodeLabel -Taken @($draft | ForEach-Object { $_.Label })
+            $withRemote = @($draft) + [pscustomobject]@{
+                Label = $remoteLabel; Port = ''; Role = 'child'; Kind = 'victim'
+                Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
+                Mac = ''
+            }
+            Write-Host ("   Remote {0} target recorded as '{1}' - tell that laptop's operator to mark their own matching board as the target." -f $scenario, $remoteLabel) -ForegroundColor DarkGray
+            return $withRemote
+        }
+        $eligible[$tIdx].ScenarioTarget = $true
+        $eligible[$tIdx].Display += " + $($scenario.ToUpper()) TARGET"
+        return $draft
+    }
+
+    $problemsOf = {
+        # $Bad blocks the save outright (the load path or the run itself would
+        # break); $Warn is printed but never blocks. A preset only ever holds
+        # ONE member's boards - Kyle's own saved blackhole presets never carry
+        # an attacker board at all, because Kyle's attacker is a DIFFERENT
+        # member's board - so "zero attacker/A/B/target here" is the ordinary
+        # multi-laptop case, not a broken file. This mirrors the tolerance the
+        # $Preset LOAD path already gives ROOT ("RootCount -gt 1" is the only
+        # rejection; 0 is a laptop that doesn't hold the root) and the picker's
+        # own "WARNING: blackhole preset with no attacker board" (Show-PresetDetails) -
+        # a warning, never a throw. Only an invariant a SINGLE laptop's own
+        # roster can actually break (two boards claiming the same seat, two
+        # roots, two targets, a baseline run still carrying an attack seat, a
+        # duplicate label) is blocking.
+        $bad = @()
+        $warn = @()
+        $boards = @($draft)
+        if ($boards.Count -eq 0) { $bad += 'no boards left - a preset needs at least one' }
+        $roots = @($boards | Where-Object { $_.Role -eq 'root' })
+        if ($roots.Count -gt 1) { $bad += ("{0} boards marked ROOT - a preset may hold at most one (0 is fine - a laptop that doesn't hold the root)" -f $roots.Count) }
+        $kids = @($boards | Where-Object { $_.Role -ne 'root' })
+        if ($attack -eq 'blackhole') {
+            $att = @($kids | Where-Object { $_.Kind -eq 'attacker' })
+            if ($att.Count -gt 1) { $bad += ("{0} boards marked ATTACKER - a blackhole run needs at most one" -f $att.Count) }
+            elseif ($att.Count -eq 0) { $warn += 'no ATTACKER board here - fine if another member''s laptop supplies it (their preset holds it, not this one); otherwise give one board that role in Edit one node' }
+            if (@($kids | Where-Object { $_.Kind -eq 'victim' }).Count -lt 1) { $warn += 'no victim child here - fine if this laptop only holds the attacker/root, otherwise add one' }
+        }
+        elseif ($attack -eq 'wormhole') {
+            foreach ($seat in @('A', 'B')) {
+                $n = @($kids | Where-Object { $_.Kind -eq $seat }).Count
+                if ($n -gt 1) { $bad += ("{0} boards marked Node {1} - wormhole needs at most one" -f $n, $seat) }
+                elseif ($n -eq 0) { $warn += ("no Node {0} here - fine if another member's laptop supplies it" -f $seat) }
+            }
+        }
+        else {
+            $left = @($kids | Where-Object { $_.Kind -in @('attacker', 'A', 'B') })
+            if ($left.Count -gt 0) { $bad += ("a baseline run still carries attack roles: {0}" -f (($left | ForEach-Object { $_.Label }) -join ', ')) }
+        }
+        if (Test-ScenarioNeedsTarget $scenario) {
+            $tg = @($boards | Where-Object { $_.ScenarioTarget })
+            if ($tg.Count -gt 1) { $bad += ("{0} needs exactly one node marked as its TARGET (found {1})" -f $scenario, $tg.Count) }
+            elseif ($tg.Count -eq 0) { $warn += ("no {0} TARGET marked here - fine if another laptop's board carries it (use 'Scenario' to re-pick and mark it remote), otherwise this run won't do anything" -f $scenario) }
+            elseif ($scenario -eq 'burst' -and -not (Test-BurstEligible $tg[0])) {
+                $bad += ("{0} cannot carry burst - only a plain / blackhole-victim / wormhole-control child builds the burst firmware" -f $tg[0].Label)
+            }
+        }
+        # Duplicate PORTS are legal on purpose (swap mode: boards take turns on
+        # one socket), duplicate LABELS are not - the label is what names a board
+        # in every roster, filename and hand-off summary.
+        foreach ($g in @($boards | Group-Object Label | Where-Object { $_.Count -gt 1 })) {
+            $bad += ("two boards share the label '{0}'" -f $g.Name)
+        }
+        return [pscustomobject]@{ Bad = $bad; Warn = $warn }
+    }
+
+    $show = {
+        $attackWord = if ($attack -eq 'none') { 'baseline' } else { $attack }
+        $live = @($portList | Select-Object -ExpandProperty Port)
+        Write-Host ""
+        Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
+        Write-Host ("  Editing  : {0}{1}" -f (Split-Path -Leaf $Path), $(if ($dirty) { '   << UNSAVED CHANGES' } else { '' })) -ForegroundColor Cyan
+        Write-Host ("  Cell     : {0} / {1} / {2} / {3}   (repeat {4})" -f $attackWord, $topology, $location, $scenario, $repeat) -ForegroundColor DarkGray
+        Write-Host ""
+        $n = 0
+        foreach ($b in @(& $reorder $draft)) {
+            $n++
+            $where = if (-not $b.Port) { 'other laptop' } elseif ($live -notcontains $b.Port) { "$($b.Port) NOT PRESENT" } else { $b.Port }
+            $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+            $line = "   [{0}] {1,-8} {2,-30} {3,-16} {4}" -f $n, $b.Label, $b.Display, $where, $(if ($b.Mac) { $b.Mac } else { 'MAC not recorded' })
+            Write-Host (Colorize-Role $line.TrimEnd() $role)
+        }
+        Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
+    }
+
+    $dirty = $false
+    while ($true) {
+        $draft = @(& $reorder $draft)
+        & $restamp
+        & $show
+
+        $attackWord = if ($attack -eq 'none') { 'baseline' } else { $attack }
+        $opts = @(
+            "Attack            $attackWord",
+            "Topology          $topology",
+            "Location          $location",
+            "Scenario          $scenario",
+            "Repeat            $repeat",
+            'Edit one node       (label / port / which is ROOT / attack role / scenario target)',
+            'Replace a node with a different board (new port, forgets the old MAC, keeps its seat)',
+            'Add a node',
+            'Remove a node',
+            $(if ($dirty) { 'SAVE these changes into the preset file' } else { 'Save (nothing changed yet)' }),
+            $(if ($dirty) { 'Discard these changes and go back' } else { 'Back (nothing changed)' })
+        )
+        $idx = Show-Menu -Title 'Edit this preset:' -Options $opts -DefaultIndex $(if ($dirty) { 9 } else { 10 })
+
+        if ($idx -eq 0) {
+            $aIdx = Show-Menu -Title 'Attack type:' -Options @(
+                'baseline  (no attack - the control run)',
+                'blackhole (attacker relays, then drops victim probes)',
+                'wormhole  (A<->B tunnel; needs the physical cable)'
+            ) -DefaultIndex ([array]::IndexOf($ATTACKS, $attack)) -AllowBack
+            if ($aIdx -ge 0 -and $ATTACKS[$aIdx] -ne $attack) {
+                $attack = $ATTACKS[$aIdx]
+                # Kind/Display ARE the attack (victim/attacker, A/B/control,
+                # plain), so every child's seat is void the moment it changes.
+                # Reset them all to the uninvolved seat first - no stale
+                # 'attacker'/'A' may survive into the new attack - then pick the
+                # new seat explicitly. Backing out of that pick leaves the seat
+                # unfilled, which the save check below then refuses by name.
+                foreach ($b in @($draft | Where-Object { $_.Role -ne 'root' })) {
+                    if     ($attack -eq 'blackhole') { $b.Kind = 'victim';  $b.Display = 'blackhole victim' }
+                    elseif ($attack -eq 'wormhole')  { $b.Kind = 'control'; $b.Display = 'control (plain firmware)' }
+                    else                             { $b.Kind = 'plain';   $b.Display = 'plain child' }
+                }
+                if ($attack -in @('blackhole', 'wormhole')) { Set-AttackSubRoles -Roster $draft -Attack $attack }
+                if ($attack -eq 'blackhole') {
+                    Write-Host "   Cross-check mesh_config.h BLACKHOLE_ATTACKER_MAC against the new attacker before flashing - the details screen shows both." -ForegroundColor Yellow
+                }
+                $dirty = $true
+            }
+        }
+        elseif ($idx -eq 1) {
+            $tIdx = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex ([array]::IndexOf($TOPOLOGIES, $topology)) -AllowBack
+            if ($tIdx -ge 0 -and $TOPOLOGIES[$tIdx] -ne $topology) { $topology = $TOPOLOGIES[$tIdx]; $dirty = $true }
+        }
+        elseif ($idx -eq 2) {
+            $lIdx = Show-Menu -Title 'Location (where the run physically happens):' -Options $LOCATIONS -DefaultIndex ([array]::IndexOf($LOCATIONS, $location)) -AllowBack
+            if ($lIdx -ge 0 -and $LOCATIONS[$lIdx] -ne $location) {
+                $location = $LOCATIONS[$lIdx]
+                $dirty = $true
+                # The cards carry their own location.txt and the firmware reads
+                # THAT, not this preset - changing one without the other files
+                # the capture under the old room.
+                Write-Host "   Each board's SD card still says the OLD location - use 'Write/update location.txt on all boards' SD cards' on the next screen, or the capture files itself under it." -ForegroundColor Yellow
+            }
+        }
+        elseif ($idx -eq 3) {
+            $sIdx = Show-Menu -Title 'Scenario (run-to-run variation the panel asked for):' -Options $SCENARIO_LABELS -DefaultIndex ([array]::IndexOf($SCENARIOS, $scenario)) -AllowBack
+            if ($sIdx -ge 0 -and $SCENARIOS[$sIdx] -ne $scenario) {
+                $scenario = $SCENARIOS[$sIdx]
+                # A target was picked FOR the old scenario - clear it, then ask
+                # again when the new one needs one, so no board keeps a
+                # 'powercycle TARGET' mark under, say, burst.
+                foreach ($b in $draft) { $b.ScenarioTarget = $false }
+                if (Test-ScenarioNeedsTarget $scenario) { $draft = & $pickTarget }
+                $dirty = $true
+            }
+        }
+        elseif ($idx -eq 4) {
+            $r = Read-RepeatNumber -Attack $attack -Topology $topology -DefaultRepeat $repeat -AllowBack
+            if ($r -ge 1 -and $r -ne $repeat) { $repeat = $r; $dirty = $true }
+        }
+        elseif ($idx -eq 5) {
+            # $rows holds the SAME objects as $draft (reorder returns references),
+            # so editing a row edits the draft.
+            $rows = @(& $reorder $draft)
+            $pick = Show-Menu -Title 'Which node?' -Options @($rows | ForEach-Object {
+                "{0}  ({1}, {2})" -f $_.Label, $(if ($_.Port) { $_.Port } else { 'other laptop' }), $_.Display
+            }) -AllowBack
+            if ($pick -ge 0) {
+                # -HasRemoteAttackRole is deliberately NOT set: a preset holds the
+                # WHOLE experiment, including boards on another laptop, so the
+                # attacker/A/B seat is reassignable across all of them here.
+                Edit-BoardInteractive -Board $rows[$pick] -Roster $draft -Attack $attack -Scenario $scenario -Ports $portList
+                $dirty = $true
+            }
+        }
+        elseif ($idx -eq 6) {
+            # Swaps which PHYSICAL board fills an EXISTING seat - a dead/borrowed
+            # board takes over an attacker, a scenario target, the root, whatever
+            # this node already was - without re-answering the attack sub-role or
+            # scenario-target questions the way Remove-then-Add would (those
+            # reassign the seat among what's LEFT, which for a straight swap is
+            # exactly the churn this avoids). Only Port and (optionally) Label
+            # change; Role/Kind/Display/ScenarioTarget carry over untouched. The
+            # old MAC is CLEARED, not kept - it identified the board that's
+            # leaving, and leaving it in place would silently claim the NEW board
+            # already matches a MAC it's never been read against.
+            $rows = @(& $reorder $draft)
+            $pick = Show-Menu -Title 'Replace which node with a different board?' -Options @($rows | ForEach-Object {
+                "{0}  ({1}, {2})" -f $_.Label, $(if ($_.Port) { $_.Port } else { 'other laptop' }), $_.Display
+            }) -AllowBack
+            if ($pick -ge 0) {
+                $board = $rows[$pick]
+                $taken = @($draft | Where-Object { $_ -ne $board -and $_.Port } | ForEach-Object { $_.Port })
+                $newPort = Select-Port -For $board.Label -Ports $portList -AllowBack -Taken $taken
+                if ($newPort -and $newPort -ne $script:BackSignal) {
+                    $oldPort = if ($board.Port) { $board.Port } else { 'another laptop' }
+                    $oldSeat = $board.Display
+                    $board.Port = $newPort
+                    $board.Mac  = ''
+                    $newLabel = Read-Line ("  New label for this seat > [{0}] (Enter to keep) " -f $board.Label)
+                    if ($newLabel -and $newLabel -ne $board.Label) {
+                        if (@($draft | Where-Object { $_ -ne $board } | ForEach-Object { $_.Label }) -contains $newLabel) {
+                            Write-Host ("   '{0}' is already used by another board - keeping '{1}'." -f $newLabel, $board.Label) -ForegroundColor Yellow
+                        }
+                        else { $board.Label = $newLabel }
+                    }
+                    Write-Host ("   {0} on {1} now stands in for the {2} seat (was {3}) - MAC cleared; 'Verify MACs now' on the next screen reads it." -f $board.Label, $newPort, $oldSeat, $oldPort) -ForegroundColor Green
+                    $dirty = $true
+                }
+            }
+        }
+        elseif ($idx -eq 7) {
+            $before = @($draft).Count
+            $draft = @(Add-BoardInteractive -Roster $draft -Attack $attack -Ports $portList)
+            if (@($draft).Count -ne $before) { $dirty = $true }
+        }
+        elseif ($idx -eq 8) {
+            $before = @($draft).Count
+            $draft = @(Remove-BoardInteractive -Roster $draft -Attack $attack -Scenario $scenario)
+            if (@($draft).Count -ne $before) { $dirty = $true }
+        }
+        elseif ($idx -eq 9) {
+            $checked = & $problemsOf
+            if ($checked.Bad.Count -gt 0) {
+                Write-Host ""
+                Write-Host "  NOT saved - this preset would fail to load, or would run wrong:" -ForegroundColor Red
+                foreach ($p in $checked.Bad) { Write-Host ("    - {0}" -f $p) -ForegroundColor Red }
+                Write-Host "  Fix the items above, or discard the changes." -ForegroundColor DarkGray
+                continue
+            }
+            if ($checked.Warn.Count -gt 0) {
+                Write-Host ""
+                Write-Host "  Saving anyway - worth a second look:" -ForegroundColor Yellow
+                foreach ($w in $checked.Warn) { Write-Host ("    - {0}" -f $w) -ForegroundColor Yellow }
+            }
+
+            # The filename spells the experiment cell
+            # (topology-attack-scenario-location). The picker reads the cell from
+            # the file CONTENTS, so its grouping stays right either way - but
+            # every human reads the name, so a changed cell under the old
+            # filename is a file that lies about itself.
+            $savePath = $Path
+            $dirs = Get-RunDirs -Attack $attack -Topology $topology -Location $location -Scenario $scenario
+            $want = "{0}-{1}-{2}-{3}.json" -f $dirs.TopoDir, $dirs.AttackDir, $scenario, $location.ToLower()
+            if ($want -ne (Split-Path -Leaf $Path)) {
+                Write-Host ""
+                Write-Host ("  The filename no longer matches the cell: {0}" -f (Split-Path -Leaf $Path)) -ForegroundColor Yellow
+                $ans = Read-Line ("  Rename it to {0}? [Y/n] > " -f $want)
+                if ($ans -ne 'n' -and $ans -ne 'N') {
+                    $dest = Join-Path (Split-Path -Parent $Path) $want
+                    if (Test-Path -LiteralPath $dest) {
+                        Write-Host ("  {0} already exists in that folder - keeping the current name." -f $want) -ForegroundColor Yellow
+                    }
+                    else {
+                        try {
+                            Move-Item -LiteralPath $Path -Destination $dest -ErrorAction Stop
+                            $savePath = $dest
+                            Write-Host ("  Renamed -> {0}" -f $want) -ForegroundColor Green
+                        }
+                        catch {
+                            Write-Host ("  Could not rename ({0}) - saving under the current name." -f $_.Exception.Message) -ForegroundColor Yellow
+                        }
+                    }
+                }
+            }
+
+            # -Owner omitted on purpose: Save-Preset then keeps the folder's (or
+            # the file's own) owner, so an edit can never silently re-attribute
+            # someone else's boards.
+            Save-Preset -Path $savePath -Attack $attack -Topology $topology `
+                -Location $location -RepeatNum $repeat -Roster (& $reorder $draft) -Scenario $scenario
+            Write-Host ("  Saved -> {0}" -f $savePath) -ForegroundColor Green
+            $noMac = @($draft | Where-Object { $_.Port -and -not $_.Mac })
+            if ($noMac.Count -gt 0) {
+                Write-Host ("  No MAC recorded for {0} - 'Verify MACs now' on the next screen reads and stores them." -f (($noMac | ForEach-Object { $_.Label }) -join ', ')) -ForegroundColor DarkGray
+            }
+            return [pscustomobject]@{ Saved = $true; Path = $savePath }
+        }
+        elseif ($idx -eq 10) {
+            if ($dirty) {
+                $ans = Read-Line "`n  Discard the changes above? The file stays as it was. [y/N] > "
+                if ($ans -ne 'y' -and $ans -ne 'Y') { continue }
+                Write-Host "  Discarded - the preset file is unchanged." -ForegroundColor DarkGray
+            }
+            return [pscustomobject]@{ Saved = $false; Path = $Path }
+        }
     }
 }
 
@@ -5972,6 +6677,7 @@ if (-not $Preset) {
         if ($modeIdx -eq 24) { Invoke-WiresharkViews; continue }
         if ($modeIdx -eq 25) { $newestPcap = Select-CaptureFile -Newest; if ($newestPcap) { Invoke-WiresharkViews -Path $newestPcap -Overview }; Read-Host "Press Enter to return to the menu" | Out-Null; continue }
         if ($modeIdx -eq 26) { Invoke-Esp32SnifferStandalone -Live; continue }
+        if ($modeIdx -eq 27) { Invoke-MacRetryReport; continue }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember
@@ -6186,16 +6892,24 @@ if (-not $Preset) {
 
                 switch (Show-Menu -Title 'Use this preset?' -Options @(
                     'Yes - use it',
+                    'Edit this preset (attack/topology/location/scenario/repeat, or its boards) and save it',
                     'Verify MACs now (reads each board, ~2s each, briefly resets them)',
                     'Auto-detect ports (finds each board by its recorded MAC; plug in missing ones and rescan)',
                     'Write/update location.txt on all boards'' SD cards (over USB, needs each board already running)',
                     'Fix mesh_config.h attacker MAC now (reads the attacker board, updates the build)',
+                    'Copy this preset (same boards/cell as a starting point - then edit the copy, original untouched)',
                     'Show raw preset JSON (just to double-check the file itself, no board access)',
                     'File this preset under a member (move it into presets\<member>\)',
                     'Delete this preset (e.g. an accidental duplicate)',
                     'Pick a different preset',
                     'No preset - answer the menus instead'
-                ) -DefaultIndex 0) {
+                # Purely visual grouping - indices/numbering are unchanged, so
+                # nothing below this call needs to know these headers exist.
+                ) -DefaultIndex 0 -GroupHeaders @{
+                    2 = '-- Board checks (reads/writes hardware over USB)'
+                    6 = '-- Preset file management'
+                    10 = '-- Not this preset'
+                }) {
 
                     0 {
                         # The location pre-flight is NOT run here any more: $preview still
@@ -6207,6 +6921,34 @@ if (-not $Preset) {
                     }
 
                     1 {
+                        # Change the PRESET itself - the cell or the roster - and
+                        # write it back, instead of the older "load it, then fix it
+                        # per-run in Adjust the plan" route that left the file
+                        # untouched unless the write-back prompt at the end was
+                        # answered. See Edit-PresetInteractive.
+                        $edited = Edit-PresetInteractive -Path $file.FullName -Cfg $cfg -Roster $preview -Ports $pickPorts
+                        if ($edited.Saved) {
+                            # A save may have RENAMED the file to match its new
+                            # cell, so $file is re-resolved from the path the edit
+                            # reports, and $cfg/$preview/$cfgScenario are re-read
+                            # from disk - the details screen above and every other
+                            # action here (Verify MACs, Fix mesh_config.h, 'Yes -
+                            # use it') all work off those three.
+                            $presetFiles = @(Get-PresetFiles)
+                            $file = @($presetFiles | Where-Object { $_.FullName -eq $edited.Path }) | Select-Object -First 1
+                            $cfg  = if ($file) { Read-PresetFile -Path $file.FullName } else { $null }
+                            if (-not $cfg) {
+                                Write-Host "  Saved, but that file can't be read back from presets\ - returning to the list." -ForegroundColor Yellow
+                                $deciding = $false
+                            }
+                            else {
+                                $preview     = (ConvertTo-Roster -Cfg $cfg).Roster
+                                $cfgScenario = ConvertTo-Scenario $(if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
+                            }
+                        }
+                    }
+
+                    2 {
                         Write-Host ""
                         $changed = $false
                         $drifted = $false
@@ -6267,7 +7009,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    2 {
+                    3 {
                         # Dedicated entry for what Verify only offers after it spots drift:
                         # find every board by MAC across whatever is plugged in now. Rescans
                         # so a board plugged in mid-way is picked up; MACs already read this
@@ -6303,7 +7045,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    3 {
+                    4 {
                         Write-Host ""
                         Write-Host "This sends SET_LOCATION over USB to whatever is CURRENTLY running on each" -ForegroundColor DarkGray
                         Write-Host "port -- it only works if that board already booted this session (mesh" -ForegroundColor DarkGray
@@ -6364,7 +7106,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    4 {
+                    5 {
                         Write-Host ""
                         if ([string]$cfg.attack -ne 'blackhole') {
                             Write-Host ("This preset's attack is '{0}' - there is no attacker MAC to fix." -f [string]$cfg.attack) -ForegroundColor Yellow
@@ -6429,14 +7171,85 @@ if (-not $Preset) {
                         }
                     }
 
-                    5 {
+                    6 {
+                        # Duplicate this preset as the starting point for a new one -
+                        # the same boards for another scenario/location, or another
+                        # member's preset copied into your own folder - instead of
+                        # answering every menu from scratch. Written with Save-Preset,
+                        # not Copy-Item, so the owner recorded INSIDE the file matches
+                        # the folder it lands in. The edit screen then opens on the
+                        # COPY; the original file is never touched.
+                        $copyOwner = Select-PresetOwner -Roster $preview `
+                            -Title ("Copy '{0}' into which member's folder?" -f $file.Name)
+                        $copyDir = if ($copyOwner) { Join-Path (Get-PresetRoot) $copyOwner } else { Get-PresetRoot }
+                        if (-not (Test-Path $copyDir)) { New-Item -ItemType Directory -Force -Path $copyDir | Out-Null }
+                        # Same name when the target folder doesn't have it yet (copying
+                        # another member's preset into yours); otherwise -copy, -copy2 ...
+                        # The edit step's save offers the proper cell name once the cell
+                        # has been changed.
+                        $stem = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+                        $copyPath = [IO.Path]::GetFullPath((Join-Path $copyDir $file.Name))
+                        $n = 1
+                        while (Test-Path -LiteralPath $copyPath) {
+                            $sfx = if ($n -eq 1) { '-copy' } else { "-copy$n" }
+                            $copyPath = [IO.Path]::GetFullPath((Join-Path $copyDir ("{0}{1}.json" -f $stem, $sfx)))
+                            $n++
+                        }
+                        $copied = $false
+                        try {
+                            Save-Preset -Path $copyPath -Attack ([string]$cfg.attack) `
+                                -Topology ([string]$cfg.topology) -Location ([string]$cfg.location) `
+                                -RepeatNum ([int]$cfg.repeat) -Roster $preview -Scenario $cfgScenario -Owner $copyOwner
+                            $copied = $true
+                        }
+                        catch {
+                            Write-Host ("  Could not write the copy: {0}" -f $_.Exception.Message) -ForegroundColor Red
+                        }
+                        if ($copied) {
+                            Write-Host ("  Copied -> presets\{0}{1}" -f $(if ($copyOwner) { "$copyOwner\" } else { '' }), (Split-Path -Leaf $copyPath)) -ForegroundColor Green
+                            Write-Host "  Now editing the COPY - change only what differs. The original is untouched." -ForegroundColor DarkGray
+                            $copyCfg = Read-PresetFile -Path $copyPath
+                            $edited = Edit-PresetInteractive -Path $copyPath -Cfg $copyCfg `
+                                -Roster (ConvertTo-Roster -Cfg $copyCfg).Roster -Ports $pickPorts
+                            $finalPath = $edited.Path
+                            # An unedited copy in the SAME folder is a pure duplicate - clutter
+                            # that would sit next to the original under a -copy name. One in
+                            # another member's folder is the point of copying, so it stays.
+                            if (-not $edited.Saved -and $copyOwner -eq $file.Owner) {
+                                $keep = Read-Line "`n  The copy is identical to the original, in the same folder - keep it anyway? [y/N] > "
+                                if ($keep -ne 'y' -and $keep -ne 'Y') {
+                                    Remove-Item -LiteralPath $copyPath -Force -ErrorAction SilentlyContinue
+                                    Write-Host "  Removed the unchanged copy - still on the original." -ForegroundColor DarkGray
+                                    $finalPath = $null
+                                }
+                            }
+                            $presetFiles = @(Get-PresetFiles)
+                            if ($finalPath) {
+                                # Switch this screen to the copy, same re-resolve as the Edit
+                                # entry above, so 'Yes - use it' runs from the new preset.
+                                $file = @($presetFiles | Where-Object { $_.FullName -eq $finalPath }) | Select-Object -First 1
+                                $cfg  = if ($file) { Read-PresetFile -Path $file.FullName } else { $null }
+                                if (-not $cfg) {
+                                    Write-Host "  Copy saved, but it can't be read back from presets\ - returning to the list." -ForegroundColor Yellow
+                                    $deciding = $false
+                                }
+                                else {
+                                    $preview     = (ConvertTo-Roster -Cfg $cfg).Roster
+                                    $cfgScenario = ConvertTo-Scenario $(if ($cfg.PSObject.Properties['scenario']) { [string]$cfg.scenario })
+                                    Write-Host ("  Now showing the copy ({0}) - 'Yes - use it' runs from it." -f $file.Name) -ForegroundColor Green
+                                }
+                            }
+                        }
+                    }
+
+                    7 {
                         Write-Host ""
                         Write-Host ("--- {0} (raw file contents) ---" -f $file.Name) -ForegroundColor Cyan
                         Get-Content -Path $file.FullName -Raw | Write-Host
                         Write-Host "--- end of file ---" -ForegroundColor Cyan
                     }
 
-                    6 {
+                    8 {
                         # How a preset that predates the per-member folders (or one
                         # filed under the wrong member) gets sorted, one file at a
                         # time and always with the operator naming the member - no
@@ -6471,7 +7284,7 @@ if (-not $Preset) {
                         }
                     }
 
-                    7 {
+                    9 {
                         Write-Host ""
                         $delAns = Read-Line ("Delete '{0}' permanently? [y/N] > " -f $file.Name)
                         if ($delAns -eq 'y' -or $delAns -eq 'Y') {
@@ -6485,8 +7298,8 @@ if (-not $Preset) {
                         $deciding = $false
                     }
 
-                    8 { $deciding = $false }
-                    9 { $deciding = $false; $picking = $false }
+                    10 { $deciding = $false }
+                    11 { $deciding = $false; $picking = $false }
                 }
             }
         }
@@ -8026,8 +8839,8 @@ if (-not $preBuilt) {
 
 # Full console log of this run (every board's flash/monitor output, incl. any
 # errors) - opt-in, same naming convention as a preset so the two pair up on
-# sight: <preset-base-name>_<timestamp>.log, or <topology>-<attack>-<scenario>-
-# <location>_<timestamp>.log when no preset is involved. Filed by run under
+# sight: <preset-base-name>_r<N>_<timestamp>.log, or <topology>-<attack>-<scenario>-
+# <location>_r<N>_<timestamp>.log when no preset is involved. Filed by run under
 # run_logs\<attack>\<topology>\<location>\<scenario>\ (Get-RunLogDir), like the
 # exports. Reviewable later from the wizard's DATA menu ("View a saved run log"
 # -> Invoke-ViewRunLog); offered for a GitHub push once it is closed off.
@@ -8044,6 +8857,8 @@ if ($saveRunLog) {
     $runLogDir = Get-RunLogDir -AttackDir $attackDir -TopoDir $topoDir -Location $location -Scenario $scenario
     if (-not (Test-Path $runLogDir)) { New-Item -ItemType Directory -Force -Path $runLogDir | Out-Null }
     $logBaseName = if ($Preset) { [IO.Path]::GetFileNameWithoutExtension($Preset) } else { "$topoDir-$attackDir-$scenario-$($location.ToLower())" }
+    # _r<N> like the exports/PCAP names, so r1/r2/r3 of one cell tell apart on sight.
+    $logBaseName = "{0}_r{1}" -f $logBaseName, $repeat
     $runLogPath = Get-StampedPath -Dir $runLogDir -Head $logBaseName -Ext '.log'
     # Clear any stray transcript left running from an earlier aborted run before
     # starting a fresh one - Start-Transcript errors if one is already active.

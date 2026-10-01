@@ -1,7 +1,7 @@
 # ESP32 ↔ SD Card Reader — Wiring Reference
 
 <!-- Pinout only. For the debugging story (why 3.3V failed, why the clock had
-     to drop to 4 MHz), see Implementation Issues/SD-CARD-AND-WORMHOLE-WIRING.md. -->
+     to drop to 4 MHz), see issues-and-fixes/SD-CARD-AND-WORMHOLE-WIRING.md. -->
 
 Source of truth for the pin numbers: `ESP32-Environment/components/mesh_common/include/mesh_config.h:395-402`.
 
@@ -29,6 +29,6 @@ If mount fails, isolate wiring from firmware first: a raw `CMD0` (`GO_IDLE_STATE
 
 ## Related
 
-- Full bring-up debugging narrative (three root causes, in order discovered): `Implementation Issues/SD-CARD-AND-WORMHOLE-WIRING.md`
+- Full bring-up debugging narrative (three root causes, in order discovered): `issues-and-fixes/SD-CARD-AND-WORMHOLE-WIRING.md`
 - Boot-time SD check that consumes these pins: `ESP32-Environment/components/mesh_common/src/sd_status.c`
 - Standalone bring-up test (writes one status file, no mesh firmware): `ESP32-Environment/sd_card_test/`

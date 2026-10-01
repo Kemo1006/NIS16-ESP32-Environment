@@ -2,14 +2,14 @@
     "attack":  "blackhole",
     "topology":  "linear",
     "location":  "home",
-    "scenario":  "highload",
+    "scenario":  "burst",
     "owner":  "Cal",
-    "repeat":  4,
-    "savedAt":  "2026-09-30 00:58",
+    "repeat":  1,
+    "savedAt":  "2026-09-30 08:49",
     "boards":  [
                    {
                        "Label":  "node1",
-                       "Port":  "COM25",
+                       "Port":  "COM20",
                        "Role":  "root",
                        "Kind":  "root",
                        "Display":  "ROOT (announces the phases)",
