@@ -11,6 +11,7 @@
     python tools/push_data.py pull --area logs         fetch teammates' run logs
     python tools/push_data.py pull --area presets      fetch teammates' presets - never touches code
     python tools/push_data.py delete --area <area>     pick files to remove from GitHub (+ this laptop)
+    python tools/push_data.py delete-local --area <a>  pick files to remove from THIS LAPTOP only
     python tools/push_data.py restore --area <area>    bring deleted files back from GitHub's history
 
 A delete is an ordinary commit, so git history keeps every deleted file and
@@ -18,6 +19,12 @@ A delete is an ordinary commit, so git history keeps every deleted file and
 is what keeps that promise. A teammate's next pull/push offers to remove their
 copies of files deleted on GitHub (never automatic), and push never re-uploads
 a file that was deleted on GitHub - restore it instead.
+
+`delete-local` is the one exception to that promise, and it says so as it asks:
+it removes this laptop's copies only (junk exports, a botched run), GitHub is
+never touched, and a file GitHub has never seen is gone for good. It is also
+reachable by answering 'd' at the push confirmation, to prune what the push
+listed before sending the rest.
 
 The branch is whichever one YOUR repo is checked out on (--branch overrides).
 It used to be hardcoded, which quietly sent data to one branch while the code
@@ -316,18 +323,20 @@ class Freshness:
     def label(self, rel, ts):
         return fmt_when(ts, self.now, "green" if self.is_new(rel, ts) else "yellow")
 
-    def legend(self):
+    def rule(self):
+        """The green/yellow rule on its own - for a listing that says what Time means itself."""
         g, y = paint("green", "green"), paint("yellow", "yellow")
         if self.batch:
-            rule = "{} = your latest SD import ({}, {} file(s)), the rest of that run, or newer, {} = older".format(
+            return "{} = your latest SD import ({}, {} file(s)), the rest of that run, or newer, {} = older".format(
                 g, datetime.fromtimestamp(self.batch["started"]).strftime("%b %d %Y %H:%M"),
                 len(self.batch["files"]), y)
-        elif self.by_name:
-            rule = "{} = last {} min, {} = older (no SD import recorded on this laptop yet)".format(
+        if self.by_name:
+            return "{} = last {} min, {} = older (no SD import recorded on this laptop yet)".format(
                 g, RECENT_MINUTES, y)
-        else:
-            rule = "{} = last {} min, {} = older".format(g, RECENT_MINUTES, y)
-        return "  Time = {}.  {}".format(self.what, rule)
+        return "{} = last {} min, {} = older".format(g, RECENT_MINUTES, y)
+
+    def legend(self):
+        return "  Time = {}.  {}".format(self.what, self.rule())
 
     def counts(self, items):
         n = sum(1 for rel, ts, _ in items if self.is_new(rel, ts))
@@ -734,19 +743,57 @@ def print_plan(writes, notes, area=EXPORTS):
 
 # ------------------------------------------------------------------ syncing ---
 
+def ask_push(n, ctx):
+    """The push confirmation: 'push', 'delete' (prune this laptop first) or 'cancel'."""
+    q = "\nPush {} file(s) to GitHub branch '{}'?".format(n, ctx.branch)
+    if ctx.yes:
+        print(q + " y (--yes)")
+        return "push"
+    print(q)
+    print("    [y] push them")
+    print("    [d] delete some of these files from this laptop first - nothing is pushed yet")
+    while True:
+        try:
+            ans = input("  y / d, Enter cancels > ").strip().lower()
+        except EOFError:
+            return "cancel"
+        if ans in ("y", "yes"):
+            return "push"
+        if ans in ("d", "delete"):
+            return "delete"
+        if ans in ("", "n", "no", "q"):
+            return "cancel"
+        print("  Type y (push), d (delete files from this laptop), or Enter to cancel.")
+
+
 def sync_push(ctx, area):
     """Returns True if the push succeeded or there was nothing new, False if cancelled."""
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    # Plan-and-confirm loops on its own, outside the retry budget below: deleting
+    # unnecessary files changes what would go up, so the plan is rebuilt and shown
+    # again, and pruning must never eat one of the push attempts.
+    while True:
         refresh(ctx)
         writes, notes = build_plan(ctx, area)
-        if attempt == 1:
-            print_plan(writes, notes, area)
+        print_plan(writes, notes, area)
         if not writes:
             print("\n  Nothing new to push - GitHub already has all of your {} data.".format(area))
             return True
-        if attempt == 1 and not ask("\nPush {} file(s) to GitHub branch '{}'?".format(len(writes), ctx.branch), ctx.yes):
+        answer = ask_push(len(writes), ctx)
+        if answer == "delete":
+            delete_local_files(ctx, area)
+            continue
+        if answer != "push":
             print("  Cancelled - nothing was pushed.")
             return False
+        break
+
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        if attempt > 1:
+            refresh(ctx)
+            writes, _ = build_plan(ctx, area)
+            if not writes:
+                print("\n  A teammate pushed the same files - GitHub already has them.")
+                return True
 
         for _, _, repo_path, data in writes:
             dst = ctx.sync / repo_path
@@ -1008,27 +1055,30 @@ def recent_legend():
         paint("green", "green"), RECENT_MINUTES, paint("yellow", "yellow"))
 
 
-def pick_files_to_delete(rels, times):
+def pick_files_to_delete(rels, stamp, legend, header, extra=None):
     """Delete picker: ALL files, or some - by folder, then all or only some of that folder's files.
 
-    Every folder and file line carries its upload time, coloured by age, so the
-    operator can see which data is today's and which is old before choosing.
-    Enter cancels at every step: a delete is never the default answer.
+    Used by both deletes, which count time differently: `stamp(rel)` returns
+    (unix time or None, the coloured fixed-width time column, is-it-new) - upload
+    time for the GitHub delete, import time for the local one - and `extra(rel)`
+    adds text after the file name. Every folder and file line carries its time,
+    coloured by age, so the operator can see which data is today's and which is
+    old before choosing. Enter cancels at every step: a delete is never the
+    default answer.
     """
-    now = int(time.time())
     folders = []
     for rel in rels:
         if folder_of(rel) not in folders:
             folders.append(folder_of(rel))
-    print("\n  On GitHub now - {} file(s) in {} folder(s)   ({})".format(len(rels), len(folders), recent_legend()))
+    print("\n  {} - {} file(s) in {} folder(s)   ({})".format(header, len(rels), len(folders), legend))
     for i, f in enumerate(folders, 1):
-        stamps = [times.get(r, (None,))[0] for r in rels if folder_of(r) == f]
-        n_new = sum(1 for t in stamps if is_recent(t, now))
-        known = [t for t in stamps if t is not None]
+        marks = [stamp(r) for r in rels if folder_of(r) == f]
+        n_new = sum(1 for _, _, new in marks if new)
+        newest = max(marks, key=lambda m: (m[0] is not None, m[0] or 0))
         print("    [{}] {}/".format(i, f))
-        print("          {} file(s): {} recent, {} old   newest {}".format(
-            len(stamps), paint(str(n_new), "green"), paint(str(len(stamps) - n_new), "yellow"),
-            fmt_uploaded(max(known) if known else None, now)))
+        print("          {} file(s): {} new, {} old   newest {}".format(
+            len(marks), paint(str(n_new), "green"), paint(str(len(marks) - n_new), "yellow"),
+            newest[1].rstrip()))
 
     print("\n  Delete what?")
     print("    [a] ALL {} file(s) above ({} folder(s))".format(len(rels), len(folders)))
@@ -1055,17 +1105,16 @@ def pick_files_to_delete(rels, times):
         keep = {folders[i] for i in idx}
     pool = [r for r in rels if folder_of(r) in keep]
     # Newest first inside each folder, so today's files sit together at the top.
-    pool.sort(key=lambda r: (folders.index(folder_of(r)), -(times.get(r, (0,))[0] or 0), r))
+    pool.sort(key=lambda r: (folders.index(folder_of(r)), -(stamp(r)[0] or 0), r))
 
-    print("\n  Files ({}):".format(recent_legend()))
+    print("\n  Files ({}):".format(legend))
     shown = None
     for i, rel in enumerate(pool, 1):
         if folder_of(rel) != shown:
             shown = folder_of(rel)
             print("    {}/".format(shown))
-        ts, who = times.get(rel, (None, ""))
-        print("    [{:>{w}}] {}  {}{}".format(i, fmt_uploaded(ts, now), rel.rsplit("/", 1)[-1],
-                                           "  by " + who if who else "", w=len(str(len(pool)))))
+        print("    [{:>{w}}] {}  {}{}".format(i, stamp(rel)[1], rel.rsplit("/", 1)[-1],
+                                           extra(rel) if extra else "", w=len(str(len(pool)))))
     idx = prompt_picks("\n  Delete which? 'all' = all {} file(s) listed, numbers = only those (e.g. 1,4-6), "
                        "Enter cancels > ".format(len(pool)), len(pool))
     return [pool[i] for i in idx]
@@ -1122,13 +1171,113 @@ def offer_local_removal(ctx, area, deleted, picked=None):
             print("    " + rel)
 
 
+def delete_local_files(ctx, area):
+    """Delete data files from THIS LAPTOP only - GitHub is never touched. Returns the count.
+
+    The one delete here that can be unrecoverable, so it is the loudest: a file
+    GitHub has never seen exists in exactly one place, and if the SD card was
+    already cleared on import this is its last copy. The picks are therefore
+    split into "GitHub also has these bytes" and "only here", the second group is
+    listed by name, and DELETE has to be typed. Never automatic - not even with
+    --yes, which answers pushes.
+
+    Ledgers and archive/ folders are not offered: a run registry and a curated
+    archive are not what "unnecessary files" means.
+    """
+    # Fetch first, like every other delete here. "Is this file on GitHub?" is
+    # answered from the clone's HEAD, and a stale HEAD would call a teammate's
+    # freshly pushed file "this laptop only" - a warning in the safe direction,
+    # but still the wrong answer to the only question that matters here.
+    refresh(ctx)
+    pool, n_ledger, n_archive = [], 0, 0
+    for rel in local_files(area, AREA_EXT[area]):
+        if rel.rsplit("/", 1)[-1] in LEDGERS:
+            n_ledger += 1
+        elif in_archive(rel):
+            n_archive += 1
+        else:
+            pool.append(rel)
+    if not pool:
+        print("\n  This laptop has no {} files to delete.".format(area))
+        return 0
+    # Path presence only, so the listing costs no blob reads. Whether the BYTES
+    # match is what decides recoverable-or-not, and that is checked below for the
+    # handful of files actually picked.
+    tracked = set(remote_tree(ctx, area))
+    fresh = Freshness(area, "when it was imported (from the file name)" if area == EXPORTS
+                      else "last changed on this laptop")
+
+    def stamp(rel):
+        ts = fresh.when(rel, local_mtime(rel))
+        return ts, fresh.label(rel, ts), fresh.is_new(rel, ts)
+
+    def where(rel):
+        return "  (on GitHub)" if ctx.prefix + rel in tracked else "  (this laptop only)"
+
+    held = []
+    if n_ledger:
+        held.append("{} ledger file(s) (the run registry)".format(n_ledger))
+    if n_archive:
+        held.append("{} file(s) in an archive folder".format(n_archive))
+    if held:
+        print("\n  Not offered: " + ", ".join(held) + ".")
+    print("\n  Time = {}.".format(fresh.what))
+    picked = pick_files_to_delete(pool, stamp, fresh.rule(), "On this laptop", extra=where)
+    if not picked:
+        print("  Cancelled - nothing was deleted.")
+        return 0
+
+    safe, only_here = [], []
+    for rel in picked:
+        p = BASE / rel
+        if not p.is_file():
+            continue
+        (safe if older_version_on_github(ctx, ctx.prefix + rel, p.read_bytes()) else only_here).append(rel)
+    if not safe and not only_here:
+        print("  Already gone from this laptop - nothing to delete.")
+        return 0
+    print("")
+    if safe:
+        print("  {} file(s) GitHub has too - a pull can bring these back:".format(len(safe)))
+        for rel in safe:
+            print("    " + rel)
+    if only_here:
+        print("  {} file(s) exist ONLY on this laptop. Deleting them is PERMANENT - no pull and no".format(
+            len(only_here)))
+        print("  restore can bring them back, and if the SD card was cleared on import this is the")
+        print("  last copy:")
+        for rel in only_here:
+            print("    " + rel)
+    try:
+        ans = input("\n  Type DELETE to remove these {} file(s) from this laptop > ".format(
+            len(safe) + len(only_here))).strip()
+    except EOFError:
+        ans = ""
+    if ans != "DELETE":
+        print("  Cancelled - nothing was deleted.")
+        return 0
+    print("")
+    remove_local(safe + only_here)
+    return len(safe) + len(only_here)
+
+
 def delete_on_github(ctx, area):
     refresh(ctx)
     cands = [r for r in remote_payload(ctx, area) if r.rsplit("/", 1)[-1] not in LEDGERS]
     if not cands:
         print("\n  GitHub has no {} files to delete.".format(area))
         return
-    picked = pick_files_to_delete(cands, upload_times(ctx, area))
+    times, now = upload_times(ctx, area), int(time.time())
+
+    def stamp(rel):
+        ts = times.get(rel, (None, ""))[0]
+        return ts, fmt_uploaded(ts, now), is_recent(ts, now)
+
+    def by_whom(rel):
+        who = times.get(rel, (None, ""))[1]
+        return "  by " + who if who else ""
+
+    picked = pick_files_to_delete(cands, stamp, recent_legend(), "On GitHub now", extra=by_whom)
     if not picked:
         print("  Cancelled - nothing was deleted.")
         return
@@ -1314,7 +1463,8 @@ def test_cleanup(ctx):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=["push", "pull", "delete", "restore", "test", "test-cleanup"])
+    ap.add_argument("action", choices=["push", "pull", "delete", "delete-local", "restore",
+                                       "test", "test-cleanup"])
     ap.add_argument("--area", choices=["exports", "presets", "analysis", "logs"], default="exports",
                      help="what push/pull syncs: capture CSVs under datasets/exports (default), "
                           "your saved presets under presets/<you>/, analysis + EDA output "
@@ -1351,6 +1501,9 @@ def main():
         # Always interactive: which files go is typed, never assumed by --yes.
         if args.action == "delete":
             delete_on_github(ctx, area)
+            return 0
+        if args.action == "delete-local":
+            delete_local_files(ctx, area)
             return 0
         if args.action == "restore":
             restore_from_github(ctx, area)

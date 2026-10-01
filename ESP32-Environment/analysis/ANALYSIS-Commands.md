@@ -211,4 +211,4 @@ classic tell that a folder pooled unrelated sessions.
   wormhole-only; `PDR` is undefined for the **root**, which receives probes rather than
   sending them. "No feature is uniformly NaN" is a claim about the **assembled** dataset
   (16/16 across the matrix), not about any single run. See
-  `..\docs\issue_logs\thesis-deviate.md`, "Not deviations".
+  `..\docs\deviations-limitations\thesis-deviate.md`, "Not deviations".

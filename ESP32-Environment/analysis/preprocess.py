@@ -363,6 +363,15 @@ def _repeat_from_filename(source_file: str):
     return int(m.group(1)) if m else np.nan
 
 
+def only_repeat(files: list[str], repeat: int | None) -> list[str]:
+    """Keep only attempt `repeat`'s files; None keeps everything. A file whose
+    name carries no canonical _rN_ tag is dropped rather than guessed into
+    the attempt."""
+    if repeat is None:
+        return files
+    return [f for f in files if _repeat_from_filename(os.path.basename(f)) == repeat]
+
+
 KNOWN_ATTACKS = ("baseline", "blackhole", "wormhole")
 KNOWN_TOPOLOGIES = ("linear", "star", "tree", "partial_mesh")
 
@@ -597,7 +606,8 @@ def _reject_unimported_card_files(files: list[str], report: PreprocessReport) ->
     return kept
 
 
-def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame:
+def load_raw_telemetry(input_dir: str, report: PreprocessReport,
+                       repeat: int | None = None) -> pd.DataFrame:
     """
     Load every *_telem.csv file in input_dir into one long DataFrame.
 
@@ -612,8 +622,12 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport) -> pd.DataFrame
     pattern = os.path.join(input_dir, "*_telem.csv")
     files = sorted(glob.glob(pattern))
     files = _reject_unimported_card_files(files, report)
+    files = only_repeat(files, repeat)
 
     if not files:
+        if repeat is not None:
+            raise FileNotFoundError(
+                f"No *_r{repeat}_*_telem.csv files found in {input_dir!r}.")
         raise FileNotFoundError(
             f"No *_telem.csv files found in {input_dir!r}. "
             f"Expected files like NODE_AABBCC..._RUN_001_telem.csv "
@@ -1291,6 +1305,7 @@ def _max_consecutive_true(flags: np.ndarray) -> int:
 
 def run_pipeline(
     input_dir: str,
+    repeat: int | None = None,
 ) -> tuple[pd.DataFrame, PreprocessReport, pd.DataFrame]:
     """
     Full pipeline entry point. Accepts a folder of raw *_telem.csv files,
@@ -1308,7 +1323,7 @@ def run_pipeline(
     """
     report = PreprocessReport()
 
-    raw = load_raw_telemetry(input_dir, report)
+    raw = load_raw_telemetry(input_dir, report, repeat)
     rebased = rebase_timestamps(raw)
     filled = handle_missing_values(rebased, report)
     windowed = build_windows(filled, report, _run_context_from_path(input_dir))
@@ -1354,10 +1369,15 @@ def main():
         action="store_true",
         help="Print the quality report to stdout after running",
     )
+    parser.add_argument(
+        "--repeat", type=int, default=None,
+        help="Only load this attempt's files (the _rN_ in the name)",
+    )
     args = parser.parse_args()
 
-    print(f"Loading raw telemetry from: {args.input_dir}")
-    windowed, report, _ = run_pipeline(args.input_dir)
+    print(f"Loading raw telemetry from: {args.input_dir}"
+          + (f"  (attempt r{args.repeat} only)" if args.repeat is not None else ""))
+    windowed, report, _ = run_pipeline(args.input_dir, args.repeat)
 
     windowed.to_csv(args.output, index=False)
     print(f"Wrote {len(windowed)} windowed rows to: {args.output}")
