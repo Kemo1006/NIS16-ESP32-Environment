@@ -6,7 +6,7 @@ Analysis of ESP32-Based ESP-WIFI-MESH Network"* (DLSU CTTHES2/THES3).
 This guide is **Part 1 of 2** and takes you from a fresh laptop to a flashed,
 running mesh (steps 1–6). **Follow it top to bottom.** Running the experiment,
 exporting the CSVs, verifying the data, gotchas, and troubleshooting continue in
-**[`docs/2026-09-14_START-HERE.md`](docs/2026-09-14_START-HERE.md)** — the current
+**[`docs/operations/2026-09-14_START-HERE.md`](docs/operations/2026-09-14_START-HERE.md)** — the current
 hub doc, which also covers `menu.ps1` (the easiest way to drive everything) and
 `tools/verify_attack.py` (the panel-cited attack verification). The original
 manual Part 2 walkthrough is archived at
@@ -15,7 +15,7 @@ if you want the step-by-step `idf.py` commands without the menu — note it
 predates `-Location` (now required for export) and `menu.ps1`.
 
 > ⚠️ **The single most important rule:** never run `idf.py set-target`. See
-> [Golden rules in START-HERE.md](docs/2026-09-14_START-HERE.md) — it silently
+> [Golden rules in START-HERE.md](docs/operations/2026-09-14_START-HERE.md) — it silently
 > breaks data logging.
 
 ---
@@ -135,7 +135,7 @@ idf.py -p COM3 flash monitor      # replace COM3 with the root's actual port
 **Success looks like (in the monitor):**
 - `Project name: root_node`
 - `=== ROOT NODE STARTING ===`
-- `SPIFFS mounted. Total: 345 KB ...`  ← if this line is missing, see [Golden rules in START-HERE.md](docs/2026-09-14_START-HERE.md)
+- `SPIFFS mounted. Total: 345 KB ...`  ← if this line is missing, see [Golden rules in START-HERE.md](docs/operations/2026-09-14_START-HERE.md)
 - mesh starts forming
 
 Leave this monitor open. (Exit any monitor anytime with **Ctrl + ]**.)
@@ -162,9 +162,9 @@ idf.py -p COM6 flash monitor      # replace COM6 with the victim's actual port
 
 ---
 
-## ➡️ Next: run it, export, verify → [`START-HERE.md`](docs/2026-09-14_START-HERE.md)
+## ➡️ Next: run it, export, verify → [`START-HERE.md`](docs/operations/2026-09-14_START-HERE.md)
 
-The mesh is up. Continue in **[`docs/2026-09-14_START-HERE.md`](docs/2026-09-14_START-HERE.md)** for:
+The mesh is up. Continue in **[`docs/operations/2026-09-14_START-HERE.md`](docs/operations/2026-09-14_START-HERE.md)** for:
 - The ~8-11 minute run (phase timeline) and the easiest way to drive it — `menu.ps1`
 - Exporting the CSVs (USB or SD card) and where the files land
 - **Verifying a run is real** — `tools/verify_attack.py`, the panel-cited 3-sigma check

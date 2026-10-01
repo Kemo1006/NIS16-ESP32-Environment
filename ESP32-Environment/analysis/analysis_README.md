@@ -170,7 +170,7 @@ type where it is. None is uniformly NaN across the dataset:
 `LatencyHopRatio` and `TunnelLatency` were previously NaN in *every*
 run. Both are now computed from the root's arrivals log after removing
 the unsynchronised-clock offset — see **D-2** and **D-3** in
-[`thesis-deviate.md`](../docs/issue_logs/thesis-deviate.md) for the method, the measured
+[`thesis-deviate.md`](../docs/deviations-limitations/thesis-deviate.md) for the method, the measured
 results, and the deviations from Eq 4.14's "Mean RTT" wording. No
 firmware change and no re-capture was needed.
 

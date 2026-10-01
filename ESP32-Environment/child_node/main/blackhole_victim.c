@@ -102,7 +102,7 @@ static uint8_t  s_self_mac[6]          = {0};
  * byte-for-byte an ordinary relay except for a single boolean decision. There
  * is no separate attack path, no special addressing, no control-plane change -
  * exactly the "stays protocol-compliant at PHY/MAC" criterion in
- * docs/ATTACK-VALIDATION.md, now true by construction rather than by argument.
+ * docs/attack-validation/ATTACK-VALIDATION.md, now true by construction rather than by argument.
  */
 
 /* How long the attack window may run with NOTHING having transited this node

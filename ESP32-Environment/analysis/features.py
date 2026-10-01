@@ -96,7 +96,7 @@ EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 # window_start % 5 == 0 — a merge-key artefact, not a property of the data.
 # It also made eda.py drop 12 of 16 features from PCA/t-SNE.
 # Importing it makes divergence impossible.
-from preprocess import GRID_HZ, WINDOW_SECONDS  # noqa: E402
+from preprocess import GRID_HZ, WINDOW_SECONDS, only_repeat  # noqa: E402
 
 # Wire size of one wormhole tunnel frame, for TunnelBytes. Mirrors
 # sizeof(tunnel_pkt_t) in wormhole_victim.c: __attribute__((packed)) struct of
@@ -240,7 +240,7 @@ def normalize_mac(mac: str) -> str:
     return mac.replace(":", "").upper()
 
 
-def load_arrivals(arrivals_dir: str) -> pd.DataFrame | None:
+def load_arrivals(arrivals_dir: str, repeat: int | None = None) -> pd.DataFrame | None:
     """
     Load + rebase every *_arrivals.csv in arrivals_dir into one frame, or
     None if there are none. Shared by the PDR and latency features so the
@@ -254,7 +254,8 @@ def load_arrivals(arrivals_dir: str) -> pd.DataFrame | None:
 
     Adds: timestamp_s, t_rel, window_idx, window_start, _src_mac_norm.
     """
-    arrival_files = sorted(glob.glob(os.path.join(arrivals_dir, "*_arrivals.csv")))
+    arrival_files = only_repeat(
+        sorted(glob.glob(os.path.join(arrivals_dir, "*_arrivals.csv"))), repeat)
     if not arrival_files:
         return None
 
@@ -512,9 +513,115 @@ def compute_link_reliability_features(windowed: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+# A file's name stamp is its export time (minute resolution); the fitted run end
+# can sit a little after the minute it was exported in.
+EXPORT_SLACK_S = 120
+# Exported longer than this after its run -> a run this laptop has no log of may
+# sit in between, so the file is not joined (NaN beats another run's retries).
+EXPORT_MAX_DELAY_S = 3 * 3600
+
+
+def compute_mac_retry_features(windowed: pd.DataFrame, datasets_dir: str | None = None) -> pd.DataFrame:
+    """
+    MacRetryRate: the REAL 802.11 retry rate of this node's uplink (its frames
+    to its parent), seen by the ESP32 sniffer - frames carrying the Retry bit /
+    all its unicast data frames heard in the window. MacFramesHeard: how many.
+
+    Not one of the 16 Table 4.11 features and not a model input: the boards
+    cannot measure it (D-15), so it exists only for runs that have a sniffer
+    capture AND the root's run log (tools/pcap_retry.py pairs them). NaN means
+    NOT MEASURED - no capture of this run, outside the capture or in a sniffer
+    pause, the root (no uplink), or nothing heard that second. Never read NaN
+    as "no retries".
+
+    Run matching (no run id exists in the CSVs): every run log under datasets/
+    is a run (pcap_retry.run_registry). A file belongs to the LATEST run of its
+    attack/topology/location/scenario/repeat that could have ended before the
+    file was exported (its name stamp), within EXPORT_MAX_DELAY_S. It is joined
+    only if THAT run has a usable capture - so two r1 runs of one cell never
+    share retries, and a run whose capture was refused stays NaN. The join is
+    per node MAC on seconds from the attack start (t_anchor_s here,
+    t_rel_attack_s in the capture's CSV); the attacker's own forward counter
+    lines up with the sniffer at lag 0 (r = 0.99, sep. 27 18:35 run).
+    """
+    out = pd.DataFrame({"MacRetryRate": np.nan, "MacFramesHeard": np.nan}, index=windowed.index)
+    if windowed.empty or not {"node_id", "source_file", "t_anchor_s"} <= set(windowed.columns):
+        return out
+    import name_stamp
+    import pcap_retry
+
+    print("Sniffer captures (real MAC retries, tools/pcap_retry.py):")
+    try:
+        metas = pcap_retry.refresh_all(datasets_dir or pcap_retry.DATASETS)
+    except Exception as ex:  # an optional column must not cost the 16 features
+        warnings.warn(f"[features] sniffer retry data skipped - pcap_retry failed: {ex!r}", stacklevel=2)
+        return out
+    if not metas:
+        print("  none usable - MacRetryRate stays NaN")
+        return out
+    runs = pcap_retry.run_registry(metas, datasets_dir or pcap_retry.DATASETS)
+
+    tables: dict[str, dict] = {}
+    unmatched = []
+    for source_file, g in windowed.groupby("source_file", sort=False):
+        first = g.iloc[0]
+        role = str(first.get("node_role", "")).lower()
+        mac = node_id_to_mac_norm(first["node_id"]).lower()
+        if role == ROOT_ROLE or len(mac) != 12:
+            continue
+        mac = ":".join(mac[i:i + 2] for i in range(0, 12, 2))
+        stamp = name_stamp.find(str(source_file))
+        if not stamp:
+            unmatched.append(f"{source_file} (no export time in its name)")
+            continue
+        exported = name_stamp.parse(stamp)[0].replace(tzinfo=pcap_retry.PHT).timestamp()
+        ident = {k: (None if pd.isna(first.get(k)) else first.get(k))
+                 for k in ("attack", "topology", "location", "scenario")}
+        rep = first.get("run_repeat")
+        ident["repeat"] = None if pd.isna(rep) else int(rep)
+        cands = [r for r in runs if pcap_retry.same_identity(ident, r["identity"])
+                 and r["earliest_end"] - EXPORT_SLACK_S <= exported]
+        run = max(cands, key=lambda r: r["earliest_end"]) if cands else None
+        if run is None or exported - run["earliest_end"] > EXPORT_MAX_DELAY_S:
+            unmatched.append(str(source_file))
+            continue
+        meta = run["capture"]
+        if meta is None:
+            unmatched.append(f"{source_file} (its run's capture is unusable or missing)")
+            continue
+        if meta["capture"] not in tables:
+            t = pd.read_csv(meta["csv_path"])
+            t = t[t["direction"] == "up"].groupby(["ta", "t_rel_attack_s"])[["frames", "retries"]].sum()
+            zero = meta["zero_second_epoch"]
+            first_s, last_s = meta["capture_epoch"]
+            gaps = [(a - zero, z - zero) for a, z in meta["pauses_epoch"]]
+            tables[meta["capture"]] = {"t": t, "lo": np.ceil(first_s) - zero,
+                                       "hi": np.floor(last_s) - zero - 1, "gaps": gaps}
+        tb = tables[meta["capture"]]
+        rel = pd.to_numeric(g["t_anchor_s"], errors="coerce").round()
+        covered = rel.between(tb["lo"], tb["hi"])
+        for a, z in tb["gaps"]:
+            covered &= ~((rel + 1 > a) & (rel < z))
+        if mac in tb["t"].index.get_level_values(0):
+            node = tb["t"].loc[mac]
+            frames = rel.map(node["frames"]).fillna(0)
+            retries = rel.map(node["retries"]).fillna(0)
+        else:
+            frames = retries = pd.Series(0.0, index=g.index)
+        out.loc[g.index, "MacFramesHeard"] = frames.where(covered)
+        out.loc[g.index, "MacRetryRate"] = (retries / frames).where(covered & (frames > 0))
+        print(f"  {source_file} <- {meta['capture']}: "
+              f"{int(out.loc[g.index, 'MacRetryRate'].notna().sum())}/{len(g)} windows measured")
+    if unmatched:
+        print(f"  {len(unmatched)} non-root file(s) with no capture of their run (NaN): "
+              + ", ".join(unmatched[:4]) + (" ..." if len(unmatched) > 4 else ""))
+    return out
+
+
 def compute_pdr_features(
     windowed: pd.DataFrame,
     arrivals_dir: str,
+    repeat: int | None = None,
 ) -> pd.DataFrame:
     """
     Packet Delivery Ratio (Equation 4.5), victim nodes only.
@@ -590,7 +697,7 @@ def compute_pdr_features(
     out["PDR"] = np.nan
     out["_pdr_clipped"] = False
 
-    arrivals = load_arrivals(arrivals_dir)
+    arrivals = load_arrivals(arrivals_dir, repeat)
     if arrivals is None:
         return out  # no root log available — leave PDR as NaN, not 0
 
@@ -763,6 +870,7 @@ def _arrival_sender_window(windowed: pd.DataFrame, arrivals: pd.DataFrame) -> np
 def compute_latency_features(
     windowed: pd.DataFrame,
     arrivals_dir: str,
+    repeat: int | None = None,
 ) -> pd.DataFrame:
     """
     LatencyHopRatio (Eq 4.14) and TunnelLatency (Table 4.11, auxiliary).
@@ -846,7 +954,7 @@ def compute_latency_features(
     out["LatencyHopRatio"] = np.nan
     out["TunnelLatency"] = np.nan
 
-    arrivals = load_arrivals(arrivals_dir)
+    arrivals = load_arrivals(arrivals_dir, repeat)
     if arrivals is None or "latency_us" not in arrivals.columns:
         return out
 
@@ -1175,6 +1283,7 @@ def compute_features(
     windowed: pd.DataFrame,
     filled_long: pd.DataFrame,
     arrivals_dir: str | None = None,
+    repeat: int | None = None,
 ) -> pd.DataFrame:
     """
     Compute all 16 Table 4.11 features and attach them to windowed,
@@ -1204,9 +1313,10 @@ def compute_features(
     phy, rssi_stab = compute_physical_layer_features(windowed, filled_long)
     cross = compute_cross_layer_features(windowed)
     tunnel = compute_tunnel_features(windowed)
+    mac_retry = compute_mac_retry_features(windowed)
 
     result = windowed.copy()
-    result = pd.concat([result, fwd, nbr, link, phy, cross, tunnel], axis=1)
+    result = pd.concat([result, fwd, nbr, link, phy, cross, tunnel, mac_retry], axis=1)
 
     # topo and rssi_stab are keyed by (node_id, source_file, window_start)
     # rather than positional index, since they're computed via groupby
@@ -1220,7 +1330,7 @@ def compute_features(
     )
 
     if arrivals_dir is not None:
-        pdr = compute_pdr_features(windowed, arrivals_dir)
+        pdr = compute_pdr_features(windowed, arrivals_dir, repeat)
         result["PDR"] = pdr["PDR"].values
         if "_pdr_clipped" in pdr.columns:
             result["_pdr_clipped"] = pdr["_pdr_clipped"].values
@@ -1228,7 +1338,7 @@ def compute_features(
         # they overwrite the NaN placeholders set by the cross-layer and
         # tunnel blocks above (see compute_latency_features for why those
         # placeholders existed and what changed).
-        lat = compute_latency_features(windowed, arrivals_dir)
+        lat = compute_latency_features(windowed, arrivals_dir, repeat)
         result["LatencyHopRatio"] = lat["LatencyHopRatio"].values
         result["TunnelLatency"] = lat["TunnelLatency"].values
     else:
@@ -1316,17 +1426,23 @@ def main():
         help="Folder containing *_arrivals.csv for PDR computation "
              "(defaults to input_dir if not specified)",
     )
+    parser.add_argument(
+        "--repeat", type=int, default=None,
+        help="Only use this attempt's telem + arrivals files (the _rN_ in the name)",
+    )
     args = parser.parse_args()
 
     arrivals_dir = args.arrivals_dir or args.input_dir
 
-    print(f"Running M6 preprocessing on: {args.input_dir}")
-    windowed, report, filled = run_pipeline(args.input_dir)
+    print(f"Running M6 preprocessing on: {args.input_dir}"
+          + (f"  (attempt r{args.repeat} only)" if args.repeat is not None else ""))
+    windowed, report, filled = run_pipeline(args.input_dir, args.repeat)
     print(report.summary())
 
     print()
     print(f"Computing 16 Table 4.11 features...")
-    feature_table = compute_features(windowed, filled, arrivals_dir=arrivals_dir)
+    feature_table = compute_features(windowed, filled, arrivals_dir=arrivals_dir,
+                                     repeat=args.repeat)
 
     feature_table.to_csv(args.output, index=False)
     print(f"Wrote {len(feature_table)} feature rows to: {args.output}")
@@ -1339,7 +1455,7 @@ def main():
         "ParentSwitchRate", "HopChangeCount", "HopStabilityDuration",
         "RSSI_mean", "RSSI_var", "RSSI_stability",
         "RSSI_Hop_Diff", "LatencyHopRatio", "ConsistencyScore",
-        "TunnelIntensity", "TunnelBytes", "TunnelLatency",
+        "TunnelIntensity", "TunnelBytes", "TunnelLatency", "MacRetryRate",
     ]:
         if col in feature_table.columns:
             nan_counts[col] = feature_table[col].isna().sum()
@@ -1370,6 +1486,8 @@ def main():
             flag = ""
         if col == "LatencyHopRatio":
             flag += " [relative one-way delay — see thesis-deviate.md]"
+        if col == "MacRetryRate":
+            flag += " [sniffer runs only, not a model input — NaN = not measured, D-15]"
         print(f"  {col}: {n}/{total} NaN{flag}")
     print("─────────────────────────────────────────────────────")
 

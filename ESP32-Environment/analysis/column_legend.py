@@ -4,7 +4,7 @@ column_legend.py — plain-language legend for every CSV column in the pipeline.
 Writes <name>_legend.csv NEXT TO a data CSV, one row per column that file
 actually has: what it is, its unit / allowed values, and the caveats that
 matter when reading it (several raw counters mean different things on
-different roles — see docs/DATA-DICTIONARY.md, which this mirrors).
+different roles — see docs/data-and-results/DATA-DICTIONARY.md, which this mirrors).
 
 Why a separate file and not a header block inside the data CSV: every reader
 in this repo (pandas, validate_integrity.py, preprocess.py's *_telem.csv glob)
@@ -232,6 +232,16 @@ _add("RetryRate", "Feature (features.py)",
      "Kept in the dataset for completeness but NOT used in EDA, attack "
      "verification or any model: no cited study backs it as an attack "
      "indicator and it measured flat in every phase (D-15).")
+_add("MacRetryRate", "Sniffer (features.py + tools/pcap_retry.py)",
+     "REAL 802.11 retry rate of this node's frames to its parent, seen by the sniffer",
+     "0-1 (share of heard frames carrying the Retry bit)",
+     "Only on runs with a sniffer capture + the root's run log. NaN = NOT measured "
+     "(no capture, root, pause, nothing heard) - never 'no retries'. Not a model input (D-15).")
+_add("MacFramesHeard", "Sniffer (features.py + tools/pcap_retry.py)",
+     "802.11 data frames from this node to its parent the sniffer heard in the window",
+     "count (0 = covered but silent; NaN = not covered)",
+     "Support for MacRetryRate. Frames, not probes: the sniffer misses some and the "
+     "radio can bundle several probes in one frame.")
 _add("PDR", "Feature (features.py)",
      "Packet Delivery Ratio: share of this victim's probes the root received",
      "0-1 (1 = all delivered)",

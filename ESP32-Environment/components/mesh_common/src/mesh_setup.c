@@ -984,9 +984,19 @@ static void tree_line_cb(void *ctx, int idx, int depth)
              uplink, f->cnt_w, (unsigned)f->g->child_count[idx]);
 }
 
+/* Levels drawn with connectors. ESP-WIFI-MESH caps at 25 layers; anything
+ * deeper than this keeps printing, just without further indentation. */
+#define TREE_ART_MAX_DEPTH 16
+
 typedef struct {
-    int lyr_w;
-    int role_w;
+    const topo_graph_t *g;
+    int  lyr_w;
+    int  role_w;
+    /* last[d] = the node at depth d on the path currently being walked is its
+     * parent's LAST child, so its column carries no more branches below it.
+     * topo_walk() is depth-first pre-order, so by the time a node at depth d is
+     * drawn, entries 1..d-1 already describe its own ancestors. */
+    bool last[TREE_ART_MAX_DEPTH + 1];
 } art_fmt_t;
 
 /* ADDITIONAL view, printed BELOW the PARENT/CHILD table above, which is left
@@ -994,35 +1004,58 @@ typedef struct {
  * UPLINK; this one draws the same walk as a shape, so depth and who-sits-under-
  * whom are readable at a glance while a run is in progress.
  *
+ * Drawn as real branches (+-- / `-- / |) rather than plain indentation: with
+ * indentation alone, children of different parents at the same depth print in
+ * the same column and nothing on the line says which one is whose - the shape
+ * has to be reconstructed by eye against the UPLINK table. The trunk removes
+ * that step.
+ *
  * ASCII only, deliberately: the wizard's console is cp1252 and box-drawing
  * characters arrive there as mojibake - the same reason tools/command_center.py
  * is ASCII-only. */
 static void tree_art_cb(void *ctx, int idx, int depth)
 {
-    const art_fmt_t *f = (const art_fmt_t *)ctx;
+    art_fmt_t *f = (art_fmt_t *)ctx;
     const heartbeat_entry_t *e = &s_nodes[idx];
     char hop[16];
-    fmt_hop(hop, sizeof(hop), depth, f->lyr_w);
+    /* fmt_hop() takes a LAYER (root = 1), not a tree DEPTH (root = 0) - same
+     * conversion tree_line_cb already applies. Passing depth directly made the
+     * root hit fmt_hop's layer<=0 branch and print "H--" here (unreachable)
+     * while the PARENT/CHILD table above correctly printed "H00" for it. */
+    fmt_hop(hop, sizeof(hop), depth + 1, f->lyr_w);
 
-    /* 3 spaces per level, clamped so a deep chain cannot overrun the buffer. */
-    char indent[64];
-    int want = depth * 3;
-    if (want > (int)sizeof(indent) - 1) {
-        want = (int)sizeof(indent) - 1;
+    bool is_last = (f->g->next_sibling[idx] < 0);
+    if (depth <= TREE_ART_MAX_DEPTH) {
+        f->last[depth] = is_last;
     }
-    memset(indent, ' ', (size_t)want);
-    indent[want] = '\0';
+
+    /* One 4-char column per ancestor level, then this node's own connector.
+     * An ancestor that was a last child has nothing more hanging off it, so its
+     * column is blank; any other keeps a '|' so the trunk stays traceable past
+     * a nested subtree. */
+    char pre[TREE_ART_MAX_DEPTH * 4 + 8];
+    size_t w = 0;
+    int stem = depth < TREE_ART_MAX_DEPTH ? depth : TREE_ART_MAX_DEPTH;
+    for (int d = 1; d < stem; d++) {
+        memcpy(pre + w, f->last[d] ? "    " : "|   ", 4);
+        w += 4;
+    }
+    if (depth > 0) {
+        memcpy(pre + w, is_last ? "`-- " : "+-- ", 4);
+        w += 4;
+    }
+    pre[w] = '\0';
 
     /* Why the marker: since C7 Option 1 the blackhole is positional - it drops
      * only what its DESCENDANTS route through it. Marking it in the shape makes
      * "is anything actually under the attacker?" answerable from the root
      * console, before the capture is analysed. */
     const char *mark = (e->role == NODE_ROLE_BLACKHOLE)
-                     ? "  <== DROPS EVERYTHING INDENTED BELOW IT"
+                     ? "  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)"
                      : "";
-    ESP_LOGI(TAG, " %-*s  %s%s" MACSTR_UC "  %-*s%s",
-             f->lyr_w + 2, hop, indent, depth ? "`- " : "",
-             MAC2STR(e->mac), f->role_w, node_role_to_str(e->role), mark);
+    ESP_LOGI(TAG, " %s[%s] %-*s  " MACSTR_UC "%s",
+             pre, hop, f->role_w, node_role_to_str(e->role),
+             MAC2STR(e->mac), mark);
 }
 
 static void heartbeat_table_print(void)
@@ -1207,8 +1240,8 @@ static void heartbeat_table_print(void)
 
         /* ---- ADDITIONAL: the same walk drawn as a shape ------------------- */
         log_rule('-', rule_w);
-        ESP_LOGI(TAG, " TOPOLOGY TREE (indent = depth; probes flow UP toward the root)");
-        art_fmt_t af = { .lyr_w = lyr_w, .role_w = role_w };
+        ESP_LOGI(TAG, " TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)");
+        art_fmt_t af = { .g = &g, .lyr_w = lyr_w, .role_w = role_w };
         topo_walk(&g, tree_art_cb, &af);
 
         /* Root-side leaf/off-path guard. The attacker's own firmware warns when

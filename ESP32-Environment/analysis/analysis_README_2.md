@@ -85,7 +85,7 @@ and the latency divergence between them is a direct measurement of what the
 tunnel did. Both rows share one victim clock and one root clock, so the
 unsynchronised-clock offset cancels exactly. On the 2026-07-20 wormhole·linear
 run this populates 109 rows, **102 of them on `gt_label = 2`**. See **D-3** in
-[`thesis-deviate.md`](../docs/issue_logs/thesis-deviate.md).
+[`thesis-deviate.md`](../docs/deviations-limitations/thesis-deviate.md).
 
 ### Two real bugs found while building this — both now covered by `generate_eda_fake_data.py`
 

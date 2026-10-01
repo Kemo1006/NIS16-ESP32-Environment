@@ -23,6 +23,21 @@ Five scenarios, selectable in BOTH run_wizard.ps1 and menu.ps1, via `run.ps1
 - **mobility** / **powercycle** (human) — no firmware change. run.ps1 prints a
   checklist right before the root boots, naming the target child and roughly
   when to act; the tooling does not time or beep it.
+- **jitter** (code, added later — was missing from this doc, sep. 30, 2026 fix)
+  — **ROOT ONLY**. Randomises how long baseline (+0..45 s) and attack (+0..30 s)
+  run each boot (`esp_random() % (max_s + 1)`, ADDITIVE only — never shortens a
+  window, so `preprocess.py`'s fixed-length baseline slice is never corrupted).
+  Children are completely unchanged — no probe-rate or traffic change at all.
+  Answers a different weakness than burst/highload: elapsed-time-since-start
+  currently almost predicts the label by itself (baseline is always the first
+  300 s); jitter breaks that shortcut without changing what any board sends.
+  **Not a highload variant** — see `docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md`
+  §11.1 for the full comparison (jitter cannot trigger the highload mesh
+  collapse; it never touches probe rate). Mechanism: `-DTRAFFIC_PROFILE=3`,
+  `mesh_config.h` `JITTER_BASELINE_MAX_S`/`JITTER_ATTACK_MAX_S`, drawn in
+  `root_main.c`'s `jitter_extra_s()` and logged at boot ("TIMING JITTER
+  ACTIVE"). Exact durations stay recoverable from any node's own CSV
+  timestamps, so nothing needs to record the drawn values separately.
 
 ## Mechanism
 

@@ -118,7 +118,7 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
  *
  * ── F3: why the last three exist ─────────────────────────────────────────
  * The first eight columns mean DIFFERENT THINGS depending on which board wrote
- * the row (see docs/DATA-DICTIONARY.md for the full table). The damaging case
+ * the row (see docs/data-and-results/DATA-DICTIONARY.md for the full table). The damaging case
  * was retry_count: on a victim it counts failed esp_mesh_send() calls, but on
  * the blackhole attacker it was overloaded to count the packets that node
  * deliberately DROPPED. That made the derived RetryRate feature go 0.0033 ->

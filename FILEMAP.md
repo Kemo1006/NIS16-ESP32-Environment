@@ -3,7 +3,7 @@
 <!-- Update whenever files are added, moved, or deleted. Map meaning, not every file —
      skip generated/vendor dirs (build/, __pycache__, .git). Cap: 200 lines. -->
 
-**Updated:** sep. 26, 2026 (added sniffer_node/ + tools/sniff.py; added probe_relay/topology_graph firmware, member_boards, run_logs/, PCAP/, slides/, INSTRUCTION/, new docs + tools)
+**Updated:** sep. 30, 2026 (`docs/` reorganized into topic folders — see `ESP32-Environment/docs/README.md`; all captured data now under `ESP32-Environment/datasets/` — sep. 27 move; added name_stamp.py, pcap_retry.py, sync_conflicts/, WIRESHARK-QUICKSTART + COOLDOWN-RECOVERY docs; dropped résumé PDF)
 
 ## What this workstation is
 
@@ -31,7 +31,6 @@ combined/                             ← workstation root (this anchor)
 ├── ARCHIVE.md       # completed-work log — never read unless asked
 ├── CLAUDE.local.md  # personal overrides — git-ignored, never shared
 ├── GEMINI-BRIEFING.md          # reusable full-context dump to paste into a fresh AI with zero prior exposure — carried over from CC, may still describe CC's pre-merge state; verify before trusting
-├── Miguel Sebastian Carlos-1.pdf  # personal résumé — unrelated to thesis work
 ├── Resources/       # this workstation's OWN domain-specific reference
 │   ├── INDEX.md
 │   ├── reference/   # ATTACK-MECHANICS.md, OUTPUT-VERIFICATION.md, NODE-INVENTORY.md,
@@ -40,7 +39,7 @@ combined/                             ← workstation root (this anchor)
 ├── 0_Resources/     # GLOBAL/shared resources only — never loaded whole; see INDEX.md
 ├── Plan/            # THESIS 3 planning — THESIS3-PANEL-PLAN.md (the adviser-facing
 │                     # framework, 7 problems × 5 workstreams) + MEMBER-HOWTO/TASK-SPLIT
-├── (Implementation Issues/ moved → ESP32-Environment/docs/Implementation Issues/)
+├── (Implementation Issues/ moved → ESP32-Environment/docs/issues-and-fixes/)
 ├── Paper/           # the thesis deliverable (reference, not code)
 ├── Setups/          # SD-CARD-WIRING.md (the real wiring facts, incl. the VIN/5V and
 │                     # 4MHz-clock gotchas) + a stale runbook snapshot — prefer
@@ -59,30 +58,44 @@ combined/                             ← workstation root (this anchor)
     │                                        # whenever -Export/-Clean/-Analyze is used;
     │                                        # -Scenario/-ScenarioTarget (sep. 2026, run
     │                                        # scenarios v1 — see mesh_config.h TRAFFIC_PROFILE)
-    ├── analyze.ps1                          # shortcut: trim→M6→M7→M8 on existing tools/exports/
+    ├── analyze.ps1                          # shortcut: trim→M6→M7→M8 on existing datasets/exports/
     │                                        # data, no board needed (sep. 16, 2026)
-    ├── archive.ps1                          # one command: MOVE captures+analysis into
-    │                                        # archive/<date>_<label>/ + reset the scaffold
-    │                                        # (-WhatIf to preview; sep. 16, 2026)
+    ├── archive.ps1                          # one command: MOVE exports+analysis output+PCAP+run
+    │                                        # logs into datasets/archive/<stamp>_<label>/ +
+    │                                        # reset the scaffold (-WhatIf to preview)
     ├── build_all_variants.ps1               # compiles every firmware variant, counts warnings
     │                                        # (M1 "compiles without warnings"); no board needed
     ├── member_boards.json                   # who owns which ESP32 (Cal/Bas/Kyle) — shown atop
     │                                        # menu.ps1 / run_wizard.ps1 via tools/Show-MemberBoards.ps1
     ├── member_boards/                       # per-run board-assignment JSONs (e.g. linear-blackhole-G402)
-    ├── run_logs/<attack>/<topology>/        # saved wizard/run .log files (pushed via push_data.py --area logs)
-    ├── PCAP/                                # sniffer captures, Mac or ESP32 (git-ignored) — check with tools/check_pcap.py
+    ├── datasets/                            # ALL captured data + generated output (sep. 27, 2026 —
+    │   │                                     # code stayed put; see Key locations for each)
+    │   ├── exports/<attack>/<topology>/<location>/[<scenario>/]  # RAW captured CSVs (tracked)
+    │   │                                     # + run_ledger.csv. topology: star/tree/linear/
+    │   │                                     # partial_mesh; location: home/G402/DLSU_Library/
+    │   │                                     # Goks; scenario: burst/highload/mobility/powercycle
+    │   │                                     # — folder ONLY for an actual scenario; "none" has none
+    │   ├── analysis/<attack>/<topology>/<location>/[<scenario>/]  # windowed_dataset.csv,
+    │   │                                     # feature_table.csv, eda_output*/ (git-ignored)
+    │   ├── archive/<stamp>_<label>/          # pre-restart snapshots MOVED out by archive.ps1, same
+    │   │                                     # layout, own README.md each; raw CSVs + ledger tracked
+    │   ├── PCAP/                             # sniffer captures (git-ignored) — tools/check_pcap.py
+    │   └── run_logs/<attack>/<topology>/     # saved wizard/run .log files (push_data.py --area logs)
+    ├── sync_conflicts/<computer>/           # push_data.py pull: teammate's copy that clashed with
+    │                                         # yours — review + merge by hand, never auto-used
     ├── slides/                              # NIS16-defence-slides.html + refresh_slide_numbers.py
     ├── INSTRUCTION/                         # panel Milestone Form + NIS16 paper PDFs (reference)
-    ├── docs/                                # NIS16's 2026-09-14 dated redesign
-    │   ├── 2026-09-14_START-HERE.md         # read this first
-    │   ├── 2026-09-14_{MENU-WALKTHROUGH,SETUP-RULES-CONFIG,LOCATIONS,SD-CARD,REFERENCES}.md
-    │   ├── 2026-09-23_LAYER-HOP-MAC-EXPLAINER.md, SESSION-REPORT-2026-09-25.md
-    │   ├── DATA-DICTIONARY.md, WIRESHARK-GUIDE.md, EXPECTED-RESULTS.md, REVIEWER-QUESTIONS.md,
-    │   │   ATTACK-VALIDATION.md, DATASET-AUDIT-2026-09-18.md   # (see Key locations)
-    │   ├── Implementation Issues/           # INDEX.md + SD-CARD-AND-WORMHOLE-WIRING.md
-    │   ├── runbooks/    2026-09-14_{BASELINE,BLACKHOLE,WORMHOLE,TOPOLOGIES}.md
-    │   ├── issue_logs/  esp32-issues.md (+Part2/3), thesis-deviate.md, dated 2026-07-*.md
-    │   └── _archive/    CC's OLDER guides/runbooks/setups — superseded, kept for reference
+    ├── docs/                                # reorganized by topic sep. 30, 2026 - start at docs/README.md
+    │   ├── README.md                        # index: which folder answers which panel question
+    │   ├── blackhole/, wormhole/            # the per-attack runbooks (2026-09-14_*)
+    │   ├── attack-validation/               # ATTACK-VALIDATION.md + 2026-09-15_VERIFY.md (3-sigma)
+    │   ├── highload-collapse/               # COOLDOWN-RECOVERY-2026-09-30.md (7-board congestion)
+    │   ├── dataset-integrity/, data-and-results/, packet-capture/, panel-answers/, references/
+    │   ├── issues-and-fixes/                # INDEX.md, esp32-issues.md (+Part2/3), SD-CARD-AND-WORMHOLE-WIRING.md
+    │   ├── deviations-limitations/, progress-reports/  # thesis-deviate.md (D-1..D-15); dated 2026-07-*
+    │   ├── operations/                      # 2026-09-14_START-HERE.md (read first), MENU-WALKTHROUGH,
+    │   │                                    # SETUP-RULES-CONFIG, LOCATIONS, SD-CARD, BASELINE, TOPOLOGIES
+    │   └── _archive/                        # CC's OLDER guides/runbooks/setups - superseded, reference only
     ├── CMakeLists.txt, partitions.csv       # top-level ESP-IDF project (spiffs partition)
     ├── memory/                              # working-state memory (both trees' notes merged):
     │                                         # panel-change-2026-09, thesis-citations,
@@ -110,24 +123,11 @@ combined/                             ← workstation root (this anchor)
     │                                         # run_wizard.ps1 rosters — no `split` key on any
     │                                         # real preset (that field only existed for the
     │                                         # removed multi-laptop mode)
-    ├── tools/                               # host-side Python (see Key locations)
-    │   └── exports/<attack>/<topology>/<location>/[<scenario>/]   # RAW captured CSVs (tracked)
-    │                                                   # + run_ledger.csv. topology: star/tree/
-    │                                                   # linear/partial_mesh; location: home/
-    │                                                   # G402/DLSU_Library/Goks; scenario (sep.
-    │                                                   # 2026): burst/highload/mobility/powercycle
-    │                                                   # — folder ONLY for an actual scenario;
-    │                                                   # "none" (most runs) has NO extra folder
-    ├── analysis/                            # M6→M7→M8 pipeline (see Key locations)
-    │   └── <attack>/<topology>/<location>/[<scenario>/]  # windowed_dataset.csv, feature_table.csv,
-    │                                         # eda_output/ (git-ignored) — some pre-merge
-    │                                         # captures predate the <location> layer
-    └── archive/<date>_<label>/               # pre-restart snapshots of tools/exports/ +
-                                               # analysis/, moved (not copied) wholesale, same
-                                               # attack/topology/location layout; each has its
-                                               # own README.md. Raw CSVs + run_ledger.csv stay
-                                               # tracked there too; derived/eda_output stay
-                                               # git-ignored (same policy as the live trees)
+    ├── tools/                               # host-side Python + PS helpers (see Key locations)
+    │                                         # (tools/exports/ is a leftover — only a stale
+    │                                         # run_ledger.csv; the live one is in datasets/exports/)
+    └── analysis/                            # M6→M7→M8 pipeline CODE only (.py + requirements +
+                                              # its .md) — output goes to datasets/analysis/
 ```
 
 ## Key locations
@@ -138,42 +138,48 @@ combined/                             ← workstation root (this anchor)
 | Firmware entry — victim | `ESP32-Environment/child_node/main/victim_main.c` | + `blackhole_victim.c`, `wormhole_victim.c` variants |
 | Shared mesh config | `ESP32-Environment/components/mesh_common/include/mesh_config.h` | MESH_ID/PASSWORD (identical every board); `BLACKHOLE_ATTACKER_MAC` (per-rig, set from the attacker's boot banner); `TRAFFIC_PROFILE` (sep. 2026 — burst/highload run scenarios, `-DTRAFFIC_PROFILE=1/2`) |
 | CSV schema source of truth | `ESP32-Environment/components/mesh_common/src/csv_logger.c` | telem = **14 cols (schema v2, F3)** — v1's 11 unchanged and in place + `recv_count,forward_count,drop_count`; root arrivals = 14 cols; SD mirror lives here too. Both telem widths accepted by `validate_integrity.py` |
-| **What every column actually means** | `ESP32-Environment/docs/DATA-DICTIONARY.md` | per-role semantics of `retry_count`/`tx_count`/`probes_count`, the RSSI-is-per-link and root-is-layer-1 corrections, what is derived host-side. **Read before writing anything about the schema in the paper** |
+| **What every column actually means** | `ESP32-Environment/docs/data-and-results/DATA-DICTIONARY.md` | per-role semantics of `retry_count`/`tx_count`/`probes_count`, the RSSI-is-per-link and root-is-layer-1 corrections, what is derived host-side. **Read before writing anything about the schema in the paper** |
 | **Model-input leakage guard** | `ESP32-Environment/analysis/leakage.py` | the single definition of which columns a model may see, with a written reason per exclusion; `single_feature_decidability()` scores the panel's "one feature decides it" objection numerically. `eda.py` imports it and writes `leakage_audit.csv` every pass. Relay-feature exclusions are PER DATASET (`leaking_columns_for`); RetryRate is always excluded (dataset column only since sep. 30, 2026, D-15). EDA correlation = `correlation_{pearson,spearman}{,_baseline,_attack}` over labelled windows |
 | **Phase-sync check (sep. 25, 2026)** | `ESP32-Environment/analysis/phase_sync.py` | is each node's phase LABEL the root's phase? Compares, per probe, the node's phase at its own send time (arrivals `timestamp_us - latency_us`) with the root's. `validate_integrity.py` FAILs a desynced node; `preprocess.py` unlabels it (rows kept for the tree) |
 | Runtime attacker MAC (F2) | `ESP32-Environment/components/mesh_common/src/blackhole_target.c` | NVS override for `BLACKHOLE_ATTACKER_MAC`, read once at boot. Moving the attacker no longer means re-flashing every victim — what makes "vary the attacker position" affordable |
-| **What a good run looks like** | `ESP32-Environment/docs/EXPECTED-RESULTS.md` | post-capture checklist with REAL measured numbers per phase (PDR 0.999→0.001→0.997), the 3-sigma output to expect, why each NaN exists, red flags, and a paste-ready results paragraph. **Read right after every capture, before trusting the data** |
-| **Reviewer/adviser answer sheet** | `ESP32-Environment/docs/REVIEWER-QUESTIONS.md` | every adviser + panel side comment answered against verified code: why `timestamp_us`, MAC is eFuse not connector, hop vs OSI layer, how RSSI is read, what `tx_count` means, why each NaN exists. **Pre-defense answer sheet — each row names the file that proves it** |
-| **Wireshark / packet capture** | `ESP32-Environment/docs/WIRESHARK-GUIDE.md` | beginner guide: what a sniffer can and cannot see on an encrypted mesh, the 3 ways to get a capture, ready-made display filters with our real MACs. ⚠️ **mesh is on CHANNEL 11** — a sniffer on any other channel records an empty file while looking healthy |
-| **Attack validation (panel 17:50/44:30)** | `ESP32-Environment/docs/ATTACK-VALIDATION.md` | definitional-conformance tables vs Karlof & Wagner / Hu-Perrig-Johnson, each criterion checked against source or data, **including the ones we fail**. Holds the measured wormhole result: replay CONFIRMED (181 dups, r2≡r3), topology distortion **does NOT occur** (0 parent switches) |
-| **M4/M5 run inventory** | `ESP32-Environment/tools/inventory_cells.py` | `python tools/inventory_cells.py` — scans live **and archived** exports, judges every run against the M4/M5 criteria, prints which are COMPLETE and why the rest are not. **Use this instead of trusting a remembered count** — `archive.ps1` MOVES captures out of `tools/exports/`, which is how "zero wormhole captures" got recorded while six existed |
+| **What a good run looks like** | `ESP32-Environment/docs/data-and-results/EXPECTED-RESULTS.md` | post-capture checklist with REAL measured numbers per phase (PDR 0.999→0.001→0.997), the 3-sigma output to expect, why each NaN exists, red flags, and a paste-ready results paragraph. **Read right after every capture, before trusting the data** |
+| **Reviewer/adviser answer sheet** | `ESP32-Environment/docs/panel-answers/REVIEWER-QUESTIONS.md` | every adviser + panel side comment answered against verified code: why `timestamp_us`, MAC is eFuse not connector, hop vs OSI layer, how RSSI is read, what `tx_count` means, why each NaN exists. **Pre-defense answer sheet — each row names the file that proves it** |
+| **Wireshark / packet capture** | `ESP32-Environment/docs/packet-capture/WIRESHARK-GUIDE.md` (+ `WIRESHARK-QUICKSTART.md` — how to read the screen; newer, wins where they disagree) | beginner guide: what a sniffer can and cannot see on an encrypted mesh, the 3 ways to get a capture, ready-made display filters with our real MACs. ⚠️ **mesh is on CHANNEL 11** — a sniffer on any other channel records an empty file while looking healthy |
+| **Wireshark vocabulary (what a word on screen means)** | `ESP32-Environment/docs/packet-capture/WIRESHARK-TERMS.md` | the **dictionary**: deauth/disassoc/auth/assoc explained + their reason codes, RTS/CTS/ACK, LLC/SNAP/OUI, To DS direction, the `....R..T` flags string, radiotap, the 3-layer answer to *"what protocol does the ESP32 use?"*, and a tshark-verified filter cheat card. **Use for adviser/panel questions about the capture screen**; counts are from our own r2 sep. 28 capture |
+| **Attack validation (panel 17:50/44:30)** | `ESP32-Environment/docs/attack-validation/ATTACK-VALIDATION.md` | definitional-conformance tables vs Karlof & Wagner / Hu-Perrig-Johnson, each criterion checked against source or data, **including the ones we fail**. Holds the measured wormhole result: replay CONFIRMED (181 dups, r2≡r3), topology distortion **does NOT occur** (0 parent switches) |
+| **M4/M5 run inventory** | `ESP32-Environment/tools/inventory_cells.py` | `python tools/inventory_cells.py` — scans live **and archived** exports, judges every run against the M4/M5 criteria, prints which are COMPLETE and why the rest are not. **Use this instead of trusting a remembered count** — `archive.ps1` MOVES captures out of `datasets/exports/`, which is how "zero wormhole captures" got recorded while six existed |
 | Segment-assignment tests | `ESP32-Environment/analysis/test_segments.py` | `python test_segments.py` — 20 checks, incl. that schema v1 and v2 produce IDENTICAL segments (what keeps the two firmwares' captures comparable) |
-| Pipeline M6 → M7 → M8 | `ESP32-Environment/analysis/preprocess.py` → `features.py` → `eda.py` | byte-identical to NIS16's — this is what lets `verify_attack.py` drop in unmodified |
+| Pipeline M6 → M7 → M8 | `ESP32-Environment/analysis/preprocess.py` → `features.py` → `eda.py` | byte-identical to NIS16's — this is what lets `verify_attack.py` drop in unmodified; writes into `datasets/analysis/` |
 | One-board onboarding | `ESP32-Environment/menu.ps1` | run / export / wipe / identify / **verify** a board — the simple on-ramp |
 | Multi-board maintenance | `ESP32-Environment/run_wizard.ps1` | presets, MAC verify, bulk wipe/set-location, firmware self-test; **export captures from EITHER the board over USB or a pulled SD card** — both show the same numbered file list (sep. 22, 2026) |
 | Run engine | `ESP32-Environment/run.ps1` | `-Wipe -Flash -Export -Location <loc> -Analyze`; `-Location` is required with `-Export`/`-Clean`/`-Analyze`; `-Scenario {none\|burst\|highload\|mobility\|powercycle} -ScenarioTarget` (sep. 2026) |
-| Re-analyze existing captures | `ESP32-Environment/analyze.ps1` | shortcut for trim→M6→M7→M8 on `tools/exports/` data already on disk (no board needed); no args = every combo with data, or `.\analyze.ps1 <attack> <topology> [<location>]`; `-Verify` runs **three exit-code-checked gates** — integrity → topology → attack — and calls a NOT-CONFIRMED on a capture that failed either earlier gate INCONCLUSIVE rather than a negative result |
+| Re-analyze existing captures | `ESP32-Environment/analyze.ps1` | shortcut for trim→M6→M7→M8 on `datasets/exports/` data already on disk (no board needed); no args = every combo with data, or `.\analyze.ps1 <attack> <topology> [<location>]`; `-Verify` runs **three exit-code-checked gates** — integrity → topology → attack — and calls a NOT-CONFIRMED on a capture that failed either earlier gate INCONCLUSIVE rather than a negative result |
 | **Paper-backed attack verification** | `ESP32-Environment/tools/verify_attack.py` | 3-sigma normal-vs-attack (Zhukabayeva 2025; blackhole signature from Airehrour 2018) — the panel-cited check. Pools 5 windows; ratio-of-sums for ForwardingRatio (forward/recv on v2) and RetryRate. `verify_topology.py` adds a parent-vs-layer diagnostic |
 | Capture / integrity tools | `ESP32-Environment/tools/` | `export_logs.py` (+ `--set/--get/--clear-attacker-mac`, F2), `import_sdcard.py` (**`--card <drive>` for a pulled card OR `--port COMx` to read the card THROUGH the board over USB — one `--list-json` shape, one import pipeline**), `trim_run.py`, `validate_integrity.py`, `verify_topology.py`, `run_matrix.py`, `recover_spiffs.py`, `board_check.py` |
-| Raw evidence (tracked) | `ESP32-Environment/tools/exports/<attack>/<topology>/<location>/` | primary data; `run_ledger.csv` tracks the matrix |
-| Pre-restart snapshots | `ESP32-Environment/archive/<date>_<label>/` | e.g. `2026-09-16_pre-restart/` — everything captured before a board-wipe/restart, moved wholesale out of `tools/exports/`+`analysis/`; read its `README.md` first |
+| Raw evidence (tracked) | `ESP32-Environment/datasets/exports/<attack>/<topology>/<location>/` | primary data; `datasets/exports/run_ledger.csv` tracks the matrix |
+| Pre-restart snapshots | `ESP32-Environment/datasets/archive/<stamp>_<label>/` | e.g. `2026-09-26_blackhole-linear-home/`, `2026-09-27_test-only/` — everything captured before a board-wipe/restart, moved wholesale out of `datasets/`; read its `README.md` first |
+| File/folder name stamp | `ESP32-Environment/tools/name_stamp.py` (+ `test_name_stamp.py`) | since sep. 27 names use `sept27_0311AM`, older ones `20260927_031130` — both valid. Parse with `name_stamp.parse`, **never sort names as text**; same-minute clash → `-2` suffix |
+| Sync conflicts | `ESP32-Environment/sync_conflicts/<computer>/` | where `push_data.py pull` parks a teammate's file that differs from yours — merge by hand; nothing reads it automatically |
+| Cooldown-recovery study | `ESP32-Environment/docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md` | why r3 (7 nodes) failed verification: attack perfect, mesh never recovers in cooldown; **§10: r4 + a no-attack run — 7-board highload collapses on its own**. **The working file for this issue — add to it** |
 | Archive a run + reset | `ESP32-Environment/archive.ps1` | one command: moves captures + analysis into a new dated archive, writes its README, resets the scaffold + ledger. `-WhatIf` previews; `-Label`/`-Reason`/`-Force` for scripting |
 | Who was really exposed | `ESP32-Environment/analysis/exposure.py` | derives from topology which nodes were actually exposed to the attacker (build-time `victim` role alone over-counts) |
 | Combine / legend / fake data | `ESP32-Environment/analysis/combine_all.py`, `column_legend.py`, `generate_*fake_data.py` | concat every `feature_table.csv` for the full-coverage EDA; plain-language `_legend.csv` beside a data CSV; synthetic CSVs for pipeline tests |
 | Topology from parent links | `ESP32-Environment/tools/topology_graph.py` (+ `topology_graph_host_test.c`, `test_topology_graph.py`) | layers by BFS from the root; judges each topology by structure only — Python mirror of `topology_graph.c` |
 | Single-feature audit | `ESP32-Environment/tools/feature_separability.py` | panel requirement: no one feature may decide attack vs normal |
-| Dataset audit | `ESP32-Environment/tools/audit_dataset.py` | proves which runs a folder holds by `seq_num`; see `docs/DATASET-AUDIT-2026-09-18.md` |
+| Dataset audit | `ESP32-Environment/tools/audit_dataset.py` | proves which runs a folder holds by `seq_num`; see `docs/dataset-integrity/DATASET-AUDIT-2026-09-18.md` |
 | Campaign plan | `ESP32-Environment/tools/campaign_plan.json` | seeded random scenario slot order per cell, drawn once by `inventory_cells.py` — commit it; `--reshuffle` re-draws |
 | Sniffer capture check | `ESP32-Environment/tools/check_pcap.py` | did the capture record anything / hear our mesh / hear DATA frames; repairs a cut-short last record |
+| Real MAC retry rate | `ESP32-Environment/tools/pcap_retry.py` | 802.11 Retry bit per link × phase from a sniffer pcap + the root's run log (D-15); `--all` pairs every capture, writes `<pcap>_retry.csv/.json`; `features.py` joins it as `MacRetryRate`; wizard menu "MAC retry rate of a run" shows it |
 | ESP32 sniffer recorder | `ESP32-Environment/tools/sniff.py` (+ `sniffer_node/`) | sniffer board's USB stream -> radiotap `.pcap` + `.json` (loss counts); wizard runs it per run or main menu [23] |
 | Data-only GitHub push/pull | `ESP32-Environment/tools/push_data.py` | `push`/`pull` of exports, analysis, run logs, presets — never code; lists dated, green = latest SD import |
 | Latest-import batch | `ESP32-Environment/tools/ImportBatch.ps1` → `.last_import_batch.json` (git-ignored) | dot-sourced by both launchers; records which CSVs the last SD import wrote |
 | Board discovery | `ESP32-Environment/tools/Get-EspMac.ps1`, `Show-MemberBoards.ps1` | read a board's MAC over USB; print who owns which board |
 | Compile-check all variants | `ESP32-Environment/build_all_variants.ps1` | no board attached; warning counts per variant |
 | Deps | `ESP32-Environment/analysis/requirements.txt` | pandas, numpy (M6/M7) + matplotlib, seaborn, scipy, scikit-learn (M8) |
-| Runbooks | `ESP32-Environment/docs/runbooks/2026-09-14_*.md` | current — BASELINE/BLACKHOLE/WORMHOLE/TOPOLOGIES |
+| Runbooks | `ESP32-Environment/docs/{blackhole,wormhole,operations}/2026-09-14_*.md` | current — BLACKHOLE and WORMHOLE each in their own topic folder; BASELINE + TOPOLOGIES under `operations/`; the 3-sigma VERIFY runbook under `attack-validation/` |
+| Docs index (by panel question) | `ESP32-Environment/docs/README.md` | which folder answers which adviser/panel question — the entry point for defense prep |
 | Superseded docs | `ESP32-Environment/docs/_archive/` | CC's older guides/runbooks/setups — reference only |
-| Issue logs / deviations | `ESP32-Environment/docs/issue_logs/` | `esp32-issues*.md`, `thesis-deviate.md`, dated milestone reports |
+| Issue logs / deviations | `ESP32-Environment/docs/{issues-and-fixes,deviations-limitations,progress-reports}/` | `esp32-issues*.md` (I-001…I-017), `thesis-deviate.md` (D-1…D-15), dated milestone reports |
 | SD wiring facts | `Setups/SD-CARD-WIRING.md` | VCC→VIN/5V not 3V3; SPI clock capped at 4MHz — both cost real bench time to find |
 | Thesis 3 planning framework | `Plan/THESIS3-PANEL-PLAN.md` | adviser-facing draft (7 problems × 5 workstreams) — see STATUS.md for what's actually been done against it |
 | Panel comments (CTTHES2) | `Paper/Improvements.pdf` | the source document driving all Thesis 3 work |
@@ -186,5 +192,5 @@ combined/                             ← workstation root (this anchor)
 - Per-board/per-variant build dirs under `root_node/` and `child_node/` (short names like
   `cbv`, `cwa`, `cwb`, `cv`, `bcc0` alongside the longer `build_<role>_<attack>_<topology>_COM<n>`
   ones) — all are `idf.py build` output, not source.
-- `tools/exports/**` raw CSVs — irreplaceable captures; never overwrite or wipe before verifying.
-- `archive/**` raw CSVs and `run_ledger.csv` — same irreplaceable-evidence rule as live `tools/exports/`.
+- `datasets/exports/**` raw CSVs — irreplaceable captures; never overwrite or wipe before verifying.
+- `datasets/archive/**` raw CSVs and `run_ledger.csv` — same irreplaceable-evidence rule as live `datasets/exports/`.

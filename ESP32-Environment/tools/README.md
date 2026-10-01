@@ -195,7 +195,7 @@ python validate_integrity.py --relock             # accept a changed hash as new
 Checks schema width, per-phase row counts (truncation detection), timestamp
 monotonicity, and SHA-256 checksums against a locked `manifest.json`. See
 [`../m5_extraction/README.md`](../m5_extraction/README.md) for the full spec
-and [`../docs/issue_logs/thesis-deviate.md`](../docs/issue_logs/thesis-deviate.md) for the 2026-07-12
+and [`../docs/deviations-limitations/thesis-deviate.md`](../docs/deviations-limitations/thesis-deviate.md) for the 2026-07-12
 sampling-rate changes this tool's phase-count check is calibrated against.
 The default is `100` (10 Hz, current since 2026-07-25); pass `200` for the 5 Hz
 baseline/linear capture made earlier that day, or
@@ -377,7 +377,7 @@ clock** (root telem/arrivals by final counter; victims by `seq_num`; attackers b
 cooldown forward count, marked weak), then writes a cleaned, additive copy:
 `run_manifest.csv`, `clean_telemetry.csv`, `clean_arrivals.csv`,
 `pdr_by_segment.csv`, `topology_snapshots.csv`. Raw files are never modified.
-Findings and the column dictionary: `docs/DATASET-AUDIT-2026-09-18.md`.
+Findings and the column dictionary: `docs/dataset-integrity/DATASET-AUDIT-2026-09-18.md`.
 
 ```powershell
 python audit_dataset.py exports\blackhole\linear\G402 --out ..\analysis\dataset_audit_<date> --location G402

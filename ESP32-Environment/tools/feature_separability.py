@@ -10,7 +10,7 @@ QUANTIFIES each feature's standalone separability so we can:
   (b) flag pure-artifact features (the auxiliary tunnel counters) to EXCLUDE from
       the clustering input (matches eda.py's exclude_tunnel + thesis Sec 4.2.5.1).
 
-Method (both standard; see docs/2026-09-14_REFERENCES.md):
+Method (both standard; see docs/references/2026-09-14_REFERENCES.md):
   - AUC / ROC per feature vs the binary attack label   (Fawcett 2006).
   - Mutual information per feature vs the label         (Ross 2014; sklearn
                                                          mutual_info_classif).

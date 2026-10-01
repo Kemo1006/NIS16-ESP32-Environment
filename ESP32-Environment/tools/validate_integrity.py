@@ -53,7 +53,7 @@ TELEM_HEADER = [
 
 # Telemetry schema v2 — F3. Adds three RELAY counters that mean the same thing
 # on every role, so retry_count stops being overloaded as the blackhole
-# attacker's private drop counter (see docs/DATA-DICTIONARY.md and
+# attacker's private drop counter (see docs/data-and-results/DATA-DICTIONARY.md and
 # analysis/leakage.py). Appended at the END rather than grouped with the other
 # counters on purpose: arrivals.csv is built positionally from TELEM_HEADER[:9]
 # below, and any reader that indexes by position keeps working unchanged.

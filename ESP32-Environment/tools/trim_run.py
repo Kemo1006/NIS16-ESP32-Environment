@@ -448,7 +448,12 @@ def main():
                    help="Overwrite originals (a <name>.orig backup is saved first).")
     p.add_argument("--out",
                    help="Output folder for --apply (default: <directory>/trimmed).")
+    p.add_argument("--repeat", type=int,
+                   help="Only trim files of this attempt (the _rN_ in the name). "
+                        "Other attempts' copies already in trimmed/ are left alone.")
     args = p.parse_args()
+    if args.repeat is not None and not args.directory:
+        p.error("--repeat needs a directory")
 
     if args.files:
         paths = []
@@ -460,8 +465,20 @@ def main():
         p.error("give a directory or --files")
 
     paths = [q for q in paths if not q.endswith(".orig")]
+    all_paths = paths
+    if args.repeat is not None:
+        untagged = [q for q in paths if not _REPEAT_RE.search(os.path.basename(q))]
+        paths = [q for q in paths if _repeat_of(q) == args.repeat]
+        print(f"Attempt r{args.repeat} only — {len(paths)} of {len(all_paths)} "
+              f"CSV(s) in the folder.")
+        if untagged:
+            print(f"  [!] {len(untagged)} file(s) have no _rN_ in the name and were "
+                  f"skipped:")
+            for q in untagged:
+                print(f"        {os.path.basename(q)}")
     if not paths:
-        print("No CSVs found.")
+        print("No CSVs found." if args.repeat is None
+              else f"No CSVs for attempt r{args.repeat}.")
         return 1
 
     out_dir = args.out or (os.path.join(args.directory, "trimmed")
@@ -492,10 +509,18 @@ def main():
             print("        untouched copies of anything that needed no trimming).")
     _warn_on_duplicate_captures(paths)
     if not args.in_place:
-        _warn_on_stale_outputs(paths, out_dir)
+        _warn_on_stale_outputs(all_paths, out_dir)
     if not args.apply:
         print("  (dry run — nothing written. Re-run with --apply)")
     return 0
+
+
+_REPEAT_RE = re.compile(r"_r(\d+)_")
+
+
+def _repeat_of(path):
+    m = _REPEAT_RE.search(os.path.basename(path))
+    return int(m.group(1)) if m else None
 
 
 _CAPTURE_RE = re.compile(

@@ -20,7 +20,7 @@ clock:
 Anything that can't be proven is left UNASSIGNED with the reason - never guessed.
 
 Cleaning is additive: raw columns keep their raw values; derived columns sit next
-to them and say what they are (see docs/DATASET-AUDIT-2026-09-18.md for the dictionary).
+to them and say what they are (see docs/dataset-integrity/DATASET-AUDIT-2026-09-18.md for the dictionary).
 
   - rssi_dbm        0 -> empty. esp_wifi_sta_get_rssi() leaves 0 when there is no
                     parent link (the root; a node not yet joined). 0 dBm is not a

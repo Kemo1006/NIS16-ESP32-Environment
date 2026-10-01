@@ -2850,6 +2850,7 @@ if ($action -eq 15 -or $action -eq 16 -or $action -eq 17) {
         Write-Host "Pushes raw capture CSVs under datasets\exports\ (never code, never trimmed\ or analysis\)." -ForegroundColor DarkGray
         Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
         Write-Host "Each file shows when it was imported: green = your latest SD import or newer, yellow = older." -ForegroundColor DarkGray
+        Write-Host "At the confirm prompt, 'd' deletes unnecessary files from this laptop first (GitHub untouched)." -ForegroundColor DarkGray
     }
     Push-Location $base
     try {

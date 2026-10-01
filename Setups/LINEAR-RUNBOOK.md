@@ -826,7 +826,7 @@ Why this one can't be fixed in post, unlike the trailing-session rows Phase 7b t
 >
 > The size is right (`ftell` worked) but no rows come out (`fgets` returned NULL).
 > Power-cycling does **not** help — the fault is in the filesystem, not a stuck
-> handle. This is [`esp32-issues`](esp32-issues.md) **I-017** recurring, where the
+> handle. This is [`esp32-issues`](../ESP32-Environment/docs/issues-and-fixes/esp32-issues.md) **I-017** recurring, where the
 > cure was a one-time `erase-flash`.
 >
 > ✅ **Recover it before you wipe anything** — `tools/recover_spiffs.py` dumps the

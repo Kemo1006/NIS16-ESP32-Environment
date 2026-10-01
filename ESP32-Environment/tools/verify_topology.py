@@ -43,7 +43,7 @@ import topology_graph  # noqa: E402  (same folder; the rules shared with the fir
 
 # User-facing topology names (match run.ps1/menu.ps1's -Topology vocabulary and
 # --expect's choices below). Only "partial" differs from its own exports/
-# folder name - docs/2026-09-14_SETUP-RULES-CONFIG.md C4: "Topology folder
+# folder name - docs/operations/2026-09-14_SETUP-RULES-CONFIG.md C4: "Topology folder
 # names: star, tree, linear, partial_mesh".
 TOPOLOGIES = ["star", "tree", "linear", "partial"]
 TOPOLOGY_DIRNAMES = {"partial": "partial_mesh"}
@@ -227,7 +227,7 @@ def resolve_files(args, dir_is_default):
         return [p for p in out if p.endswith("telem.csv")] or out
 
     # Captures live nested as exports/<attack>/<topology>/<location>/... (see
-    # docs/2026-09-14_SETUP-RULES-CONFIG.md C4) - never flat in exports/ itself,
+    # docs/operations/2026-09-14_SETUP-RULES-CONFIG.md C4) - never flat in exports/ itself,
     # so the old non-recursive glob.glob() straight against --dir never matched
     # a single file, no matter what --topology/--attack/--repeat were passed.
     # Scope the walk to <dir>/<attack>/<topology> (recursing through every
@@ -508,7 +508,7 @@ def discover_groups(exports_dir, topology, location):
     subfolder's files (those belong to their own group).
 
     scenario is the first path component under the location folder (one level
-    below --location, see docs/2026-09-14_SETUP-RULES-CONFIG.md C4) - a file
+    below --location, see docs/operations/2026-09-14_SETUP-RULES-CONFIG.md C4) - a file
     found directly IN the location folder (no scenario subfolder at all, e.g.
     a pre-rename capture) groups as scenario='stationary' (formerly 'none'),
     which is exactly what such a capture's run.ps1 -Scenario would have been.
