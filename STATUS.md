@@ -9,7 +9,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Where things stand
 - **Star + blackhole = attacker is the HUB (D-16), WORKS ON HARDWARE.** First clean run `blackhole/star/G402/stationary` r1 (oct01 12:24): root → attacker `20:50:0d:e7:1c:38` → 5 victims, CONFIRMED 2/2, integrity 8/8, hub verified. Captured as "burst" but NO burst fired → moved to stationary; campaign plan G402/star/blackhole highload→stationary.
 - **node8 (`F4:2D:C9:73:E6:18`)** telemetry lost from its board: 6 victims, 5 with telemetry. Data unchanged — state it in the write-up.
-- **Wizard builds the picked attacker MAC into every blackhole board** (`run.ps1 -AttackerMac`), so `mesh_config.h` no longer decides it. Victims-only laptops get a numbered list of known attackers (newest real run first) — type the number.
+- **Wizard builds the picked attacker MAC into every blackhole board** (`run.ps1 -AttackerMac`), so `mesh_config.h` no longer decides it. Victims-only laptops get a numbered list of known attackers (newest real run first) PLUS every other known board (to pick a NEW attacker) — type the number.
 - Multi-laptop: no crash on a missing burst target (asks y/N); root must be told the TOTAL child count across laptops.
 - **Campaign:** 5/144 done (G402: linear/tree/partial/star stationary; home linear burst). Verifier matrix over all 33 runs: 0 crashes, every verdict correct.
 - Basti's 7 commits merged + audited: nothing broken (15/15 firmware variants + wormhole root + sniffer build clean, analysis values identical).

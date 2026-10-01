@@ -4690,7 +4690,17 @@ function Get-KnownAttackerMacs {
     $cfgMac = Get-ConfiguredAttackerMac
     if ($cfgMac) { Add-Hit $cfgMac 3 ([datetime]::MinValue) "this laptop's mesh_config.h" }
 
-    # Nicknames from member_boards.json (it stores first:last byte only).
+    $nick = Get-BoardNicknames
+    foreach ($e in $found.Values) {
+        $p = $e.Mac -split ':'
+        $e | Add-Member -NotePropertyName Name -NotePropertyValue $nick["$($p[0]):$($p[-1])"] -Force
+    }
+    return @($found.Values | Sort-Object Rank, @{ Expression = 'When'; Descending = $true })
+}
+
+function Get-BoardNicknames {
+    # "first:last" byte (lower case) -> "Member nickname", from member_boards.json
+    # (it stores first:last byte only).
     $nick = @{}
     $mb = Join-Path $base 'member_boards.json'
     if (Test-Path $mb) {
@@ -4703,28 +4713,100 @@ function Get-KnownAttackerMacs {
             }
         } catch { }
     }
-    foreach ($e in $found.Values) {
+    return $nick
+}
+
+function Get-KnownBoardMacs {
+    # Every NON-root board this laptop has a full MAC for, newest sighting first -
+    # so a fresh board can be picked as the attacker instead of re-using a past
+    # one (oct. 1, 2026). Sources: the first data row of every telem CSV in
+    # datasets\exports (any attack, any role but root) + every preset board.
+    # -Exclude: MACs to leave out (already-listed attackers, this laptop's boards).
+    param([string[]]$Exclude = @())
+    $skip = @{}; foreach ($x in $Exclude) { if ($x) { $skip["$x".Trim().ToLower()] = $true } }
+    $found = @{}
+    function Add-Seen($mac, $when, $why) {
+        $m = "$mac".Trim().ToLower()
+        if ($m -notmatch '^[0-9a-f]{2}(:[0-9a-f]{2}){5}$' -or $skip[$m]) { return }
+        if (-not $found.ContainsKey($m) -or $when -gt $found[$m].When) {
+            $found[$m] = [pscustomobject]@{ Mac = $m; When = $when; Why = $why }
+        }
+    }
+    $roots = @{}
+    $exp = Join-Path $base 'datasets\exports'
+    if (Test-Path $exp) {
+        Get-ChildItem -Path $exp -Recurse -Filter '*_telem.csv' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch '\\trimmed\\' } | ForEach-Object {
+                try {
+                    $two = @(Get-Content -Path $_.FullName -TotalCount 2)
+                    if ($two.Count -lt 2) { return }
+                    $cols = $two[0].Split(','); $vals = $two[1].Split(',')
+                    $ri = [array]::IndexOf($cols, 'role'); $ni = [array]::IndexOf($cols, 'node_id')
+                    if ($ri -lt 0 -or $ni -lt 0) { return }
+                    $hex = ($vals[$ni] -replace '^NODE_', '')
+                    if ($hex -notmatch '^[0-9A-Fa-f]{12}$') { return }
+                    $mac = (($hex -split '(..)' | Where-Object { $_ }) -join ':').ToLower()
+                    if ($vals[$ri] -eq 'root') { $roots[$mac] = $true; return }
+                    $cell = (Split-Path (Split-Path $_.FullName -Parent) -NoQualifier) -replace '.*\\exports\\', '' -replace '\\', '/'
+                    Add-Seen $mac $_.LastWriteTime ("{0} in run {1}" -f $vals[$ri], $cell)
+                } catch { }
+            }
+    }
+    $pre = Join-Path $base 'presets'
+    if (Test-Path $pre) {
+        Get-ChildItem -Path $pre -Recurse -Filter '*.json' -ErrorAction SilentlyContinue | ForEach-Object {
+            try {
+                $cfg = Get-Content -Raw -Path $_.FullName | ConvertFrom-Json
+                $name = ($_.FullName -replace '.*\\presets\\', '' -replace '\\', '/')
+                foreach ($b in @($cfg.boards)) {
+                    if (-not $b.Mac) { continue }
+                    if ($b.Kind -eq 'root') { $roots["$($b.Mac)".Trim().ToLower()] = $true; continue }
+                    Add-Seen $b.Mac $_.LastWriteTime ("{0} in preset {1}" -f $b.Kind, $name)
+                }
+            } catch { }
+        }
+    }
+    $nick = Get-BoardNicknames
+    $out = @($found.Values | Where-Object { -not $roots[$_.Mac] })
+    foreach ($e in $out) {
         $p = $e.Mac -split ':'
         $e | Add-Member -NotePropertyName Name -NotePropertyValue $nick["$($p[0]):$($p[-1])"] -Force
     }
-    return @($found.Values | Sort-Object Rank, @{ Expression = 'When'; Descending = $true })
+    return @($out | Sort-Object @{ Expression = 'When'; Descending = $true })
 }
 
 function Read-RemoteAttackerMac {
     # Pick-or-paste prompt for an attacker on ANOTHER laptop: lists
     # Get-KnownAttackerMacs so the operator types a number instead of a MAC
     # from memory. Returns the MAC (lower case) or $null for "no attacker".
-    param([string]$Who = 'the attacker')
-    $list = @(Get-KnownAttackerMacs)
-    if ($list.Count -gt 0) {
+    # -LocalMacs: boards on THIS laptop (victims here, so never offered).
+    param([string]$Who = 'the attacker', [string[]]$LocalMacs = @())
+    $loc = @($LocalMacs | Where-Object { $_ } | ForEach-Object { "$_".Trim().ToLower() })
+    $attackers = @(Get-KnownAttackerMacs | Where-Object { $loc -notcontains $_.Mac })
+    # Second list: every other known board, so a NEW attacker can be picked by
+    # number too (oct. 1, 2026: operator wanted a fresh board, not a past one).
+    $others = @(Get-KnownBoardMacs -Exclude (@($attackers | ForEach-Object { $_.Mac }) + $loc))
+    $list = @($attackers) + @($others)
+    if ($attackers.Count -gt 0) {
         Write-Host ""
         Write-Host "Attacker boards this laptop knows of (best evidence first):" -ForegroundColor Cyan
-        for ($i = 0; $i -lt $list.Count; $i++) {
-            $e = $list[$i]
+        for ($i = 0; $i -lt $attackers.Count; $i++) {
+            $e = $attackers[$i]
             $name = if ($e.Name) { " ($($e.Name))" } else { '' }
             $tag = if ($i -eq 0) { '  <- most likely' } else { '' }
             Write-Host ("  [{0}] {1}{2} - {3}{4}" -f ($i + 1), $e.Mac, $name, $e.Why, $tag)
         }
+    }
+    if ($others.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Other known boards (never an attacker yet - pick one for a NEW attacker):" -ForegroundColor Cyan
+        for ($j = 0; $j -lt $others.Count; $j++) {
+            $e = $others[$j]
+            $name = if ($e.Name) { " ($($e.Name))" } else { '' }
+            Write-Host ("  [{0}] {1}{2} - last seen as {3} ({4})" -f ($attackers.Count + $j + 1), $e.Mac, $name, $e.Why, $e.When.ToString('MMM dd'))
+        }
+    }
+    if ($list.Count -gt 0) {
         Write-Host "  Confirm with the attacker's laptop (its wizard prints 'Attacker for this run: ...')." -ForegroundColor DarkGray
     }
     $tries = 0
@@ -8340,7 +8422,7 @@ if ($attack -eq 'blackhole') {
         else {
             Write-Host "Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
             Write-Host "board', run on the ATTACKER'S laptop), then type the printed MAC back here." -ForegroundColor DarkGray
-            $typedMac = Read-RemoteAttackerMac -Who $remoteAttacker.Label
+            $typedMac = Read-RemoteAttackerMac -Who $remoteAttacker.Label -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
 
             if (-not $typedMac) {
                 Write-Host "  Skipped - verify mesh_config.h matches the other laptop's attacker by hand." -ForegroundColor Yellow
@@ -8398,7 +8480,7 @@ if ($attack -eq 'blackhole') {
                 Write-Host "  (not asking - dry run / -SkipMacCheck)" -ForegroundColor DarkGray
             }
             else {
-                $typedMac = Read-RemoteAttackerMac -Who 'Attacker'
+                $typedMac = Read-RemoteAttackerMac -Who 'Attacker' -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
             }
             if (-not $typedMac) {
                 Write-Host "WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
