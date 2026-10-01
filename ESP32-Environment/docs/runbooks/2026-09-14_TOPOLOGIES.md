@@ -51,9 +51,12 @@ Every node is a direct child of the root (depth capped at 2). Simplest routing.
     (v)(v)(v)(v)  victims in a ring 3-5 m around (A)
   ```
   Victims are firmware-pinned to the attacker (they scan for its AP and never join the root
-  directly), so placement only has to keep them in range of (A). **Before flashing:**
-  `BLACKHOLE_ATTACKER_MAC` (mesh_config.h) or `SET_ATTACKER_MAC` must name the attacker board -
-  a wrong MAC means victims never join (the root holds Phase 0). **Power order:** root, then
+  directly), so placement only has to keep them in range of (A). **The attacker MAC:** a run
+  started from `run_wizard.ps1` builds the PICKED attacker's MAC into every blackhole board
+  (run.ps1 -AttackerMac, oct. 1 2026) - mesh_config.h no longer decides it. Multi-laptop: every
+  laptop must pick/type the SAME attacker. Boards flashed outside the wizard fall back to
+  mesh_config.h `BLACKHOLE_ATTACKER_MAC`; a wrong MAC = victims never join. The root only waits
+  for everyone if it knows the TOTAL child count (the wizard asks on multi-laptop runs). **Power order:** root, then
   attacker, then victims. Victims print `STAR HUB: joining attacker ...`. Check with
   `verify_topology.py --expect star` (OK = "hub <attacker> ... is the blackhole attacker").
   Why not the thesis's "root = attacker": the root is the destination and the referee - see D-16.

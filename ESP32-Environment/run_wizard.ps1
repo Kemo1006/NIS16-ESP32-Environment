@@ -3940,11 +3940,13 @@ function Invoke-IdentifyAllBoards {
         return
     }
 
-    Write-Host "  NO MATCH (bookkeeping only, NOT a run-killer any more)." -ForegroundColor Yellow
+    Write-Host "  NO MATCH." -ForegroundColor Yellow
     Write-Host "  None of the boards just read is the one recorded as attacker ($configured)." -ForegroundColor Yellow
-    Write-Host "  Since C7 Option 1 victims no longer address the attacker by MAC -- they send to" -ForegroundColor DarkGray
-    Write-Host "  their parent, and the attacker drops whatever passes through it. Your capture will" -ForegroundColor DarkGray
-    Write-Host "  be FINE either way. Worth updating so the recorded attacker matches reality." -ForegroundColor DarkGray
+    Write-Host "  LINEAR / TREE / PARTIAL: bookkeeping only - victims send to their parent and the" -ForegroundColor DarkGray
+    Write-Host "  attacker drops whatever passes through it, so those captures are fine either way." -ForegroundColor DarkGray
+    Write-Host "  STAR + BLACKHOLE: NOT fine - victims join ONLY the attacker's MAC (D-16). A run" -ForegroundColor Red
+    Write-Host "  started from the wizard builds the picked attacker's MAC in for you; a board" -ForegroundColor Red
+    Write-Host "  flashed any other way uses this mesh_config.h value and never joins if it is wrong." -ForegroundColor Red
     $fixOpts = @($readOk | ForEach-Object { "$($_.Port)  ($($_.Mac))  $($_.Node)" })
     $fixOpts += 'Leave as-is'
     $fixIdx = Show-Menu -Title 'Update the recorded BLACKHOLE_ATTACKER_MAC to one of these boards?' -Options $fixOpts -DefaultIndex ($fixOpts.Count - 1)
@@ -3956,7 +3958,8 @@ function Invoke-IdentifyAllBoards {
             Write-Host "  Could not write mesh_config.h -- fix it by hand before flashing victims." -ForegroundColor Red
         }
     } else {
-        Write-Host "  Left as-is -- the capture is unaffected; only the recorded attacker label is stale." -ForegroundColor DarkGray
+        Write-Host "  Left as-is -- fine for linear/tree/partial (only the label is stale). For STAR +" -ForegroundColor DarkGray
+        Write-Host "  blackhole, run through the wizard so the picked attacker's MAC is built in." -ForegroundColor DarkGray
     }
 }
 
@@ -4734,7 +4737,7 @@ function New-RunParams {
     # binds by parameter NAME; an array would bind positionally and shove the whole
     # thing into -Port.
     param($Board, [string]$Attack, [string]$Topology, [string]$Location, [int]$RepeatNum, [string]$Scenario = 'stationary',
-          [int]$ExpectedChildren = 0)
+          [int]$ExpectedChildren = 0, [string]$AttackerMac = '')
 
     $h = [ordered]@{
         Port     = $Board.Port
@@ -4772,6 +4775,10 @@ function New-RunParams {
         'control'  { $h.Attack = 'none';      $h.DestAttack    = 'wormhole' }
         default    { $h.Attack = 'none' }
     }
+    # The run's attacker, built into this board's firmware ahead of the laptop's
+    # own mesh_config.h (run.ps1 -AttackerMac). Load-bearing for star+blackhole:
+    # victims join ONLY that board (D-16).
+    if ($h.Attack -eq 'blackhole' -and $AttackerMac) { $h.AttackerMac = $AttackerMac }
     $h.Export = $true
     return $h
 }
@@ -7347,6 +7354,11 @@ $macsRead = @{}
 
 # ------------------------------------------------------- pre-flight gate ----
 
+# Cleared here so a value from an earlier pass (preset loop) cannot leak into
+# this run's attacker MAC below.
+$gotMac = $null
+$typedMac = $null
+
 if ($attack -eq 'blackhole') {
     $att = $children | Where-Object { $_.Kind -eq 'attacker' } | Select-Object -First 1
     $victimCount = @($children | Where-Object { $_.Kind -eq 'victim' }).Count
@@ -7570,11 +7582,29 @@ $cleanBuild = ($cleanAns -eq 'y' -or $cleanAns -eq 'Y')
 $script:remoteChildCount = @($fullRoster | Where-Object { -not $_.Port -and $_.Role -ne 'root' }).Count
 $rootIsLocal = @($runRoster | Where-Object { $_.Role -eq 'root' }).Count -gt 0
 if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt 0)) {
+    # No Enter-default here (oct. 1, 2026): the known count only covers remote
+    # boards with a JOB, so accepting it left plain victims on other laptops out
+    # of the gate and the root started Phase 0 with 2 of its victims. The known
+    # count is the floor; the operator must type the real number.
+    $localKids = @($runRoster | Where-Object { $_.Role -ne 'root' }).Count
+    $known = $script:remoteChildCount
     Write-Host ""
     Write-Host "The root will NOT start the run until every child is in the mesh." -ForegroundColor Cyan
-    $ans = Read-Line ("How many children run on OTHER laptops (every non-root board not flashed here)? [Enter = {0}] > " -f $script:remoteChildCount)
-    $n = 0
-    if ($ans -and [int]::TryParse($ans.Trim(), [ref]$n) -and $n -ge 0) { $script:remoteChildCount = $n }
+    Write-Host "  Count EVERY non-root board flashed on another laptop - victims included, not just" -ForegroundColor DarkGray
+    Write-Host ("  the {0} with a job recorded here. Ask the other laptops if unsure." -f $known) -ForegroundColor DarkGray
+    $tries = 0
+    while ($true) {
+        $tries++
+        if ($tries -gt $script:MaxPromptTries) {
+            Write-Host ("  No valid number - using {0}; the root may start before everyone joins." -f $known) -ForegroundColor Yellow
+            break
+        }
+        $ans = Read-Line ("How many children run on OTHER laptops? (at least {0}) > " -f $known)
+        $n = 0
+        if ($ans -and [int]::TryParse($ans.Trim(), [ref]$n) -and $n -ge $known) { $script:remoteChildCount = $n; break }
+        Write-Host ("  Type a whole number, {0} or more." -f $known) -ForegroundColor Yellow
+    }
+    Write-Host ("  Root waits for {0} children: {1} on this laptop + {2} on other laptops." -f ($localKids + $script:remoteChildCount), $localKids, $script:remoteChildCount) -ForegroundColor Green
 }
 
 # ---------------------------------------------- after the root's export ----
@@ -7606,13 +7636,39 @@ if ($rootIsLocal) {
 # does NOT auto-follow a later edit to the Board it was built from) and
 # reprint the box after each change, instead of the operator having to trust
 # an edit "took" with no visible confirmation.
+# ------------------------------------------------- this run's attacker MAC ----
+# Built into every blackhole child's firmware (run.ps1 -AttackerMac), ahead of
+# this laptop's mesh_config.h, so a stale per-laptop value can never point
+# victims at the wrong board (oct. 1, 2026: star+blackhole victims flashed from
+# a laptop holding GitHub's old MAC never joined - D-16). Best source first: the
+# MAC just read off the attacker, the one typed for a remote attacker, then the
+# roster's recorded MAC. Nothing known -> mesh_config.h as before.
+$script:runAttackerMac = ''
+if ($attack -eq 'blackhole') {
+    $attBoard = $fullRoster | Where-Object { $_.Kind -eq 'attacker' } | Select-Object -First 1
+    $cands = @($gotMac, $typedMac, $(if ($attBoard) { $attBoard.Mac }))
+    $pick = $cands | Where-Object { $_ -and "$_".Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$' } | Select-Object -First 1
+    if ($pick) { $script:runAttackerMac = "$pick".Trim().ToLower() }
+
+    Write-Host ""
+    if ($script:runAttackerMac) {
+        Write-Host ("Attacker for this run: {0} - built into every blackhole board flashed here" -f $script:runAttackerMac) -ForegroundColor Cyan
+        Write-Host "  (this laptop's mesh_config.h no longer decides it)." -ForegroundColor DarkGray
+    }
+    elseif ($topology -eq 'star') {
+        Write-Host "WARNING: the attacker's MAC is unknown on this laptop, so victims fall back to" -ForegroundColor Red
+        Write-Host ("  mesh_config.h ({0}). In STAR + blackhole victims join ONLY that board -" -f (Get-ConfiguredAttackerMac)) -ForegroundColor Red
+        Write-Host "  if it is not this run's attacker, no victim joins. Abort at the plan and fix the MAC." -ForegroundColor Red
+    }
+}
+
 $buildAndPrintPlan = {
     $script:plan = @()
     $script:expectedChildren = @($runRoster | Where-Object { $_.Role -ne 'root' }).Count + $script:remoteChildCount
     foreach ($b in $runRoster) {
         $script:plan += [pscustomobject]@{
             Board  = $b
-            Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario -ExpectedChildren $script:expectedChildren)
+            Params = (New-RunParams -Board $b -Attack $attack -Topology $topology -Location $location -RepeatNum $repeat -Scenario $scenario -ExpectedChildren $script:expectedChildren -AttackerMac $script:runAttackerMac)
         }
     }
 

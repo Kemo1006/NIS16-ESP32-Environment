@@ -138,6 +138,12 @@ param(
     # Ignored for the root and non-blackhole attacks. Run ONE board as attacker
     # and the others as victim.
     [ValidateSet('attacker', 'victim')][string]$BlackholeRole = 'attacker',
+    # The run's blackhole attacker STA MAC (aa:bb:cc:dd:ee:ff), from the wizard's
+    # attacker pick. Built into the firmware ahead of mesh_config.h's
+    # BLACKHOLE_ATTACKER_MAC, so a stale per-laptop mesh_config.h cannot point
+    # victims at the wrong board - load-bearing for star+blackhole (D-16), where
+    # victims join ONLY the attacker. Empty = fall back to mesh_config.h.
+    [string]$AttackerMac = '',
     # Export FOLDER override for a control victim in an attack run. The board is
     # flashed -Attack none (it's a plain victim) but its CSV belongs with the
     # run's data, so pass e.g. -DestAttack blackhole to file it under
@@ -462,6 +468,21 @@ if ($Role -eq 'root') {
 elseif ($ExpectedChildren -gt 0) {
     Write-Host "  -ExpectedChildren only affects the root - ignored for a $Role board." -ForegroundColor DarkGray
 }
+
+# Attacker MAC (see -AttackerMac). ALWAYS passed, 0 = none, for the same
+# CMake-cache reason as EXPECTED_CHILDREN above. Only blackhole child builds
+# read it (blackhole_target.c); every other build gets 0.
+$macHex = '0'
+if ($AttackerMac) {
+    if ($AttackerMac.Trim() -notmatch '^[0-9a-fA-F]{2}([:-]?[0-9a-fA-F]{2}){5}$') {
+        throw "-AttackerMac '$AttackerMac' is not a MAC (expected aa:bb:cc:dd:ee:ff)."
+    }
+    if ($Attack -eq 'blackhole' -and $Role -ne 'root') {
+        $macHex = '0x' + (($AttackerMac.Trim() -replace '[:-]', '').ToUpper()) + 'ULL'
+        Write-Host ("  Attacker MAC for this build: {0} (from the wizard, overrides mesh_config.h)" -f $AttackerMac.Trim().ToLower()) -ForegroundColor DarkGray
+    }
+}
+$scenarioFlags += "-DBH_ATTACKER_MAC_HEX=$macHex"
 
 # Give each distinct firmware variant its OWN build directory. Without this,
 # running multiple -Role child  boards at once (e.g. wormhole Node A + Node B +

@@ -41,7 +41,19 @@ static bool mac_is_unusable(const uint8_t mac[6])
 
 bh_target_source_t blackhole_target_get(uint8_t out_mac[6])
 {
+#if defined(BH_ATTACKER_MAC_HEX) && (BH_ATTACKER_MAC_HEX != 0)
+    /* The wizard's run's attacker, passed at build time (run.ps1 -AttackerMac ->
+     * -DBH_ATTACKER_MAC_HEX=0xAABBCCDDEEFF). Wins over mesh_config.h, which is a
+     * per-laptop file: on oct. 1, 2026 victims flashed from a laptop with a stale
+     * BLACKHOLE_ATTACKER_MAC never joined a star+blackhole run (D-16). */
+    const uint64_t hex = (uint64_t)(BH_ATTACKER_MAC_HEX);
+    const uint8_t compiled[6] = {
+        (uint8_t)(hex >> 40), (uint8_t)(hex >> 32), (uint8_t)(hex >> 24),
+        (uint8_t)(hex >> 16), (uint8_t)(hex >> 8),  (uint8_t)hex,
+    };
+#else
     const uint8_t compiled[6] = BLACKHOLE_ATTACKER_MAC;
+#endif
 
     nvs_handle_t h;
     esp_err_t err = nvs_open(BH_NVS_NAMESPACE, NVS_READONLY, &h);

@@ -8,6 +8,7 @@
      Cap: 200 lines — move the oldest entries to ARCHIVE.md when near it. -->
 
 ## Decisions
+- oct. 1, 2026 (Angelo) — **STAR HUB WORKS ON HARDWARE; attacker MAC now comes from the WIZARD, not mesh_config.h.** First star+blackhole run: root -> attacker 20:50:0D:E7:1C:38 -> victims, STATUS OK, but only 2 victims joined - the rest were flashed from laptops whose `mesh_config.h` still had GitHub's F4:2D:C9:73:E6:18 (a VICTIM that run), so they scanned forever. FIX: `run_wizard.ps1` resolves the run's attacker MAC (read off the attacker > typed remote MAC > roster) and passes it to every blackhole child build: `run.ps1 -AttackerMac` -> `-DBH_ATTACKER_MAC_HEX=0x..ULL` (always passed, 0 = none) -> `blackhole_target.c` uses it ahead of mesh_config.h. NVS SET_ATTACKER_MAC still wins but the wizard full-erases each run. Star + unknown MAC = red warning. Multi-laptop: every laptop must use the SAME attacker. ALSO: root's EXPECTED_CHILDREN only counted remote boards with a JOB (Enter-default) -> root started with 2 victims; the wizard now REQUIRES the real number of children on other laptops (known count = floor) and prints the total. Identify-flow mismatch text no longer says 'capture will be FINE' for star. Tests: New-RunParams routing (bh attacker/victim only), resolution + gate blocks with fake input, run.ps1 -BuildOnly with/without -AttackerMac.
 - oct. 1, 2026 (Angelo) — **Backup tag `backup/angelo-2026-10-01` (= c493943) on GitHub** before Basti merges his backlog. If Angelo's work is lost (force-push / bad conflict resolution), compare with `git diff backup/angelo-2026-10-01 origin/THESIS3`. Markers that must survive any merge: `STAR_HUB_BLACKHOLE` (mesh_setup.c), `MISSING_ATTACKER` (verify_attack.py), `SOURCE_SILENCED_MAX` (validate_integrity.py), `_shown(` (trim_run.py), hub rule in topology_graph.c/.py.
 - oct. 1, 2026 (Angelo) — **PCAPs never come from `git pull`**: `.gitignore` excludes `PCAP/` + `*.pcap` (GitHub 100 MB cap), so `datasets/PCAP/` only exists on the laptop that ran the sniffer (created on first capture). Angelo's laptop has none. Share captures by copying .pcap + .json into `datasets/PCAP/`. **Preset mix-up:** `presets/Bas/linear-blackhole-stationary-g402.json` on Angelo's laptop was saved (oct. 1 10:04) with topology STAR + scenario BURST - name and contents disagree. Deliberately NOT pushed (user's call) so Basti's real linear preset isn't overwritten; fix or re-save it under a star name.
 - oct. 1, 2026 (Angelo) — **GitHub had INCOMPLETE sept30 G402 runs - now fixed (a52a8a7).** partial_mesh had 4/9 files (no root, no attacker F42DC973E618), tree had no root log; anyone analysing from a pull got no PDR reference / INCONCL attacker rows. Both now 9/9. Teammates: `git pull`, then re-run `analyze.ps1` on blackhole partial_mesh + tree G402 stationary. Lesson: after a run, check the cell's file COUNT on GitHub (`git ls-files <cell> | wc -l`), not just that a data push happened.
@@ -173,12 +174,6 @@
 - I-017 recurring hazard: children left powered through a run's later phases overfill SPIFFS (~1.1 MB) and
   become unreadable on export → carry each child back UNPLUGGED; `board_check.py --port COMxx --wait 75`
   before a run (≥50% SPIFFS → wipe+flash first).
-- ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture.** Symptom: boot count
-  climbing every ~2 s, `rst:0x3 (SW_RESET)`, UART garbled mid-line, always as the radio powers up. Cause:
-  **power brownout, not firmware** — the ROOT runs softAP+STA (a child runs STA only) and its brownout
-  detector sits at the most sensitive default. Fix: root DIRECTLY into a laptop USB port, never a shared
-  hub; known-good short cable. RULED OUT: the `MESH_STACK_MAX_LAYER_CHAIN` change. If a CHILD loops too,
-  it's the shared supply, not root dual-radio draw. Full diagnosis in ARCHIVE.md.
 
 ## Failed approaches — do not retry
 - Passing `idf.py -D` flags as `@($spec.Flags)` — that is an array SUBEXPRESSION, not a splat, so both

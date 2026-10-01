@@ -2156,3 +2156,10 @@ Both still live as one-line warnings in STATUS.md.
   (Tunnel* features empty, both boards look healthy). ⚠️ **Node B CANNOT detect it** —
   `uart_write_bytes()` succeeds into an unterminated line; only Node A can prove a frame crossed.
   Guard on A: `s_tunnel_received == 0` at terminate prints a TUNNEL CARRIED NOTHING banner.
+
+- ⚠️⚠️ **RECURRING ROOT BOOT-LOOP — check the root's power BEFORE every capture.** Symptom: boot count
+  climbing every ~2 s, `rst:0x3 (SW_RESET)`, UART garbled mid-line, always as the radio powers up. Cause:
+  **power brownout, not firmware** — the ROOT runs softAP+STA (a child runs STA only) and its brownout
+  detector sits at the most sensitive default. Fix: root DIRECTLY into a laptop USB port, never a shared
+  hub; known-good short cable. RULED OUT: the `MESH_STACK_MAX_LAYER_CHAIN` change. If a CHILD loops too,
+  it's the shared supply, not root dual-radio draw. Full diagnosis in ARCHIVE.md.

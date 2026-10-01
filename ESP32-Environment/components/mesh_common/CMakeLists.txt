@@ -43,3 +43,11 @@ endif()
 if(DEFINED ACTIVE_ATTACK)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE ACTIVE_ATTACK=${ACTIVE_ATTACK})
 endif()
+
+# The run's blackhole attacker MAC from the wizard (run.ps1 -AttackerMac), as
+# 0xAABBCCDDEEFFULL; 0 = none, fall back to mesh_config.h. run.ps1 always passes
+# it, so a cached value from an earlier run can never linger in a build dir.
+# Only blackhole_target.c (here) reads it.
+if(DEFINED BH_ATTACKER_MAC_HEX)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE BH_ATTACKER_MAC_HEX=${BH_ATTACKER_MAC_HEX})
+endif()
