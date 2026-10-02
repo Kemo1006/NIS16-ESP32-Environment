@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
 - oct. 2 (Basti) — Progress bar + ETA in M6/M7/M8 analysis (`analysis/progress.py`); outputs byte-identical; shows in wizard/menu/run.ps1, not analyze.ps1.
+- oct. 2 — Campaign checklist (`inventory_cells.py --checklist`, wizard "Campaign progress") has a new **last run** column: newest capture date/time + scenario per attack row. Display only; run through the real checklist, not through the wizard menu.
 - oct. 1 (night, Basti) — Wormhole tunnel proven on hardware (tree attempt went flat); SD importer files wormhole controls by phase; 5 misfiled control CSVs moved to wormhole/; exposure false alarm diagnosed.
-- oct. 1 (night) — linear/G402/jitter fully verified (rebuild = identical, all gates PASS, jitter fired); EDA PCA/t-SNE lost-attack-class bug fixed; wizard target prompt shows port status + Detect ports.

@@ -2343,3 +2343,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS (oct. 2, 2026, Basti)
 - oct. 1 (eve) — Burst firmware bug found + fixed; highload root fix; verify_burst + wizard burst checks; star stationary replaced by 2 PM run; burst duplicates removed twice.
+- oct. 1, 2026 — (eve) Burst firmware bug found + fixed; highload root fix; verify_burst + wizard burst checks; star stationary replaced by 2 PM run; burst duplicates removed twice.
+- oct. 1, 2026 — (night) linear/G402/jitter fully verified (rebuild = identical, all gates PASS, jitter fired); EDA PCA/t-SNE lost-attack-class bug fixed; wizard target prompt shows port status + Detect ports.

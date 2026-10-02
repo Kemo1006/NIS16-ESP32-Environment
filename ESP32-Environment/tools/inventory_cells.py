@@ -158,8 +158,14 @@ def judge(run, sample_interval_ms):
     children = []
     attacker_role = ""
     low_coverage = []
+    when = None
 
     for path, g in run["telem"]:
+        try:
+            t = name_stamp.parse(g["stamp"], path)[0]
+            when = t if when is None or t > when else when
+        except ValueError:
+            pass
         meta = _read_meta(path, sample_interval_ms)
         if meta is None or meta["rows"] == 0:
             reasons.append(f"{os.path.basename(path)}: no data rows")
@@ -202,6 +208,7 @@ def judge(run, sample_interval_ms):
         "children": len(children),
         "arrivals_rows": arrivals_rows,
         "attacker_role": attacker_role,
+        "when": when,
         "schema": (root_telem or (children[0][1] if children else {})).get("n_cols", 0),
     }
     verdict = "COMPLETE" if not reasons else "INCOMPLETE"
@@ -558,6 +565,21 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         uniq.append(r)
     rows = uniq
 
+    # Newest capture time per cell, from the filename stamps (see judge()).
+    latest = {}
+    for r in rows:
+        if r["when"] is not None:
+            k = _key(r)
+            if k not in latest or r["when"] > latest[k][0]:
+                latest[k] = (r["when"], k[3])
+
+    def last_run(atk, topo, loc, scns):
+        found = [latest[(atk, topo, loc, s_)] for s_ in scns if (atk, topo, loc, s_) in latest]
+        if not found:
+            return ""
+        when, scn = max(found)
+        return f"{when.strftime('%b%d %I:%M%p')} ({lbl(scn)})"
+
     for r in rows:
         k = _key(r)
         if counts_as_done(r):
@@ -599,9 +621,10 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
 
     for loc in PLAN_LOCATIONS:
         print()
+        print()
         print(f"  -- {loc} " + "-" * (88 - len(loc)))
-        print(f"    {'topology':<14}{'attack':<11}4 scenarios drawn for this cell "
-              f"(left to right = run order)")
+        print(f"    {'topology':<14}{'attack':<11}"
+              f"{'4 scenarios drawn for this cell (left to right = run order)':<62}last run")
         for topo in PLAN_TOPOLOGIES:
             drawn = set()
             for atk in PLAN_ATTACKS:
@@ -610,13 +633,16 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
                 for scn in scns:
                     tally(atk, topo, loc, scn)
                 slots = "  ".join(f"{mark(atk, topo, loc, s)} {lbl(s):<10}" for s in scns)
-                print(f"    {topo if atk == PLAN_ATTACKS[0] else '':<14}{atk:<11}{slots}")
+                print(f"    {topo if atk == PLAN_ATTACKS[0] else '':<14}{atk:<11}{slots}"
+                      f"  {last_run(atk, topo, loc, scns)}")
             # Only an attack-window scenario needs a separate benign run; for the
             # others the attack run's own phase 0 IS the control.
             for scn in sorted(drawn & PAIRED_SCENARIOS):
                 tally("baseline", topo, loc, scn)
                 print(f"    {'':<14}{'benign':<11}{mark('baseline', topo, loc, scn)} "
-                      f"{lbl(scn):<10}  (matched pair for this topology's {lbl(scn)} runs)")
+                      f"{lbl(scn):<{62 - 4}}"
+                      f"{last_run('baseline', topo, loc, [scn]):<30}"
+                      f"(matched pair for {lbl(scn)} runs)")
 
     # Captures that are real but outside this cell's drawn 4: listed, not counted.
     planned_keys = set(build_plan(assign))
@@ -765,6 +791,7 @@ def main():
             "children": stats["children"], "arrivals_rows": stats["arrivals_rows"],
             "attacker_role": stats["attacker_role"] or "-",
             "schema_cols": stats["schema"],
+            "when": stats["when"],
             "reasons": "; ".join(reasons),
         })
 
