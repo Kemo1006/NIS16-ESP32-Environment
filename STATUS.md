@@ -37,4 +37,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
 - oct. 1 (night) — linear/G402/jitter fully verified (rebuild = identical, all gates PASS, jitter fired); EDA PCA/t-SNE lost-attack-class bug fixed; wizard target prompt shows port status + Detect ports.
 - oct. 1 (eve) — Burst firmware bug found + fixed; highload root fix; verify_burst + wizard burst checks; star stationary replaced by 2 PM run; burst duplicates removed twice.
-- oct. 1 — Star hub proven on hardware; attacker MAC from the wizard; split-preset fixes; Basti's merge audited; verifier matrix 33/33; wormhole pre-flight.
+- oct. 2 — Campaign checklist (`inventory_cells.py --checklist`, wizard "Campaign progress") has a new **last run** column: newest capture date/time + scenario per attack row. Display only; run through the real checklist, not through the wizard menu.
