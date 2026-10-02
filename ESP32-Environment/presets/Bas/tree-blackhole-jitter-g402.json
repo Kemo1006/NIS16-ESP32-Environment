@@ -5,11 +5,11 @@
     "scenario":  "jitter",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-10-02 11:31",
+    "savedAt":  "2026-10-02 18:00",
     "boards":  [
                    {
                        "Label":  "node2",
-                       "Port":  "COM3",
+                       "Port":  "COM6",
                        "Role":  "child",
                        "Kind":  "attacker",
                        "Display":  "blackhole ATTACKER",
@@ -18,7 +18,7 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM5",
+                       "Port":  "COM7",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",
@@ -27,7 +27,7 @@
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM4",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim",

@@ -455,6 +455,7 @@ function Show-CaptureWizardMenu {
             @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
             @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis+PCAP+run logs into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
             @{ Idx = 14; Text = 'View a saved run log (a past run''s console output start to end, filed by attack/topology/location - keep, archive, delete or push; no board/COM contact)' }
+            @{ Idx = 28; Text = 'Delete dataset files from THIS LAPTOP (no File Explorer - every file shows its date + time; type DELETE to confirm; GitHub untouched)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
             @{ Idx = 1; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
@@ -6963,6 +6964,13 @@ if (-not $Preset) {
         if ($modeIdx -eq 25) { $newestPcap = Select-CaptureFile -Newest; if ($newestPcap) { Invoke-WiresharkViews -Path $newestPcap -Overview }; Read-Host "Press Enter to return to the menu" | Out-Null; continue }
         if ($modeIdx -eq 26) { Invoke-Esp32SnifferStandalone -Live; continue }
         if ($modeIdx -eq 27) { Invoke-MacRetryReport; continue }
+        # Same flow as Data sync -> 'Delete data from THIS LAPTOP only', surfaced
+        # on the main menu so junk files can go without hunting in File Explorer.
+        if ($modeIdx -eq 28) {
+            $a = Select-DataSyncArea -Verb 'Delete from this laptop'
+            if ($a) { Invoke-DataSync -Mode 'delete-local' -Area $a }
+            continue
+        }
         if ($modeIdx -eq 17) {
             while ($true) {
                 $whoNow = Get-MyMember
@@ -7095,8 +7103,19 @@ if (-not $Preset) {
                 if (-not $c) { "{0,-26} (unreadable)" -f $_.Name }
                 else {
                     # attack / topology / location / scenario are the sub-heading above.
+                    # Date + time the preset was saved: the file's own savedAt
+                    # (Save-Preset), since a git pull resets the file's modified
+                    # time to the pull - the file time is only the fallback for
+                    # presets saved before savedAt existed.
+                    $when = $_.LastWriteTime
+                    if ($c.PSObject.Properties['savedAt'] -and $c.savedAt) {
+                        $parsed = [datetime]::MinValue
+                        if ([datetime]::TryParseExact([string]$c.savedAt, 'yyyy-MM-dd HH:mm',
+                                [Globalization.CultureInfo]::InvariantCulture,
+                                [Globalization.DateTimeStyles]::None, [ref]$parsed)) { $when = $parsed }
+                    }
                     $head = "{0,-44} {1} board(s), {2}" -f
-                        $_.Name, @($c.boards).Count, $_.LastWriteTime.ToString('MMM dd')
+                        $_.Name, @($c.boards).Count, $when.ToString('MMM dd hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)
                     $boardLines = @((ConvertTo-Roster -Cfg $c).Roster | ForEach-Object {
                         $role = if ($_.Role -eq 'root') { 'root' } elseif ($_.Kind -eq 'attacker') { 'attacker' } else { 'child' }
                         $mac  = if ($_.Mac) { $_.Mac } else { 'MAC not recorded' }

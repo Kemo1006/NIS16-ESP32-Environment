@@ -1236,18 +1236,21 @@ def delete_local_files(ctx, area):
     if not safe and not only_here:
         print("  Already gone from this laptop - nothing to delete.")
         return 0
+    # The time goes on the final list too, not only on the picker: it is the
+    # last thing read before DELETE, so a wrong pick (yesterday's run instead of
+    # today's junk) is still visible here.
     print("")
     if safe:
         print("  {} file(s) GitHub has too - a pull can bring these back:".format(len(safe)))
         for rel in safe:
-            print("    " + rel)
+            print("    {}  {}".format(stamp(rel)[1], rel))
     if only_here:
         print("  {} file(s) exist ONLY on this laptop. Deleting them is PERMANENT - no pull and no".format(
             len(only_here)))
         print("  restore can bring them back, and if the SD card was cleared on import this is the")
         print("  last copy:")
         for rel in only_here:
-            print("    " + rel)
+            print("    {}  {}".format(stamp(rel)[1], rel))
     try:
         ans = input("\n  Type DELETE to remove these {} file(s) from this laptop > ".format(
             len(safe) + len(only_here))).strip()
