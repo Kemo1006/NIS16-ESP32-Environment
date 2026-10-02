@@ -86,7 +86,7 @@
     "G402/tree/blackhole": [
       "burst",
       "stationary",
-      "mobility",
+      "jitter",
       "powercycle"
     ],
     "G402/tree/wormhole": [
@@ -135,7 +135,7 @@
       "powercycle",
       "burst",
       "highload",
-      "mobility"
+      "jitter"
     ],
     "DLSU_Library/tree/wormhole": [
       "mobility",
@@ -182,7 +182,7 @@
     "Goks/tree/blackhole": [
       "burst",
       "powercycle",
-      "mobility",
+      "jitter",
       "stationary"
     ],
     "Goks/tree/wormhole": [
