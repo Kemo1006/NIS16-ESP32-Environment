@@ -2322,3 +2322,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - sep. 24, 2026 — **Basti's laptop git identity is `xMiguelCarlosx`** — commits "by Miguel" from this clone are
   the user (VS Code auto-sync also runs `pull --autostash` mid-session). `PCAP/` + `*.pcap` git-ignored: a 120 MB
   Mac capture exceeds GitHub's 100 MB cap and blocked every push until removed from history.
+
+## Rolled from MEMORY (oct. 1, 2026 night, 2)
+- oct. 1, 2026 night (Angelo) — **Git state after the hardcode-audit push (`44a9672`, merge `f1e340f`):** Basti's `589af2d` 'pushed dataset 2PM and 3PM oct 1' RE-ADDED the 3 star/G402/burst duplicates (3rd time; removed in 5f9221c-era, 4a00a3b) plus `skills/verify/SKILL.md`; it reached this laptop via a merge `ffe25a5` (VS Code auto-sync pulls mid-session). On Angelo's laptop those 3 files are deleted in the working tree with the deletion STAGED - not done by Claude, left uncommitted pending the user. Pull was blocked by staged files: 7 partial_mesh/G402/jitter CSVs staged locally were byte-identical to Basti's/ongky's pushes (moved aside, pulled, verified SAME); the staged star deletion was unstaged for the merge and re-staged after. Lesson: before pulling, `git diff --cached --stat` - git merge refuses with ANY staged change on a path the merge touches.

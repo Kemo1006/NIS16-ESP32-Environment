@@ -14,8 +14,8 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **star/G402/stationary r1 = the oct01 2 PM run** (6 victims, integrity/topology PASS, BLACKHOLE CONFIRMED, sniffer paired). Old 12:24 run archived locally (`archive/2026-10-01_star-G402-stationary-replaced/`). star/G402/burst NOT captured yet.
 - **linear/G402/jitter r1 ANALYZED + CHECKED (oct. 1 night): integrity 9/9, topology linear OK, BLACKHOLE CONFIRMED 2/2, jitter fired (312.5/190.5 s), pcap PASS.** Root's 2 files now pushed. Full re-verify: analysis rebuilt = identical. EDA PCA/t-SNE bug fixed (attack class was missing; jitter + star stationary plots regenerated). Open: preprocess drops jitter's extra baseline (MEMORY).
 - Hardcode audit DONE + pushed: IDF `%d` bug, phase constants from mesh_config.h (`tools/mesh_constants.py`), stale firmware nickname table removed (`Board-XX:YY`), board_check/run_matrix no hardcoded MACs/COMs, `.mcp.json` untracked. Firmware nickname change shows after the next reflash.
-- Wizard: scenario-TARGET prompts show `plugged in`/`NOT PRESENT` + a 'Detect ports' option (pushed, not yet used on real boards). Attacker picker lists every known board.
-- Campaign (live checklist): **7/144** - G402 linear/tree/partial/star stationary, linear+partial jitter; home linear burst. Checklist staleness now content-based, table aligned (pushed).
+- Wizard: scenario-TARGET prompts show `plugged in`/`NOT PRESENT` + 'Detect ports' (pushed). **Board roster web page (live, shared):** https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh - share with Bas + Kyle as Contributor; wizard still reads member_boards.json (sync on request).
+- Campaign (live checklist): **7/144** - G402 linear/tree/partial/star stationary, linear+partial jitter; home linear burst. Checklist staleness now content-based, table aligned (pushed). NEW (Kyle 17:18, pulled): baseline/tree/G402/stationary - only Kyle's 4 children so far; root + Basti's/Cal's boards still to push.
 
 ## Next step
 1. **Everyone `git pull` + REFLASH** (both firmware fixes). Every laptop picks the SAME attacker.

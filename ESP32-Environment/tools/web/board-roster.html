@@ -1,0 +1,439 @@
+<title>NIS16 Board Roster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: three member columns (Cal / Bas / Kyle) like the wizard's table; a
+   checks strip above them; each board is a "silkscreen label" row. Role colors
+   are the wizard's own (run_wizard.ps1 RoleAnsi): root #FEBD17, child #1BC0BA,
+   attacker #FDB8D9; scenario job amber like Show-MemberBoards.ps1. */
+:root {
+  --bg: #f3f5f2;
+  --panel: #ffffff;
+  --ink: #18201c;
+  --muted: #5d6a63;
+  --line: #d6ddd8;
+  --accent: #0d6b5f;
+  --accent-ink: #ffffff;
+  --root: #9a6b00;      --root-bg: #fff3cf;
+  --child: #087a75;     --child-bg: #d9f5f3;
+  --attacker: #a3245f;  --attacker-bg: #fde3ef;
+  --unknown: #5d6a63;   --unknown-bg: #e8ecea;
+  --job: #a35400;       --job-bg: #ffe8cc;
+  --warn: #8a4b00;      --warn-bg: #fff1dc;   --warn-line: #f0c58a;
+  --ok: #1d6b3a;
+  --danger: #b3261e;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101513; --panel: #171e1b; --ink: #e6ece8; --muted: #93a29a; --line: #2a3530;
+    --accent: #3fb8a5; --accent-ink: #06201c;
+    --root: #febd17; --root-bg: #3a2d08;
+    --child: #1bc0ba; --child-bg: #0c3331;
+    --attacker: #fdb8d9; --attacker-bg: #45182c;
+    --unknown: #93a29a; --unknown-bg: #232c28;
+    --job: #ffaa3c; --job-bg: #3d2a10;
+    --warn: #ffc56e; --warn-bg: #2f2410; --warn-line: #6b4e1c;
+    --ok: #6fd391; --danger: #ff8a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101513; --panel: #171e1b; --ink: #e6ece8; --muted: #93a29a; --line: #2a3530;
+  --accent: #3fb8a5; --accent-ink: #06201c;
+  --root: #febd17; --root-bg: #3a2d08;
+  --child: #1bc0ba; --child-bg: #0c3331;
+  --attacker: #fdb8d9; --attacker-bg: #45182c;
+  --unknown: #93a29a; --unknown-bg: #232c28;
+  --job: #ffaa3c; --job-bg: #3d2a10;
+  --warn: #ffc56e; --warn-bg: #2f2410; --warn-line: #6b4e1c;
+  --ok: #6fd391; --danger: #ff8a80;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-inline: 16px; padding-block: 20px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1.1; margin: 2px 0 0; letter-spacing: .01em; text-wrap: balance; }
+.head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.live { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); font-family: var(--font-mono); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.live[data-state="live"] .dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+.live[data-state="off"] .dot { background: var(--danger); }
+
+button, .btn {
+  font: inherit; font-size: 14px; cursor: pointer; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 7px 12px; line-height: 1.2;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 4px 7px; font-size: 13px; }
+button.ghost:hover { color: var(--ink); border-color: var(--line); }
+button.danger { color: var(--danger); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+.note { font-size: 13.5px; color: var(--muted); max-width: 70ch; }
+.checks { display: grid; gap: 6px; }
+.check { border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.check.ok { border-color: var(--line); background: var(--panel); color: var(--ok); }
+
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+.member { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.member-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.member-head h2 { font-family: var(--font-display); font-size: 21px; margin: 0; letter-spacing: .02em; }
+.count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.boards { display: grid; }
+.empty-col { padding: 16px 14px; color: var(--muted); font-size: 14px; }
+
+.board { padding: 11px 14px; border-bottom: 1px dashed var(--line); display: grid; gap: 6px; }
+.board:last-child { border-bottom: 0; }
+.row1 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.nick { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.mac { font-family: var(--font-mono); font-size: 13.5px; padding: 1px 6px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.chip { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; }
+.chip.root { color: var(--root); background: var(--root-bg); }
+.chip.child { color: var(--child); background: var(--child-bg); }
+.chip.attacker { color: var(--attacker); background: var(--attacker-bg); }
+.chip.unknown { color: var(--unknown); background: var(--unknown-bg); }
+.job { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--job); background: var(--job-bg); padding: 2px 8px; border-radius: 999px; }
+.row2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 10px; font-size: 12.5px; color: var(--muted); }
+.where { font-family: var(--font-mono); }
+.where b { color: var(--ink); font-weight: 500; }
+.actions { display: flex; gap: 2px; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13.5px; color: var(--danger); }
+
+.add { padding: 10px 14px 14px; }
+.add button { width: 100%; border-style: dashed; color: var(--muted); }
+.add button:hover { color: var(--ink); }
+
+form.edit { padding: 12px 14px; display: grid; gap: 10px; background: color-mix(in srgb, var(--accent) 6%, var(--panel)); border-bottom: 1px solid var(--line); }
+.field { display: grid; gap: 3px; min-width: 0; }
+.field label { font-size: 12px; font-family: var(--font-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+input, select { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; width: 100%; min-width: 0; }
+input.mono { font-family: var(--font-mono); }
+.form-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.err { color: var(--danger); font-size: 13px; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; }
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+footer code { font-family: var(--font-mono); font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">NIS16 · ESP-WIFI-MESH testbed</div>
+      <h1>Boards by member</h1>
+    </div>
+    <div class="head-actions">
+      <span class="live" id="live" data-state="wait"><span class="dot"></span><span id="liveText">Connecting…</span></span>
+      <button type="button" id="copyJson">Copy as member_boards.json</button>
+    </div>
+  </header>
+
+  <p class="note">One shared list for all three laptops. A board doesn't have to be plugged into your laptop to be listed here. Edits save instantly and everyone with the page open sees them. Use <b>Plugged into</b> to say which laptop a board is on right now.</p>
+
+  <div class="checks" id="checks"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <div>The wizard still reads <code>member_boards.json</code>. To bring this list into the wizard, ask Claude to sync it, or use “Copy as member_boards.json” and paste it into the file.</div>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  const MEMBERS = ["Cal", "Bas", "Kyle"];
+  const ROLES = [["root", "root"], ["child", "child"], ["attacker", "attacker"], ["?", "unknown"]];
+  const JOBS = [["", "none"], ["burst", "burst"], ["mobility", "mobility"], ["powercycle", "powercycle"]];
+  const LAPTOPS = [["", "not set"], ["Cal", "Cal's laptop"], ["Bas", "Bas's laptop"], ["Kyle", "Kyle's laptop"], ["none", "unplugged"]];
+
+  let db = null, user = null, canWrite = true;
+  let boards = [];          // [{id, ...data}]
+  let editing = null;       // board id, or "new:<member>"
+  let confirming = null;    // board id awaiting delete confirm
+  let saving = false;
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  function shortMac(mac) {
+    const parts = String(mac || "").split(/[:\-\s]+/).filter(Boolean);
+    if (parts.length < 2) return String(mac || "").toUpperCase();
+    return (parts[0] + ":" + parts[parts.length - 1]).toUpperCase();
+  }
+  function normMac(raw) {
+    const t = String(raw || "").trim().toUpperCase().replace(/-/g, ":");
+    if (/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(t)) return t;
+    if (/^[0-9A-F]{2}:[0-9A-F]{2}$/.test(t)) return t;
+    return null;
+  }
+  function roleClass(r) { return r === "root" ? "root" : r === "attacker" ? "attacker" : r === "child" ? "child" : "unknown"; }
+  function ago(iso) {
+    const t = Date.parse(iso); if (!t) return "";
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + " min ago";
+    if (s < 86400) return Math.floor(s / 3600) + " h ago";
+    return Math.floor(s / 86400) + " d ago";
+  }
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2200); }
+  function setLive(state, text) { $("live").dataset.state = state; $("liveText").textContent = text; }
+
+  function sorted(list) {
+    return list.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.nickname).localeCompare(String(b.nickname)));
+  }
+
+  // ---- checks: things that would confuse a run ----------------------------
+  function renderChecks() {
+    const box = $("checks"); box.replaceChildren();
+    const msgs = [];
+    const by = (k) => { const m = {}; boards.forEach((b) => { const v = b[k]; if (v) (m[v] = m[v] || []).push(b); }); return m; };
+    const roots = boards.filter((b) => b.role === "root");
+    const atks = boards.filter((b) => b.role === "attacker");
+    if (boards.length && roots.length === 0) msgs.push("No board is marked root.");
+    if (roots.length > 1) msgs.push(roots.length + " boards are marked root (" + roots.map((b) => b.nickname || shortMac(b.mac)).join(", ") + "). A run has one root.");
+    if (atks.length > 1) msgs.push(atks.length + " boards are marked attacker (" + atks.map((b) => b.nickname || shortMac(b.mac)).join(", ") + "). Every laptop must pick the same one attacker.");
+    const jobs = by("scenario");
+    Object.keys(jobs).forEach((j) => { if (jobs[j].length > 1) msgs.push("The " + j + " job is on " + jobs[j].length + " boards. Exactly one board should carry it."); });
+    jobs.burst && jobs.burst.forEach((b) => { if (b.role === "attacker") msgs.push((b.nickname || shortMac(b.mac)) + " is the attacker and the burst target. The attacker firmware has no burst code, so pick a child instead."); });
+    const macs = {}; boards.forEach((b) => { const k = shortMac(b.mac); (macs[k] = macs[k] || []).push(b); });
+    Object.keys(macs).forEach((k) => { if (k && macs[k].length > 1) msgs.push("MAC " + k + " is listed " + macs[k].length + " times."); });
+    if (!msgs.length) {
+      if (boards.length) box.append(el("div", "check ok", "✓ One root, " + (atks.length ? "one attacker" : "no attacker set") + ", no duplicate MACs or scenario jobs."));
+      return;
+    }
+    msgs.forEach((m) => box.append(el("div", "check", "⚠ " + m)));
+  }
+
+  // ---- columns -------------------------------------------------------------
+  async function render() {
+    const grid = $("grid"); grid.replaceChildren();
+    const ids = [...new Set(boards.map((b) => b.updatedBy).filter(Boolean))];
+    let people = {};
+    if (user && ids.length) { try { people = await user.profiles(ids); } catch (e) { people = {}; } }
+
+    MEMBERS.forEach((m) => {
+      const col = el("section", "member");
+      col.setAttribute("aria-label", m + "'s boards");
+      const head = el("div", "member-head");
+      head.append(el("h2", null, m));
+      const mine = sorted(boards.filter((b) => b.member === m));
+      head.append(el("span", "count", mine.length + (mine.length === 1 ? " board" : " boards")));
+      col.append(head);
+
+      const list = el("div", "boards");
+      if (!mine.length && editing !== "new:" + m) list.append(el("div", "empty-col", "No boards yet."));
+      mine.forEach((b) => list.append(editing === b.id ? editForm(b, m) : boardRow(b, people)));
+      if (editing === "new:" + m) list.append(editForm(null, m));
+      col.append(list);
+
+      if (canWrite && editing !== "new:" + m) {
+        const add = el("div", "add");
+        const btn = el("button", null, "+ Add a board to " + m);
+        btn.type = "button";
+        btn.addEventListener("click", () => { editing = "new:" + m; confirming = null; render(); });
+        add.append(btn); col.append(add);
+      }
+      grid.append(col);
+    });
+    renderChecks();
+  }
+
+  function boardRow(b, people) {
+    const row = el("div", "board");
+    const r1 = el("div", "row1");
+    r1.append(el("span", "nick", b.nickname || "—"));
+    const mac = el("span", "mac", shortMac(b.mac)); mac.title = String(b.mac || "");
+    r1.append(mac);
+    const rc = roleClass(b.role);
+    r1.append(el("span", "chip " + rc, rc === "unknown" ? "?" : b.role));
+    if (b.scenario) r1.append(el("span", "job", b.scenario.toUpperCase() + " TARGET"));
+    row.append(r1);
+
+    const r2 = el("div", "row2");
+    const where = el("span", "where");
+    const lap = LAPTOPS.find((l) => l[0] === (b.laptop || ""));
+    where.append("Plugged into: ");
+    where.append(el("b", null, lap ? lap[1] : b.laptop));
+    const meta = el("span");
+    if (b.updatedAt) {
+      const who = b.updatedBy && people[b.updatedBy] ? (people[b.updatedBy].name || "Someone") : "";
+      meta.textContent = (who ? who + " · " : "edited ") + ago(b.updatedAt);
+    }
+    const left = el("span"); left.style.display = "grid"; left.style.gap = "2px";
+    left.append(where, meta);
+    r2.append(left);
+
+    if (canWrite) {
+      if (confirming === b.id) {
+        const c = el("div", "confirm");
+        c.append("Remove this board?");
+        const yes = el("button", "danger", "Remove"); yes.type = "button";
+        yes.addEventListener("click", () => removeBoard(b));
+        const no = el("button", "ghost", "Keep"); no.type = "button";
+        no.addEventListener("click", () => { confirming = null; render(); });
+        c.append(yes, no); r2.append(c);
+      } else {
+        const acts = el("div", "actions");
+        const e = el("button", "ghost", "Edit"); e.type = "button";
+        e.setAttribute("aria-label", "Edit " + (b.nickname || shortMac(b.mac)));
+        e.addEventListener("click", () => { editing = b.id; confirming = null; render(); });
+        const d = el("button", "ghost danger", "Remove"); d.type = "button";
+        d.setAttribute("aria-label", "Remove " + (b.nickname || shortMac(b.mac)));
+        d.addEventListener("click", () => { confirming = b.id; editing = null; render(); });
+        acts.append(e, d); r2.append(acts);
+      }
+    }
+    row.append(r2);
+    return row;
+  }
+
+  function selectField(id, label, opts, value) {
+    const f = el("div", "field");
+    const l = el("label", null, label); l.htmlFor = id;
+    const s = el("select"); s.id = id;
+    opts.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; if (v === (value ?? "")) o.selected = true; s.append(o); });
+    f.append(l, s); return f;
+  }
+  function inputField(id, label, value, cls, ph) {
+    const f = el("div", "field");
+    const l = el("label", null, label); l.htmlFor = id;
+    const i = el("input", cls || null); i.id = id; i.value = value || ""; if (ph) i.placeholder = ph; i.autocomplete = "off";
+    f.append(l, i); return f;
+  }
+
+  function editForm(b, member) {
+    const key = b ? b.id : "new";
+    const form = el("form", "edit");
+    form.setAttribute("aria-label", b ? "Edit board" : "Add board");
+    form.append(inputField("nick-" + key, "Nickname", b && b.nickname, null, "e.g. child_3(node4)"));
+    const two = el("div", "two");
+    two.append(inputField("mac-" + key, "MAC", b && b.mac, "mono", "F4:18 or full MAC"));
+    two.append(selectField("role-" + key, "Role", ROLES.map(([v, t]) => [v, v === "?" ? "unknown (?)" : t]), b ? b.role : "child"));
+    form.append(two);
+    const two2 = el("div", "two");
+    two2.append(selectField("job-" + key, "Scenario job", JOBS, b ? b.scenario : ""));
+    two2.append(selectField("lap-" + key, "Plugged into", LAPTOPS, b ? b.laptop : member));
+    form.append(two2);
+    form.append(selectField("own-" + key, "Owner", MEMBERS.map((m) => [m, m]), b ? b.member : member));
+    const err = el("div", "err"); err.setAttribute("role", "alert");
+    form.append(err);
+    const acts = el("div", "form-actions");
+    const save = el("button", "primary", b ? "Save" : "Add board"); save.type = "submit";
+    const cancel = el("button", "ghost", "Cancel"); cancel.type = "button";
+    cancel.addEventListener("click", () => { editing = null; render(); });
+    acts.append(save, cancel); form.append(acts);
+
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      if (saving) return;
+      const mac = normMac($("mac-" + key).value);
+      if (!mac) { err.textContent = "Enter the MAC as first:last byte (F4:18) or the full MAC (F4:2D:C9:73:E6:18)."; return; }
+      const clash = boards.find((x) => x.id !== (b && b.id) && shortMac(x.mac) === shortMac(mac));
+      if (clash) { err.textContent = "MAC " + shortMac(mac) + " is already listed as " + (clash.nickname || "a board") + " (" + clash.member + ")."; return; }
+      const data = {
+        member: $("own-" + key).value,
+        nickname: $("nick-" + key).value.trim(),
+        mac: mac,
+        role: $("role-" + key).value,
+        scenario: $("job-" + key).value,
+        laptop: $("lap-" + key).value,
+        order: b ? (b.order ?? 0) : Date.now(),
+        updatedAt: new Date().toISOString(),
+      };
+      try { const id = user ? await user.id() : null; if (id) data.updatedBy = id; } catch (e) {}
+      saving = true; save.disabled = true;
+      try {
+        const ref = b ? db.collection("boards").doc(b.id) : db.collection("boards").doc();
+        await ref.set(data);
+        editing = null; toast(b ? "Saved" : "Board added");
+        if (!b) { boards.push(Object.assign({ id: ref.id }, data)); }
+        render();
+      } catch (e) {
+        err.textContent = writeError(e);
+      } finally { saving = false; save.disabled = false; }
+    });
+    setTimeout(() => { const n = $("nick-" + key); if (n) n.focus(); }, 0);
+    return form;
+  }
+
+  function writeError(e) {
+    const c = e && e.code;
+    if (c === "invalid_argument") { canWrite = false; setTimeout(render, 0); return "You can view this list but not change it. Ask Angelo for Contributor access."; }
+    if (c === "quota_exceeded") return "The list is full. Remove an old board first.";
+    return "Couldn't save. Check your connection and try again.";
+  }
+
+  async function removeBoard(b) {
+    try { await db.collection("boards").doc(b.id).delete(); confirming = null; toast("Board removed"); }
+    catch (e) { toast(writeError(e)); }
+  }
+
+  // ---- export --------------------------------------------------------------
+  function asJson() {
+    const out = {
+      _help: "Shown at the top of run_wizard.ps1 and menu.ps1. Member names are fixed (Cal, Bas, Kyle). mac can be the full MAC or just first:last byte - only first:last is displayed. role: root, child, attacker (anything else is shown uncolored).",
+      members: MEMBERS.map((m) => ({
+        name: m,
+        boards: sorted(boards.filter((b) => b.member === m)).map((b) => {
+          const o = { nickname: b.nickname || "", mac: b.mac, role: b.role };
+          if (b.scenario) o.scenario = b.scenario;
+          return o;
+        }),
+      })),
+    };
+    return JSON.stringify(out, null, 4);
+  }
+  $("copyJson").addEventListener("click", async () => {
+    const text = asJson();
+    try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into member_boards.json"); }
+    catch (e) {
+      const ta = el("textarea"); ta.value = text; ta.setAttribute("aria-label", "member_boards.json");
+      ta.style.cssText = "width:100%;min-height:220px;font-family:var(--font-mono);font-size:12.5px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)";
+      $("checks").before(ta); ta.focus(); ta.select();
+      toast("Select all and copy the text above");
+    }
+  });
+
+  // ---- boot ----------------------------------------------------------------
+  render();
+  (async () => {
+    if (!window.claude || !window.claude.use) { setLive("off", "Open on claude.ai to load the list"); return; }
+    user = await window.claude.use("user");
+    db = await window.claude.use("db");
+    if (!db) { setLive("off", "Sign in to see the shared list"); canWrite = false; render(); return; }
+    if (user) {
+      try { const w = await user.can("data.write"); if (w === false) canWrite = false; } catch (e) {}
+    }
+    db.collection("boards").onSnapshot((snap) => {
+      boards = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      setLive("live", canWrite ? "Live · editing on" : "Live · view only");
+      if (editing && editing.indexOf("new:") !== 0 && !boards.some((b) => b.id === editing)) editing = null;
+      // Someone else's save must not wipe a form you're typing in: while a
+      // form is open only the checks refresh; the columns catch up on save/cancel.
+      if (editing && document.querySelector("form.edit")) { renderChecks(); return; }
+      render();
+    }, () => { setLive("off", "Disconnected. Reload the page"); });
+  })();
+})();
+</script>
