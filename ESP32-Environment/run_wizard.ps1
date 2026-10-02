@@ -2094,9 +2094,22 @@ function Import-OneSdCard {
         # carrying more than the single run the operator described.
         if ($ExpectPrefix) {
             $wantPrefix = $ExpectPrefix.Replace('\', '/')
-            $foreign = $dryOut | Select-String -Pattern '^\s*(?:WOULD COPY|SKIP)\s+(\S+)' |
-                Where-Object { -not $_.Matches[0].Groups[1].Value.Replace('\', '/').StartsWith($wantPrefix, [StringComparison]::OrdinalIgnoreCase) }
-            if ($foreign) {
+            # A wormhole control runs plain firmware, so its card says baseline/;
+            # import_sdcard.py follows it with "FILED UNDER <attack>/" when it
+            # belongs to an attack run. Judge that file by where it is filed.
+            $dryLines = @($dryOut | ForEach-Object { "$_" })
+            $foreign = @()
+            for ($i = 0; $i -lt $dryLines.Count; $i++) {
+                $mm = [regex]::Match($dryLines[$i], '^\s*(?:WOULD COPY|SKIP)\s+(\S+)')
+                if (-not $mm.Success) { continue }
+                $relp = $mm.Groups[1].Value.Replace('\', '/')
+                for ($j = $i + 1; $j -le [Math]::Min($i + 2, $dryLines.Count - 1); $j++) {
+                    $fm = [regex]::Match($dryLines[$j], 'FILED UNDER (\w+)/')
+                    if ($fm.Success) { $relp = $fm.Groups[1].Value + $relp.Substring($relp.IndexOf('/')); break }
+                }
+                if (-not $relp.StartsWith($wantPrefix, [StringComparison]::OrdinalIgnoreCase)) { $foreign += $relp }
+            }
+            if ($foreign.Count -gt 0) {
                 Write-Host ""
                 Write-Host ("  NOTE: this card also has {0} file(s) outside {1}\ - probably a different run left on the same card. They'll still be imported/named correctly on their own; just flagging it in case the wrong card got picked." -f $foreign.Count, $ExpectPrefix) -ForegroundColor Yellow
             }
@@ -8128,23 +8141,36 @@ else {
                         Write-Host "  somewhere else; you'll be warned again before anything is flashed." -ForegroundColor Yellow
                     }
                     elseif ($multiLaptop -and $idx -eq $escapeIdx) {
-                        $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                        # Same RosterAlias rule as the wormhole escape: a remote child
+                        # already listed is the attacker, so the placeholder (still
+                        # needed for the MAC prompt) is not counted a second time.
+                        $alias = @($children | Where-Object { -not $_.Port }).Count -ge 1
+                        $remoteLabel = if ($alias) { 'remote-attacker' } else { Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label) }
                         $children += [pscustomobject]@{
                             Label          = $remoteLabel
                             Port           = $null
                             Role           = 'child'
                             Kind           = 'attacker'
-                            Display        = 'blackhole ATTACKER (other laptop)'
+                            Display        = $(if ($alias) { 'blackhole ATTACKER (one of the remote boards above)' } else { 'blackhole ATTACKER (other laptop)' })
                             ScenarioTarget = $false
                             Mac            = ''   # same field set as every other board - see the child above
                             Synthetic      = $true
+                            RosterAlias    = $alias
                         }
                         foreach ($c in $children) {
-                            if ($c.Kind -ne 'attacker') { $c.Kind = 'victim'; $c.Display = 'blackhole victim' }
+                            if ($c.Synthetic) { continue }
+                            $c.Kind = 'victim'
+                            $c.Display = if (-not $c.Port -and $alias) { 'blackhole victim - or the attacker (set on its own laptop)' } else { 'blackhole victim' }
                         }
                         Write-Host ""
-                        Write-Host ("  Remote attacker recorded as '{0}' - tell that laptop's operator to use the" -f $remoteLabel) -ForegroundColor DarkGray
-                        Write-Host "  same label. You'll be asked for its MAC before anything is flashed." -ForegroundColor DarkGray
+                        if ($alias) {
+                            Write-Host "  The attacker is one of the remote boards already listed - not counted again." -ForegroundColor DarkGray
+                        }
+                        else {
+                            Write-Host ("  Remote attacker recorded as '{0}' - tell that laptop's operator to use the" -f $remoteLabel) -ForegroundColor DarkGray
+                            Write-Host "  same label." -ForegroundColor DarkGray
+                        }
+                        Write-Host "  You'll be asked for its MAC before anything is flashed." -ForegroundColor DarkGray
                     }
                     else {
                         for ($ci = 0; $ci -lt $children.Count; $ci++) {
@@ -8181,25 +8207,51 @@ else {
                     if ($idxA -eq -1) { Undo-LastChild; $step = 7; continue flow }
 
                     if ($multiLaptop -and $idxA -eq $bothRemoteIdx) {
-                        $taken  = @($children | Select-Object -ExpandProperty Label)
-                        $labelA = Get-FreeNodeLabel -Taken $taken
-                        $labelB = Get-FreeNodeLabel -Taken (@($taken) + $labelA)
+                        # The step-7 roster is the FULL experiment's, so when it already
+                        # holds 2+ remote children the tunnel ends are among them. The
+                        # placeholders then stand in for those boards (RosterAlias) and
+                        # are not counted again - counting them asked for "at least 9"
+                        # after 7 children were entered. Real extra boards only when
+                        # the roster is short.
+                        $alias = @($children | Where-Object { -not $_.Port }).Count -ge 2
+                        if ($alias) {
+                            $labelA = 'remote-A'; $labelB = 'remote-B'
+                            $dispA  = 'wormhole Node A (one of the remote boards above)'
+                            $dispB  = 'wormhole Node B (one of the remote boards above)'
+                        }
+                        else {
+                            $taken  = @($children | Select-Object -ExpandProperty Label)
+                            $labelA = Get-FreeNodeLabel -Taken $taken
+                            $labelB = Get-FreeNodeLabel -Taken (@($taken) + $labelA)
+                            $dispA  = 'wormhole Node A (other laptop)'
+                            $dispB  = 'wormhole Node B (other laptop)'
+                        }
                         $children += [pscustomobject]@{
                             Label = $labelA; Port = $null; Role = 'child'; Kind = 'A'
-                            Display = 'wormhole Node A (other laptop)'; ScenarioTarget = $false
-                            Mac = ''; Synthetic = $true
+                            Display = $dispA; ScenarioTarget = $false
+                            Mac = ''; Synthetic = $true; RosterAlias = $alias
                         }
                         $children += [pscustomobject]@{
                             Label = $labelB; Port = $null; Role = 'child'; Kind = 'B'
-                            Display = 'wormhole Node B (other laptop)'; ScenarioTarget = $false
-                            Mac = ''; Synthetic = $true
+                            Display = $dispB; ScenarioTarget = $false
+                            Mac = ''; Synthetic = $true; RosterAlias = $alias
                         }
+                        # Keyed on Synthetic, not Kind: a real board picked as A/B on an
+                        # earlier visit to this step must not keep that role.
                         foreach ($c in $children) {
-                            if ($c.Kind -notin @('A', 'B')) { $c.Kind = 'control'; $c.Display = 'control (plain firmware)' }
+                            if ($c.Synthetic) { continue }
+                            $c.Kind = 'control'
+                            $c.Display = if (-not $c.Port -and $alias) { 'control - or a tunnel end (set on its own laptop)' } else { 'control (plain firmware)' }
                         }
                         Write-Host ""
-                        Write-Host ("  Remote tunnel ends recorded as '{0}' (A) and '{1}' (B) - the cable and both" -f $labelA, $labelB) -ForegroundColor DarkGray
-                        Write-Host "  boards live on that laptop; nothing is flashed for them here." -ForegroundColor DarkGray
+                        if ($alias) {
+                            Write-Host "  Both tunnel ends are among the remote boards already listed - not counted again." -ForegroundColor DarkGray
+                            Write-Host "  That laptop's operator picks which two are Node A and Node B." -ForegroundColor DarkGray
+                        }
+                        else {
+                            Write-Host ("  Remote tunnel ends recorded as '{0}' (A) and '{1}' (B) - the cable and both" -f $labelA, $labelB) -ForegroundColor DarkGray
+                            Write-Host "  boards live on that laptop; nothing is flashed for them here." -ForegroundColor DarkGray
+                        }
                         $step = if (Test-ScenarioNeedsTarget $scenario) { 9 } else { 10 }
                         continue flow
                     }
@@ -8211,8 +8263,15 @@ else {
                     while ($true) {
                         $idxB = Show-Menu -Title 'Which child is WORMHOLE Node B (entry / captures + tunnels)?' -Options $labels -AllowBack
                         if ($idxB -eq -1) { continue flow }   # re-ask Node A (step 8 re-entry strips synthetics)
-                        if ($idxB -ne $idxA) { break }
-                        Write-Host "  Node B must be a different board from Node A." -ForegroundColor Yellow
+                        if ($idxB -eq $idxA) {
+                            Write-Host "  Node B must be a different board from Node A." -ForegroundColor Yellow
+                            continue
+                        }
+                        if ([bool]$children[$idxA].Port -ne [bool]$children[$idxB].Port) {
+                            Write-Host "  Node A and Node B share one cable - both must be on this laptop, or both remote." -ForegroundColor Yellow
+                            continue
+                        }
+                        break
                     }
                     for ($ci = 0; $ci -lt $children.Count; $ci++) {
                         if ($ci -eq $idxA) {
@@ -8300,11 +8359,14 @@ else {
                     $c.Display = $c.Display -replace ' \+ .* TARGET$', ''
                 }
                 if ($multiLaptop -and $idx -eq $escapeIdx) {
-                    $remoteLabel = Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label)
+                    # RosterAlias: see the wormhole escape in step 8.
+                    $alias = @($eligible | Where-Object { -not $_.Port }).Count -ge 1
+                    $remoteLabel = if ($alias) { 'remote-target' } else { Get-FreeNodeLabel -Taken @($children | Select-Object -ExpandProperty Label) }
                     $children += [pscustomobject]@{
                         Label = $remoteLabel; Port = $null; Role = 'child'; Kind = 'victim'
-                        Display = "$scenario TARGET (other laptop)"; ScenarioTarget = $true
-                        Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true
+                        Display = $(if ($alias) { "$scenario TARGET (one of the remote boards above)" } else { "$scenario TARGET (other laptop)" })
+                        ScenarioTarget = $true
+                        Mac = ''; Synthetic = $true; RemoteTargetSynthetic = $true; RosterAlias = $alias
                     }
                     Write-Host ""
                     Write-Host ("  Remote $scenario target recorded as '{0}' - tell that laptop's operator to mark" -f $remoteLabel) -ForegroundColor DarkGray
@@ -8676,7 +8738,8 @@ $cleanBuild = ($cleanAns -eq 'y' -or $cleanAns -eq 'Y')
 # roster records a remote board only when it has a job (attacker, tunnel end,
 # scenario target) - a plain child flashed elsewhere is not in it at all. So on
 # a multi-laptop run the operator confirms that number once.
-$script:remoteChildCount = @($fullRoster | Where-Object { -not $_.Port -and $_.Role -ne 'root' }).Count
+# RosterAlias placeholders stand in for a remote board already counted, so skip them.
+$script:remoteChildCount = @($fullRoster | Where-Object { -not $_.Port -and $_.Role -ne 'root' -and -not $_.RosterAlias }).Count
 $rootIsLocal = @($runRoster | Where-Object { $_.Role -eq 'root' }).Count -gt 0
 if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt 0)) {
     # No Enter-default here (oct. 1, 2026): the known count only covers remote
@@ -8688,7 +8751,7 @@ if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt
     Write-Host ""
     Write-Host "The root will NOT start the run until every child is in the mesh." -ForegroundColor Cyan
     Write-Host "  Count EVERY non-root board flashed on another laptop - victims included, not just" -ForegroundColor DarkGray
-    Write-Host ("  the {0} with a job recorded here. Ask the other laptops if unsure." -f $known) -ForegroundColor DarkGray
+    Write-Host ("  the {0} already in this roster. Ask the other laptops if unsure." -f $known) -ForegroundColor DarkGray
     $tries = 0
     while ($true) {
         $tries++

@@ -53,6 +53,8 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
 import name_stamp  # noqa: E402
 
+from progress import Progress  # noqa: E402  (analysis/progress.py)
+
 # ─────────────────────────────────────────────────────────────────────────
 # Constants — kept here rather than scattered through the code so any
 # future window-length sensitivity analysis (CTTHES3) only touches one
@@ -1017,9 +1019,10 @@ def build_windows(
     # cumulative-counter block below for why the delta needs it.
     prev_edge: dict = {}
 
-    for (node_id, source_file, window_idx), wdf in df.groupby(
-        ["node_id", "_source_file", "window_idx"]
-    ):
+    groups = df.groupby(["node_id", "_source_file", "window_idx"])
+    bar = Progress("Windowing", groups.ngroups)
+    for (node_id, source_file, window_idx), wdf in groups:
+        bar.update()
         report.windows_total += 1
 
         n_present = (~wdf["_was_missing"]).sum()
@@ -1139,6 +1142,7 @@ def build_windows(
         row["window_phase_id"] = _modal_label(wdf["phase_id"])
 
         rows.append(row)
+    bar.close()
 
     report.windows_kept = len(rows)
 

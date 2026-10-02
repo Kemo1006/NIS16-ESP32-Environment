@@ -93,6 +93,7 @@ sns.set_theme(style="whitegrid")
 # because eda.py is run as a script from analyze.ps1, not as a package module.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import leakage  # noqa: E402
+from progress import Progress  # noqa: E402
 
 # The Table 4.11 feature names, in the order the thesis presents them.
 # Used to decide which columns count as "features" for stats/correlation/
@@ -1422,6 +1423,11 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
 
     summary = {}
 
+    # Weights are each stage's measured share of a full run (wormhole tree/G402,
+    # oct. 1 2026: time-series ~20 s, PCA/t-SNE ~23 s, correlation ~12 s,
+    # tunnel ~8 s), so the ETA isn't skewed by the near-instant stages.
+    bar = Progress("EDA", 100, inline=False)
+
     # 1. Descriptive statistics
     stats_df = descriptive_statistics(df)
     stats_path = os.path.join(output_dir, "descriptive_statistics.csv")
@@ -1433,20 +1439,24 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
 
     summary["descriptive_statistics"] = stats_path
     summary["descriptive_statistics_by_phase"] = stats_by_phase_path
+    bar.update(1, "descriptive statistics")
 
     # 2. Distribution visualization
     dist_plots = plot_distributions(df, output_dir)
     summary["distribution_plots"] = dist_plots
+    bar.update(5, "distribution plots")
 
     # 3. Time-series plots
     ts_plots = plot_time_series(df, output_dir)
     summary["time_series_plots"] = ts_plots
+    bar.update(30, "time-series plots")
 
     # 4. Cross-layer correlation
     pearson_path, spearman_path, corr_excluded = plot_correlation_heatmaps(df, output_dir)
     summary["correlation_pearson_plot"] = pearson_path
     summary["correlation_spearman_plot"] = spearman_path
     summary["correlation_excluded_columns"] = corr_excluded
+    bar.update(18, "correlation heatmaps")
 
 
     # 5. PCA / t-SNE
@@ -1455,12 +1465,14 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
     summary["dimensionality_reduction_excluded_columns"] = dimred_result.get("excluded_columns", [])
     summary["dimensionality_reduction_error"] = dimred_result.get("error")
     summary["dimensionality_reduction_tsne_skipped"] = dimred_result.get("tsne_skipped")
+    bar.update(33, "PCA / t-SNE")
 
     # 5b. Same projection over the tunnel ends only, tunnel features kept.
     # Skipped (returns None) on baseline/blackhole tables, which have no tunnel.
     tunnel_path, tunnel_result = plot_tunnel_end_projection(df, output_dir)
     summary["tunnel_end_projection_plot"] = tunnel_path
     summary["tunnel_end_projection"] = tunnel_result
+    bar.update(12, "tunnel-end projection")
 
     # 6. Leakage audit — the panel's 2:40-4:50 objection, answered numerically.
     #
@@ -1475,6 +1487,7 @@ def run_eda(feature_table_path: str, output_dir: str) -> dict:
         audit = leakage.single_feature_decidability(df, candidates=FEATURE_COLUMNS)
         audit_path = os.path.join(output_dir, "leakage_audit.csv")
         audit.to_csv(audit_path, index=False)
+        bar.update(1, "leakage audit")
         summary["leakage_audit"] = audit_path
 
         allowed, excluded_map = leakage.split_columns(df)

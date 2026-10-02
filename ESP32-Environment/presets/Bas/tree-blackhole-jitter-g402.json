@@ -1,11 +1,11 @@
 ﻿{
     "attack":  "blackhole",
-    "topology":  "star",
+    "topology":  "tree",
     "location":  "G402",
-    "scenario":  "burst",
+    "scenario":  "jitter",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-10-01 13:29",
+    "savedAt":  "2026-10-02 11:31",
     "boards":  [
                    {
                        "Label":  "node2",
@@ -21,9 +21,9 @@
                        "Port":  "COM5",
                        "Role":  "child",
                        "Kind":  "victim",
-                       "Display":  "blackhole victim + BURST TARGET",
+                       "Display":  "blackhole victim",
                        "Mac":  "f4:2d:c9:73:e6:18",
-                       "ScenarioTarget":  true
+                       "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node4",

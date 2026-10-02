@@ -82,6 +82,7 @@ import numpy as np
 import pandas as pd
 
 import exposure
+from progress import Progress
 
 EPSILON = 1e-6  # Equation 4.2 / 4.4 divide-by-zero guard, matches preprocess.py
 
@@ -1065,9 +1066,10 @@ def compute_topology_stability_features(
     sample_s = 1.0 / GRID_HZ
 
     rows = []
-    for (node_id, source_file, window_idx), grp in long_df.groupby(
-        ["node_id", "_source_file", "window_idx"]
-    ):
+    groups = long_df.groupby(["node_id", "_source_file", "window_idx"])
+    bar = Progress("Topology stability", groups.ngroups)
+    for (node_id, source_file, window_idx), grp in groups:
+        bar.update()
         n_layer_changes = int(grp["_layer_changed"].sum())
         n_parent_changes = int(grp["_parent_changed"].sum())
         parent_switch_rate = n_parent_changes / WINDOW_SECONDS
@@ -1093,6 +1095,7 @@ def compute_topology_stability_features(
             "HopChangeCount": n_layer_changes,
             "HopStabilityDuration": hop_stability_duration,
         })
+    bar.close()
 
     return pd.DataFrame(rows)
 
@@ -1124,9 +1127,10 @@ def compute_physical_layer_features(
     long_df["window_start"] = long_df["window_idx"] * WINDOW_SECONDS
 
     stability_rows = []
-    for (node_id, source_file, window_idx), grp in long_df.groupby(
-        ["node_id", "_source_file", "window_idx"]
-    ):
+    groups = long_df.groupby(["node_id", "_source_file", "window_idx"])
+    bar = Progress("RSSI stability", groups.ngroups)
+    for (node_id, source_file, window_idx), grp in groups:
+        bar.update()
         grp = grp.sort_values("t_rel")
         rssi = grp["rssi_dbm"].to_numpy()
         t_vals = grp["t_rel"].to_numpy()
@@ -1162,6 +1166,7 @@ def compute_physical_layer_features(
             "window_start": grp["window_start"].iloc[0],
             "RSSI_stability": max(run_lengths) if run_lengths else 0.0,
         })
+    bar.close()
 
     stability_df = pd.DataFrame(stability_rows)
     return out, stability_df

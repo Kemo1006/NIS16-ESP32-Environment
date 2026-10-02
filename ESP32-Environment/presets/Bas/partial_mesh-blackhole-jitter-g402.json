@@ -1,15 +1,15 @@
 ﻿{
     "attack":  "blackhole",
-    "topology":  "star",
+    "topology":  "partial",
     "location":  "G402",
-    "scenario":  "burst",
+    "scenario":  "jitter",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-10-01 13:29",
+    "savedAt":  "2026-10-01 15:32",
     "boards":  [
                    {
                        "Label":  "node2",
-                       "Port":  "COM3",
+                       "Port":  "COM6",
                        "Role":  "child",
                        "Kind":  "attacker",
                        "Display":  "blackhole ATTACKER",
@@ -18,12 +18,12 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM5",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "victim",
-                       "Display":  "blackhole victim + BURST TARGET",
+                       "Display":  "blackhole victim",
                        "Mac":  "f4:2d:c9:73:e6:18",
-                       "ScenarioTarget":  true
+                       "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node4",

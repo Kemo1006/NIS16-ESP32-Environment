@@ -426,6 +426,49 @@ def _phases_seen(path):
         return None
 
 
+# Phases only an ATTACK run's root ever broadcasts (mesh_config.h). A baseline
+# root skips the attack window entirely (root_main.c, ACTIVE_ATTACK=NONE), so
+# one of these in a file proves which attack run it was logged in.
+_ATTACK_DIR_FROM_PHASE = {1: "blackhole", 2: "wormhole"}
+
+
+def _attack_dir_from_phases(phases):
+    """The attack folder a telemetry file's own rows prove it belongs to, or
+    None when they prove nothing (no attack phase, unreadable, or both).
+
+    A wormhole CONTROL runs plain baseline firmware (run_wizard.ps1 Kind
+    'control'), so its card files the capture under baseline/ even though it
+    logged a wormhole run. A USB export puts it back with -DestAttack; a card
+    import had no such step, and on oct. 1, 2026 it dropped 1806 phase-2 rows
+    into the baseline dataset. The rows cannot be wrong about which run they
+    came from, so they decide."""
+    hits = {_ATTACK_DIR_FROM_PHASE[p] for p in (phases or []) if p in _ATTACK_DIR_FROM_PHASE}
+    return hits.pop() if len(hits) == 1 else None
+
+
+def _filing_dir(source, rel, attack_dir, m, roster):
+    """(folder to file this card file under, why it differs or None, proven).
+
+    Only a baseline/ telemetry file can be a misplaced control capture. On a
+    mounted card the rows are read now and the answer is proven. Over USB they
+    are unknown until the copy, so the preset's word is used as a PREDICTION
+    (proven=False) and the caller must check the copied rows and re-file."""
+    if attack_dir != "baseline" or m.group("kind") != "telem":
+        return attack_dir, None, True
+    if hasattr(source, "phases"):
+        phases = source.phases(rel) or []
+        to = _attack_dir_from_phases(phases)
+        if to:
+            hit = sorted(p for p in phases if _ATTACK_DIR_FROM_PHASE.get(p) == to)
+            return to, f"its rows carry phase {hit[0]} ({to}) - a {to} control on plain firmware", True
+        return attack_dir, None, True
+    known = roster.get(m.group("node").replace("NODE_", "").upper()) or {}
+    run_attack = known.get("run_attack")
+    if known.get("kind") == "control" and run_attack in _ATTACK_DIR_FROM_PHASE.values():
+        return run_attack, f"the preset lists this board as a {run_attack} control", False
+    return attack_dir, None, False
+
+
 # ── Card sources ────────────────────────────────────────────────────────────
 # Everything below the source is shared: the same filtering, the same naming,
 # the same duplicate rules, the same output. A source only has to answer three
@@ -771,6 +814,7 @@ def _load_roster(path):
         return {}
 
     roster = {}
+    run_attack = str(cfg.get("attack") or "") or None
     for board in cfg.get("boards") or []:
         mac = str(board.get("Mac") or "")
         key = re.sub(r"[^0-9A-Fa-f]", "", mac).upper()
@@ -781,6 +825,10 @@ def _load_roster(path):
             # Preset Role is already the export vocabulary (root/child); the
             # card only ever says root/victim.
             "role": str(board.get("Role") or "") or None,
+            # Kind 'control' + the run's attack let an over-USB import predict
+            # where a control's baseline/ card file belongs (see _filing_dir).
+            "kind": str(board.get("Kind") or "") or None,
+            "run_attack": run_attack,
         }
     return roster
 
@@ -799,13 +847,16 @@ def _make_unique_filename(dest_args, kind, used_this_run):
     return dest
 
 
-def _dest_args_for(m, attack_dir, topo_dir, location, roster, args):
+def _dest_args_for(m, attack_dir, topo_dir, location, roster, args, file_under=None):
     """The export_logs.py argument namespace that names ONE card file's
     destination.
 
     Shared by the copy loop and --list-json on purpose: the filename the picker
     shows an operator has to be the filename the copy actually writes, and the
-    only way to guarantee that is for both to go through this one call."""
+    only way to guarantee that is for both to go through this one call.
+
+    file_under overrides only the FOLDER (see _filing_dir); the attack in the
+    filename stays the card's, exactly like a USB export with -DestAttack."""
     # Card-supplied identity first; a --roster match upgrades it to the same
     # label/role a USB export of this board would have used.
     node_key = m.group("node").replace("NODE_", "").upper()
@@ -816,8 +867,7 @@ def _dest_args_for(m, attack_dir, topo_dir, location, roster, args):
         label=known.get("label") or m.group("node"),
         topology=_TOPOLOGY_FROM_DIR[topo_dir],
         attack=_ATTACK_FROM_DIR[attack_dir],
-        attack_dir=attack_dir,       # keeps a baseline-flashed control victim
-                                     # in the attack folder it was captured in
+        attack_dir=file_under or attack_dir,
         location=location,
         repeat=args.repeat,
         outdir=args.outdir,
@@ -856,13 +906,18 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
     the same warning sign a row count would have been."""
     rows = source.rows(rel, entry)
     size = source.size(rel) if hasattr(source, "size") else -1
+    file_under, _why, _proven = _filing_dir(source, rel, attack_dir, m, roster)
     dest = export_logs._make_filename(
-        _dest_args_for(m, attack_dir, topo_dir, location, roster, args),
+        _dest_args_for(m, attack_dir, topo_dir, location, roster, args, file_under),
         m.group("kind"))
     return {
         "rel": rel,
         "name": os.path.basename(rel),
         "attack": attack_dir,
+        # The exports/ attack folder it will land in. Differs from "attack" only
+        # for a control's capture (see _filing_dir); over USB it is the
+        # preset's prediction until the copied rows confirm it.
+        "filed_under": file_under,
         "topology": topo_dir,
         "location": location,
         "role": m.group("role"),
@@ -1097,7 +1152,8 @@ def _run(source, args):
             aborted_skipped += 1
             continue
 
-        dest_args = _dest_args_for(m, attack_dir, topo_dir, location, roster, args)
+        file_under, refile_why, refile_proven = _filing_dir(source, rel, attack_dir, m, roster)
+        dest_args = _dest_args_for(m, attack_dir, topo_dir, location, roster, args, file_under)
         # None over --port (see the module docstring): reported as "?" rather
         # than 0, because 0 rows is a real state on this project and the two
         # must never look the same in the operator's output.
@@ -1139,6 +1195,11 @@ def _run(source, args):
 
         print(f"  {'WOULD COPY' if args.dry_run else 'COPY'}  {rel}  "
               f"({rows_txt} rows{status})\n        -> {os.path.relpath(dest, args.outdir)}")
+        if refile_why:
+            # run_wizard.ps1 reads "FILED UNDER <attack>/" so its "files outside
+            # this run" notice does not flag a control's capture as foreign.
+            print(f"        {'FILED' if refile_proven else 'LIKELY FILED'} UNDER {file_under}/ - {refile_why}"
+                  + ("" if refile_proven else "; checked against its rows after the copy"))
         if not args.dry_run:
             # copy_to() copies a mounted card's file, or streams it off the
             # board over USB — either way the source is untouched and only
@@ -1168,6 +1229,32 @@ def _run(source, args):
                 print(f"        NOTE: got {written} rows, manifest said {rows}")
             elif is_telem and rows is None:
                 print(f"        {written} rows (no manifest to compare against)")
+
+            # Over --port the folder was only a guess (_filing_dir): the rows
+            # are readable now, so they decide - in either direction, since a
+            # preset's "control" can also own a genuine older baseline capture.
+            if not refile_proven:
+                actual = _attack_dir_from_phases(_phases_seen(dest)) or attack_dir
+                if actual != file_under:
+                    fixed = _make_unique_filename(
+                        _dest_args_for(m, attack_dir, topo_dir, location, roster, args, actual),
+                        m.group("kind"), used_this_run)
+                    clash = _already_imported(fixed, written, (entry or {}).get("started"),
+                                              (entry or {}).get("clock_src"))
+                    if clash:
+                        os.remove(dest)    # our own copy of an already-filed capture
+                        copied -= 1
+                        skipped += 1
+                        print(f"        SKIP: its rows place it under {actual}/, where it is"
+                              f" already imported as {clash} - this copy removed")
+                        continue
+                    os.makedirs(os.path.dirname(fixed), exist_ok=True)
+                    os.replace(dest, fixed)
+                    dest = fixed
+                    print(f"        FILED UNDER {actual}/ instead - its rows say so"
+                          f"\n        -> {os.path.relpath(dest, args.outdir)}")
+                elif refile_why:
+                    print(f"        confirmed: its rows carry the {actual} phase")
 
             # --delete-source frees a reused card so last month's captures can't
             # be dragged into an exports folder again (the failure this whole

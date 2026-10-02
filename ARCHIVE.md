@@ -2322,3 +2322,24 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - sep. 24, 2026 — **Basti's laptop git identity is `xMiguelCarlosx`** — commits "by Miguel" from this clone are
   the user (VS Code auto-sync also runs `pull --autostash` mid-session). `PCAP/` + `*.pcap` git-ignored: a 120 MB
   Mac capture exceeds GitHub's 100 MB cap and blocked every push until removed from history.
+
+## Rolled from MEMORY (oct. 1, 2026 night, Basti)
+- sep. 26, 2026 — **RETRY RATE = 0 IS A RESULT, NOT A BUG (G402 5 pm run traced raw -> validator).** Raw `retry_count`
+  (= failed `esp_mesh_send()`, D-15) is non-zero only OUTSIDE the experiment: node5 24 fails at t -389..-366 s (root boot 1233
+  dead, nothing to send to), node3 12 (unlabelled, desynced), node7 a constant 9 from before logging. 0 failures in baseline/attack/cooldown
+  on every board = paper 3.3.1.2 / EXPECTED-RESULTS 6a pre-registered miss (1 probe/s + 1 s windows: RetryRate is only 0 or ~1).
+  FIXED around it: `leakage.retry_count_is_overloaded()` - RetryRate was STILL on the leak
+  list with the pre-F3 reason, so correlation/PCA had NO MAC-layer feature; now excluded only if `drop_count` is absent
+  (v1) or a `wormhole_b` is present (Node B still writes its tunnel count there). `eda.py`: correlation uses LABELLED
+  windows only (was all rows incl. pre-baseline) and writes `_baseline`/`_attack` views (paper 4.2.6 "consistency during
+  baseline and its breakdown during manipulation"); constant features named; one colour per node in timeseries; verify_attack footnote.
+  KEPT on purpose: timeseries extra panels (paper 4.2.6 says "e.g."; FR_5w + RootArrivals are display-only, never in stats/corr/PCA);
+  Eq 4.4 epsilon (0 attempts -> RetryRate 0, not NaN). PAPER TODO: report RetryRate as Table 3.4 miss; analyze.ps1 dies if its output is redirected (PS5.1 stderr).
+
+## Rolled from STATUS (oct. 1, 2026 night, Basti)
+- Hardcode audit DONE + pushed: IDF `%d` bug, phase constants from mesh_config.h (`tools/mesh_constants.py`), stale firmware nickname table removed (`Board-XX:YY`), board_check/run_matrix no hardcoded MACs/COMs, `.mcp.json` untracked. Firmware nickname change shows after the next reflash.
+- oct. 1 — Star hub proven on hardware; attacker MAC from the wizard; split-preset fixes; Basti's merge audited; verifier matrix 33/33; wormhole pre-flight.
+- Wizard: scenario-TARGET prompts show `plugged in`/`NOT PRESENT` + a 'Detect ports' option (pushed, not yet used on real boards). Attacker picker lists every known board.
+
+## Rolled from STATUS (oct. 2, 2026, Basti)
+- oct. 1 (eve) — Burst firmware bug found + fixed; highload root fix; verify_burst + wizard burst checks; star stationary replaced by 2 PM run; burst duplicates removed twice.
