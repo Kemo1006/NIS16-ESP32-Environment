@@ -9176,6 +9176,7 @@ if (-not $DryRun) {
         }
 
         $failed = @()
+        $nBuilt = 0; $nSkipped = 0
         $bi = 0
         $buildWatch = [System.Diagnostics.Stopwatch]::StartNew()
         foreach ($p in $buildPlan) {
@@ -9190,8 +9191,11 @@ if (-not $DryRun) {
             $buildParams.BuildOnly = $true
             if ($p.Board.PSObject.Properties['Mac'] -and $p.Board.Mac) { $buildParams['Mac'] = [string]$p.Board.Mac }
             $global:LASTEXITCODE = 0
+            $global:PrebuildResult = $null
             & (Join-Path $base 'run.ps1') @buildParams
             if ($LASTEXITCODE -ne 0) { $failed += $p.Board.Label }
+            elseif ($global:PrebuildResult -eq 'skipped') { $nSkipped++ }
+            else { $nBuilt++ }
         }
         $buildWatch.Stop()
 
@@ -9202,7 +9206,7 @@ if (-not $DryRun) {
             return
         }
         Write-Host ""
-        Write-Host ("All {0} variant(s) built in {1}." -f $buildPlan.Count, (Format-Duration ([int]$buildWatch.Elapsed.TotalSeconds))) -ForegroundColor Green
+        Write-Host ("All {0} variant(s) ready in {1} - {2} compiled, {3} already up to date, 0 errors." -f $buildPlan.Count, (Format-Duration ([int]$buildWatch.Elapsed.TotalSeconds)), $nBuilt, $nSkipped) -ForegroundColor Green
         $preBuilt = $true
     }
 }

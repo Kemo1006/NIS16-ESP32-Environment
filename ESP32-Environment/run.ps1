@@ -568,10 +568,113 @@ if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile) -and -not $sdkconfigOk) 
 }
 
 if ($BuildOnly) {
-    Write-Host "Building $Role for $Port (attack=$Attack, topology=$Topology, scenario=$Scenario, build=$buildDir) - no flash." -ForegroundColor Cyan
-    Push-Location (Join-Path $base $proj)
+    # Skip-if-unchanged: a successful build writes prebuild.stamp (JSON) into its
+    # build dir with a content hash of every firmware input + the -D flags + the
+    # IDF install. Next time, if all of that hashes the same AND the .bin is still
+    # there, idf.py isn't run at all. Content hashes, not mtimes: git checkouts
+    # and idf.py rewriting sdkconfig bump mtimes without changing anything.
+    # Inputs are whitelisted (not "everything under $proj") because the project
+    # folders also hold old in-tree build dirs (bcr, bcba, build_check_*, ...).
+    # $global:PrebuildResult tells the wizard 'skipped' / 'built' / 'failed'.
+    $projDir  = Join-Path $base $proj
+    $stampFile = Join-Path $buildDir 'prebuild.stamp'
+    $binFile   = Join-Path $buildDir "$proj.bin"
+    $flagText  = (@($attackFlags) + $topologyFlag + @($scenarioFlags) + "IDF_PATH=$env:IDF_PATH") -join ' '
+    $inputs = @()
+    foreach ($f in 'CMakeLists.txt', 'sdkconfig', 'sdkconfig.defaults', 'partitions.csv') {
+        $fp = Join-Path $projDir $f
+        if (Test-Path $fp) { $inputs += Get-Item $fp }
+    }
+    foreach ($d in (Join-Path $projDir 'main'), (Join-Path $base 'components')) {
+        if (Test-Path $d) { $inputs += Get-ChildItem -Path $d -Recurse -File }
+    }
+    $fileHashes = [ordered]@{}
+    foreach ($fi in ($inputs | Sort-Object FullName)) {
+        $rel = $fi.FullName.Substring($base.Length).TrimStart('\') -replace '\\', '/'
+        $fileHashes[$rel] = (Get-FileHash -Algorithm SHA1 -Path $fi.FullName).Hash
+    }
+    $fingerprint = (Get-FileHash -Algorithm SHA1 -InputStream ([IO.MemoryStream]::new(
+        [Text.Encoding]::UTF8.GetBytes($flagText + "`n" + (($fileHashes.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "`n"))))).Hash
+
+    $old = $null
+    if (Test-Path $stampFile) { try { $old = Get-Content $stampFile -Raw | ConvertFrom-Json } catch { $old = $null } }
+
+    $what = "$Role firmware · $Attack · $Topology · $Scenario"
+    Write-Host "  What:   $what  (compile only - no board is touched)" -ForegroundColor Cyan
+    Write-Host "  Build:  $buildDir" -ForegroundColor DarkGray
+
+    if ($old -and $old.fingerprint -eq $fingerprint -and (Test-Path $binFile)) {
+        $global:PrebuildResult = 'skipped'
+        Write-Host ("  " + [char]0x2714 + " Already built and up to date (built {0}; no firmware code or settings changed since) - skipped compiling." -f $old.built_at) -ForegroundColor Green
+        exit 0
+    }
+
+    # Say WHY it compiles, so the wall of cmake/ninja output below isn't a surprise.
+    if (-not (Test-Path (Join-Path $buildDir 'CMakeCache.txt'))) {
+        $why = "first build for this combination - full compile (~2-4 min; the long cmake/ninja output below is normal)"
+    }
+    elseif (-not $old) {
+        $why = "no up-to-date record for this build yet (built before this check existed, or the last build failed/was interrupted) - checking; only out-of-date parts compile"
+    }
+    elseif ($old.flags -ne $flagText) {
+        $why = "build settings changed since last build - reconfiguring, then recompiling"
+    }
+    else {
+        $changed = @()
+        $oldFiles = @{}
+        if ($old.files) { foreach ($pp in $old.files.PSObject.Properties) { $oldFiles[$pp.Name] = $pp.Value } }
+        foreach ($k in $fileHashes.Keys) { if ($oldFiles[$k] -ne $fileHashes[$k]) { $changed += $k } }
+        foreach ($k in $oldFiles.Keys) { if (-not $fileHashes.Contains($k)) { $changed += $k } }
+        $list = ($changed | Select-Object -First 3) -join ', '
+        if ($changed.Count -gt 3) { $list += " (+$($changed.Count - 3) more)" }
+        $why = if ($list) { "code changed since last build ($list) - recompiling only what changed" } else { "output .bin missing - rebuilding" }
+    }
+    Write-Host "  Status: $why" -ForegroundColor Yellow
+    Write-Host ""
+
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    Push-Location $projDir
     try { idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags build } finally { Pop-Location }
-    exit $LASTEXITCODE
+    $rc = $LASTEXITCODE
+    $sw.Stop()
+    $secs = [int]$sw.Elapsed.TotalSeconds
+    $took = if ($secs -ge 60) { "{0}m {1:D2}s" -f [math]::Floor($secs / 60), ($secs % 60) } else { "${secs}s" }
+
+    Write-Host ""
+    if ($rc -eq 0 -and (Test-Path $binFile)) {
+        $global:PrebuildResult = 'built'
+        $stamp = [ordered]@{
+            fingerprint = $fingerprint
+            flags       = $flagText
+            built_at    = (Get-Date).ToString('MMM d h:mm') + (Get-Date).ToString('tt').ToLower()
+            files       = $fileHashes
+        }
+        try { $stamp | ConvertTo-Json -Depth 4 | Set-Content -Path $stampFile -Encoding UTF8 } catch { }
+        $size = (Get-Item $binFile).Length
+        $sizeText = "{0:N2} MB" -f ($size / 1MB)
+        $partLine = Select-String -Path (Join-Path $projDir 'partitions.csv') -Pattern '^\s*app0\s*,' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($partLine) {
+            $partSize = ($partLine.Line -split ',')[4].Trim()
+            $partBytes = if ($partSize -match '^0x') { [Convert]::ToInt64($partSize.Substring(2), 16) } elseif ($partSize -match '^(\d+)K$') { [int64]$Matches[1] * 1KB } else { 0 }
+            if ($partBytes -gt 0) { $sizeText += " ({0}% space free)" -f [math]::Round(100 * (1 - $size / $partBytes)) }
+        }
+        Write-Host ("  " + [char]0x2714 + " Built OK in {0} · no errors · {1}" -f $took, $sizeText) -ForegroundColor Green
+        Write-Host "    ('Project build complete. To flash, run: idf.py flash ...' above is ESP-IDF's generic hint - ignore it, the wizard flashes for you.)" -ForegroundColor DarkGray
+        exit 0
+    }
+
+    $global:PrebuildResult = 'failed'
+    if ($rc -eq 0) { $rc = 1 }   # idf.py said OK but no .bin -- still a failure
+    Write-Host ("  " + [char]0x2718 + " BUILD FAILED after {0}" -f $took) -ForegroundColor Red
+    # idf.py keeps each run's full output under <build>\log\; pull the first
+    # compiler error out of it so it isn't buried in the scrollback.
+    try {
+        $logs = Get-ChildItem -Path (Join-Path $buildDir 'log') -File -ErrorAction Stop | Sort-Object LastWriteTime -Descending | Select-Object -First 2
+        $err = $logs | Select-String -Pattern '(error:|Error:|CMake Error)' | Select-Object -First 1
+        if ($err) { Write-Host "    first error: $($err.Line.Trim())" -ForegroundColor Red }
+        if ($logs) { Write-Host "    full log:    $($logs[0].FullName)" -ForegroundColor DarkGray }
+    } catch { }
+    exit $rc
 }
 
 # What happens after Ctrl+], for the on-screen hint.
