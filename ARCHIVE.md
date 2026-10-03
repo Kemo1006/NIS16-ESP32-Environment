@@ -2440,3 +2440,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - oct. 2 (Angelo) — Wizard pre-build skips firmware that hasn't changed (stamp in each build dir) and prints what/why/result + first error; full compile output still shown.
 - oct. 2 — Angelo: followed Basti's updates (no conflicts); flat-tree cause found (TREE fan-out 10) + fix proposed; live board roster web page; checklist fixes; star burst duplicates removed (3rd time).
 
+- oct. 2 (Angelo) — Wizard pre-build skips unchanged firmware and explains each build (pushed `9aec136`).

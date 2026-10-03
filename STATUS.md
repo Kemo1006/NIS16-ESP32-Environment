@@ -8,15 +8,16 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Where things stand
 - **Dataset verification log:** `ESP32-Environment/docs/dataset-verification.md` (CLAUDE.md rule: every verify request adds a dated block on top). #2 = sweep of all 9 live cells: 7 USABLE, highload PARTIAL (known), **tree/G402/stationary DEGRADED**.
+- **tree/G402/burst r1 verified + pushed** (oct. 3, verification #3): burst FIRED (fix `6b90df5` proven), CONFIRMED; ⚠️ `FE90` = hidden 3rd victim (wrong parent field, unlabelled).
 - **tree/G402/jitter r1 captured + verified** (oct. 2 evening): real tree depth 2, 1 victim, jitter 331/206 s, BLACKHOLE CONFIRMED.
 - **EDA PCA/t-SNE fix** (`analysis/eda.py`): victim attack windows were dropped; plots regenerated for linear/G402/jitter, linear/home/burst, partial_mesh/G402/jitter, tree/G402/jitter. Teammates must re-run EDA on those (eda_output is git-ignored).
 - **Sniffer stop asks 'are you sure'** (`tools/sniff.py`: Enter / Ctrl+C -> Y to stop). Tested with a simulated board only.
 - **Wizard pre-build skips unchanged firmware** + explains each build (`9aec136`, pushed).
-- Firmware fixes BUILT, NOT YET RUN ON HARDWARE: burst window (`6b90df5`), highload root queue (`cb22106`), hardcode audit (`44a9672`).
+- Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`). Burst fix proven oct. 2 tree run.
 
 ## Uncommitted on Angelo's laptop
 - Oct. 2 session files (eda.py, sniff.py, run_wizard.ps1, dataset-verification.md, root docs): pushed oct. 3.
-- On purpose, do NOT commit: `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, presets, `archive/*` folders, untracked datasets.
+- On purpose, do NOT commit (tree/G402/burst data now pushed): `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, presets, `archive/*` folders, untracked datasets.
 
 ## Next step
 1. Everyone `git pull` + REFLASH (burst + highload + nickname fixes); same attacker on every laptop.
@@ -34,7 +35,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
 - ⚠️ Before any pull: `git diff --cached --stat` - a merge refuses ANY staged change on a path it touches.
 
-## Recently done (last 3 max, newest first — older entries roll to ARCHIVE.md)
+## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
 - oct. 2 night (Angelo) — Sniffer stop confirmation; 9-cell dataset verification sweep + verification log doc + CLAUDE.md rule.
 - oct. 2 (Angelo) — tree/G402/jitter verified sound; EDA PCA/t-SNE fix, 4 cells' plots regenerated.
-- oct. 2 (Angelo) — Wizard pre-build skips unchanged firmware and explains each build (pushed `9aec136`).
