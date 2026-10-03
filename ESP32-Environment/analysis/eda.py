@@ -1015,8 +1015,33 @@ def run_dimensionality_reduction(
                    for m in _class_masks))
     ]
 
+    # Class-dependent missingness PER NODE. The per-class test above misses it
+    # when only a few nodes are affected. Seen on blackhole/tree/G402/jitter
+    # (2026-10-02): 1 victim of 6 - its LatencyHopRatio was NaN in all 205
+    # attack windows (no probe reached the root, so no latency) but present in
+    # baseline/cooldown. Overall that column was only 38% NaN in attack, so it
+    # stayed in, and the dropna below deleted exactly the victim's attack
+    # windows - the only rows with PDR = 0. PDR was then flagged "constant"
+    # and the projection carried no attack signal at all. Rule: a column that
+    # is defined for a node in one class (<= max_nan_fraction NaN) but missing
+    # in another class (> max_nan_fraction) has missingness that encodes the
+    # label for that node; drop the column, not the rows. Purely structural
+    # NaN (PDR on the root/attacker: NaN in every class) is not caught here.
+    label_nan_excluded = []
+    if "node_id" in df.columns and _class_masks:
+        _lab = df[_lbl].notna()
+        for c in candidate_cols:
+            if c in allnan_excluded or c in sparse_excluded:
+                continue
+            for _node, g in df[_lab].groupby("node_id"):
+                fr = g[c].isna().groupby(g[_lbl]).mean()
+                if len(fr) > 1 and fr.min() <= max_nan_fraction < fr.max():
+                    label_nan_excluded.append(c)
+                    break
+
     excluded = sorted(set(allnan_excluded) | set(tunnel_excluded)
-                      | set(sparse_excluded) | set(leaking_excluded))
+                      | set(sparse_excluded) | set(label_nan_excluded)
+                      | set(leaking_excluded))
     usable_cols = [c for c in candidate_cols if c not in excluded]
 
     label_col = "Label" if "Label" in df.columns else "window_label"
@@ -1054,6 +1079,7 @@ def run_dimensionality_reduction(
             "excluded_columns": excluded,
             "allnan_excluded": sorted(allnan_excluded),
             "sparse_excluded": sorted(sparse_excluded),
+            "label_nan_excluded": sorted(label_nan_excluded),
             "constant_excluded": sorted(constant_excluded),
             "n_dropped_rows": n_dropped,
             "n_unlabelled_excluded": n_unlabelled,
@@ -1159,6 +1185,7 @@ def run_dimensionality_reduction(
         "excluded_columns": excluded,
         "allnan_excluded": sorted(allnan_excluded),
         "sparse_excluded": sorted(sparse_excluded),
+        "label_nan_excluded": sorted(label_nan_excluded),
         "constant_excluded": sorted(constant_excluded),
         "n_dropped_rows": n_dropped,
         "n_rows_used": len(working),
@@ -1266,6 +1293,9 @@ def plot_dimensionality_reduction(
         excl_bits.append(f"all-NaN: {', '.join(allnan)}")
     if sparse:
         excl_bits.append(f"role-sparse (>50% NaN): {', '.join(sparse)}")
+    label_nan = result.get("label_nan_excluded") or []
+    if label_nan:
+        excl_bits.append(f"missing only in some phases for a node: {', '.join(label_nan)}")
     if constant:
         excl_bits.append(f"constant (no variance): {', '.join(constant)}")
     subtitle = (
@@ -1273,7 +1303,8 @@ def plot_dimensionality_reduction(
         + (f" ({result['n_dropped_rows']} dropped for remaining NaNs)" if result["n_dropped_rows"] else "")
         + (f"; {result['n_unlabelled_excluded']} unlabelled (pre-baseline) windows left out"
            if result.get("n_unlabelled_excluded") else "")
-        + ("\nExcluded — " + "; ".join(excl_bits) if excl_bits else "\nExcluded columns: none")
+        + ("\n" + textwrap.fill("Excluded — " + "; ".join(excl_bits), width=160)
+           if excl_bits else "\nExcluded columns: none")
     )
     fig.suptitle(f"Dimensionality reduction — feature-space separability\n{subtitle}", fontsize=10)
     fig.tight_layout()

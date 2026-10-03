@@ -53,6 +53,10 @@ Task complexity (simple → just do it; complex → Planner→Builder→Tester�
 - Destructive/irreversible actions (delete, overwrite non-generated files, deploy/publish): confirm first unless pre-authorized in MEMORY.md.
 - If unsure and the wrong guess is costly → ask. Otherwise pick a sensible default and state it.
 - This agent is synchronous — it never wakes on its own. Recurring/background checks (link audits, reminders, reviews) need an explicit scheduler (`/schedule`, `/loop`, or an OS cron / Task Scheduler entry), not an assumption that a future session will notice.
+- **Any request to verify datasets / analysis / EDA / verifiers** → add one block at the TOP of
+  `ESP32-Environment/docs/dataset-verification.md` (format = the existing blocks: `════` dividers,
+  `## 🔎 VERIFICATION #N — <date · time>`, requester/laptop/commit, a table of attack · topology ·
+  location · scenario · repeat, a checks table, full findings, verdict). Never edit past blocks.
 - Enforce line caps and link targets deterministically before calling a file done — a count or grep, not an eyeballed read. Self-reported compliance drifts.
 
 ## Resources — where reference files live

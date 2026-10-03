@@ -3437,7 +3437,7 @@ function Invoke-Esp32SnifferStandalone {
     }
     Write-Host ""
     Write-Host "  >>> It starts PAUSED - press  P  to START recording (and P again to pause/resume). <<<" -ForegroundColor Yellow
-    Write-Host "Recording - P = pause/resume, ENTER = stop (not Ctrl+C: that closes the wizard too)." -ForegroundColor Yellow
+    Write-Host "Recording - P = pause/resume, ENTER = stop (it asks: press Y to confirm). Not Ctrl+C: that can close the wizard too." -ForegroundColor Yellow
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try { & python @pyArgs }

@@ -373,30 +373,70 @@ def main():
         else:
             paused.set()
 
+    # Stop needs a confirmation (oct. 2, 2026 request): a stray Enter or
+    # Ctrl+C used to end the capture mid-run with no way back. Enter/Ctrl+C now
+    # only ASK; Y (or a second Ctrl+C) within CONFIRM_S stops, any other key
+    # keeps recording, and no answer within CONFIRM_S keeps recording too.
+    # The wizard's --stop-file stop is deliberate, so it never asks.
+    CONFIRM_S = 10
+    confirm_at = [0.0]          # when a stop was requested; 0 = no question open
+
+    def say(msg):
+        try:
+            status.note(msg)
+        except NameError:       # a key/Ctrl+C before the status line exists
+            print(msg)
+
+    def ask_stop(how):
+        confirm_at[0] = time.time()
+        say("  >>> STOP THE SNIFFER? (%s)  Press Y to STOP - any other key keeps recording"
+            " (no answer in %d s = keep recording). <<<" % (how, CONFIRM_S))
+
+    def answer_stop(yes, how):
+        confirm_at[0] = 0.0
+        if yes:
+            stop_reason[0] = how + " (confirmed)"
+            stop.set()
+        else:
+            say("  Kept recording.")
+
     if keys:
         def read_keys():
             try:
                 import msvcrt            # Windows: single keypress, no Enter needed
                 while not stop.is_set():
                     ch = msvcrt.getwch()
-                    if ch in ("p", "P"):
+                    if confirm_at[0]:
+                        answer_stop(ch in ("y", "Y"), "Enter/Ctrl+C")
+                    elif ch in ("p", "P"):
                         toggle_pause()
                     elif ch in ("\r", "\n") and args.stop_on_enter:
-                        stop_reason[0] = "Enter pressed"
-                        stop.set()
+                        ask_stop("Enter pressed")
             except ImportError:          # elsewhere: 'p' + Enter pauses, a bare Enter stops
                 while not stop.is_set():
                     line = sys.stdin.readline()
                     if not line:
                         return
-                    if line.strip().lower() == "p":
+                    if confirm_at[0]:
+                        answer_stop(line.strip().lower() == "y", "Enter/Ctrl+C")
+                    elif line.strip().lower() == "p":
                         toggle_pause()
                     elif not line.strip() and args.stop_on_enter:
-                        stop_reason[0] = "Enter pressed"
-                        stop.set()
+                        ask_stop("Enter pressed")
             except Exception:
                 return
         threading.Thread(target=read_keys, daemon=True).start()
+
+        # Ctrl+C asks too (in the wizard's separate sniffer window it is the
+        # only key that stops). A second Ctrl+C while the question is open stops.
+        import signal
+
+        def on_sigint(signum, frame):
+            if confirm_at[0] and time.time() - confirm_at[0] < CONFIRM_S:
+                answer_stop(True, "Ctrl+C")
+            else:
+                ask_stop("Ctrl+C - press Ctrl+C again or Y to stop")
+        signal.signal(signal.SIGINT, on_sigint)
 
     started_wall = time.time()
     started_iso = _dt.datetime.now().astimezone().isoformat(timespec="seconds")
@@ -407,8 +447,8 @@ def main():
     if keys:
         how.append("P = pause/resume")
     if args.stop_on_enter:
-        how.append("Enter = stop")
-    how.append("Ctrl+C = stop")
+        how.append("Enter = stop (asks first)")
+    how.append("Ctrl+C = stop (asks first)" if keys else "Ctrl+C = stop")
     if args.stop_file:
         how.append("the wizard stops it for you")
     print("  Keys: " + " / ".join(how) + ".  (Close this window only as a last resort.)")
@@ -548,7 +588,13 @@ def main():
                        % ("PAUSED" if cur_pause is not None else "REC", fmt_dur(now - started_wall),
                           frames, by_type["data"], fps,
                           fmt_bytes(bytes_written), usb_lost, drop_now, hello.get("channel", "?")))
-                if cur_pause is not None:
+                if confirm_at[0] and now - confirm_at[0] >= CONFIRM_S:
+                    confirm_at[0] = 0.0
+                    status.note("  No answer - still recording.")
+                if confirm_at[0]:
+                    msg = msg + "  << STOP? Y = stop, any other key = keep recording"
+                    status.show(msg, style="1;31")
+                elif cur_pause is not None:
                     msg = msg + "  << PRESS P TO " + ("START" if args.start_paused and not pauses else "RESUME")
                     status.show(msg, style="1;33")
                 else:
