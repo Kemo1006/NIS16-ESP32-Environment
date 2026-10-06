@@ -208,6 +208,12 @@ param(
                        # Implies -Export. -Analyze already trims; this is for the
                        # SD-card workflow, where the children arrive after the root
                        # and the analysis is run later with .\analyze.ps1.
+    [switch]$SkipExportNow, # CHILD ONLY - after Ctrl+] skip the export AT ONCE: no
+                       # 5 s window, no key to press, straight on to the next board.
+                       # For SD-card runs, where Ctrl+] on a child usually just means
+                       # "move on" and a distracted 5 s started a USB export nobody
+                       # wanted (oct. 4, 2026). Ignored on the root, which always
+                       # keeps the export-unless-'n' window.
     [switch]$BuildOnly # compile this board's exact variant into its build dir and
                        # stop: no wipe, no flash, no monitor, no export, no port
                        # touched. Exit code = idf.py's. Used by run_wizard.ps1's
@@ -677,8 +683,13 @@ if ($BuildOnly) {
     exit $rc
 }
 
+# Child-only: skip the export at once, no cancel window (see -SkipExportNow).
+$skipNow = $SkipExportNow.IsPresent -and $Role -ne 'root'
+
 # What happens after Ctrl+], for the on-screen hint.
-$exitHint = if ($doExport) { "to auto-export (you'll get a few seconds to cancel with 'n')" } else { "to quit (no export)" }
+$exitHint = if (-not $doExport) { "to quit (no export)" }
+            elseif ($skipNow) { "to move on - NO export (skipped instantly; data stays on the SD card)" }
+            else { "to auto-export (you'll get a few seconds to cancel with 'n')" }
 
 # HUMAN scenarios (mobility/powercycle) have no firmware to flash -- this is
 # the one place both front-ends and a bare run.ps1 call are guaranteed to pass
@@ -766,6 +777,13 @@ if (-not $doExport) {
     return
 }
 
+# -SkipExportNow (children only): no window at all - Ctrl+] goes straight on.
+if ($skipNow) {
+    Write-Host "`nMonitor closed - export SKIPPED for this $Role (instant skip). Data is safe on the board ($Port) - import it from its SD card later." -ForegroundColor Green
+    Write-Host $laterHint -ForegroundColor DarkGray
+    return
+}
+
 # Cancel window: Ctrl+] just quit idf.py monitor's own terminal UI, it has no
 # say over the -Export/-Clean/-Analyze that follows -- so if you meant -Flash
 # ONLY and typed -Export by accident, this is the chance to bail before
@@ -785,7 +803,7 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Milliseconds 100
 }
 if ($skipExport) {
-    Write-Host "Export skipped. Data is safe on $Port's SPIFFS." -ForegroundColor Green
+    Write-Host "Export skipped. Data is safe on the board ($Port) - import it from its SD card later, or export with the command below." -ForegroundColor Green
     Write-Host $laterHint -ForegroundColor DarkGray
     return
 }

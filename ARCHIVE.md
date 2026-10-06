@@ -2441,3 +2441,63 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - oct. 2 — Angelo: followed Basti's updates (no conflicts); flat-tree cause found (TREE fan-out 10) + fix proposed; live board roster web page; checklist fixes; star burst duplicates removed (3rd time).
 
 - oct. 2 (Angelo) — Wizard pre-build skips unchanged firmware and explains each build (pushed `9aec136`).
+
+## Rolled from MEMORY.md (oct. 4, 2026, Basti - room for the oct. 4 entries)
+- sep. 26, 2026 (eve) — **blackhole·linear·home·stationary 19:18 run = GOOD, keep it** (the 17:19 run in the same folders was
+  replaced; it was unusable: node2's file held 121 s with the root as parent, the sniffer sat paused 618 s). Tree all run:
+  root -> node2 ATTACKER (F4:2D:C9:73:E6:18) -> node4 (…1C:38) -> node3 (…0C:80) = 2 victims, 0 bystanders. Every CSV's
+  parent_mac/layer matches the root's dashboard; 3 children 7249 rows, phase edges on the same row. Attacker drop_count
+  +359 in attack (180 s x 2 = 360), forward flat. Root arrivals: ONE seq gap per victim = the attack (node4 487->669,
+  node3 464->644), baseline 301/301 + 294/294. ESP32 sniffer (`PCAP/standalone/esp32_sniffer_2026-09-26_191818.pcap`,
+  0 loss) independently shows the attacker's 92-byte probe-forward frames to the root at 0 for 3 min. Node2 was off-mesh
+  36 s in PRE-baseline (root reflash) - excluded rows. Home channel 11 has a foreign AP (88:66:9f:e9:be:00).
+- sep. 26, 2026 (eve) — **LatencyHopRatio/TunnelLatency cross-clock join FIXED** (`features.py` `_arrival_sender_window`):
+  arrivals were merged on `window_start` (root clock) onto the sender's windows (own clock) -> 63-window shift on the home
+  run, cooldown latencies inside attack windows with 0 arrivals. Now placed by seq range like PDR (child: probes+retry;
+  wormhole_b: probes). After the fix LatencyHopRatio scores 0.9987 single-feature: it only exists outside the attack (no
+  arrival = no latency) - the SAME open structure as PDR's 0.9991, not a new leak. Home cell regenerated; G402 + other cells
+  still carry the old values (re-run). thesis-deviate D-2 updated.
+
+# Status
+
+<!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
+**Updated:** oct. 3, 2026 (Angelo). Oct. 2 session's work COMMITTED + PUSHED to `THESIS3` (see `git log`); only the do-not-commit items below stay local. Previous STATUS in ARCHIVE.md (bottom). Facts + reasons: MEMORY.md top ~6 entries.
+
+## ⚠️ Working copies / layout
+Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs + `eda_output/` git-ignored. **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh** (wizard still reads `member_boards.json`; ask Claude to sync).
+
+## Where things stand
+- **Dataset verification log:** `ESP32-Environment/docs/dataset-verification.md` (CLAUDE.md rule: every verify request adds a dated block on top). #2 = sweep of all 9 live cells: 7 USABLE, highload PARTIAL (known), **tree/G402/stationary DEGRADED**.
+- **tree/G402/burst r1 verified + pushed** (oct. 3, verification #3): burst FIRED (fix `6b90df5` proven), CONFIRMED; ⚠️ `FE90` = hidden 3rd victim (wrong parent field, unlabelled).
+- **tree/G402/jitter r1 captured + verified** (oct. 2 evening): real tree depth 2, 1 victim, jitter 331/206 s, BLACKHOLE CONFIRMED.
+- **EDA PCA/t-SNE fix** (`analysis/eda.py`): victim attack windows were dropped; plots regenerated for linear/G402/jitter, linear/home/burst, partial_mesh/G402/jitter, tree/G402/jitter. Teammates must re-run EDA on those (eda_output is git-ignored).
+- **Sniffer stop asks 'are you sure'** (`tools/sniff.py`: Enter / Ctrl+C -> Y to stop). Tested with a simulated board only.
+- **Wizard pre-build skips unchanged firmware** + explains each build (`9aec136`, pushed).
+- Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`). Burst fix proven oct. 2 tree run.
+
+## Uncommitted on Angelo's laptop
+- Oct. 2 session files (eda.py, sniff.py, run_wizard.ps1, dataset-verification.md, root docs): pushed oct. 3.
+- On purpose, do NOT commit (tree/G402/burst data now pushed): `mesh_config.h` attacker line, `sdkconfig` x2, `dependencies.lock`, presets, `archive/*` folders, untracked datasets.
+
+## Next step
+1. Everyone `git pull` + REFLASH (burst + highload + nickname fixes); same attacker on every laptop.
+2. **Recapture tree/G402/stationary as r2** (2 boards dropped out mid-run in r1; verification log #2).
+3. Try the sniffer confirmation once on a real board (Enter -> Y stops; Enter -> other key keeps recording).
+4. Flat tree retry rules + proposed TREE fan-out cap / pinned victims (not built, user's call): MEMORY oct. 2.
+5. Duplicate controls in `exports/baseline/tree/G402/stationary/` (Basti's `git mv` or delete) - user's call.
+6. Re-run star G402 BURST (`burst : FIRED`); 7-board highload run (`[RXSTALL] ... dropped 0`); wormhole tree once a real tree forms.
+7. Jitter: decide whether preprocess keeps the extra baseline; capture jitter r2 + r3. Not yet captured: mobility, powercycle, star burst.
+
+## Blockers / open questions
+- ⛔⛔ Boards DIRECT into the laptop, never dock/hub (BSOD 0xB8). Never pull an SD card mid-run.
+- ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself.
+- ⚠️ BASTI: delete LOCAL `datasets/exports/blackhole/star/G402/burst/` before your next data push.
+- ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
+- ⚠️ Before any pull: `git diff --cached --stat` - a merge refuses ANY staged change on a path it touches.
+
+## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 2 night (Angelo) — Sniffer stop confirmation; 9-cell dataset verification sweep + verification log doc + CLAUDE.md rule.
+- oct. 2 (Angelo) — tree/G402/jitter verified sound; EDA PCA/t-SNE fix, 4 cells' plots regenerated.
+
+## Rolled from STATUS.md (oct. 5, 2026, Basti)
+- oct. 3 (Angelo) — tree/G402/burst r1 verified (#3) + pushed; oct. 2 session pushed.

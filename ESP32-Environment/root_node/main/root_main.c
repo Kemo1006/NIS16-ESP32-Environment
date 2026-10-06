@@ -684,12 +684,18 @@ static void arrival_writer_task(void *arg)
         sum_us += dt;
         if (dt > max_us) max_us = dt;
         if (++n >= RXS_REPORT_EVERY) {
-            ESP_LOGW(TAG, "[RXSTALL] write avg %lld us / max %lld us over %lu rows | "
-                          "queued max %u of %u | dropped %lu | RXQ max %d of %d | phase %u",
-                     (long long)(sum_us / (int64_t)n), (long long)max_us,
+            unsigned phase = (unsigned)r.phase;
+            const char *phase_name = phase == 0 ? "baseline" : phase == 1 ? "attack" :
+                                     phase == 3 ? "cooldown" : "other";
+            ESP_LOGW(TAG, "[RXSTALL] Saving one probe to storage took %lld ms on average "
+                          "(slowest %lld ms) over the last %lu probes | "
+                          "Waiting-to-save line: longest %u of %u, %lu lost so far | "
+                          "Mesh incoming buffer: longest %d of %d | "
+                          "Test phase: %s",
+                     (long long)(sum_us / (int64_t)n / 1000), (long long)(max_us / 1000),
                      (unsigned long)n, (unsigned)q_max, (unsigned)ROOT_ARRIVAL_QUEUE_LEN,
                      (unsigned long)s_arrivals_dropped, s_rxq_max, ROOT_MESH_XON_QSIZE,
-                     (unsigned)r.phase);
+                     phase_name);
             max_us = 0; sum_us = 0; n = 0; q_max = 0; s_rxq_max = 0;
         }
     }

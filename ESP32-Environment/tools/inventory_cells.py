@@ -626,6 +626,7 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         print(f"    {'topology':<14}{'attack':<11}"
               f"{'4 scenarios drawn for this cell (left to right = run order)':<62}last run")
         for topo in PLAN_TOPOLOGIES:
+            print()
             drawn = set()
             for atk in PLAN_ATTACKS:
                 scns = assign[(loc, topo, atk)]

@@ -24,6 +24,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #include "esp_log.h"
 #include "esp_spiffs.h"
@@ -38,6 +39,16 @@ static FILE    *s_log_fp          = NULL;   /* telemetry file (all roles)   */
 /* Set at the very end of csv_logger_close(); read by the heartbeat task. */
 static volatile bool s_closed     = false;
 static FILE    *s_arrivals_fp     = NULL;   /* probe arrivals (root only)   */
+/* Serialises every use of the four FILE handles (SPIFFS + SD mirror, telemetry
+ * + arrivals) between the writer tasks and flush/close/DELETE_LOGS. Without it
+ * csv_logger_close() could fclose() the arrivals file while the root's
+ * arrival_writer_task was still inside fputs() on it — a drain that timed out
+ * at TERMINATE did exactly that and panicked the root (assert in
+ * spinlock_acquire), which rebooted it into a phantom second run appended to
+ * telem.csv (oct. 4, 2026, blackhole/linear/home/highload r5). One lock for
+ * all four is enough: SPIFFS and FatFs already serialise per volume, so the
+ * writers gain no parallelism from separate locks. Created on first init. */
+static SemaphoreHandle_t s_io_lock = NULL;
 static char     s_filepath[128]   = {0};    /* path of telemetry file       */
 static char     s_arrivals_path[128] = {0}; /* path of arrivals file        */
 static uint32_t s_row_count       = 0;     /* telemetry rows since last flush */
@@ -1200,6 +1211,18 @@ static bool log_gate_open(uint8_t phase_id)
 #endif
 }
 
+/* See s_io_lock. Both are no-ops before the first csv_logger_init(), when
+ * every handle is still NULL and there is nothing to race on. */
+static void io_lock(void)
+{
+    if (s_io_lock) xSemaphoreTake(s_io_lock, portMAX_DELAY);
+}
+
+static void io_unlock(void)
+{
+    if (s_io_lock) xSemaphoreGive(s_io_lock);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * Public API — Initialisation
  * ═══════════════════════════════════════════════════════════════════════════ */
@@ -1208,6 +1231,14 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
                            csv_logger_role_t role)
 {
     esp_err_t ret;
+
+    if (!s_io_lock) {
+        s_io_lock = xSemaphoreCreateMutex();
+        if (!s_io_lock) {
+            ESP_LOGE(TAG, "Could not create the logger I/O lock - out of heap.");
+            return ESP_ERR_NO_MEM;
+        }
+    }
 
     s_closed = false;
 
@@ -1391,7 +1422,15 @@ esp_err_t csv_logger_append_telemetry(
         return ESP_FAIL;
     }
 
+    /* Re-check under the lock: close may have run since the check above. */
+    io_lock();
+    if (!s_log_fp) {
+        io_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if (fputs(row, s_log_fp) < 0) {
+        io_unlock();
         ESP_LOGE(TAG, "fputs (telemetry) failed");
         return ESP_FAIL;
     }
@@ -1417,6 +1456,7 @@ esp_err_t csv_logger_append_telemetry(
         s_row_count = 0;
     }
 
+    io_unlock();
     return ESP_OK;
 }
 
@@ -1436,8 +1476,13 @@ esp_err_t csv_logger_append_probe_arrival(
     int64_t     latency_us)
 {
     if (!s_arrivals_fp) {
-        ESP_LOGE(TAG, "append_probe_arrival called but arrivals file not open "
-                      "(was csv_logger_init called with CSV_ROLE_ROOT?)");
+        /* After close this is expected, not a bug: rows the writer still held
+         * when the TERMINATE drain timed out land here, and the drain has
+         * already reported them as lost - one line, not one per row. */
+        if (!s_closed) {
+            ESP_LOGE(TAG, "append_probe_arrival called but arrivals file not open "
+                          "(was csv_logger_init called with CSV_ROLE_ROOT?)");
+        }
         return ESP_ERR_INVALID_STATE;
     }
     if (!log_gate_open(phase_id)) return ESP_OK;
@@ -1476,7 +1521,16 @@ esp_err_t csv_logger_append_probe_arrival(
         return ESP_FAIL;
     }
 
+    /* Re-check under the lock - this is the race that crashed the root: close
+     * ran between the check above and the fputs below. */
+    io_lock();
+    if (!s_arrivals_fp) {
+        io_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if (fputs(row, s_arrivals_fp) < 0) {
+        io_unlock();
         ESP_LOGE(TAG, "fputs (probe arrival) failed");
         return ESP_FAIL;
     }
@@ -1499,6 +1553,7 @@ esp_err_t csv_logger_append_probe_arrival(
         s_arrivals_row_count = 0;
     }
 
+    io_unlock();
     return ESP_OK;
 }
 
@@ -1508,7 +1563,11 @@ esp_err_t csv_logger_append_probe_arrival(
 
 esp_err_t csv_logger_flush(void)
 {
-    if (!s_log_fp) return ESP_ERR_INVALID_STATE;
+    io_lock();
+    if (!s_log_fp) {
+        io_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
     fflush(s_log_fp);
     if (s_arrivals_fp) fflush(s_arrivals_fp);
     /* An explicit flush is a phase boundary (the node mains call it when a run
@@ -1520,12 +1579,21 @@ esp_err_t csv_logger_flush(void)
     s_sd_last_sync_us = esp_timer_get_time();
     s_row_count = 0;
     s_arrivals_row_count = 0;
+    io_unlock();
     return ESP_OK;
 }
 
 esp_err_t csv_logger_close(void)
 {
-    if (!s_log_fp) return ESP_ERR_INVALID_STATE;
+    /* Held for the whole close, mirrors and unmount included: a writer that
+     * got in halfway could otherwise re-open an SD mirror through
+     * sd_mirror_ensure() on a card that is about to be unmounted. Writers that
+     * queue behind this lock find their handle NULL and return. */
+    io_lock();
+    if (!s_log_fp) {
+        io_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
 
     fflush(s_log_fp);
     fclose(s_log_fp);
@@ -1595,6 +1663,7 @@ esp_err_t csv_logger_close(void)
     }
 
     s_closed = true;   /* last: heartbeats report "safe to export" from here */
+    io_unlock();
     return ESP_OK;
 }
 
@@ -1817,8 +1886,10 @@ static void serial_export_task(void *arg)
              * reflash/reboot, and csv_logger_init() recreates the files with
              * fresh headers on the next boot. */
             } else if (strcmp(cmd_buf, "DELETE_LOGS") == 0) {
+                io_lock();
                 if (s_log_fp)      { fclose(s_log_fp);      s_log_fp = NULL; }
                 if (s_arrivals_fp) { fclose(s_arrivals_fp); s_arrivals_fp = NULL; }
+                io_unlock();
                 esp_err_t ferr = esp_spiffs_format(FS_PARTITION_LABEL);
                 if (ferr == ESP_OK) {
                     uart_write_bytes(EXPORT_UART, "LOGS_DELETED\n", 13);

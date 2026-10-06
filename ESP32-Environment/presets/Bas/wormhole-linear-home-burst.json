@@ -1,36 +1,37 @@
 ﻿{
-    "attack":  "blackhole",
+    "attack":  "wormhole",
     "topology":  "linear",
     "location":  "home",
-    "scenario":  "highload",
+    "scenario":  "burst",
     "owner":  "Bas",
-    "repeat":  4,
-    "savedAt":  "2026-09-30 01:46",
+    "repeat":  6,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-05 01:48",
     "boards":  [
                    {
                        "Label":  "node2",
-                       "Port":  "COM26",
+                       "Port":  "COM17",
                        "Role":  "child",
-                       "Kind":  "attacker",
-                       "Display":  "blackhole ATTACKER",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware) + BURST TARGET",
                        "Mac":  "f4:2d:c9:73:e6:18",
-                       "ScenarioTarget":  false
+                       "ScenarioTarget":  true
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM22",
+                       "Port":  "COM4",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "A",
+                       "Display":  "wormhole Node A (exit)",
                        "Mac":  "20:50:0d:e7:1c:38",
                        "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM24",
+                       "Port":  "COM22",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "B",
+                       "Display":  "wormhole Node B (entry)",
                        "Mac":  "20:50:0d:e7:0c:80",
                        "ScenarioTarget":  false
                    },
@@ -38,27 +39,36 @@
                        "Label":  "node5",
                        "Port":  "COM21",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
                        "Mac":  "b4:bf:e9:34:ed:80",
                        "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node6",
-                       "Port":  "COM23",
+                       "Port":  "COM20",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
                        "Mac":  "28:05:a5:32:d7:b4",
                        "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node7",
-                       "Port":  "COM5",
+                       "Port":  "COM18",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
                        "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node8",
+                       "Port":  "COM19",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:32:fe:90",
                        "ScenarioTarget":  false
                    }
                ]

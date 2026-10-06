@@ -1,15 +1,16 @@
 ﻿{
     "attack":  "blackhole",
     "topology":  "linear",
-    "location":  "home",
-    "scenario":  "highload",
+    "location":  "DLSU_Library",
+    "scenario":  "burst",
     "owner":  "Cal",
-    "repeat":  4,
-    "savedAt":  "2026-09-30 00:58",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-05 13:00",
     "boards":  [
                    {
                        "Label":  "node1",
-                       "Port":  "COM25",
+                       "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",
                        "Display":  "ROOT (announces the phases)",

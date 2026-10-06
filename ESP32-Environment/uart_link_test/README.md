@@ -15,12 +15,24 @@ This test catches it up front.
 
 ## What it does
 
-Both boards run the same firmware. Each one continuously **sends** a `LINKPING`
-out its TX pin (GPIO17) and **listens** on its RX pin (GPIO16). If a board
-receives pings, the wire feeding *that board's* RX works. When both boards are
-running and correctly wired, **both print `[LINK OK]`**.
+Both boards run the same firmware. Each one **sends** a numbered, checksummed
+`LINKPING` out its TX pin (GPIO17) every 50 ms and **listens** on its RX pin
+(GPIO16). If a board receives pings, the wire feeding *that board's* RX works.
+When both boards are running and correctly wired, **both print `[LINK OK]`**.
+Sequence gaps count as **lost**, bad checksums as **garbled**, so a long run
+shows whether an extended/chained jumper wire drops data.
+
+Once a second each board also prints `LINKSTAT tx= rx= lost= bad=` (cumulative
+since boot) for the wizard to parse.
 
 ## How to use
+
+**Easiest:** `run_wizard.ps1` > MAINTENANCE > *Wormhole UART tunnel test*. It
+flashes both boards, reads both consoles at once and prints a PASS/WARN/FAIL
+table per direction - quick check (10 s) or soak (2 min). Only **B -> A** is
+used by the real wormhole firmware.
+
+By hand:
 
 ```powershell
 cd uart_link_test
@@ -33,7 +45,8 @@ Read the output:
 
 | Output | Meaning |
 |---|---|
-| `>>> RX OK ... [LINK OK]` | ✅ wire good — proceed to the real wormhole run |
+| `RX received=N lost=0 garbled=0  [LINK OK]` | ✅ wire good — proceed to the real wormhole run |
+| `[LINK OK]` but `lost` / `garbled` climbing | ⚠️ wire works but drops data — reseat joints, fewer/longer jumpers |
 | `RX received=0` (stays 0) | ❌ wire feeding that board's GPIO16 is dead — check GND and the crossing |
 
 **Isolation tip:** if it fails, jumper one board's own TX2→RX2 (self-loopback) —

@@ -587,7 +587,9 @@ What changed (root only, plus one root-only line in `mesh_setup.c`):
 3. **Item 4:** arrival rows reuse the telemetry task's 10 Hz RSSI reading (`s_last_rssi`) instead of an `esp_wifi_sta_get_rssi()` call per probe. Every root arrival row in every run so far has `rssi_dbm = 0` (the root has no parent AP), so the data is unchanged.
 
 The `[RXSTALL]` line now comes from the writer, every 200 rows:
-`[RXSTALL] write avg … us / max … us over 200 rows | queued max Q of 256 | dropped D | RXQ max R of 64 | phase P`
+`[RXSTALL] Saving one probe to storage took X ms on average (slowest Y ms) over the last 200 probes | Waiting-to-save line: longest Q of 256, N lost so far | Mesh incoming buffer: longest R of 64 | Test phase: baseline|attack|cooldown`
 
-**How to read the next 7-board highload run:** arrivals stay at about the send rate (about 20/s) through cooldown, `RXQ max` stays low, and `dropped` stays 0 means the fix worked. `queued max` climbing toward 256 means the card is slower than the arrival rate on average (a bigger queue or less SD work is next). Arrivals still collapsing while `RXQ max` and `queued max` stay low means §12.4 was not the cause, so re-open the diagnosis.
+Plain meaning: "Waiting-to-save line" is rows waiting in the root's memory for the SD card. "Mesh incoming buffer" is packets the mesh network is holding for the root. "lost so far" counts rows dropped because the waiting line was full.
+
+**How to read the next 7-board highload run:** arrivals stay at about the send rate (about 20/s) through cooldown, the mesh incoming buffer stays low, and "lost so far" stays 0 means the fix worked. The waiting line climbing toward 256 means the SD card is slower than the arrival rate on average (a bigger queue or less SD work is next). Arrivals still collapsing while both stay low means §12.4 was not the cause, so re-open the diagnosis.
 Built clean (`-Werror`, IDF 5.5.4): root blackhole, root baseline+burst, child blackhole-victim burst. Static RAM 51 KB used / 129 KB free; the queue takes ~14 KB of heap.

@@ -16,6 +16,77 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #4 — Oct 5, 2026 · 11:47 AM — blackhole · linear · DLSU_Library · stationary
+
+> **Requested by:** Bas · **Laptop:** Bas's (`NO`) · **Commit:** `0b667b1` (capture staged, not committed)
+> **Request:** "is inf alright for the thesis or not verify it" → "check the dataset folder properly
+> why it was inf" → "what result am i expecting if i trim again and verify in run wizard"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | linear | DLSU_Library | stationary | r1 | Oct 5, 10:52–11:07 AM | 9 (7 child telem + root telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ✅ 9 PASS / 0 WARN / 0 FAIL | "phase 0 ran 381–443 s" infos = boot segment + baseline, both phase_id 0 (see below) |
+| Topology (`verify_topology.py`) | ⚠️ FAIL, false alarm | "Baseline re-routing free: NO". The only change is in the boot segment, not the baseline (see below). Chain of 8 matches linear ✅ |
+| Attack (`verify_attack.py`) | ✅ CONFIRMED 2/2 | FR attacker 1.000 → 0.014 (z −60.85) · PDR 1.000 → 0.669 (**z −inf**) · NeighbourFR z −91.38 |
+| PDR rebuilt from raw exports | ✅ matches | seq-number join of telemetry vs root arrivals, no pipeline code: baseline 1,805/1,805 delivered |
+| Re-trim (`trim_run.py --apply`) | ✅ no-op | 1 boot session per node → 0 rows dropped, output byte-identical to the existing `trimmed/` |
+| Analysis tables | ✅ reproducible | re-ran preprocess + features on a scratch copy → `feature_table.csv` identical (5,800 × 71) |
+
+### Why PDR is `-inf`: the baseline genuinely lost zero probes
+- `verify_attack.py:305-318`: when the baseline sd is exactly 0, the script does not compute z. It
+  prints `-inf` as a flag meaning "the mean dropped at all" and counts that as PASS. This is the same
+  mechanism as the FR `-inf` in #3.
+- **Raw data, per phase (honest children, sent → received at root):**
+
+| Phase | Sent → received | Root arrivals |
+|---|---|---|
+| 255 pre-start (65 s) | 390 → 390 | 390 |
+| 0 baseline (300 s) | **1,805 → 1,805** | 1,805 |
+| 1 attack (180 s) | 4 bystanders 721 → 721 · victims `704BCA25B768`, `B4BFE932FE90` **0/180 each** | 721 |
+| 3 cooldown (120 s) | 724 → 724 | 724 |
+
+- No duplicate (src, seq), no counter resets, 0 `_pdr_clipped` rows. σ = 0 is real, not a filtering
+  artefact. The verifier's "baseline" (Label 0) = baseline + cooldown = 3,359 windows = 516 blocks,
+  and both phases were perfect.
+- **For the thesis:** the PASS stands, but do **not** write "z = −∞". Write: *"PDR baseline
+  1.000 ± 0.000 (1,805/1,805 probes delivered); victims 0/180 during the attack. z is undefined
+  (σ = 0); any sustained drop is outside the 3σ band, and the victims fell to the minimum possible
+  value."* Caveat a panel may raise: with σ = 0 the band has zero width, so even one lost probe would
+  pass. Here the drop is total, so the result is not marginal.
+
+### What the pipeline handled correctly (looks like loss, isn't)
+- **Boot segment.** The run log shows the wizard **full-erased and reflashed the root at 10:52**
+  while the 7 children were already running. Each child logged `phase_id = 0` for 16–87 s before
+  the new root's first broadcast. The root's arrivals log starts at its own boot (phase 255), so
+  those probes have no delivery record. `preprocess.assign_segments` tags them `pre_baseline`
+  (476 + 519 windows, Label NaN), and they are excluded.
+- **Victim `704BCA25B768` reads 0.0055, not 0.000.** Window 423 is labelled phase 1 but holds seq 429,
+  sent at the end of baseline, and that probe arrived. One window of 181 reads 1.0. True attack
+  delivery is **0/180**: quote 0.000.
+- **The attacker (`F42DC973E618`) has no PDR.** It sends no probes of its own
+  (`child_node/main/blackhole_victim.c:40`). Its `probes_count` = probes **received for relay**
+  (`:49`, `:388`), which is about 2/s = its two downstream victims. PDR excludes the `blackhole` role
+  by design (features.py rule 1).
+
+### ⚠️ Gate 2 FAIL is a false alarm
+- The only parent/layer change in the run: `20500DE71C38` (root's direct child) lost its parent at
+  t = 66.4 s and rejoined the root at 92.7 s, which is the root reflash above. That is **inside the
+  boot segment**, before the first phase-255 broadcast at 96.3 s. The real baseline (161–462 s) has
+  zero changes on every node.
+- `verify_topology.py` counts the boot segment as baseline because it also reads phase_id 0. Expect
+  `Topology FAIL` in every re-run of this capture. It does not touch the analysed data.
+
+**Verdict: ✅ USABLE.** The attack is confirmed on all primaries. Victims: `704BCA25B768` (hop 6) and
+`B4BFE932FE90` (hop 7), both 0/180. The other 4 children sit above the attacker and are unaffected
+by construction. Re-trimming and re-verifying in the wizard reproduces exactly this: Integrity PASS ·
+Topology FAIL (boot segment) · Attack CONFIRMED with PDR `-inf`.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #3 — Oct 3, 2026 · 9:16 PM — blackhole · tree · G402 · burst
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4def0f8`
