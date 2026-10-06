@@ -8,7 +8,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Where things stand
 - **Dataset verification log:** `ESP32-Environment/docs/dataset-verification.md` (CLAUDE.md rule: every verify request adds a dated block on top). #2 = sweep of all 9 live cells: 7 USABLE, highload PARTIAL (known), **tree/G402/stationary DEGRADED**.
-- **tree/G402/burst r1 verified + pushed** (oct. 3, verification #3): burst FIRED (fix `6b90df5` proven), CONFIRMED; ⚠️ `FE90` = hidden 3rd victim (wrong parent field, unlabelled).
+- **tree/G402/burst r1 verified + pushed** (oct. 3, verification #3): burst FIRED (fix `6b90df5` proven), CONFIRMED; ⚠️ `FE90` ran a STALE pre-sep-21 image (flashed from another laptop) -> targeted the attacker; unlabelled. Verification #4. **REFLASH FE90 (Kyle's board) from an up-to-date checkout.**
 - **tree/G402/jitter r1 captured + verified** (oct. 2 evening): real tree depth 2, 1 victim, jitter 331/206 s, BLACKHOLE CONFIRMED.
 - **EDA PCA/t-SNE fix** (`analysis/eda.py`): victim attack windows were dropped; plots regenerated for linear/G402/jitter, linear/home/burst, partial_mesh/G402/jitter, tree/G402/jitter. Teammates must re-run EDA on those (eda_output is git-ignored).
 - **Sniffer stop asks 'are you sure'** (`tools/sniff.py`: Enter / Ctrl+C -> Y to stop). Tested with a simulated board only.
