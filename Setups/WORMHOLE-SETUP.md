@@ -91,7 +91,11 @@ cable to your laptop; it only ever runs between the two ESP32 boards.
 
 A wrong tunnel wire (missing GND, or straight-through instead of crossed) makes
 the tunnel **silently deliver nothing** — you'd only find out after a full
-11-minute run + export. Catch it in seconds with the standalone loopback test:
+11-minute run + export. Catch it in seconds with the standalone loopback test.
+
+**Easiest:** `run_wizard.ps1` > MAINTENANCE > *Wormhole UART tunnel test* -
+flashes both boards and prints PASS/WARN/FAIL per direction. Use the 2-min
+**soak** for long or chained jumper wires (it counts lost pings). By hand:
 
 ```powershell
 cd "C:\Users\Angelo Calpoporo\CLionProjects\NIS16-ESP32-Environment\uart_link_test"

@@ -685,6 +685,14 @@ def build_plan(ctx, area):
     return writes, notes
 
 
+def measure(rel, data):
+    # Row counts only mean something for text. A PNG "has" as many rows as it
+    # happens to contain 0x0A bytes, which is noise dressed up as a measurement
+    # - show its size instead.
+    return ("{} rows".format(rows(data)) if rel.lower().endswith((".csv", ".md", ".json"))
+            else _fmt_size(len(data)))
+
+
 def print_plan(writes, notes, area=EXPORTS):
     print("")
     labels = {"new": "NEW", "ledger": "LEDGER (rows merged)", "conflict": "KEEP BOTH (name clash)"}
@@ -703,12 +711,7 @@ def print_plan(writes, notes, area=EXPORTS):
             continue
         dated = []
         for _, rel, repo_path, data in items:
-            # Row counts only mean something for text. A PNG "has" as many
-            # rows as it happens to contain 0x0A bytes, which is noise dressed
-            # up as a measurement - show its size instead.
-            measure = ("{} rows".format(rows(data)) if rel.lower().endswith((".csv", ".md", ".json"))
-                       else _fmt_size(len(data)))
-            extra = "  ({})".format(measure) + ("" if kind != "conflict" else "   -> saved as " + repo_path)
+            extra = "  ({})".format(measure(rel, data)) + ("" if kind != "conflict" else "   -> saved as " + repo_path)
             dated.append((rel, fresh.when(rel, local_mtime(rel)), extra))
         print("  {} - {} file(s): {}".format(labels[kind], len(items), fresh.counts(dated)))
         print_dated(dated, fresh)
@@ -744,26 +747,60 @@ def print_plan(writes, notes, area=EXPORTS):
 # ------------------------------------------------------------------ syncing ---
 
 def ask_push(n, ctx):
-    """The push confirmation: 'push', 'delete' (prune this laptop first) or 'cancel'."""
+    """The push confirmation: 'push', 'some' (pick which), 'delete' (prune this laptop first) or 'cancel'."""
     q = "\nPush {} file(s) to GitHub branch '{}'?".format(n, ctx.branch)
     if ctx.yes:
         print(q + " y (--yes)")
         return "push"
     print(q)
-    print("    [y] push them")
+    print("    [y] push them all")
+    print("    [s] push SOME of them - pick one or more by number")
     print("    [d] delete some of these files from this laptop first - nothing is pushed yet")
     while True:
         try:
-            ans = input("  y / d, Enter cancels > ").strip().lower()
+            ans = input("  y / s / d, Enter cancels > ").strip().lower()
         except EOFError:
             return "cancel"
         if ans in ("y", "yes"):
             return "push"
+        if ans in ("s", "some"):
+            return "some"
         if ans in ("d", "delete"):
             return "delete"
         if ans in ("", "n", "no", "q"):
             return "cancel"
-        print("  Type y (push), d (delete files from this laptop), or Enter to cancel.")
+        print("  Type y (push all), s (pick some), d (delete files from this laptop), or Enter to cancel.")
+
+
+def pick_files_to_push(writes, area):
+    """The planned writes numbered under their folders, newest first; returns the rels typed ([] = cancelled).
+
+    Ledgers are offered like any other file rather than tagged along
+    automatically: leaving one out only delays its rows to the next push (they
+    are merged, never overwritten), so it stays the operator's choice.
+    """
+    fresh = Freshness(area, "when it was imported (from the file name)" if area == EXPORTS
+                      else "last changed on this laptop")
+    ts = {w[1]: fresh.when(w[1], local_mtime(w[1])) for w in writes}
+    folders = []
+    for w in writes:
+        if folder_of(w[1]) not in folders:
+            folders.append(folder_of(w[1]))
+    pool = sorted(writes, key=lambda w: (folders.index(folder_of(w[1])), -(ts[w[1]] or 0), w[1]))
+
+    print("\n  Pick what to push ({}):".format(fresh.rule()))
+    shown = None
+    for i, (kind, rel, repo_path, data) in enumerate(pool, 1):
+        if folder_of(rel) != shown:
+            shown = folder_of(rel)
+            print("    {}/".format(shown))
+        note = {"ledger": "  - run registry, rows merged",
+                "conflict": "   -> saved as " + repo_path}.get(kind, "")
+        print("    [{:>{w}}] {}  {}  ({}){}".format(i, fresh.label(rel, ts[rel]), rel.rsplit("/", 1)[-1],
+                                                measure(rel, data), note, w=len(str(len(pool)))))
+    idx = prompt_picks("\n  Push which? numbers (e.g. 1 or 2,4-6), 'all' = all {} file(s) - "
+                       "Enter cancels > ".format(len(pool)), len(pool))
+    return [pool[i][1] for i in idx]
 
 
 def sync_push(ctx, area):
@@ -771,6 +808,7 @@ def sync_push(ctx, area):
     # Plan-and-confirm loops on its own, outside the retry budget below: deleting
     # unnecessary files changes what would go up, so the plan is rebuilt and shown
     # again, and pruning must never eat one of the push attempts.
+    chosen = None   # None = every planned file; else the rels picked under [s]
     while True:
         refresh(ctx)
         writes, notes = build_plan(ctx, area)
@@ -782,6 +820,24 @@ def sync_push(ctx, area):
         if answer == "delete":
             delete_local_files(ctx, area)
             continue
+        if answer == "some":
+            picked = pick_files_to_push(writes, area)
+            if not picked:
+                print("  Nothing picked - back to the full list.")
+                continue
+            chosen = set(picked)
+            n_planned = len(writes)
+            writes = [w for w in writes if w[1] in chosen]
+            print("\n  {} of the {} planned file(s) will be pushed:".format(len(writes), n_planned))
+            for _, rel, _, _ in writes:
+                print("    " + rel)
+            if n_planned > len(writes):
+                print("  The other {} stay on this laptop only and are offered again next push.".format(
+                    n_planned - len(writes)))
+            if not ask("  Push these {} file(s)?".format(len(writes)), False):
+                print("  Cancelled - nothing was pushed.")
+                return False
+            break
         if answer != "push":
             print("  Cancelled - nothing was pushed.")
             return False
@@ -791,6 +847,9 @@ def sync_push(ctx, area):
         if attempt > 1:
             refresh(ctx)
             writes, _ = build_plan(ctx, area)
+            # A retry re-plans from scratch; it must still push only the picks.
+            if chosen is not None:
+                writes = [w for w in writes if w[1] in chosen]
             if not writes:
                 print("\n  A teammate pushed the same files - GitHub already has them.")
                 return True

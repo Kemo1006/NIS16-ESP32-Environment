@@ -192,6 +192,16 @@ and states the reason per column. That is the panel's 2:40–4:50 objection, han
 
 ---
 
+## 10. "How do you test the wormhole?"
+
+**In three layers:** a pre-run check of the A↔B UART wire (wizard tunnel test), the firmware's own
+CRC check and Node A's end-of-run check, and the data signature. That signature is each of Node B's
+probes reaching the root **twice**, only in the attack window, confirmed by the 3-sigma test in
+`verify_attack.py`. The spoken version with follow-up questions is in
+`docs/panel-answers/2026-10-04_WORMHOLE-TESTING-EXPLAINER.md`.
+
+---
+
 ## Where each answer is enforced in code
 
 | Question | File |
