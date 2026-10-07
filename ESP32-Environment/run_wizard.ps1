@@ -522,7 +522,7 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'VERIFY'; Items = @(
             @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
-            @{ Idx = 18; Text = 'Campaign progress checklist - which runs are DONE, scanned from the folders (no board/COM contact)' }
+            @{ Idx = 18; Text = 'Campaign progress - what is done and what to run next' }
             @{ Idx = 19; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
         ) }
         @{ Name = 'WIRESHARK'; Items = @(
@@ -3112,47 +3112,26 @@ function Invoke-CampaignChecklist {
     # has to be redone, so showing it as done would be worse than showing nothing.
     # Run the plain inventory to see WHY a given run failed.
 
-    Write-Host ""
-    Write-Host "=== Campaign progress checklist ===" -ForegroundColor Cyan
-    Write-Host "Scanned from the folders only - no board/COM contact." -ForegroundColor DarkGray
-    Write-Host "  [1] LIVE    - datasets\exports\ + datasets\analysis\ (what counts; archiving a run removes it)"
-    Write-Host "  [2] ARCHIVE - archive\*\exports\ + archive\*\analysis\ (history)"
-    $scope = 'live'
-    $sAns = Read-Line "Which checklist? [1] > "
-    if ($sAns -and $sAns.Trim() -eq '2') { $scope = 'archive' }
-
-    $repeats = 1
-    $ans = Read-Host "Planned repeats per cell? (1 = 96 attack + 12 benign runs, 4 = x4) [1]"
-    if ($ans -and $ans.Trim() -match '^\d+$') { $repeats = [int]$ans.Trim() }
-
+    # Simple first (oct. 7, 2026, user asked for less text): the board, then one
+    # small menu for the details.
+    $inv = Join-Path $base 'tools\inventory_cells.py'
     Push-Location $base
     try {
-        # Board first (oct. 7, 2026): progress bars, the next run and the next
-        # field sessions on one screen; the full tick-box table follows it.
         $env:PYTHONIOENCODING = 'utf-8'
-        python (Join-Path $base 'tools\inventory_cells.py') --board --scope $scope
-        $sesAns = Read-Line "Show every remaining run grouped into field sessions? [y/N] > "
-        if ($sesAns -eq 'y' -or $sesAns -eq 'Y') {
-            python (Join-Path $base 'tools\inventory_cells.py') --sessions --scope $scope
-        }
-        $tblAns = Read-Line "Show the full tick-box checklist too? [Y/n] > "
-        if ($tblAns -ne 'n' -and $tblAns -ne 'N') {
-            python (Join-Path $base 'tools\inventory_cells.py') --checklist --scope $scope --repeats $repeats
-        }
-        Write-Host ""
-        # Read-Line, NOT Read-YesNo: Read-YesNo is defined in menu.ps1 only and
-        # this script does not dot-source it, so calling it here threw
-        # CommandNotFoundException and killed the checklist AFTER it had already
-        # printed (2026-09-22). Every other prompt in this file uses Read-Line.
-        $invAns = Read-Line "Also show the full per-run inventory (with the reason each incomplete run failed)? [y/N] > "
-        if ($invAns -eq 'y' -or $invAns -eq 'Y') {
-            python (Join-Path $base 'tools\inventory_cells.py') --plan --repeats $repeats
+        python $inv --board
+        while ($true) {
+            Write-Host "  [1] all sessions   [2] full checklist   [3] why runs failed   [4] archive" -ForegroundColor DarkGray
+            $pick = Read-Line "  Enter = back > "
+            switch ($pick) {
+                '1' { python $inv --sessions }
+                '2' { python $inv --checklist --scope live }
+                '3' { python $inv --plan }
+                '4' { python $inv --checklist --scope archive }
+                default { return }
+            }
         }
     }
     finally { Pop-Location }
-
-    Write-Host ""
-    Read-Host "Press Enter to return to the menu" | Out-Null
 }
 
 function Select-VerifyTable {

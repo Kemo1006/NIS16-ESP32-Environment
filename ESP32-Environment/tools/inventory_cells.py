@@ -938,82 +938,52 @@ def _bar(done, partial, planned, width, C):
 
 
 def _run_tag(x, C):
-    a = {"blackhole": "BH", "wormhole": "WH", "baseline": "BN"}[x["attack"]]
-    if x["state"] == "partial":
-        return f"{C['y']}{a}:{lbl(x['scenario'])}{C['x']}"
-    return f"{a}:{lbl(x['scenario'])}"
+    a = {"blackhole": "BH", "wormhole": "WH", "baseline": "benign"}[x["attack"]]
+    tag = f"{a} {lbl(x['scenario'])}"
+    return f"{C['y']}{tag}{C['x']}" if x["state"] == "partial" else tag
 
 
-def report_board(st, color=True, sessions_shown=4):
-    """Coloured one-screen summary: totals, per-location bars, next-run card."""
+def report_board(st, color=True, sessions_shown=3):
+    """Short coloured summary: total, one bar per location, next run, next sessions."""
     C = _ansi(color)
-    t, a, bn = st["total"], st["attack_total"], st["benign_total"]
+    t = st["total"]
     pct = 100 * t["done"] / t["planned"] if t["planned"] else 0
-    line = "=" * 78
     print()
-    print(f"{C['c']}{line}{C['x']}")
-    print(f"{C['b']}  CAMPAIGN BOARD{C['x']}  {C['d']}({st['scope']} data, scanned from the folders){C['x']}")
-    print(f"{C['c']}{line}{C['x']}")
-    print(f"  {_bar(t['done'], t['partial'], t['planned'], 40, C)}  "
-          f"{C['b']}{t['done']}/{t['planned']}{C['x']} runs ({pct:.0f} %)")
-    print(f"  attack {a['done']}/{a['planned']}  |  benign {bn['done']}/{bn['planned']}"
-          f"  |  {st['remaining']} left  |  about {st['hours_left']} h of field time")
-    print(f"  {C['d']}{C['g']}#{C['x']}{C['d']} done   {C['y']}~{C['x']}{C['d']} data here, not finished"
-          f"   . not started{C['x']}")
+    print(f"  {C['b']}CAMPAIGN{C['x']}  {t['done']}/{t['planned']} done ({pct:.0f}%)"
+          f"  ·  {st['remaining']} left  ·  ~{st['hours_left']:.0f} h")
     print()
     for loc in st["locations"]:
         pl = st["per_location"][loc]["all"]
-        print(f"  {loc:<14}{_bar(pl['done'], pl['partial'], pl['planned'], 30, C)}  "
-              f"{pl['done']:>3}/{pl['planned']:<3}")
-    print()
-    print("  by attack    " + "   ".join(
-        f"{'benign' if k == 'baseline' else k} {v['done']}/{v['planned']}"
-        for k, v in st["per_attack"].items()))
-    print("  by scenario  " + "   ".join(
-        f"{lbl(k)} {v['done']}/{v['planned']}" for k, v in st["per_scenario"].items()))
+        print(f"  {loc:<13}{_bar(pl['done'], pl['partial'], pl['planned'], 24, C)}"
+              f"  {pl['done']}/{pl['planned']}")
     n = st["next"]
     if n:
-        what = "BENIGN (attack = none)" if n["kind"] == "benign" else n["attack"].upper()
+        what = "BENIGN" if n["kind"] == "benign" else n["attack"].upper()
         print()
-        print(f"  {C['m']}+-- NEXT RUN {'-' * 63}+{C['x']}")
-        print(f"  {C['m']}|{C['x']} {C['b']}{what} / {n['topology']} / {n['location']} / "
+        print(f"  {C['m']}NEXT{C['x']}  {C['b']}{what} · {n['topology']} · {n['location']} · "
               f"{lbl(n['scenario'])}{C['x']}")
-        extra = f" - last attempt: {n['why']}" if n["why"] else ""
-        print(f"  {C['m']}|{C['x']} session {n['session']} of {len(st['sessions'])}{extra}")
-        print(f"  {C['m']}+{'-' * 76}+{C['x']}")
     if st["sessions"]:
         print()
-        print(f"  {C['b']}NEXT SESSIONS{C['x']}  {C['d']}one location + topology each: "
-              f"blackhole -> benign -> wormhole{C['x']}")
         for se in st["sessions"][:sessions_shown]:
-            runs = " ".join(_run_tag(x, C) for x in se["runs"])
-            print(f"   {se['n']:>2}. {se['location']:<13}{se['topology']:<13}"
-                  f"{se['remaining']:>2} runs ~{se['minutes'] / 60:.1f} h   {runs}")
+            print(f"  {se['n']:>2}. {se['location']} {se['topology']:<13}"
+                  f"{se['remaining']:>2} runs  {se['minutes'] / 60:.1f} h")
         more = len(st["sessions"]) - sessions_shown
         if more > 0:
-            print(f"   {C['d']}... {more} more sessions (inventory_cells.py --sessions){C['x']}")
-    print(f"{C['c']}{line}{C['x']}")
+            print(f"  {C['d']}    +{more} more sessions{C['x']}")
     print()
 
 
 def report_sessions(st, color=True):
-    """Every remaining run, grouped into field sessions (see SESSION ORDER)."""
+    """Every remaining run, one session (location + topology) per block."""
     C = _ansi(color)
     print()
-    print(f"{C['b']}  FIELD SESSIONS{C['x']} - {st['remaining']} runs left, about "
-          f"{st['hours_left']} h ({RUN_MIN} min/run, +{TOPOLOGY_SETUP_MIN} min to place the "
-          f"boards, +{TUNNEL_WIRING_MIN} min to wire the tunnel)")
-    print("  One session = one location + one topology. Inside it: blackhole runs, then the")
-    print("  matched benign runs (no attacker), then wormhole once the A<->B cable is wired.")
+    print(f"  {C['b']}SESSIONS{C['x']}  {st['remaining']} runs  ·  ~{st['hours_left']:.0f} h"
+          f"  {C['d']}(order: BH -> benign -> WH){C['x']}")
     for se in st["sessions"]:
         print()
-        tag = "continue" if se["started"] else "new"
-        print(f"  {C['c']}SESSION {se['n']:>2}{C['x']}  {C['b']}{se['location']} / {se['topology']}{C['x']}"
-              f"  {C['d']}({tag}, {se['done']}/{se['planned']} done, ~{se['minutes'] / 60:.1f} h){C['x']}")
-        for i, x in enumerate(se["runs"], 1):
-            what = "benign (attack none)" if x["kind"] == "benign" else x["attack"]
-            note = f"  {C['y']}<- {x['why']}{C['x']}" if x["why"] else ""
-            print(f"     {i:>2}. {what:<21}{lbl(x['scenario']):<12}{note}")
+        print(f"  {C['c']}{se['n']:>2}. {se['location']} / {se['topology']}{C['x']}"
+              f"  {C['d']}{se['minutes'] / 60:.1f} h{C['x']}")
+        print("      " + "  ·  ".join(_run_tag(x, C) for x in se["runs"]))
     print()
 
 

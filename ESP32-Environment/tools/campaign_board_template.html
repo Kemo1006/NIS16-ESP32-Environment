@@ -72,7 +72,7 @@ header { display: grid; gap: 18px; }
 
 /* matrix */
 .matrix-scroll { overflow-x: auto; }
-.matrix { display: grid; grid-template-columns: 120px repeat(3, minmax(220px, 1fr)); gap: 10px; min-width: 820px; }
+.matrix { display: grid; grid-template-columns: 120px repeat(3, minmax(250px, 1fr)); gap: 10px; min-width: 900px; }
 .colhead { font: 600 0.95rem var(--f-display); padding: 4px 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .colhead .mono { font-size: 0.75rem; color: var(--muted); }
 .rowhead { display: grid; align-content: center; gap: 6px; padding: 6px; }
@@ -83,7 +83,7 @@ header { display: grid; gap: 18px; }
 .rowhead svg line { stroke: var(--muted); stroke-width: 1.2; }
 .cell { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 7px; }
 .cell.complete { border-color: var(--done); }
-.lane { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: center; }
+.lane { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; }
 .lane > b { font: 600 0.68rem var(--f-mono); letter-spacing: 0.04em; }
 .lane.bh > b { color: var(--bh); } .lane.wh > b { color: var(--wh); } .lane.bn > b { color: var(--bn); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -126,50 +126,42 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   <header>
     <div class="head-row">
       <div style="display:grid;gap:8px">
-        <span class="eyebrow">NIS16 · ESP-WIFI-MESH · CTTHES3 field campaign · G402 · DLSU Library · Yuchengco</span>
+        <span class="eyebrow">NIS16 · ESP-WIFI-MESH</span>
         <h1>Mesh Campaign Board</h1>
       </div>
       <span class="stamp" id="stamp"></span>
     </div>
     <div class="progress">
       <div class="track" id="total-track" role="img"></div>
-      <div class="bar"><span id="total-line"></span></div>
     </div>
     <div class="kpis" id="kpis"></div>
     <div class="next" id="next"></div>
   </header>
 
   <section style="display:grid;gap:14px">
-    <div style="display:grid;gap:4px">
-      <h2>Location × topology</h2>
-      <span class="muted">Each cell holds 9 runs: 4 blackhole, 4 wormhole (scenarios drawn at random), and 1 matched benign run with no attacker. A location's 4 topologies use 4 different benign scenarios.</span>
-    </div>
+    <h2>Runs</h2>
     <div class="bar">
-      <span class="key"><span class="chip done">done</span> captured, complete, analysed</span>
-      <span class="key"><span class="chip partial">data</span> data here, not finished</span>
-      <span class="key"><span class="chip">todo</span> not started</span>
-      <span class="key"><span class="chip next-up">next</span> next run</span>
-      <label class="toggle" for="hide-done"><input type="checkbox" id="hide-done"> Show only what is left</label>
+      <span class="key"><span class="chip done">done</span></span>
+      <span class="key"><span class="chip partial">started</span></span>
+      <span class="key"><span class="chip">to do</span></span>
+      <span class="key"><span class="chip next-up">next</span></span>
+      <label class="toggle" for="hide-done"><input type="checkbox" id="hide-done"> Hide done</label>
     </div>
     <div class="matrix-scroll"><div class="matrix" id="matrix"></div></div>
   </section>
 
   <section style="display:grid;gap:14px">
-    <div style="display:grid;gap:4px">
-      <h2>Field sessions</h2>
-      <span class="muted">One session is one location and one topology: place the 8 boards once, run blackhole, then the benign run, then wire the A↔B cable for wormhole. The location with the most done runs comes first.</span>
-    </div>
+    <h2>Sessions <span class="muted" style="font:400 0.85rem var(--f-body)">one location + topology each</span></h2>
     <div class="sessions" id="sessions"></div>
   </section>
 
   <section style="display:grid;gap:14px">
-    <h2>Scenario coverage</h2>
+    <h2>Scenarios</h2>
     <div class="coverage" id="coverage"></div>
   </section>
 
   <footer>
-    <span>Ticks come from the files on disk (<code>tools/inventory_cells.py</code>), not from memory: a run counts as done only when its CSVs pass the M4/M5 checks and the analysis ran after the export.</span>
-    <span>Time estimate: <span id="run-min"></span> min per run, plus 20 min to place the boards for a new topology and 10 min to wire the tunnel. Refresh: <code>python tools\inventory_cells.py --json campaign_status.json</code>, then republish.</span>
+    <span>Refresh: <code>python tools\build_campaign_board.py</code>, then republish.</span>
   </footer>
 </div>
 
@@ -178,6 +170,7 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
 (function () {
   var D = JSON.parse(document.getElementById('campaign-data').textContent);
   var LBL = { blackhole: 'BH', wormhole: 'WH', baseline: 'BN' };
+  var LANE = { blackhole: 'Blackhole', wormhole: 'Wormhole', baseline: 'Benign' };
   var NICE = { partial_mesh: 'partial mesh', DLSU_Library: 'DLSU Library' };
   function nice(s) { return NICE[s] || s; }
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -191,28 +184,21 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   }
 
   document.getElementById('stamp').textContent = 'snapshot ' + D.generated + ' PHT · ' + D.scope + ' data';
-  document.getElementById('run-min').textContent = D.run_minutes;
   track(document.getElementById('total-track'), D.total);
-  document.getElementById('total-line').textContent =
-    D.total.done + ' of ' + D.total.planned + ' runs done (' + Math.round(pct(D.total.done, D.total.planned)) + ' %) · ' +
-    D.total.partial + ' with data still to finish';
 
   var k = document.getElementById('kpis');
-  [[D.attack_total.done + ' / ' + D.attack_total.planned, 'attack runs done'],
-   [D.benign_total.done + ' / ' + D.benign_total.planned, 'benign runs done'],
+  [[D.total.done + ' / ' + D.total.planned, 'runs done'],
    [D.remaining, 'runs left'],
-   ['~' + D.hours_left + ' h', 'field time left'],
-   [D.sessions.length, 'sessions left']].forEach(function (x) {
+   ['~' + Math.round(D.hours_left) + ' h', 'time left']].forEach(function (x) {
     var c = el('div', 'kpi'); c.appendChild(el('b', null, String(x[0]))); c.appendChild(el('small', null, x[1])); k.appendChild(c);
   });
 
   var n = D.next, nx = document.getElementById('next');
   if (n) {
-    nx.appendChild(el('span', 'eyebrow', 'Next run · session ' + n.session));
-    var what = (n.kind === 'benign' ? 'Benign (no attacker)' : n.attack.charAt(0).toUpperCase() + n.attack.slice(1)) +
+    nx.appendChild(el('span', 'eyebrow', 'Next run'));
+    var what = (n.kind === 'benign' ? 'Benign' : n.attack.charAt(0).toUpperCase() + n.attack.slice(1)) +
       ' · ' + nice(n.topology) + ' · ' + nice(n.location) + ' · ' + n.scenario;
     nx.appendChild(el('span', 'what', what));
-    nx.appendChild(el('span', 'muted', n.why ? 'Last attempt: ' + n.why : 'Wizard: pick this cell, scenario ' + n.scenario + '.'));
   } else { nx.appendChild(el('span', 'what', 'Every planned run is done.')); }
 
   function glyph(topo) {
@@ -238,8 +224,8 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   }
 
   var m = document.getElementById('matrix');
-  m.style.gridTemplateColumns = '120px repeat(' + D.locations.length + ', minmax(220px, 1fr))';
-  m.style.minWidth = (130 + 230 * D.locations.length) + 'px';
+  m.style.gridTemplateColumns = '120px repeat(' + D.locations.length + ', minmax(250px, 1fr))';
+  m.style.minWidth = (130 + 260 * D.locations.length) + 'px';
   m.appendChild(el('div'));
   D.locations.forEach(function (loc) {
     var h = el('div', 'colhead'); h.appendChild(el('span', null, nice(loc)));
@@ -253,7 +239,7 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
       var cell = el('div', 'cell');
       if (slots.every(function (s) { return s.state === 'done'; })) cell.classList.add('complete');
       [['blackhole', 'bh'], ['wormhole', 'wh'], ['baseline', 'bn']].forEach(function (a) {
-        var lane = el('div', 'lane ' + a[1]); lane.appendChild(el('b', null, LBL[a[0]]));
+        var lane = el('div', 'lane ' + a[1]); lane.appendChild(el('b', null, LANE[a[0]]));
         var chips = el('div', 'chips');
         slots.filter(function (s) { return s.attack === a[0]; }).forEach(function (s) {
           var ch = el('span', 'chip ' + (s.state === 'todo' ? '' : s.state), s.scenario);
@@ -277,19 +263,17 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   D.sessions.forEach(function (s) {
     var c = el('article', 'session');
     var h = el('header'); var t = el('div');
-    t.appendChild(el('span', 'n', 'SESSION ' + s.n + (s.started ? ' · continue' : ' · new')));
+    t.appendChild(el('span', 'n', String(s.n)));
     t.appendChild(el('h3', null, nice(s.location) + ' / ' + nice(s.topology)));
-    h.appendChild(t); h.appendChild(el('span', 'mono muted', '~' + (s.minutes / 60).toFixed(1) + ' h'));
+    h.appendChild(t); h.appendChild(el('span', 'mono muted', (s.minutes / 60).toFixed(1) + ' h'));
     c.appendChild(h);
     var ol = el('ol');
     s.runs.forEach(function (r) {
       var li = el('li'); var tg = el('span', 'tag ' + LBL[r.attack].toLowerCase(), LBL[r.attack]);
       li.appendChild(tg); li.appendChild(document.createTextNode(r.scenario));
-      if (r.why) { li.appendChild(el('div', 'warn', r.why)); }
       ol.appendChild(li);
     });
     c.appendChild(ol);
-    c.appendChild(el('span', 'muted', s.done + ' of ' + s.planned + ' done in this cell'));
     se.appendChild(c);
   });
 

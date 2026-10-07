@@ -1,0 +1,47 @@
+﻿{
+    "attack":  "blackhole",
+    "topology":  "partial",
+    "location":  "DLSU_Library",
+    "scenario":  "highload",
+    "owner":  "Kyle",
+    "repeat":  1,
+    "savedAt":  "2026-10-07 14:54",
+    "boards":  [
+                   {
+                       "Label":  "node5",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node6",
+                       "Port":  "COM30",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM31",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node8",
+                       "Port":  "COM4",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "b4:bf:e9:32:fe:90",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}
