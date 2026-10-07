@@ -347,7 +347,21 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Related labelling change** | `analysis/exposure.py`: in a wormhole run every non-attacker child is `not_tunnelled` (was `downstream` = victim, the blackhole rule). The firmware tunnels **only Node B's own probes**, so a wormhole run has **no victims**; the attack is duplication of B's probes. |
 | **Relation to D-6** | D-6 records that the A↔B separation varied across repeats (adjacent → 2 → 3 hops). Auto-switch fixes the **direction** (A always shallower), not the separation, which still depends on where the mesh places the boards. Report the hops skipped per run (root dashboard / verifier). |
 | **Checks** | Host test of the real firmware file, two simulated boards over a simulated cable (`tools/test_wormhole_autoswitch/run_test.sh`): 35/35 (wrong-way build, same depth, cable unplugged, reboot mid-run, both lock the same end, noisy cable, tunnel frames vs HELLOs, one-way cable). All firmware variants build with `-Werror` (IDF 5.5.4). Blackhole printout and verifier output byte-identical to before on every live cell. |
-| **Status** | **NOT yet run on hardware.** First run: wizard → MAINTENANCE → Wormhole UART tunnel test; then a wormhole run, looking for `LOCKED as NODE A/B` on both boards and `OK: ... the tunnel skips N hop(s)` on the root. |
+| **Status** | **Worked on hardware oct. 7, 2026** (wormhole/linear/DLSU_Library/stationary r1, verification #10: A at L5, B at L7, roles stable all run, 181/181 of B's attack probes duplicated). Original first-run plan: wizard → MAINTENANCE → Wormhole UART tunnel test; then a wormhole run, looking for `LOCKED as NODE A/B` on both boards and `OK: ... the tunnel skips N hop(s)` on the root. |
 | **Paper edit** | Method section on the wormhole setup: say the endpoint roles are assigned at run time from mesh depth so the tunnel is always a shortcut toward the root, and that each capture records the assignment. Define wormhole exposure as "Node B's probes are duplicated; no node is a victim" (instead of the blackhole downstream rule). **Adviser check** — this is a change to how the attack is deployed. |
+
+---
+
+## D-18 · One matched benign (no-attack) run per location × topology, a different scenario per topology (was: burst only)
+
+| | |
+|---|---|
+| **Thesis says** | ⚠️ *Not yet checked against the proposal's run matrix wording; fill in the section/table before quoting.* Until oct. 7, 2026 the campaign (`tools/inventory_cells.py`) added a benign run only where **burst** was drawn; every other scenario used the attack run's own phase 0 (300 s) as its benign control. |
+| **Why we changed it** | User's decision (oct. 7, 2026): every topology should have a whole benign run of its own, and the benign runs should cover different conditions instead of all being burst. Burst-only left most topologies with no stand-alone benign capture, and put every benign run under one condition. |
+| **We do** | Every (location, topology) gets exactly **one** benign run (attack = none). Inside a location the 4 topologies get **4 different** scenarios, and each one is a scenario that cell's attack runs drew, so it is still a matched pair (e.g. G402: linear = burst, star = mobility, tree = stationary, partial_mesh = jitter). Across locations the least-used scenarios are preferred: each of the 6 scenarios gets 2–3 benign runs. Drawn once and saved in `campaign_plan.json` → `"benign"`; the attack draw (`"cells"`) is unchanged. 16 benign runs, **144 runs total** (same count as before). |
+| **Considered and dropped** | A benign run for every drawn scenario (88 runs, +20 h) and for burst + mobility + powercycle only (44 runs): both chosen and dropped the same evening. |
+| **How to run one** | Same as an attack run with attack = none. Burst: the root holds an attack-length window. Mobility / powercycle: do the human step halfway through the baseline (`run.ps1` checklist timer: 2:30 after `PHASE 0 — BASELINE`). |
+| **Status** | Plan, wizard checklist, campaign board (`--board`, `--sessions`) and dashboard page updated. Captures pending. |
+| **Paper edit** | Run matrix / data-collection section: 128 attack runs + 16 matched benign runs (one per location × topology, the 4 topologies of a location under 4 different scenarios). **Adviser check**: changes how the benign class is collected. |
 
 ---

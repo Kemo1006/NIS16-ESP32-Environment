@@ -16,6 +16,42 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #10 — Oct 7, 2026 · 6:40 PM — wormhole · linear · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `69ef017`
+> **Request:** "check my new dataset for wormhole for eda analysis and dataset and mostly why it has fail and incl"
+> (the wizard's `verify_attack.py` output: WORMHOLE CONFIRMED, with TunnelLatency INCONCL and LatencyHopRatio INFEASIBLE)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear | DLSU_Library | stationary | r1 | Oct 7, ~5:57–6:11 PM | 9 (8 telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ⚠️ 4 PASS / 5 WARN / 0 FAIL — harmless | the 5 WARN are filenames only: boards exported on other laptops are named `linear_none`, but their rows carry phase 2 (wormhole) correctly |
+| Topology (raw telemetry) | ✅ linear chain of 8, stable | root → `704B` (L2) → `2805` → `FE90` → **A `1C38` (L5)** → `F42D` → **B `0C80` (L7)** → `ED80` (L8). One parent per node all run |
+| **Auto-switch on hardware** (first run) | ✅ works | the `role` column says `wormhole_a` / `wormhole_b` from start to end, no change; A is shallower than B, so the cable skips 2 hops (B → F42D → A) |
+| Root arrivals, recomputed by hand | ✅ wormhole signature | B's probes: baseline 300 single, **attack 181 probes x 2 copies = 362**, cooldown 120 single. Every other source ~1/s, single, all phases. Node A sends no probes of its own (by design: it only re-injects B's) |
+| Duplicate timing (root clock) | ✅ | the 2 copies of each B probe arrive **2.8 ms apart** (median; 90 % within 6.5 ms) |
+| Analysis tables vs exports | ✅ | 5,271 windows, 8 nodes × (~420 label-0 + 180 label-2). Tunnel* columns exist only for A and B, as designed |
+| Verifier output | ✅ correct, not hardcoded | TunnelIntensity 0.012 → 1.000, TunnelBytes 0.35 → 30.0 match the data. The tiny baseline values are **2 windows (A + B) at second 355**, the last baseline second before the attack starts at 356: an edge effect, 2 of 3,363 windows |
+
+### Why INCONCL and INFEASIBLE (neither is a data problem)
+- **TunnelLatency = INCONCL**: it measures the gap between the two copies of a duplicated probe. In the baseline there
+  is no tunnel, so no duplicates: only **1** baseline window has a value (the edge window above). A 3-sigma test needs a
+  baseline spread (≥ 2 windows), so it **cannot** be tested. Expected for every wormhole run. Report it as a
+  descriptive number for the attack (2–4 ms between copies), not as a 3-sigma result.
+- **LatencyHopRatio = INFEASIBLE**: its baseline is very spread out (4.12 ± 6.46) because each node sits at a different
+  depth in an 8-hop line (per-node baseline means 2.1 to 8.7). Against that spread the largest possible |z| is 0.64, so
+  **no attack could ever reach 3σ** on the pooled value. It is a **secondary** feature and is left out of the verdict.
+  Also note the open issue in MEMORY (sep. 30): its expected direction ("down") is ours, not Zhukabayeva's.
+
+**Verdict: ✅ USABLE** — WORMHOLE CONFIRMED is genuine (both primaries; B's probes duplicated 181/181 in the attack), and
+this is the **first hardware proof that the A/B auto-switch works** (D-17). Fix nothing; just footnote the two statuses.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #9 — Oct 7, 2026 · 5:30 PM — blackhole · partial_mesh · DLSU_Library · highload
 
 > _Numbered #9 at merge: Bas's star/DLSU #8 (below, 10:35 AM) reached GitHub first._

@@ -3116,12 +3116,23 @@ function Invoke-CampaignChecklist {
     if ($sAns -and $sAns.Trim() -eq '2') { $scope = 'archive' }
 
     $repeats = 1
-    $ans = Read-Host "Planned repeats per cell? (1 = 128 attack runs, 4 = 512) [1]"
+    $ans = Read-Host "Planned repeats per cell? (1 = 128 attack + 16 benign runs, 4 = x4) [1]"
     if ($ans -and $ans.Trim() -match '^\d+$') { $repeats = [int]$ans.Trim() }
 
     Push-Location $base
     try {
-        python (Join-Path $base 'tools\inventory_cells.py') --checklist --scope $scope --repeats $repeats
+        # Board first (oct. 7, 2026): progress bars, the next run and the next
+        # field sessions on one screen; the full tick-box table follows it.
+        $env:PYTHONIOENCODING = 'utf-8'
+        python (Join-Path $base 'tools\inventory_cells.py') --board --scope $scope
+        $sesAns = Read-Line "Show every remaining run grouped into field sessions? [y/N] > "
+        if ($sesAns -eq 'y' -or $sesAns -eq 'Y') {
+            python (Join-Path $base 'tools\inventory_cells.py') --sessions --scope $scope
+        }
+        $tblAns = Read-Line "Show the full tick-box checklist too? [Y/n] > "
+        if ($tblAns -ne 'n' -and $tblAns -ne 'N') {
+            python (Join-Path $base 'tools\inventory_cells.py') --checklist --scope $scope --repeats $repeats
+        }
         Write-Host ""
         # Read-Line, NOT Read-YesNo: Read-YesNo is defined in menu.ps1 only and
         # this script does not dot-source it, so calling it here threw

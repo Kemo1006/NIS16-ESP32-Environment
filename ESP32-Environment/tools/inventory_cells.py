@@ -318,6 +318,14 @@ def _not_done_reason(r):
 #        baseline burst run. It is shared between blackhole and wormhole, so the
 #        cost is 1 extra run per (location, topology), not 2.
 #
+#  3. SINCE OCT. 7, 2026 (user's decision, replaces "burst only"): EVERY
+#     (location, topology) gets exactly ONE matched benign run, and inside one
+#     location the 4 topologies get 4 DIFFERENT benign scenarios (e.g. linear
+#     = powercycle, tree = jitter, star = burst, partial_mesh = highload). Each
+#     benign scenario is one that cell's attack runs also drew, so it is still a
+#     matched pair. Drawn once, balanced across locations, saved in
+#     campaign_plan.json "benign" (see _draw_benign). 16 benign runs, 144 total.
+#
 # MOBILITY and POWERCYCLE are human scenarios (no firmware flag) — label-only.
 PLAN_LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
 PLAN_TOPOLOGIES = ["linear", "star", "tree", "partial_mesh"]
@@ -326,8 +334,6 @@ PLAN_ATTACKS = ["blackhole", "wormhole"]
 SCENARIO_POOL = ["stationary", "highload", "burst", "jitter", "mobility", "powercycle"]
 SCENARIOS_PER_CELL = 4
 
-# Scenarios whose attack runs require a matched benign run at the same scenario.
-PAIRED_SCENARIOS = {"burst"}
 
 # "stationary" is the no-variation scenario everywhere since sep. 24 2026;
 # "none" is its old name, still read (old plan files, pre-rename captures).
@@ -378,6 +384,40 @@ def _draw_plan(seed):
     return cells
 
 
+def _draw_benign(cells, seed):
+    """{"loc/topo": scenario}: one benign run per (location, topology).
+
+    Inside a location the 4 topologies get 4 different scenarios, each one
+    that cell's attack runs drew (so it is a matched pair). Across locations
+    the least-used scenarios are preferred, so all 6 get benign coverage.
+    """
+    import itertools
+    import random
+    rng = random.Random(seed)
+    used = defaultdict(int)
+    out = {}
+    for loc in PLAN_LOCATIONS:
+        options = []
+        for topo in PLAN_TOPOLOGIES:
+            drawn = set()
+            for atk in PLAN_ATTACKS:
+                drawn |= {canon_scenario(x) for x in cells[f"{loc}/{topo}/{atk}"]}
+            options.append(sorted(drawn))
+        best, best_score = None, None
+        for combo in itertools.product(*options):
+            if len(set(combo)) < len(combo):
+                continue
+            score = (sum(used[x] for x in combo), rng.random())
+            if best_score is None or score < best_score:
+                best, best_score = combo, score
+        if best is None:          # cannot happen with 4 drawn per cell, but never crash
+            best = tuple(o[0] for o in options)
+        for topo, scn in zip(PLAN_TOPOLOGIES, best):
+            out[f"{loc}/{topo}"] = scn
+            used[scn] += 1
+    return out
+
+
 def load_plan(reshuffle=False, seed=None):
     """{(loc, topo, atk): [4 scenarios]} from PLAN_FILE, drawing it first if needed."""
     import json
@@ -395,27 +435,42 @@ def load_plan(reshuffle=False, seed=None):
             json.dump(data, fh, indent=2)
         print(f"  NEW randomised plan drawn (seed {seed}) -> {PLAN_FILE}")
         print("  Commit it so every laptop works the same plan.")
+    if "benign" not in data or reshuffle:
+        data["benign"] = _draw_benign(data["cells"], data.get("seed"))
+        data["benign_note"] = ("One matched benign (attack none) run per location/topology; "
+                               "the 4 topologies of a location use 4 different scenarios. "
+                               "Drawn once by inventory_cells.py (oct. 7, 2026).")
+        with open(PLAN_FILE, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)
+        print(f"  benign runs drawn (one per location/topology) -> {PLAN_FILE}")
     plan = {}
     for k, s in data["cells"].items():
         loc, topo, atk = k.split("/")
         plan[(loc, topo, atk)] = [canon_scenario(x) for x in s]
+    # ("benign", loc, topo) -> [scenario]: the cell's one matched benign run.
+    for k, scn in data["benign"].items():
+        loc, topo = k.split("/")
+        plan[("benign", loc, topo)] = [canon_scenario(scn)]
     return plan
+
+
+def benign_for(assign, loc, topo):
+    """The matched benign scenario(s) planned for one (location, topology)."""
+    return assign.get(("benign", loc, topo), [])
 
 
 def build_plan(assign):
     """Every run the campaign calls for, as (attack, topology, location, scenario).
 
-    A (location, topology) whose blackhole OR wormhole drew burst also needs ONE
-    matched benign burst run, shared by both attacks."""
+    Each (location, topology) also gets ONE matched benign run (benign_for),
+    shared by both attacks."""
     planned = []
     for loc in PLAN_LOCATIONS:
         for topo in PLAN_TOPOLOGIES:
-            drawn = set()
             for atk in PLAN_ATTACKS:
                 for scn in assign[(loc, topo, atk)]:
                     planned.append((atk, topo, loc, scn))
-                    drawn.add(scn)
-            for scn in sorted(drawn & PAIRED_SCENARIOS):
+            for scn in benign_for(assign, loc, topo):
                 planned.append(("baseline", topo, loc, scn))
     return planned
 
@@ -450,7 +505,7 @@ def report_plan(rows, assign, repeats=1):
           f"{SCENARIOS_PER_CELL}; see {os.path.basename(PLAN_FILE)})")
     print(f"  repeats per cell : {repeats}")
     print(f"  + {len([p for p in planned if p[0] == 'baseline'])} matched BENIGN runs "
-          f"for the paired scenario(s): {', '.join(sorted(PAIRED_SCENARIOS))}")
+          f"(one per location/topology, a different scenario per topology)")
     print(f"  planned runs : {len(planned)}")
     print(f"  complete     : {len(done)}")
     print(f"  remaining    : {len(missing)}")
@@ -518,6 +573,49 @@ def _blocker_summary(reasons):
     return (r[:40] + "...") if len(r) > 43 else (r or "unknown")
 
 
+def _cell(r):
+    """(attack, topology, location, scenario) of one inventory row."""
+    return (r["attack"], r["topology"],
+            r["location"] if r["location"] != "-" else "",
+            canon_scenario(r["scenario"]))
+
+
+def _classify(rows, scope):
+    """Split the scanned rows of one scope into done / attempted per cell.
+
+    Shared by the tick-box checklist and campaign_status() (board, sessions,
+    dashboard JSON), so every view counts a run the same way. One capture
+    copied into two archives is one run, not two.
+    """
+    out_of_scope = sum(1 for r in rows if not in_scope(r, scope))
+    rows = [r for r in rows if in_scope(r, scope)]
+    seen, dup_srcs, uniq = {}, [], []
+    for r in rows:
+        sig = (r["attack"], r["topology"], r["location"], r["scenario"],
+               r["repeat"], r["children"], r["arrivals_rows"])
+        if sig in seen:
+            dup_srcs.append((r["source"], seen[sig]))
+            continue
+        seen[sig] = r["source"]
+        uniq.append(r)
+
+    have = defaultdict(int)
+    have_src = defaultdict(list)
+    attempted = defaultdict(list)
+    latest = {}      # newest capture time per cell, from the filename stamps
+    for r in uniq:
+        k = _cell(r)
+        if r["when"] is not None and (k not in latest or r["when"] > latest[k][0]):
+            latest[k] = (r["when"], k[3])
+        if counts_as_done(r):
+            have[k] += 1
+            have_src[k].append(r)
+        else:
+            attempted[k].append(r)
+    return {"have": have, "have_src": have_src, "attempted": attempted,
+            "latest": latest, "dup_srcs": dup_srcs, "out_of_scope": out_of_scope}
+
+
 def report_checklist(rows, assign, repeats=1, scope="live"):
     """Tick-box progress table, grouped by location then topology.
 
@@ -542,36 +640,9 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
       archive - archive/*/exports/ + that archive's own analysis/. Identical
                 copies of one capture in several archives count once.
     """
-    have = defaultdict(int)
-    have_src = defaultdict(list)
-    attempted = defaultdict(list)
-
-    def _key(r):
-        return (r["attack"], r["topology"],
-                r["location"] if r["location"] != "-" else "",
-                canon_scenario(r["scenario"]))
-
-    out_of_scope = sum(1 for r in rows if not in_scope(r, scope))
-    rows = [r for r in rows if in_scope(r, scope)]
-    # One capture copied into two archives is one run, not two.
-    seen, dup_srcs, uniq = {}, [], []
-    for r in rows:
-        sig = (r["attack"], r["topology"], r["location"], r["scenario"],
-               r["repeat"], r["children"], r["arrivals_rows"])
-        if sig in seen:
-            dup_srcs.append((r["source"], seen[sig]))
-            continue
-        seen[sig] = r["source"]
-        uniq.append(r)
-    rows = uniq
-
-    # Newest capture time per cell, from the filename stamps (see judge()).
-    latest = {}
-    for r in rows:
-        if r["when"] is not None:
-            k = _key(r)
-            if k not in latest or r["when"] > latest[k][0]:
-                latest[k] = (r["when"], k[3])
+    c = _classify(rows, scope)
+    have, have_src, attempted = c["have"], c["have_src"], c["attempted"]
+    latest, dup_srcs, out_of_scope = c["latest"], c["dup_srcs"], c["out_of_scope"]
 
     def last_run(atk, topo, loc, scns):
         found = [latest[(atk, topo, loc, s_)] for s_ in scns if (atk, topo, loc, s_) in latest]
@@ -579,14 +650,6 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
             return ""
         when, scn = max(found)
         return f"{when.strftime('%b%d %I:%M%p')} ({lbl(scn)})"
-
-    for r in rows:
-        k = _key(r)
-        if counts_as_done(r):
-            have[k] += 1
-            have_src[k].append(r)
-        else:
-            attempted[k].append(r)
 
     def mark(atk, topo, loc, scn):
         k = (atk, topo, loc, scn)
@@ -636,9 +699,8 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
                 slots = "  ".join(f"{mark(atk, topo, loc, s)} {lbl(s):<10}" for s in scns)
                 print(f"    {topo if atk == PLAN_ATTACKS[0] else '':<14}{atk:<11}{slots}"
                       f"  {last_run(atk, topo, loc, scns)}")
-            # Only an attack-window scenario needs a separate benign run; for the
-            # others the attack run's own phase 0 IS the control.
-            for scn in sorted(drawn & PAIRED_SCENARIOS):
+            # This (location, topology)'s one matched benign run.
+            for scn in benign_for(assign, loc, topo):
                 tally("baseline", topo, loc, scn)
                 print(f"    {'':<14}{'benign':<11}{mark('baseline', topo, loc, scn)} "
                       f"{lbl(scn):<{62 - 4}}"
@@ -722,11 +784,244 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         print(f"     (next slot in run order, at the location with the most done runs)")
     print()
     print("  Scenarios are RANDOMISED per cell (4 of: " + ", ".join(lbl(x) for x in SCENARIO_POOL) + "),")
-    print(f"     fixed in tools\\{os.path.basename(PLAN_FILE)}. A 'benign' row appears only where")
-    print("     burst was drawn: burst fires inside the attack window only, so it needs")
-    print("     a matched benign run. Every other scenario's control is phase 0.")
+    print(f"     fixed in tools\\{os.path.basename(PLAN_FILE)}. Each location/topology also has ONE")
+    print("     'benign' (no-attack) run; the 4 topologies of a location use 4 different scenarios.")
     print("=" * 96)
     print()
+
+# ---------------------------------------------------------------------------
+# Campaign status, sessions, board, dashboard JSON (oct. 7, 2026)
+# ---------------------------------------------------------------------------
+# One structured status feeds three views, so they can never disagree:
+#   --board     coloured summary for the wizard (progress bars + next-run card)
+#   --sessions  remaining runs grouped into field sessions (see SESSION ORDER)
+#   --json PATH the same data for the shareable dashboard page
+#
+# SESSION ORDER - why runs are grouped this way
+#   Every run already wipes + reflashes every board, so firmware changes cost
+#   nothing extra between runs. What DOES cost time is physical:
+#     1. travelling to a location            -> one location per session
+#     2. re-placing 8 boards for a topology  -> one topology per session
+#     3. wiring the A<->B UART tunnel cable  -> all wormhole runs back to back
+#   So a session = one (location, topology): its blackhole runs, then the
+#   matched benign runs (plain firmware, no attacker), then the wormhole runs
+#   once the cable is wired. Inside each attack the drawn scenario order is
+#   kept (campaign_plan.json "slot order = run order").
+RUN_MIN = 17             # ~11 min experiment + roster wait, export, analysis
+TOPOLOGY_SETUP_MIN = 20  # re-placing the boards for a new topology
+TUNNEL_WIRING_MIN = 10   # wiring + checking the wormhole UART cable
+
+
+def campaign_status(rows, assign, scope="live"):
+    """Every planned run with its state, plus totals and the field sessions."""
+    c = _classify(rows, scope)
+    have, attempted, latest = c["have"], c["attempted"], c["latest"]
+
+    def state(k):
+        if have.get(k, 0):
+            return "done"
+        return "partial" if attempted.get(k) else "todo"
+
+    def why(k):
+        rs = attempted.get(k) or []
+        if not rs:
+            return ""
+        r = rs[-1]
+        if r["verdict"] == "COMPLETE":
+            return _not_done_reason(r)
+        return "re-capture: " + _blocker_summary(r["reasons"])
+
+    slots = []
+    for loc in PLAN_LOCATIONS:
+        for topo in PLAN_TOPOLOGIES:
+            for atk in PLAN_ATTACKS:
+                for i, scn in enumerate(assign[(loc, topo, atk)]):
+                    slots.append({"location": loc, "topology": topo, "attack": atk,
+                                  "scenario": scn, "kind": "attack", "slot": i + 1})
+            for scn in benign_for(assign, loc, topo):
+                slots.append({"location": loc, "topology": topo, "attack": "baseline",
+                              "scenario": scn, "kind": "benign", "slot": 0})
+    for sl in slots:
+        k = (sl["attack"], sl["topology"], sl["location"], sl["scenario"])
+        sl["state"] = state(k)
+        sl["why"] = why(k) if sl["state"] == "partial" else ""
+        sl["last"] = latest[k][0].strftime("%Y-%m-%d %H:%M") if k in latest else ""
+
+    def count(items):
+        return {"planned": len(items),
+                "done": sum(1 for x in items if x["state"] == "done"),
+                "partial": sum(1 for x in items if x["state"] == "partial")}
+
+    per_loc = {loc: {"all": count([x for x in slots if x["location"] == loc]),
+                     "attack": count([x for x in slots
+                                      if x["location"] == loc and x["kind"] == "attack"]),
+                     "benign": count([x for x in slots
+                                      if x["location"] == loc and x["kind"] == "benign"])}
+               for loc in PLAN_LOCATIONS}
+    per_attack = {a: count([x for x in slots if x["attack"] == a])
+                  for a in PLAN_ATTACKS + ["baseline"]}
+    per_scenario = {scn: count([x for x in slots if x["scenario"] == scn])
+                    for scn in SCENARIO_POOL}
+
+    # Sessions: one per (location, topology) that still has work. The location
+    # with the most progress comes first (fewest trips), started sessions before
+    # new ones, then topologies in plan order.
+    sessions = []
+    for loc in PLAN_LOCATIONS:
+        for topo in PLAN_TOPOLOGIES:
+            cell = [x for x in slots if x["location"] == loc and x["topology"] == topo]
+            order = ([x for x in cell if x["attack"] == "blackhole"]
+                     + [x for x in cell if x["kind"] == "benign"]
+                     + [x for x in cell if x["attack"] == "wormhole"])
+            left = [x for x in order if x["state"] != "done"]
+            if not left:
+                continue
+            started = any(x["state"] != "todo" for x in cell)
+            wired = any(x["attack"] == "wormhole" for x in left)
+            minutes = (len(left) * RUN_MIN + (0 if started else TOPOLOGY_SETUP_MIN)
+                       + (TUNNEL_WIRING_MIN if wired else 0))
+            sessions.append({"location": loc, "topology": topo, "runs": left,
+                             "remaining": len(left), "planned": len(cell),
+                             "done": len(cell) - len(left), "minutes": minutes,
+                             "started": started})
+    loc_rank = {loc: per_loc[loc]["all"]["done"] for loc in PLAN_LOCATIONS}
+    sessions.sort(key=lambda se: (-loc_rank[se["location"]],
+                                  PLAN_LOCATIONS.index(se["location"]),
+                                  not se["started"],
+                                  PLAN_TOPOLOGIES.index(se["topology"])))
+    for i, se in enumerate(sessions):
+        se["n"] = i + 1
+
+    nxt = None
+    for se in sessions:
+        cand = [x for x in se["runs"] if x["state"] == "todo"] or se["runs"]
+        if cand:
+            nxt = dict(cand[0], session=se["n"])
+            break
+
+    return {
+        "scope": scope,
+        "plan_file": os.path.basename(PLAN_FILE),
+        "locations": PLAN_LOCATIONS, "topologies": PLAN_TOPOLOGIES,
+        "attacks": PLAN_ATTACKS, "scenarios": SCENARIO_POOL,
+        "benign": {f"{loc}/{topo}": benign_for(assign, loc, topo)
+                   for loc in PLAN_LOCATIONS for topo in PLAN_TOPOLOGIES},
+        "run_minutes": RUN_MIN,
+        "total": count(slots),
+        "attack_total": count([x for x in slots if x["kind"] == "attack"]),
+        "benign_total": count([x for x in slots if x["kind"] == "benign"]),
+        "hours_left": round(sum(se["minutes"] for se in sessions) / 60, 1),
+        "remaining": sum(1 for x in slots if x["state"] != "done"),
+        "per_location": per_loc, "per_attack": per_attack, "per_scenario": per_scenario,
+        "slots": slots, "sessions": sessions, "next": nxt,
+    }
+
+
+def _ansi(on):
+    keys = ("b", "d", "g", "y", "c", "m", "x")
+    if not on:
+        return {k: "" for k in keys}
+    return dict(zip(keys, ("\033[1m", "\033[2m", "\033[32m", "\033[33m",
+                           "\033[36m", "\033[35m", "\033[0m")))
+
+
+def _bar(done, partial, planned, width, C):
+    if planned <= 0:
+        return " " * width
+    nd = round(width * done / planned)
+    npart = min(width - nd, round(width * partial / planned))
+    return (f"{C['g']}{'#' * nd}{C['y']}{'~' * npart}{C['d']}"
+            f"{'.' * (width - nd - npart)}{C['x']}")
+
+
+def _run_tag(x, C):
+    a = {"blackhole": "BH", "wormhole": "WH", "baseline": "BN"}[x["attack"]]
+    if x["state"] == "partial":
+        return f"{C['y']}{a}:{lbl(x['scenario'])}{C['x']}"
+    return f"{a}:{lbl(x['scenario'])}"
+
+
+def report_board(st, color=True, sessions_shown=4):
+    """Coloured one-screen summary: totals, per-location bars, next-run card."""
+    C = _ansi(color)
+    t, a, bn = st["total"], st["attack_total"], st["benign_total"]
+    pct = 100 * t["done"] / t["planned"] if t["planned"] else 0
+    line = "=" * 78
+    print()
+    print(f"{C['c']}{line}{C['x']}")
+    print(f"{C['b']}  CAMPAIGN BOARD{C['x']}  {C['d']}({st['scope']} data, scanned from the folders){C['x']}")
+    print(f"{C['c']}{line}{C['x']}")
+    print(f"  {_bar(t['done'], t['partial'], t['planned'], 40, C)}  "
+          f"{C['b']}{t['done']}/{t['planned']}{C['x']} runs ({pct:.0f} %)")
+    print(f"  attack {a['done']}/{a['planned']}  |  benign {bn['done']}/{bn['planned']}"
+          f"  |  {st['remaining']} left  |  about {st['hours_left']} h of field time")
+    print(f"  {C['d']}{C['g']}#{C['x']}{C['d']} done   {C['y']}~{C['x']}{C['d']} data here, not finished"
+          f"   . not started{C['x']}")
+    print()
+    for loc in st["locations"]:
+        pl = st["per_location"][loc]["all"]
+        print(f"  {loc:<14}{_bar(pl['done'], pl['partial'], pl['planned'], 30, C)}  "
+              f"{pl['done']:>3}/{pl['planned']:<3}")
+    print()
+    print("  by attack    " + "   ".join(
+        f"{'benign' if k == 'baseline' else k} {v['done']}/{v['planned']}"
+        for k, v in st["per_attack"].items()))
+    print("  by scenario  " + "   ".join(
+        f"{lbl(k)} {v['done']}/{v['planned']}" for k, v in st["per_scenario"].items()))
+    n = st["next"]
+    if n:
+        what = "BENIGN (attack = none)" if n["kind"] == "benign" else n["attack"].upper()
+        print()
+        print(f"  {C['m']}+-- NEXT RUN {'-' * 63}+{C['x']}")
+        print(f"  {C['m']}|{C['x']} {C['b']}{what} / {n['topology']} / {n['location']} / "
+              f"{lbl(n['scenario'])}{C['x']}")
+        extra = f" - last attempt: {n['why']}" if n["why"] else ""
+        print(f"  {C['m']}|{C['x']} session {n['session']} of {len(st['sessions'])}{extra}")
+        print(f"  {C['m']}+{'-' * 76}+{C['x']}")
+    if st["sessions"]:
+        print()
+        print(f"  {C['b']}NEXT SESSIONS{C['x']}  {C['d']}one location + topology each: "
+              f"blackhole -> benign -> wormhole{C['x']}")
+        for se in st["sessions"][:sessions_shown]:
+            runs = " ".join(_run_tag(x, C) for x in se["runs"])
+            print(f"   {se['n']:>2}. {se['location']:<13}{se['topology']:<13}"
+                  f"{se['remaining']:>2} runs ~{se['minutes'] / 60:.1f} h   {runs}")
+        more = len(st["sessions"]) - sessions_shown
+        if more > 0:
+            print(f"   {C['d']}... {more} more sessions (inventory_cells.py --sessions){C['x']}")
+    print(f"{C['c']}{line}{C['x']}")
+    print()
+
+
+def report_sessions(st, color=True):
+    """Every remaining run, grouped into field sessions (see SESSION ORDER)."""
+    C = _ansi(color)
+    print()
+    print(f"{C['b']}  FIELD SESSIONS{C['x']} - {st['remaining']} runs left, about "
+          f"{st['hours_left']} h ({RUN_MIN} min/run, +{TOPOLOGY_SETUP_MIN} min to place the "
+          f"boards, +{TUNNEL_WIRING_MIN} min to wire the tunnel)")
+    print("  One session = one location + one topology. Inside it: blackhole runs, then the")
+    print("  matched benign runs (no attacker), then wormhole once the A<->B cable is wired.")
+    for se in st["sessions"]:
+        print()
+        tag = "continue" if se["started"] else "new"
+        print(f"  {C['c']}SESSION {se['n']:>2}{C['x']}  {C['b']}{se['location']} / {se['topology']}{C['x']}"
+              f"  {C['d']}({tag}, {se['done']}/{se['planned']} done, ~{se['minutes'] / 60:.1f} h){C['x']}")
+        for i, x in enumerate(se["runs"], 1):
+            what = "benign (attack none)" if x["kind"] == "benign" else x["attack"]
+            note = f"  {C['y']}<- {x['why']}{C['x']}" if x["why"] else ""
+            print(f"     {i:>2}. {what:<21}{lbl(x['scenario']):<12}{note}")
+    print()
+
+
+def _write_status_json(st, path):
+    import json
+    from datetime import datetime
+    out = dict(st, generated=datetime.now().strftime("%Y-%m-%d %H:%M"))
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(out, fh, indent=1, default=str)
+    print(f"  campaign status -> {path}")
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -758,7 +1053,19 @@ def main():
     ap.add_argument("--plan", action="store_true",
                     help="Also print the campaign matrix (4 locations x 4 topologies "
                          "x 2 attacks x 4 scenarios) and what is still missing.")
+    ap.add_argument("--board", action="store_true",
+                    help="Coloured campaign summary: progress bars, next run, next sessions "
+                         "(what run_wizard.ps1's Campaign progress shows first).")
+    ap.add_argument("--sessions", action="store_true",
+                    help="Every remaining run grouped into field sessions "
+                         "(one location + topology each).")
+    ap.add_argument("--json", default=None, metavar="PATH",
+                    help="Write the campaign status (slots, totals, sessions) as JSON, "
+                         "for the dashboard page.")
+    ap.add_argument("--no-color", action="store_true", help="Plain text, no ANSI colours.")
     args = ap.parse_args()
+    summary_only = bool(args.board or args.sessions or args.json) and not (
+        args.checklist or args.plan or args.csv or args.reshuffle)
 
     sources = []
     if os.path.isdir(args.exports):
@@ -795,6 +1102,19 @@ def main():
             "when": stats["when"],
             "reasons": "; ".join(reasons),
         })
+
+    if summary_only:
+        st = campaign_status(rows, load_plan(False, None), args.scope)
+        color = not args.no_color
+        if color and os.name == "nt":
+            os.system("")   # switches the Windows console into ANSI (VT) mode
+        if args.board:
+            report_board(st, color)
+        if args.sessions:
+            report_sessions(st, color)
+        if args.json:
+            _write_status_json(st, args.json)
+        return 0
 
     print()
     print("=" * 118)

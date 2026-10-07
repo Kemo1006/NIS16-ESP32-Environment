@@ -203,5 +203,24 @@
       "highload",
       "jitter"
     ]
-  }
+  },
+  "benign": {
+    "home/linear": "highload",
+    "home/star": "stationary",
+    "home/tree": "powercycle",
+    "home/partial_mesh": "burst",
+    "G402/linear": "burst",
+    "G402/star": "mobility",
+    "G402/tree": "stationary",
+    "G402/partial_mesh": "jitter",
+    "DLSU_Library/linear": "jitter",
+    "DLSU_Library/star": "highload",
+    "DLSU_Library/tree": "powercycle",
+    "DLSU_Library/partial_mesh": "mobility",
+    "Goks/linear": "mobility",
+    "Goks/star": "powercycle",
+    "Goks/tree": "jitter",
+    "Goks/partial_mesh": "stationary"
+  },
+  "benign_note": "One matched benign (attack none) run per location/topology; the 4 topologies of a location use 4 different scenarios. Drawn once by inventory_cells.py (oct. 7, 2026)."
 }

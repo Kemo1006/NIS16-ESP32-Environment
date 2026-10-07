@@ -39,6 +39,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | A16 | ⬜ | §4.2.2.1, Fig. 4.17 | Star blackhole: the hub is the attacker, the root sits one hop behind — rewrite + **redraw Fig. 4.17** | D-16 |
 | A17 | 🟨 | Wormhole method section | **A/B ends chosen at run time by mesh depth** (deeper = B entry, shallower = A exit), locked at Phase 0, recorded per capture. **Adviser check.** Also fill in the proposal's exact wording in D-17 (not yet checked) | D-17 (oct. 7 2026) |
 | A18 | ⬜ | Wormhole exposure / "victims" | A wormhole run has **no victims**: only Node B's own probes are duplicated; other nodes are `not_tunnelled`. Do not use the blackhole "downstream = victim" rule for wormhole | D-17, MEMORY oct. 7 |
+| A19 | ⬜ | Run matrix / data collection | **One matched benign run per location × topology**, the 4 topologies of a location under 4 different scenarios (was: burst cells only). 128 attack + 16 benign = 144 runs. **Adviser check** | D-18 (oct. 7 2026) |
 
 ## B. Reporting & wording (how results are stated)
 
@@ -61,6 +62,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | C5 | ⬜ | blackhole/partial_mesh/?/**highload** (oct. 7, ~15:20) | Root lost ~90 % of its ARRIVAL rows (`[RXSTALL] arrival queue FULL`, ~21 of ~24/s from the attack on; 1,400 by mid-cooldown). Root-side PDR for this run is **invalid** (undercounts every node, not just victims). Child telemetry unaffected. Do not use its PDR | MEMORY oct. 7 |
 | C6 | ⬜ | every **highload** capture after oct. 7, 2026 (eve) | Method note: on highload runs the root logs probe arrivals to the **SD card only, buffered (4 KB) and flushed every 100 rows**, instead of SPIFFS + SD every 10 rows - the double write took ~400 ms/row and lost 3,151 rows at ~28 rows/s. Same columns and values; only where/when rows are written changed. Other scenarios unchanged | MEMORY oct. 7 (eve) |
 | C7 | ⬜ | blackhole/partial_mesh/DLSU_Library/**highload** r1 (oct. 7, ~17:00) | USABLE, first run with the highload root fix (0 arrival rows lost). Caveats: `MacRetryRate` empty (sniffer retry not placed on the clock); `B4BFE934ED80` has a 4.1 s gap at baseline start; victim = `B4BFE932FE90` only (attacker `F42DC973E618` at L4) | Verification #9 |
+| C8 | ⬜ | wormhole/linear/DLSU_Library/stationary r1 (oct. 7, ~18:00) | USABLE. TunnelLatency = INCONCL (no tunnel in baseline, so no 3σ baseline - by design; quote attack value 2–4 ms descriptively); LatencyHopRatio = INFEASIBLE (baseline spread across an 8-hop line, max |z| 0.64; secondary, not in verdict). First hardware run of the A/B auto-switch | Verification #10 |
 
 ## D. Captures to redo / still missing (before the numbers are final)
 

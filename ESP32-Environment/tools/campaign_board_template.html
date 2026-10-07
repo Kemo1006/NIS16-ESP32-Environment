@@ -1,0 +1,301 @@
+<title>Mesh Campaign Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: summary strip -> location x topology matrix (each cell = its 9 runs) -> field sessions -> coverage. */
+:root {
+  --bg: #eef2f1;
+  --surface: #ffffff;
+  --ink: #13211f;
+  --muted: #5d6d6a;
+  --line: #d3dcda;
+  --accent: #0b6f78;
+  --accent-soft: #d6ecee;
+  --done: #2f8a4c;
+  --done-soft: #dcefe2;
+  --part: #b7791f;
+  --part-soft: #f6ead2;
+  --todo: #c9d3d1;
+  --bh: #8a3b52;
+  --wh: #3b55a0;
+  --bn: #4f6b66;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1716; --surface: #16211f; --ink: #e3ecea; --muted: #94a6a2; --line: #2a3936;
+    --accent: #4fc0c9; --accent-soft: #163a3d; --done: #5cc27c; --done-soft: #183826;
+    --part: #e2a84a; --part-soft: #3b2e17; --todo: #34433f; --bh: #d77d97; --wh: #8ea4ec; --bn: #9db7b1;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1716; --surface: #16211f; --ink: #e3ecea; --muted: #94a6a2; --line: #2a3936;
+  --accent: #4fc0c9; --accent-soft: #163a3d; --done: #5cc27c; --done-soft: #183826;
+  --part: #e2a84a; --part-soft: #3b2e17; --todo: #34433f; --bh: #d77d97; --wh: #8ea4ec; --bn: #9db7b1;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 34px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 750; letter-spacing: -0.02em; line-height: 1.05; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+.eyebrow { font: 600 0.72rem/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* header */
+header { display: grid; gap: 18px; }
+.head-row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.stamp { font: 400 0.8rem var(--f-mono); color: var(--muted); }
+.progress { display: grid; gap: 8px; }
+.track { height: 14px; border-radius: 7px; background: var(--todo); overflow: hidden; display: flex; }
+.track span { display: block; height: 100%; }
+.track .d { background: var(--done); }
+.track .p { background: var(--part); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; }
+.kpi b { font: 600 1.55rem/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.kpi small { color: var(--muted); font-size: 0.8rem; }
+.next { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; }
+.next .what { font: 600 1.1rem var(--f-display); }
+
+/* legend + controls */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 0.85rem; color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.toggle { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink); }
+.toggle input { accent-color: var(--accent); }
+
+/* matrix */
+.matrix-scroll { overflow-x: auto; }
+.matrix { display: grid; grid-template-columns: 120px repeat(4, minmax(200px, 1fr)); gap: 10px; min-width: 940px; }
+.colhead { font: 600 0.95rem var(--f-display); padding: 4px 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.colhead .mono { font-size: 0.75rem; color: var(--muted); }
+.rowhead { display: grid; align-content: center; gap: 6px; padding: 6px; }
+.rowhead span { font: 600 0.9rem var(--f-body); }
+.rowhead svg { width: 86px; height: 34px; }
+.rowhead svg circle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6; }
+.rowhead svg circle.root { fill: var(--accent); }
+.rowhead svg line { stroke: var(--muted); stroke-width: 1.2; }
+.cell { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 7px; }
+.cell.complete { border-color: var(--done); }
+.lane { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: center; }
+.lane > b { font: 600 0.68rem var(--f-mono); letter-spacing: 0.04em; }
+.lane.bh > b { color: var(--bh); } .lane.wh > b { color: var(--wh); } .lane.bn > b { color: var(--bn); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: 500 0.7rem/1 var(--f-mono); padding: 5px 6px; border-radius: 5px; background: transparent; border: 1px dashed var(--todo); color: var(--muted); white-space: nowrap; }
+.chip.done { background: var(--done-soft); border: 1px solid var(--done); color: var(--ink); }
+.chip.partial { background: var(--part-soft); border: 1px solid var(--part); color: var(--ink); }
+.chip.next-up { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hide-done .chip.done { display: none; }
+
+/* sessions */
+.sessions { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.session { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; align-content: start; }
+.session header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.session .n { font: 600 0.75rem var(--f-mono); color: var(--accent); }
+.session h3 { margin: 0; font: 600 1rem var(--f-display); }
+.session ol { margin: 0; padding-left: 1.3em; display: grid; gap: 2px; font-size: 0.85rem; }
+.session li::marker { color: var(--muted); font-family: var(--f-mono); font-size: 0.75rem; }
+.tag { font: 600 0.66rem var(--f-mono); padding: 1px 5px; border-radius: 4px; margin-right: 4px; color: var(--surface); }
+.tag.bh { background: var(--bh); } .tag.wh { background: var(--wh); } .tag.bn { background: var(--bn); }
+.warn { color: var(--part); font-size: 0.78rem; }
+
+/* coverage */
+.coverage { display: grid; gap: 8px; max-width: 720px; }
+.cov-row { display: grid; grid-template-columns: 110px 1fr 70px; gap: 10px; align-items: center; font-size: 0.88rem; }
+.cov-row .track { height: 10px; }
+.cov-row .mono { text-align: right; font-size: 0.8rem; color: var(--muted); }
+
+footer { font-size: 0.82rem; color: var(--muted); max-width: 70ch; display: grid; gap: 6px; }
+code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 560px) {
+  .wrap { padding-inline: 16px; }
+  .toggle { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .track span { transition: width 0.6s ease; }
+}
+</style>
+
+<div class="wrap" id="app">
+  <header>
+    <div class="head-row">
+      <div style="display:grid;gap:8px">
+        <span class="eyebrow">NIS16 · ESP-WIFI-MESH · CTTHES3 field campaign</span>
+        <h1>Mesh Campaign Board</h1>
+      </div>
+      <span class="stamp" id="stamp"></span>
+    </div>
+    <div class="progress">
+      <div class="track" id="total-track" role="img"></div>
+      <div class="bar"><span id="total-line"></span></div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="next" id="next"></div>
+  </header>
+
+  <section style="display:grid;gap:14px">
+    <div style="display:grid;gap:4px">
+      <h2>Location × topology</h2>
+      <span class="muted">Each cell holds 9 runs: 4 blackhole, 4 wormhole (scenarios drawn at random), and 1 matched benign run with no attacker. A location's 4 topologies use 4 different benign scenarios.</span>
+    </div>
+    <div class="bar">
+      <span class="key"><span class="chip done">done</span> captured, complete, analysed</span>
+      <span class="key"><span class="chip partial">data</span> data here, not finished</span>
+      <span class="key"><span class="chip">todo</span> not started</span>
+      <span class="key"><span class="chip next-up">next</span> next run</span>
+      <label class="toggle" for="hide-done"><input type="checkbox" id="hide-done"> Show only what is left</label>
+    </div>
+    <div class="matrix-scroll"><div class="matrix" id="matrix"></div></div>
+  </section>
+
+  <section style="display:grid;gap:14px">
+    <div style="display:grid;gap:4px">
+      <h2>Field sessions</h2>
+      <span class="muted">One session is one location and one topology: place the 8 boards once, run blackhole, then the benign run, then wire the A↔B cable for wormhole. The location with the most done runs comes first.</span>
+    </div>
+    <div class="sessions" id="sessions"></div>
+  </section>
+
+  <section style="display:grid;gap:14px">
+    <h2>Scenario coverage</h2>
+    <div class="coverage" id="coverage"></div>
+  </section>
+
+  <footer>
+    <span>Ticks come from the files on disk (<code>tools/inventory_cells.py</code>), not from memory: a run counts as done only when its CSVs pass the M4/M5 checks and the analysis ran after the export.</span>
+    <span>Time estimate: <span id="run-min"></span> min per run, plus 20 min to place the boards for a new topology and 10 min to wire the tunnel. Refresh: <code>python tools\inventory_cells.py --json campaign_status.json</code>, then republish.</span>
+  </footer>
+</div>
+
+<script type="application/json" id="campaign-data">__DATA__</script>
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById('campaign-data').textContent);
+  var LBL = { blackhole: 'BH', wormhole: 'WH', baseline: 'BN' };
+  var NICE = { partial_mesh: 'partial mesh', DLSU_Library: 'DLSU Library' };
+  function nice(s) { return NICE[s] || s; }
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function pct(n, d) { return d ? (100 * n / d) : 0; }
+  function track(node, c) {
+    node.innerHTML = '';
+    var d = el('span', 'd'); d.style.width = pct(c.done, c.planned) + '%';
+    var p = el('span', 'p'); p.style.width = pct(c.partial, c.planned) + '%';
+    node.appendChild(d); node.appendChild(p);
+    node.setAttribute('aria-label', c.done + ' of ' + c.planned + ' done, ' + c.partial + ' with data');
+  }
+
+  document.getElementById('stamp').textContent = 'snapshot ' + D.generated + ' PHT · ' + D.scope + ' data';
+  document.getElementById('run-min').textContent = D.run_minutes;
+  track(document.getElementById('total-track'), D.total);
+  document.getElementById('total-line').textContent =
+    D.total.done + ' of ' + D.total.planned + ' runs done (' + Math.round(pct(D.total.done, D.total.planned)) + ' %) · ' +
+    D.total.partial + ' with data still to finish';
+
+  var k = document.getElementById('kpis');
+  [[D.attack_total.done + ' / ' + D.attack_total.planned, 'attack runs done'],
+   [D.benign_total.done + ' / ' + D.benign_total.planned, 'benign runs done'],
+   [D.remaining, 'runs left'],
+   ['~' + D.hours_left + ' h', 'field time left'],
+   [D.sessions.length, 'sessions left']].forEach(function (x) {
+    var c = el('div', 'kpi'); c.appendChild(el('b', null, String(x[0]))); c.appendChild(el('small', null, x[1])); k.appendChild(c);
+  });
+
+  var n = D.next, nx = document.getElementById('next');
+  if (n) {
+    nx.appendChild(el('span', 'eyebrow', 'Next run · session ' + n.session));
+    var what = (n.kind === 'benign' ? 'Benign (no attacker)' : n.attack.charAt(0).toUpperCase() + n.attack.slice(1)) +
+      ' · ' + nice(n.topology) + ' · ' + nice(n.location) + ' · ' + n.scenario;
+    nx.appendChild(el('span', 'what', what));
+    nx.appendChild(el('span', 'muted', n.why ? 'Last attempt: ' + n.why : 'Wizard: pick this cell, scenario ' + n.scenario + '.'));
+  } else { nx.appendChild(el('span', 'what', 'Every planned run is done.')); }
+
+  function glyph(topo) {
+    var NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '0 0 86 34'); s.setAttribute('aria-hidden', 'true');
+    var P = {
+      linear: [[8,17],[23,17],[38,17],[53,17],[68,17],[80,17]],
+      star: [[43,17],[18,7],[18,27],[68,7],[68,27],[43,4],[43,30]],
+      tree: [[43,5],[24,17],[62,17],[12,29],[34,29],[52,29],[74,29]],
+      partial_mesh: [[10,17],[30,7],[30,27],[52,7],[52,27],[74,17]]
+    }[topo] || [];
+    var E = {
+      linear: [[0,1],[1,2],[2,3],[3,4],[4,5]],
+      star: [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6]],
+      tree: [[0,1],[0,2],[1,3],[1,4],[2,5],[2,6]],
+      partial_mesh: [[0,1],[0,2],[1,2],[1,3],[2,4],[3,4],[3,5],[4,5]]
+    }[topo] || [];
+    E.forEach(function (e) { var l = document.createElementNS(NS, 'line');
+      l.setAttribute('x1', P[e[0]][0]); l.setAttribute('y1', P[e[0]][1]); l.setAttribute('x2', P[e[1]][0]); l.setAttribute('y2', P[e[1]][1]); s.appendChild(l); });
+    P.forEach(function (p, i) { var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', i === 0 ? 4 : 3.2); if (i === 0) c.setAttribute('class', 'root'); s.appendChild(c); });
+    return s;
+  }
+
+  var m = document.getElementById('matrix');
+  m.appendChild(el('div'));
+  D.locations.forEach(function (loc) {
+    var h = el('div', 'colhead'); h.appendChild(el('span', null, nice(loc)));
+    var c = D.per_location[loc].all; h.appendChild(el('span', 'mono', c.done + '/' + c.planned)); m.appendChild(h);
+  });
+  var isNext = function (s) { return n && s.location === n.location && s.topology === n.topology && s.attack === n.attack && s.scenario === n.scenario; };
+  D.topologies.forEach(function (topo) {
+    var rh = el('div', 'rowhead'); rh.appendChild(el('span', null, nice(topo))); rh.appendChild(glyph(topo)); m.appendChild(rh);
+    D.locations.forEach(function (loc) {
+      var slots = D.slots.filter(function (s) { return s.location === loc && s.topology === topo; });
+      var cell = el('div', 'cell');
+      if (slots.every(function (s) { return s.state === 'done'; })) cell.classList.add('complete');
+      [['blackhole', 'bh'], ['wormhole', 'wh'], ['baseline', 'bn']].forEach(function (a) {
+        var lane = el('div', 'lane ' + a[1]); lane.appendChild(el('b', null, LBL[a[0]]));
+        var chips = el('div', 'chips');
+        slots.filter(function (s) { return s.attack === a[0]; }).forEach(function (s) {
+          var ch = el('span', 'chip ' + (s.state === 'todo' ? '' : s.state), s.scenario);
+          if (isNext(s)) ch.classList.add('next-up');
+          ch.title = (s.kind === 'benign' ? 'benign' : s.attack) + ' / ' + s.scenario + ' / ' + s.state +
+            (s.last ? ' / last capture ' + s.last : '') + (s.why ? ' / ' + s.why : '');
+          chips.appendChild(ch);
+        });
+        lane.appendChild(chips); cell.appendChild(lane);
+      });
+      m.appendChild(cell);
+    });
+  });
+
+  var hd = document.getElementById('hide-done');
+  try { hd.checked = localStorage.getItem('hideDone') === '1'; } catch (e) {}
+  function applyHide() { m.classList.toggle('hide-done', hd.checked); try { localStorage.setItem('hideDone', hd.checked ? '1' : '0'); } catch (e) {} }
+  hd.addEventListener('change', applyHide); applyHide();
+
+  var se = document.getElementById('sessions');
+  D.sessions.forEach(function (s) {
+    var c = el('article', 'session');
+    var h = el('header'); var t = el('div');
+    t.appendChild(el('span', 'n', 'SESSION ' + s.n + (s.started ? ' · continue' : ' · new')));
+    t.appendChild(el('h3', null, nice(s.location) + ' / ' + nice(s.topology)));
+    h.appendChild(t); h.appendChild(el('span', 'mono muted', '~' + (s.minutes / 60).toFixed(1) + ' h'));
+    c.appendChild(h);
+    var ol = el('ol');
+    s.runs.forEach(function (r) {
+      var li = el('li'); var tg = el('span', 'tag ' + LBL[r.attack].toLowerCase(), LBL[r.attack]);
+      li.appendChild(tg); li.appendChild(document.createTextNode(r.scenario));
+      if (r.why) { li.appendChild(el('div', 'warn', r.why)); }
+      ol.appendChild(li);
+    });
+    c.appendChild(ol);
+    c.appendChild(el('span', 'muted', s.done + ' of ' + s.planned + ' done in this cell'));
+    se.appendChild(c);
+  });
+
+  var cv = document.getElementById('coverage');
+  D.scenarios.forEach(function (scn) {
+    var c = D.per_scenario[scn]; var row = el('div', 'cov-row');
+    row.appendChild(el('span', null, scn)); var tr = el('div', 'track'); track(tr, c); row.appendChild(tr);
+    row.appendChild(el('span', 'mono', c.done + '/' + c.planned)); cv.appendChild(row);
+  });
+})();
+</script>
