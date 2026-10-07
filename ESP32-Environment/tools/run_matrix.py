@@ -55,7 +55,7 @@ ATTACKS = ["blackhole", "wormhole"]
 # mesh_config.h. A whole matrix campaign runs at ONE site (the 6 boards don't
 # move mid-campaign), so --location is a required, session-wide argument, not
 # an extra dimension auto-crossed with topology/attack/repeat.
-LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
+LOCATIONS = ["G402", "DLSU_Library", "Yuchengco"]   # oct. 7, 2026: home dropped, Goks -> Yuchengco
 
 # Run-to-run variation (panel, sep. 2026 — see run.ps1 -Scenario). Like
 # --location, a whole matrix campaign runs at ONE scenario at a time — this is
@@ -590,7 +590,7 @@ def main():
     # explicitly rather than defaulting/guessing (thesis panel P4: environment
     # must be RECORDED, never inferred).
     if not args.location:
-        ap.error("--location is required (home | G402 | DLSU_Library | Goks) "
+        ap.error("--location is required (G402 | DLSU_Library | Yuchengco) "
                  "for every mode except --plan.")
 
     if args.next:

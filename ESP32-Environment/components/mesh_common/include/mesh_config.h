@@ -731,7 +731,8 @@
 #define SD_MOUNT_POINT          "/sdcard"
 
 /** Operator-authored, one line, no rebuild required to change site:
- *  home | G402 | DLSU_Library | Goks (case-insensitive, whitespace trimmed). */
+ *  home | G402 | DLSU_Library | Yuchengco (case-insensitive, whitespace trimmed).
+ *  'Goks' was renamed 'Yuchengco' on oct. 7, 2026; 'home' is kept for old cards. */
 #define SD_LOCATION_FILE        SD_MOUNT_POINT "/location.txt"
 
 /** Written at the card root (never inside a topology folder) when location.txt
@@ -776,7 +777,7 @@
 #define SD_LOCATION_HOME        "home"
 #define SD_LOCATION_G402        "G402"
 #define SD_LOCATION_DLSU_LIB    "DLSU_Library"
-#define SD_LOCATION_GOKS        "Goks"
+#define SD_LOCATION_YUCHENGCO   "Yuchengco"
 
 /** Operator-authored, optional. Overrides the MAC lookup table in
  *  node_identity.c. Two keys, one per line, '#' comments allowed:

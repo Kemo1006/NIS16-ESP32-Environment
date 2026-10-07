@@ -122,7 +122,9 @@ param(
     # this value before powering the board on — thesis panel P4 requires the
     # environment be RECORDED, not inferred, and a mismatch here would file
     # the export under a site the card never actually recorded.
-    [ValidateSet('home', 'G402', 'DLSU_Library', 'Goks')][string]$Location = '',
+    # 'home' is no longer a campaign site (oct. 7, 2026) but stays valid here so
+    # the home captures already on disk can still be exported / analysed.
+    [ValidateSet('G402', 'DLSU_Library', 'Yuchengco', 'home')][string]$Location = '',
     # -Attack also picks the BUILD flag when -Flash is set: blackhole => -DACTIVE_ATTACK=1,
     # wormhole => -DACTIVE_ATTACK=2 (attacker victims also take -WormholeEnd),
     # none => -DACTIVE_ATTACK=255 (baseline; also clears a cached attack build).
@@ -299,7 +301,7 @@ $doExport = $Export.IsPresent -or $Clean.IsPresent -or $Analyze.IsPresent -or $T
 # without it the CSVs would file under an unrecorded site. A plain flash-and-
 # monitor run (no -Export/-Clean/-Analyze/-Trim) doesn't need it.
 if ($doExport -and -not $Location) {
-    throw "-Location is required with -Export/-Clean/-Analyze/-Trim (home | G402 | DLSU_Library | Goks)."
+    throw "-Location is required with -Export/-Clean/-Analyze/-Trim (G402 | DLSU_Library | Yuchengco; home for old data)."
 }
 
 # One place the rename lives: every line below sees only 'stationary'.

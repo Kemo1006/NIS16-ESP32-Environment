@@ -885,7 +885,7 @@ static void sd_list_card(void)
     static const char *const topo_dirs[]   = { "star", "tree", "linear", "partial_mesh" };
     /* Must stay in step with LOCATIONS in tools\export_logs.py and
      * SD_LOCATION_* in mesh_config.h — the card's folder names are these. */
-    static const char *const loc_dirs[]    = { "home", "G402", "DLSU_Library", "Goks" };
+    static const char *const loc_dirs[]    = { "home", "G402", "DLSU_Library", "Yuchengco" };
 
     char leaf_rel[128];
     for (size_t a = 0; a < sizeof(attack_dirs) / sizeof(attack_dirs[0]); a++) {

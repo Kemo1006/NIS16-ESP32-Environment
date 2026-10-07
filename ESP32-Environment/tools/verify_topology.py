@@ -797,7 +797,7 @@ def main():
     ap.add_argument("--attack", default="none")
     ap.add_argument("--repeat", default="1")
     ap.add_argument("--location", default=None,
-                    help="Location subfolder (home/G402/DLSU_Library/Goks). "
+                    help="Location subfolder (G402/DLSU_Library/Yuchengco/home). "
                          "Default: search every location under --dir/--attack/--topology.")
     ap.add_argument("--scenario", default=None,
                     help="Scenario subfolder (stationary/burst/highload/jitter/"

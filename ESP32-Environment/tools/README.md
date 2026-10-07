@@ -69,7 +69,7 @@ So each run's CSVs group by attack, then topology, then site, and none of them
 mix. The `--topology`, `--location`, `--attack`, and `--repeat` flags set both the
 folder and the filename metadata. (Topology folder names — `star`, `tree`,
 `linear`, `partial_mesh` — and location names — `home`, `G402`, `DLSU_Library`,
-`Goks` — match the dirs already under `exports/blackhole/` and `exports/wormhole/`,
+`Yuchengco` — match the dirs already under `exports/blackhole/` and `exports/wormhole/`,
 and mirror the SD card's own folder tree in `sd_status.c`.)
 
 **Control victims:** a plain victim in an attack run is flashed `--attack none`

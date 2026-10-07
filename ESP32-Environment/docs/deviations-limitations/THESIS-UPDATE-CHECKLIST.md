@@ -39,7 +39,8 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | A16 | ⬜ | §4.2.2.1, Fig. 4.17 | Star blackhole: the hub is the attacker, the root sits one hop behind — rewrite + **redraw Fig. 4.17** | D-16 |
 | A17 | 🟨 | Wormhole method section | **A/B ends chosen at run time by mesh depth** (deeper = B entry, shallower = A exit), locked at Phase 0, recorded per capture. **Adviser check.** Also fill in the proposal's exact wording in D-17 (not yet checked) | D-17 (oct. 7 2026) |
 | A18 | ⬜ | Wormhole exposure / "victims" | A wormhole run has **no victims**: only Node B's own probes are duplicated; other nodes are `not_tunnelled`. Do not use the blackhole "downstream = victim" rule for wormhole | D-17, MEMORY oct. 7 |
-| A19 | ⬜ | Run matrix / data collection | **One matched benign run per location × topology**, the 4 topologies of a location under 4 different scenarios (was: burst cells only). 128 attack + 16 benign = 144 runs. **Adviser check** | D-18 (oct. 7 2026) |
+| A19 | ⬜ | Run matrix / data collection | **One matched benign run per location × topology**, the 4 topologies of a location under 4 different scenarios (was: burst cells only). 96 attack + 12 benign = 108 runs, 2 benign per scenario. **Adviser check** | D-18 (oct. 7 2026) |
+| A20 | ⬜ | Locations / run matrix | **3 sites: G402, DLSU Library, Yuchengco** (home dropped, "Goks" renamed Yuchengco). Decide how the existing home captures are reported (pilot?) or dropped. **Adviser check** | D-19 (oct. 7 2026) |
 
 ## B. Reporting & wording (how results are stated)
 

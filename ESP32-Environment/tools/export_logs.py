@@ -617,7 +617,9 @@ _TOPOLOGY_DIR = {
 # Deployment sites (thesis panel problem P4 — environment must be RECORDED,
 # never inferred). Must match SD_LOCATION_* in mesh_config.h and the card's
 # own folder names exactly, since the export tree mirrors the SD card tree.
-LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
+# "home" left the campaign oct. 7, 2026 but stays valid for its existing data;
+# "Goks" was renamed "Yuchengco" the same day.
+LOCATIONS = ["G402", "DLSU_Library", "Yuchengco", "home"]
 
 # Run-to-run variation (panel, sep. 2026 — see run.ps1 -Scenario). A FOLDER
 # level, deliberately never the filename: several tools downstream parse the
@@ -716,7 +718,7 @@ def main() -> int:
     p.add_argument("--topology", default="unknown",
                    help="star | tree | linear | partial (for the filename)")
     p.add_argument("--location", choices=LOCATIONS, default=None,
-                   help="Deployment site: home | G402 | DLSU_Library | Goks. "
+                   help="Deployment site: G402 | DLSU_Library | Yuchengco (home for old data). "
                         "Folder level only, never the filename — DLSU_Library "
                         "contains '_', this scheme's reserved field separator. "
                         "Required for an actual export unless --flat.")
@@ -1257,7 +1259,7 @@ def main() -> int:
         # entirely. Checked here, not via argparse required=True, so --list and
         # --wipe keep working without a site.
         if not args.location and not args.flat:
-            print("ERROR: --location is required (home | G402 | DLSU_Library | Goks), "
+            print("ERROR: --location is required (G402 | DLSU_Library | Yuchengco; home for old data), "
                   "or pass --flat to skip topology/location nesting.", file=sys.stderr)
             return 1
 

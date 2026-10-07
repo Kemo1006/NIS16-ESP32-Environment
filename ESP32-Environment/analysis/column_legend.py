@@ -133,7 +133,7 @@ _add("topology", "Windowed (preprocess)",
      "Mesh layout of the run, from the folder name", "e.g. linear | star | tree")
 _add("location", "Windowed (preprocess)",
      "Where the run was recorded, from the folder name",
-     "e.g. home | G402 | DLSU_Library | Goks; 'unrecorded' if the folder has none")
+     "e.g. G402 | DLSU_Library | Yuchengco | home; 'unrecorded' if the folder has none")
 _add("scenario", "Windowed (preprocess)",
      "Optional sub-scenario from the folder name",
      "'stationary' if not given (= run.ps1 -Scenario none)")

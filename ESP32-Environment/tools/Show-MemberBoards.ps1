@@ -453,7 +453,7 @@ function Open-MemberBoardsFile {
 
 $script:MemberSnapshotAttacks    = @('none', 'blackhole', 'wormhole')
 $script:MemberSnapshotTopologies = @('linear', 'tree', 'star', 'partial')
-$script:MemberSnapshotLocations  = @('home', 'G402', 'DLSU_Library', 'Goks')
+$script:MemberSnapshotLocations  = @('G402', 'DLSU_Library', 'Yuchengco', 'home')
 
 function Get-MemberBoardSnapshotDir {
     param([string]$LivePath)

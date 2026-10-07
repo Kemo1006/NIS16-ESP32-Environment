@@ -306,7 +306,8 @@ function Get-LocationList {
     # write-location-to-a-board flow further down can never offer different
     # sets. Keep in sync with run.ps1's -Location ValidateSet and with
     # run_wizard.ps1's $LOCATIONS.
-    return ,@('home', 'G402', 'DLSU_Library', 'Goks')
+    # oct. 7, 2026: 'home' left the campaign, 'Goks' is now 'Yuchengco'.
+    return ,@('G402', 'DLSU_Library', 'Yuchengco')
 }
 
 function Select-Location {
@@ -1530,7 +1531,7 @@ function Select-MultiplePorts {
 
 function Get-SdLocation {
     # Reads a running board's location.txt WITHOUT changing it, so a write can be
-    # shown as "Goks -> G402" instead of a blind overwrite, and skipped entirely
+    # shown as "Yuchengco -> G402" instead of a blind overwrite, and skipped entirely
     # when it would be a no-op.
     #
     # Returns .State, which callers must branch on rather than just reading

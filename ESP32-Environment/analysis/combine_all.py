@@ -5,7 +5,7 @@ full-coverage M8 EDA pass.
 
 Folder shape is <attack>/<topology>/feature_table.csv for runs recorded
 before the SD-card location work, and <attack>/<topology>/<location>/
-feature_table.csv (home | G402 | DLSU_Library | Goks) for every run since —
+feature_table.csv (G402 | DLSU_Library | Yuchengco | home) for every run since —
 run.ps1 has required --location for any -Export/-Analyze since sep. 12,
 2026 (see MEMORY.md). Walking recursively and reading the location off
 however many path segments are actually there (instead of a fixed-depth

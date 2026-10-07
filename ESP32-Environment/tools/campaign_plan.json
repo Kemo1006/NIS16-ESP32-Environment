@@ -9,56 +9,8 @@
     "powercycle"
   ],
   "per_cell": 4,
-  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it.",
+  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it. oct. 7, 2026: home removed, Goks renamed Yuchengco (attack draws kept).",
   "cells": {
-    "home/linear/blackhole": [
-      "mobility",
-      "jitter",
-      "burst",
-      "stationary"
-    ],
-    "home/linear/wormhole": [
-      "powercycle",
-      "burst",
-      "jitter",
-      "highload"
-    ],
-    "home/star/blackhole": [
-      "stationary",
-      "mobility",
-      "powercycle",
-      "jitter"
-    ],
-    "home/star/wormhole": [
-      "stationary",
-      "burst",
-      "powercycle",
-      "highload"
-    ],
-    "home/tree/blackhole": [
-      "stationary",
-      "jitter",
-      "burst",
-      "mobility"
-    ],
-    "home/tree/wormhole": [
-      "powercycle",
-      "highload",
-      "mobility",
-      "stationary"
-    ],
-    "home/partial_mesh/blackhole": [
-      "highload",
-      "burst",
-      "mobility",
-      "jitter"
-    ],
-    "home/partial_mesh/wormhole": [
-      "highload",
-      "mobility",
-      "powercycle",
-      "burst"
-    ],
     "G402/linear/blackhole": [
       "highload",
       "stationary",
@@ -155,72 +107,68 @@
       "mobility",
       "jitter"
     ],
-    "Goks/linear/blackhole": [
+    "Yuchengco/linear/blackhole": [
       "mobility",
       "stationary",
       "powercycle",
       "burst"
     ],
-    "Goks/linear/wormhole": [
+    "Yuchengco/linear/wormhole": [
       "jitter",
       "highload",
       "mobility",
       "burst"
     ],
-    "Goks/star/blackhole": [
+    "Yuchengco/star/blackhole": [
       "burst",
       "powercycle",
       "jitter",
       "stationary"
     ],
-    "Goks/star/wormhole": [
+    "Yuchengco/star/wormhole": [
       "powercycle",
       "jitter",
       "stationary",
       "highload"
     ],
-    "Goks/tree/blackhole": [
+    "Yuchengco/tree/blackhole": [
       "burst",
       "powercycle",
       "jitter",
       "stationary"
     ],
-    "Goks/tree/wormhole": [
+    "Yuchengco/tree/wormhole": [
       "mobility",
       "highload",
       "jitter",
       "stationary"
     ],
-    "Goks/partial_mesh/blackhole": [
+    "Yuchengco/partial_mesh/blackhole": [
       "powercycle",
       "burst",
       "mobility",
       "highload"
     ],
-    "Goks/partial_mesh/wormhole": [
+    "Yuchengco/partial_mesh/wormhole": [
       "burst",
       "stationary",
       "highload",
       "jitter"
     ]
   },
+  "benign_note": "One matched benign (attack none) run per location/topology; the 4 topologies of a location use 4 different scenarios. Drawn once by inventory_cells.py (oct. 7, 2026).",
   "benign": {
-    "home/linear": "highload",
-    "home/star": "stationary",
-    "home/tree": "powercycle",
-    "home/partial_mesh": "burst",
-    "G402/linear": "burst",
-    "G402/star": "mobility",
+    "G402/linear": "jitter",
+    "G402/star": "burst",
     "G402/tree": "stationary",
-    "G402/partial_mesh": "jitter",
-    "DLSU_Library/linear": "jitter",
-    "DLSU_Library/star": "highload",
-    "DLSU_Library/tree": "powercycle",
-    "DLSU_Library/partial_mesh": "mobility",
-    "Goks/linear": "mobility",
-    "Goks/star": "powercycle",
-    "Goks/tree": "jitter",
-    "Goks/partial_mesh": "stationary"
-  },
-  "benign_note": "One matched benign (attack none) run per location/topology; the 4 topologies of a location use 4 different scenarios. Drawn once by inventory_cells.py (oct. 7, 2026)."
+    "G402/partial_mesh": "powercycle",
+    "DLSU_Library/linear": "mobility",
+    "DLSU_Library/star": "stationary",
+    "DLSU_Library/tree": "highload",
+    "DLSU_Library/partial_mesh": "powercycle",
+    "Yuchengco/linear": "mobility",
+    "Yuchengco/star": "jitter",
+    "Yuchengco/tree": "highload",
+    "Yuchengco/partial_mesh": "burst"
+  }
 }

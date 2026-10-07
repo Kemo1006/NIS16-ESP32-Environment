@@ -17,7 +17,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - Host build tip (Angelo's laptop): `idf.py.exe` wrapper rejects `-D`; use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. C: was full (0.29 GB) on oct. 7 - keep space free; esp32_builds live on C:.
 
 ## Uncommitted on Angelo's laptop
-- Campaign: 128 attack + 16 benign (one per location x topology, different scenario per topology) = 144. Board: wizard Campaign progress / `inventory_cells.py --board --sessions`. Dashboard: https://claude.ai/artifact/634D6i1UrhLXTNsSuEWMLV (rebuild: `tools/build_campaign_board.py`).
+- Campaign: 3 sites G402 / DLSU_Library / Yuchengco (home dropped, Goks renamed - D-19; reflash before location.txt=Yuchengco). 96 attack + 12 benign = 108 runs. Board: wizard Campaign progress / `inventory_cells.py --board --sessions`. Dashboard: https://claude.ai/artifact/634D6i1UrhLXTNsSuEWMLV (rebuild: `tools/build_campaign_board.py`).
 - DATA not pushed: blackhole/partial_mesh/DLSU_Library/stationary - root telem + arrivals, 4 `victim_..._partial_none` files, and its analysis (verified #7). Its 3 `child_node*` files are already on GitHub (Basti's data sync, `0c5d02a`). The highload run's files once exported.
 - Never push: root/child `sdkconfig`, `dependencies.lock`, `mesh_config.h` attacker line, `sd_card_test/sdkconfig`.
 

@@ -76,7 +76,7 @@ static const char *const s_topo_dirs[4] = {
 };
 
 static const char *const s_locations[4] = {
-    SD_LOCATION_HOME, SD_LOCATION_G402, SD_LOCATION_DLSU_LIB, SD_LOCATION_GOKS,
+    SD_LOCATION_HOME, SD_LOCATION_G402, SD_LOCATION_DLSU_LIB, SD_LOCATION_YUCHENGCO,
 };
 
 /* Top level of the tree. MUST stay byte-identical to _subdir_for() in

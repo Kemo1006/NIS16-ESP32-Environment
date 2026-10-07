@@ -358,10 +358,22 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 |---|---|
 | **Thesis says** | ⚠️ *Not yet checked against the proposal's run matrix wording; fill in the section/table before quoting.* Until oct. 7, 2026 the campaign (`tools/inventory_cells.py`) added a benign run only where **burst** was drawn; every other scenario used the attack run's own phase 0 (300 s) as its benign control. |
 | **Why we changed it** | User's decision (oct. 7, 2026): every topology should have a whole benign run of its own, and the benign runs should cover different conditions instead of all being burst. Burst-only left most topologies with no stand-alone benign capture, and put every benign run under one condition. |
-| **We do** | Every (location, topology) gets exactly **one** benign run (attack = none). Inside a location the 4 topologies get **4 different** scenarios, and each one is a scenario that cell's attack runs drew, so it is still a matched pair (e.g. G402: linear = burst, star = mobility, tree = stationary, partial_mesh = jitter). Across locations the least-used scenarios are preferred: each of the 6 scenarios gets 2–3 benign runs. Drawn once and saved in `campaign_plan.json` → `"benign"`; the attack draw (`"cells"`) is unchanged. 16 benign runs, **144 runs total** (same count as before). |
+| **We do** | Every (location, topology) gets exactly **one** benign run (attack = none). Inside a location the 4 topologies get **4 different** scenarios, and each one is a scenario that cell's attack runs drew, so it is still a matched pair. Across locations the least-used scenarios are preferred. With the 3 campaign locations (D-19) that is **12 benign runs, exactly 2 per scenario**: G402 linear = jitter, star = burst, tree = stationary, partial_mesh = powercycle; DLSU_Library linear = mobility, star = stationary, tree = highload, partial_mesh = powercycle; Yuchengco linear = mobility, star = jitter, tree = highload, partial_mesh = burst. Saved in `campaign_plan.json` → `"benign"`; the attack draw (`"cells"`) is unchanged. **108 runs total** (96 attack + 12 benign). |
 | **Considered and dropped** | A benign run for every drawn scenario (88 runs, +20 h) and for burst + mobility + powercycle only (44 runs): both chosen and dropped the same evening. |
 | **How to run one** | Same as an attack run with attack = none. Burst: the root holds an attack-length window. Mobility / powercycle: do the human step halfway through the baseline (`run.ps1` checklist timer: 2:30 after `PHASE 0 — BASELINE`). |
 | **Status** | Plan, wizard checklist, campaign board (`--board`, `--sessions`) and dashboard page updated. Captures pending. |
-| **Paper edit** | Run matrix / data-collection section: 128 attack runs + 16 matched benign runs (one per location × topology, the 4 topologies of a location under 4 different scenarios). **Adviser check**: changes how the benign class is collected. |
+| **Paper edit** | Run matrix / data-collection section: 96 attack runs + 12 matched benign runs (one per location × topology, the 4 topologies of a location under 4 different scenarios). **Adviser check**: changes how the benign class is collected. |
+
+---
+
+## D-19 · Campaign locations: G402, DLSU Library, Yuchengco (home dropped; "Goks" renamed Yuchengco)
+
+| | |
+|---|---|
+| **Thesis says** | ⚠️ *Check the proposal's wording before quoting.* The panel-change plan (sep. 2026) listed four sites: Home, G402, DLSU Library, Goks. |
+| **Why we changed it** | User's decision (oct. 7, 2026): **home** is no longer a campaign site, and the site called "Goks" is named **Yuchengco**. |
+| **We do** | Campaign (`inventory_cells.py`, `campaign_plan.json`) and every NEW-run picker (wizard, `menu.ps1`, `run_matrix.py`) offer G402, DLSU_Library, Yuchengco. The attack scenario draws for those 3 sites are unchanged; home's draws were removed; the benign runs were re-drawn for 3 sites (D-18). **home stays valid for the data already captured there**: `run.ps1 -Location home`, `export_logs.py`, the firmware's `location.txt` and the wizard's verify / analyse / trim / import pickers still accept it, and home captures show as off-plan in the checklist. Home presets are hidden from the preset picker (files kept). Firmware: `SD_LOCATION_GOKS "Goks"` → `SD_LOCATION_YUCHENGCO "Yuchengco"` (`mesh_config.h`, `sd_status.c`, `csv_logger.c`); no data was ever captured under Goks. |
+| **Action** | Reflash boards before writing `location.txt = Yuchengco`: older firmware does not know the name. |
+| **Paper edit** | Locations section / run matrix: 3 sites (G402, DLSU Library, Yuchengco). Decide whether the existing home captures are reported (e.g. as pilot runs) or left out. **Adviser check.** |
 
 ---

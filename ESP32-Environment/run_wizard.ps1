@@ -103,7 +103,13 @@ $script:ImportedSources = @{}
 
 $ATTACKS    = @('none', 'blackhole', 'wormhole')
 $TOPOLOGIES = @('linear', 'tree', 'star', 'partial')
-$LOCATIONS  = @('home', 'G402', 'DLSU_Library', 'Goks')
+# Campaign sites offered for NEW runs (oct. 7, 2026: 'home' dropped from the
+# campaign, 'Goks' renamed 'Yuchengco'). Keep in sync with run.ps1 -Location,
+# menu.ps1 Get-LocationList and tools\inventory_cells.py PLAN_LOCATIONS.
+$LOCATIONS  = @('G402', 'DLSU_Library', 'Yuchengco')
+# Pickers that open EXISTING data (verify, analyse, trim, import, sniffer
+# filing) also list 'home', so the home captures already on disk stay usable.
+$DATA_LOCATIONS = @('G402', 'DLSU_Library', 'Yuchengco', 'home')
 
 # Run-to-run variation the panel asked for. 'stationary' (formerly 'none') is byte-identical to the
 # pre-scenario wizard. Keep the ValidateSet in run.ps1 in sync with this list.
@@ -197,7 +203,7 @@ $script:PresetTagAnsi = @{
     # topology
     linear = '0;36'; star = '1;33'; tree = '1;94'; partial = '38;5;216'
     # location
-    home = '0;34'; G402 = '0;35'; DLSU_Library = '0;96'; Goks = '38;5;180'
+    home = '0;34'; G402 = '0;35'; DLSU_Library = '0;96'; Yuchengco = '38;5;180'
     # scenario
     stationary = '90'; burst = '33'; jitter = '1;93'; highload = '1;91'
     mobility = '38;5;39'; powercycle = '38;5;141'
@@ -2566,10 +2572,10 @@ function Invoke-ImportSdCard {
                 continue askFlow
             }
             3 {
-                $idx = Show-Menu -Title 'Location (where the run physically happened):' -Options $LOCATIONS -DefaultIndex $locationIdx -AllowBack
+                $idx = Show-Menu -Title 'Location (where the run physically happened):' -Options $DATA_LOCATIONS -DefaultIndex $locationIdx -AllowBack
                 if ($idx -eq -1) { $step = 2; continue askFlow }
                 $locationIdx = $idx
-                $location = $LOCATIONS[$locationIdx]
+                $location = $DATA_LOCATIONS[$locationIdx]
                 $step = 4
                 continue askFlow
             }
@@ -3116,7 +3122,7 @@ function Invoke-CampaignChecklist {
     if ($sAns -and $sAns.Trim() -eq '2') { $scope = 'archive' }
 
     $repeats = 1
-    $ans = Read-Host "Planned repeats per cell? (1 = 128 attack + 16 benign runs, 4 = x4) [1]"
+    $ans = Read-Host "Planned repeats per cell? (1 = 96 attack + 12 benign runs, 4 = x4) [1]"
     if ($ans -and $ans.Trim() -match '^\d+$') { $repeats = [int]$ans.Trim() }
 
     Push-Location $base
@@ -3216,8 +3222,8 @@ function Invoke-VerifyRun {
     $topology    = $TOPOLOGIES[$topoIdx]
     $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
     $scenario    = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex 0
-    $location    = $LOCATIONS[$locationIdx]
+    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
+    $location    = $DATA_LOCATIONS[$locationIdx]
 
     $dirs  = Get-RunDirs -Attack $folderAttack -Topology $topology -Location $location -Scenario $scenario
     $table = Select-VerifyTable -AnalysisDir $dirs.Analysis -ExportDir $dirs.Export
@@ -3734,7 +3740,7 @@ function Select-SnifferFiling {
 
     $f.Attack = Show-Menu -Title 'Attack type:' -Options @('baseline  (no attack)', 'blackhole', 'wormhole') -DefaultIndex $f.Attack
     $f.Topology = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex $f.Topology
-    $f.Location = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex $f.Location
+    $f.Location = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex $f.Location
     $f.Scenario = Show-Menu -Title 'Scenario:' -Options $SCENARIO_LABELS -DefaultIndex $f.Scenario
     while ($true) {
         $raw = Read-Line ("Repeat number (the r<N> of the run it belongs to) > [{0}] " -f $f.Repeat)
@@ -3743,8 +3749,8 @@ function Select-SnifferFiling {
         if ([int]::TryParse($raw.Trim(), [ref]$n) -and $n -ge 1) { $f.Repeat = $n; break }
         Write-Host "  Enter a positive whole number." -ForegroundColor Yellow
     }
-    $dirs = Get-RunDirs -Attack $ATTACKS[$f.Attack] -Topology $TOPOLOGIES[$f.Topology] -Location $LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario]
-    return (Get-SnifferPcapPath -AttackDir $dirs.AttackDir -TopoDir $dirs.TopoDir -Location $LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario] -RepeatNum $f.Repeat)
+    $dirs = Get-RunDirs -Attack $ATTACKS[$f.Attack] -Topology $TOPOLOGIES[$f.Topology] -Location $DATA_LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario]
+    return (Get-SnifferPcapPath -AttackDir $dirs.AttackDir -TopoDir $dirs.TopoDir -Location $DATA_LOCATIONS[$f.Location] -Scenario $SCENARIOS[$f.Scenario] -RepeatNum $f.Repeat)
 }
 
 function Invoke-Esp32SnifferStandalone {
@@ -4599,8 +4605,8 @@ function Invoke-RunAnalysisOnly {
     $rTopology   = $TOPOLOGIES[$topoIdx]
     $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
     $rScenario   = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex 0
-    $rLocation   = $LOCATIONS[$locationIdx]
+    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
+    $rLocation   = $DATA_LOCATIONS[$locationIdx]
 
     $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
     if (-not (Test-Path $dirs.Export)) {
@@ -4804,8 +4810,8 @@ function Invoke-TrimOnly {
     $rTopology   = $TOPOLOGIES[$topoIdx]
     $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
     $rScenario   = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $LOCATIONS -DefaultIndex 0
-    $rLocation   = $LOCATIONS[$locationIdx]
+    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
+    $rLocation   = $DATA_LOCATIONS[$locationIdx]
 
     $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
     if (-not (Test-Path $dirs.Export)) {
@@ -5389,7 +5395,7 @@ function Resolve-BoardMac {
 
 function Get-SdLocation {
     # Reads a running board's location.txt WITHOUT changing it, so a write can be
-    # shown as "Goks -> G402" instead of a blind overwrite, and skipped entirely
+    # shown as "Yuchengco -> G402" instead of a blind overwrite, and skipped entirely
     # when it would be a no-op. Same serial path as Set-SdLocation, same
     # requirement that the board has actually booted.
     #
@@ -5569,10 +5575,10 @@ function Invoke-DeleteSdFolder {
         if ($tIdx -lt $sdTopoDirs.Count) {
             $parts += $sdTopoDirs[$tIdx]
 
-            $lIdx = Show-Menu -Title ("Location folder inside {0}:" -f ($parts -join ' > ')) -Options (@($LOCATIONS) + @(
+            $lIdx = Show-Menu -Title ("Location folder inside {0}:" -f ($parts -join ' > ')) -Options (@($DATA_LOCATIONS) + @(
                 ("ALL of {0} (delete the whole {1} folder)" -f ($parts -join ' > '), $parts[1]), 'Cancel')) -DefaultIndex -1
-            if ($lIdx -eq $LOCATIONS.Count + 1) { continue }
-            if ($lIdx -lt $LOCATIONS.Count) { $parts += $LOCATIONS[$lIdx] }
+            if ($lIdx -eq $DATA_LOCATIONS.Count + 1) { continue }
+            if ($lIdx -lt $DATA_LOCATIONS.Count) { $parts += $DATA_LOCATIONS[$lIdx] }
         }
 
         $relPath = $parts -join '/'
@@ -6102,7 +6108,10 @@ function Get-PresetFiles {
     # is the FileInfo callers already use (.FullName / .Name / .LastWriteTime).
     $dir = Get-PresetRoot
     if (-not (Test-Path $dir)) { return @() }
+    # Presets for 'home' are hidden (oct. 7, 2026: home left the campaign); the
+    # files stay on disk. The filename spells attack-topology-LOCATION-scenario.
     return @(Get-ChildItem -Path $dir -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch '-home-' } |
         Sort-Object LastWriteTime -Descending |
         ForEach-Object {
             $_ | Add-Member -NotePropertyName Owner -NotePropertyValue (Get-PresetOwnerFromPath -FullName $_.FullName) -Force -PassThru
@@ -7667,7 +7676,7 @@ if (-not $Preset) {
                     @{ Expression = { if ($cellOf[$_.FullName]) { 0 } else { 1 } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $ATTACKS $c.Attack } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $TOPOLOGIES $c.Topology } } }, `
-                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $LOCATIONS $c.Location } } }, `
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $DATA_LOCATIONS $c.Location } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $SCENARIOS $c.Scenario } } }, `
                     @{ Expression = { $_.LastWriteTime }; Descending = $true })
             }
@@ -8247,6 +8256,7 @@ if ($Preset) {
 
     if ($ATTACKS    -notcontains $attack)   { throw "Preset has invalid attack '$attack'." }
     if ($TOPOLOGIES -notcontains $topology) { throw "Preset has invalid topology '$topology'." }
+    if ($location -eq 'home') { throw "Preset is for 'home', which is no longer a campaign location (oct. 7, 2026). Pick or save a G402 / DLSU_Library / Yuchengco preset." }
     if ($LOCATIONS  -notcontains $location) { throw "Preset has invalid location '$location'." }
     if ($SCENARIOS  -notcontains $scenario) { throw "Preset has invalid scenario '$scenario'." }
     if (-not $cfg.boards -or @($cfg.boards).Count -eq 0) { throw "Preset has no boards." }
@@ -8525,7 +8535,7 @@ else {
                 $idx = Show-Menu -Title 'Location (where the run physically happens):' -Options $LOCATIONS -DefaultIndex $locationIdx -AllowBack
                 if ($idx -eq -1) { $step = 1; continue flow }
                 $locationIdx = $idx
-                $location = $LOCATIONS[$locationIdx]
+                $location = $DATA_LOCATIONS[$locationIdx]
                 $step = 3
                 continue flow
             }

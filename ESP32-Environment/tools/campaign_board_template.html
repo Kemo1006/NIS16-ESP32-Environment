@@ -72,7 +72,7 @@ header { display: grid; gap: 18px; }
 
 /* matrix */
 .matrix-scroll { overflow-x: auto; }
-.matrix { display: grid; grid-template-columns: 120px repeat(4, minmax(200px, 1fr)); gap: 10px; min-width: 940px; }
+.matrix { display: grid; grid-template-columns: 120px repeat(3, minmax(220px, 1fr)); gap: 10px; min-width: 820px; }
 .colhead { font: 600 0.95rem var(--f-display); padding: 4px 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .colhead .mono { font-size: 0.75rem; color: var(--muted); }
 .rowhead { display: grid; align-content: center; gap: 6px; padding: 6px; }
@@ -126,7 +126,7 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   <header>
     <div class="head-row">
       <div style="display:grid;gap:8px">
-        <span class="eyebrow">NIS16 · ESP-WIFI-MESH · CTTHES3 field campaign</span>
+        <span class="eyebrow">NIS16 · ESP-WIFI-MESH · CTTHES3 field campaign · G402 · DLSU Library · Yuchengco</span>
         <h1>Mesh Campaign Board</h1>
       </div>
       <span class="stamp" id="stamp"></span>
@@ -238,6 +238,8 @@ code { font-family: var(--f-mono); font-size: 0.85em; background: var(--accent-s
   }
 
   var m = document.getElementById('matrix');
+  m.style.gridTemplateColumns = '120px repeat(' + D.locations.length + ', minmax(220px, 1fr))';
+  m.style.minWidth = (130 + 230 * D.locations.length) + 'px';
   m.appendChild(el('div'));
   D.locations.forEach(function (loc) {
     var h = el('div', 'colhead'); h.appendChild(el('span', null, nice(loc)));

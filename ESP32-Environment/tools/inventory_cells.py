@@ -287,7 +287,7 @@ def _not_done_reason(r):
 
 
 # ---------------------------------------------------------------------------
-# Campaign plan (CTTHES3) — 4 locations x 4 topologies x 2 attacks x 4 scenarios
+# Campaign plan (CTTHES3) — 3 locations x 4 topologies x 2 attacks x 4 scenarios
 # ---------------------------------------------------------------------------
 # The team's design: in ONE location, per topology, 4 blackhole runs and 4
 # wormhole runs, each run using a DIFFERENT scenario. That is what answers the
@@ -324,10 +324,13 @@ def _not_done_reason(r):
 #     = powercycle, tree = jitter, star = burst, partial_mesh = highload). Each
 #     benign scenario is one that cell's attack runs also drew, so it is still a
 #     matched pair. Drawn once, balanced across locations, saved in
-#     campaign_plan.json "benign" (see _draw_benign). 16 benign runs, 144 total.
+#     campaign_plan.json "benign" (see _draw_benign). With 3 locations (oct. 7,
+#     2026: home dropped) that is 12 benign runs, 108 total, 2 per scenario.
 #
 # MOBILITY and POWERCYCLE are human scenarios (no firmware flag) — label-only.
-PLAN_LOCATIONS = ["home", "G402", "DLSU_Library", "Goks"]
+# oct. 7, 2026: "home" left the campaign (its captures still scan, as off-plan),
+# "Goks" renamed "Yuchengco".
+PLAN_LOCATIONS = ["G402", "DLSU_Library", "Yuchengco"]
 PLAN_TOPOLOGIES = ["linear", "star", "tree", "partial_mesh"]
 PLAN_ATTACKS = ["blackhole", "wormhole"]
 # Every scenario run.ps1 accepts (-Scenario ValidateSet).
@@ -1049,7 +1052,7 @@ def main():
                     help="Seed for a new/reshuffled plan (default: random, recorded).")
     ap.add_argument("--repeats", type=int, default=1,
                     help="Planned repeats per (location, topology, attack, scenario) "
-                         "cell. 1 => 128 attack runs; 4 => 512. See --plan.")
+                         "cell. 1 => 96 attack + 12 benign runs; 4 => 4x. See --plan.")
     ap.add_argument("--plan", action="store_true",
                     help="Also print the campaign matrix (4 locations x 4 topologies "
                          "x 2 attacks x 4 scenarios) and what is still missing.")
