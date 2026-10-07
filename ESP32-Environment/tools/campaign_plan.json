@@ -9,7 +9,7 @@
     "powercycle"
   ],
   "per_cell": 4,
-  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it. oct. 7, 2026: home removed, Goks renamed Yuchengco (attack draws kept).",
+  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it. oct. 7, 2026: home removed, Goks renamed Yuchengco (attack draws kept). oct. 7, 2026: DLSU_Library/partial_mesh/blackhole slot 4 burst -> jitter (user; jitter run already captured). oct. 7, 2026: DLSU_Library/linear/blackhole slot 3 mobility -> jitter (user; jitter r1 captured + verified #11).",
   "cells": {
     "G402/linear/blackhole": [
       "highload",
@@ -62,7 +62,7 @@
     "DLSU_Library/linear/blackhole": [
       "stationary",
       "powercycle",
-      "mobility",
+      "jitter",
       "burst"
     ],
     "DLSU_Library/linear/wormhole": [
@@ -99,7 +99,7 @@
       "powercycle",
       "highload",
       "stationary",
-      "burst"
+      "jitter"
     ],
     "DLSU_Library/partial_mesh/wormhole": [
       "stationary",
