@@ -5658,13 +5658,13 @@ function Set-AttackSubRoles {
         }
     }
     elseif ($Attack -eq 'wormhole') {
-        $idxA = Show-Menu -Title "Which board is WORMHOLE Node A (exit / re-injects to root)?" -Options $labels -AllowBack
+        $idxA = Show-Menu -Title "WIRED TUNNEL BOARD 1 of 2 (wormhole, labelled Node A) - either cable end is fine: at run start the two boards pick A/B themselves by depth (deeper = B); this choice is only the backup if the cable link fails" -Options $labels -AllowBack
         if ($idxA -ge 0) {
             $idxB = -1
             while ($true) {
-                $idxB = Show-Menu -Title "Which board is WORMHOLE Node B (entry / captures + tunnels)?" -Options $labels -AllowBack
+                $idxB = Show-Menu -Title "WIRED TUNNEL BOARD 2 of 2 (wormhole, labelled Node B) - the OTHER end of the same UART cable" -Options $labels -AllowBack
                 if ($idxB -eq -1 -or $idxB -ne $idxA) { break }
-                Write-Host "   Node B must be a different board from Node A." -ForegroundColor Yellow
+                Write-Host "   Pick the OTHER end of the cable - board 2 must be a different board from board 1." -ForegroundColor Yellow
             }
             if ($idxB -ge 0) {
                 for ($ci = 0; $ci -lt $peers.Count; $ci++) {
@@ -5869,8 +5869,9 @@ function Add-BoardInteractive {
             $curB = @($updated | Where-Object { $_.Kind -eq 'B' } | ForEach-Object { $_.Label }) -join ', '
             if (-not $curA) { $curA = 'nobody yet' }
             if (-not $curB) { $curB = 'nobody yet' }
-            Write-Host ("   The two wired tunnel boards are currently: Node A = {0}, Node B = {1}." -f $curA, $curB) -ForegroundColor DarkGray
-            $ans = Read-Line "   Change which boards are Node A and Node B? Press Enter to keep them as is [y/N] > "
+            Write-Host ("   The two wired tunnel boards are currently: {0} (labelled A) and {1} (labelled B)." -f $curA, $curB) -ForegroundColor DarkGray
+            Write-Host "   A/B is only a backup label: at run start the boards pick A/B themselves by depth (deeper = B)." -ForegroundColor DarkGray
+            $ans = Read-Line "   Change which two boards are the wired tunnel pair? Press Enter to keep them as is [y/N] > "
         }
         if ($ans -eq 'y' -or $ans -eq 'Y') { Set-AttackSubRoles -Roster $updated -Attack $Attack }
     }
@@ -8644,7 +8645,7 @@ else {
                         $menuLabels += 'Neither - BOTH tunnel ends are on ANOTHER laptop'
                     }
 
-                    $idxA = Show-Menu -Title 'Which child is WORMHOLE Node A (exit / re-injects to root)?' -Options $menuLabels -AllowBack
+                    $idxA = Show-Menu -Title 'WIRED TUNNEL BOARD 1 of 2 (wormhole, labelled Node A) - either cable end is fine: at run start the two boards pick A/B themselves by depth (deeper = B); this choice is only the backup if the cable link fails' -Options $menuLabels -AllowBack
                     if ($idxA -eq -1) { Undo-LastChild; $step = 7; continue flow }
 
                     if ($multiLaptop -and $idxA -eq $bothRemoteIdx) {
@@ -8702,10 +8703,10 @@ else {
                     # A be local while B is remote.
                     $idxB = -1
                     while ($true) {
-                        $idxB = Show-Menu -Title 'Which child is WORMHOLE Node B (entry / captures + tunnels)?' -Options $labels -AllowBack
+                        $idxB = Show-Menu -Title 'WIRED TUNNEL BOARD 2 of 2 (wormhole, labelled Node B) - the OTHER end of the same UART cable' -Options $labels -AllowBack
                         if ($idxB -eq -1) { continue flow }   # re-ask Node A (step 8 re-entry strips synthetics)
                         if ($idxB -eq $idxA) {
-                            Write-Host "  Node B must be a different board from Node A." -ForegroundColor Yellow
+                            Write-Host "  Pick the OTHER end of the cable - board 2 must be a different board from board 1." -ForegroundColor Yellow
                             continue
                         }
                         if ([bool]$children[$idxA].Port -ne [bool]$children[$idxB].Port) {
@@ -9343,8 +9344,13 @@ $buildAndPrintPlan = {
         $tgtLbl = if ($tgt) { $tgt.Board.Label }
                   elseif ($remoteTgt) { "$($remoteTgt.Label) (on another laptop - not YOUR job)" }
                   else { '(none picked!)' }
-        Write-Host "  NOTE     : this is a $scenario run - YOU must $scenario board $tgtLbl during it." -ForegroundColor Magenta
-        Write-Host "             run.ps1 prints the full checklist again right before the root boots." -ForegroundColor Magenta
+        $what = if ($scenario -eq 'powercycle') { 'unplug ~10 s, then plug back in' } else { 'move it from spot 1 to spot 2' }
+        $when = if ($attack -eq 'none') { '2:30 after the root prints PHASE 0 - BASELINE (halfway through baseline)' }
+                else { '5:10 after the root prints PHASE 0 - BASELINE (just inside the attack)' }
+        Write-Host "  NOTE     : this is a $scenario run - board $tgtLbl must be handled DURING it:" -ForegroundColor Magenta
+        Write-Host "             WHAT: $what - ONCE, then leave it powered." -ForegroundColor Magenta
+        Write-Host "             WHEN: $when - start a phone timer at that banner." -ForegroundColor Magenta
+        Write-Host "             Write down the exact time you did it. run.ps1 repeats this before each board boots." -ForegroundColor Magenta
     }
     elseif ($scenario -eq 'burst') {
         # oct. 1, 2026: two burst runs had NO sender because every laptop assumed

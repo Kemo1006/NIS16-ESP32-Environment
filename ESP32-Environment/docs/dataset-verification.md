@@ -16,6 +16,44 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #8 — Oct 7, 2026 · 5:30 PM — blackhole · partial_mesh · DLSU_Library · highload
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `90f3382` (firmware = highload root fix `643adf8`)
+> **Request:** "check my recent datasets, eda, analysis" + the wizard's `verify_attack.py` output (BLACKHOLE CONFIRMED)
+> **Why it matters:** first run with the highload root fix (arrivals → SD card only, batched). The 15:13 run of
+> this cell lost 3,151 arrival rows (C5) and is archived in `datasets/archive/2026-10-07_…_highload-invalid/`.
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | partial_mesh | DLSU_Library | highload | r1 | Oct 7, ~5:00–5:12 PM | 9 (8 telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| **Highload fix: root arrival loss** (recomputed from `seq_num`) | ✅ **0 rows lost** | every source complete, e.g. `20500DE70C80` seq 447–3097 = 2,651 rows, 0 missing, 0 dup; ~3.98 probes/s each (= 4/s at 250 ms). Root was built as `build_root_blackhole_partial_highload` |
+| Integrity (`validate_integrity.py`) | ⚠️ 8 PASS / 1 WARN — harmless | WARN = `B4BFE934ED80` 91.6 % coverage: 20 of its 21 gaps are in **stabilise (phase 255, excluded)**; 1 gap of 4.1 s at the very start of baseline |
+| Topology (`verify_topology.py`) | ✅ stable, 0 parent switches | root → `0C80`, `704B` (L2) → `1C38`, `2805` (L3) → `ED80`, attacker **`F42DC973E618`** (L4) → **`FE90`** (L5). One parent per node all run (a plain 5-layer tree, as the root printout says) |
+| Root arrivals, recomputed by hand | ✅ | victim `FE90`: 1,195 baseline → **0** attack → 482 cooldown; missing seq block = **721** = 180 s × 4/s. The other 5 sources delivered 719–721 each in the attack |
+| Attacker counters, recomputed by hand | ✅ | received/forwarded/dropped: baseline 1195/1195/0, attack **721/0/721**, cooldown 481/481/0 — the 721 drops are exactly FE90's 721 missing probes |
+| Phase timing | ✅ | baseline 300 s, attack 180.5 s, cooldown 120.5 s |
+| Analysis tables vs exports | ✅ | 5,261 windows, 8 nodes; per node 420 label-0 (300 baseline + 120 cooldown) + 180 label-1 (FE90 410 + 180) |
+| Verifier output | ✅ correct, not hardcoded | attacker FR 0.996 → **0.000**, pooled PDR 0.833 = 5/6 sources, per-node table and exposure match the raw data above |
+| EDA (`eda_output/`, 28 files) | ✅ | leakage audit: no feature beats the label by itself suspiciously (best = ForwardingRatio 0.80 vs majority 0.70) |
+| Sniffer (`…0446PM.pcap`) | ⚠️ no retry rate | `pcap_retry.py` refused: could not place the attack on the laptop clock (needs `--attack-start HH:MM:SS`) → `MacRetryRate` is empty (NaN) in this table. 2,863 frames dropped in the sniffer ring of 1.06 M heard |
+
+### Small things found
+- **Garbled telemetry row in `ED80`** (line 91): node_id `NODE_B4BFE934E_B4BFE934ED80` plus NUL bytes in the next
+  row — a torn write on that child, **in stabilise**. `verify_topology.py` lists it as a 9th "node" with 1 sample;
+  the analysis tables contain **0** such rows. Harmless here.
+- Latency column is negative (about −94 s): child and root clocks are not synced, so it is an offset, not a delay. Don't quote it.
+- The archived 15:13 run's `.pcap` and its regenerated `_retry.csv/.json` are still in the live `PCAP/…/highload/`
+  folder (Wireshark held the file) — move them to the archive.
+
+**Verdict: ✅ USABLE** — the highload root fix works on hardware (0 arrival rows lost at ~24 rows/s), and BLACKHOLE
+CONFIRMED is genuine: victim `B4BFE932FE90` 0/721 in the attack; the other 5 are above the attacker (unaffected by design).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #7 — Oct 7, 2026 · 2:36 PM — blackhole · partial_mesh · DLSU_Library · stationary
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5134649`

@@ -702,24 +702,48 @@ function Show-ScenarioChecklist {
     param([string]$Scenario, [bool]$IsTarget, [string]$Role)
     if ($Scenario -notin @('mobility', 'powercycle')) { return }
 
+    # Baseline length from mesh_config.h, so the countdown can't drift from the
+    # firmware (300 s as of oct. 7, 2026). Mobility/powercycle never use jitter.
+    $baseS = 300
+    $cfg = Join-Path $base 'components\mesh_common\include\mesh_config.h'
+    if (Test-Path $cfg) {
+        $m = Select-String -Path $cfg -Pattern '#define\s+PHASE_BASELINE_S\s+(\d+)' | Select-Object -First 1
+        if ($m) { $baseS = [int]$m.Matches[0].Groups[1].Value }
+    }
+    $isAttackRun = ($Attack -ne 'none')
+    $waitS  = if ($isAttackRun) { $baseS + 10 } else { [int]($baseS / 2) }
+    $waitMs = '{0}:{1:00}' -f [int][math]::Floor($waitS / 60), ($waitS % 60)
+
     $verb = if ($Scenario -eq 'mobility') {
         "MOVE the target child from its start spot to its second spot"
     } else {
-        "UNPLUG the target child's USB/power, wait ~10s, then PLUG IT BACK IN"
+        "UNPLUG the target child's USB/power, wait ~10 s, then PLUG IT BACK IN"
+    }
+    $c = 'Magenta'
+    Write-Host ""
+    Write-Host "============ SCENARIO: $Scenario (HUMAN -- you do this, not the code) ============" -ForegroundColor $c
+    if ($IsTarget) {
+        Write-Host " >>> THIS board ($Role on $Port) IS the $Scenario target -- the job is YOURS. <<<" -ForegroundColor Yellow
+    } else {
+        Write-Host " This board ($Role on $Port) is NOT the target. Whoever has the target board" -ForegroundColor $c
+        Write-Host " (marked TARGET in the wizard plan) does the job -- check who." -ForegroundColor $c
     }
     Write-Host ""
-    Write-Host "============ SCENARIO: $Scenario (HUMAN -- you do this, not the code) ============" -ForegroundColor Magenta
-    Write-Host " $verb." -ForegroundColor Magenta
-    Write-Host " WHEN: as soon as the ROOT console prints 'PHASE -- ATTACK'  (attack run)" -ForegroundColor Magenta
-    Write-Host "       or about halfway through 'PHASE 0 -- BASELINE'        (baseline run)" -ForegroundColor Magenta
-    Write-Host " Do it ONCE, in one motion; keep the board powered afterward -- it rejoins," -ForegroundColor Magenta
-    Write-Host " re-learns the phase from the root within ~10 s (root flashed sep. 30 or later)" -ForegroundColor Magenta
-    Write-Host " and keeps logging (append mode). Note both spots / the exact time" -ForegroundColor Magenta
-    Write-Host " in the ledger yourself -- this tooling does NOT time or beep this for you." -ForegroundColor Magenta
-    if ($IsTarget) {
-        Write-Host " THIS board ($Role on $Port) IS the $Scenario target." -ForegroundColor Magenta
+    Write-Host " WHAT : $verb." -ForegroundColor $c
+    Write-Host " WHEN : the ROOT console prints   PHASE 0 -- BASELINE @ hh:mm:ss PHT" -ForegroundColor $c
+    if ($isAttackRun) {
+        Write-Host "        -> start a phone timer for $waitMs right then (attack starts at $($baseS / 60):00;" -ForegroundColor $c
+        Write-Host "           +10 s puts you safely INSIDE the attack). Or act when it prints 'PHASE -- ATTACK'." -ForegroundColor $c
+    } else {
+        Write-Host "        -> start a phone timer for $waitMs right then (= halfway through the baseline)." -ForegroundColor $c
     }
-    Write-Host "====================================================================================" -ForegroundColor Magenta
+    Write-Host "        The root waits for every child first, so the time is only known once that banner shows." -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host " HOW  : ONCE, in one motion. Keep the board powered afterward -- it rejoins," -ForegroundColor $c
+    Write-Host "        re-learns the phase from the root within ~10 s and keeps logging (append mode)." -ForegroundColor $c
+    Write-Host " NOTE : write down the exact clock time you did it (and both spots, for mobility)" -ForegroundColor $c
+    Write-Host "        in the ledger -- this tooling does NOT time or beep this for you." -ForegroundColor $c
+    Write-Host "====================================================================================" -ForegroundColor $c
     if ([Environment]::UserInteractive) {
         Write-Host " Press Enter once you've read this ..." -ForegroundColor DarkGray -NoNewline
         [void][Console]::ReadLine()
