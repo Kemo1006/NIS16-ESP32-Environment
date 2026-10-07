@@ -1,11 +1,11 @@
 ﻿{
     "attack":  "blackhole",
-    "topology":  "star",
+    "topology":  "tree",
     "location":  "G402",
     "scenario":  "burst",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-10-01 13:47",
+    "savedAt":  "2026-10-02 19:51",
     "boards":  [
                    {
                        "Label":  "ROOT",
