@@ -176,6 +176,17 @@ function Colorize-Role {
     return "$($script:RoleAnsi[$key])$Text$script:AnsiReset"
 }
 
+function Get-BoardColorRole {
+    # The Colorize-Role key for a roster board: the attack boards of EITHER
+    # attack share the pink 'attacker' color - blackhole's attacker and wormhole's
+    # Node A / Node B (oct. 7, 2026: A/B used to fall through to the teal child
+    # color, so the two wormhole ends didn't stand out the way the attacker does).
+    param($Board)
+    if ($Board.Role -eq 'root') { return 'root' }
+    if ($Board.Kind -in @('attacker', 'A', 'B')) { return 'attacker' }
+    return 'child'
+}
+
 # Per-tag colors for the preset picker's "-- MODE / topology / location / scenario"
 # cell headings, so a long preset list can be scanned by color. Values are the
 # ANSI SGR codes (the part between ESC[ and m). Attacks stay red-family and
@@ -1358,6 +1369,9 @@ function Read-UartLinkStats {
             $sp = New-Object System.IO.Ports.SerialPort $p, 115200
             # Both lines low so opening the port doesn't hold the ESP32 in reset.
             $sp.DtrEnable = $false; $sp.RtsEnable = $false
+            # 1 MiB driver buffer: a full one is the silabser.sys BSOD trigger
+            # (tools\serial_guard.py). Open() passes this to the driver.
+            $sp.ReadBufferSize = 1MB
             $sp.Open()
             $res[$k].Sp = $sp
         } catch { $res[$k].Error = $_.Exception.Message }
@@ -3369,6 +3383,8 @@ function Invoke-MacSnifferTest {
             # Both lines low so opening the port doesn't hold the ESP32 in reset.
             $sp.DtrEnable = $false; $sp.RtsEnable = $false
             $sp.ReadTimeout = 250
+            # 1 MiB driver buffer - see tools\serial_guard.py (silabser.sys BSOD).
+            $sp.ReadBufferSize = 1MB
             $sp.Open()
         } catch {
             $serialErr = $_.Exception.Message
@@ -6852,6 +6868,119 @@ function Edit-PresetInteractive {
         return $draft
     }
 
+    # ---- Blackhole attacker seat, as its own menu row (oct. 7, 2026) ----
+    # Before this the seat was only reachable as a field inside "Edit one node",
+    # and a star preset kept naming the old attacker while the run built another
+    # board as it (dataset-verification.md #5). In STAR + blackhole the choice is
+    # structural, not a label: the attacker is the HUB and every victim joins ONLY
+    # its MAC (D-16, mesh_setup.c STAR_HUB_BLACKHOLE; the run builds the preset's
+    # attacker MAC into each victim, New-RunParams -AttackerMac), so the row and
+    # the picker say so.
+    $attackerOf = {
+        param($R)
+        @($R | Where-Object { $_.Role -ne 'root' -and $_.Kind -eq 'attacker' }) | Select-Object -First 1
+    }
+    $attackerText = {
+        param($R)
+        $a = & $attackerOf $R
+        if (-not $a) { return 'not set here' }
+        $where = if ($a.Port) { $a.Port } else { 'other laptop' }
+        $mac = if ($a.Mac) { $a.Mac } else { 'MAC not recorded' }
+        "{0} ({1}, {2})" -f $a.Label, $where, $mac
+    }
+    $setAttacker = {
+        # Makes $Chosen the attacker and every other child a victim - the same
+        # "exactly one attacker" rewrite Set-AttackSubRoles does. A port-less
+        # attacker row (one recorded as "on another laptop") that loses the seat
+        # is DROPPED rather than demoted: it only existed to carry the remote
+        # attacker's MAC, so keeping it would invent a remote victim.
+        param($R, $Chosen)
+        $out = @()
+        foreach ($b in @($R)) {
+            if ($b.Role -eq 'root') { $out += $b; continue }
+            if ($b -eq $Chosen) { $b.Kind = 'attacker'; $b.Display = 'blackhole ATTACKER'; $out += $b; continue }
+            if (-not $b.Port -and $b.Kind -eq 'attacker') {
+                Write-Host ("   Dropped {0} (the old other-laptop attacker entry)." -f $b.Label) -ForegroundColor DarkGray
+                continue
+            }
+            $b.Kind = 'victim'; $b.Display = 'blackhole victim'; $out += $b
+        }
+        return $out
+    }
+    $pickAttacker = {
+        # Returns the roster (the other-laptop branch adds a row) - invoke as
+        # `$draft = & $pickAttacker`, same child-scope reason as $pickTarget.
+        $peers = @($draft | Where-Object { $_.Role -ne 'root' })
+        Write-Host ""
+        if ($topology -eq 'star') {
+            Write-Host "STAR + blackhole: the ATTACKER is the HUB." -ForegroundColor Cyan
+            Write-Host "  root -> ATTACKER -> every victim. Each victim joins ONLY the attacker's MAC" -ForegroundColor Cyan
+            Write-Host "  (the run builds it into their firmware), so the wrong board here = no victim joins." -ForegroundColor Yellow
+        }
+        else {
+            Write-Host "The ATTACKER relays victim probes in baseline, then drops them in the attack phase." -ForegroundColor Cyan
+            Write-Host "  It only drops what passes THROUGH it - place it between the victims and the root." -ForegroundColor DarkGray
+        }
+        Write-Host ("  Now: {0}" -f (& $attackerText $draft)) -ForegroundColor DarkGray
+        $cur = & $attackerOf $draft
+        $opts = @($peers | ForEach-Object {
+            $where = if ($_.Port) { $_.Port } else { 'other laptop' }
+            $now = if ($_ -eq $cur) { '   <- attacker now' } else { '' }
+            "{0}  ({1})  {2}{3}" -f $_.Label, $where, (Format-PickerMacTag $_), $now
+        })
+        $remoteIdx = $opts.Count
+        $opts += 'The attacker is on ANOTHER laptop (record its MAC here)'
+        $def = 0
+        for ($i = 0; $i -lt $peers.Count; $i++) { if ($peers[$i] -eq $cur) { $def = $i } }
+        $title = if ($topology -eq 'star') { 'Which board is the ATTACKER (the star HUB)?' } else { 'Which board is the BLACKHOLE ATTACKER? (exactly one)' }
+        $pick = Show-Menu -Title $title -Options $opts -DefaultIndex $def -AllowBack
+        if ($pick -lt 0) { return $draft }
+
+        $out = $draft
+        if ($pick -lt $remoteIdx) {
+            $out = @(& $setAttacker $draft $peers[$pick])
+        }
+        else {
+            $mac = Read-RemoteAttackerMac -Who 'The attacker' -LocalMacs @($draft | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
+            if (-not $mac) {
+                Write-Host "   No MAC given - attacker unchanged." -ForegroundColor Yellow
+                return $draft
+            }
+            $same = @($peers | Where-Object { $_.Mac -and "$($_.Mac)".Trim().ToLower() -eq $mac }) | Select-Object -First 1
+            if ($same) {
+                Write-Host ("   {0} is {1} in this preset already - making it the attacker." -f $mac, $same.Label) -ForegroundColor DarkGray
+                $out = @(& $setAttacker $draft $same)
+            }
+            else {
+                $remote = [pscustomobject]@{
+                    Label = (Get-FreeNodeLabel -Taken @($draft | ForEach-Object { $_.Label }))
+                    Port = ''; Role = 'child'; Kind = 'attacker'
+                    Display = 'blackhole ATTACKER (other laptop)'; Mac = $mac; ScenarioTarget = $false
+                }
+                $out = @(& $setAttacker (@($draft) + $remote) $remote)
+            }
+        }
+
+        $a = & $attackerOf $out
+        if ($a) {
+            Write-Host ("   Attacker: {0}" -f (& $attackerText $out)) -ForegroundColor Green
+            if ($topology -eq 'star') {
+                $vict = @($out | Where-Object { $_.Role -ne 'root' -and $_.Kind -eq 'victim' } | ForEach-Object { $_.Label })
+                $vText = if ($vict.Count -gt 0) { $vict -join ', ' } else { '(none here)' }
+                Write-Host ("   Star layout: root -> {0} (HUB) -> {1}, plus any victims on other laptops." -f $a.Label, $vText) -ForegroundColor Cyan
+                if (-not $a.Mac) {
+                    Write-Host ("   {0} has no MAC recorded - 'Verify MACs now' on the next screen records it; the victims need it." -f $a.Label) -ForegroundColor Yellow
+                }
+            }
+            $cfgMac = Get-ConfiguredAttackerMac
+            if ($a.Mac -and $cfgMac -and $cfgMac -ne "$($a.Mac)".Trim().ToLower()) {
+                Write-Host ("   Note: this laptop's mesh_config.h still says {0}. The run builds {1} into the victims anyway;" -f $cfgMac, $a.Mac) -ForegroundColor DarkGray
+                Write-Host "   'Fix mesh_config.h attacker MAC now' on the next screen brings the file in line." -ForegroundColor DarkGray
+            }
+        }
+        return $out
+    }
+
     $problemsOf = {
         # $Bad blocks the save outright (the load path or the run itself would
         # break); $Warn is printed but never blocks. A preset only ever holds
@@ -6876,7 +7005,16 @@ function Edit-PresetInteractive {
         if ($attack -eq 'blackhole') {
             $att = @($kids | Where-Object { $_.Kind -eq 'attacker' })
             if ($att.Count -gt 1) { $bad += ("{0} boards marked ATTACKER - a blackhole run needs at most one" -f $att.Count) }
-            elseif ($att.Count -eq 0) { $warn += 'no ATTACKER board here - fine if another member''s laptop supplies it (their preset holds it, not this one); otherwise give one board that role in Edit one node' }
+            elseif ($att.Count -eq 0) {
+                $warn += $(if ($topology -eq 'star') {
+                    'no ATTACKER recorded - in STAR the attacker is the hub every victim joins, so the run will ask for its MAC; set it with ''Attacker'' (a board here, or one on another laptop)'
+                } else {
+                    'no ATTACKER board here - fine if another member''s laptop supplies it (their preset holds it, not this one); otherwise set it with ''Attacker'''
+                })
+            }
+            elseif ($topology -eq 'star' -and -not $att[0].Mac) {
+                $warn += ("the attacker {0} has no MAC recorded - in STAR every victim joins ONLY that MAC; 'Verify MACs now' on the next screen records it" -f $att[0].Label)
+            }
             if (@($kids | Where-Object { $_.Kind -eq 'victim' }).Count -lt 1) { $warn += 'no victim child here - fine if this laptop only holds the attacker/root, otherwise add one' }
         }
         elseif ($attack -eq 'wormhole') {
@@ -6919,12 +7057,17 @@ function Edit-PresetInteractive {
         Write-Host ("  Editing  : {0}{1}" -f (Split-Path -Leaf $Path), $(if ($dirty) { '   << UNSAVED CHANGES' } else { '' })) -ForegroundColor Cyan
         Write-Host ("  Cell     : {0} / {1} / {2} / {3}   (repeat {4})" -f $attackWord, $topology, $location, $scenario, $repeat) -ForegroundColor DarkGray
         Write-Host ("  Expected : {0}" -f $(if ($expected -gt 0) { "root waits for $expected children (all laptops)" } else { 'not set - the run asks how many children' })) -ForegroundColor DarkGray
+        if ($attack -eq 'blackhole') {
+            $hub = if ($topology -eq 'star') { '   = STAR HUB: root -> attacker -> every victim' } else { '' }
+            $col = if (-not (& $attackerOf $draft) -and $topology -eq 'star') { 'Yellow' } else { 'DarkGray' }
+            Write-Host ("  Attacker : {0}{1}" -f (& $attackerText $draft), $hub) -ForegroundColor $col
+        }
         Write-Host ""
         $n = 0
         foreach ($b in @(& $reorder $draft)) {
             $n++
             $where = if (-not $b.Port) { 'other laptop' } elseif ($live -notcontains $b.Port) { "$($b.Port) NOT PRESENT" } else { $b.Port }
-            $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+            $role = Get-BoardColorRole $b
             $line = "   [{0}] {1,-8} {2,-30} {3,-16} {4}" -f $n, $b.Label, $b.Display, $where, $(if ($b.Mac) { $b.Mac } else { 'MAC not recorded' })
             Write-Host (Colorize-Role $line.TrimEnd() $role)
         }
@@ -6945,14 +7088,27 @@ function Edit-PresetInteractive {
             "Scenario          $scenario",
             "Repeat            $repeat",
             $(if ($expected -gt 0) { "Expected children $expected   (root waits for all of them, every laptop)" } else { 'Expected children not set   (the run asks each time)' }),
-            'Edit one node       (label / port / which is ROOT / attack role / scenario target)',
+            # Always present (fixed indices below); its text follows the attack.
+            $(switch ($attack) {
+                'blackhole' {
+                    if ($topology -eq 'star') { "Attacker          $(& $attackerText $draft)   = STAR HUB every victim joins" }
+                    else                      { "Attacker          $(& $attackerText $draft)" }
+                }
+                'wormhole' {
+                    $na = @($draft | Where-Object { $_.Kind -eq 'A' } | ForEach-Object { $_.Label })
+                    $nb = @($draft | Where-Object { $_.Kind -eq 'B' } | ForEach-Object { $_.Label })
+                    "Wormhole nodes    A = $(if ($na) { $na -join ',' } else { 'not set' }), B = $(if ($nb) { $nb -join ',' } else { 'not set' })"
+                }
+                default { 'Attack roles      none (baseline has no attacker)' }
+            }),
+            'Edit one node      (label / port / which is ROOT / attack role / scenario target)',
             'Replace a node with a different board (new port, forgets the old MAC, keeps its seat)',
             'Add a node',
             'Remove a node',
             $(if ($dirty) { 'SAVE these changes into the preset file' } else { 'Save (nothing changed yet)' }),
             $(if ($dirty) { 'Discard these changes and go back' } else { 'Back (nothing changed)' })
         )
-        $idx = Show-Menu -Title 'Edit this preset:' -Options $opts -DefaultIndex $(if ($dirty) { 10 } else { 11 })
+        $idx = Show-Menu -Title 'Edit this preset:' -Options $opts -DefaultIndex $(if ($dirty) { 11 } else { 12 })
 
         if ($idx -eq 0) {
             $aIdx = Show-Menu -Title 'Attack type:' -Options @(
@@ -6973,7 +7129,8 @@ function Edit-PresetInteractive {
                     elseif ($attack -eq 'wormhole')  { $b.Kind = 'control'; $b.Display = 'control (plain firmware)' }
                     else                             { $b.Kind = 'plain';   $b.Display = 'plain child' }
                 }
-                if ($attack -in @('blackhole', 'wormhole')) { Set-AttackSubRoles -Roster $draft -Attack $attack }
+                if ($attack -eq 'blackhole') { $draft = @(& $pickAttacker) }
+                elseif ($attack -eq 'wormhole') { Set-AttackSubRoles -Roster $draft -Attack $attack }
                 if ($attack -eq 'blackhole') {
                     Write-Host "   Cross-check mesh_config.h BLACKHOLE_ATTACKER_MAC against the new attacker before flashing - the details screen shows both." -ForegroundColor Yellow
                 }
@@ -6982,7 +7139,14 @@ function Edit-PresetInteractive {
         }
         elseif ($idx -eq 1) {
             $tIdx = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex ([array]::IndexOf($TOPOLOGIES, $topology)) -AllowBack
-            if ($tIdx -ge 0 -and $TOPOLOGIES[$tIdx] -ne $topology) { $topology = $TOPOLOGIES[$tIdx]; $dirty = $true }
+            if ($tIdx -ge 0 -and $TOPOLOGIES[$tIdx] -ne $topology) {
+                $topology = $TOPOLOGIES[$tIdx]
+                $dirty = $true
+                if ($topology -eq 'star' -and $attack -eq 'blackhole') {
+                    Write-Host ("   STAR + blackhole: the attacker becomes the HUB every victim joins - now {0}." -f (& $attackerText $draft)) -ForegroundColor Cyan
+                    Write-Host "   Check it with 'Attacker' below before saving." -ForegroundColor Cyan
+                }
+            }
         }
         elseif ($idx -eq 2) {
             $lIdx = Show-Menu -Title 'Location (where the run physically happens):' -Options $LOCATIONS -DefaultIndex ([array]::IndexOf($LOCATIONS, $location)) -AllowBack
@@ -7036,6 +7200,25 @@ function Edit-PresetInteractive {
             }
         }
         elseif ($idx -eq 6) {
+            # Snapshot of every seat, so backing out (or re-picking the same
+            # board) does not mark the preset dirty.
+            $seats = { (@($draft) | ForEach-Object { "$($_.Label)|$($_.Kind)|$($_.Mac)" }) -join ';' }
+            $before = & $seats
+            if ($attack -eq 'blackhole') {
+                if (@($draft | Where-Object { $_.Role -ne 'root' }).Count -eq 0) {
+                    Write-Host "   No child boards in this preset - only 'on ANOTHER laptop' can be picked (or Add a node first)." -ForegroundColor Yellow
+                }
+                $draft = @(& $pickAttacker)
+            }
+            elseif ($attack -eq 'wormhole') {
+                Set-AttackSubRoles -Roster $draft -Attack 'wormhole'
+            }
+            else {
+                Write-Host "   Baseline has no attacker. Change 'Attack' first to set one." -ForegroundColor Yellow
+            }
+            if ((& $seats) -ne $before) { $dirty = $true }
+        }
+        elseif ($idx -eq 7) {
             # $rows holds the SAME objects as $draft (reorder returns references),
             # so editing a row edits the draft.
             $rows = @(& $reorder $draft)
@@ -7050,7 +7233,7 @@ function Edit-PresetInteractive {
                 $dirty = $true
             }
         }
-        elseif ($idx -eq 7) {
+        elseif ($idx -eq 8) {
             # Swaps which PHYSICAL board fills an EXISTING seat - a dead/borrowed
             # board takes over an attacker, a scenario target, the root, whatever
             # this node already was - without re-answering the attack sub-role or
@@ -7086,17 +7269,17 @@ function Edit-PresetInteractive {
                 }
             }
         }
-        elseif ($idx -eq 8) {
+        elseif ($idx -eq 9) {
             $before = @($draft).Count
             $draft = @(Add-BoardInteractive -Roster $draft -Attack $attack -Ports $portList)
             if (@($draft).Count -ne $before) { $dirty = $true }
         }
-        elseif ($idx -eq 9) {
+        elseif ($idx -eq 10) {
             $before = @($draft).Count
             $draft = @(Remove-BoardInteractive -Roster $draft -Attack $attack -Scenario $scenario)
             if (@($draft).Count -ne $before) { $dirty = $true }
         }
-        elseif ($idx -eq 10) {
+        elseif ($idx -eq 11) {
             $checked = & $problemsOf
             if ($checked.Bad.Count -gt 0) {
                 Write-Host ""
@@ -7153,7 +7336,7 @@ function Edit-PresetInteractive {
             }
             return [pscustomobject]@{ Saved = $true; Path = $savePath }
         }
-        elseif ($idx -eq 11) {
+        elseif ($idx -eq 12) {
             if ($dirty) {
                 $ans = Read-Line "`n  Discard the changes above? The file stays as it was. [y/N] > "
                 if ($ans -ne 'y' -and $ans -ne 'Y') { continue }
@@ -7208,7 +7391,7 @@ function Show-PresetDetails {
         if ($live -notcontains $b.Port) { $miss = '  << port NOT PRESENT' }
         if ($b.ScenarioTarget) { $miss = "  << $cfgScenario TARGET$miss" }
         $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-19}{5}" -f $step, $b.Label, $b.Display, $b.Port, $mac, $miss).TrimEnd()
-        $role = if ($b.Role -eq 'root') { 'root' } elseif ($b.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+        $role = Get-BoardColorRole $b
         if ($miss) { Write-Host $line -ForegroundColor Yellow } else { Write-Host (Colorize-Role $line $role) }
     }
 
@@ -7540,14 +7723,15 @@ if (-not $Preset) {
                     $head = "{0,-44} {1} board(s), {2}" -f
                         $_.Name, @($c.boards).Count, $when.ToString('MMM dd hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)
                     $boardLines = @((ConvertTo-Roster -Cfg $c).Roster | ForEach-Object {
-                        $role = if ($_.Role -eq 'root') { 'root' } elseif ($_.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+                        $role = Get-BoardColorRole $_
+                        $roleText = switch ($_.Kind) { 'A' { 'Node A' } 'B' { 'Node B' } default { $role } }
                         $mac  = if ($_.Mac) { $_.Mac } else { 'MAC not recorded' }
                         $nick = '-'
                         if ($_.Mac -and $nickByMac.Count -gt 0) {
                             $short = Format-ShortMac $_.Mac
                             if ($nickByMac.ContainsKey($short)) { $nick = $nickByMac[$short] }
                         }
-                        "      {0} {1,-17}  {2}" -f (Colorize-Role $role.PadRight(8) $role), $mac, $nick
+                        "      {0} {1,-17}  {2}" -f (Colorize-Role $roleText.PadRight(8) $role), $mac, $nick
                     })
                     (@($head) + $boardLines) -join "`n"
                 }
@@ -9375,7 +9559,7 @@ $buildAndPrintPlan = {
         $mac = Resolve-BoardMac -Board $p.Board -SkipLiveRead:($SkipMacCheck -or $DryRun)
         $macDisp = if ($mac) { $mac } else { '(unread)' }
         $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-17} {5}" -f $step, $p.Board.Label, $p.Board.Display, $p.Board.Port, $macDisp, $tail)
-        $role = if ($p.Board.Role -eq 'root') { 'root' } elseif ($p.Board.Kind -eq 'attacker') { 'attacker' } else { 'child' }
+        $role = Get-BoardColorRole $p.Board
         Write-Host (Colorize-Role $line $role)
     }
     Write-Host ""

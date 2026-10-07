@@ -49,7 +49,10 @@ except ImportError:
     sys.exit("ERROR: pyserial missing. Run this from the ESP-IDF PowerShell, "
              "or: pip install pyserial")
 
-BAUD = 115200          # must match the firmware console baud (mesh_config/sdkconfig)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import serial_guard  # noqa: E402
+
+BAUD = 115200         # must match the firmware console baud (mesh_config/sdkconfig)
 EXPECTED_FLASH = "4MB"  # partitions.csv needs the 4MB layout
 
 # Board names are NOT kept in this file any more (oct. 1, 2026 hardcode audit):
@@ -258,6 +261,8 @@ def check_runtime(port, wait_s):
         ser.open()
     except Exception as e:
         return False, f"could not open port at {BAUD} ({e})", ""
+    # A full driver buffer is the silabser.sys BSOD trigger (serial_guard.py).
+    serial_guard.grow_rx_queue(ser)
 
     # Give the passive listen everything except a small fixed probe budget,
     # rather than a 60/40 split. The interesting late lines — the SPIFFS mount

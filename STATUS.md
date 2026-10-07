@@ -1,21 +1,22 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 5, 2026 (Basti): verification #4 (blackhole/linear/DLSU_Library/stationary r1) added; oct. 4 wizard/tooling session still NOT committed (Basti pushes it himself, stage list below). Previous STATUS (oct. 3, Angelo) is at the bottom of ARCHIVE.md. Facts + reasons: top 5 entries of MEMORY.md.
+**Updated:** oct. 7, 2026 (Basti): verification #5 (blackhole/star/DLSU_Library/stationary r1) + its fixes + NEW Edit preset 'Attacker' row; oct. 4–7 wizard/tooling work still NOT committed (Basti pushes it himself, stage list below). Previous STATUS (oct. 3, Angelo) is at the bottom of ARCHIVE.md. Facts + reasons: top entries of MEMORY.md.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs + `eda_output/` git-ignored. **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh** (wizard still reads `member_boards.json`; ask Claude to sync).
 
 ## Where things stand
-- **BSOD 0xB8 root-caused:** a bug in the CP210x driver `silabser.sys`, proven from a full crash dump. Trigger: a USB read cut short (Ctrl+C mid-export, or a board reset/unplugged mid-read). See MEMORY oct. 4.
+- **BSOD 0xB8 trigger found (oct. 7):** `silabser.sys` crashes when its receive buffer fills (a board port open but not read). Tools now grow that buffer to 1 MiB and never sleep with a port open (`tools/serial_guard.py`). UNCOMMITTED, not hardware-tested. See MEMORY oct. 7.
 - **NEW wizard option:** MAINTENANCE > Wormhole UART tunnel test (quick 10 s / 2-min soak), with `uart_link_test` rewritten. It has now RUN on real boards: both directions PASS. Q/Enter stops a listen early (the key press itself is untested). Panel answer: `docs/panel-answers/2026-10-04_WORMHOLE-TESTING-EXPLAINER.md`.
 - **Presets renamed** to attack-topology-location-scenario on Basti's laptop (24 files, all members). `Bas/blackhole-linear-g402-jitter.json` was named "star" but holds linear.
 - **Children skip the export INSTANTLY by default** after Ctrl+] (`run.ps1 -SkipExportNow`; the wizard asks: [1] skip instantly / [2] export over USB). Root unchanged.
+- **NEW Edit preset row [7] 'Attacker'** (blackhole; wormhole shows A/B): picks the attacker directly, or records one on ANOTHER laptop by MAC. For STAR it says HUB everywhere (header, row, picker, layout line) and warns at save if the hub has no MAC. 14 scripted cases pass; not yet used live.
 - **Node labels:** node1 = root; Add-node fills gaps from node2. Add-node's attacker question was reworded. **Edit preset > Expected children** saves how many children the root waits for (default at the run's "other laptops" question).
-- **NEW capture verified (#4, oct. 5): blackhole/linear/DLSU_Library/stationary r1 is USABLE.** Attack CONFIRMED. PDR `-inf` = baseline 1,805/1,805 delivered (σ = 0); quote it as "z undefined", not −∞. Victims 704B/FE90 0/180. Gate 2 Topology FAIL is a false alarm (a parent change during the root-reflash boot segment). Exports are staged, not committed.
+- **NEW capture verified (#5, oct. 7): blackhole/star/DLSU_Library/stationary r1 is USABLE.** CONFIRMED; hub attacker `20500DE70C80`, all 6 leaves 1.000 → 0.000. Topology FAIL = root reflash boot segment (as #4). FIXED same day: Bas's star preset now names node4 `...0c:80` as attacker (was `...1c:38`); junk 1-row `exports/blackhole/tree/DLSU_Library/` file deleted. (#4 linear/DLSU r1: USABLE, PDR "z undefined", not −∞.)
 
 ## Uncommitted on Basti's laptop
-- Code + docs: `ESP32-Environment/run.ps1`, `ESP32-Environment/run_wizard.ps1`, `ESP32-Environment/uart_link_test/` (README + main/uart_link_test.c), `Setups/WORMHOLE-SETUP.md`, `ESP32-Environment/docs/dataset-verification.md` (#4), `verification/2026-10-05_pdr-z-minus-inf.md`, `docs/panel-answers/` (new explainer + REVIEWER-QUESTIONS §10), `FILEMAP.md`, `STATUS.md`, `MEMORY.md`, `ARCHIVE.md`.
+- Code + docs: `ESP32-Environment/run.ps1`, `ESP32-Environment/run_wizard.ps1`, `ESP32-Environment/tools/campaign_plan.json` (oct. 7: DLSU star/blackhole slot 1 powercycle → stationary), `ESP32-Environment/uart_link_test/` (README + main/uart_link_test.c), `Setups/WORMHOLE-SETUP.md`, `ESP32-Environment/docs/dataset-verification.md` (#4, #5), `verification/2026-10-05_pdr-z-minus-inf.md`, `docs/panel-answers/` (new explainer + REVIEWER-QUESTIONS §10), `FILEMAP.md`, `STATUS.md`, `MEMORY.md`, `ARCHIVE.md`.
 - Presets (renames): via DATA SYNC, not a code commit. `push_data.py push --area presets` sends Bas's new names; `delete --area presets` removes the old names on GitHub.
 - Not from this session, user's call: `mesh_config.h`, `root_main.c`, `docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md`, `skills/verify.zip`.
 
@@ -35,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ Before any pull: `git diff --cached --stat` - a merge refuses ANY staged change on a path it touches.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 7 (Basti) — #5 star/DLSU r1 verified USABLE; star preset attacker fixed, stray tree file deleted; Edit preset 'Attacker' row added; campaign plan: star/DLSU stationary replaces powercycle (checklist 3 → 4/144), other off-plan cells left as-is by user call. Wormhole Node A/B rows now pink like the attacker.
 - oct. 5 (Basti) — blackhole/linear/DLSU_Library/stationary r1 verified (#4): USABLE; PDR -inf explained from raw data; re-trim is a no-op.
-- oct. 4 (Basti) — BSOD root-caused (silabser.sys); UART tunnel test (+ Q/Enter early stop); MACs in target/attacker/Node A-B pickers; wormhole panel explainer; preset rename; child skip-export; node1 = root labels.

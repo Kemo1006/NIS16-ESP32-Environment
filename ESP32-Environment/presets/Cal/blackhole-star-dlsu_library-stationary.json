@@ -1,15 +1,15 @@
 ﻿{
     "attack":  "blackhole",
-    "topology":  "tree",
+    "topology":  "star",
     "location":  "DLSU_Library",
     "scenario":  "stationary",
     "owner":  "Cal",
     "repeat":  1,
     "expectedChildren":  7,
-    "savedAt":  "2026-10-07 09:07",
+    "savedAt":  "2026-10-07 10:00",
     "boards":  [
                    {
-                       "Label":  "ROOT",
+                       "Label":  "node1",
                        "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",

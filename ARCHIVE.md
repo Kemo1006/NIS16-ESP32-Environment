@@ -2501,3 +2501,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS.md (oct. 5, 2026, Basti)
 - oct. 3 (Angelo) — tree/G402/burst r1 verified (#3) + pushed; oct. 2 session pushed.
+
+## Rolled from STATUS.md (oct. 7, 2026, Basti)
+- oct. 4 (Basti) — BSOD root-caused (silabser.sys); UART tunnel test (+ Q/Enter early stop); MACs in target/attacker/Node A-B pickers; wormhole panel explainer; preset rename; child skip-export; node1 = root labels.

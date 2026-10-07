@@ -72,6 +72,7 @@ _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 import name_stamp  # noqa: E402
+import serial_guard  # noqa: E402
 
 try:
     import serial  # pyserial
@@ -151,6 +152,9 @@ def _open_port(port: str) -> serial.Serial:
     ser.dtr = False
     ser.rts = False
     ser.open()
+    # Before anything else: a full driver buffer is the silabser.sys BSOD
+    # trigger (see serial_guard.py). Every opener in tools/ does this.
+    serial_guard.grow_rx_queue(ser)
     _push_host_time(ser)
     return ser
 
@@ -207,7 +211,8 @@ def _push_host_time(ser: serial.Serial) -> None:
 
 def _drain(ser: serial.Serial) -> None:
     """Discard any bytes already sitting in the input buffer."""
-    time.sleep(0.2)
+    # Read-and-discard, never a bare sleep with the port open (serial_guard.py).
+    serial_guard.discard_for(ser, 0.2)
     ser.reset_input_buffer()
 
 
@@ -499,7 +504,7 @@ def _capture_with_retries(ser: serial.Serial, command: str):
         if attempt > 1:
             # Give the board a moment to settle (a just-closed monitor may have
             # reset it) and clear any stale bytes before re-issuing.
-            time.sleep(RETRY_SETTLE_S)
+            serial_guard.discard_for(ser, RETRY_SETTLE_S)
             _drain(ser)
             print(f"   retry {attempt}/{EXPORT_ATTEMPTS} "
                   f"(best so far: {len(best_rows)} rows) ...")
@@ -1298,7 +1303,7 @@ def main() -> int:
         if args.delete and not any_failed:
             print("-> DELETE_LOGS ...")
             _send_command(ser, "DELETE_LOGS")
-            time.sleep(1.0)
+            serial_guard.discard_for(ser, 1.0)
             print("   delete command sent.")
 
         # --delete implies --archive-sd: a good SPIFFS download is the same
