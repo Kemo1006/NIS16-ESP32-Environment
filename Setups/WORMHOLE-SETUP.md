@@ -23,6 +23,24 @@ see `child_node/main/wormhole_victim.c` and the `WORMHOLE_UART_*` settings in
 **Minimum: 3 boards**, plus a **UART jumper cable between Node A and Node B**
 (3 wires — see wiring section below).
 
+> **AUTO-SWITCH (oct. 7, 2026): A and B are now decided by the boards, not the
+> flash.** Both ends send a HELLO over the UART cable every second. Before Phase 0
+> the **deeper** board becomes **B (entry)** and the one **closer to the root**
+> becomes **A (exit)**, so the tunnel is always a shortcut; the role **locks at
+> Phase 0** and never changes mid-run. `WORMHOLE_END` is now only the **fallback**
+> used when no HELLO arrives (broken cable, or a peer on older firmware) — so both
+> boards must run the auto-switch firmware. Error detection:
+> - **Each board:** logs `LOCKED as NODE A/B` (or `from the BUILD FALLBACK` = cable
+>   problem), warns if the mesh moves after the lock so the tunnel stops being a
+>   shortcut, warns on a noisy cable, and prints an `AUTO-SWITCH: OK` /
+>   `AUTO-SWITCH PROBLEMS` summary at the end of the run.
+> - **Root dashboard:** a `WORMHOLE TUNNEL` section (both ends, B's normal path vs
+>   the tunnel path, hops skipped) and red errors for `REVERSED` / `AT THE SAME DEPTH`
+>   ends, a missing end, or two boards claiming the same end.
+> - **Verifier:** `tools/verify_attack.py --attack wormhole` prints a
+>   `WORMHOLE SETUP CHECK` (one A + one B, no mid-run role change, A shallower
+>   than B in the attack windows).
+
 ## Timing (from `mesh_config.h` / `root_main.c` — same schedule as blackhole)
 
 | Phase | Duration | Ground-truth label | What's happening |
