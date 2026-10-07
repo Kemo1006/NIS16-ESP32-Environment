@@ -5,6 +5,7 @@
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored. Analysis tables + `eda_output/` are force-added (`git add -f`). Board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh
+- ⚠️ **Basti, before your next `git pull`:** the 4 duplicate files in `exports/baseline/tree/G402/stationary/` were deleted on GitHub (MEMORY oct. 7 late night). Run `git restore --staged --worktree -- ESP32-Environment/datasets/exports/baseline/tree ESP32-Environment/datasets/exports/wormhole/tree/G402/stationary`, then `git pull`. That pull also brings the full blackhole/linear/DLSU_Library/jitter r1 (root + 7 children; not analysed yet).
 
 ## Where things stand
 - **Campaign (D-18, D-19):** 3 sites **G402 / DLSU_Library / Yuchengco** (home dropped, "Goks" renamed). 96 attack + **12 benign** (one per location x topology, 4 different scenarios per location, 2 per scenario) = **108 runs**, 11 done, ~31 h left. Plan: `tools/campaign_plan.json` ("cells" + "benign"). Views: wizard Campaign progress, `inventory_cells.py --board / --sessions`. Dashboard: https://claude.ai/artifact/634D6i1UrhLXTNsSuEWMLV (rebuild `python tools/build_campaign_board.py`, then republish).
@@ -34,5 +35,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `git diff --cached --stat` before every commit/pull - the wizard stages files on its own.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 7 night (Angelo) — highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
+- oct. 7 night (Angelo) — deleted bogus benign tree/G402 copies (cell now [ ]); pushed linear/DLSU/jitter root; highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
 - oct. 7 (Basti) — #8 star/DLSU verified USABLE; Edit preset Attacker row; pink A/B; campaign plan swap; unstuck the pull + pushed.
