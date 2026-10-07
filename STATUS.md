@@ -13,7 +13,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **BSOD 0xB8 root-caused:** CP210x driver `silabser.sys`, triggered by a USB read cut short (MEMORY oct. 4).
 - **Wizard (Basti, oct. 4):** UART tunnel test (both directions PASS on boards), MACs in pickers, children skip export by default after Ctrl+], node1 = root, presets store "Expected children".
 - **Presets renamed** to `attack-topology-location-scenario.json` (all members, on GitHub). `Bas/blackhole-linear-g402-jitter.json` was named "star" but holds linear.
-- **Angelo's old local preset edits** (port tweaks to pre-rename files) are in `git stash` "Angelo local preset edits (pre-rename, oct 6)" — re-apply by hand to the new names if still wanted.
+- **Presets on GitHub are current** (oct. 7, `2a12ac0`): Angelo's newer oct. 1-2 saves moved onto the new names; old stash used up. Still local: `mesh_config.h` attacker line (per-run pick), sdkconfig x2, dependencies.lock.
 - EDA PCA fix + sniffer stop confirmation pushed (`4def0f8`). Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`).
 
 ## Next step
