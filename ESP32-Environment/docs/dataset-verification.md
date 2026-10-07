@@ -16,6 +16,41 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #6 — Oct 7, 2026 · 1:28 PM — wormhole auto-switch code + wormhole · tree · G402 · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `732b6ed` (+ uncommitted test refactor)
+> **Request:** "verify if code works and doesnt break and then push"
+> **Scope:** the oct. 7 wormhole changes (auto-switch firmware, root printout, `exposure.py`,
+> verifier) — and, as the end-to-end test, the one existing wormhole capture.
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | G402 | stationary | r1 | Oct 2 (pushed `bfa6386`) | 8 telem |
+
+| Check | Result | Detail |
+|---|---|---|
+| Auto-switch logic, real firmware file on a PC (`tools/test_wormhole_autoswitch/run_test.sh`) | ✅ 35/35 | two simulated boards over a simulated cable: wrong-way build, same depth, cable unplugged, reboot mid-run, both lock one end, noisy cable, tunnel vs HELLO frames, one-way cable |
+| All firmware variants (`build_all_variants.ps1` list, IDF 5.5.4, `-Werror`) | ✅ 15/15 | root/child/blackhole/wormhole incl. burst, jitter, highload; every app 25 % free (first pass hit "No space left on device" on C: — not code; rebuilt on A:) |
+| Python tests (`test_segments`, `test_topology_graph`, `test_name_stamp`) | ✅ pass | |
+| Verifier on every live blackhole cell, old vs new code | ✅ 0 differences | full output diffed line by line, 11 cells |
+| Exposure on every live blackhole table | ✅ 0 rows changed | |
+| Pipeline end-to-end on the wormhole capture (scratch copy, repo untouched) | ✅ runs | exposure: 2 `attacker` + 5 `not_tunnelled` + root |
+| **Wormhole setup check on that capture** | ⚠️ **SAME DEPTH** | both ends at hop 1 for the whole attack |
+
+### Finding: the existing wormhole capture had no shortcut
+- Raw telemetry: during the attack (phase 2, 1,806 rows each) **Node B `20500DE70C80` and Node A
+  `20500DE71C38` were both layer 2, both with the root (`B0:CB:D8:F3:32:19`) as parent.**
+- So the tunnelled copy entered the mesh at the same depth as B's normal copy: duplicates are real
+  (`WORMHOLE CONFIRMED`, 2/2 primaries), but **no latency advantage can exist** — the shortcut that
+  defines a wormhole was not there. This is exactly the case the auto-switch now prevents or flags.
+- Analysis tables for this cell are **not** in the repo (never built); the scratch run changed nothing.
+
+**Verdict: code ✅ verified (not yet on hardware) · wormhole/tree/G402/stationary r1 ⚠️ USABLE FOR
+DUPLICATION ONLY — recapture with the auto-switch firmware** (THESIS-UPDATE-CHECKLIST C4 / D3).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #5 — Oct 4, 2026 (merged Oct 6) — why `B4BFE932FE90` looked like it had the wrong parent (follow-up to #3)
 
 > _Numbered #5 because Bas's DLSU_Library block (#4, below) reached GitHub first. Done on Oct 4._

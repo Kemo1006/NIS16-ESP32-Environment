@@ -15,7 +15,8 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Presets renamed** to `attack-topology-location-scenario.json` (all members, on GitHub). `Bas/blackhole-linear-g402-jitter.json` was named "star" but holds linear.
 - **Presets on GitHub are current** (oct. 7, `2a12ac0`): Angelo's newer oct. 1-2 saves moved onto the new names; old stash used up. Still local: `mesh_config.h` attacker line (per-run pick), sdkconfig x2, dependencies.lock.
 - EDA PCA fix + sniffer stop confirmation pushed (`4def0f8`). Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`).
-- **Wormhole AUTO-SWITCH + error detection pushed (oct. 7):** boards pick A/B by depth over the UART HELLO, lock at Phase 0; root shows a WORMHOLE TUNNEL section; verifier prints a WORMHOLE SETUP CHECK. Built clean, **NOT yet run on hardware** - reflash root + both wormhole boards, run the UART tunnel test, then watch for `LOCKED as NODE`. Thesis deviation note = user's call.
+- **Wormhole AUTO-SWITCH (oct. 7):** boards pick A/B by depth, lock at Phase 0; root WORMHOLE TUNNEL section; verifier WORMHOLE SETUP CHECK. Verified: host test 35/35 (`tools/test_wormhole_autoswitch/run_test.sh`), all firmware variants build, verifier 0 diffs on live cells. **Not yet on hardware.** Existing wormhole tree/G402 r1 had NO shortcut (verification #6) -> recapture.
+- **Thesis to-do list:** `ESP32-Environment/docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md` (+ D-17). Add a row for anything that changes the paper.
 
 ## Next step
 1. Everyone `git pull` + REFLASH (same commit on every laptop); reflash FE90 first.

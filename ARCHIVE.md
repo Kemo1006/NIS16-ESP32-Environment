@@ -2502,3 +2502,10 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Rolled from STATUS.md (oct. 5, 2026, Basti)
 - oct. 3 (Angelo) — tree/G402/burst r1 verified (#3) + pushed; oct. 2 session pushed.
 - oct. 4 (Basti) — BSOD root-caused (silabser.sys); UART tunnel test (+ Q/Enter early stop); MACs in target/attacker/Node A-B pickers; wormhole panel explainer; preset rename; child skip-export; node1 = root labels.
+
+## Rolled from MEMORY.md oct. 7, 2026 (cap)
+- sep. 26, 2026 (late) — **Wizard WIRESHARK category** (sniffer entries 21-26, `check_pcap.py --map-json`, per-view filters, `WIRESHARK_CONFIG_DIR` not `-C`). Full text in ARCHIVE.md.
+- sep. 26, 2026 (eve) — **Root post-export choice** (user request): wizard asks, when the root is on this laptop,
+  [1] trim + M6-M8 (default) / [2] trim only / [3] export only -> run.ps1 `-Analyze` / NEW `-Trim` / `-Export`. run.ps1
+  `-Analyze` now SKIPS M6-M8 (trim still runs) when the folder has no child `*_telem.csv` - SD workflow exported the root
+  first and overwrote a full analysis with a root-only one (twice on sep. 26). Parse-checked + guard filter tested; not run on boards.

@@ -416,21 +416,26 @@ static void send_hello(int my_layer)
     uart_write_bytes(WORMHOLE_UART_PORT, (const char *)&h, sizeof(h));
 }
 
-static void role_task(void *arg)
-{
-    (void)arg;
-    const int64_t started_us = esp_timer_get_time();
-    int64_t next_hello_us = 0;
-    bool conflict_fixed = false, lost_warned = false, shortcut_warned = false;
-    uint32_t next_noise_warn = 64;
+/* role_task's state, file-level so one decision round (role_step) can also be
+ * driven directly by the host-side test (tools/test_wormhole_autoswitch/). */
+static int64_t  s_rt_started_us      = 0;
+static int64_t  s_rt_next_hello_us   = 0;
+static bool     s_rt_conflict_fixed  = false;
+static bool     s_rt_lost_warned     = false;
+static bool     s_rt_shortcut_warned = false;
+static uint32_t s_rt_next_noise_warn = 64;
 
-    while (!phase_listener_is_terminated()) {
+/* One decision round: HELLO when due, provisional role / lock, conflict and
+ * shortcut checks. role_task runs it every 100 ms. */
+static void role_step(void)
+{
+        int64_t started_us = s_rt_started_us;
         int my_layer = mesh_setup_get_layer();
         int64_t now = esp_timer_get_time();
 
-        if (now >= next_hello_us) {
+        if (now >= s_rt_next_hello_us) {
             send_hello(my_layer);
-            next_hello_us = now + HELLO_PERIOD_MS * 1000LL;
+            s_rt_next_hello_us = now + HELLO_PERIOD_MS * 1000LL;
         }
 
         uint8_t phase = phase_listener_get_phase_id();
@@ -455,7 +460,7 @@ static void role_task(void *arg)
                 }
                 send_hello(my_layer);           /* tell the peer straight away */
             }
-        } else if (!conflict_fixed && peer_fresh() && s_peer_locked
+        } else if (!s_rt_conflict_fixed && peer_fresh() && s_peer_locked
                    && s_peer_role == s_role) {
             /* Both locked the same end. Exactly one must move: the higher MAC. */
             s_role_conflict = true;
@@ -466,7 +471,7 @@ static void role_task(void *arg)
                 apply_role(other, "conflict with peer");
                 send_hello(my_layer);
             }
-            conflict_fixed = true;
+            s_rt_conflict_fixed = true;
         }
 
         /* SHORTCUT CHECK after the lock: the mesh may re-parent mid-run. The
@@ -478,36 +483,43 @@ static void role_task(void *arg)
             int a_layer = is_b() ? s_peer_layer : my_layer;
             int b_layer = is_b() ? my_layer     : s_peer_layer;
             bool lost = (a_layer >= b_layer);
-            if (lost && !shortcut_warned) {
+            if (lost && !s_rt_shortcut_warned) {
                 s_shortcut_lost = true;
                 ESP_LOGE(TAG, "!! TUNNEL IS NO LONGER A SHORTCUT: A (exit) now at L%d, B (entry)"
                               " at L%d (phase %u). The mesh moved after the lock; roles stay"
                               " fixed. Treat this run's attack windows as SUSPECT.",
                          a_layer, b_layer, (unsigned)phase);
-                shortcut_warned = true;
-            } else if (!lost && shortcut_warned) {
+                s_rt_shortcut_warned = true;
+            } else if (!lost && s_rt_shortcut_warned) {
                 ESP_LOGW(TAG, "Tunnel is a shortcut again: A at L%d, B at L%d.", a_layer, b_layer);
-                shortcut_warned = false;
+                s_rt_shortcut_warned = false;
             }
         }
 
         /* NOISY CABLE: every CRC/magic miss costs a one-byte resync. A handful
          * at boot is normal (the two boards start mid-frame); a steady stream
          * means a loose jumper or missing common ground. */
-        if (s_uart_bad_windows >= next_noise_warn) {
+        if (s_uart_bad_windows >= s_rt_next_noise_warn) {
             ESP_LOGW(TAG, "UART link noisy: %lu bad frame windows so far - check the jumpers"
                           " and the common GND.", (unsigned long)s_uart_bad_windows);
-            next_noise_warn *= 4;
+            s_rt_next_noise_warn *= 4;
         }
 
-        if (s_role_locked && s_peer_seen && !peer_fresh() && !lost_warned) {
+        if (s_role_locked && s_peer_seen && !peer_fresh() && !s_rt_lost_warned) {
             ESP_LOGW(TAG, "No HELLO from the peer for %d s - is the UART cable still"
                           " connected? (role stays locked)", PEER_FRESH_MS / 1000);
-            lost_warned = true;
+            s_rt_lost_warned = true;
         } else if (peer_fresh()) {
-            lost_warned = false;
+            s_rt_lost_warned = false;
         }
+}
 
+static void role_task(void *arg)
+{
+    (void)arg;
+    s_rt_started_us = esp_timer_get_time();
+    while (!phase_listener_is_terminated()) {
+        role_step();
         vTaskDelay(pdMS_TO_TICKS(100));
     }
     vTaskDelete(NULL);
@@ -618,13 +630,59 @@ static void tunnel_forwarder_task(void *arg)
  * the buffer forward ONE byte and retry, so the receiver re-locks onto the next
  * real frame instead of staying permanently desynced.
  */
+/* One reassembled window: both frame types share the size (see hello_pkt_t). */
+typedef union {
+    tunnel_pkt_t t;
+    hello_pkt_t  h;
+    uint8_t      raw[sizeof(tunnel_pkt_t)];
+} wh_frame_t;
+
+/* Validate one full window. true = a good HELLO or tunnel frame was consumed;
+ * false = not a frame here, the caller slides one byte and retries. */
+static bool rx_handle_window(const wh_frame_t *f)
+{
+    uint32_t crc = esp_rom_crc32_le(0, f->raw, offsetof(tunnel_pkt_t, crc));
+    bool tunnel_ok = (f->t.magic == WORMHOLE_TUNNEL_MAGIC) &&
+                     (f->t.probe.magic == PROBE_MAGIC) && (crc == f->t.crc);
+    bool hello_ok  = (f->h.magic == WORMHOLE_HELLO_MAGIC) && (crc == f->h.crc);
+
+    if (hello_ok) {
+        memcpy(s_peer_mac, f->h.mac, 6);
+        s_peer_layer   = f->h.layer;
+        s_peer_role    = f->h.role;
+        s_peer_locked  = (f->h.locked != 0);
+        s_peer_last_us = esp_timer_get_time();
+        if (!s_peer_seen) {
+            ESP_LOGI(TAG, "Peer heard over UART: " MACSTR "  layer %d  end %s%s",
+                     MAC2STR(f->h.mac), (int)f->h.layer,
+                     f->h.role == NODE_ROLE_WORMHOLE_B ? "B" : "A",
+                     f->h.locked ? " (locked)" : "");
+        }
+        s_peer_seen = true;
+        return true;
+    }
+    if (tunnel_ok) {
+        if (is_b()) {
+            /* Only possible while the two ends disagree (see role_step's
+             * conflict rule); re-injecting here would duplicate from the
+             * wrong place. */
+            ESP_LOGW(TAG, "Tunnel frame received while acting as Node B - ignored");
+        } else {
+            s_tunnel_received++;
+            probe_pkt_t inner = f->t.probe;
+            if (xQueueSend(s_reinject_queue, &inner, 0) != pdTRUE) {
+                ESP_LOGW(TAG, "Re-inject queue full - dropping tunnelled seq=%lu",
+                         (unsigned long)inner.seq_num);
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 static void uart_tunnel_rx_task(void *arg)
 {
-    union {
-        tunnel_pkt_t t;
-        hello_pkt_t  h;
-        uint8_t      raw[sizeof(tunnel_pkt_t)];
-    } f;
+    wh_frame_t f;
     size_t got = 0;
 
     ESP_LOGI(TAG, "UART tunnel receiver running.");
@@ -641,39 +699,7 @@ static void uart_tunnel_rx_task(void *arg)
             continue;   /* wait for the rest of this frame */
         }
 
-        uint32_t crc = esp_rom_crc32_le(0, f.raw, offsetof(tunnel_pkt_t, crc));
-        bool tunnel_ok = (f.t.magic == WORMHOLE_TUNNEL_MAGIC) &&
-                         (f.t.probe.magic == PROBE_MAGIC) && (crc == f.t.crc);
-        bool hello_ok  = (f.h.magic == WORMHOLE_HELLO_MAGIC) && (crc == f.h.crc);
-
-        if (hello_ok) {
-            memcpy(s_peer_mac, f.h.mac, 6);
-            s_peer_layer   = f.h.layer;
-            s_peer_role    = f.h.role;
-            s_peer_locked  = (f.h.locked != 0);
-            s_peer_last_us = esp_timer_get_time();
-            if (!s_peer_seen) {
-                ESP_LOGI(TAG, "Peer heard over UART: " MACSTR "  layer %d  end %s%s",
-                         MAC2STR(f.h.mac), (int)f.h.layer,
-                         f.h.role == NODE_ROLE_WORMHOLE_B ? "B" : "A",
-                         f.h.locked ? " (locked)" : "");
-            }
-            s_peer_seen = true;
-            got = 0;
-        } else if (tunnel_ok) {
-            if (is_b()) {
-                /* Only possible while the two ends disagree (see role_task's
-                 * conflict rule); re-injecting here would duplicate from the
-                 * wrong place. */
-                ESP_LOGW(TAG, "Tunnel frame received while acting as Node B - ignored");
-            } else {
-                s_tunnel_received++;
-                probe_pkt_t inner = f.t.probe;
-                if (xQueueSend(s_reinject_queue, &inner, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Re-inject queue full — dropping tunnelled seq=%lu",
-                             (unsigned long)inner.seq_num);
-                }
-            }
+        if (rx_handle_window(&f)) {
             got = 0;    /* consumed a good frame — start the next one fresh */
         } else {
             /* Bad window: drop the oldest byte and slide the rest down, so the
