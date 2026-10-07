@@ -2509,3 +2509,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
   [1] trim + M6-M8 (default) / [2] trim only / [3] export only -> run.ps1 `-Analyze` / NEW `-Trim` / `-Export`. run.ps1
   `-Analyze` now SKIPS M6-M8 (trim still runs) when the folder has no child `*_telem.csv` - SD workflow exported the root
   first and overwrote a full analysis with a root-only one (twice on sep. 26). Parse-checked + guard filter tested; not run on boards.
+- oct. 5 (Basti) — DLSU_Library/stationary r1 verified (#4): USABLE; PDR -inf explained.

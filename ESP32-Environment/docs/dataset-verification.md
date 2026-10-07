@@ -16,6 +16,40 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #7 — Oct 7, 2026 · 2:36 PM — blackhole · partial_mesh · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5134649`
+> **Request:** "verify if this output is correct and not hardcoded" (the wizard's `verify_attack.py` output)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | partial_mesh | DLSU_Library | stationary | r1 | Oct 7, 2:07–2:26 PM | 9 (8 telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ⚠️ 4 PASS / 4 WARN / 1 FAIL — all harmless | FAIL = 1 leftover root row from before its last reboot (phase 255, excluded); 4 WARN = filenames say `partial_none` (named on the importing laptop) — the rows inside are correct |
+| Topology (`verify_topology.py`) | ✅ partial, 4 layers | attacker `20500DE71C38` at L2 with exactly 2 nodes under it: `20500DE70C80`, `B4BFE932FE90` |
+| Root arrivals, recomputed by hand | ✅ | those 2 delivered **0** in the attack, ~1/s otherwise; the other 4 ~1/s throughout; 4/6 = **0.667** = the pooled PDR |
+| Attacker counters, recomputed by hand | ✅ | received/forwarded: baseline 600/600, attack **360/0** (360 dropped), cooldown 240/240 → FR 1 → 0 → 1. 600 = 2 children × 300 s, 360 = 2 × 180 s |
+| Analysis table vs exports | ✅ | built from exactly the 8 exported telem files; `attack` = blackhole on every node (the `none` filenames did not leak in) |
+| Verifier output | ✅ correct, not hardcoded | every row traces to the raw data above |
+| `B4BFE932FE90` firmware | ✅ in sync this run | no out-of-sync FAIL (cf. #3/#5) — it is a real victim here (under the attacker) |
+
+### The two odd-looking numbers
+- **`-inf` (FR, PDR, NeighbourFR) and `+inf` (IngressEgressDelta):** baseline σ = 0 — every baseline point was
+  exactly 1.000 (or 0.000). By design (`verify_attack.py:305`); report as **"z undefined (σ = 0)"**.
+- **ConsistencyScore z = 1,178,647:** not real either. `features.py` computes
+  `ForwardingRatio = forwarded / (received + EPSILON)` with `EPSILON = 1e-6` (divide-by-zero guard), so a
+  window where the attacker forwarded all of its 1, 2 or 3 probes scores 0.999999… and ConsistencyScore
+  = |FR − 1| = **1e-6 ÷ 1, 2 or 3** — exactly the only three baseline values found (3.3e-7, 5e-7, 1e-6).
+  That float residue gives σ ≈ 3e-7 instead of 0, so 0.335 / 3e-7 ≈ 1.2 million. Same situation as the
+  `-inf` rows: **σ is effectively 0 → report "z undefined"**. The PASS is right; the number is meaningless.
+
+**Verdict: ✅ USABLE** — BLACKHOLE CONFIRMED is genuine; victims `20500DE70C80`, `B4BFE932FE90` (0/180 each).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #6 — Oct 7, 2026 · 1:28 PM — wormhole auto-switch code + wormhole · tree · G402 · stationary
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `732b6ed` (+ uncommitted test refactor)

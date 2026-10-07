@@ -47,6 +47,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | B1 | ⬜ | Every results table with z-scores | A z of `-inf` means baseline σ = 0 (perfectly stable). Write **"z undefined (σ = 0)"** and give the finite primary (PDR) next to it — never print −∞ | Verification #3, #4 |
 | B2 | ⬜ | Blackhole results | Quote **per-node PDR** (victim 1.0 → 0.0) rather than the pooled PDR, which mixes victims with bystanders | Verification #1 |
 | B3 | 🟨 | Results framing | PDR / LatencyHopRatio separate the classes perfectly on their own — frame as expected for a blackhole, not as a model result | STATUS blockers |
+| B5 | ⬜ | Tables with ConsistencyScore z | A **huge finite z** (e.g. 1,178,647) on ConsistencyScore is the same σ ≈ 0 case: `FR = fwd/(recv + 1e-6)` leaves 1e-6/recv residue in a perfect baseline. Report as "z undefined (σ = 0)", never the number. (Optional code fix: treat σ < 1e-5 as 0 in the verifier — not done) | Verification #7 |
 | B4 | ⬜ | Blackhole "victims" in a run | Report victims by **exposure** (downstream of the attacker), not by the firmware's build role | exposure.py, verification #1 |
 
 ## C. Per-capture footnotes (cite the run, add the note)
@@ -57,6 +58,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | C2 | ⬜ | blackhole/linear/G402/stationary r1 | Root restarted before the run (harmless WARNs); 2 nodes thinner (min-samples rule) | Verification #2 |
 | C3 | ⬜ | blackhole/linear/home/highload r1–r4 | PARTIAL: r2/r3 baselines broken by the 7-board highload collapse; r1 + r4 alone confirm | Verification #2 |
 | C4 | ⬜ | wormhole/tree/G402/**stationary** r1 (oct. 2) | **Both wormhole ends at hop 1 for the whole attack** — duplicates are real but the tunnel was **no shortcut**, so no latency advantage can show. Use for "duplication" only, or recapture | Verification #6 |
+| C5 | ⬜ | blackhole/partial_mesh/?/**highload** (oct. 7, ~15:20) | Root lost ~90 % of its ARRIVAL rows (`[RXSTALL] arrival queue FULL`, ~21 of ~24/s from the attack on; 1,400 by mid-cooldown). Root-side PDR for this run is **invalid** (undercounts every node, not just victims). Child telemetry unaffected. Do not use its PDR | MEMORY oct. 7 |
 
 ## D. Captures to redo / still missing (before the numbers are final)
 
@@ -65,6 +67,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | D1 | ⬜ | Recapture blackhole/tree/G402/stationary **r2** | r1 DEGRADED: 2 boards dropped out mid-run | Verification #2 |
 | D2 | ⬜ | Recapture blackhole/tree/G402/burst **r2** with all 8 boards | r1 lost FE90 (stale firmware) — reflash FE90 first | Verification #5 |
 | D3 | ⬜ | Recapture wormhole/tree/G402/stationary with the auto-switch firmware | r1 had no shortcut (C4) | Verification #6 |
+| D5 | ⬜ | Fix the root's arrival writer, then recapture every **highload** cell | first hardware run of `cb22106` (arrival queue) shows the writer itself is too slow at highload; read the `[RXSTALL] Saving one probe to storage took …` lines of that run to see whether SPIFFS or the SD mirror is the slow one | MEMORY oct. 7 |
 | D4 | ⬜ | Remaining matrix: jitter r2+r3, mobility, powercycle, star burst, 7-board highload, wormhole tree with a real tree | Not captured yet | STATUS next steps |
 
 ---
