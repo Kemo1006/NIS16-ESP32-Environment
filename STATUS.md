@@ -17,7 +17,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Uncommitted on Angelo's laptop
 - Docs (commit + push next): none after this summary (all pushed with it).
-- DATA not pushed: `exports` + `analysis` of blackhole/partial_mesh/DLSU_Library/stationary (verified #7) - ⚠️ 3 child files are ALREADY STAGED by the wizard; the highload run's files once exported.
+- DATA not pushed: blackhole/partial_mesh/DLSU_Library/stationary - root telem + arrivals, 4 `victim_..._partial_none` files, and its analysis (verified #7). Its 3 `child_node*` files are already on GitHub (Basti's data sync, `0c5d02a`). The highload run's files once exported.
 - Never push: root/child `sdkconfig`, `dependencies.lock`, `mesh_config.h` attacker line, `sd_card_test/sdkconfig`.
 
 ## Next step
