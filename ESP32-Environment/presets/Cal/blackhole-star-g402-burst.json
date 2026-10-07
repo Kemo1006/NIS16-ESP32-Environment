@@ -5,11 +5,11 @@
     "scenario":  "burst",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-10-01 10:11",
+    "savedAt":  "2026-10-01 13:47",
     "boards":  [
                    {
                        "Label":  "ROOT",
-                       "Port":  "COM20",
+                       "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",
                        "Display":  "ROOT (announces the phases)",

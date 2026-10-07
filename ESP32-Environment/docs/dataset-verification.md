@@ -16,7 +16,9 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
-## 🔎 VERIFICATION #5 — Oct 7, 2026 · 10:35 AM — blackhole · star · DLSU_Library · stationary
+## 🔎 VERIFICATION #6 — Oct 7, 2026 · 10:35 AM — blackhole · star · DLSU_Library · stationary
+
+> _Numbered #6: Angelo's FE90 block (#5, below) reached GitHub first._
 
 > **Requested by:** Bas · **Laptop:** Bas's (`No`) · **Commit:** `3926b3d` (capture not committed; 4 victim files staged, the rest untracked)
 > **Request:** "check the most recent dataset which is the blackhole star dlsu library stationary if its valid or not"
@@ -80,6 +82,55 @@ EDA plots (time series + PCA/t-SNE).
 victims (`1C38`, `2805`, `704B`, `FE90`, `ED80`, `F42D`) are 1.000 → 0.000 during the attack and back to
 100 % in cooldown. Before committing: fix the preset's attacker entry and delete the stray tree file.
 Expect wizard re-verify to show Integrity PASS · Topology FAIL (boot segment) · Attack CONFIRMED.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #5 — Oct 4, 2026 (merged Oct 6) — why `B4BFE932FE90` looked like it had the wrong parent (follow-up to #3)
+
+> _Numbered #5 because Bas's DLSU_Library block (#4, below) reached GitHub first. Done on Oct 4._
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `0b667b1`
+> **Request:** "why is fe90 parent wrong? investigate the firmware"
+> **This corrects #3:** FE90's `parent_mac` was **right**. FE90 was running **old (pre-Sep 21) firmware**.
+
+| Attack | Topology | Location | Scenario | Repeat | Board |
+|---|---|---|---|---|---|
+| blackhole | tree | G402 | burst | r1 (Oct 2, 8:05 PM) | `B4:BF:E9:32:FE:90` (Kyle's) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Does FE90's parent field come from the mesh stack? | ✅ yes | `mesh_setup_get_parent_mac()` → `esp_mesh_get_parent_bssid()` (`mesh_setup.c:337`). Current firmware also sends its probes to that same address (`probe_relay.c` `send_to_parent`). |
+| Was the attacker carrying FE90 all run? | ✅ yes | attacker received ~3/s in pre-baseline, baseline AND cooldown (2 known children = 2/s + FE90 1/s), 4.62/s in attack (2.64 burst target + 1 + FE90 1) |
+| Can current firmware do this? | ❌ no | tree runs don't pin parents; children change phase only when a root message arrives (no local timer); the attacker only sees packets addressed to it |
+| Pre-C7 firmware (before `67c6475`, Sep 21) | ✅ matches exactly | every victim in a blackhole build sent probes **P2P to the attacker's MAC** (`bh_dest`, old `victim_main.c:154`), and the compiled attacker was `20:50:0D:E7:1C:38`, the attacker in this run |
+| Pre-session-id firmware (before `add1e6e`, Sep 27) | ✅ matches the late phases | a board that remembered an earlier run's sequence numbers ignored the new root's phase messages until the numbers caught up, so it lagged 34 → 68 → 94 s (10 s resync can't fix it) |
+| FE90 in earlier runs | ✅ was current firmware then | tree/G402/jitter (Oct 2, ~7 PM): 205 probes delivered during the attack; partial_mesh/stationary: 178 delivered from under a relay. A pre-C7 board would have lost all of them. |
+| Was it flashed from this laptop? | ❌ no | this laptop built no child image after Oct 1 11:48; for the burst run its wizard flashed only the ROOT (run log) |
+
+### What really happened
+1. Between the jitter run (~7:24 PM) and the burst run (8:05 PM), FE90 was **reflashed from another laptop with a stale
+   child image**, built between Sep 20 (it writes the 14-column schema) and Sep 21 (before C7). Every other child ran
+   current firmware: the attacker relays honestly in baseline, and the Oct 2 burst fix fired on `F42DC973E618`.
+2. FE90 really was connected to the root (its `parent_mac` is correct). Its old firmware addressed every probe to the
+   attacker `20:50:0D:E7:1C:38`, so the mesh carried each one root → attacker. The attacker's app relayed them back
+   up to the root in baseline and cooldown, and dropped them during the attack. That's the old *targeted*
+   (non-positional) blackhole, so FE90 became a victim without being under the attacker.
+3. The same old image doesn't know about root sessions, so it took the new root's phase messages late. That is the
+   "out of sync" FAIL, and it's why preprocess unlabelled FE90.
+
+### Effect on the data (unchanged from #3)
+The labelled dataset is clean, because FE90 has no labelled windows. RootArrivals 6 → 3 includes FE90's loss.
+**Footnote for the write-up:** "one board ran an outdated firmware image and was excluded."
+
+### To prevent it
+- **Before r2: reflash FE90 from an up-to-date checkout** (`git pull` first) and check that the laptop's wizard
+  pre-build shows the current commit.
+- Not built (user's call): have each board put its firmware commit in the heartbeat, and have the root's
+  roster gate refuse a board on a different commit. That would have caught this before Phase 0.
+
+**Verdict for tree/G402/burst r1: still ✅ USABLE (with caveat)**. The caveat is now "FE90 ran stale firmware",
+not "unexplained wrong parent".
 
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->

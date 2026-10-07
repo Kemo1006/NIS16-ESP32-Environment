@@ -5,11 +5,11 @@
     "scenario":  "stationary",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-09-30 14:19",
+    "savedAt":  "2026-10-01 15:37",
     "boards":  [
                    {
                        "Label":  "ROOT",
-                       "Port":  "COM20",
+                       "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",
                        "Display":  "ROOT (announces the phases)",

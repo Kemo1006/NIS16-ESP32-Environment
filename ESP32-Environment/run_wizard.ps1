@@ -6871,7 +6871,7 @@ function Edit-PresetInteractive {
     # ---- Blackhole attacker seat, as its own menu row (oct. 7, 2026) ----
     # Before this the seat was only reachable as a field inside "Edit one node",
     # and a star preset kept naming the old attacker while the run built another
-    # board as it (dataset-verification.md #5). In STAR + blackhole the choice is
+    # board as it (dataset-verification.md #6). In STAR + blackhole the choice is
     # structural, not a label: the attacker is the HUB and every victim joins ONLY
     # its MAC (D-16, mesh_setup.c STAR_HUB_BLACKHOLE; the run builds the preset's
     # attacker MAC into each victim, New-RunParams -AttackerMac), so the row and
