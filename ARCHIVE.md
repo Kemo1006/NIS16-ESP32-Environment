@@ -2537,3 +2537,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS.md (oct. 7 night, 2026, Basti)
 - oct. 6 (Angelo) — FE90 root cause (stale firmware, #5); tree/G402/jitter data pushed; merged Basti's push.
+
+## Rolled from STATUS.md (oct. 7, 2026 night, Angelo)
+- oct. 7 (Angelo) — wormhole auto-switch + error detection + verification (host test, 15 builds); exposure fix; D-17 + thesis checklist; analysis/EDA + presets pushed; verifications #6, #7; highload arrival-loss found.
+- Basti oct. 7 details: Edit preset row [7] Attacker (star = HUB, other-laptop attacker by MAC); wormhole A/B rows pink; star/DLSU preset attacker fixed; campaign plan DLSU star/blackhole powercycle -> stationary; serial_guard.py grows the CP210x RX buffer to 1 MiB (not on hardware).
