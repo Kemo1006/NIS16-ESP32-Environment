@@ -197,7 +197,8 @@ NEIGHBOUR_NOTE = ("independent of the attacker's own counters: in = what its chi
 
 
 EXPOSURE_LABEL = {"downstream": "VICTIM", "upstream": "not in path",
-                  "attacker": "ATTACKER", "root": "root", "no_attacker": "no attacker"}
+                  "attacker": "ATTACKER", "root": "root", "no_attacker": "no attacker",
+                  "not_tunnelled": "not tunnelled"}
 
 
 def _with_exposure(df):
@@ -572,6 +573,22 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         for marker, feat, note in footnotes:
             print(f"  [{marker}] {feat}: {note}")
     print()
+    if attack == "wormhole":
+        # Placement/role problems the auto-switch firmware can still leave in a
+        # capture (analysis/exposure.py: wormhole_setup_issues). Printed, never
+        # counted: they say whether the verdict below can be trusted.
+        try:
+            wh_issues = _exposure.wormhole_setup_issues(df_nodes)
+        except Exception as e:                      # never block the verdict
+            wh_issues = [f"setup check could not run: {e}"]
+        print("  WORMHOLE SETUP CHECK (roles + placement, from the data):")
+        if wh_issues:
+            for msg in wh_issues:
+                print(f"    !! {msg}")
+        else:
+            print("    OK - exactly one A and one B, no role change, A shallower than B"
+                  " in the attack windows.")
+        print()
     print_per_node_pdr(df_nodes, label)
     if confirmed:
         print(f"  VERDICT: {attack.upper()} CONFIRMED  "

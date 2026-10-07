@@ -235,6 +235,12 @@ void app_main(void)
     heartbeat_table_init();
 
     /* ── 3. Logger ───────────────────────────────────────────────────────── */
+#if (TRAFFIC_PROFILE == TRAFFIC_PROFILE_HIGHLOAD)
+    /* Highload only (oct. 7, 2026): the SPIFFS+SD double write took ~400 ms per
+     * arrival row vs the ~35 ms highload's ~28 rows/s allows, and 3151 rows were
+     * lost. Every other scenario's root never calls this and logs as before. */
+    csv_logger_set_arrivals_sd_only(true);
+#endif
     ESP_ERROR_CHECK(csv_logger_init(s_node_id, s_run_id, CSV_ROLE_ROOT));
     ESP_LOGI(TAG, "Logging to: %s", csv_logger_get_filepath());
 

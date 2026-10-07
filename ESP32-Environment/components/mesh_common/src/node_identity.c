@@ -95,3 +95,13 @@ uint8_t node_identity_role(void)
 {
     return node_identity_get()->role;
 }
+
+void node_identity_set_role(uint8_t role)
+{
+    (void)node_identity_get();      /* resolves first if a caller skipped it */
+    if (s_identity.role != role) {
+        ESP_LOGI(TAG, "Role %s -> %s (decided at run time)",
+                 node_role_to_str(s_identity.role), node_role_to_str(role));
+        s_identity.role = role;
+    }
+}

@@ -1,0 +1,20 @@
+﻿{
+    "attack":  "wormhole",
+    "topology":  "linear",
+    "location":  "DLSU_Library",
+    "scenario":  "stationary",
+    "owner":  "Cal",
+    "repeat":  1,
+    "savedAt":  "2026-10-07 12:45",
+    "boards":  [
+                   {
+                       "Label":  "node1",
+                       "Port":  "COM3",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

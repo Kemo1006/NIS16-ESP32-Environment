@@ -56,6 +56,14 @@ const char *node_identity_nickname(void);
 /** Convenience accessor — node_role_t. */
 uint8_t node_identity_role(void);
 
+/**
+ * @brief Change the role after resolve(). Only for firmware whose role is
+ *        decided at RUN time, not build time: the wormhole ends pick A or B
+ *        from their mesh depth (wormhole_victim.c). The heartbeat reads
+ *        node_identity_role() on every send, so the root's table follows.
+ */
+void node_identity_set_role(uint8_t role);
+
 #ifdef __cplusplus
 }
 #endif

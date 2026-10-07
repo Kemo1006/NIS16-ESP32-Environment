@@ -5297,7 +5297,7 @@ function Get-BoardBuildDir {
     # 'stationary'/'mobility'/'powercycle' builds are untouched.
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
-    if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
+    if ($scenario -eq 'highload') { $suffix += '_highload' }   # root too (oct. 7, 2026)
     if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     if ($Params.CommandCenter) { $suffix += '_cc' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
@@ -6871,7 +6871,7 @@ function Edit-PresetInteractive {
     # ---- Blackhole attacker seat, as its own menu row (oct. 7, 2026) ----
     # Before this the seat was only reachable as a field inside "Edit one node",
     # and a star preset kept naming the old attacker while the run built another
-    # board as it (dataset-verification.md #6). In STAR + blackhole the choice is
+    # board as it (dataset-verification.md #8). In STAR + blackhole the choice is
     # structural, not a label: the attacker is the HUB and every victim joins ONLY
     # its MAC (D-16, mesh_setup.c STAR_HUB_BLACKHOLE; the run builds the preset's
     # attacker MAC into each victim, New-RunParams -AttackerMac), so the row and

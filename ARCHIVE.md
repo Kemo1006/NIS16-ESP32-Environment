@@ -2504,3 +2504,36 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS.md (oct. 7, 2026, Basti)
 - oct. 4 (Basti) — BSOD root-caused (silabser.sys); UART tunnel test (+ Q/Enter early stop); MACs in target/attacker/Node A-B pickers; wormhole panel explainer; preset rename; child skip-export; node1 = root labels.
+
+## Rolled from MEMORY.md oct. 7, 2026 (cap)
+- sep. 26, 2026 (late) — **Wizard WIRESHARK category** (sniffer entries 21-26, `check_pcap.py --map-json`, per-view filters, `WIRESHARK_CONFIG_DIR` not `-C`). Full text in ARCHIVE.md.
+- sep. 26, 2026 (eve) — **Root post-export choice** (user request): wizard asks, when the root is on this laptop,
+  [1] trim + M6-M8 (default) / [2] trim only / [3] export only -> run.ps1 `-Analyze` / NEW `-Trim` / `-Export`. run.ps1
+  `-Analyze` now SKIPS M6-M8 (trim still runs) when the folder has no child `*_telem.csv` - SD workflow exported the root
+  first and overwrote a full analysis with a root-only one (twice on sep. 26). Parse-checked + guard filter tested; not run on boards.
+- oct. 5 (Basti) — DLSU_Library/stationary r1 verified (#4): USABLE; PDR -inf explained.
+
+## Rolled from MEMORY.md oct. 7, 2026 eve (cap)
+- sep. 26, 2026 (late) — **Root phase banners print the wall-clock start time** (`root_main.c` `phase_banner()`, e.g. `@ 22:03:15 PHT`;
+  "(est.)" when the clock is only the build-stamp estimate, `--:--:--` if unseeded). Console-only visual aid, never in a CSV (user). Compiled clean, not flashed.
+
+## Rolled from MEMORY.md (oct. 7, 2026, Basti)
+- sep. 26, 2026 (night) — **21:11 home re-run vs 19:18 + 3 fixes (user: "did it get worse / more missing data?").** Same firmware
+  + analysis code; raw data clean (no gaps, arrivals 100% outside the attack). Differences: (a) TREE CHANGED - root -> node4 -> node2
+  ATTACKER -> node3 = 1 victim + 1 bystander (177 drops vs 359); linear order = join order, preset can't fix it (power attacker first).
+  (b) Children were in BASELINE before the reflashed root started: the root board booted its OLD firmware before the wizard wiped it,
+  ran a session to Phase 0 (always seq 13 = 12 PREPAREs + 1); children kept seq 13, so the new root's PREPAREs + Phase 0 (seq 1-13)
+  failed the seq dedupe - only seq 14 (attack) got through. **FIX (firmware, needs REFLASH of EVERY board - wire format grew 17->21 B,
+  mixed old/new boards won't hear each other's phases):** `phase_msg_t.session_id` = random per root boot; a listener seeing a new
+  session resets seq and drops back to 255 (UNSET) (ignored once terminated). Root+child compiled OK, NOT hardware-tested. Maybe
+  related to node3's "112 s ahead" on G402 sep. 25 (root rebooted there) - unverified. `preprocess.assign_segments`: a 255 AFTER a real
+  phase = root restart -> everything before is pre_baseline (tested on a doctored copy of node3). (c) **Window counter deltas lost
+  4-15% of counts**: delta was last-first of the window's own samples, dropping increments between windows (varies with probe-timer
+  phase). Now `_first` = previous kept window's last (window START edge), delta = `_last - _first`; PDR/latency seq ranges tile.
+  After: every counter 100% of raw in both runs; 21:11 attacker drops 151 -> 177/177, recv=0 attack windows 29 -> 3. (d) `eda.py`
+  KDE only when every phase has >= 5 distinct values (21:11 FR plot was a 1e15 spike). Home cell regenerated + 3 gates: attack
+  CONFIRMED, topology FAIL (real: node4 re-joined after the root reflash), integrity WARN (bystander keeps 50% arrivals). 19:18
+  run re-analysed (M6-M8 only, no gates) in a scratch copy - archive untouched: single-feature PDR 0.999, FR 0.85. Both runs are r1 - rename one before pooling.
+
+## Rolled from STATUS.md (oct. 7 night, 2026, Basti)
+- oct. 6 (Angelo) — FE90 root cause (stale firmware, #5); tree/G402/jitter data pushed; merged Basti's push.

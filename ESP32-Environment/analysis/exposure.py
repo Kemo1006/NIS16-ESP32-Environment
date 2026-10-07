@@ -34,6 +34,14 @@ One value per node per run:
     unknown     the parent chain could not be resolved (no parent_mac, or a
                 node that never joined). Never silently folded into another
                 value: "we could not tell" and "not attacked" are different.
+    not_tunnelled  WORMHOLE runs only: every non-attacker child, wherever it
+                sits. wormhole_victim.c tunnels ONLY Node B's OWN probes (B
+                sends each up the mesh as normal and copies it over the UART
+                wire to A); every other node's traffic is relayed exactly as in
+                baseline, so the blackhole rule above ("under an attacker =
+                victim") does not apply. Until oct. 7 2026 it did, and a linear
+                wormhole run would have labelled every child below B
+                "downstream". The attack signal lives in B's probes.
 
 ⚠️ This is METADATA, never a feature. Inside an attack window "downstream" is
 very nearly the label itself, so it is registered in leakage.py's
@@ -50,6 +58,10 @@ import pandas as pd
 # Roles whose firmware actively manipulates traffic. A node is "downstream" when
 # one of these sits on its path to the root.
 ATTACK_ROLES = ("blackhole", "wormhole_a", "wormhole_b")
+
+# Attacker roles that do NOT make the nodes under them victims (see
+# "not_tunnelled" in the module docstring).
+WORMHOLE_ROLES = ("wormhole_a", "wormhole_b")
 
 ROOT_ROLES = ("root",)
 
@@ -153,6 +165,9 @@ def _exposure_for_run(group: pd.DataFrame) -> dict:
             # exist in this capture.
             out[n] = "no_attacker"
             continue
+        if any(str(roles.get(a, "")).lower() in WORMHOLE_ROLES for a in attackers):
+            out[n] = "not_tunnelled"
+            continue
 
         # Walk to the root. `seen` guards against a cycle produced by a
         # re-parenting race in the logged data -- an infinite loop here would
@@ -193,6 +208,69 @@ def compute_exposure(df: pd.DataFrame) -> pd.Series:
         mapping = _exposure_for_run(group)
         result.loc[idx] = group["node_id"].map(mapping).fillna("unknown").values
     return result
+
+
+def wormhole_setup_issues(df: pd.DataFrame) -> list[str]:
+    """Placement / role problems in a WORMHOLE capture, read from the data alone.
+
+    The auto-switch firmware (wormhole_victim.c, oct. 7 2026) decides which
+    board is A (exit) and which is B (entry) from mesh depth and logs it in
+    every row's node_role. These are the ways that can still go wrong, each of
+    which leaves a capture that looks healthy everywhere else:
+
+      - a board's role CHANGED during the run (both ends locked the same end
+        and one switched - its rows before the switch describe the other end);
+      - not exactly one wormhole_a and one wormhole_b (the ends never heard
+        each other over UART and both fell back to the same build default);
+      - in the ATTACK windows, A is not fewer hops from the root than B: the
+        tunnel was no shortcut, so the duplicate's latency advantage the
+        verifier looks for cannot exist (reversed placement, or same depth).
+
+    Returns human-readable problems, one per string; [] = nothing found.
+    Needs node_id + node_role; the depth check also needs hop and segment.
+    """
+    issues: list[str] = []
+    if "node_role" not in df.columns or "node_id" not in df.columns:
+        return ["cannot check the wormhole setup: no node_role/node_id column"]
+    roles = df.dropna(subset=["node_role"]).copy()
+    roles["node_role"] = roles["node_role"].astype(str).str.lower()
+    wh = roles[roles["node_role"].isin(WORMHOLE_ROLES)]
+    if wh.empty:
+        return ["no wormhole_a / wormhole_b rows at all - not a wormhole capture,"
+                " or the attacker boards' telemetry is missing"]
+
+    for node, g in wh.groupby("node_id"):
+        if "window_start" in g.columns:
+            g = g.sort_values("window_start")
+        seen = list(dict.fromkeys(g["node_role"]))      # order they appeared in
+        if len(seen) > 1:
+            issues.append(f"{node} changed role during the run ({' -> '.join(seen)}):"
+                          " the ends disagreed and one switched; rows before the"
+                          " switch belong to the other end")
+
+    dominant = wh.groupby("node_id")["node_role"].agg(lambda s: s.mode().iloc[0])
+    n_a = int((dominant == "wormhole_a").sum())
+    n_b = int((dominant == "wormhole_b").sum())
+    if n_a != 1 or n_b != 1:
+        issues.append(f"{n_a} board(s) logged as wormhole_a and {n_b} as wormhole_b -"
+                      " there must be exactly one of each (UART cable / HELLO never heard?)")
+        return issues
+
+    if "hop" in df.columns:
+        rows = wh
+        if "segment" in wh.columns:
+            atk = wh[wh["segment"].astype(str) == "attack"]
+            rows = atk if not atk.empty else wh
+        hop = rows.groupby("node_role")["hop"].median()
+        if "wormhole_a" in hop and "wormhole_b" in hop \
+                and pd.notna(hop["wormhole_a"]) and pd.notna(hop["wormhole_b"]):
+            ha, hb = float(hop["wormhole_a"]), float(hop["wormhole_b"])
+            if ha >= hb:
+                kind = "REVERSED" if ha > hb else "AT THE SAME DEPTH"
+                issues.append(f"wormhole ends {kind} in the attack windows: A (exit) at hop"
+                              f" {ha:g}, B (entry) at hop {hb:g} - the tunnel was no"
+                              " shortcut, so no latency advantage can show")
+    return issues
 
 
 def is_victim(exposure: pd.Series) -> pd.Series:

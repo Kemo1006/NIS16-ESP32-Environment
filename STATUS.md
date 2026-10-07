@@ -1,40 +1,40 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 7, 2026 (Basti): merged Angelo's oct. 6–7 pushes (FE90 #5, presets synced `2a12ac0`, analysis tables on GitHub `9ed0ce8`) with Basti's oct. 7 commit `d8019ac` (star/DLSU data, wizard Attacker row, BSOD tool fix); pushed. Basti's star/DLSU block is now verification **#6**. Facts + reasons: top entries of MEMORY.md.
+**Updated:** oct. 7, 2026 night (Basti): merged Angelo's late-evening push (highload root fix, wormhole auto-switch, #6/#7) with Basti's oct. 7 work (`d8019ac`); pushed. Basti's local-only files: see the 'Basti oct. 7' bullet. Facts + reasons: top ~15 entries of MEMORY.md (oct. 7).
 
 ## ⚠️ Working copies / layout
-Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored; analysis tables + EDA of the live blackhole cells are force-tracked (MEMORY oct. 7, Angelo). **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh** (wizard still reads `member_boards.json`; ask Claude to sync).
+Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored. Analysis tables + `eda_output/` of the live cells are on GitHub (force-added); a NEW cell's analysis needs `git add -f`. **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh**.
 
 ## Where things stand
-- **Verification log** `ESP32-Environment/docs/dataset-verification.md`: #6 star/DLSU/stationary USABLE · #5 FE90 stale firmware · #4 linear/DLSU/stationary USABLE · #3 tree/G402/burst USABLE (caveat) · #2 sweep · #1 tree/G402/jitter.
-- **#6 (oct. 7):** hub attacker `20500DE70C80`, all 6 leaves 1.000 → 0.000; Topology FAIL = root-reflash boot segment (as #4). Star preset fixed (node4 `...0c:80` = attacker), junk tree/DLSU file deleted.
-- ⚠️ **`B4BFE932FE90` (Kyle's board) ran a STALE pre-sep-21 image** in the oct. 2 tree burst run — REFLASH it from an up-to-date checkout.
-- **PDR `-inf`** = baseline sd 0 (perfect delivery) — PASS; in the thesis say "z undefined (σ = 0)".
-- **BSOD 0xB8:** `silabser.sys` crashes when its receive buffer fills (port open, not read). Tools grow it to 1 MiB (`tools/serial_guard.py`); not hardware-tested.
-- **Wizard:** UART tunnel test (both directions PASS), MACs in pickers, children skip export by default, node1 = root, Expected children, NEW Edit preset row [7] **Attacker** (star = HUB, other-laptop attacker by MAC; 14 scripted cases, not live yet), wormhole A/B rows pink.
-- **Campaign plan:** DLSU star/blackhole slot 1 powercycle → stationary (checklist 4/144); other off-plan cells left as-is (user call, MEMORY oct. 7).
-- **Presets on GitHub are current** (`2a12ac0`). EDA PCA fix + sniffer stop confirmation pushed (`4def0f8`). Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`).
+- **Thesis to-do list:** `ESP32-Environment/docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md` (A method · B wording · C footnotes · D recaptures). CLAUDE.md rule: add a row the same day for anything that changes the paper. Method changes also get a D-entry (now D-1…D-17).
+- **Verification log** `docs/dataset-verification.md`: #8 star/DLSU/stationary USABLE (Basti; hub `20500DE70C80`, 6/6 victims 1→0, Topology FAIL = root-reflash boot segment) · #7 partial_mesh/DLSU/stationary USABLE (output recomputed by hand, not hardcoded) · #6 wormhole tree/G402 r1 had NO shortcut · #5 FE90 stale firmware · #4 DLSU/stationary · #3 tree/G402/burst · #2 sweep · #1 tree/G402/jitter.
+- ⛔ **HIGHLOAD ROOT LOST 3151 ARRIVAL ROWS** (oct. 7 ~15:20 partial_mesh highload; 398 ms/row vs <=35 ms needed). That run's root PDR is invalid (C5). **FIX PUSHED (`643adf8`), NOT ON HARDWARE YET:** highload ROOT only now logs arrivals SD-only, 4 KB-buffered, flush/100 rows; root now gets `-DTRAFFIC_PROFILE=2` on highload. Other scenarios untouched. Detail: MEMORY oct. 7 (eve).
+- **Wormhole AUTO-SWITCH** (A/B by depth, locked at Phase 0) + error detection + enhanced root WORMHOLE TUNNEL printout + `exposure.py` `not_tunnelled` + verifier WORMHOLE SETUP CHECK: pushed, host test 35/35, all 15 variants build. **Not yet on hardware.**
+- **Basti oct. 7:** Edit preset row [7] **Attacker** (star = HUB, other-laptop attacker by MAC; 14 scripted cases, not live yet) · wormhole A/B rows pink · star/DLSU preset attacker fixed · campaign plan DLSU star/blackhole powercycle → stationary (4/144; other off-plan cells left as-is) · BSOD tools: `serial_guard.py` grows the CP210x RX buffer to 1 MiB (not on hardware). Still local on Basti's laptop (user's call): `mesh_config.h` attacker line (`f4:...:18`), modified `presets/Bas/wormhole-linear-dlsu_library-stationary.json`, 3 new `presets/Bas/blackhole-partial_mesh-dlsu_library-*.json`.
+- `B4BFE932FE90` (Kyle's) ran a stale image on oct. 2; in-sync again in the oct. 7 partial run (looks reflashed).
+- z = `-inf`/`+inf` or a huge finite z (ConsistencyScore 1,178,647 = 1e-6 EPSILON residue) = baseline σ ≈ 0 -> write "z undefined (σ = 0)".
+- Host build tip (Angelo's laptop): `idf.py.exe` wrapper rejects `-D`; use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. C: was full (0.29 GB) on oct. 7 - keep space free; esp32_builds live on C:.
 
-## Still local on Basti's laptop (not in the push, user's call)
-- `mesh_config.h` attacker line (per-run pick, now `f4:...:18` — never commit), `presets/Bas/wormhole-linear-dlsu_library-stationary.json` (modified), 3 new `presets/Bas/blackhole-partial_mesh-dlsu_library-*.json`, `datasets/analysis/blackhole/star/DLSU_Library/burst/` (the oct. 7 11:16 star burst run — not verified yet).
+## Uncommitted on Angelo's laptop
+- Code/docs: none - highload root fix pushed (`643adf8`, merged `e345428`).
+- DATA not pushed: blackhole/partial_mesh/DLSU_Library/stationary - root telem + arrivals, 4 `victim_..._partial_none` files, and its analysis (verified #7). Its 3 `child_node*` files are already on GitHub (Basti's data sync, `0c5d02a`). The highload run's files once exported.
+- Never push: root/child `sdkconfig`, `dependencies.lock`, `mesh_config.h` attacker line, `sd_card_test/sdkconfig`.
 
 ## Next step
-1. Everyone `git pull` + REFLASH (same commit on every laptop); reflash FE90 first.
-2. Verify blackhole/star/DLSU_Library/burst r1 (oct. 7, ~11:16 AM), then decide on its analysis folder.
-3. Recapture tree/G402/stationary r2 (verification #2) and tree/G402/burst r2 with all 8 boards.
-4. Tunnel test: pull the wire into A's GPIO16 to confirm B->A FAILs; press Q once to confirm early stop.
-5. Try the child instant export-skip and the Edit preset Attacker row once in a real run.
-6. Re-run star G402 BURST; 7-board highload; wormhole tree once a real tree forms. Still to capture: jitter r2+r3, mobility, powercycle.
-7. Open user calls: firmware-commit check in the roster gate (idea, MEMORY oct. 3); tree fan-out cap / pinned victims; duplicate controls in `exports/baseline/tree/G402/stationary/`.
+1. Highload fix: reflash the ROOT with scenario highload -> 2-min check run: no `queue FULL`, `took X ms` well under 35 -> recapture highload (C5, C6, D5). Don't reset the root before EXPORT_ARRIVALS.
+2. Push partial_mesh/DLSU/stationary data (user's go).
+3. Reflash root + both wormhole boards; wizard UART tunnel test; wormhole run -> expect `LOCKED as NODE A/B` + root `OK: ... tunnel skips N hop(s)`. Recapture wormhole tree/G402 (D3).
+4. Recapture tree/G402/stationary r2, tree/G402/burst r2 (all 8 boards). Remaining matrix: checklist D4.
+5. Adviser: D-12, D-17 (run-time wormhole roles; fill in the proposal's wording), B3 framing.
+6. Basti: verify blackhole/star/DLSU_Library/burst r1 (oct. 7 ~11:16 AM; data + analysis on GitHub, no verification block yet); try the Edit preset Attacker row in a real run.
 
 ## Blockers / open questions
 - ⛔⛔ BSOD 0xB8: NEVER Ctrl+C an export or SD read; never reset/unplug a board while it is read; boards DIRECT into the laptop.
 - ⚠️ When cleaning old data, delete only `analysis\baseline|blackhole|wormhole` — NEVER `ESP32-Environment\analysis\` itself.
-- ⚠️ Never commit root/child `sdkconfig` or `dependencies.lock` (IDF 5.3.5 vs 5.5.4 laptops).
-- ⚠️ PDR/LatencyHopRatio single-feature perfect (framing). HT20 vs HT40 don't pool (D-14). D-12 vs signed Milestone Form — adviser.
-- ⚠️ Before any pull: `git diff --cached --stat` - a merge refuses ANY staged change on a path it touches.
+- ⚠️ Run `git diff --cached --stat` before EVERY commit and pull - the wizard stages files on its own (bundled into `cc430a2` once).
+- ⚠️ HT20 vs HT40 don't pool (D-14). Optional: verifier could treat σ < 1e-5 as 0 (not done, user's call).
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 7 (Basti) — #6 star/DLSU r1 USABLE; preset + junk file fixed; Edit preset Attacker row; pink A/B; campaign plan swap; merged with Angelo + pushed.
-- oct. 6 (Angelo) — FE90 root cause (stale firmware, #5); tree/G402/jitter data pushed; merged Basti's push.
+- oct. 7 (Angelo) — wormhole auto-switch + error detection + verification (host test, 15 builds); exposure fix; D-17 + thesis checklist; analysis/EDA + presets pushed; verifications #6, #7; highload arrival-loss found.
+- oct. 7 (Basti) — #8 star/DLSU verified USABLE; preset + junk file fixed; Edit preset Attacker row; pink A/B; campaign plan swap; unstuck the pull (2 merges) + pushed.

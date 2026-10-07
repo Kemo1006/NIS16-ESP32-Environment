@@ -37,7 +37,7 @@ looking perfectly healthy.
 | Folder | The question it answers | Files |
 |---|---|---|
 | `issues-and-fixes/` | "What problems did you run into?" | `INDEX.md` (the map — start here), `esp32-issues.md` + `-Part2` + `-Part3` (I-001…I-017, each with Status / Symptom / Cause / Fix), `SD-CARD-AND-WORMHOLE-WIRING.md` (board mix-ups, wrong power pin, SPI clock — in Q&A form) |
-| `deviations-limitations/` | "Why does this differ from your proposal?" | `thesis-deviate.md` — D-1…D-15, each with what changed and why. Volunteer these rather than let a panelist find them |
+| `deviations-limitations/` | "Why does this differ from your proposal?" | `thesis-deviate.md` — D-1…D-17, each with what changed and why. Volunteer these rather than let a panelist find them · `THESIS-UPDATE-CHECKLIST.md` — the running list of everything the write-up must change, footnote or re-capture before submission |
 | `progress-reports/` | What was done when? | dated CTTHES2 milestone reports, jul. 2026 |
 
 ## Everything else

@@ -57,6 +57,10 @@ Task complexity (simple → just do it; complex → Planner→Builder→Tester�
   `ESP32-Environment/docs/dataset-verification.md` (format = the existing blocks: `════` dividers,
   `## 🔎 VERIFICATION #N — <date · time>`, requester/laptop/commit, a table of attack · topology ·
   location · scenario · repeat, a checks table, full findings, verdict). Never edit past blocks.
+- **Anything that changes what the thesis paper should say** (a deviation, wording fix, table/figure
+  to redo, per-capture footnote, recapture, adviser question) → add a row to
+  `ESP32-Environment/docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md` the same day, with its
+  source (D-x / verification #n / MEMORY date). A method change also gets a `thesis-deviate.md` D-entry.
 - Enforce line caps and link targets deterministically before calling a file done — a count or grep, not an eyeballed read. Self-reported compliance drifts.
 
 ## Resources — where reference files live

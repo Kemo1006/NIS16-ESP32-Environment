@@ -162,8 +162,9 @@ param(
     #   jitter   => -DTRAFFIC_PROFILE=3 on the ROOT only: randomises (additively)
     #               the baseline and attack window lengths per boot, so elapsed
     #               run-clock time stops predicting the phase label.
-    #   highload => -DTRAFFIC_PROFILE=2 on EVERY child (root untouched): probes
-    #               at 250ms instead of 1000ms for the whole run.
+    #   highload => -DTRAFFIC_PROFILE=2 on EVERY child: probes at 250ms instead
+    #               of 1000ms for the whole run. Also on the ROOT (oct. 7, 2026):
+    #               it logs arrivals to the SD card only, batched, to keep up.
     # HUMAN scenarios take NO build flag -- they only label the run and, with
     # -ScenarioTarget, print a checklist naming which child to move/power-cycle:
     #   mobility    => move the target child from spot A to spot B
@@ -435,7 +436,7 @@ $topologyFlag = "-DMESH_TOPOLOGY=$topologyNum"
 # command line (and build dir) stays byte-identical to before this feature
 # existed. Only the boards that actually change firmware get a flag/tag:
 #   burst    -> root (baseline-run window) + the -ScenarioTarget child (sender)
-#   highload -> every child; root untouched
+#   highload -> every child + root (root: SD-only batched arrival logging)
 #   mobility / powercycle -> no flag anywhere (human, label-only)
 $scenarioFlags = @()
 $scenarioTag   = ''
@@ -447,10 +448,10 @@ switch ($Scenario) {
         }
     }
     'highload' {
-        if ($Role -ne 'root') {
-            $scenarioFlags += '-DTRAFFIC_PROFILE=2'
-            $scenarioTag = 'highload'
-        }
+        # Root too since oct. 7, 2026: its arrival writer switches to SD-only,
+        # batched logging (csv_logger_set_arrivals_sd_only) - see root_main.c.
+        $scenarioFlags += '-DTRAFFIC_PROFILE=2'
+        $scenarioTag = 'highload'
     }
     'jitter' {
         # ROOT ONLY -- the root is the only board that schedules phases; every

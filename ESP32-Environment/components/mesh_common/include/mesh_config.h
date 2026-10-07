@@ -625,6 +625,13 @@
 /** Flush to flash after this many records (thesis spec: every 10). */
 #define LOGGER_FLUSH_RECORDS    10U
 
+/** HIGHLOAD ROOT ONLY (csv_logger_set_arrivals_sd_only): arrival rows go to the
+ *  SD card alone through a LOGGER_SD_ONLY_VBUF_BYTES stdio buffer, flushed every
+ *  this many rows. ~100 rows = ~3.5 s at highload's ~28 rows/s; durability is
+ *  still bounded by the time-based LOGGER_SD_SYNC_INTERVAL_MS below. */
+#define LOGGER_SD_ONLY_FLUSH_RECORDS  100U
+#define LOGGER_SD_ONLY_VBUF_BYTES     4096U
+
 /** Milliseconds between fsync()s of the SD-card mirror files.
  *
  *  fflush() is NOT enough to make a mirrored row survive a reset. It pushes the

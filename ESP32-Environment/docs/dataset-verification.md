@@ -16,9 +16,9 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
-## 🔎 VERIFICATION #6 — Oct 7, 2026 · 10:35 AM — blackhole · star · DLSU_Library · stationary
+## 🔎 VERIFICATION #8 — Oct 7, 2026 · 10:35 AM — blackhole · star · DLSU_Library · stationary
 
-> _Numbered #6: Angelo's FE90 block (#5, below) reached GitHub first._
+> _Numbered #8 because Angelo's #6 and #7 (below) reached GitHub first. Done at 10:35 AM._
 
 > **Requested by:** Bas · **Laptop:** Bas's (`No`) · **Commit:** `3926b3d` (capture not committed; 4 victim files staged, the rest untracked)
 > **Request:** "check the most recent dataset which is the blackhole star dlsu library stationary if its valid or not"
@@ -82,6 +82,75 @@ EDA plots (time series + PCA/t-SNE).
 victims (`1C38`, `2805`, `704B`, `FE90`, `ED80`, `F42D`) are 1.000 → 0.000 during the attack and back to
 100 % in cooldown. Before committing: fix the preset's attacker entry and delete the stray tree file.
 Expect wizard re-verify to show Integrity PASS · Topology FAIL (boot segment) · Attack CONFIRMED.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #7 — Oct 7, 2026 · 2:36 PM — blackhole · partial_mesh · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5134649`
+> **Request:** "verify if this output is correct and not hardcoded" (the wizard's `verify_attack.py` output)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | partial_mesh | DLSU_Library | stationary | r1 | Oct 7, 2:07–2:26 PM | 9 (8 telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ⚠️ 4 PASS / 4 WARN / 1 FAIL — all harmless | FAIL = 1 leftover root row from before its last reboot (phase 255, excluded); 4 WARN = filenames say `partial_none` (named on the importing laptop) — the rows inside are correct |
+| Topology (`verify_topology.py`) | ✅ partial, 4 layers | attacker `20500DE71C38` at L2 with exactly 2 nodes under it: `20500DE70C80`, `B4BFE932FE90` |
+| Root arrivals, recomputed by hand | ✅ | those 2 delivered **0** in the attack, ~1/s otherwise; the other 4 ~1/s throughout; 4/6 = **0.667** = the pooled PDR |
+| Attacker counters, recomputed by hand | ✅ | received/forwarded: baseline 600/600, attack **360/0** (360 dropped), cooldown 240/240 → FR 1 → 0 → 1. 600 = 2 children × 300 s, 360 = 2 × 180 s |
+| Analysis table vs exports | ✅ | built from exactly the 8 exported telem files; `attack` = blackhole on every node (the `none` filenames did not leak in) |
+| Verifier output | ✅ correct, not hardcoded | every row traces to the raw data above |
+| `B4BFE932FE90` firmware | ✅ in sync this run | no out-of-sync FAIL (cf. #3/#5) — it is a real victim here (under the attacker) |
+
+### The two odd-looking numbers
+- **`-inf` (FR, PDR, NeighbourFR) and `+inf` (IngressEgressDelta):** baseline σ = 0 — every baseline point was
+  exactly 1.000 (or 0.000). By design (`verify_attack.py:305`); report as **"z undefined (σ = 0)"**.
+- **ConsistencyScore z = 1,178,647:** not real either. `features.py` computes
+  `ForwardingRatio = forwarded / (received + EPSILON)` with `EPSILON = 1e-6` (divide-by-zero guard), so a
+  window where the attacker forwarded all of its 1, 2 or 3 probes scores 0.999999… and ConsistencyScore
+  = |FR − 1| = **1e-6 ÷ 1, 2 or 3** — exactly the only three baseline values found (3.3e-7, 5e-7, 1e-6).
+  That float residue gives σ ≈ 3e-7 instead of 0, so 0.335 / 3e-7 ≈ 1.2 million. Same situation as the
+  `-inf` rows: **σ is effectively 0 → report "z undefined"**. The PASS is right; the number is meaningless.
+
+**Verdict: ✅ USABLE** — BLACKHOLE CONFIRMED is genuine; victims `20500DE70C80`, `B4BFE932FE90` (0/180 each).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #6 — Oct 7, 2026 · 1:28 PM — wormhole auto-switch code + wormhole · tree · G402 · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `732b6ed` (+ uncommitted test refactor)
+> **Request:** "verify if code works and doesnt break and then push"
+> **Scope:** the oct. 7 wormhole changes (auto-switch firmware, root printout, `exposure.py`,
+> verifier) — and, as the end-to-end test, the one existing wormhole capture.
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | G402 | stationary | r1 | Oct 2 (pushed `bfa6386`) | 8 telem |
+
+| Check | Result | Detail |
+|---|---|---|
+| Auto-switch logic, real firmware file on a PC (`tools/test_wormhole_autoswitch/run_test.sh`) | ✅ 35/35 | two simulated boards over a simulated cable: wrong-way build, same depth, cable unplugged, reboot mid-run, both lock one end, noisy cable, tunnel vs HELLO frames, one-way cable |
+| All firmware variants (`build_all_variants.ps1` list, IDF 5.5.4, `-Werror`) | ✅ 15/15 | root/child/blackhole/wormhole incl. burst, jitter, highload; every app 25 % free (first pass hit "No space left on device" on C: — not code; rebuilt on A:) |
+| Python tests (`test_segments`, `test_topology_graph`, `test_name_stamp`) | ✅ pass | |
+| Verifier on every live blackhole cell, old vs new code | ✅ 0 differences | full output diffed line by line, 11 cells |
+| Exposure on every live blackhole table | ✅ 0 rows changed | |
+| Pipeline end-to-end on the wormhole capture (scratch copy, repo untouched) | ✅ runs | exposure: 2 `attacker` + 5 `not_tunnelled` + root |
+| **Wormhole setup check on that capture** | ⚠️ **SAME DEPTH** | both ends at hop 1 for the whole attack |
+
+### Finding: the existing wormhole capture had no shortcut
+- Raw telemetry: during the attack (phase 2, 1,806 rows each) **Node B `20500DE70C80` and Node A
+  `20500DE71C38` were both layer 2, both with the root (`B0:CB:D8:F3:32:19`) as parent.**
+- So the tunnelled copy entered the mesh at the same depth as B's normal copy: duplicates are real
+  (`WORMHOLE CONFIRMED`, 2/2 primaries), but **no latency advantage can exist** — the shortcut that
+  defines a wormhole was not there. This is exactly the case the auto-switch now prevents or flags.
+- Analysis tables for this cell are **not** in the repo (never built); the scratch run changed nothing.
+
+**Verdict: code ✅ verified (not yet on hardware) · wormhole/tree/G402/stationary r1 ⚠️ USABLE FOR
+DUPLICATION ONLY — recapture with the auto-switch firmware** (THESIS-UPDATE-CHECKLIST C4 / D3).
 
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
