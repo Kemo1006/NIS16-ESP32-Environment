@@ -4,7 +4,7 @@
 **Updated:** oct. 6, 2026 (Angelo): merged Basti's oct. 4–5 push (wizard/tooling, presets renamed, DLSU_Library + highload r5 data) with Angelo's verification #5 + tree/G402/jitter data. Everything is on GitHub `THESIS3`. Facts + reasons: top entries of MEMORY.md.
 
 ## ⚠️ Working copies / layout
-Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs + `eda_output/` + feature/windowed tables git-ignored (re-run `analyze.ps1` after a pull). **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh**.
+Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored. **Analysis tables + `eda_output/` of the 10 live blackhole cells are now ON GitHub** (force-added oct. 7, `9ed0ce8`); new cells' analysis is still ignored by default - `git add -f` to share it. **Live board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh**.
 
 ## Where things stand
 - **Verification log** `ESP32-Environment/docs/dataset-verification.md`: #5 FE90 stale firmware · #4 DLSU_Library/stationary USABLE · #3 tree/G402/burst USABLE (caveat) · #2 sweep (tree/G402/stationary DEGRADED) · #1 tree/G402/jitter.
