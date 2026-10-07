@@ -102,6 +102,20 @@ typedef enum {
 esp_err_t csv_logger_init(const char *node_id, const char *run_id,
                            csv_logger_role_t role);
 
+/**
+ * @brief HIGHLOAD ROOT ONLY: log probe arrivals to the SD card alone, batched.
+ *
+ * Called by root_main.c only when built with TRAFFIC_PROFILE=highload; every
+ * other build never calls it, so its arrival logging is unchanged. When on:
+ * arrival rows skip the SPIFFS copy, the SD file gets a 4 KB write buffer, and
+ * it is flushed every LOGGER_SD_ONLY_FLUSH_RECORDS rows instead of every
+ * LOGGER_FLUSH_RECORDS (oct. 7, 2026: the double SPIFFS+SD write took ~400 ms
+ * per row and lost 3151 rows at highload's ~28 rows/s). EXPORT_ARRIVALS then
+ * streams the SD file. If the card is missing or fails, rows fall back to
+ * SPIFFS so nothing is silently lost. Call before csv_logger_init().
+ */
+void csv_logger_set_arrivals_sd_only(bool on);
+
 /* ── Telemetry row (all roles) ───────────────────────────────────────────── */
 
 /**

@@ -84,6 +84,7 @@ $variants = @(
     # built by this script. Same pairing rules as run.ps1: burst = root + the
     # -ScenarioTarget child, highload = any non-root, jitter = root only.
     @{ Name = "ROOT burst";               Bld = "bcrb";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=1") }
+    @{ Name = "ROOT highload";            Bld = "bcrh";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }
     @{ Name = "ROOT jitter";              Bld = "bcrj";  Proj = "root_node";  Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=3") }
     @{ Name = "CHILD burst target";       Bld = "bccb";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=1") }
     @{ Name = "CHILD highload";           Bld = "bcch";  Proj = "child_node"; Flags = @("-DACTIVE_ATTACK=255","-DMESH_TOPOLOGY=0","-DTRAFFIC_PROFILE=2") }

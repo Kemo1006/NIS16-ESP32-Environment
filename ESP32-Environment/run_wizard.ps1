@@ -5281,7 +5281,7 @@ function Get-BoardBuildDir {
     # 'stationary'/'mobility'/'powercycle' builds are untouched.
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
-    if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
+    if ($scenario -eq 'highload') { $suffix += '_highload' }   # root too (oct. 7, 2026)
     if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     if ($Params.CommandCenter) { $suffix += '_cc' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')

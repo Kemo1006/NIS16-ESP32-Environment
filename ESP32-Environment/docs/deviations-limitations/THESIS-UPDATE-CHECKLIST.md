@@ -59,6 +59,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | C3 | ⬜ | blackhole/linear/home/highload r1–r4 | PARTIAL: r2/r3 baselines broken by the 7-board highload collapse; r1 + r4 alone confirm | Verification #2 |
 | C4 | ⬜ | wormhole/tree/G402/**stationary** r1 (oct. 2) | **Both wormhole ends at hop 1 for the whole attack** — duplicates are real but the tunnel was **no shortcut**, so no latency advantage can show. Use for "duplication" only, or recapture | Verification #6 |
 | C5 | ⬜ | blackhole/partial_mesh/?/**highload** (oct. 7, ~15:20) | Root lost ~90 % of its ARRIVAL rows (`[RXSTALL] arrival queue FULL`, ~21 of ~24/s from the attack on; 1,400 by mid-cooldown). Root-side PDR for this run is **invalid** (undercounts every node, not just victims). Child telemetry unaffected. Do not use its PDR | MEMORY oct. 7 |
+| C6 | ⬜ | every **highload** capture after oct. 7, 2026 (eve) | Method note: on highload runs the root logs probe arrivals to the **SD card only, buffered (4 KB) and flushed every 100 rows**, instead of SPIFFS + SD every 10 rows - the double write took ~400 ms/row and lost 3,151 rows at ~28 rows/s. Same columns and values; only where/when rows are written changed. Other scenarios unchanged | MEMORY oct. 7 (eve) |
 
 ## D. Captures to redo / still missing (before the numbers are final)
 
@@ -67,7 +68,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | D1 | ⬜ | Recapture blackhole/tree/G402/stationary **r2** | r1 DEGRADED: 2 boards dropped out mid-run | Verification #2 |
 | D2 | ⬜ | Recapture blackhole/tree/G402/burst **r2** with all 8 boards | r1 lost FE90 (stale firmware) — reflash FE90 first | Verification #5 |
 | D3 | ⬜ | Recapture wormhole/tree/G402/stationary with the auto-switch firmware | r1 had no shortcut (C4) | Verification #6 |
-| D5 | ⬜ | Fix the root's arrival writer, then recapture every **highload** cell | first hardware run of `cb22106` (arrival queue) shows the writer itself is too slow at highload; read the `[RXSTALL] Saving one probe to storage took …` lines of that run to see whether SPIFFS or the SD mirror is the slow one | MEMORY oct. 7 |
+| D5 | ⬜ | Fix the root's arrival writer (**fix built oct. 7 eve, not on hardware yet - see C6**), then recapture every **highload** cell | first hardware run of `cb22106` (arrival queue) shows the writer itself is too slow at highload; read the `[RXSTALL] Saving one probe to storage took …` lines of that run to see whether SPIFFS or the SD mirror is the slow one | MEMORY oct. 7 |
 | D4 | ⬜ | Remaining matrix: jitter r2+r3, mobility, powercycle, star burst, 7-board highload, wormhole tree with a real tree | Not captured yet | STATUS next steps |
 
 ---

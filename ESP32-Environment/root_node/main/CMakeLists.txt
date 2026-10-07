@@ -19,11 +19,11 @@ if(DEFINED ACTIVE_ATTACK)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE ACTIVE_ATTACK=${ACTIVE_ATTACK})
 endif()
 
-# Run scenario / traffic profile (run.ps1 -Scenario). Only the burst profile (1)
-# means anything to the root — it holds an attack-length baseline window so the
-# target child's burst lands at the same offset as in an attack run. Highload
-# (2) is a child-only flag; passing it here is harmless (root_main.c does not
-# read TRAFFIC_PROFILE_HIGHLOAD) but run.ps1 never sends it to the root anyway.
+# Run scenario / traffic profile (run.ps1 -Scenario). Burst (1): the root holds
+# an attack-length baseline window so the target child's burst lands at the same
+# offset as in an attack run. Highload (2, since oct. 7, 2026): root_main.c logs
+# probe arrivals to the SD card only, batched (csv_logger_set_arrivals_sd_only)
+# so the root keeps up with ~28 rows/s. Jitter (3): randomised windows.
 # Roster gate (run.ps1 -ExpectedChildren): children that must be in the mesh
 # before Phase 0. Always passed explicitly by run.ps1 (0 = off), so a value
 # cached in this build dir from an earlier run can never leak into this one.
@@ -34,5 +34,5 @@ endif()
 
 if(DEFINED TRAFFIC_PROFILE)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE TRAFFIC_PROFILE=${TRAFFIC_PROFILE})
-    message(STATUS "root_node: TRAFFIC_PROFILE=${TRAFFIC_PROFILE} (1=burst)")
+    message(STATUS "root_node: TRAFFIC_PROFILE=${TRAFFIC_PROFILE} (1=burst 2=highload 3=jitter)")
 endif()

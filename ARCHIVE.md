@@ -2510,3 +2510,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
   `-Analyze` now SKIPS M6-M8 (trim still runs) when the folder has no child `*_telem.csv` - SD workflow exported the root
   first and overwrote a full analysis with a root-only one (twice on sep. 26). Parse-checked + guard filter tested; not run on boards.
 - oct. 5 (Basti) — DLSU_Library/stationary r1 verified (#4): USABLE; PDR -inf explained.
+
+## Rolled from MEMORY.md oct. 7, 2026 eve (cap)
+- sep. 26, 2026 (late) — **Root phase banners print the wall-clock start time** (`root_main.c` `phase_banner()`, e.g. `@ 22:03:15 PHT`;
+  "(est.)" when the clock is only the build-stamp estimate, `--:--:--` if unseeded). Console-only visual aid, never in a CSV (user). Compiled clean, not flashed.

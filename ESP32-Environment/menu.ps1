@@ -1622,7 +1622,7 @@ function Get-BuildDirSpec {
     # takes a suffix/flag, so 'stationary'/'mobility'/'powercycle' builds are untouched.
     $scenario = $Params.Scenario
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $suffix += '_burst' }
-    if ($scenario -eq 'highload' -and $role -ne 'root') { $suffix += '_highload' }
+    if ($scenario -eq 'highload') { $suffix += '_highload' }   # root too (oct. 7, 2026)
     if ($scenario -eq 'jitter' -and $role -eq 'root') { $suffix += '_jitter' }
     $portTag = ($Params.Port -replace '[^A-Za-z0-9]', '')
     $buildDir = Get-SafeBuildDir -Proj $proj -DirName "build_${suffix}_$portTag"
@@ -1649,7 +1649,7 @@ function Get-BuildDirSpec {
     $flags += "-DMESH_TOPOLOGY=$topologyNum"
 
     if ($scenario -eq 'burst' -and ($role -eq 'root' -or $Params.ScenarioTarget)) { $flags += '-DTRAFFIC_PROFILE=1' }
-    if ($scenario -eq 'highload' -and $role -ne 'root') { $flags += '-DTRAFFIC_PROFILE=2' }
+    if ($scenario -eq 'highload') { $flags += '-DTRAFFIC_PROFILE=2' }   # root: SD-only batched arrivals
     # jitter is ROOT-ONLY: only the root schedules phases (see run.ps1's mapping).
     if ($scenario -eq 'jitter' -and $role -eq 'root') { $flags += '-DTRAFFIC_PROFILE=3' }
 

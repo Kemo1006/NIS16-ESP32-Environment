@@ -88,6 +88,13 @@ static char  s_sd_arrivals_path[192] = {0};
 static bool  s_sd_log_failed      = false;  /* latched: don't retry every row */
 static bool  s_sd_arrivals_failed = false;
 
+/* HIGHLOAD ROOT ONLY — see csv_logger_set_arrivals_sd_only(). Off in every
+ * other build, which keeps the SPIFFS-first arrival path byte-for-byte as it
+ * was. s_arrivals_spiffs_fallback latches once any row had to go to SPIFFS
+ * (card missing or failed), so EXPORT_ARRIVALS knows to send those rows too. */
+static bool  s_arrivals_sd_only          = false;
+static bool  s_arrivals_spiffs_fallback  = false;
+
 /* DELETE_SD_FILE on a mirror this boot still has OPEN (the run in progress).
  * The command arrives on the serial export task, but each FILE* belongs to the
  * task that appends to it, and there is no lock around them — so the export
@@ -1091,6 +1098,14 @@ static void sd_mirror_ensure(FILE **fp, const char *path, const char *header,
         *failed = true;
         return;
     }
+    /* Highload root only: one 4 KB card write per ~37 rows instead of one per
+     * row (newlib's default FILE buffer is ~128 B). Must precede any I/O. */
+    if (fp == &s_sd_arrivals_fp && s_arrivals_sd_only) {
+        if (setvbuf(f, NULL, _IOFBF, LOGGER_SD_ONLY_VBUF_BYTES) != 0) {
+            ESP_LOGW(TAG, "SD arrivals: setvbuf(%u) failed — unbuffered writes.",
+                     (unsigned)LOGGER_SD_ONLY_VBUF_BYTES);
+        }
+    }
     if (fputs(header, f) < 0) {
         ESP_LOGW(TAG, "SD mirror unavailable (%s): header write failed.", path);
         fclose(f);
@@ -1227,6 +1242,16 @@ static void io_unlock(void)
  * Public API — Initialisation
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+void csv_logger_set_arrivals_sd_only(bool on)
+{
+    s_arrivals_sd_only = on;
+    if (on) {
+        ESP_LOGW(TAG, "HIGHLOAD: arrival rows -> SD card only (batched, flush every %u rows); "
+                      "SPIFFS copy skipped. EXPORT_ARRIVALS reads the card.",
+                 (unsigned)LOGGER_SD_ONLY_FLUSH_RECORDS);
+    }
+}
+
 esp_err_t csv_logger_init(const char *node_id, const char *run_id,
                            csv_logger_role_t role)
 {
@@ -1344,6 +1369,7 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
         sd_csv_path(s_sd_arrivals_path, sizeof(s_sd_arrivals_path), "arrivals",
                     s_role_str, node_id, s_run_number);
         s_sd_arrivals_failed = false;
+        s_arrivals_spiffs_fallback = false;
     }
     if (s_sd_log_path[0] == '\0') {
         ESP_LOGW(TAG, "No SD mirror this run — this board's data can only be "
@@ -1529,22 +1555,52 @@ esp_err_t csv_logger_append_probe_arrival(
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (fputs(row, s_arrivals_fp) < 0) {
-        io_unlock();
-        ESP_LOGE(TAG, "fputs (probe arrival) failed");
-        return ESP_FAIL;
-    }
+    if (s_arrivals_sd_only) {
+        /* Highload root: the card is the primary copy; SPIFFS only catches
+         * rows the card could not take. */
+        sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
+                                 &s_sd_arrivals_failed, "arrivals");
+        sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
+                         &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
+        bool on_sd = false;
+        if (s_sd_arrivals_fp) {
+            if (fputs(row, s_sd_arrivals_fp) < 0) {
+                sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
+            } else {
+                on_sd = true;
+            }
+        }
+        if (!on_sd) {
+            if (!s_arrivals_spiffs_fallback) {
+                s_arrivals_spiffs_fallback = true;
+                ESP_LOGE(TAG, "HIGHLOAD: SD card not taking arrival rows - falling back "
+                              "to SPIFFS (slow; rows may be lost under highload).");
+            }
+            if (fputs(row, s_arrivals_fp) < 0) {
+                io_unlock();
+                ESP_LOGE(TAG, "fputs (probe arrival) failed");
+                return ESP_FAIL;
+            }
+        }
+    } else {
+        if (fputs(row, s_arrivals_fp) < 0) {
+            io_unlock();
+            ESP_LOGE(TAG, "fputs (probe arrival) failed");
+            return ESP_FAIL;
+        }
 
-    sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
-                             &s_sd_arrivals_failed, "arrivals");
-    sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
-                     &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
-    if (s_sd_arrivals_fp && fputs(row, s_sd_arrivals_fp) < 0) {
-        sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
+        sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
+                                 &s_sd_arrivals_failed, "arrivals");
+        sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
+                         &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
+        if (s_sd_arrivals_fp && fputs(row, s_sd_arrivals_fp) < 0) {
+            sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
+        }
     }
 
     s_arrivals_row_count++;
-    if (s_arrivals_row_count >= LOGGER_FLUSH_RECORDS) {
+    if (s_arrivals_row_count >= (s_arrivals_sd_only ? LOGGER_SD_ONLY_FLUSH_RECORDS
+                                                    : LOGGER_FLUSH_RECORDS)) {
         fflush(s_arrivals_fp);
         if (s_sd_arrivals_fp) {
             fflush(s_sd_arrivals_fp);
@@ -1716,6 +1772,72 @@ esp_err_t csv_logger_start_export_task(void)
 
 /* ── Serial export task ──────────────────────────────────────────────────── */
 
+/* Streams fp to the export UART line by line; skip_header drops its first
+ * line. *streamed carries the watchdog-yield count across several files. */
+static void stream_csv_lines(FILE *fp, bool skip_header, uint32_t *streamed)
+{
+    char line[256];
+    bool first = true;
+    while (fgets(line, sizeof(line), fp)) {
+        if (first) {
+            first = false;
+            if (skip_header) {
+                continue;
+            }
+        }
+        uart_write_bytes(EXPORT_UART, line, strlen(line));
+        if ((++(*streamed) & 0x3F) == 0) {
+            uart_wait_tx_done(EXPORT_UART, pdMS_TO_TICKS(100));
+            vTaskDelay(1);
+        }
+    }
+}
+
+static long csv_file_size(FILE *fp)
+{
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    return size;
+}
+
+/* EXPORT_ARRIVALS on a highload root (csv_logger_set_arrivals_sd_only): the
+ * rows are on the SD card, not SPIFFS. Sends the card file, then any rows that
+ * fell back to SPIFFS (header dropped) as ONE stream, so export_logs.py saves
+ * a single normal arrivals CSV. No card at all -> the SPIFFS file alone. */
+static void export_arrivals_sd_only(void)
+{
+    bool took_mount = false;
+    FILE *sd = NULL;
+    if (s_sd_arrivals_path[0] != '\0'
+            && sd_status_ensure_mounted("EXPORT_ARRIVALS", &took_mount)) {
+        sd = fopen(s_sd_arrivals_path, "r");
+    }
+    FILE *sp = (s_arrivals_spiffs_fallback || !sd) ? fopen(s_arrivals_path, "r") : NULL;
+
+    if (!sd && !sp) {
+        uart_write_bytes(EXPORT_UART, "ERROR:FILE_NOT_FOUND\n", 21);
+    } else {
+        long total = (sd ? csv_file_size(sd) : 0) + (sp ? csv_file_size(sp) : 0);
+        char ready[40];
+        int rlen = snprintf(ready, sizeof(ready), "READY_TO_SEND:%ld\n", total);
+        uart_write_bytes(EXPORT_UART, ready, rlen);
+        uint32_t streamed = 0;
+        if (sd) {
+            stream_csv_lines(sd, false, &streamed);
+            fclose(sd);
+        }
+        if (sp) {
+            stream_csv_lines(sp, sd != NULL, &streamed);
+            fclose(sp);
+        }
+        uart_write_bytes(EXPORT_UART, "END_OF_FILE\n", 12);
+    }
+    if (took_mount) {
+        sd_status_unmount();
+    }
+}
+
 static void serial_export_task(void *arg)
 {
     /*
@@ -1839,6 +1961,8 @@ static void serial_export_task(void *arg)
                 ESP_LOGI(TAG, "EXPORT_ARRIVALS — streaming %s", s_arrivals_path);
                 if (s_arrivals_path[0] == '\0') {
                     uart_write_bytes(EXPORT_UART, "ERROR:NOT_ROOT_NODE\n", 20);
+                } else if (s_arrivals_sd_only) {
+                    export_arrivals_sd_only();   /* highload root only */
                 } else {
                     FILE *fp = fopen(s_arrivals_path, "r");
                     if (!fp) {
