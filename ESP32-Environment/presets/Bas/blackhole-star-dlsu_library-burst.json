@@ -1,24 +1,24 @@
 ﻿{
     "attack":  "blackhole",
     "topology":  "star",
-    "location":  "G402",
+    "location":  "DLSU_Library",
     "scenario":  "burst",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-10-01 13:29",
+    "savedAt":  "2026-10-07 10:52",
     "boards":  [
                    {
                        "Label":  "node2",
-                       "Port":  "COM3",
+                       "Port":  "COM6",
                        "Role":  "child",
-                       "Kind":  "attacker",
-                       "Display":  "blackhole ATTACKER",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
                        "Mac":  "20:50:0d:e7:1c:38",
                        "ScenarioTarget":  false
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM5",
+                       "Port":  "COM7",
                        "Role":  "child",
                        "Kind":  "victim",
                        "Display":  "blackhole victim + BURST TARGET",
@@ -27,10 +27,10 @@
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM4",
+                       "Port":  "COM3",
                        "Role":  "child",
-                       "Kind":  "victim",
-                       "Display":  "blackhole victim",
+                       "Kind":  "attacker",
+                       "Display":  "blackhole ATTACKER",
                        "Mac":  "20:50:0d:e7:0c:80",
                        "ScenarioTarget":  false
                    }

@@ -16,7 +16,9 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
-## 🔎 VERIFICATION #8 — Oct 7, 2026 · 5:30 PM — blackhole · partial_mesh · DLSU_Library · highload
+## 🔎 VERIFICATION #9 — Oct 7, 2026 · 5:30 PM — blackhole · partial_mesh · DLSU_Library · highload
+
+> _Numbered #9 at merge: Bas's star/DLSU #8 (below, 10:35 AM) reached GitHub first._
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `90f3382` (firmware = highload root fix `643adf8`)
 > **Request:** "check my recent datasets, eda, analysis" + the wizard's `verify_attack.py` output (BLACKHOLE CONFIRMED)
@@ -50,6 +52,76 @@ EDA plots (time series + PCA/t-SNE).
 
 **Verdict: ✅ USABLE** — the highload root fix works on hardware (0 arrival rows lost at ~24 rows/s), and BLACKHOLE
 CONFIRMED is genuine: victim `B4BFE932FE90` 0/721 in the attack; the other 5 are above the attacker (unaffected by design).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #8 — Oct 7, 2026 · 10:35 AM — blackhole · star · DLSU_Library · stationary
+
+> _Numbered #8 because Angelo's #6 and #7 (below) reached GitHub first. Done at 10:35 AM._
+
+> **Requested by:** Bas · **Laptop:** Bas's (`No`) · **Commit:** `3926b3d` (capture not committed; 4 victim files staged, the rest untracked)
+> **Request:** "check the most recent dataset which is the blackhole star dlsu library stationary if its valid or not"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | star | DLSU_Library | stationary | r1 | Oct 7, 10:00:41 boot · baseline 10:02:03 · attack 10:07:03 · cooldown 10:10:04 · terminate 10:12:05 | 9 (7 child telem + root telem + root arrivals) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ✅ 9 PASS / 0 WARN / 0 FAIL | raw and `trimmed/` both. "phase 0 ran 396–429 s" infos = boot segment + baseline, both phase_id 0 (see below) |
+| Topology (`verify_topology.py`) | ⚠️ FAIL, false alarm | shape ✅ root → attacker `20500DE70C80` (layer 2) → 6 leaves (layer 3) = STAR (attacker hub), as built (`max_layer=3`). "Converged NO / re-routing NO" = the attacker's boot segment only (see below) |
+| Attack (`verify_attack.py`) | ✅ CONFIRMED 2/2 | FR attacker 0.996 → 0.000 (z −31.51) · PDR 0.996 → 0.000 (z −27.26) · NeighbourFR z −39.09 · ConsistencyScore z +28.83 · IngressEgressDelta z +10.06 |
+| Per-node PDR | ✅ all 6 victims 0.000 in attack | baseline 0.995–1.000, n = 179–180 attack windows each |
+| Root arrivals (raw) | ✅ | baseline 1,793/1,800 (704B 294, F42D 299, rest 300) · attack **1** · cooldown 720 · 0 duplicate (src, seq) |
+| Re-trim (`trim_run.py --apply`) | ✅ no-op | 1 boot session per node → 0 rows dropped, byte-identical to the existing `trimmed/` |
+| Analysis tables | ✅ reproducible | re-ran preprocess + features on a scratch copy → every data column identical (5,802 × 46 / 5,802 × 71); only the 4 path-derived tag columns differ, because the scratch folder has no attack/topology path |
+
+### ⚠️ Gate 2 FAIL is a false alarm (same mechanism as #4)
+- Run log `blackhole-star-dlsu_library-stationary_r1_oct07_1000AM.log:38-53`: the wizard **full-erased and
+  reflashed the root at ~10:00** while the 7 children were already up. On the attacker's clock (booted
+  ~64 s before the root): phase 0 at 18 s, lost the root at 40 s and 66 s (= the erase/flash), new root's
+  phase 255 at 70 s, stable under the root from 138 s, **real baseline 146 → 447 s (301 s)**. The other
+  children show the same 255 → 0 → 255 → 0 pattern. ED80's log starts inside the first phase 0 (96 s);
+  its real baseline is 191 → 492 s.
+- `verify_topology.py` reads phase_id 0 as baseline, so it counts the attacker's 40–138 s drop as
+  "baseline re-routing" and its converge time as 133 s. Inside the real baseline **no node changes parent
+  or layer**. Expect `Topology FAIL` on every re-run of this capture.
+- The pipeline handles it: `preprocess.assign_segments` tags those windows `pre_baseline` (996 windows,
+  Label NaN), and they are excluded. Labelled: baseline 2,399 + cooldown 962 (Label 0), attack 1,440
+  (Label 1 = 8 nodes × 180).
+
+### Small things that look wrong but aren't
+- **The 1 attack-phase arrival** is `20500DE71C38` seq 339, logged at root t = 382.03 s, 0.6 s before the
+  root's ATTACK banner (382.64 s). It is a baseline probe that landed on the boundary.
+- **5 windows are `segment = attack` but Label 0**: one boundary window per node at the end of the attack
+  (181st window). Same as #4's one-window note.
+- **FE90 "1 gap"** = a single 0.5 s step at 298.8 s. Coverage is still 100 %.
+- **The attacker has no PDR row**: it sends no probes of its own (see #4). In a star it is the only relay,
+  so "FR (all relays)" equals the attacker row by construction.
+
+### ⚠️ Metadata mismatch: the preset names the WRONG attacker
+- `presets/Bas/blackhole-star-dlsu_library-stationary.json` (untracked, a copy of the old
+  `blackhole-star-g402-burst.json`) says node2 `20:50:0d:e7:1c:38` = **attacker**, node4
+  `20:50:0d:e7:0c:80` = victim.
+- What actually ran: `child_node4` = `20500DE70C80` with `role = blackhole` in every row, and the root's
+  dashboard lists `20:50:0D:E7:0C:80 ATTACKER (BLACKHOLE)` all run. `child_node2` = `20500DE71C38` is
+  an honest leaf (`role = child`, PDR 1.000 → 0.000). The children were flashed from another laptop (no
+  child run log here), so where the swap happened is not known.
+- **The labels in the data are correct.** The analysis takes the attacker from the firmware's `role` column, not
+  the preset. But anyone using the preset as the run's board → node map gets it backwards. Fix the
+  preset (or record the real map) before the next run or the write-up.
+
+### ⚠️ Stray file in a different cell
+- `exports/blackhole/tree/DLSU_Library/stationary/child_node3_tree_blackhole_r1_oct07_1019AM_telem.csv`
+  is **1 row** (`F42DC973E618`, t = 21.9 s, phase 3), exported one minute after node3's real star file.
+  It is junk. Left in place, it creates a bogus tree/DLSU_Library cell that `analyze.ps1` (no args)
+  and `push_data.py` will pick up. Not deleted (user's call).
+
+**Verdict: ✅ USABLE.** Blackhole confirmed on all primaries. Attacker `20500DE70C80` is the star hub. All 6
+victims (`1C38`, `2805`, `704B`, `FE90`, `ED80`, `F42D`) are 1.000 → 0.000 during the attack and back to
+100 % in cooldown. Before committing: fix the preset's attacker entry and delete the stray tree file.
+Expect wizard re-verify to show Integrity PASS · Topology FAIL (boot segment) · Attack CONFIRMED.
 
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->

@@ -328,7 +328,7 @@
  *  boards — the attacker prints it at boot ("Set BLACKHOLE_ATTACKER_MAC ... to
  *  my STA MAC: ..."), or read it with tools/Get-EspMac.ps1. Only blackhole
  *  VICTIM builds read it; the attacker and all other builds ignore it. */
-#define BLACKHOLE_ATTACKER_MAC   {0x20, 0x50, 0x0D, 0xE7, 0x1C, 0x38} // COM3 (node2) (blackhole attacker) - 20:50:0d:e7:1c:38
+#define BLACKHOLE_ATTACKER_MAC   {0x20, 0x50, 0x0D, 0xE7, 0x0C, 0x80} // remote-attacker (other laptop) (blackhole attacker) - 20:50:0d:e7:0c:80
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * WORMHOLE TUNNEL  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_WORMHOLE == 2)

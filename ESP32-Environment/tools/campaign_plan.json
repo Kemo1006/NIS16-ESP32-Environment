@@ -120,7 +120,7 @@
       "powercycle"
     ],
     "DLSU_Library/star/blackhole": [
-      "powercycle",
+      "stationary",
       "burst",
       "jitter",
       "highload"

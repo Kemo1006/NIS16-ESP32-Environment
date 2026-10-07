@@ -53,8 +53,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import name_stamp  # noqa: E402
+import serial_guard  # noqa: E402
 
-BAUD = 921600            # MUST match SNIFF_BAUD in sniffer_node/main/sniffer_main.c
+BAUD = 921600           # MUST match SNIFF_BAUD in sniffer_node/main/sniffer_main.c
 
 MAGIC = b"\xA5\x5A"
 REC_HELLO, REC_FRAME, REC_STATUS = 1, 2, 3
@@ -333,6 +334,10 @@ def main():
         print("ERROR: could not open %s (%s)." % (args.port, ex))
         print("  Close any idf.py monitor / serial window on that port, check the cable, retry.")
         return 2
+    # 921600 baud fills pyserial's default 4 KB in ~36 ms if Wireshark's live
+    # pipe stalls - and a full driver buffer is the silabser.sys BSOD trigger
+    # (serial_guard.py). 4 MiB buys ~37 s.
+    serial_guard.grow_rx_queue(ser, 4 << 20)
 
     live = None
     live_note = ""
