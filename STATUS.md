@@ -9,19 +9,19 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Where things stand
 - **Thesis to-do list:** `ESP32-Environment/docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md` (A method · B wording · C footnotes · D recaptures). CLAUDE.md rule: add a row the same day for anything that changes the paper. Method changes also get a D-entry (now D-1…D-17).
 - **Verification log** `docs/dataset-verification.md`: #7 partial_mesh/DLSU/stationary USABLE (output recomputed by hand, not hardcoded) · #6 wormhole tree/G402 r1 had NO shortcut · #5 FE90 stale firmware · #4 DLSU/stationary · #3 tree/G402/burst · #2 sweep · #1 tree/G402/jitter.
-- ⛔ **HIGHLOAD ROOT LOST 3151 ARRIVAL ROWS** (oct. 7 ~15:20 partial_mesh highload; 398 ms/row vs <=35 ms needed). That run's root PDR is invalid (C5). **FIX BUILT, UNCOMMITTED, NOT ON HARDWARE:** highload ROOT only now logs arrivals SD-only, 4 KB-buffered, flush/100 rows; root now gets `-DTRAFFIC_PROFILE=2` on highload. Other scenarios untouched. Detail: MEMORY oct. 7 (eve).
+- ⛔ **HIGHLOAD ROOT LOST 3151 ARRIVAL ROWS** (oct. 7 ~15:20 partial_mesh highload; 398 ms/row vs <=35 ms needed). That run's root PDR is invalid (C5). **FIX PUSHED (`643adf8`), NOT ON HARDWARE YET:** highload ROOT only now logs arrivals SD-only, 4 KB-buffered, flush/100 rows; root now gets `-DTRAFFIC_PROFILE=2` on highload. Other scenarios untouched. Detail: MEMORY oct. 7 (eve).
 - **Wormhole AUTO-SWITCH** (A/B by depth, locked at Phase 0) + error detection + enhanced root WORMHOLE TUNNEL printout + `exposure.py` `not_tunnelled` + verifier WORMHOLE SETUP CHECK: pushed, host test 35/35, all 15 variants build. **Not yet on hardware.**
 - `B4BFE932FE90` (Kyle's) ran a stale image on oct. 2; in-sync again in the oct. 7 partial run (looks reflashed).
 - z = `-inf`/`+inf` or a huge finite z (ConsistencyScore 1,178,647 = 1e-6 EPSILON residue) = baseline σ ≈ 0 -> write "z undefined (σ = 0)".
 - Host build tip (Angelo's laptop): `idf.py.exe` wrapper rejects `-D`; use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. C: was full (0.29 GB) on oct. 7 - keep space free; esp32_builds live on C:.
 
 ## Uncommitted on Angelo's laptop
-- Code + docs (commit + push next, user's go): highload root fix - `csv_logger.c/.h`, `mesh_config.h` (2 defines ONLY - its attacker line stays local), `root_main.c`, `root_node/main/CMakeLists.txt`, `run.ps1`, `menu.ps1`, `run_wizard.ps1`, `build_all_variants.ps1`; MEMORY/STATUS/ARCHIVE/checklist.
+- Code/docs: none - highload root fix pushed (`643adf8`, merged `e345428`).
 - DATA not pushed: blackhole/partial_mesh/DLSU_Library/stationary - root telem + arrivals, 4 `victim_..._partial_none` files, and its analysis (verified #7). Its 3 `child_node*` files are already on GitHub (Basti's data sync, `0c5d02a`). The highload run's files once exported.
 - Never push: root/child `sdkconfig`, `dependencies.lock`, `mesh_config.h` attacker line, `sd_card_test/sdkconfig`.
 
 ## Next step
-1. Highload fix: commit (NOT the sdkconfig/lock/attacker line) -> reflash the ROOT with scenario highload -> 2-min check run: no `queue FULL`, `took X ms` well under 35 -> recapture highload (C5, C6, D5). Don't reset the root before EXPORT_ARRIVALS.
+1. Highload fix: reflash the ROOT with scenario highload -> 2-min check run: no `queue FULL`, `took X ms` well under 35 -> recapture highload (C5, C6, D5). Don't reset the root before EXPORT_ARRIVALS.
 2. Push partial_mesh/DLSU/stationary data (user's go).
 3. Reflash root + both wormhole boards; wizard UART tunnel test; wormhole run -> expect `LOCKED as NODE A/B` + root `OK: ... tunnel skips N hop(s)`. Recapture wormhole tree/G402 (D3).
 4. Recapture tree/G402/stationary r2, tree/G402/burst r2 (all 8 boards). Remaining matrix: checklist D4.
