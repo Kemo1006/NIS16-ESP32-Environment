@@ -1279,16 +1279,89 @@ static void heartbeat_table_print(void)
          * counter is a cycle guard -- topo_build() flags cycles, but this must
          * not be the thing that hangs a live run if one slips through. */
         bool any_attacker = false;
+        int  wh_a = -1, wh_b = -1;
         for (size_t i = 0; i < n; i++) {
             if (s_nodes[i].role == NODE_ROLE_BLACKHOLE
                     || s_nodes[i].role == NODE_ROLE_WORMHOLE_A
                     || s_nodes[i].role == NODE_ROLE_WORMHOLE_B) {
                 any_attacker = true;
-                break;
             }
+            if (s_nodes[i].role == NODE_ROLE_WORMHOLE_A) wh_a = (int)i;
+            if (s_nodes[i].role == NODE_ROLE_WORMHOLE_B) wh_b = (int)i;
         }
 
-        if (any_attacker) {
+        /* ---- WORMHOLE: a different rule from the blackhole below ---------
+         *
+         * The blackhole's "anything under an attacker is a victim" does not
+         * apply here. wormhole_victim.c tunnels ONLY Node B's OWN probes: B
+         * sends each one up the mesh as normal AND (attack phase) copies it
+         * over the UART wire to A, which re-injects it at A's position. Every
+         * other child's traffic is relayed exactly as in baseline, wherever it
+         * sits. So: B is the only node whose data carries the attack.
+         *
+         * Placement matters as much as for the blackhole: A is the EXIT (root
+         * side), B the ENTRY (leaf side). The tunnel is a shortcut only when A
+         * is FEWER hops from the root than B. Reversed (oct. 7 2026 linear
+         * run: B at H01, A at H06) the tunnelled copy climbs back up from deep
+         * in the mesh and arrives SLOWER than B's normal copy - the opposite of
+         * the wormhole signature - and every check downstream still passes. */
+        if (wh_a >= 0 || wh_b >= 0) {
+            log_rule('-', rule_w);
+            ESP_LOGI(TAG, " EXPOSURE (wormhole: only Node B's own probes are tunnelled)");
+            for (size_t i = 0; i < n; i++) {
+                if ((int)i == g.root) {
+                    continue;
+                }
+                if ((int)i == wh_b) {
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  ATTACKER (WORMHOLE_B, entry) - its OWN"
+                                  " probes are copied to A over UART", MAC2STR(s_nodes[i].mac));
+                } else if ((int)i == wh_a) {
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  ATTACKER (WORMHOLE_A, exit)  - re-injects"
+                                  " B's probes from here", MAC2STR(s_nodes[i].mac));
+                } else {
+                    ESP_LOGI(TAG, "   " MACSTR_UC "  not affected - relayed as in baseline",
+                             MAC2STR(s_nodes[i].mac));
+                }
+            }
+
+            /* Hops to the root, walked up the same parent links as the tables
+             * above; the step counter is the same cycle guard as below. */
+            int hop_a = -1, hop_b = -1;
+            for (int k = 0; k < 2; k++) {
+                int start = (k == 0) ? wh_a : wh_b;
+                if (start < 0) continue;
+                int hops = 0, cur = start;
+                for (size_t steps = 0; cur >= 0 && cur != g.root && steps <= n; steps++) {
+                    cur = g.parent[cur];
+                    hops++;
+                }
+                if (cur == g.root) {
+                    if (k == 0) hop_a = hops; else hop_b = hops;
+                }
+            }
+
+            int in_mesh = esp_mesh_get_routing_table_size();
+            if ((int)n < in_mesh) {
+                ESP_LOGI(TAG, " (%d of %d node(s) reported so far - verdict waits"
+                              " for the rest)", (int)n, in_mesh);
+            } else if (hop_a < 0 || hop_b < 0) {
+                ESP_LOGE(TAG, " !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node %s is"
+                              " missing or not connected to the root.",
+                         (hop_a < 0 && hop_b < 0) ? "A and Node B"
+                                                  : (hop_a < 0 ? "A" : "B"));
+            } else if (hop_a >= hop_b) {
+                ESP_LOGE(TAG, " !! WORMHOLE ENDS %s: A (exit) is at H%02d, B (entry) at"
+                              " H%02d. The tunnelled copy would NOT be a shortcut -"
+                              " it arrives no faster than B's normal copy.",
+                         hop_a > hop_b ? "REVERSED" : "AT THE SAME DEPTH", hop_a, hop_b);
+                ESP_LOGE(TAG, "    A must be CLOSER to the root than B. Reflash the two"
+                              " boards with WormholeEnd swapped (keep the cable), then re-run.");
+            } else {
+                ESP_LOGI(TAG, " OK: A (exit) at H%02d, B (entry) at H%02d - the tunnel skips"
+                              " %d hop(s). Only Node B's probes carry the attack;"
+                              " report its duplicates + latency.", hop_a, hop_b, hop_b - hop_a);
+            }
+        } else if (any_attacker) {
             log_rule('-', rule_w);
             ESP_LOGI(TAG, " EXPOSURE (who this run's attack can actually reach)");
             int victims = 0, bystanders = 0;

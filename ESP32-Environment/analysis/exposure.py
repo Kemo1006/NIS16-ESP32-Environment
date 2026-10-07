@@ -34,6 +34,14 @@ One value per node per run:
     unknown     the parent chain could not be resolved (no parent_mac, or a
                 node that never joined). Never silently folded into another
                 value: "we could not tell" and "not attacked" are different.
+    not_tunnelled  WORMHOLE runs only: every non-attacker child, wherever it
+                sits. wormhole_victim.c tunnels ONLY Node B's OWN probes (B
+                sends each up the mesh as normal and copies it over the UART
+                wire to A); every other node's traffic is relayed exactly as in
+                baseline, so the blackhole rule above ("under an attacker =
+                victim") does not apply. Until oct. 7 2026 it did, and a linear
+                wormhole run would have labelled every child below B
+                "downstream". The attack signal lives in B's probes.
 
 ⚠️ This is METADATA, never a feature. Inside an attack window "downstream" is
 very nearly the label itself, so it is registered in leakage.py's
@@ -50,6 +58,10 @@ import pandas as pd
 # Roles whose firmware actively manipulates traffic. A node is "downstream" when
 # one of these sits on its path to the root.
 ATTACK_ROLES = ("blackhole", "wormhole_a", "wormhole_b")
+
+# Attacker roles that do NOT make the nodes under them victims (see
+# "not_tunnelled" in the module docstring).
+WORMHOLE_ROLES = ("wormhole_a", "wormhole_b")
 
 ROOT_ROLES = ("root",)
 
@@ -152,6 +164,9 @@ def _exposure_for_run(group: pd.DataFrame) -> dict:
             # one, and saying "upstream" would imply a comparison that does not
             # exist in this capture.
             out[n] = "no_attacker"
+            continue
+        if any(str(roles.get(a, "")).lower() in WORMHOLE_ROLES for a in attackers):
+            out[n] = "not_tunnelled"
             continue
 
         # Walk to the root. `seen` guards against a cycle produced by a

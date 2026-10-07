@@ -15,6 +15,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Presets renamed** to `attack-topology-location-scenario.json` (all members, on GitHub). `Bas/blackhole-linear-g402-jitter.json` was named "star" but holds linear.
 - **Presets on GitHub are current** (oct. 7, `2a12ac0`): Angelo's newer oct. 1-2 saves moved onto the new names; old stash used up. Still local: `mesh_config.h` attacker line (per-run pick), sdkconfig x2, dependencies.lock.
 - EDA PCA fix + sniffer stop confirmation pushed (`4def0f8`). Not yet run on hardware: highload root queue (`cb22106`), hardcode audit (`44a9672`).
+- **Wormhole exposure fixed + pushed (oct. 7):** root printout flags A/B REVERSED (reflash ROOT to see it); `exposure.py` labels non-attackers `not_tunnelled`. Proposed, NOT built: A/B auto-switch by depth (user's call).
 
 ## Next step
 1. Everyone `git pull` + REFLASH (same commit on every laptop); reflash FE90 first.

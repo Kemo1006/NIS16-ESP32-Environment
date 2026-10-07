@@ -197,7 +197,8 @@ NEIGHBOUR_NOTE = ("independent of the attacker's own counters: in = what its chi
 
 
 EXPOSURE_LABEL = {"downstream": "VICTIM", "upstream": "not in path",
-                  "attacker": "ATTACKER", "root": "root", "no_attacker": "no attacker"}
+                  "attacker": "ATTACKER", "root": "root", "no_attacker": "no attacker",
+                  "not_tunnelled": "not tunnelled"}
 
 
 def _with_exposure(df):
