@@ -13,7 +13,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Wormhole auto-switch WORKS on hardware** (verification #10, wormhole/linear/DLSU/stationary: A at L5, B at L7, 181/181 B probes duplicated). TunnelLatency INCONCL + LatencyHopRatio INFEASIBLE are by design (C8).
 - **Analysed + pushed tonight:** blackhole/DLSU linear/stationary, linear/burst, star/stationary (all CONFIRMED), partial_mesh/jitter, wormhole/linear/stationary.
 - **Wizard text:** wormhole picker = "wired tunnel board 1/2" (A/B only a fallback); powercycle/mobility box gives WHO/WHAT/WHEN (phone timer 5:10 attack run, 2:30 baseline run).
-- **Verification log** `docs/dataset-verification.md`: #10 wormhole/linear/DLSU · #9 partial/DLSU/highload · #8 star/DLSU/stationary (Basti) · #7 partial/DLSU/stationary · #6 wormhole tree/G402 no shortcut.
+- **Verification log** `docs/dataset-verification.md`: #11 linear/DLSU/jitter USABLE · #10 wormhole/linear/DLSU · #9 partial/DLSU/highload · #8 star/DLSU/stationary (Basti) · #7 partial/DLSU/stationary · #6 wormhole tree/G402 no shortcut.
 - **Thesis to-do:** `docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md`; new tonight: A19 (benign design), A20 (3 sites), C6–C8. D-entries now D-1…D-19.
 - Host build tip (Angelo): use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. Test build dirs left in `C:\eb` (delete by hand).
 
@@ -35,5 +35,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `git diff --cached --stat` before every commit/pull - the wizard stages files on its own.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 7 night (Angelo) — deleted bogus benign tree/G402 copies (cell now [ ]); pushed linear/DLSU/jitter root; highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
+- oct. 7 night (Angelo) — deleted bogus benign tree/G402 copies (cell now [ ]); linear/DLSU/jitter root pushed + analysed + verified (#11, USABLE); highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
 - oct. 7 (Basti) — #8 star/DLSU verified USABLE; Edit preset Attacker row; pink A/B; campaign plan swap; unstuck the pull + pushed.

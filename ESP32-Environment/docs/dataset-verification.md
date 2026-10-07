@@ -16,6 +16,43 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #11 — Oct 7, 2026 · 7:11 PM — blackhole · linear · DLSU_Library · jitter
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `1f97dc2` (root files pushed in this commit)
+> **Request:** "analyse and verify it BUT TRIM IT FIRST"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | linear | DLSU_Library | jitter | r1 | Oct 7, ~6:41–6:55 PM | 9 (8 telem + root arrivals); children from Kyle + Basti, root from Angelo |
+
+| Check | Result | Detail |
+|---|---|---|
+| Trim (`trim_run.py`, dry run, then `--apply` via `analyze.ps1`) | ✅ nothing to cut | all 9 files = 1 boot session with baseline → attack → cooldown; 65,352 rows kept, 0 dropped. `trimmed/` = byte copies |
+| Integrity (`validate_integrity.py`) | ✅ 9 PASS / 0 WARN / 0 FAIL | every board 100 % sample coverage at 10 Hz |
+| **Jitter fired** | ✅ | root clock: baseline **331.4 s** (nominal 300), attack **206.5 s** (nominal 180), cooldown 120.5 s |
+| Topology (`verify_topology.py`) | ⚠️ FAIL — **false alarm** (same as #4, #8) | linear chain of 8 as expected: root → `FE90` (L2) → `0C80` (L3) → **attacker `1C38` (L4)** → `B768` → `D7B4` → `E618` → `ED80` (L8). The FAIL is `FE90` losing the root at 57–107 s of its own log, which is **while the wizard wiped and reflashed the root** (run log line 33: `-Wipe -Flash`). That is the old root session, tagged `pre_baseline` and excluded. Real baseline (child log 175 s on) = 0 parent switches on every node |
+| Root arrivals, recomputed by hand | ✅ | baseline 331/source (ED80 329); **attack: victims `B768`, `E618`, `ED80` = 0, `D7B4` = 1** (a boundary probe); bystanders `FE90`, `0C80` = 207 each; cooldown 120 each (ED80 115). 0 duplicate (src, seq) |
+| Attacker counters (`1C38`), recomputed by hand | ✅ | received/forwarded/dropped per phase: baseline 1751/1751/0, attack **806/0/806**, cooldown 475/475/0 |
+| Attack test (`verify_attack.py`) | ✅ **BLACKHOLE CONFIRMED** 2/2 primaries | attacker FR 0.997 → **0.000** (z −44.3); PDR pooled 0.997 → 0.335 (z −19.4). Per node: 4 victims 0.998 → **0.000**, 2 bystanders 1.000 → 1.000 (above the attacker, unaffected by construction) |
+| Analysis tables | ✅ | 6,189 windows (3 dropped < 4 samples); baseline 2,400 · attack 1,648 · cooldown 965 · pre_baseline 1,176 (excluded) |
+| EDA (`eda_output/`) | ✅ | PDR alone separates the label (0.889 vs 0.672 majority): expected for a blackhole (100 % drop in a fixed window), same warning as every blackhole cell |
+
+### Small things found
+- **Jitter's extra baseline is cut:** preprocess labels only the last `PHASE_BASELINE_S` = 300 s of phase 0 as baseline,
+  so jitter's extra ~31 s go to `pre_baseline` (known quirk, MEMORY oct. 1). The longer attack (206 s) survives in full.
+- **44 windows have ForwardingRatio > 1** (max 8.5): a relay queue flushed across a window edge. Verdict is unaffected (FR
+  attacker uses ratio-of-sums over 5-window points).
+- **Sniffer** (`…jitter-dlsu_library_r1_oct07_0640PM.pcap`) fitted; MacRetryRate covers 575–782 of ~820 windows on most
+  boards but only **174/826 on `FE90`** (sparse, not a model input).
+- **Child file names ≠ roles** (e.g. `child_node2_*` = the attacker `1C38`): names come from each laptop's preset; the
+  analysis keys on `node_id`, so labels are correct.
+
+**Verdict: ✅ USABLE** — clean single-session capture, jitter fired (331 s / 206 s), BLACKHOLE CONFIRMED with 4 victims
+at 0 % delivery and 2 bystanders at 100 %. Footnote the topology FAIL as the root-reflash false alarm.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #10 — Oct 7, 2026 · 6:40 PM — wormhole · linear · DLSU_Library · stationary
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `69ef017`
