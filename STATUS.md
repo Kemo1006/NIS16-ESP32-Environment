@@ -13,6 +13,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Wormhole auto-switch WORKS on hardware** (verification #10, wormhole/linear/DLSU/stationary: A at L5, B at L7, 181/181 B probes duplicated). TunnelLatency INCONCL + LatencyHopRatio INFEASIBLE are by design (C8).
 - **Analysed + pushed tonight:** blackhole/DLSU linear/stationary, linear/burst, star/stationary (all CONFIRMED), partial_mesh/jitter, wormhole/linear/stationary.
 - **Wizard text:** wormhole picker = "wired tunnel board 1/2" (A/B only a fallback); powercycle/mobility box gives WHO/WHAT/WHEN (phone timer 5:10 attack run, 2:30 baseline run).
+- **Topology gate:** `verify_topology.py` now ignores changes before a root restart (6 old FAILs -> PASS; tree/G402/stationary still a real FAIL).
 - **Verification log** `docs/dataset-verification.md`: #11 linear/DLSU/jitter USABLE · #10 wormhole/linear/DLSU · #9 partial/DLSU/highload · #8 star/DLSU/stationary (Basti) · #7 partial/DLSU/stationary · #6 wormhole tree/G402 no shortcut.
 - **Thesis to-do:** `docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md`; new tonight: A19 (benign design), A20 (3 sites), C6–C8. D-entries now D-1…D-19.
 - Host build tip (Angelo): use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. Test build dirs left in `C:\eb` (delete by hand).

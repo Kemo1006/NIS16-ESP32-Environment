@@ -51,6 +51,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | B3 | 🟨 | Results framing | PDR / LatencyHopRatio separate the classes perfectly on their own — frame as expected for a blackhole, not as a model result | STATUS blockers |
 | B5 | ⬜ | Tables with ConsistencyScore z | A **huge finite z** (e.g. 1,178,647) on ConsistencyScore is the same σ ≈ 0 case: `FR = fwd/(recv + 1e-6)` leaves 1e-6/recv residue in a perfect baseline. Report as "z undefined (σ = 0)", never the number. (Optional code fix: treat σ < 1e-5 as 0 in the verifier — not done) | Verification #7 |
 | B4 | ⬜ | Blackhole "victims" in a run | Report victims by **exposure** (downstream of the attacker), not by the firmware's build role | exposure.py, verification #1 |
+| B-topo | ⬜ | Topology gate (M3 'stable through baseline') | The baseline-stability check now skips parent changes from BEFORE a root restart (the old root session, already excluded from the data as pre_baseline). Topology FAILs written in verifications #4, #8, #11 (and on linear/G402/stationary, tree/G402/burst + jitter) were this false alarm; they now PASS. Don't report them as instability | MEMORY oct. 7 19:40 |
 
 ## C. Per-capture footnotes (cite the run, add the note)
 

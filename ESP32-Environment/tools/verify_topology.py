@@ -116,6 +116,16 @@ class NodeSummary:
         # Changes seen during the formation window, excluded from the
         # baseline-stability verdict but reported so the exclusion is visible.
         self.formation_changes = 0
+        # ROOT RESTART (same rule as analysis/preprocess.py assign_segments):
+        # a v2 child that hears a NEW root session drops back to phase 255, so
+        # a root wiped/reflashed after the children joined shows as
+        # <old phases> -> 255 -> 0 ... in one file. The old session's "phase 0"
+        # is not this run's baseline (preprocess tags it pre_baseline), and the
+        # parent loss while the root was down is not re-routing. Changes counted
+        # as baseline before the LAST such restart move to pre_restart_changes.
+        self.seen_real_phase = False
+        self.root_restarts = 0
+        self.pre_restart_changes = 0
         self.sta_int = node_id_to_sta_int(node_id)
         self.samples = 0
         self.first_ts = None
@@ -136,6 +146,18 @@ class NodeSummary:
             self.first_ts = ts
             self.logs_from_phase = self.v2 and phase_id != PHASE_UNSET
         self.last_ts = ts
+
+        if self.v2:
+            if phase_id == PHASE_UNSET and self.seen_real_phase:
+                # First 255 row after a real phase = one restart.
+                self.root_restarts += 1
+                self.seen_real_phase = False
+                self.pre_restart_changes += (self.baseline_parent_switches
+                                             + self.baseline_layer_changes)
+                self.baseline_parent_switches = 0
+                self.baseline_layer_changes = 0
+            elif phase_id != PHASE_UNSET:
+                self.seen_real_phase = True
 
         # Seconds since THIS node started logging. Each board's esp_timer
         # starts at its own boot, so a node-relative clock is the only one
@@ -718,6 +740,8 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         flag = "OK " if ok else (" - " if n.logs_from_phase else "  ?")
         forming = (f"  formation {n.formation_changes}"
                    if n.formation_changes else "")
+        if n.pre_restart_changes:
+            forming += f"  before-root-restart {n.pre_restart_changes}"
         print(f"  [{flag}] {nid}  layer={n.final_layer}  converge={conv_str}  "
               f"parent_switches={n.parent_switches} (baseline {n.baseline_parent_switches})  "
               f"layer_changes={n.layer_changes} (baseline {n.baseline_layer_changes})  "
@@ -729,6 +753,15 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
               f"formation, not re-routing. Excluded from the baseline verdict "
               f"below; counted in the totals above. --stabilise-s 0 to include "
               f"them.)")
+    restarted = [n for n in nodes.values() if n.pre_restart_changes]
+    if restarted:
+        print(f"\n  ({sum(n.pre_restart_changes for n in restarted)} parent/layer "
+              f"change(s) on {len(restarted)} node(s) happened BEFORE the root "
+              f"restarted (the node later dropped back to phase 255 = it heard "
+              f"a new root session, e.g. the root was wiped/reflashed after the "
+              f"children joined). That old session is pre_baseline in the "
+              f"analysis too, so it is excluded from the baseline verdict below; "
+              f"counted in the totals above.)")
     print()
 
     # ── Expected topology ───────────────────────────────────────────────────

@@ -2541,3 +2541,8 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Rolled from STATUS.md (oct. 7, 2026 night, Angelo)
 - oct. 7 (Angelo) — wormhole auto-switch + error detection + verification (host test, 15 builds); exposure fix; D-17 + thesis checklist; analysis/EDA + presets pushed; verifications #6, #7; highload arrival-loss found.
 - Basti oct. 7 details: Edit preset row [7] Attacker (star = HUB, other-laptop attacker by MAC); wormhole A/B rows pink; star/DLSU preset attacker fixed; campaign plan DLSU star/blackhole powercycle -> stationary; serial_guard.py grows the CP210x RX buffer to 1 MiB (not on hardware).
+
+## Rolled from MEMORY.md (oct. 7, 2026, Angelo — line cap)
+- sep. 26, 2026 (eve) — **OPERATOR HOLD (root waits for `GO`) was REVERTED ON PURPOSE by the user ("i reverted the code i didnt like").**
+  Not lost, not a bug: `run.ps1 -Hold`, `wait_for_operator_go()`, `OPERATOR_HOLD` and the wizard "Hold the root for GO? [Y/n]" are
+  gone from the tree. Do NOT rebuild or re-propose it unless asked; the roster gate still starts Phase 0 once children join.
