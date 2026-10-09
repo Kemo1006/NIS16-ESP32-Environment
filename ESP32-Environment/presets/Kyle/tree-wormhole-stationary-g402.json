@@ -1,0 +1,47 @@
+﻿{
+    "attack":  "wormhole",
+    "topology":  "tree",
+    "location":  "G402",
+    "scenario":  "stationary",
+    "owner":  "Kyle",
+    "repeat":  1,
+    "savedAt":  "2026-10-07 11:31",
+    "boards":  [
+                   {
+                       "Label":  "child_4",
+                       "Port":  "COM15",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "child_5",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "child_6",
+                       "Port":  "COM13",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:32:fe:90",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "child_7",
+                       "Port":  "COM14",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}
