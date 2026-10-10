@@ -1,0 +1,21 @@
+﻿{
+    "attack":  "blackhole",
+    "topology":  "linear",
+    "location":  "Yuchengco",
+    "scenario":  "stationary",
+    "owner":  "Cal",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-09 19:00",
+    "boards":  [
+                   {
+                       "Label":  "node1",
+                       "Port":  "COM12",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}
