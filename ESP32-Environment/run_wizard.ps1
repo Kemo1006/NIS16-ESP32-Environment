@@ -5282,8 +5282,9 @@ function Get-BoardBuildDir {
     $attack = $Params.Attack
     $topology = $Params.Topology
     $suffix = "${role}_${attack}_${topology}"
-    if ($attack -eq 'wormhole' -and $role -ne 'root' -and $Params.WormholeEnd) {
-        $suffix += "_$($Params.WormholeEnd)"
+    if ($attack -eq 'wormhole' -and $role -ne 'root') {
+        if ($Params.WormholeRole -eq 'victim') { $suffix += '_victim' }
+        elseif ($Params.WormholeEnd)          { $suffix += "_$($Params.WormholeEnd)" }
     }
     if ($attack -eq 'blackhole' -and $role -ne 'root' -and $Params.BlackholeRole) {
         $suffix += "_$($Params.BlackholeRole)"
@@ -5631,8 +5632,10 @@ function New-RunParams {
         'victim'   { $h.Attack = 'blackhole'; $h.BlackholeRole = 'victim' }
         'A'        { $h.Attack = 'wormhole';  $h.WormholeEnd   = 'A' }
         'B'        { $h.Attack = 'wormhole';  $h.WormholeEnd   = 'B' }
-        # A wormhole control runs PLAIN victim firmware; only its export folder changes.
-        'control'  { $h.Attack = 'none';      $h.DestAttack    = 'wormhole' }
+        # A wormhole control runs PLAIN victim firmware (victim_main.c), built
+        # with the wormhole flag so its SD card AND export say wormhole/ (oct. 14
+        # 2026: as -Attack none its card filed the run under baseline/).
+        'control'  { $h.Attack = 'wormhole';  $h.WormholeRole  = 'victim' }
         default    { $h.Attack = 'none' }
     }
     # The run's attacker, built into this board's firmware ahead of the laptop's
@@ -5680,8 +5683,8 @@ function Set-AttackSubRoles {
             }
             if ($idxB -ge 0) {
                 for ($ci = 0; $ci -lt $peers.Count; $ci++) {
-                    if     ($ci -eq $idxA) { $peers[$ci].Kind = 'A'; $peers[$ci].Display = 'wormhole Node A (exit)' }
-                    elseif ($ci -eq $idxB) { $peers[$ci].Kind = 'B'; $peers[$ci].Display = 'wormhole Node B (entry)' }
+                    if     ($ci -eq $idxA) { $peers[$ci].Kind = 'A'; $peers[$ci].Display = 'wormhole tunnel board 1 (entry/exit chosen automatically)' }
+                    elseif ($ci -eq $idxB) { $peers[$ci].Kind = 'B'; $peers[$ci].Display = 'wormhole tunnel board 2 (entry/exit chosen automatically)' }
                     else                    { $peers[$ci].Kind = 'control'; $peers[$ci].Display = 'control (plain firmware)' }
                 }
             }
@@ -5881,7 +5884,7 @@ function Add-BoardInteractive {
             $curB = @($updated | Where-Object { $_.Kind -eq 'B' } | ForEach-Object { $_.Label }) -join ', '
             if (-not $curA) { $curA = 'nobody yet' }
             if (-not $curB) { $curB = 'nobody yet' }
-            Write-Host ("   The two wired tunnel boards are currently: {0} (labelled A) and {1} (labelled B)." -f $curA, $curB) -ForegroundColor DarkGray
+            Write-Host ("   The two wired tunnel boards are currently: {0} and {1} (the firmware picks entry/exit by depth)." -f $curA, $curB) -ForegroundColor DarkGray
             Write-Host "   A/B is only a backup label: at run start the boards pick A/B themselves by depth (deeper = B)." -ForegroundColor DarkGray
             $ans = Read-Line "   Change which two boards are the wired tunnel pair? Press Enter to keep them as is [y/N] > "
         }
@@ -8901,10 +8904,10 @@ else {
                     }
                     for ($ci = 0; $ci -lt $children.Count; $ci++) {
                         if ($ci -eq $idxA) {
-                            $children[$ci].Kind = 'A'; $children[$ci].Display = 'wormhole Node A (exit)'
+                            $children[$ci].Kind = 'A'; $children[$ci].Display = 'wormhole tunnel board 1 (entry/exit chosen automatically)'
                         }
                         elseif ($ci -eq $idxB) {
-                            $children[$ci].Kind = 'B'; $children[$ci].Display = 'wormhole Node B (entry)'
+                            $children[$ci].Kind = 'B'; $children[$ci].Display = 'wormhole tunnel board 2 (entry/exit chosen automatically)'
                         }
                         else {
                             $children[$ci].Kind = 'control'; $children[$ci].Display = 'control (plain firmware)'
@@ -9341,6 +9344,12 @@ elseif ($attack -eq 'wormhole') {
         Write-Host "Before flashing, confirm the A<->B cable is wired between" -ForegroundColor Yellow
         Write-Host "  $($na.Label) and $($nb.Label), and that uart_link_test passed" -ForegroundColor Yellow
         Write-Host "  (main menu > MAINTENANCE > Wormhole UART tunnel test)." -ForegroundColor Yellow
+        # oct. 14 2026: a reversed-ends run was finished, analysed and pushed before
+        # anyone noticed. The test must pass BOTH ways - a one-way cable still
+        # carries tunnel copies but leaves the ends reversed.
+        Write-Host "  The test must pass in BOTH directions (A->B and B->A)." -ForegroundColor Yellow
+        Write-Host "  During the run, watch the root: if it shows 'UART TUNNEL NOT WORKING'," -ForegroundColor Yellow
+        Write-Host "  'ENDS REVERSED' or 'NO LONGER A SHORTCUT' after Phase 0 -> STOP and restart." -ForegroundColor Yellow
     }
     elseif ($na -or $nb) {
         # Roster has only one tunnel end - its A<->B cable partner isn't in this run.

@@ -64,11 +64,11 @@ void SYM(boot)(const uint8_t mac[6], int layer)
     s_role = (WORMHOLE_END == WORMHOLE_END_B) ? NODE_ROLE_WORMHOLE_B : NODE_ROLE_WORMHOLE_A;
     node_identity_resolve(s_role);
     s_role_locked = false; s_peer_seen = false; s_peer_last_us = 0;
-    s_peer_layer = 0; s_peer_locked = false; memset(s_peer_mac, 0, 6);
+    s_peer_layer = 0; s_peer_locked = false; s_peer_hears_me = false; memset(s_peer_mac, 0, 6);
     s_uart_bad_windows = 0; s_role_conflict = false; s_locked_fallback = false;
     s_shortcut_lost = false; s_tunnel_received = 0;
     s_rt_started_us = esp_timer_get_time(); s_rt_next_hello_us = 0;
-    s_rt_conflict_fixed = false; s_rt_lost_warned = false; s_rt_shortcut_warned = false;
+    s_rt_conflict_switch_us = 0; s_rt_conflict_switches = 0; s_rt_lost_warned = false; s_rt_shortcut_warned = false;
     s_rt_next_noise_warn = 64; s_rt_next_link_err_us = 0; s_hb_link = WH_LINK_NA;
     s_tx_len = 0; s_rx_len = 0; s_rx_pos = 0; s_queued = 0; s_dv_got = 0;
     if (!s_reinject_queue) s_reinject_queue = xQueueCreate(1, 1);

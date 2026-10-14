@@ -130,7 +130,9 @@ typedef struct __attribute__((packed)) {
     int16_t  layer;      /* sender's mesh layer; <= 0 = not in the mesh yet    */
     uint8_t  role;       /* node_role_t: NODE_ROLE_WORMHOLE_A / _B             */
     uint8_t  locked;     /* 1 once the sender's role is fixed for the run      */
-    uint8_t  pad[sizeof(probe_pkt_t) - 10];
+    uint8_t  hears_peer; /* 1 = sender hears ITS peer (oct. 14 2026). 0 from
+                          * older firmware (was pad) = treated as "deaf"       */
+    uint8_t  pad[sizeof(probe_pkt_t) - 11];
     uint32_t crc;        /* CRC32 over everything before it                    */
 } hello_pkt_t;
 _Static_assert(sizeof(hello_pkt_t) == sizeof(tunnel_pkt_t),
@@ -141,6 +143,8 @@ _Static_assert(sizeof(hello_pkt_t) == sizeof(tunnel_pkt_t),
 #define LOCK_WAIT_FOR_PEER_MS  3000   /* booted into a running run: wait this
                                        * long for a HELLO before falling back  */
 #define LINK_ERR_PERIOD_MS     10000  /* repeat the "wire is dead" error       */
+#define CONFLICT_MAX_DEPTH_SWITCHES 3 /* then fall back to the MAC rule, which
+                                       * always settles (no endless flip-flop)  */
 
 /* ── Shared state ─────────────────────────────────────────────────────────── */
 static char     s_node_id[NODE_ID_LEN] = {0};
@@ -159,6 +163,7 @@ static volatile int64_t s_peer_last_us = 0;
 static volatile int16_t s_peer_layer  = 0;
 static volatile uint8_t s_peer_role   = NODE_ROLE_WORMHOLE_A;
 static volatile bool    s_peer_locked = false;
+static volatile bool    s_peer_hears_me = false; /* peer's HELLO says it hears us */
 static uint8_t          s_peer_mac[6] = {0};
 
 /* Error detection for the auto-switch (reported live and in the end-of-run
@@ -411,6 +416,7 @@ static void send_hello(int my_layer)
         .layer  = (int16_t)my_layer,
         .role   = s_role,
         .locked = s_role_locked ? 1 : 0,
+        .hears_peer = peer_fresh() ? 1 : 0,
     };
     memcpy(h.mac, s_self_mac, 6);
     h.crc = esp_rom_crc32_le(0, (const uint8_t *)&h, offsetof(hello_pkt_t, crc));
@@ -421,7 +427,8 @@ static void send_hello(int my_layer)
  * driven directly by the host-side test (tools/test_wormhole_autoswitch/). */
 static int64_t  s_rt_started_us      = 0;
 static int64_t  s_rt_next_hello_us   = 0;
-static bool     s_rt_conflict_fixed  = false;
+static int64_t  s_rt_conflict_switch_us = 0; /* last switch on a conflict      */
+static uint8_t  s_rt_conflict_switches  = 0; /* how many times this board did */
 static bool     s_rt_lost_warned     = false;
 static bool     s_rt_shortcut_warned = false;
 static uint32_t s_rt_next_noise_warn = 64;
@@ -473,18 +480,41 @@ static void role_step(void)
                 }
                 send_hello(my_layer);           /* tell the peer straight away */
             }
-        } else if (!s_rt_conflict_fixed && peer_fresh() && s_peer_locked
-                   && s_peer_role == s_role) {
-            /* Both locked the same end. Exactly one must move: the higher MAC. */
+        } else if (peer_fresh() && s_peer_locked && s_peer_role == s_role
+                   && s_peer_last_us > s_rt_conflict_switch_us) {
+            /* Both locked the SAME end (their layers moved between two HELLOs).
+             * Exactly one must move. Until oct. 14 2026 the higher MAC always
+             * moved, IGNORING depth - so the fix itself could leave the ends
+             * reversed (oct. 14 linear run: 1C38 switched A->B mid-run and the
+             * attack ran with A at hop 6, B at hop 1). Now: the DEEPER board
+             * becomes B, as decide_role does
+             * before the lock. Equal/unknown depth, or this board already
+             * switched CONFLICT_MAX_DEPTH_SWITCHES times: the MAC rule (lower
+             * MAC = A), which both boards compute identically so it always
+             * settles. Re-checked only after a HELLO newer than our last
+             * switch, so a stale view of the peer never triggers a 2nd switch. */
             s_role_conflict = true;
-            if (!my_mac_lower()) {
-                uint8_t other = is_b() ? NODE_ROLE_WORMHOLE_A : NODE_ROLE_WORMHOLE_B;
-                ESP_LOGE(TAG, "Both ends locked as %s - this board (higher MAC) switches.",
-                         is_b() ? "B" : "A");
-                apply_role(other, "conflict with peer");
+            /* A DEAF peer (one-way cable: it never hears us) can never resolve
+             * the conflict, so this board must take the other end. */
+            bool yield = !s_peer_hears_me;
+            bool by_depth = !yield && my_layer > 0 && s_peer_layer > 0 && my_layer != s_peer_layer
+                            && s_rt_conflict_switches < CONFLICT_MAX_DEPTH_SWITCHES;
+            bool want_b = yield    ? (s_peer_role != NODE_ROLE_WORMHOLE_B)
+                        : by_depth ? (my_layer > s_peer_layer) : !my_mac_lower();
+            uint8_t want = want_b ? NODE_ROLE_WORMHOLE_B : NODE_ROLE_WORMHOLE_A;
+            if (want != s_role) {
+                ESP_LOGE(TAG, "Both ends locked as %s - this board switches to %s (%s: mine L%d,"
+                              " peer L%d).", is_b() ? "B" : "A", want_b ? "B" : "A",
+                         yield ? "the peer cannot hear us - one-way cable, check the wire"
+                               : by_depth ? "deeper board = B" : "same depth - lower MAC = A",
+                         my_layer, (int)s_peer_layer);
+                apply_role(want, yield ? "conflict with a deaf peer"
+                               : by_depth ? "conflict with peer - by depth"
+                                          : "conflict with peer - by MAC");
+                s_rt_conflict_switches++;
+                s_rt_conflict_switch_us = now;
                 send_hello(my_layer);
             }
-            s_rt_conflict_fixed = true;
         }
 
         /* SHORTCUT CHECK after the lock: the mesh may re-parent mid-run. The
@@ -683,6 +713,7 @@ static bool rx_handle_window(const wh_frame_t *f)
         s_peer_layer   = f->h.layer;
         s_peer_role    = f->h.role;
         s_peer_locked  = (f->h.locked != 0);
+        s_peer_hears_me = (f->h.hears_peer != 0);
         s_peer_last_us = esp_timer_get_time();
         if (!s_peer_seen) {
             ESP_LOGI(TAG, "Peer heard over UART: " MACSTR "  layer %d  end %s%s",

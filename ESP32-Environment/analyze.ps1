@@ -364,7 +364,13 @@ function Invoke-Validate {
     }
     else {
         python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack | Out-Host
-        $status.Attack = if ($LASTEXITCODE -eq 0) { 'CONFIRMED' } else { 'NOT CONFIRMED' }
+        # Exit 3 (oct. 14 2026) = the signature features moved but a setup check
+        # failed (tools/attack_checks.py: topology, attacker/victims, UART tunnel).
+        $status.Attack = switch ($LASTEXITCODE) {
+            0       { 'CONFIRMED' }
+            3       { 'NOT CONFIRMED - SETUP INVALID (recapture)' }
+            default { 'NOT CONFIRMED' }
+        }
     }
 
     # ---- Burst runs: did the burst actually fire? --------------------------

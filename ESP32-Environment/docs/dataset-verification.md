@@ -16,6 +16,82 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #13 — Oct 14, 2026 · 2:46 PM — VERIFIER AUDIT · all 42 analysed cells (blackhole + wormhole)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a295a91` + uncommitted verifier changes
+> **Request:** "enhance the verifier for both blackhole and wormhole, make sure to double check it if it's reliable"
+> + "make sure to include the topology and uart or etc is correct"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole (40) + wormhole (2) | all 4 | G402 · DLSU_Library · Yuchengco · home | all analysed | r1 | sep. 30 – oct. 14 | every `datasets/analysis/*/*/*/*/feature_table.csv` on GitHub at `a295a91` |
+
+| Check | Result | Detail |
+|---|---|---|
+| **New: setup checks** (`tools/attack_checks.py`, run by `verify_attack.py`) | ✅ added | **Topology during the attack** (same rules as `topology_graph.validate` / the root's live check; partial mesh judged on all links seen in the experiment), key nodes did not re-parent mid-attack, no board dropped out. **Blackhole:** exactly 1 attacker; it relayed traffic and really dropped it (forwarded ≤ 50 %); ≥ 1 victim behind it; victims ALIVE (own telemetry) yet cut off (PDR < 0.5); nodes NOT behind it lost ≤ 30 % (loss specific to the attacker's path); self-report vs neighbours; recovery after. **Wormhole:** one A + one B, no role change in the experiment, A shallower than B, **A received what B sent over UART**, the root saw duplicates. Any FAIL → `NOT CONFIRMED - SETUP INVALID` (exit 3) |
+| **New: statistical guards** | ✅ added | minimum effect (PDR/FR/Tunnel move ≥ 0.10 absolute; a flat baseline made ONE lost probe a z of −∞ = PASS), ≥ 6 attack points; TunnelBytes demoted to secondary (= TunnelIntensity × 30 B, not a 2nd independent signature) |
+| Sweep before vs after (42 cells) | ✅ no good run lost | before: 41 CONFIRMED / 1 INCONCL; after: **40 CONFIRMED / 1 INCONCL / 1 SETUP INVALID**. The only change is wormhole/linear/G402 (#12, ends reversed). Every blackhole cell passes every new FAIL check |
+| Reliability: fault injection (`tools/test_verify_attack.py`, 19 tests) | ✅ 19/19 | good captures (#4, #10) broken one way at a time: attacker kept forwarding · attacker a leaf · no victim · root outage hitting everyone (C5-style) · victim dead not blackholed · victims not cut off · attacker re-parented mid-attack · linear with a branch · attacker telemetry missing · no UART cable · ends reversed · role switch in vs before the experiment · root saw no duplicates · two B ends · 1 lost probe on a flat baseline · too few points. Each is caught; the good tables stay clean |
+| Reliability: each guard is load-bearing | ✅ | switching each guard off makes its test FAIL (7/7 mutations caught) - no check passes by accident |
+| Reliability: numbers vs raw exports (blackhole/tree/Yuchengco/stationary, Kyle) | ✅ match | checks: attacker recv 181 / fwd 1, victim PDR 0.000, 5 bystanders fine. Raw: attacker 180 / 0 / dropped 180; root got 0 from victim `ED80` in the attack (300 baseline, 121 cooldown), ~180 from each of the other 5 |
+| Other suites | ✅ | `test_topology_graph.py` OK; wormhole auto-switch host test 54/54 |
+
+### Findings
+- ⚠️ **Every partial_mesh capture is structurally a plain tree.** In all 9 partial_mesh cells no child ever used a 2nd
+  parent during the experiment (raw exports confirm: DLSU stationary 0/3, Yuchengco highload 0/7). Reported as a WARN
+  (shape comes from placement). The paper cannot describe these as multi-parent captures as they stand → checklist **B-pm**.
+- ⚠️ **blackhole/tree/G402/stationary:** child `ED80` changed parent during the attack (not a key node → WARN; already DEGRADED in #2).
+- ❌ **blackhole/linear/home/highload** (already INCONCLUSIVE, off-plan): parent links formed a cycle and 6 boards
+  re-parented during the attack; victims still delivered 92 %. The 7-board highload collapse (MEMORY), now explained by the checks.
+- **Wormhole auto-switch:** the board picked as "A" or "B" in the wizard only sets its FALLBACK role; the firmware makes
+  the DEEPER board the entry (B) and the shallower the exit (A) before Phase 0 (host test [1]: boards built the wrong
+  way round end up correct). The wizard now says "tunnel board 1/2 (entry/exit chosen automatically)". Hardware proof
+  still pending: #10 matched the fallback, #12 had a one-way wire.
+
+**Verdict: ✅ verifier now RELIABLE for both attacks on the data we have** — it checks the attack signature, the topology
+during the attack, the attacker/victims (blackhole) and the UART tunnel (wormhole); every new check was shown to fire
+on broken data and not on good data. Limits: thresholds are deliberately loose (they separate "the attack as designed"
+from "something else", not good runs from great ones); the checks read the feature table, so a wrong export is still
+caught by `validate_integrity.py` / `verify_topology.py`, not here.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #12 — Oct 14, 2026 · 2:27 PM — wormhole · linear · G402 · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a295a91` (data pushed by Kyle)
+> **Request:** "my classmate pushed the failed wormhole datasets can you check it and pull it first"
+> (earlier the same day: "why it passed" - the old verifier said WORMHOLE CONFIRMED with the ends reversed)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear | G402 | stationary | r1 | Oct 14, ~1:40–1:55 PM | 9 (8 telem + root arrivals), all from Kyle's laptop |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (`validate_integrity.py`) | ⚠️ 4 PASS / 5 WARN / 0 FAIL — harmless | the 5 WARN are `linear_none` filenames on boards whose rows carry phase 2 correctly (same as #10). Phase 0 "424 s" = the root restarted (see topology) |
+| Topology (`verify_topology.py`) | ⚠️ FAIL — late convergence after a **root restart**, not re-routing | all children fell back to phase 255 at ~90–125 s of their logs (new root session) and re-joined late. `Baseline re-routing free: YES`. Final chain: root → **B `0C80` (L2)** → `D7B4` → `FE90` → `ED80` → `B768` → **A `1C38` (L7)** → `E618` (L8) |
+| **A/B roles (raw telemetry)** | ❌ **REVERSED all experiment long** | `0C80` = `wormhole_b` from second 0 to the end and **never reacted to its peer**, although it was the SHALLOW board. `1C38` flipped A→B→A→B at 11.6 / 18.7 / 25.1 s (heard 0C80 only on and off), was B at Phase 0, then switched to A at 32.6 s (old higher-MAC conflict rule). From the real baseline on: A at hop 6, B at hop 1, stable |
+| Cause | ⚠️ **UART link one-way / flaky** (most likely) | 0C80 → 1C38 worked (tunnel copies arrived, 1C38 heard HELLOs intermittently); **1C38 → 0C80 carried nothing** (0C80 never left its build fallback). Alternative: 0C80 flashed with pre-auto-switch firmware. The boards' boot logs tell them apart (auto-switch banner + `LOCKED ... BUILD FALLBACK`). Not a mesh reshuffle: an earlier pasted dashboard came from a different attempt |
+| Root arrivals, recomputed by hand | ⚠️ duplicates yes, shortcut no | B's probes: baseline 301 single, **attack 181 probes → 360 arrivals (179 with 2 copies)**, cooldown 121 single. No other source duplicated. Copies arrive **28.2 ms apart** (median, p90 57.6) vs **2.8 ms** in the valid #10 run: the tunnel copy took the long way (wire + 6 hops) |
+| Attack test (`verify_attack.py`, new rule) | ❌ **WORMHOLE DUPLICATION ONLY - SETUP INVALID** (exit 3) | TunnelIntensity 0.001 → 0.997, TunnelBytes 0.04 → 29.9 (z 52) pass; TunnelLatency INCONCL; setup check: **ends REVERSED in the attack windows (A hop 6, B hop 1)**. Before today's fix the same table printed "WORMHOLE CONFIRMED" |
+
+### Small things found (and fixed today)
+- **Verifier false alarm fixed:** the setup check flagged "1C38 changed role", but every flip was in `pre_baseline`
+  (the auto-switch deciding before Phase 0, by design). `analysis/exposure.py` now counts role changes in
+  baseline/attack/cooldown only. Re-checked: #10 DLSU still CONFIRMED, this run still SETUP INVALID (reversed).
+- **68 windows with ForwardingRatio > 1** (max 3.0): queue flush across a window edge, as in #11.
+- **Firmware fixes the run would have triggered** (not on the boards yet): the root now shows `UART NO SIGNAL` for
+  the deaf end and "only ONE direction works"; the conflict rule now picks the DEEPER board as B (but with one
+  dead direction software can only mirror the deaf board, so the cable must be fixed).
+
+**Verdict: ❌ NOT USABLE as a wormhole capture** — duplication happened but the tunnel was never a shortcut (A deeper
+than B for the whole experiment). Recapture wormhole/linear/G402/stationary after the UART test passes in **both**
+directions; at most cite this run for "duplication only".
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #11 — Oct 7, 2026 · 7:11 PM — blackhole · linear · DLSU_Library · jitter
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `1f97dc2` (root files pushed in this commit)

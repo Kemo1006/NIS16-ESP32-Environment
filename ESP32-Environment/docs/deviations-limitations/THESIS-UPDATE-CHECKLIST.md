@@ -54,6 +54,9 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | B4 | ⬜ | Blackhole "victims" in a run | Report victims by **exposure** (downstream of the attacker), not by the firmware's build role | exposure.py, verification #1 |
 | B-cov | ⬜ | M5 coverage wording | The ≥ 95 % per-node coverage is measured over the **experiment phases only** (baseline, attack, cooldown); setup / mesh-forming rows are excluded, as in the analysis. Say so where M5 is described | MEMORY oct. 7 (night) |
 | B-topo | ⬜ | Topology gate (M3 'stable through baseline') | The baseline-stability check now skips parent changes from BEFORE a root restart (the old root session, already excluded from the data as pre_baseline). Topology FAILs written in verifications #4, #8, #11 (and on linear/G402/stationary, tree/G402/burst + jitter) were this false alarm; they now PASS. Don't report them as instability | MEMORY oct. 7 19:40 |
+| B-wh | ⬜ | Wormhole results / verification wording | A wormhole run counts as **confirmed only if the setup check passes** (one A + one B, no role switch during the experiment, A shallower than B in the attack, **Node A actually RECEIVED tunnel frames** - B's own count rises even with no cable). Duplicates alone = 'duplication only', not a confirmed wormhole. Re-run `verify_attack.py` on every wormhole cell before quoting a verdict; the oct. 14 reversed-ends linear run is NOT confirmed | MEMORY oct. 14 2026 |
+| B-setup | ⬜ | Verification method section | The verifier now also checks the SETUP (topology during the attack, attacker relayed + dropped, victims alive but cut off, non-victims unaffected; wormhole UART delivery + root duplicates) and a minimum effect size beside 3-sigma. Describe these as part of the verification method; a run is 'confirmed' only if both pass | Verification #13 |
+| B-pm | 🟨 | Partial-mesh topology description + results | **All 9 partial_mesh captures are structurally plain trees** - no child used a 2nd parent during the experiment. Either describe them as such (placement-defined, single-parent at capture time) or recapture with re-parenting. **Adviser check** | Verification #13 |
 
 ## C. Per-capture footnotes (cite the run, add the note)
 
@@ -68,6 +71,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | C7 | ⬜ | blackhole/partial_mesh/DLSU_Library/**highload** r1 (oct. 7, ~17:00) | USABLE, first run with the highload root fix (0 arrival rows lost). Caveats: `MacRetryRate` empty (sniffer retry not placed on the clock); `B4BFE934ED80` has a 4.1 s gap at baseline start; victim = `B4BFE932FE90` only (attacker `F42DC973E618` at L4) | Verification #9 |
 | C8 | ⬜ | wormhole/linear/DLSU_Library/stationary r1 (oct. 7, ~18:00) | USABLE. TunnelLatency = INCONCL (no tunnel in baseline, so no 3σ baseline - by design; quote attack value 2–4 ms descriptively); LatencyHopRatio = INFEASIBLE (baseline spread across an 8-hop line, max |z| 0.64; secondary, not in verdict). First hardware run of the A/B auto-switch | Verification #10 |
 | C9 | ⬜ | blackhole/linear/DLSU_Library/**jitter** r1 (oct. 7, ~18:41) | USABLE. Jitter fired: baseline 331 s / attack 206 s (only the last 300 s of baseline are labelled; the extra 31 s are excluded). Topology gate FAIL is the **root-reflash false alarm** (`FE90` lost the root while the root was being wiped and reflashed, before the real baseline). 4 victims 0 % in the attack, 2 bystanders 100 % | Verification #11 |
+| C10 | ⬜ | wormhole/linear/G402/**stationary** r1 (oct. 14, ~1:40 PM) | **NOT USABLE as a wormhole**: ends reversed all experiment (A hop 6, B hop 1; one-way UART). Duplicates are real (179/181) but no shortcut. Do not cite as a confirmed wormhole; recapture (D6) | Verification #12 |
 
 ## D. Captures to redo / still missing (before the numbers are final)
 
@@ -78,6 +82,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | D3 | ⬜ | Recapture wormhole/tree/G402/stationary with the auto-switch firmware | r1 had no shortcut (C4) | Verification #6 |
 | D5 | ⬜ | Fix the root's arrival writer (**fix `643adf8` works on hardware - verification #9; partial_mesh/DLSU highload r1 redone**), then recapture every **highload** cell | first hardware run of `cb22106` (arrival queue) shows the writer itself is too slow at highload; read the `[RXSTALL] Saving one probe to storage took …` lines of that run to see whether SPIFFS or the SD mirror is the slow one | MEMORY oct. 7 |
 | D4 | ⬜ | Remaining matrix: jitter r2+r3, mobility, powercycle, star burst, 7-board highload, wormhole tree with a real tree | Not captured yet | STATUS next steps |
+| D6 | ⬜ | Recapture wormhole/linear/G402/stationary | r1 ends reversed (C10). Reflash root + both ends with the oct. 14 firmware; UART test must pass BOTH ways first | Verification #12 |
 
 ---
 

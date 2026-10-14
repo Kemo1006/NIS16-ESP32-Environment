@@ -166,6 +166,30 @@ int main(int argc, char **argv)
     link_12 = link_21 = true; run(3000);
     CHECK(b1_conflict() && b2_conflict(), "both detect the conflict");
     CHECK(b1_end() == 'A' && b2_end() == 'B', "only the higher MAC (b2) switched, to B");
+
+    printf("\n[5b] Same conflict, but the LOWER MAC (b1) is the DEEPER board (H6 vs H1)\n");
+    fresh(6, 1); run(2000);
+    link_12 = link_21 = false;
+    b1_force_peer_layer(9); b2_force_peer_layer(9);   /* each thinks it is shallower */
+    g_phase = PHASE_ID_BASELINE; b1_step(); b2_step();
+    CHECK(b1_locked() && b2_locked() && b1_end() == 'A' && b2_end() == 'A',
+          "setup: both locked as A");
+    link_12 = link_21 = true; run(3000);
+    CHECK(b1_conflict() && b2_conflict(), "both detect the conflict");
+    CHECK(b1_end() == 'B' && b2_end() == 'A',
+          "the DEEPER board (b1) became B - the old higher-MAC rule would have reversed the ends");
+    opposite_and_consistent("[5b]");
+    run(5000);
+    CHECK(b1_end() == 'B' && b2_end() == 'A', "settled - no flip-flop afterwards");
+
+    printf("\n[5c] Conflict at the SAME depth (H3 / H3) -> MAC rule: lower MAC = A\n");
+    fresh(3, 3); run(2000);
+    link_12 = link_21 = false;
+    b1_force_peer_layer(9); b2_force_peer_layer(9);
+    g_phase = PHASE_ID_BASELINE; b1_step(); b2_step();
+    link_12 = link_21 = true; run(3000);
+    CHECK(b1_end() == 'A' && b2_end() == 'B', "lower MAC (b1) = A, higher MAC (b2) = B");
+    opposite_and_consistent("[5c]");
     opposite_and_consistent("[5]");
 
     printf("\n[6] Noisy cable: garbage bytes between every transfer\n");
@@ -188,6 +212,8 @@ int main(int argc, char **argv)
     printf("\n[8] One direction of the cable broken (b2 -> b1 dead)\n");
     fresh(1, 6); link_21 = false; run(2000); g_phase = PHASE_ID_BASELINE; run(4000);
     CHECK(b1_fallback() && !b2_fallback(), "b1 (deaf) reports BUILD FALLBACK; b2 heard b1");
+    CHECK(b1_end() != b2_end(), "still opposite ends: b2 yields to the deaf b1 (b1=%c b2=%c)",
+          b1_end(), b2_end());
     printf("    note b1=%c b2=%c - a one-way cable cannot be fixed by software; the fallback"
            " error on b1 and the root's REVERSED/duplicate check are what catch it\n",
            b1_end(), b2_end());

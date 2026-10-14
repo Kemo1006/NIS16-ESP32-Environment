@@ -134,6 +134,11 @@ param(
     # tunnels). Ignored for the root and for non-wormhole attacks. Run one victim
     # board as A and the other as B.
     [ValidateSet('A', 'B')][string]$WormholeEnd = 'B',
+    # wormhole run, non-root: 'end' = a tunnel end (A/B, wormhole_victim.c);
+    # 'victim' = an ordinary node in the wormhole run (victim_main.c) whose card
+    # and export are still filed under wormhole/ (oct. 14 2026 - was flashed as
+    # -Attack none, which filed it under baseline/).
+    [ValidateSet('end', 'victim')][string]$WormholeRole = 'end',
     # For -Attack blackhole on a victim board, which blackhole role this board is:
     # attacker = the relay that forwards/drops victim probes; victim = a board
     # that addresses its probes to the attacker's MAC (BLACKHOLE_ATTACKER_MAC).
@@ -414,8 +419,14 @@ switch ($Attack) {
     'wormhole'  {
         $attackFlags += '-DACTIVE_ATTACK=2'
         if ($Role -ne 'root') {
-            $endNum = if ($WormholeEnd -eq 'A') { 0 } else { 1 }
-            $attackFlags += "-DWORMHOLE_END=$endNum"
+            # Always explicit: a CMake cache would otherwise keep the last value.
+            if ($WormholeRole -eq 'victim') {
+                $attackFlags += '-DWORMHOLE_ROLE=1'
+            } else {
+                $attackFlags += '-DWORMHOLE_ROLE=0'
+                $endNum = if ($WormholeEnd -eq 'A') { 0 } else { 1 }
+                $attackFlags += "-DWORMHOLE_END=$endNum"
+            }
         }
     }
     default     { $attackFlags += '-DACTIVE_ATTACK=255' }
@@ -500,7 +511,9 @@ $scenarioFlags += "-DBH_ATTACKER_MAC_HEX=$macHex"
 # "ninja: error: failed recompaction: Permission denied". Root never collided
 # (separate project dir), but the three victim variants share one otherwise.
 $buildSuffix = "$Role`_$Attack`_$Topology"
-if ($Attack -eq 'wormhole'  -and $Role -ne 'root') { $buildSuffix += "_$WormholeEnd" }
+if ($Attack -eq 'wormhole'  -and $Role -ne 'root') {
+    $buildSuffix += if ($WormholeRole -eq 'victim') { '_victim' } else { "_$WormholeEnd" }
+}
 if ($Attack -eq 'blackhole' -and $Role -ne 'root') { $buildSuffix += "_$BlackholeRole" }
 # SCENARIO TAG RULE (kept identical in menu.ps1 Get-BuildDirSpec and
 # run_wizard.ps1 Get-BoardBuildDir): only a board that actually receives
@@ -757,7 +770,9 @@ Show-ScenarioChecklist -Scenario $Scenario -IsTarget $ScenarioTarget.IsPresent -
 Push-Location (Join-Path $base $proj)
 try {
     if ($Flash) {
-        $attackLabel = if ($Attack -eq 'wormhole' -and $Role -ne 'root') { "wormhole/$WormholeEnd" } else { $Attack }
+        $attackLabel = if ($Attack -eq 'wormhole' -and $Role -ne 'root') {
+            if ($WormholeRole -eq 'victim') { 'wormhole/victim' } else { "wormhole/$WormholeEnd" }
+        } else { $Attack }
         $scenarioLabel = if ($Scenario -ne 'stationary') { $Scenario + $(if ($ScenarioTarget) { '+target' } else { '' }) } else { 'stationary' }
         Write-Host "Flashing + monitoring $Role on $Port (topology=$Topology, attack=$attackLabel, scenario=$scenarioLabel, build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
         # flash and monitor run as two calls so a failed flash is caught HERE: the

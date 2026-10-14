@@ -96,6 +96,10 @@ try:
     import exposure as _exposure
 except ImportError:          # analysis/ missing — report still runs, just without
     _exposure = None         # the derived column on tables that lack it
+try:
+    import attack_checks as _checks   # tools/attack_checks.py: setup + topology + UART
+except ImportError:
+    _checks = None
 
 LABEL_BASELINE = 0
 LABEL_BLACKHOLE = 1
@@ -144,6 +148,19 @@ RATIO_OF_SUMS = {
     "NeighbourForwardingRatio": [("NeighbourOut", ("NeighbourIn",))],
 }
 
+# MINIMUM EFFECT (oct. 14 2026). 3-sigma alone is not enough on a bounded ratio
+# with a near-flat baseline: baseline PDR 1.000 +- 0.000 makes ONE lost probe in
+# the attack a z of -inf -> PASS. An attack has to move the feature by at least
+# this much (absolute) as well. Values are far below any real attack (a
+# blackhole takes victims from ~1.0 to ~0.0; a tunnel goes from 0 to ~1 msg/s)
+# and far above one-probe noise.
+MIN_EFFECT = {"PDR": 0.10, "ForwardingRatio": 0.10, "NeighbourForwardingRatio": 0.10,
+              "ConsistencyScore": 0.10, "TunnelIntensity": 0.10, "TunnelBytes": 3.0}
+
+# Fewest attack-phase points (blocks of --block windows) a feature needs before
+# its mean is trusted: 6 x 5 s = 30 s of the ~180 s attack.
+MIN_ATTACK_POINTS = 6
+
 # (feature, direction, tier)
 #   direction 'down' = the attack pushes the feature BELOW baseline; 'up' = above.
 #   tier 'primary' features DEFINE the attack; 'secondary' are supporting evidence.
@@ -157,7 +174,8 @@ SIGNATURES = {
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
-        ("TunnelBytes",        "up",   "primary"),    # tunnel data volume
+        ("TunnelBytes",        "up",   "secondary"),  # = TunnelIntensity x 30 B: same
+                                                      # measurement, so not a 2nd primary
         ("TunnelLatency",      "up",   "primary"),    # duplicate-arrival spread appears
         ("LatencyHopRatio",    "down", "secondary"),  # shortcut copy arrives faster (informational)
     ],
@@ -279,6 +297,16 @@ def _pooled_note(df_nodes, feat, label, attackers, res, sigma):
 
 
 
+def _apply_min_effect(res, feature, mu, am):
+    """Demote a PASS whose absolute change is too small to be an attack."""
+    need = MIN_EFFECT.get(feature)
+    if res["status"] == "PASS" and need is not None and abs(am - mu) < need:
+        res["status"] = "FAIL"
+        res["note"] = (f"beyond the sigma threshold but the change is only "
+                       f"{abs(am - mu):.4f} (< {need:g}): too small to be an attack - "
+                       f"a near-flat baseline makes any tiny move 'significant'")
+
+
 def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0.0):
     """3-sigma test for one feature: is the attack-phase mean > sigma from baseline?
 
@@ -316,6 +344,12 @@ def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0
             res["frac_beyond"] = float((a > mu + eps).mean())
         res["note"] = "baseline sd=0 (perfectly stable)"
         res["status"] = "PASS" if moved else "FAIL"
+        _apply_min_effect(res, feature, mu, am)
+        return res
+    if len(a) < MIN_ATTACK_POINTS:
+        res["status"] = "INCONCLUSIVE"
+        res["note"] = (f"only {len(a)} attack point(s) - need >= {MIN_ATTACK_POINTS} "
+                       f"(attack too short or the node dropped out)")
         return res
     z = (am - mu) / sd
     res["z"] = z
@@ -326,6 +360,8 @@ def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0
     else:
         res["frac_beyond"] = float((a > hi).mean())
         res["status"] = "PASS" if z >= sigma else "FAIL"
+
+    _apply_min_effect(res, feature, mu, am)
 
     # FEASIBILITY. A FAIL must mean "the attack did not move this feature". It
     # must never also mean "this test could not have detected it". Both features
@@ -442,6 +478,11 @@ STATUS_FLAG = {
     "INCONCLUSIVE": "INCONCL",
     "SKIP": "SKIP",
 }
+
+
+# Set by verify(): True when the last wormhole check found a setup problem
+# (main() turns it into exit code 3).
+_LAST_SETUP_INVALID = [False]
 
 
 def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
@@ -573,23 +614,36 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         for marker, feat, note in footnotes:
             print(f"  [{marker}] {feat}: {note}")
     print()
-    if attack == "wormhole":
-        # Placement/role problems the auto-switch firmware can still leave in a
-        # capture (analysis/exposure.py: wormhole_setup_issues). Printed, never
-        # counted: they say whether the verdict below can be trusted.
+    # SETUP CHECKS (tools/attack_checks.py, oct. 14 2026): topology during the
+    # attack, the attacker / victims / tunnel behaving as designed. The 3-sigma
+    # table says the features MOVED; these say whether the attack we claim is
+    # what moved them. Any FAIL -> SETUP INVALID; WARN / SKIP never change it.
+    setup_invalid = False
+    print(f"  SETUP CHECKS ({attack}: attack setup + topology + "
+          f"{'UART tunnel' if attack == 'wormhole' else 'victims'}, from the data):")
+    if _checks is None:
+        print("    ?? tools/attack_checks.py could not be imported - setup NOT checked")
+    else:
         try:
-            wh_issues = _exposure.wormhole_setup_issues(df_nodes)
+            issues = _checks.setup_issues(df_nodes, attack)
         except Exception as e:                      # never block the verdict
-            wh_issues = [f"setup check could not run: {e}"]
-        print("  WORMHOLE SETUP CHECK (roles + placement, from the data):")
-        if wh_issues:
-            for msg in wh_issues:
-                print(f"    !! {msg}")
-        else:
-            print("    OK - exactly one A and one B, no role change, A shallower than B"
-                  " in the attack windows.")
-        print()
+            issues = [_checks.Issue(_checks.SKIP, f"setup checks could not run: {e}")]
+        mark = {"OK": "ok ", "FAIL": "!! ", "WARN": "?  ", "SKIP": "-- "}
+        for it in issues:
+            print(f"    {mark.get(it.level, '   ')}{it.text}")
+        setup_invalid = any(it.level == _checks.FAIL for it in issues)
+    print()
+    # exit 3 means 'the signature passed, but the setup was invalid' - only then.
+    _LAST_SETUP_INVALID[0] = setup_invalid and confirmed
     print_per_node_pdr(df_nodes, label)
+    if confirmed and setup_invalid:
+        print(f"  VERDICT: {attack.upper()} NOT CONFIRMED - SETUP INVALID  "
+              f"({primary_pass}/{primary_total} primary signatures exceed {sigma:g}-sigma,"
+              f" but the SETUP CHECKS above failed).")
+        print("    The features moved, but not because of the attack as designed (see the !!"
+              " lines). Do NOT report this run as a confirmed attack - fix the setup and"
+              " recapture." + excluded_note)
+        return False, conclusive
     if confirmed:
         print(f"  VERDICT: {attack.upper()} CONFIRMED  "
               f"({primary_pass}/{primary_total} primary signatures exceed {sigma:g}-sigma)."
@@ -767,13 +821,19 @@ def main():
 
     any_conclusive = False
     all_confirmed = True
+    setup_fail = False
     for atk in attacks:
         confirmed, conclusive = verify(df, atk, args.sigma, args.block)
         any_conclusive = any_conclusive or conclusive
         all_confirmed = all_confirmed and confirmed
+        setup_fail = setup_fail or _LAST_SETUP_INVALID[0]
 
     print()
-    sys.exit(0 if (any_conclusive and all_confirmed) else 1)
+    # Exit 3 = signatures passed but the attack setup was invalid (analyze.ps1
+    # shows 'SETUP INVALID'); 1 = not confirmed / inconclusive; 0 = confirmed.
+    if any_conclusive and all_confirmed:
+        sys.exit(0)
+    sys.exit(3 if setup_fail else 1)
 
 
 if __name__ == "__main__":

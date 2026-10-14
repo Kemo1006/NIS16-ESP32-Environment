@@ -1121,7 +1121,11 @@ function Format-BoardCmdText {
     $cmd = ".\run.ps1 -Port $($Params.Port) -Role $($Params.Role) -Topology $($Params.Topology) -Attack $($Params.Attack) -Scenario $($Params.Scenario)"
     if ($Params.ContainsKey('Label') -and $Params.Label) { $cmd += " -Label $($Params.Label)" }
     if ($Params.ContainsKey('BlackholeRole'))             { $cmd += " -BlackholeRole $($Params.BlackholeRole)" }
-    if ($Params.ContainsKey('WormholeEnd'))               { $cmd += " -WormholeEnd $($Params.WormholeEnd)" }
+    if ($Params.ContainsKey('WormholeEnd')) {
+        # 'victim' = a plain node in a wormhole run (run.ps1 -WormholeRole victim).
+        if ($Params.WormholeEnd -eq 'victim') { $cmd += ' -WormholeRole victim' }
+        else                                  { $cmd += " -WormholeEnd $($Params.WormholeEnd)" }
+    }
     if ($Params.ContainsKey('ScenarioTarget'))            { $cmd += ' -ScenarioTarget' }
     if ($Params.ContainsKey('Wipe'))                      { $cmd += ' -Wipe' }
     if ($Params.ContainsKey('Flash'))                     { $cmd += ' -Flash' }
@@ -1307,11 +1311,13 @@ function Edit-BoardInteractive {
             }
             'WormholeEnd' {
                 $wDefault = if ($Board.Params.WormholeEnd -eq 'A') { 1 } else { 2 }
-                $i = Read-Choice -Title "Wormhole tunnel end of THIS board?" -Options @(
-                    'A  (exit / root-side: re-injects to root)',
-                    'B  (entry / leaf-side: captures + tunnels)'
+                if ($Board.Params.WormholeEnd -eq 'victim') { $wDefault = 3 }
+                $i = Read-Choice -Title "Wormhole role of THIS board?" -Options @(
+                    'tunnel end 1  (wired to the other end; entry/exit picked by depth)',
+                    'tunnel end 2  (wired to the other end; entry/exit picked by depth)',
+                    'normal node   (no wire; its data is still filed under wormhole/)'
                 ) -Default $wDefault
-                $Board.Params['WormholeEnd'] = if ($i -eq 1) { 'A' } else { 'B' }
+                $Board.Params['WormholeEnd'] = switch ($i) { 1 { 'A' } 3 { 'victim' } default { 'B' } }
             }
             'ScenarioTarget' {
                 if ($Board.Params.ContainsKey('ScenarioTarget')) {
@@ -1413,12 +1419,13 @@ function Add-BoardInteractive {
         if ($i -eq 2) { $bhRole = 'victim' } else { $bhRole = 'attacker' }
     }
     if ($Attack -eq 'wormhole' -and $role -ne 'root') {
-        $i = Read-Choice -Title "Wormhole tunnel end of THIS board?" -Options @(
-            'A  (exit / root-side: re-injects to root)',
-            'B  (entry / leaf-side: captures + tunnels)'
+        $i = Read-Choice -Title "Wormhole role of THIS board?" -Options @(
+            'tunnel end 1  (wired to the other end; entry/exit picked by depth)',
+            'tunnel end 2  (wired to the other end; entry/exit picked by depth)',
+            'normal node   (no wire; its data is still filed under wormhole/)'
         ) -Default 2 -AllowBack:$AllowBack
         if ($i -eq $script:BackSignal) { return $script:BackSignal }
-        if ($i -eq 1) { $wEnd = 'A' } else { $wEnd = 'B' }
+        $wEnd = switch ($i) { 1 { 'A' } 3 { 'victim' } default { 'B' } }
     }
 
     # Scenario target: exactly one child. Burst also needs a plain send path
@@ -1640,8 +1647,13 @@ function Get-BuildDirSpec {
         'wormhole' {
             $flags += '-DACTIVE_ATTACK=2'
             if ($role -ne 'root') {
-                $endNum = if ($Params.WormholeEnd -eq 'A') { 0 } else { 1 }
-                $flags += "-DWORMHOLE_END=$endNum"
+                if ($Params.WormholeEnd -eq 'victim') {
+                    $flags += '-DWORMHOLE_ROLE=1'
+                } else {
+                    $flags += '-DWORMHOLE_ROLE=0'
+                    $endNum = if ($Params.WormholeEnd -eq 'A') { 0 } else { 1 }
+                    $flags += "-DWORMHOLE_END=$endNum"
+                }
             }
         }
         default { $flags += '-DACTIVE_ATTACK=255' }
@@ -3370,13 +3382,14 @@ $dir  = 1
 
         6 {
             if (-not ($attack -eq 'wormhole' -and $role -ne 'root')) { $step += $dir; continue flow }
-            $r = Read-Choice -Title "Wormhole tunnel end of THIS board? (UART cable A<->B required)" -Options @(
-                'A  (exit / root-side: re-injects to root)',
-                'B  (entry / leaf-side: captures + tunnels)'
+            $r = Read-Choice -Title "Wormhole role of THIS board? (tunnel ends need the UART cable)" -Options @(
+                'tunnel end 1  (wired to the other end; entry/exit picked by depth)',
+                'tunnel end 2  (wired to the other end; entry/exit picked by depth)',
+                'normal node   (no wire; its data is still filed under wormhole/)'
             ) -Default $wIdx -AllowBack
             if ($script:BackSignal -eq $r) { $step = 5; $dir = -1; continue flow }
             $wIdx = $r
-            $wEnd = if ($wIdx -eq 1) { 'A' } else { 'B' }
+            $wEnd = switch ($wIdx) { 1 { 'A' } 3 { 'victim' } default { 'B' } }
             $step = 7; $dir = 1; continue flow
         }
 
@@ -3463,7 +3476,10 @@ $p = @{ Port = $port; Role = $role; Topology = $topo; Attack = $attack; Scenario
 $cmdText = ".\run.ps1 -Port $port -Role $role -Topology $topo -Attack $attack -Scenario $scenario"
 if (-not [string]::IsNullOrWhiteSpace($label)) { $p['Label'] = $label; $cmdText += " -Label $label" }
 if ($attack -eq 'blackhole' -and $role -ne 'root') { $p['BlackholeRole'] = $bhRole; $cmdText += " -BlackholeRole $bhRole" }
-if ($attack -eq 'wormhole'  -and $role -ne 'root') { $p['WormholeEnd']   = $wEnd;   $cmdText += " -WormholeEnd $wEnd" }
+if ($attack -eq 'wormhole'  -and $role -ne 'root') {
+    if ($wEnd -eq 'victim') { $p['WormholeRole'] = 'victim'; $cmdText += ' -WormholeRole victim' }
+    else                    { $p['WormholeEnd']  = $wEnd;    $cmdText += " -WormholeEnd $wEnd" }
+}
 if ($isScenarioTarget) { $p['ScenarioTarget'] = $true; $cmdText += ' -ScenarioTarget' }
 if ($wipe)    { $p['Wipe']    = $true; $cmdText += ' -Wipe' }
 if ($flash)   { $p['Flash']   = $true; $cmdText += ' -Flash' }

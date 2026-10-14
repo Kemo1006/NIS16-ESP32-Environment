@@ -1479,6 +1479,11 @@ static void heartbeat_table_print(void)
                               " fix this themselves before Phase 0 when they hear each other"
                               " over UART - if it persists, check the cable. Same depth:"
                               " move one board. Pre-auto-switch firmware: reflash both.");
+                /* oct. 14 2026: a run that reached the attack like this was
+                 * analysed, pushed and only then found invalid. */
+                ESP_LOGE(TAG, "    >> If this shows AFTER Phase 0 started: STOP and restart the run."
+                              " Roles are locked for the run, so it cannot fix itself, and the"
+                              " verifier will mark it 'DUPLICATION ONLY - SETUP INVALID'.");
             } else {
                 ESP_LOGI(TAG, " OK: A (exit) at H%02d, B (entry) at H%02d - the tunnel skips"
                               " %d hop(s). %d relay(s) carry B's normal copy, %d node(s) not"

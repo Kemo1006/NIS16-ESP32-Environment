@@ -239,7 +239,16 @@ def wormhole_setup_issues(df: pd.DataFrame) -> list[str]:
         return ["no wormhole_a / wormhole_b rows at all - not a wormhole capture,"
                 " or the attacker boards' telemetry is missing"]
 
-    for node, g in wh.groupby("node_id"):
+    # Role changes count only inside the experiment. Before Phase 0 the
+    # auto-switch is still deciding (provisional A/B flips are by design), and
+    # those pre_baseline rows are dropped from the analysis anyway (oct. 14
+    # 2026: linear/G402 flagged 1C38 for pre-Phase-0 flips only).
+    changes = wh
+    if "segment" in wh.columns:
+        changes = wh[wh["segment"].astype(str).isin(("baseline", "attack", "cooldown"))]
+        if changes.empty:
+            changes = wh
+    for node, g in changes.groupby("node_id"):
         if "window_start" in g.columns:
             g = g.sort_values("window_start")
         seen = list(dict.fromkeys(g["node_role"]))      # order they appeared in
@@ -255,6 +264,25 @@ def wormhole_setup_issues(df: pd.DataFrame) -> list[str]:
         issues.append(f"{n_a} board(s) logged as wormhole_a and {n_b} as wormhole_b -"
                       " there must be exactly one of each (UART cable / HELLO never heard?)")
         return issues
+
+    # TUNNEL DELIVERY (oct. 14 2026): Node B counts a probe as "tunnelled" when
+    # uart_write_bytes() returns - which it does with NO cable plugged in. So
+    # B's TunnelIntensity climbs in the attack even when nothing crossed the
+    # wire, and the pooled A+B signature still passed. Only Node A's count
+    # (CRC-checked frames it actually RECEIVED) proves the tunnel carried data.
+    if "TunnelIntensity" in wh.columns:
+        atk = wh
+        if "segment" in wh.columns:
+            atk = wh[wh["segment"].astype(str) == "attack"]
+        ti = pd.to_numeric(atk["TunnelIntensity"], errors="coerce")
+        sent = ti[atk["node_role"] == "wormhole_b"].sum()
+        got = ti[atk["node_role"] == "wormhole_a"].sum()
+        if sent > 0 and got <= 0.05 * sent:
+            # 1 s windows: summing msgs/s over them gives a frame count.
+            issues.append(f"Node A RECEIVED ~{got:.0f} tunnel frame(s) vs Node B SENT ~{sent:.0f}"
+                          " in the attack - the UART link carried nothing"
+                          " (cable missing or TX->RX jumper not connected). B's 'tunnelled'"
+                          " count only means bytes left its pin")
 
     if "hop" in df.columns:
         rows = wh

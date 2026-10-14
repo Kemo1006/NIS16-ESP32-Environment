@@ -27,12 +27,29 @@ if(DEFINED ACTIVE_ATTACK AND ACTIVE_ATTACK EQUAL 1)
                        "(ACTIVE_ATTACK=1, BLACKHOLE_ROLE=0)")
     endif()
 elseif(DEFINED ACTIVE_ATTACK AND ACTIVE_ATTACK EQUAL 2)
-    set(VICTIM_SRC "wormhole_victim.c")
-    if(NOT DEFINED WORMHOLE_END)
-        set(WORMHOLE_END 0)
+    # Wormhole: role 0 = a tunnel end (wormhole_victim.c), role 1 = an ordinary
+    # node in a wormhole run (victim_main.c, same as a blackhole victim).
+    # oct. 14 2026: before role 1 existed, those nodes were flashed as plain
+    # baseline firmware (ACTIVE_ATTACK=255), so their SD card filed the run
+    # under baseline/ and the export was named "..._none_..." - wormhole data
+    # landed in the benign baseline cells. ACTIVE_ATTACK=2 in mesh_common is
+    # what files the card under wormhole/; it changes nothing else for a
+    # victim (its only other uses are blackhole-only).
+    if(NOT DEFINED WORMHOLE_ROLE)
+        set(WORMHOLE_ROLE 0)
     endif()
-    message(STATUS "child_node: building WORMHOLE firmware "
-                   "(ACTIVE_ATTACK=2, WORMHOLE_END=${WORMHOLE_END})")
+    if(WORMHOLE_ROLE EQUAL 1)
+        set(VICTIM_SRC "victim_main.c")
+        message(STATUS "child_node: building WORMHOLE-RUN VICTIM (plain node) "
+                       "(ACTIVE_ATTACK=2, WORMHOLE_ROLE=1)")
+    else()
+        set(VICTIM_SRC "wormhole_victim.c")
+        if(NOT DEFINED WORMHOLE_END)
+            set(WORMHOLE_END 0)
+        endif()
+        message(STATUS "child_node: building WORMHOLE tunnel end "
+                       "(ACTIVE_ATTACK=2, WORMHOLE_END=${WORMHOLE_END})")
+    endif()
 else()
     set(VICTIM_SRC "victim_main.c")
 endif()
