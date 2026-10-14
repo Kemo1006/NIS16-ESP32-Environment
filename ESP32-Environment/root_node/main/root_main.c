@@ -96,12 +96,24 @@ static probe_dedup_entry_t *s_dedup_table = NULL;
 static size_t               s_dedup_count = 0;
 static size_t               s_dedup_cap   = 0;
 
+/* Set by the experiment controller when the run is about to start; consumed by
+ * probe_is_duplicate() so the table is still only ever touched by the probe
+ * callback. Why: a child power-cycled while the root waits (the tree gate asks
+ * for exactly that) restarts its seq_num near 0, and without this the root would
+ * discard every probe it sends until the counter passed its pre-cycle maximum -
+ * up to ~450 s of a 'blackhole-looking' baseline (verification #16, oct. 11). */
+static volatile bool s_dedup_clear_req = false;
+
 /**
  * @brief Return true if this (mac, seq_num) was already seen and logged.
  *        Updates the table as a side effect when it's a new arrival.
  */
 static bool probe_is_duplicate(const uint8_t mac[6], uint32_t seq_num)
 {
+    if (s_dedup_clear_req) {
+        s_dedup_clear_req = false;
+        s_dedup_count = 0;     /* keep the allocation, forget every source's maximum */
+    }
     for (size_t i = 0; i < s_dedup_count; i++) {
         if (memcmp(s_dedup_table[i].mac, mac, 6) == 0) {
             if (seq_num <= s_dedup_table[i].last_seq) {
@@ -403,10 +415,19 @@ static void wait_for_all_children(void)
 #if (EXPECTED_CHILDREN > 0)
     uint32_t waited_s = 0;
     uint32_t stable_s = 0;
+    /* Tree + blackhole: the roster gate ALSO needs the attacker to have a child
+     * (TREE_GATE_STABLE_S in mesh_config.h), so the mesh is reshaped BEFORE the
+     * baseline starts, not by power-cycling boards during it. Decided at RUN time
+     * by mesh_common: this file is NOT compiled with -DMESH_TOPOLOGY (only
+     * mesh_common is), so a compile-time test here would always read "tree". */
+    const bool tree_gate = heartbeat_tree_gate_active();
+    const uint32_t need_s = tree_gate ? TREE_GATE_STABLE_S : ROSTER_GATE_STABLE_S;
     phase_banner("WAITING FOR ALL CHILDREN");
-    while (stable_s < ROSTER_GATE_STABLE_S) {
+    while (stable_s < need_s) {
         int have = children_in_mesh();
-        stable_s = (have >= EXPECTED_CHILDREN) ? stable_s + 1 : 0;
+        const int atk_kids = tree_gate ? heartbeat_attacker_child_count() : 0;
+        const bool shape_ok = !tree_gate || (atk_kids >= 1);
+        stable_s = (have >= EXPECTED_CHILDREN && shape_ok) ? stable_s + 1 : 0;
         if (phase_listener_start_anyway_requested()) {
             ESP_LOGE(TAG, "[CTRL] START_ANYWAY after %u s - starting with %d/%d children. "
                           "This run is SHORT %d node(s); say so wherever it is used.",
@@ -414,11 +435,23 @@ static void wait_for_all_children(void)
                      have < EXPECTED_CHILDREN ? EXPECTED_CHILDREN - have : 0);
             return;
         }
-        if (stable_s == 0 && waited_s % ROSTER_GATE_LOG_S == 0) {
+        if (stable_s == 0 && have < EXPECTED_CHILDREN && waited_s % ROSTER_GATE_LOG_S == 0) {
             ESP_LOGW(TAG, "[CTRL] WAITING: %d/%d children in the mesh (%u s). Phase 0 will NOT "
                           "start until all have joined.", have, EXPECTED_CHILDREN, (unsigned)waited_s);
             ESP_LOGW(TAG, "[CTRL]   A missing child is unpowered, brownout-looping (weak "
                           "powerbank/cable) or out of range. Fix it, or type START_ANYWAY.");
+        }
+        if (tree_gate && have >= EXPECTED_CHILDREN && !shape_ok && waited_s % ROSTER_GATE_LOG_S == 0) {
+            if (atk_kids < 0) {
+                ESP_LOGW(TAG, "[CTRL] All %d children are in, but the ATTACKER (role BLACKHOLE) "
+                              "has not reported yet. Phase 0 waits.", EXPECTED_CHILDREN);
+            } else {
+                ESP_LOGW(TAG, "[CTRL] All %d children are in, but the ATTACKER has 0 children - "
+                              "nothing would transit it. Power-cycle ONE child that sits near the "
+                              "attacker (not the attacker) and wait for it to rejoin under it. "
+                              "Phase 0 starts only once the attacker has a child for %u s.",
+                         EXPECTED_CHILDREN, (unsigned)TREE_GATE_STABLE_S);
+            }
         }
         /* Keep announcing while waiting: a child that joins late still
          * starts logging before Phase 0. */
@@ -475,6 +508,13 @@ static void experiment_controller_task(void *arg)
         xTaskDelayUntil(&stab_tick, pdMS_TO_TICKS(1000));
     }
     wait_for_all_children();
+
+    /* Children may have been power-cycled while the gate waited: forget the old
+     * per-source seq maxima so their restarted counters are not dropped as
+     * 'stale' for the whole baseline. Duplicate suppression inside the run (the
+     * wormhole signature) is unchanged. */
+    s_dedup_clear_req = true;
+    ESP_LOGI(TAG, "[CTRL] Probe de-dup table cleared for the run.");
 
     /* ── Phase 0: Baseline ───────────────────────────────────────────────── */
     phase_banner("PHASE 0 — BASELINE");

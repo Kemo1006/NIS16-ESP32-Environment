@@ -108,6 +108,29 @@ void heartbeat_table_init(void);
  */
 bool heartbeat_ingest(const uint8_t *data, size_t len);
 
+/**
+ * @brief Root-only: how many nodes currently hang directly under the node that
+ *        reports role BLACKHOLE (the attacker), from the heartbeat table.
+ *
+ * Same parent-link resolution as the printed topology (parent = SoftAP BSSID =
+ * STA MAC + 1). Rows with no heartbeat for HEARTBEAT_STALE_MS are ignored.
+ * Used by the root's tree attacker-child gate (TREE_GATE_STABLE_S).
+ *
+ * @return child count (0 = attacker present but childless); -1 if no fresh
+ *         BLACKHOLE row yet, the table is not initialised, or out of memory.
+ */
+int heartbeat_attacker_child_count(void);
+
+/**
+ * @brief Root-only: true when this build is TREE + BLACKHOLE, i.e. the root must
+ *        hold Phase 0 until heartbeat_attacker_child_count() >= 1.
+ *
+ * A function, not a macro, on purpose: the root's main component is not
+ * compiled with -DMESH_TOPOLOGY (only mesh_common is), so a compile-time test
+ * in root_main.c would read the default (tree) in every build.
+ */
+bool heartbeat_tree_gate_active(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1539,6 +1539,55 @@ static void heartbeat_mark_offline(const uint8_t mac[6])
     table_unlock();
 }
 
+bool heartbeat_tree_gate_active(void)
+{
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE && ACTIVE_ATTACK == PHASE_ID_BLACKHOLE)
+    return true;
+#else
+    return false;
+#endif
+}
+
+int heartbeat_attacker_child_count(void)
+{
+    if (!s_table_mutex) {
+        return -1;
+    }
+    const int64_t now = esp_timer_get_time();
+    int result = -1;
+    table_lock();
+    topo_node_t *tn = calloc(s_node_count ? s_node_count : 1, sizeof(topo_node_t));
+    if (!tn) {
+        table_unlock();
+        return -1;
+    }
+    size_t n = 0;
+    int atk = -1;
+    for (size_t i = 0; i < s_node_count; i++) {
+        const heartbeat_entry_t *e = &s_nodes[i];
+        const uint32_t age_ms = (uint32_t)((now - e->last_seen_us) / 1000LL);
+        if (age_ms > HEARTBEAT_STALE_MS && e->export_status != EXPORT_STATUS_LOG_CLOSED) {
+            continue;   /* gone quiet: not part of the mesh any more */
+        }
+        memcpy(tn[n].mac, e->mac, 6);
+        memcpy(tn[n].parent, e->parent_mac, 6);
+        if (e->role == NODE_ROLE_BLACKHOLE) {
+            atk = (int)n;
+        }
+        n++;
+    }
+    if (atk >= 0) {
+        topo_graph_t g;
+        if (topo_build(&g, tn, n)) {
+            result = g.child_count[atk];
+            topo_free(&g);
+        }
+    }
+    free(tn);
+    table_unlock();
+    return result;
+}
+
 void heartbeat_table_init(void)
 {
     s_table_mutex = xSemaphoreCreateRecursiveMutex();
