@@ -377,3 +377,15 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Paper edit** | Locations section / run matrix: 3 sites (G402, DLSU Library, Yuchengco). Decide whether the existing home captures are reported (e.g. as pilot runs) or left out. **Adviser check.** |
 
 ---
+
+## D-20 · Attacks are application-layer emulations: no routing (control-plane) manipulation
+
+| | |
+|---|---|
+| **Thesis says** | ⚠️ *Check the proposal's wording before quoting.* The literature definitions the paper cites describe a blackhole that **advertises a false (shortest) route** to attract traffic, then drops it, and a wormhole whose tunnel **makes the routing protocol adopt a false shortcut** (distant nodes appear to be neighbours). |
+| **What we do** | Only the attack *behaviour* (data plane) is implemented, on real hardware. **Blackhole** (`blackhole_victim.c`): a legitimate mesh node that silently drops the probes it relays during the attack phase. Traffic reaches it by **physical placement** (it sits between victims and the root), not by a false route. **Wormhole** (`wormhole_victim.c`): a real out-of-band **wired UART tunnel** between two boards; Node B sends a copy of each probe through it, Node A re-injects it near the root, and the root keeps **both copies**. ESP-WIFI-MESH routing never adopts the tunnel. Raised by a groupmate on oct. 14, 2026 ("are these actual blackhole and wormhole attacks?"). |
+| **Why we can't** | ESP-WIFI-MESH is a self-organising **tree**: no AODV-style route request/reply messages to falsify. Each node picks its parent from information in the mesh beacons, and routing tables are kept **inside Espressif's closed-source mesh library**. The public `esp_mesh_*` API can read the routing table (`esp_mesh_get_routing_table`) but has no call to write false routes or change what a node advertises. Faking it would mean forging the mesh's own management frames / reverse-engineering a proprietary stack: out of scope for an exploratory data analysis study. ⚠️ *Confirm these API claims against the ESP-IDF ESP-WIFI-MESH docs and cite them before the defense.* |
+| **Net effect on the thesis** | The datasets capture each attack's **data-plane signature** (blackhole: probes vanish; wormhole: duplicated probes with latency mismatch), **not** the route-attraction stage (no parent changes or topology shifts caused by the attacker). Attacker position becomes an experimental variable (see D-12, D-16, D-17). |
+| **Paper edit** | (1) **Scope and Limitations:** say plainly that the attacks are application-layer emulations on physical hardware, why routing could not be attacked, and what the data does / does not represent. (2) **Attack method sections:** "the attacker drops / tunnels traffic that transits it", not "advertises a false route". (3) **Future work:** route-attraction attacks on an open-source mesh protocol, or ESP-WIFI-MESH's beacon-based parent selection. (4) Defense slide + panel Q&A ("is it a real attack?", "did you try?" - answer honestly, "does placement bias results?"). Draft wording in MEMORY oct. 14, 2026. |
+
+---

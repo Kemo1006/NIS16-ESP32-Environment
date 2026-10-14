@@ -140,6 +140,7 @@ _Static_assert(sizeof(hello_pkt_t) == sizeof(tunnel_pkt_t),
 #define PEER_FRESH_MS          5000   /* a HELLO older than this is "no peer"  */
 #define LOCK_WAIT_FOR_PEER_MS  3000   /* booted into a running run: wait this
                                        * long for a HELLO before falling back  */
+#define LINK_ERR_PERIOD_MS     10000  /* repeat the "wire is dead" error       */
 
 /* ── Shared state ─────────────────────────────────────────────────────────── */
 static char     s_node_id[NODE_ID_LEN] = {0};
@@ -424,6 +425,18 @@ static bool     s_rt_conflict_fixed  = false;
 static bool     s_rt_lost_warned     = false;
 static bool     s_rt_shortcut_warned = false;
 static uint32_t s_rt_next_noise_warn = 64;
+static int64_t  s_rt_next_link_err_us = 0;
+
+/* The UART link as this end sees it (wh_link_t). Goes into every heartbeat so
+ * the ROOT's dashboard can flag a dead wire (oct. 14 2026 safety net): before
+ * that, a dead wire only showed as its symptom - each end silently kept its
+ * build-time role, which can come out reversed. */
+static uint8_t link_state(int64_t now)
+{
+    if (peer_fresh())  return WH_LINK_OK;
+    if (s_peer_seen)   return WH_LINK_LOST;
+    return (now - s_rt_started_us < PEER_FRESH_MS * 1000LL) ? WH_LINK_WAITING : WH_LINK_NONE;
+}
 
 /* One decision round: HELLO when due, provisional role / lock, conflict and
  * shortcut checks. role_task runs it every 100 ms. */
@@ -505,12 +518,31 @@ static void role_step(void)
             s_rt_next_noise_warn *= 4;
         }
 
-        if (s_role_locked && s_peer_seen && !peer_fresh() && !s_rt_lost_warned) {
-            ESP_LOGW(TAG, "No HELLO from the peer for %d s - is the UART cable still"
-                          " connected? (role stays locked)", PEER_FRESH_MS / 1000);
+        uint8_t link = link_state(now);
+        node_identity_set_wh_link(link);
+        if (link == WH_LINK_NONE || link == WH_LINK_LOST) {
+            /* Loud and REPEATED - a one-off line scrolls away during mesh setup. */
+            if (now >= s_rt_next_link_err_us) {
+                ESP_LOGE(TAG, "!! UART TUNNEL %s: %s - no tunnel copy can cross. %s"
+                              " Check: GPIO%d (TX) -> peer GPIO%d (RX), both ways crossed,"
+                              " + GND -> GND.",
+                         link == WH_LINK_NONE ? "NO SIGNAL" : "LOST",
+                         link == WH_LINK_NONE ? "nothing ever heard from the other wormhole board"
+                                              : "the other wormhole board went silent",
+                         (s_role_locked && !s_locked_fallback)
+                             ? "(Role was picked by depth before the link dropped.)"
+                             : (is_b() ? "This board is B only by its BUILD DEFAULT, not by depth."
+                                       : "This board is A only by its BUILD DEFAULT, not by depth."),
+                         WORMHOLE_UART_TX_PIN, WORMHOLE_UART_RX_PIN);
+                s_rt_next_link_err_us = now + LINK_ERR_PERIOD_MS * 1000LL;
+            }
             s_rt_lost_warned = true;
-        } else if (peer_fresh()) {
+        } else if (link == WH_LINK_OK) {
+            if (s_rt_lost_warned) {
+                ESP_LOGW(TAG, "UART tunnel link OK again - peer heard.");
+            }
             s_rt_lost_warned = false;
+            s_rt_next_link_err_us = 0;
         }
 }
 

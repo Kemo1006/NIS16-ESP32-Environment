@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 7, 2026 night (Angelo, session summary). Everything is on GitHub `THESIS3`. Facts + reasons: top ~20 entries of MEMORY.md (oct. 7).
+**Updated:** oct. 14, 2026 (Angelo). Angelo's copy in sync with GitHub `THESIS3` - still `git pull` first. Facts + reasons: top ~20 entries of MEMORY.md (oct. 7).
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored. Analysis tables + `eda_output/` are force-added (`git add -f`). Board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh
@@ -12,10 +12,9 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Highload root fix WORKS on hardware** (`643adf8`, verification #9: 0 arrival rows lost). Highload root logs arrivals SD-only, batched; root now built with `-DTRAFFIC_PROFILE=2` on highload. Old 15:13 run archived (`datasets/archive/2026-10-07_..._highload-invalid/`).
 - **Wormhole auto-switch WORKS on hardware** (verification #10, wormhole/linear/DLSU/stationary: A at L5, B at L7, 181/181 B probes duplicated). TunnelLatency INCONCL + LatencyHopRatio INFEASIBLE are by design (C8).
 - **Analysed + pushed tonight:** blackhole/DLSU linear/stationary, linear/burst, star/stationary (all CONFIRMED), partial_mesh/jitter, wormhole/linear/stationary.
-- **Wizard text:** wormhole picker = "wired tunnel board 1/2" (A/B only a fallback); powercycle/mobility box gives WHO/WHAT/WHEN (phone timer 5:10 attack run, 2:30 baseline run).
 - **Topology gate:** `verify_topology.py` now ignores changes before a root restart (6 old FAILs -> PASS; tree/G402/stationary still a real FAIL).
 - **Verification log** `docs/dataset-verification.md`: #11 linear/DLSU/jitter USABLE · #10 wormhole/linear/DLSU · #9 partial/DLSU/highload · #8 star/DLSU/stationary (Basti) · #7 partial/DLSU/stationary · #6 wormhole tree/G402 no shortcut.
-- **Thesis to-do:** `docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md`; new tonight: A19 (benign design), A20 (3 sites), C6–C8. D-entries now D-1…D-19.
+- **Thesis to-do:** `docs/deviations-limitations/THESIS-UPDATE-CHECKLIST.md`; newest: **A21 / D-20 (oct. 14): attacks are application-layer emulations, no routing manipulation - paper edits planned week of oct. 19.** D-entries now D-1…D-20.
 - Host build tip (Angelo): use `C:\Espressif\Initialize-Idf.ps1 -IdfId <id>` then `python $env:IDF_PATH\tools\idf.py`. Test build dirs left in `C:\eb` (delete by hand).
 
 ## Uncommitted on Angelo's laptop (on purpose)
@@ -23,11 +22,12 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - 2 presets show DELETED (likely the wizard): `Bas/blackhole-partial_mesh-g402-jitter.json`, `Cal/blackhole-linear-dlsu_library-burst.json` - user's call: restore (`git restore`) or push the deletion.
 
 ## Next step
-1. Reflash every board (Yuchengco firmware + highload root) before the next session.
+1. Reflash every board (Yuchengco firmware + highload root + **oct. 14 wormhole UART safety net**: root + both wormhole ends) before the next session. Wormhole runs: fix/test the A<->B wire first (GPIO17->16 crossed + GND); the root now shows `UART NO SIGNAL` if it's dead.
 2. Session 1 on the board: G402 / linear (BH highload, BH mobility, benign jitter, then wormhole).
 3. Verify partial_mesh/DLSU/jitter (analysed, not checked). Inventory flags partial/DLSU/highload as "re-capture" (ED80 coverage incl. stabilise) though #9 says usable - decide whether the coverage rule should skip phase 255.
 4. Recapture wormhole tree/G402 (D3), tree/G402 stationary + burst r2 (D1, D2).
-5. Adviser: D-12, D-17, D-18, D-19, B3 framing; decide how the old home captures are reported (A20).
+5. **Paper edits (week of oct. 19):** A21/D-20 Scope & Limitations + attack-method wording + future work; verify ESP-IDF API claims first.
+6. Adviser: D-12, D-17, D-18, D-19, B3 framing; decide how the old home captures are reported (A20).
 
 ## Blockers / open questions
 - ⛔⛔ BSOD 0xB8: NEVER Ctrl+C an export or SD read; never reset/unplug a board while it is read; boards DIRECT into the laptop.
@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `git diff --cached --stat` before every commit/pull - the wizard stages files on its own.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 14 (Angelo) — wormhole UART safety net (heartbeat `wh_link` + root dashboard warning, test 42/42, builds clean); D-20 + checklist A21 (attacks = emulations). Pushed `5b91aa7`.
 - oct. 7 night (Angelo) — deleted bogus benign tree/G402 copies (cell now [ ]); linear/DLSU/jitter root pushed + analysed + verified (#11, USABLE); highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
-- oct. 7 (Basti) — #8 star/DLSU verified USABLE; Edit preset Attacker row; pink A/B; campaign plan swap; unstuck the pull + pushed.

@@ -2546,3 +2546,13 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - sep. 26, 2026 (eve) — **OPERATOR HOLD (root waits for `GO`) was REVERTED ON PURPOSE by the user ("i reverted the code i didnt like").**
   Not lost, not a bug: `run.ps1 -Hold`, `wait_for_operator_go()`, `OPERATOR_HOLD` and the wizard "Hold the root for GO? [Y/n]" are
   gone from the tree. Do NOT rebuild or re-propose it unless asked; the roster gate still starts Phase 0 once children join.
+
+## Rolled from MEMORY.md (oct. 14, 2026, Angelo — line cap)
+- oct. 2, 2026 (Angelo) — ✅ RESOLVED oct. 7 (copies deleted, see top). **Duplicate wormhole controls were in `exports/baseline/tree/G402/stationary/`:** Kyle's `child_child-4..7_tree_none_r1_oct01_05xxPM_telem.csv` are byte-identical to the copies in `exports/wormhole/tree/G402/stationary/` and contain phase-2 rows (not baseline). Basti's `git mv` to wormhole is staged on HIS laptop, not pushed. NOT deleted on Angelo's laptop on purpose (would conflict with Basti's move) - user to choose: Basti pushes his move, or Angelo deletes the 4 baseline copies. Until then the checklist shows a bogus baseline/tree/G402 cell.
+
+## Rolled from STATUS.md (oct. 14, 2026)
+- oct. 7 (Basti) — #8 star/DLSU verified USABLE; Edit preset Attacker row; pink A/B; campaign plan swap; unstuck the pull + pushed.
+- **Wizard text:** wormhole picker = "wired tunnel board 1/2" (A/B only a fallback); powercycle/mobility box gives WHO/WHAT/WHEN (phone timer 5:10 attack run, 2:30 baseline run).
+
+## Rolled from MEMORY.md (oct. 14, 2026, Angelo — line cap)
+- sep. 27, 2026 (pm) — **READABLE NAME STAMP `sept27_0311AM`** (user: easier to see date/time) replaces `20260927_031130` in export CSVs, run logs, PCAPs; archive folders `sept27_<label>`. No year/seconds → same-minute clash gets `-2`. Old files NOT renamed; `tools/name_stamp.py` reads both — never sort names as text (1012AM < 0312PM), use `name_stamp.parse`. PS copies: `Get-NameStamp`/`Get-StampedPath` (run_wizard.ps1), archive.ps1 inline. Not run: a real capture/import/archive.

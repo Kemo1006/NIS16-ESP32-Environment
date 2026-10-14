@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "mesh_config.h"           /* PHASE_ID_* */
+#include "mesh_messages.h"         /* WH_LINK_* */
 
 int64_t g_now_us = 0;
 uint8_t g_phase  = PHASE_ID_UNSET;
@@ -28,13 +29,14 @@ bool    g_verbose = false;
     size_t B##_make_tunnel_frame(uint8_t *, uint32_t); char B##_end(void); char B##_hb_end(void); \
     const char *B##_csv_role(void); bool B##_locked(void); bool B##_fallback(void); \
     bool B##_conflict(void); bool B##_shortcut_lost(void); uint32_t B##_bad_windows(void); \
-    uint32_t B##_tunnel_rx(void); void B##_force_peer_layer(int);
+    uint32_t B##_tunnel_rx(void); void B##_force_peer_layer(int); uint8_t B##_hb_link(void);
 DECL(b1)
 DECL(b2)
 
 static const uint8_t MAC1[6] = {0x20, 0x50, 0x0D, 0xE7, 0x0C, 0x80};   /* lower  */
 static const uint8_t MAC2[6] = {0x20, 0x50, 0x0D, 0xE7, 0x1C, 0x38};   /* higher */
 
+#define PEER_FRESH_MS_TEST 5000                 /* = PEER_FRESH_MS in the firmware */
 static bool link_12 = true, link_21 = true;   /* each direction of the cable */
 static int  noise   = 0;                       /* garbage bytes per transfer  */
 static int  fails = 0, checks = 0;
@@ -100,6 +102,8 @@ int main(int argc, char **argv)
     CHECK(b1_end() == 'A' && b2_end() == 'B', "locked: b1 = A (exit), b2 = B (entry)");
     CHECK(!b1_fallback() && !b2_fallback() && !b1_conflict() && !b2_conflict(),
           "no fallback, no conflict");
+    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_OK,
+          "heartbeat reports UART OK on both ends");
     opposite_and_consistent("[1]");
     b1_set_layer(6); b2_set_layer(1); g_phase = PHASE_ID_WORMHOLE; run(3000);
     CHECK(b1_end() == 'A' && b2_end() == 'B', "mesh flipped after the lock -> roles do NOT follow");
@@ -116,6 +120,30 @@ int main(int argc, char **argv)
     CHECK(b1_locked() && b2_locked(), "both still lock (run is not blocked)");
     CHECK(b1_fallback() && b2_fallback(), "both report 'locked from BUILD FALLBACK'");
     CHECK(b1_end() == 'B' && b2_end() == 'A', "each kept its build flag (b1 B, b2 A)");
+    CHECK(b1_hb_link() == WH_LINK_NONE && b2_hb_link() == WH_LINK_NONE,
+          "SAFETY NET: heartbeat reports UART NO SIGNAL on both ends");
+
+    printf("\n[3b] Just booted, cable unplugged: 'checking' first, NO SIGNAL after %d s\n",
+           PEER_FRESH_MS_TEST / 1000);
+    fresh(1, 6); link_12 = link_21 = false;
+    run(1000);
+    CHECK(b1_hb_link() == WH_LINK_WAITING, "first second: still 'checking' (no false alarm)");
+    run(PEER_FRESH_MS_TEST);
+    CHECK(b1_hb_link() == WH_LINK_NONE, "after the window: NO SIGNAL");
+    link_12 = link_21 = true; run(1500);
+    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_OK, "cable plugged in: back to OK");
+
+    printf("\n[3c] Half a cable: b1 -> b2 jumper bad, b2 -> b1 fine\n");
+    fresh(1, 6); link_12 = false;
+    run(7000);
+    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_NONE,
+          "b1 hears b2 (OK), b2 hears nothing (NO SIGNAL) - root sees ONE bad end");
+
+    printf("\n[3d] Cable pulled mid-run\n");
+    fresh(1, 6); run(2000); g_phase = PHASE_ID_BASELINE; run(500);
+    link_12 = link_21 = false; run(6000);
+    CHECK(b1_hb_link() == WH_LINK_LOST && b2_hb_link() == WH_LINK_LOST,
+          "both report UART LOST; roles stay locked (b1 %c, b2 %c)", b1_end(), b2_end());
 
     printf("\n[4] Board reboots mid-run (powercycle) where its depth would now say the opposite\n");
     fresh(1, 6); run(2000); g_phase = PHASE_ID_BASELINE; run(500);

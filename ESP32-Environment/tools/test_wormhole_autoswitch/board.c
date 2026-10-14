@@ -21,6 +21,8 @@
 #define node_identity_nickname     SYM(node_identity_nickname)
 #define node_identity_role         SYM(node_identity_role)
 #define node_identity_set_role     SYM(node_identity_set_role)
+#define node_identity_set_wh_link  SYM(node_identity_set_wh_link)
+#define node_identity_wh_link      SYM(node_identity_wh_link)
 #define probe_relay_start          SYM(probe_relay_start)
 #define probe_relay_ingest         SYM(probe_relay_ingest)
 #define probe_relay_send_own       SYM(probe_relay_send_own)
@@ -37,6 +39,9 @@ static uint8_t s_hb_role = 0xFF;        /* what the heartbeat would report */
 void node_identity_resolve(uint8_t r) { s_hb_role = r; }
 void node_identity_set_role(uint8_t r) { s_hb_role = r; }
 uint8_t node_identity_role(void) { return s_hb_role; }
+static uint8_t s_hb_link = WH_LINK_NA;  /* what the heartbeat would report */
+void node_identity_set_wh_link(uint8_t l) { s_hb_link = l; }
+uint8_t node_identity_wh_link(void) { return s_hb_link; }
 esp_err_t probe_relay_start(probe_relay_forward_decision_t d) { (void)d; return ESP_OK; }
 void probe_relay_ingest(const uint8_t *d, size_t l) { (void)d; (void)l; }
 esp_err_t probe_relay_send_own(probe_pkt_t *p) { (void)p; return ESP_OK; }
@@ -64,7 +69,7 @@ void SYM(boot)(const uint8_t mac[6], int layer)
     s_shortcut_lost = false; s_tunnel_received = 0;
     s_rt_started_us = esp_timer_get_time(); s_rt_next_hello_us = 0;
     s_rt_conflict_fixed = false; s_rt_lost_warned = false; s_rt_shortcut_warned = false;
-    s_rt_next_noise_warn = 64;
+    s_rt_next_noise_warn = 64; s_rt_next_link_err_us = 0; s_hb_link = WH_LINK_NA;
     s_tx_len = 0; s_rx_len = 0; s_rx_pos = 0; s_queued = 0; s_dv_got = 0;
     if (!s_reinject_queue) s_reinject_queue = xQueueCreate(1, 1);
 }
@@ -127,3 +132,4 @@ bool     SYM(shortcut_lost)(void){ return s_shortcut_lost; }
 uint32_t SYM(bad_windows)(void)  { return s_uart_bad_windows; }
 uint32_t SYM(tunnel_rx)(void)    { return s_tunnel_received; }
 void     SYM(force_peer_layer)(int l) { s_peer_layer = (int16_t)l; }
+uint8_t  SYM(hb_link)(void)      { return s_hb_link; }

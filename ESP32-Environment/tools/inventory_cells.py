@@ -77,6 +77,15 @@ def _read_meta(path, sample_interval_ms):
     """Row count, span, role and phase set from one CSV, without loading it all."""
     rows = 0
     first_ts = last_ts = None
+    # Coverage counts only the experiment (phases 0-3), not phase 255 = setup /
+    # mesh forming, which the analysis drops anyway (oct. 7, 2026: ED80's
+    # setup-only gaps held a usable run at 91.6 %). Falls back to every row
+    # when the file has no phase column.
+    # Phase 255 can also sit in the MIDDLE of a file (e.g. burst runs), so the
+    # expected count uses only the time between two consecutive experiment rows.
+    exp_rows = 0
+    exp_time_us = 0
+    prev_exp_ts = None
     role = ""
     phases = set()
     try:
@@ -108,12 +117,23 @@ def _read_meta(path, sample_interval_ms):
                     role = f[role_i]
                 if ph_i is not None:
                     phases.add(f[ph_i])
+                    if f[ph_i] != "255":
+                        if prev_exp_ts is not None:
+                            exp_time_us += ts - prev_exp_ts
+                        prev_exp_ts = ts
+                        exp_rows += 1
+                    else:
+                        prev_exp_ts = None
     except OSError:
         return None
 
     span_s = ((last_ts - first_ts) / 1e6) if (first_ts is not None and last_ts is not None) else 0.0
-    expected = span_s * (1000.0 / sample_interval_ms)
-    coverage = (rows / expected) if expected > 0 else 0.0
+    if exp_rows:
+        expected = exp_time_us / 1e6 * (1000.0 / sample_interval_ms) + 1
+        coverage = exp_rows / expected
+    else:
+        expected = span_s * (1000.0 / sample_interval_ms)
+        coverage = (rows / expected) if expected > 0 else 0.0
     return {"rows": rows, "span_s": span_s, "coverage": coverage,
             "role": role, "phases": phases, "n_cols": len(header)}
 
