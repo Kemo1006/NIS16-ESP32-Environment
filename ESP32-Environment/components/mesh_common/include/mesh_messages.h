@@ -82,7 +82,11 @@ typedef enum {
  * against the built topology) instead of only sorting rows by layer. layer is
  * 16-bit because a chain may be up to 1000 layers deep (mesh_config.h).
  *
- * 52 bytes — comfortably inside phase_listener.c's 128-byte rx_buf.
+ * wh_link (oct. 14 2026) is APPENDED, not inserted: an old board's 52-byte
+ * beat is still accepted by a new root (heartbeat_ingest reads wh_link only
+ * when the frame is long enough), and an old root ignores the extra byte.
+ *
+ * 53 bytes — comfortably inside phase_listener.c's 128-byte rx_buf.
  */
 typedef struct __attribute__((packed)) {
     uint32_t magic;                        /**< HEARTBEAT_MSG_MAGIC — must be first */
@@ -97,7 +101,20 @@ typedef struct __attribute__((packed)) {
     uint8_t  current_phase;                /**< phase_listener_get_phase_id()       */
     uint8_t  export_status;                /**< export_status_t — Phase 2           */
     uint8_t  export_percent;               /**< 0-100 — Phase 2                     */
+    uint8_t  wh_link;                      /**< wh_link_t — wormhole ends only      */
 } node_heartbeat_pkt_t;
+
+/** Wormhole A<->B UART link as each END sees it (heartbeat wh_link). Lets the
+ *  root's dashboard say "the wire is dead" instead of only showing the symptom
+ *  (ends reversed / no shortcut) - with no HELLO, each end silently falls back
+ *  to its build-time role. */
+typedef enum {
+    WH_LINK_NA      = 0,   /**< not a wormhole end, or pre-oct-14 firmware   */
+    WH_LINK_OK      = 1,   /**< peer's HELLO heard within PEER_FRESH_MS       */
+    WH_LINK_NONE    = 2,   /**< NOTHING ever heard from the peer over UART    */
+    WH_LINK_LOST    = 3,   /**< heard before, silent for PEER_FRESH_MS now    */
+    WH_LINK_WAITING = 4    /**< just booted - still inside the first window   */
+} wh_link_t;
 
 /* ── Command (Phase 2 — defined now so the wire format is stable) ────────── */
 

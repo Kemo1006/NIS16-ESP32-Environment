@@ -64,6 +64,11 @@ uint8_t node_identity_role(void);
  */
 void node_identity_set_role(uint8_t role);
 
+/** Wormhole ends only: the UART link state (wh_link_t) the heartbeat reports.
+ *  Every other board leaves it at WH_LINK_NA. */
+void node_identity_set_wh_link(uint8_t state);
+uint8_t node_identity_wh_link(void);
+
 #ifdef __cplusplus
 }
 #endif

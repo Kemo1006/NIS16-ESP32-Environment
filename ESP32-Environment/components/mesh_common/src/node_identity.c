@@ -19,6 +19,7 @@ static const char *TAG = "NODE_ID";
 
 static node_identity_t s_identity;
 static bool            s_resolved;
+static volatile uint8_t s_wh_link = WH_LINK_NA;   /* wh_link_t, wormhole ends only */
 
 /* ── No MAC lookup table (removed oct. 1, 2026 hardcode audit) ──────────────
  * This file used to carry a MAC -> nickname table from the jul. 2026 layout
@@ -104,4 +105,14 @@ void node_identity_set_role(uint8_t role)
                  node_role_to_str(s_identity.role), node_role_to_str(role));
         s_identity.role = role;
     }
+}
+
+void node_identity_set_wh_link(uint8_t state)
+{
+    s_wh_link = state;
+}
+
+uint8_t node_identity_wh_link(void)
+{
+    return s_wh_link;
 }

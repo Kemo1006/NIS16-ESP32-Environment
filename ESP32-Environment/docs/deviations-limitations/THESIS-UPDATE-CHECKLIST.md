@@ -41,6 +41,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | A18 | ⬜ | Wormhole exposure / "victims" | A wormhole run has **no victims**: only Node B's own probes are duplicated; other nodes are `not_tunnelled`. Do not use the blackhole "downstream = victim" rule for wormhole | D-17, MEMORY oct. 7 |
 | A19 | ⬜ | Run matrix / data collection | **One matched benign run per location × topology**, the 4 topologies of a location under 4 different scenarios (was: burst cells only). 96 attack + 12 benign = 108 runs, 2 benign per scenario. **Adviser check** | D-18 (oct. 7 2026) |
 | A20 | ⬜ | Locations / run matrix | **3 sites: G402, DLSU Library, Yuchengco** (home dropped, "Goks" renamed Yuchengco). Decide how the existing home captures are reported (pilot?) or dropped. **Adviser check** | D-19 (oct. 7 2026) |
+| A21 | ⬜ | Scope & Limitations, attack method sections, future work, defense slides | **Attacks are application-layer emulations**: the attack behaviour (dropping; wired tunnel) is real on hardware, but **no routing manipulation** (no false route advertised; ESP-WIFI-MESH tree routing is inside the closed-source library, no API to falsify it). Blackhole traffic reaches the attacker by placement. State it upfront as a scope decision + why + what the data represents; add future work. **Planned for the paper edits the week of oct. 19, 2026**; verify the ESP-IDF API claims and cite the docs | D-20 (oct. 14 2026) |
 
 ## B. Reporting & wording (how results are stated)
 
@@ -51,6 +52,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | B3 | 🟨 | Results framing | PDR / LatencyHopRatio separate the classes perfectly on their own — frame as expected for a blackhole, not as a model result | STATUS blockers |
 | B5 | ⬜ | Tables with ConsistencyScore z | A **huge finite z** (e.g. 1,178,647) on ConsistencyScore is the same σ ≈ 0 case: `FR = fwd/(recv + 1e-6)` leaves 1e-6/recv residue in a perfect baseline. Report as "z undefined (σ = 0)", never the number. (Optional code fix: treat σ < 1e-5 as 0 in the verifier — not done) | Verification #7 |
 | B4 | ⬜ | Blackhole "victims" in a run | Report victims by **exposure** (downstream of the attacker), not by the firmware's build role | exposure.py, verification #1 |
+| B-cov | ⬜ | M5 coverage wording | The ≥ 95 % per-node coverage is measured over the **experiment phases only** (baseline, attack, cooldown); setup / mesh-forming rows are excluded, as in the analysis. Say so where M5 is described | MEMORY oct. 7 (night) |
 | B-topo | ⬜ | Topology gate (M3 'stable through baseline') | The baseline-stability check now skips parent changes from BEFORE a root restart (the old root session, already excluded from the data as pre_baseline). Topology FAILs written in verifications #4, #8, #11 (and on linear/G402/stationary, tree/G402/burst + jitter) were this false alarm; they now PASS. Don't report them as instability | MEMORY oct. 7 19:40 |
 
 ## C. Per-capture footnotes (cite the run, add the note)

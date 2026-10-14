@@ -14,6 +14,7 @@
 #include "topology_graph.h"
 #include "blackhole_target.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -755,6 +756,7 @@ static void heartbeat_task(void *arg)
             pkt.current_phase = phase_listener_get_phase_id();
             pkt.export_status = log_closed ? EXPORT_STATUS_LOG_CLOSED
                                            : EXPORT_STATUS_IDLE;
+            pkt.wh_link       = node_identity_wh_link();
 
             /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
              * a non-root node's upward send (TODS) — see the routerless-mesh
@@ -823,6 +825,7 @@ typedef struct {
     uint32_t uptime_sec;
     uint8_t  current_phase;
     uint8_t  export_status;   /* EXPORT_STATUS_LOG_CLOSED = safe to export     */
+    uint8_t  wh_link;         /* wh_link_t: wormhole end's UART link state     */
     int64_t  last_seen_us;
     uint8_t *seen_parents;    /* PARTIAL only: every distinct parent observed  */
     size_t   seen_count;
@@ -832,6 +835,20 @@ static heartbeat_entry_t *s_nodes      = NULL;
 static size_t             s_node_count = 0;
 static size_t             s_node_cap   = 0;
 static SemaphoreHandle_t  s_table_mutex = NULL;
+
+/* A wormhole end's UART link (heartbeat wh_link), as the dashboard prints it. */
+static const char *wh_link_str(uint8_t s)
+{
+    switch (s) {
+        case WH_LINK_OK:      return "UART OK";
+        case WH_LINK_NONE:    return "UART NO SIGNAL";
+        case WH_LINK_LOST:    return "UART LOST";
+        case WH_LINK_WAITING: return "UART checking";
+        default:              return "UART ? (old fw)";
+    }
+}
+
+static bool wh_link_bad(uint8_t s) { return s == WH_LINK_NONE || s == WH_LINK_LOST; }
 
 static void table_lock(void)   { xSemaphoreTakeRecursive(s_table_mutex, portMAX_DELAY); }
 static void table_unlock(void) { xSemaphoreGiveRecursive(s_table_mutex); }
@@ -1348,10 +1365,11 @@ static void heartbeat_table_print(void)
                 char hop_s[16];     /* "H" + any int: sized for -Wformat-truncation */
                 if (hop_of[i] >= 0) snprintf(hop_s, sizeof(hop_s), "H%02d", hop_of[i]);
                 else                snprintf(hop_s, sizeof(hop_s), "H??");
-                ESP_LOGI(TAG, "   %s  " MACSTR_UC "  %s  RSSI %4d  phase 0x%02X %-9s  \"%s\"",
+                esp_log_level_t lvl = wh_link_bad(s_nodes[i].wh_link) ? ESP_LOG_ERROR : ESP_LOG_INFO;
+                ESP_LOG_LEVEL(lvl, TAG, "   %s  " MACSTR_UC "  %s  RSSI %4d  phase 0x%02X %-9s  %s  \"%s\"",
                          what, MAC2STR(s_nodes[i].mac), hop_s, (int)s_nodes[i].parent_rssi,
                          s_nodes[i].current_phase, phase_id_str(s_nodes[i].current_phase),
-                         s_nodes[i].nickname);
+                         wh_link_str(s_nodes[i].wh_link), s_nodes[i].nickname);
             }
 
             /* The two routes B's probe takes during the attack, drawn hop by
@@ -1411,6 +1429,30 @@ static void heartbeat_table_print(void)
             }
 
             int in_mesh = esp_mesh_get_routing_table_size();
+            /* SAFETY NET (oct. 14 2026): each end reports whether it hears the
+             * other over the wire. A dead wire is the ROOT CAUSE of reversed /
+             * same-end roles (each end falls back to its build default) AND
+             * means no tunnel copy can arrive - say so first and plainly. */
+            int ends_bad = 0, ends_seen = 0;
+            for (size_t i = 0; i < n; i++) {
+                if (s_nodes[i].role == NODE_ROLE_WORMHOLE_A || s_nodes[i].role == NODE_ROLE_WORMHOLE_B) {
+                    ends_seen++;
+                    if (wh_link_bad(s_nodes[i].wh_link)) ends_bad++;
+                }
+            }
+            if (ends_bad > 0) {
+                log_rule('!', rule_w);
+                ESP_LOGE(TAG, " !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each"
+                              " other over the wire (%s).",
+                         (ends_bad >= 2 || ends_seen < 2) ? "no signal at the end(s) reporting"
+                             : "only ONE direction works - one TX->RX jumper is bad");
+                ESP_LOGE(TAG, "    Without it they keep their BUILD-DEFAULT A/B roles (can be reversed)"
+                              " and NO tunnel copy reaches the root. Do NOT start / keep this run.");
+                ESP_LOGE(TAG, "    Fix: GPIO%d (TX) -> other board's GPIO%d (RX), both ways (crossed),"
+                              " + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test,"
+                              " and re-run.", WORMHOLE_UART_TX_PIN, WORMHOLE_UART_RX_PIN);
+                log_rule('!', rule_w);
+            }
             if ((int)n < in_mesh) {
                 ESP_LOGI(TAG, " (%d of %d node(s) reported so far - verdict waits"
                               " for the rest)", (int)n, in_mesh);
@@ -1632,10 +1674,14 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
         }
         return true;
     }
-    if (magic != HEARTBEAT_MSG_MAGIC || len < sizeof(node_heartbeat_pkt_t) || !s_table_ready) {
+    /* Pre-oct-14 boards send the beat WITHOUT the trailing wh_link byte:
+     * accept them, and read wh_link only when it is there. */
+    if (magic != HEARTBEAT_MSG_MAGIC || len < offsetof(node_heartbeat_pkt_t, wh_link)
+            || !s_table_ready) {
         return magic == HEARTBEAT_MSG_MAGIC;
     }
     const node_heartbeat_pkt_t *pkt = (const node_heartbeat_pkt_t *)data;
+    uint8_t wh_link = (len >= sizeof(node_heartbeat_pkt_t)) ? pkt->wh_link : WH_LINK_NA;
 
     table_lock();
 
@@ -1663,6 +1709,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
                 || memcmp(hit->parent_mac, pkt->parent_mac, 6) != 0
                 || hit->role  != pkt->assigned_role
                 || hit->export_status != pkt->export_status
+                || hit->wh_link != wh_link
                 || strncmp(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN) != 0;
 
     strlcpy(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN);
@@ -1673,6 +1720,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
     hit->uptime_sec    = pkt->uptime_sec;
     hit->current_phase = pkt->current_phase;
     hit->export_status = pkt->export_status;
+    hit->wh_link       = wh_link;
     hit->last_seen_us  = esp_timer_get_time();
 #if (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
     entry_note_parent(hit);
