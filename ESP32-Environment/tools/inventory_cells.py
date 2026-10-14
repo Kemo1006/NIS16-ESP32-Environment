@@ -333,8 +333,11 @@ def _not_done_reason(r):
 PLAN_LOCATIONS = ["G402", "DLSU_Library", "Yuchengco"]
 PLAN_TOPOLOGIES = ["linear", "star", "tree", "partial_mesh"]
 PLAN_ATTACKS = ["blackhole", "wormhole"]
-# Every scenario run.ps1 accepts (-Scenario ValidateSet).
-SCENARIO_POOL = ["stationary", "highload", "burst", "jitter", "mobility", "powercycle"]
+# Campaign scenarios. oct. 9, 2026 (user): mobility + powercycle DROPPED from the
+# campaign - they are human-in-the-loop scenarios. run.ps1 still accepts them
+# (-Scenario ValidateSet), so old captures still scan, as off-plan.
+# Pool == SCENARIOS_PER_CELL, so every cell runs all 4; only the order is drawn.
+SCENARIO_POOL = ["stationary", "highload", "burst", "jitter"]
 SCENARIOS_PER_CELL = 4
 
 
@@ -378,8 +381,10 @@ def _draw_plan(seed):
                 for x in s:
                     counts[x] += 1
             balanced = all(lo <= counts[x] <= hi for x in SCENARIO_POOL)
-            distinct = all(set(draw[(t, "blackhole")]) != set(draw[(t, "wormhole")])
-                           for t in PLAN_TOPOLOGIES)
+            # With pool == per_cell both attacks necessarily share the same set.
+            distinct = (SCENARIOS_PER_CELL >= len(SCENARIO_POOL)
+                        or all(set(draw[(t, "blackhole")]) != set(draw[(t, "wormhole")])
+                               for t in PLAN_TOPOLOGIES))
             if balanced and distinct:
                 break
         for (topo, atk), s in draw.items():
@@ -689,8 +694,11 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
         print()
         print()
         print(f"  -- {loc} " + "-" * (88 - len(loc)))
+        # One FIXED column per scenario (same column in every row); "-" = this
+        # scenario was not drawn for that cell. Run order stays in the plan file.
+        cw = max(len(lbl(s_)) for s_ in SCENARIO_POOL) + 2
         print(f"    {'topology':<14}{'attack':<11}"
-              f"{'4 scenarios drawn for this cell (left to right = run order)':<62}last run")
+              + "".join(f"{lbl(s_):<{cw}}" for s_ in SCENARIO_POOL) + "last run")
         for topo in PLAN_TOPOLOGIES:
             print()
             drawn = set()
@@ -699,14 +707,18 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
                 drawn |= set(scns)
                 for scn in scns:
                     tally(atk, topo, loc, scn)
-                slots = "  ".join(f"{mark(atk, topo, loc, s)} {lbl(s):<10}" for s in scns)
+                slots = "".join(
+                    f"{mark(atk, topo, loc, s_) if s_ in scns else '-':<{cw}}"
+                    for s_ in SCENARIO_POOL)
                 print(f"    {topo if atk == PLAN_ATTACKS[0] else '':<14}{atk:<11}{slots}"
-                      f"  {last_run(atk, topo, loc, scns)}")
+                      f"{last_run(atk, topo, loc, scns)}")
             # This (location, topology)'s one matched benign run.
             for scn in benign_for(assign, loc, topo):
                 tally("baseline", topo, loc, scn)
-                print(f"    {'':<14}{'benign':<11}{mark('baseline', topo, loc, scn)} "
-                      f"{lbl(scn):<{62 - 4}}"
+                slots = "".join(
+                    f"{mark('baseline', topo, loc, s_) if s_ == scn else '-':<{cw}}"
+                    for s_ in SCENARIO_POOL)
+                print(f"    {'':<14}{'benign':<11}{slots}"
                       f"{last_run('baseline', topo, loc, [scn]):<30}"
                       f"(matched pair for {lbl(scn)} runs)")
 
