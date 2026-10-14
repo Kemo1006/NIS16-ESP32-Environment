@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 14, 2026 (Angelo). ⚠️ Angelo's copy is 66 commits BEHIND `origin/THESIS3` - pull before working. Facts + reasons: top ~20 entries of MEMORY.md (oct. 7).
+**Updated:** oct. 14, 2026 (Angelo). Angelo's copy in sync with GitHub `THESIS3` - still `git pull` first. Facts + reasons: top ~20 entries of MEMORY.md (oct. 7).
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · branch `THESIS3`, `git pull` first. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; PCAP + run logs git-ignored. Analysis tables + `eda_output/` are force-added (`git add -f`). Board roster: https://claude.ai/artifact/KteBqiYpZedMjG9ppFjreh
@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `git diff --cached --stat` before every commit/pull - the wizard stages files on its own.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 14 (Angelo) — wormhole UART safety net (heartbeat `wh_link` + root dashboard warning, test 42/42, builds clean); D-20 + checklist A21 (attacks = emulations). Pulled GitHub. Not committed yet.
+- oct. 14 (Angelo) — wormhole UART safety net (heartbeat `wh_link` + root dashboard warning, test 42/42, builds clean); D-20 + checklist A21 (attacks = emulations). Pushed `5b91aa7`.
 - oct. 7 night (Angelo) — deleted bogus benign tree/G402 copies (cell now [ ]); linear/DLSU/jitter root pushed + analysed + verified (#11, USABLE); highload fix verified; auto-switch verified; campaign redesign (benign, 3 sites, board/sessions/dashboard, simplified); wizard wording; 3 DLSU cells analysed; verifications #9, #10; all pushed.
