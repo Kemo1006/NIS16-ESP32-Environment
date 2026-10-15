@@ -4,72 +4,70 @@
     "stationary",
     "highload",
     "burst",
-    "jitter",
-    "mobility",
-    "powercycle"
+    "jitter"
   ],
   "per_cell": 4,
-  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it. oct. 7, 2026: home removed, Goks renamed Yuchengco (attack draws kept). oct. 7, 2026: DLSU_Library/partial_mesh/blackhole slot 4 burst -> jitter (user; jitter run already captured). oct. 7, 2026: DLSU_Library/linear/blackhole slot 3 mobility -> jitter (user; jitter r1 captured + verified #11).",
+  "note": "Drawn once by inventory_cells.py; slot order = run order. Commit this file. --reshuffle re-draws it. oct. 7, 2026: home removed, Goks renamed Yuchengco (attack draws kept). oct. 7, 2026: DLSU_Library/partial_mesh/blackhole slot 4 burst -> jitter (user; jitter run already captured). oct. 7, 2026: DLSU_Library/linear/blackhole slot 3 mobility -> jitter (user; jitter r1 captured + verified #11). oct. 9, 2026: mobility + powercycle dropped from the campaign (user); each cell keeps its old slot order for the 4 kept scenarios, the dropped slots' scenarios are appended at the end, so every cell now runs all 4. Benign reassigned for G402/partial_mesh (->highload), DLSU/linear (->jitter), DLSU/partial_mesh (->burst), Yuchengco/linear (->stationary).",
   "cells": {
     "G402/linear/blackhole": [
       "highload",
       "stationary",
       "jitter",
-      "mobility"
+      "burst"
     ],
     "G402/linear/wormhole": [
       "burst",
-      "mobility",
       "stationary",
-      "highload"
+      "highload",
+      "jitter"
     ],
     "G402/star/blackhole": [
       "stationary",
-      "powercycle",
       "burst",
-      "mobility"
+      "highload",
+      "jitter"
     ],
     "G402/star/wormhole": [
       "highload",
-      "powercycle",
       "burst",
-      "jitter"
+      "jitter",
+      "stationary"
     ],
     "G402/tree/blackhole": [
       "burst",
       "stationary",
       "jitter",
-      "powercycle"
+      "highload"
     ],
     "G402/tree/wormhole": [
-      "powercycle",
+      "burst",
+      "jitter",
+      "highload",
+      "stationary"
+    ],
+    "G402/partial_mesh/blackhole": [
+      "stationary",
       "burst",
       "jitter",
       "highload"
     ],
-    "G402/partial_mesh/blackhole": [
-      "powercycle",
-      "stationary",
-      "burst",
-      "jitter"
-    ],
     "G402/partial_mesh/wormhole": [
       "stationary",
-      "mobility",
-      "powercycle",
-      "jitter"
+      "jitter",
+      "highload",
+      "burst"
     ],
     "DLSU_Library/linear/blackhole": [
       "stationary",
-      "powercycle",
       "jitter",
-      "burst"
+      "burst",
+      "highload"
     ],
     "DLSU_Library/linear/wormhole": [
       "jitter",
       "stationary",
-      "mobility",
-      "powercycle"
+      "highload",
+      "burst"
     ],
     "DLSU_Library/star/blackhole": [
       "stationary",
@@ -80,74 +78,74 @@
     "DLSU_Library/star/wormhole": [
       "jitter",
       "highload",
-      "mobility",
-      "stationary"
+      "stationary",
+      "burst"
     ],
     "DLSU_Library/tree/blackhole": [
-      "powercycle",
       "burst",
       "highload",
-      "jitter"
+      "jitter",
+      "stationary"
     ],
     "DLSU_Library/tree/wormhole": [
-      "mobility",
       "jitter",
       "burst",
-      "powercycle"
+      "stationary",
+      "highload"
     ],
     "DLSU_Library/partial_mesh/blackhole": [
-      "powercycle",
       "highload",
       "stationary",
-      "jitter"
+      "jitter",
+      "burst"
     ],
     "DLSU_Library/partial_mesh/wormhole": [
       "stationary",
       "highload",
-      "mobility",
-      "jitter"
+      "jitter",
+      "burst"
     ],
     "Yuchengco/linear/blackhole": [
-      "mobility",
       "stationary",
-      "powercycle",
-      "burst"
+      "burst",
+      "highload",
+      "jitter"
     ],
     "Yuchengco/linear/wormhole": [
       "jitter",
       "highload",
-      "mobility",
-      "burst"
+      "burst",
+      "stationary"
     ],
     "Yuchengco/star/blackhole": [
       "burst",
-      "powercycle",
-      "jitter",
-      "stationary"
-    ],
-    "Yuchengco/star/wormhole": [
-      "powercycle",
       "jitter",
       "stationary",
       "highload"
     ],
+    "Yuchengco/star/wormhole": [
+      "jitter",
+      "stationary",
+      "highload",
+      "burst"
+    ],
     "Yuchengco/tree/blackhole": [
       "burst",
-      "powercycle",
       "jitter",
-      "stationary"
+      "stationary",
+      "highload"
     ],
     "Yuchengco/tree/wormhole": [
-      "mobility",
       "highload",
       "jitter",
-      "stationary"
+      "stationary",
+      "burst"
     ],
     "Yuchengco/partial_mesh/blackhole": [
-      "powercycle",
       "burst",
-      "mobility",
-      "highload"
+      "highload",
+      "stationary",
+      "jitter"
     ],
     "Yuchengco/partial_mesh/wormhole": [
       "burst",
@@ -161,12 +159,12 @@
     "G402/linear": "jitter",
     "G402/star": "burst",
     "G402/tree": "stationary",
-    "G402/partial_mesh": "powercycle",
-    "DLSU_Library/linear": "mobility",
+    "G402/partial_mesh": "highload",
+    "DLSU_Library/linear": "jitter",
     "DLSU_Library/star": "stationary",
     "DLSU_Library/tree": "highload",
-    "DLSU_Library/partial_mesh": "powercycle",
-    "Yuchengco/linear": "mobility",
+    "DLSU_Library/partial_mesh": "burst",
+    "Yuchengco/linear": "stationary",
     "Yuchengco/star": "jitter",
     "Yuchengco/tree": "highload",
     "Yuchengco/partial_mesh": "burst"

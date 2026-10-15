@@ -94,7 +94,7 @@ combined/                             ← workstation root (this anchor)
     │   ├── issues-and-fixes/                # INDEX.md, esp32-issues.md (+Part2/3), SD-CARD-AND-WORMHOLE-WIRING.md
     │   ├── deviations-limitations/, progress-reports/  # thesis-deviate.md (D-1..D-15); dated 2026-07-*
     │   ├── operations/                      # 2026-09-14_START-HERE.md (read first), MENU-WALKTHROUGH,
-    │   │                                    # SETUP-RULES-CONFIG, LOCATIONS, SD-CARD, BASELINE, TOPOLOGIES
+    │   │                                    # SETUP-RULES-CONFIG, LOCATIONS, SD-CARD, BASELINE, TOPOLOGIES, TREE-MESH-FORMATION
     │   └── _archive/                        # CC's OLDER guides/runbooks/setups - superseded, reference only
     ├── CMakeLists.txt, partitions.csv       # top-level ESP-IDF project (spiffs partition)
     ├── memory/                              # working-state memory (both trees' notes merged):

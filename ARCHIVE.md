@@ -2568,3 +2568,17 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from MEMORY.md (oct. 14, 2026, Angelo — line cap)
 - sep. 30, 2026 (late) — **Wireshark retry view now opens with phase-split I/O graph lines** (`run_wizard.ps1`): `Get-PcapPhaseSegments` reads the capture's `_retry.json` sidecar (which `pcap_retry.py` already writes) and converts its epoch `segments` to `frame.time_relative` by subtracting `capture_epoch[0]`, giving BASELINE/ATTACK/COOLDOWN lines scoped to `llc.oui == 0x18fe34` — the same population as `MacRetryRate`, unlike the pre-existing whole-run "retries" line which also counts management frames. ✅ **Confirmed working in real Wireshark by the user**; boundaries landed at 84.5 / 385.3 / 566.0 / 686.0 s on the r2 capture. Falls back silently (with a grey hint) when no sidecar exists — run menu **[27]** / `pcap_retry.py --all` first. It deliberately does NOT try to set a Wireshark "Time Reference": that is live per-session UI state, not something a profile file can seed. **What this revealed:** the mesh-data dip that earlier sessions flagged as "worth investigating" IS exactly the attack window — fewer frames because the attacker stops relaying — and the retry lines fall WITH it rather than spiking above it, which is the D-15 finding made visible without any script.
+<!-- rolled from MEMORY.md oct. 15, 2026 (line cap) -->
+- Passing `idf.py -D` flags as `@($spec.Flags)` — that is an array SUBEXPRESSION, not a splat, so both
+  defines merge into ONE arg (`-DACTIVE_ATTACK="1 -DMESH_TOPOLOGY=2"` → build failure). Use a plain
+  variable and `@flags`. `build_all_variants.ps1:47-53` documents the same gotcha.
+- Spawning a build/flash window as plain `powershell.exe` — `idf.py`/`esptool.py` are POWERSHELL FUNCTIONS
+  from `Initialize-Idf.ps1` and don't survive into a child process; dot-sourcing without `-IdfId` fails
+  silently. ⚠️ **`export.ps1` ALSO fails, LOOKING LIKE "ESP-IDF is not installed"** — it actually hunts
+  `idf5.5_py3.12_env` (wrong; real is `...py3.11_env`). Check `idf-env.exe config get` first. ARCHIVE.md.
+  ✅ Works on Basti's laptop (sep. 24): `$env:IDF_PYTHON_ENV_PATH="C:\Espressif\python_env\idf5.3_py3.11_env"`
+  then `. C:\Espressif\frameworks\esp-idf-v5.3.5\export.ps1`. Build into `-B $env:LOCALAPPDATA\...` and restore
+  `root_node/sdkconfig`, `child_node/sdkconfig`, `root_node/dependencies.lock` afterwards (the build rewrites them).
+- Long `idf.py -B <dir>` names — deep paths pass Windows `MAX_PATH`; ninja fails in the **bootloader**
+  subproject long after the app compiled, so it looks unrelated. Fixed by short per-variant `Bld` names
+  (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.

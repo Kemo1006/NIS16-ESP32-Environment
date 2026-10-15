@@ -204,6 +204,19 @@
 #define ROSTER_GATE_STABLE_S   5U    /* all present this many 1 s checks in a row */
 #define ROSTER_GATE_LOG_S      10U   /* "still waiting" line cadence              */
 
+/** TREE ATTACKER-CHILD GATE (oct. 10, 2026) - tree + blackhole root builds only.
+ *  A tree forces nothing (native ESP-MESH self-organisation), so the attacker
+ *  often forms with NO child and nothing transits it - the run is then useless,
+ *  and the operator used to power-cycle children AFTER Phase 0 had started,
+ *  which put rejoining nodes (zero deliveries, wrong phase labels) into the
+ *  baseline (verification #14, #15). With this gate the roster gate above also
+ *  requires that the node reporting role BLACKHOLE has at least one child in
+ *  the heartbeat table, for TREE_GATE_STABLE_S in a row, before Phase 0 starts.
+ *  Reshape the mesh while the root is waiting, never after. Heartbeats arrive
+ *  every HEARTBEAT_INTERVAL_MS (7 s), so the window must span at least two.
+ *  START_ANYWAY releases it, same as the roster gate. */
+#define TREE_GATE_STABLE_S     15U
+
 /** Phase 0 — Baseline: normal operation, no manipulation. */
 #ifndef PHASE_BASELINE_S
 #define PHASE_BASELINE_S    300U       /* 5 minutes */
@@ -328,7 +341,7 @@
  *  boards — the attacker prints it at boot ("Set BLACKHOLE_ATTACKER_MAC ... to
  *  my STA MAC: ..."), or read it with tools/Get-EspMac.ps1. Only blackhole
  *  VICTIM builds read it; the attacker and all other builds ignore it. */
-#define BLACKHOLE_ATTACKER_MAC   {0x20, 0x50, 0x0D, 0xE7, 0x0C, 0x80} // remote-attacker (other laptop) (blackhole attacker) - 20:50:0d:e7:0c:80
+#define BLACKHOLE_ATTACKER_MAC   {0x20, 0x50, 0x0D, 0xE7, 0x1C, 0x38} // COM9 (child_1) (blackhole attacker) - 20:50:0d:e7:1c:38
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * WORMHOLE TUNNEL  (Milestone 2 — ACTIVE_ATTACK == PHASE_ID_WORMHOLE == 2)
