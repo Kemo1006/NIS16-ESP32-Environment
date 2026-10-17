@@ -1,0 +1,81 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261002173019
+Username: ANGELO\Angelo Calpoporo
+RunAs User: ANGELO\Angelo Calpoporo
+Configuration Name: 
+Machine: ANGELO (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57
+Process ID: 25500
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\jitter\tree-blackhole-jitter-g402_r1_oct02_0530PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] ROOT - ROOT (announces the phases) on COM3 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 17:41 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+  .\run.ps1 -Port COM3 -Role root -Label ROOT -Topology tree -Location G402 -Repeat 1 -Scenario jitter -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 0 -Mac b0:cb:d8:f3:32:18
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: ROOT (on COM3, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM3 (topology=tree, attack=blackhole, scenario=jitter, build=C:\esp32b\T_1140e558\root_node\build_root_blackhole_tree_jitter_COM3). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+I (1222447) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE           AGE(s)  EXPORT
+I (1222457) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x04 TERMINATE       0  SAFE
+I (1222467) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -57  0xFF UNSET           1  not yet
+I (1222477) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0xFF UNSET           3  not yet
+I (1222477) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD       -57  0xFF UNSET           2  not yet
+I (1222487) MESH_SETUP:  n/a = no parent link to measure (root)
+I (1222497) MESH_SETUP: --------------------------------------------------------------------------
+I (1222507) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (1222517) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (1222527) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (1222527) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD      B0:CB:D8:F3:32:18  0x00
+I (1222537) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x00
+I (1222547) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (1222557) MESH_SETUP: --------------------------------------------------------------------------
+I (1222567) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (1222577) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (1222587) MESH_SETUP:  +-- [H01] CHILD      F4:2D:C9:73:E6:18
+I (1222587) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (1222597) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (1222607) MESH_SETUP: --------------------------------------------------------------------------
+I (1222617) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (1222627) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (1222637) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (1222647) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+E (1222657) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (1222667) MESH_SETUP: ==========================================================================
+--- To exit from IDF monitor please use "Ctrl+]". Alternatively, you can use Ctrl+T Ctrl+X to exit.
+
+Traceback (most recent call last):
+  File "C:\Espressif\frameworks\esp-idf-v5.5.4\tools/idf_monitor.py", line 11, in <module>
+    sys.exit(subprocess.run([sys.executable, '-m', 'esp_idf_monitor'] + sys.argv[1:]).returncode)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 550, in run
+  File "subprocess.py", line 1199, in communicate
+  File "subprocess.py", line 1262, in wait
+  File "subprocess.py", line 1543, in _wait
+KeyboardInterrupt
+idf_monitor failed with exit code 3221225786, output of the command is in the C:\esp32b\T_1140e558\root_node\build_root_blackhole_tree_jitter_COM3\log\idf_py_stde
+rr_output_46456 and C:\esp32b\T_1140e558\root_node\build_root_blackhole_tree_jitter_COM3\log\idf_py_stdout_output_46456
+PS>TerminatingError(): "The pipeline has been stopped."
+>> TerminatingError(): "The pipeline has been stopped."
+PS>TerminatingError(): "The pipeline has been stopped."
+**********************
+Windows PowerShell transcript end
+End time: 20261002175125
+**********************

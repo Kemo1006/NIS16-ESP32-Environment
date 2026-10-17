@@ -1,0 +1,148 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261016095259
+Username: ANGELO\Angelo Calpoporo
+RunAs User: ANGELO\Angelo Calpoporo
+Configuration Name: 
+Machine: ANGELO (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57
+Process ID: 24332
+PSVersion: 5.1.26100.9711
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9711
+BuildVersion: 10.0.26100.9711
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\tree\DLSU_Library\stationary\tree-wormhole-stationary-dlsu_library_r1_oct16_0952AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+A CHILD flashed before the root has nothing to join yet, so it will spam
+'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck.
+It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see
+'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on.
+
+=== [1/7] node2 - wormhole tunnel board 1 (entry/exit chosen automatically) on COM3 (MAC 20:50:0d:e7:1c:38) ===
+  .\run.ps1 -Port COM3 -Role child -Label node2 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeEnd A -Export -SkipExportNow -Mac 20:50:0d:e7:1c:38
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node2 (on COM3, MAC 20:50:0d:e7:1c:38)
+Flashing + monitoring child on COM3 (topology=tree, attack=wormhole/A, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\child_node\build_child_wormhole_tree_A_COM3). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM3) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM3 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node2
+
+=== [2/7] node3 - wormhole tunnel board 2 (entry/exit chosen automatically) on COM11 (MAC f4:2d:c9:73:e6:18) ===
+  .\run.ps1 -Port COM11 -Role child -Label node3 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeEnd B -Export -SkipExportNow -Mac f4:2d:c9:73:e6:18
+Setting COM11's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM11 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node3 (on COM11, MAC f4:2d:c9:73:e6:18)
+Flashing + monitoring child on COM11 (topology=tree, attack=wormhole/B, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\child_node\build_child_wormhole_tree_B_COM11). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM11) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM11 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node3
+
+=== [3/7] node4 - control (plain firmware) on COM9 (MAC 20:50:0d:e7:0c:80) ===
+  .\run.ps1 -Port COM9 -Role child -Label node4 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac 20:50:0d:e7:0c:80
+Setting COM9's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM9 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node4 (on COM9, MAC 20:50:0d:e7:0c:80)
+Flashing + monitoring child on COM9 (topology=tree, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_tree_victim_COM9). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM9) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM9 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node4
+
+=== [4/7] node5 - control (plain firmware) on COM30 (MAC 70:4b:ca:25:b7:68) ===
+  .\run.ps1 -Port COM30 -Role child -Label node5 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac 70:4b:ca:25:b7:68
+Setting COM30's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM30 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node5 (on COM30, MAC 70:4b:ca:25:b7:68)
+Flashing + monitoring child on COM30 (topology=tree, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_tree_victim_COM30). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM30) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM30 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node5
+
+=== [5/7] 2 - control (plain firmware) on COM32 (MAC 28:05:a5:32:d7:b4) ===
+  .\run.ps1 -Port COM32 -Role child -Label 2 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac 28:05:a5:32:d7:b4
+Setting COM32's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM32 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: 2 (on COM32, MAC 28:05:a5:32:d7:b4)
+Flashing + monitoring child on COM32 (topology=tree, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_tree_victim_COM32). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM32) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM32 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label 2
+
+=== [6/7] node6 - control (plain firmware) on COM31 (MAC b4:bf:e9:32:fe:90) ===
+  .\run.ps1 -Port COM31 -Role child -Label node6 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac b4:bf:e9:32:fe:90
+Setting COM31's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM31 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node6 (on COM31, MAC b4:bf:e9:32:fe:90)
+Flashing + monitoring child on COM31 (topology=tree, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_tree_victim_COM31). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+Flash FAILED on COM31 (usually a USB serial glitch). Retrying once at 115200 baud ...
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM31) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM31 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node6
+
+=== [7/7] node7 - control (plain firmware) on COM10 (MAC b4:bf:e9:34:ed:80) ===
+  .\run.ps1 -Port COM10 -Role child -Label node7 -Topology tree -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac b4:bf:e9:34:ed:80
+Setting COM10's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM10 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node7 (on COM10, MAC b4:bf:e9:34:ed:80)
+Flashing + monitoring child on COM10 (topology=tree, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_tree_victim_COM10). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM10) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM10 --role child --topology tree --attack wormhole --repeat 1 --scenario stationary --location DLSU_Library --label node7
+
+All 7 board(s) done in 17 min 20 sec.
+    node2    1 min 07 sec
+    node3    9 min 35 sec
+    node4    1 min 04 sec
+    node5    41 sec
+    2        47 sec
+    node6    2 min 59 sec
+    node7    1 min 07 sec
+  Exports  -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\tree\DLSU_Library\stationary
+  Analysis -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\DLSU_Library\stationary
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261016101019
+**********************

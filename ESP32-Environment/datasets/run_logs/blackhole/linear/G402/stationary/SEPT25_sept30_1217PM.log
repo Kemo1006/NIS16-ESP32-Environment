@@ -1,0 +1,89 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260930121743
+Username: ANGELO\Angelo Calpoporo
+RunAs User: ANGELO\Angelo Calpoporo
+Configuration Name: 
+Machine: ANGELO (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-20ee62e792ea89630ac6a777ab3ebc57
+Process ID: 32852
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\linear\G402\burst\SEPT25_sept30_1217PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] root - ROOT (announces the phases) on COM3 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 12:28 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+  .\run.ps1 -Port COM3 -Role root -Label root -Topology linear -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -Analyze -ExpectedChildren 0 -Mac b0:cb:d8:f3:32:18
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM3 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\T_1140e558\root_node\build_root_blackhole_linear_burst_COM3). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Writing at 0x000b0cbc... (55 %)
+Writing at 0x000b6cb7... (57 %)
+Writing at 0x000bc574... (60 %)
+Writing at 0x000c1c1b... (62 %)
+Writing at 0x000c76e6... (64 %)
+Writing at 0x000cd68f... (66 %)
+Writing at 0x000d2e23... (68 %)
+Writing at 0x000d89d7... (71 %)
+Writing at 0x000de652... (73 %)
+Writing at 0x000e43ab... (75 %)
+Writing at 0x000ea157... (77 %)
+Writing at 0x000efccb... (80 %)
+Writing at 0x000f537e... (82 %)
+Writing at 0x000fced3... (84 %)
+Writing at 0x00104f3d... (86 %)
+Writing at 0x0010ae44... (88 %)
+Writing at 0x00112c9b... (91 %)
+Writing at 0x00118d2a... (93 %)
+Writing at 0x0011e651... (95 %)
+Writing at 0x00124b84... (97 %)
+Writing at 0x00129fbd... (100 %)
+Wrote 1173248 bytes (733508 compressed) at 0x00010000 in 17.3 seconds (effective 542.6 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1489.5 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2488.4 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Done
+
+
+Monitor closed - exporting root CSVs from COM3 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM3's SPIFFS.
+To export later:  python tools\export_logs.py --port COM3 --role root --topology linear --attack blackhole --repeat 1 --scenario burst --location G402 --label root
+
+All 1 board(s) done in 15 min 22 sec.
+    root     15 min 22 sec   (root)
+  Exports  -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\linear\G402\burst
+  Analysis -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\linear\G402\burst
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20260930123306
+**********************
