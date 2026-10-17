@@ -1031,6 +1031,13 @@ def main():
                         "Ignored under --dry-run.")
     p.add_argument("--dry-run", action="store_true",
                    help="Show what would be copied and exit.")
+    p.add_argument("--delete-files", action="store_true",
+                   help="DELETE the --files from the card WITHOUT importing them "
+                        "(the GUI's Delete button, oct. 18 2026). Each name must be "
+                        "a capture the card lists (a *_telem.csv / *_arrivals.csv); "
+                        "a file the board is still writing is refused (here and by "
+                        "the firmware). One line per file: DELETED <rel> or "
+                        "FAILED <rel>: <why>. Nothing else is touched.")
     args = p.parse_args()
 
     if args.card and not os.path.isdir(args.card):
@@ -1085,6 +1092,26 @@ def _run(source, args):
 
     found = list(source.entries())
     roster = _load_roster(args.roster) if args.roster else {}
+
+    if args.delete_files:
+        if not wanted_files:
+            return "ERROR: --delete-files needs --files (which files to delete)"
+        on_card = {os.path.normcase(os.path.normpath(rel)): rel for rel, *_ in found}
+        bad = 0
+        for w in sorted(wanted_files):
+            rel = on_card.get(w)
+            if rel is None:
+                print(f"FAILED {w}: not on the card (already deleted?)"); bad += 1; continue
+            try:
+                if hasattr(source, "live") and source.live(rel):
+                    print(f"FAILED {rel}: the board is still writing it - end the run first"); bad += 1; continue
+                if args.dry_run:
+                    print(f"WOULD DELETE {rel}"); continue
+                source.delete(rel)
+                print(f"DELETED {rel}")
+            except Exception as e:                   # one bad file never stops the rest
+                print(f"FAILED {rel}: {e}"); bad += 1
+        return 0 if not bad else 3
 
     # Listing runs before the "nothing found" error below: an empty card is a
     # legitimate answer to "what is on here?" ([] and exit 0), not a failure —

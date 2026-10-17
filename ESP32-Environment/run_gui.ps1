@@ -599,6 +599,64 @@ $StyleXaml
         </Setter.Value>
       </Setter>
     </Style>
+    <!-- Run a capture: one preset card (oct. 18 2026: a template, so WPF builds
+         the cards itself - the script-built cards froze the window ~1.6 s) -->
+    <Style x:Key="CardGroup" TargetType="ListBox">
+      <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBox"><ItemsPresenter/></ControlTemplate></Setter.Value></Setter>
+      <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="PresetCardItem" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,10,10"/><Setter Property="Padding" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="ToolTip" Value="{Binding Tip}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="b" Width="192" CornerRadius="14" Padding="14,12" Background="{Binding CardBg}" BorderBrush="$($Pal.Line)" BorderThickness="1.5">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="$($Pal.Accent)"/></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="b" Property="BorderBrush" Value="#FFFFFF"/><Setter TargetName="b" Property="BorderThickness" Value="2"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <DataTemplate x:Key="PresetCardTpl">
+      <StackPanel>
+        <DockPanel>
+          <Border DockPanel.Dock="Right" CornerRadius="8" Padding="7,2" VerticalAlignment="Top" Background="{Binding RibBg}">
+            <TextBlock Text="{Binding RibText}" Foreground="{Binding RibFg}" FontSize="10" FontWeight="Bold"/>
+          </Border>
+          <Image Source="{Binding Art}" Width="64" Height="38" HorizontalAlignment="Left"/>
+        </DockPanel>
+        <TextBlock Margin="0,10,0,0" FontSize="10" FontWeight="Bold">
+          <Run Text="{Binding AtkText, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}"/><Run Text="{Binding RepText, Mode=OneWay}" Foreground="$($Pal.Amber)"/>
+        </TextBlock>
+        <TextBlock Text="{Binding Topo}" FontSize="16" FontWeight="Bold" Foreground="$($Pal.Text)" Margin="0,1,0,1"/>
+        <TextBlock Text="{Binding DateText}" Foreground="$($Pal.Dim)" FontSize="11" Margin="0,0,0,6" ToolTip="{Binding DateFull}"/>
+        <WrapPanel>
+          <Border CornerRadius="8" Padding="7,1" Background="{Binding LocBg}" Margin="0,0,5,4">
+            <TextBlock Text="{Binding LocText}" Foreground="{Binding LocFg}" FontSize="11" FontWeight="SemiBold"/>
+          </Border>
+          <Border CornerRadius="8" Padding="7,1" Background="{Binding ScnBg}" Margin="0,0,5,4">
+            <TextBlock Text="{Binding ScnText}" Foreground="{Binding ScnFg}" FontSize="11" FontWeight="SemiBold"/>
+          </Border>
+        </WrapPanel>
+        <DockPanel Margin="0,6,0,0">
+          <TextBlock DockPanel.Dock="Right" Text="{Binding HereText}" Foreground="{Binding HereFg}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <ItemsControl ItemsSource="{Binding Dots}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate><Ellipse Width="9" Height="9" Margin="0,0,4,0" Fill="{Binding Fill}" Stroke="{Binding Stroke}" StrokeThickness="1.4" Opacity="{Binding Op}" ToolTip="{Binding Tip}"/></DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </StackPanel>
+    </DataTemplate>
   </Window.Resources>
 
   <Grid>
@@ -642,6 +700,7 @@ $StyleXaml
             <RadioButton x:Name="NavCampaign" Style="{StaticResource Nav}" Tag="&#xE787;" Content="Campaign" GroupName="nav"/>
             <RadioButton x:Name="NavBoards"   Style="{StaticResource Nav}" Tag="&#xE88E;" Content="Boards" GroupName="nav"/>
             <RadioButton x:Name="NavData"     Style="{StaticResource Nav}" Tag="&#xE8B7;" Content="Data" GroupName="nav"/>
+            <RadioButton x:Name="NavSync"     Style="{StaticResource Nav}" Tag="&#xE895;" Content="GitHub sync" GroupName="nav"/>
             <RadioButton x:Name="NavWire"     Style="{StaticResource Nav}" Tag="&#xE701;" Content="Wireshark &amp; sniffer" GroupName="nav"/>
             <!-- live: every board plugged in right now (refreshed by itself) -->
             <DockPanel Margin="8,20,4,8">
@@ -755,116 +814,174 @@ $StyleXaml
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <!-- RUN A CAPTURE -->
+      <!-- RUN A CAPTURE (oct. 18 2026 redesign, same look as Campaign: one box
+           per person, a card per preset with a little drawing of its mesh, the
+           campaign status on every card, an "up next" banner, board readiness) -->
       <TabItem>
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top">
-            <TextBlock Style="{StaticResource H1}" Text="Run a capture"/>
-            <TextBlock Style="{StaticResource Sub}" Text="Pick a preset, check its boards, then start. The run opens on the Live run page: compile, flash, monitor, START and export - the same steps as the CLI, no console window."/>
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Whose presets" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,8,8"/>
-              <ComboBox x:Name="OwnerPick" Width="150"/>
-              <TextBlock Text="Attack" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="8,0,8,8"/>
-              <ComboBox x:Name="AttackPick" Width="130"/>
-              <Grid Width="230" Margin="0,0,8,8">
+          <DockPanel DockPanel.Dock="Top">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+              <Grid Width="240" Margin="0,0,8,8">
                 <TextBox x:Name="PresetSearch" Margin="0" Padding="30,6,8,6" ToolTip="Type any part: wormhole tree g402, burst, a MAC, an owner..."/>
                 <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" Foreground="$($Pal.Faint)" VerticalAlignment="Center" Margin="11,0,0,0" IsHitTestVisible="False"/>
                 <TextBlock x:Name="PresetSearchHint" Text="Search presets..." Foreground="$($Pal.Faint)" VerticalAlignment="Center" Margin="31,0,0,0" IsHitTestVisible="False"/>
               </Grid>
-              <Button x:Name="PresetsRefresh" Content="Refresh"/>
+              <Button x:Name="PresetsRefresh" Content="&#x21BB;  Refresh"/>
               <Button x:Name="PresetNew" Style="{StaticResource Primary}" Content="+  New preset"/>
-              <Button x:Name="PresetEdit" Content="Edit" IsEnabled="False"/>
-              <Button x:Name="PresetCopy" Content="Copy" IsEnabled="False"/>
-              <Button x:Name="PresetDelete" Content="Delete" IsEnabled="False"/>
             </StackPanel>
-          </StackPanel>
+            <StackPanel>
+              <TextBlock Style="{StaticResource H1}" Text="Run a capture"/>
+              <TextBlock x:Name="CapSub" Style="{StaticResource Sub}" Text="Pick a preset card, check its boards, then start. The run opens on the Live run page: compile, flash, monitor, START and export - the same steps as the CLI, no console window."/>
+            </StackPanel>
+          </DockPanel>
+          <!-- up next (campaign run order) -->
+          <Border x:Name="CapHero" DockPanel.Dock="Top" CornerRadius="16" Padding="18,10" Margin="0,0,0,12" Background="{StaticResource GradMain}" Visibility="Collapsed">
+            <DockPanel>
+              <Button x:Name="CapHeroGo" DockPanel.Dock="Right" Content="Pick it  &#x2192;" Background="White" Foreground="#5B21B6" BorderBrush="Transparent"
+                      FontWeight="SemiBold" Padding="18,8" Margin="12,0,0,0" VerticalAlignment="Center"/>
+              <Border DockPanel.Dock="Left" Width="40" Height="40" CornerRadius="20" Background="#33FFFFFF" Margin="0,0,14,0" VerticalAlignment="Center">
+                <TextBlock x:Name="CapHeroIcon" Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="CapHeroKicker" Text="UP NEXT FOR THE CAMPAIGN" FontSize="10" FontWeight="Bold" Foreground="#F5D0FE"/>
+                <TextBlock x:Name="CapHeroTitle" FontSize="17" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                <TextBlock x:Name="CapHeroSub" Foreground="#EDE9FE" TextWrapping="Wrap"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <!-- filters: people, attack, ready only, search -->
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <TextBlock Text="WHOSE" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,10,8"/>
+            <WrapPanel x:Name="OwnerChips"/>
+            <TextBlock Text="ATTACK" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,0,10,8"/>
+            <WrapPanel x:Name="AttackChips"/>
+            <TextBlock Text="FILTER" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,0,10,8"/>
+            <ComboBox x:Name="PresetFTopo" Width="140" ToolTip="Only this topology"/>
+            <ComboBox x:Name="PresetFLoc" Width="150" ToolTip="Only this location"/>
+            <ComboBox x:Name="PresetFScn" Width="140" ToolTip="Only this scenario"/>
+            <RadioButton x:Name="PresetFAll" Style="{StaticResource Chip}" GroupName="capState" Content="All" IsChecked="True"/>
+            <RadioButton x:Name="PresetFNeed" Style="{StaticResource Chip}" GroupName="capState" Content="Campaign needs it" ToolTip="UP NEXT, NEEDED, RE-CAPTURE and REDO - the runs still to capture"/>
+            <RadioButton x:Name="PresetFDone" Style="{StaticResource Chip}" GroupName="capState" Content="Done already" ToolTip="DONE, CHECK and ANALYSE - captured already"/>
+            <Button x:Name="PresetFClear" Content="Clear filters" Padding="12,5" ToolTip="Back to: all attacks, topologies, locations, scenarios, no search (the person stays)"/>
+            <TextBlock Text="SORT" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="10,0,10,8"/>
+            <RadioButton x:Name="PresetSNew" Style="{StaticResource Chip}" GroupName="capSort" Content="Newest first" IsChecked="True" ToolTip="Most recently saved preset on top"/>
+            <RadioButton x:Name="PresetSOld" Style="{StaticResource Chip}" GroupName="capSort" Content="Oldest first"/>
+            <RadioButton x:Name="PresetSType" Style="{StaticResource Chip}" GroupName="capSort" Content="By type" ToolTip="attack > topology > scenario > location, newest first inside each"/>
+            <CheckBox x:Name="ReadyOnly" Content="Only presets I can run now" Margin="10,0,14,8" VerticalAlignment="Center"
+                      ToolTip="Hide presets whose boards are not all plugged into this laptop (boards found by MAC, any USB socket)"/>
+            <!-- the real filters / selection: the chips and cards drive these, so
+                 every other page (palette, campaign, self-test) keeps working -->
+            <ComboBox x:Name="OwnerPick" Visibility="Collapsed"/>
+            <ComboBox x:Name="AttackPick" Visibility="Collapsed"/>
+            <DataGrid x:Name="PresetGrid" Visibility="Collapsed"/>
+          </WrapPanel>
           <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="4*"/><RowDefinition Height="7*"/></Grid.RowDefinitions>
-            <DataGrid x:Name="PresetGrid" Grid.Row="0" Margin="0,0,0,12">
-              <DataGrid.RowStyle>
-                <Style TargetType="DataGridRow">
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding Attack}" Value="blackhole"><Setter Property="Foreground" Value="$($Pal.Text)"/></DataTrigger>
-                  </Style.Triggers>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="440"/></Grid.ColumnDefinitions>
+            <!-- the gallery -->
+            <ScrollViewer x:Name="PresetScroll" Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,14,0">
+              <StackPanel x:Name="PresetGallery"/>
+            </ScrollViewer>
+            <!-- Everyone = one designed list (user, oct. 18 2026: faster; a person's
+                 name shows their card boxes). Virtualised: only visible rows exist. -->
+            <ListBox x:Name="PresetList" Grid.Column="0" Margin="0,0,14,0" Background="Transparent" BorderThickness="0" Visibility="Collapsed"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel">
+              <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                  <Setter Property="Padding" Value="0"/>
+                  <Setter Property="Margin" Value="0,0,6,8"/>
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                  <Setter Property="ToolTip" Value="{Binding Tip}"/>
+                  <Setter Property="Template">
+                    <Setter.Value>
+                      <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="b" Background="{Binding RowBg}" BorderBrush="$($Pal.Line)" BorderThickness="1.5" CornerRadius="14" Padding="14,9" Cursor="Hand">
+                          <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="$($Pal.Accent)"/></Trigger>
+                          <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="#FFFFFF"/><Setter TargetName="b" Property="BorderThickness" Value="2"/></Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Setter.Value>
+                  </Setter>
                 </Style>
-              </DataGrid.RowStyle>
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="attack" Binding="{Binding Attack}" Width="96">
-                  <DataGridTextColumn.ElementStyle>
-                    <Style TargetType="TextBlock">
-                      <Style.Triggers>
-                        <DataTrigger Binding="{Binding Attack}" Value="blackhole"><Setter Property="Foreground" Value="$($Pal.Red)"/></DataTrigger>
-                        <DataTrigger Binding="{Binding Attack}" Value="wormhole"><Setter Property="Foreground" Value="$($Pal.Purple)"/></DataTrigger>
-                        <DataTrigger Binding="{Binding Attack}" Value="baseline"><Setter Property="Foreground" Value="$($Pal.Green)"/></DataTrigger>
-                      </Style.Triggers>
-                    </Style>
-                  </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="topology" Binding="{Binding Topology}" Width="90"/>
-                <DataGridTextColumn Header="location" Binding="{Binding Location}" Width="120"/>
-                <DataGridTextColumn Header="scenario" Binding="{Binding Scenario}" Width="100"/>
-                <DataGridTextColumn Header="boards" Binding="{Binding Boards}" Width="60"/>
-                <DataGridTextColumn Header="key boards" Binding="{Binding KeyBoards}" Width="*">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Amber)"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="owner" Binding="{Binding Owner}" Width="80"/>
-                <DataGridTextColumn Header="saved" Binding="{Binding SavedText}" Width="150">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Dim)"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="!" Binding="{Binding NameFlag}" Width="22">
-                  <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Amber)"/><Setter Property="FontWeight" Value="Bold"/></Style></DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-              </DataGrid.Columns>
-            </DataGrid>
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="18">
+              </ListBox.ItemContainerStyle>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel>
+                    <Image DockPanel.Dock="Left" Source="{Binding Art}" Width="64" Height="38" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                    <Border DockPanel.Dock="Right" CornerRadius="8" Padding="8,2" Background="{Binding RibBg}" VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="70">
+                      <TextBlock Text="{Binding RibText}" Foreground="{Binding RibFg}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    </Border>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding HereText}" Foreground="{Binding HereFg}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Width="70" TextAlignment="Right"/>
+                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0" Width="104" ToolTip="{Binding DateFull}">
+                      <TextBlock Text="{Binding DateDay}" Foreground="$($Pal.Text)" FontSize="12" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding DateAgo}" Foreground="$($Pal.Faint)" FontSize="10.5"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0" Width="74">
+                      <Border Width="22" Height="22" CornerRadius="11" Background="{Binding OwnerBg}">
+                        <TextBlock Text="{Binding OwnerInit}" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Text="{Binding Owner}" Foreground="$($Pal.Dim)" FontSize="11.5" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock FontSize="10" FontWeight="Bold">
+                        <Run Text="{Binding AtkText, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}"/><Run Text="{Binding RepText, Mode=OneWay}" Foreground="$($Pal.Amber)"/>
+                      </TextBlock>
+                      <WrapPanel Margin="0,1,0,0">
+                        <TextBlock Text="{Binding Topo}" FontSize="15" FontWeight="Bold" Foreground="$($Pal.Text)" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <Border CornerRadius="8" Padding="7,1" Background="{Binding LocBg}" Margin="0,0,5,0" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding LocText}" Foreground="{Binding LocFg}" FontSize="11" FontWeight="SemiBold"/>
+                        </Border>
+                        <Border CornerRadius="8" Padding="7,1" Background="{Binding ScnBg}" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding ScnText}" Foreground="{Binding ScnFg}" FontSize="11" FontWeight="SemiBold"/>
+                        </Border>
+                      </WrapPanel>
+                    </StackPanel>
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <!-- the selected preset -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="0">
               <DockPanel>
-                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
-                  <Button x:Name="StartCapture" Style="{StaticResource Primary}" Content="Use this preset  &#x2192;" ToolTip="Opens it on the Live run page - nothing compiles or flashes until you press 1 or 2 there" IsEnabled="False" Padding="20,10"/>
-                  <Button x:Name="FixPorts" Style="{StaticResource Cool}" Content="&#x21C4;  Use the ports the boards are on now" IsEnabled="False"
+                <Border x:Name="DetHero" DockPanel.Dock="Top" CornerRadius="16,16,0,0" Padding="18,14" Background="$($Pal.Card2)">
+                  <DockPanel>
+                    <Border DockPanel.Dock="Right" Width="132" Height="84" CornerRadius="12" Background="#26000000" Margin="10,0,0,0" VerticalAlignment="Top">
+                      <ContentControl x:Name="DetArt" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel>
+                      <TextBlock x:Name="DetKicker" Text="PRESET" FontSize="10" FontWeight="Bold" Foreground="#CCFFFFFF"/>
+                      <TextBlock x:Name="DetTitle" FontSize="20" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" Text="Pick a preset"/>
+                      <TextBlock x:Name="DetFile" Foreground="#DDFFFFFF" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0" Text="click one on the left to look inside - double-click to use it straight away"/>
+                      <WrapPanel x:Name="DetChips" Margin="0,8,0,0"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+                <StackPanel DockPanel.Dock="Bottom" Margin="18,10,18,16">
+                  <Button x:Name="StartCapture" Style="{StaticResource Primary}" Content="&#x25B6;  Use this preset" ToolTip="Opens it on the Live run page - nothing compiles or flashes until you press 1 or 2 there" IsEnabled="False" Padding="20,11" Margin="0,0,0,8"/>
+                  <Button x:Name="FixPorts" Style="{StaticResource Cool}" Content="&#x21C4;  Use the ports the boards are on now" IsEnabled="False" Margin="0,0,0,8" Visibility="Collapsed"
                           ToolTip="Matches every board by its MAC to the COM port it is plugged into right now and saves that into the preset."/>
-                  <Button x:Name="OpenPresetFile" Content="Open the file" IsEnabled="False"/>
+                  <UniformGrid Columns="4">
+                    <Button x:Name="PresetEdit" Content="Edit" IsEnabled="False" Margin="0,0,4,0" Padding="8,7"/>
+                    <Button x:Name="PresetCopy" Content="Copy" IsEnabled="False" Margin="2,0,2,0" Padding="8,7"/>
+                    <Button x:Name="OpenPresetFile" Content="File" ToolTip="Open the preset file in Notepad" IsEnabled="False" Margin="2,0,2,0" Padding="8,7"/>
+                    <Button x:Name="PresetDelete" Style="{StaticResource Danger}" Content="Delete" IsEnabled="False" Margin="4,0,0,0" Padding="8,7"/>
+                  </UniformGrid>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Top">
-                  <TextBlock Style="{StaticResource Label}" Text="PRESET"/>
-                  <TextBlock x:Name="DetFile" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Text="Select a preset on the left"/>
-                  <TextBlock x:Name="DetCell" Foreground="$($Pal.Dim)" Margin="0,4,0,10" TextWrapping="Wrap"/>
-                  <TextBlock Style="{StaticResource Label}" Text="BOARDS  (flashed in this order - root last)"/>
+                <StackPanel DockPanel.Dock="Top" Margin="18,14,18,0">
+                  <DockPanel Margin="0,0,0,4">
+                    <TextBlock x:Name="DetReadyNum" DockPanel.Dock="Right" FontWeight="Bold" Foreground="$($Pal.Green)"/>
+                    <TextBlock Style="{StaticResource Label}" Text="BOARDS  (flashed in this order - root last)"/>
+                  </DockPanel>
+                  <ProgressBar x:Name="DetReady" Height="6" Margin="0,0,0,6"/>
+                  <TextBlock x:Name="DetPorts" Margin="0,0,0,8" TextWrapping="Wrap"/>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Bottom">
-                  <TextBlock x:Name="DetPorts" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                  <TextBlock x:Name="DetNote" Foreground="$($Pal.Dim)" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
-                <DataGrid x:Name="BoardGrid">
-                  <DataGrid.Columns>
-                    <DataGridTextColumn Header="label" Binding="{Binding Label}" Width="80"/>
-                    <DataGridTextColumn Header="role" Binding="{Binding Role}" Width="200">
-                      <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding Tone}" Value="attacker"><Setter Property="Foreground" Value="$($Pal.Red)"/></DataTrigger>
-                            <DataTrigger Binding="{Binding Tone}" Value="root"><Setter Property="Foreground" Value="$($Pal.Amber)"/></DataTrigger>
-                            <DataTrigger Binding="{Binding Tone}" Value="child"><Setter Property="Foreground" Value="$($Pal.Blue)"/></DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="port" Binding="{Binding Port}" Width="80"/>
-                    <DataGridTextColumn Header="MAC" Binding="{Binding Mac}" Width="160"/>
-                    <DataGridTextColumn Header="nickname" Binding="{Binding Nick}" Width="*">
-                      <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Dim)"/></Style></DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="status" Binding="{Binding State}" Width="230">
-                      <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding Here}" Value="True"><Setter Property="Foreground" Value="$($Pal.Green)"/></DataTrigger>
-                            <DataTrigger Binding="{Binding Here}" Value="False"><Setter Property="Foreground" Value="$($Pal.Red)"/></DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                  </DataGrid.Columns>
-                </DataGrid>
+                <TextBlock x:Name="DetNote" DockPanel.Dock="Bottom" Foreground="$($Pal.Dim)" FontSize="12" Margin="18,6,18,0" TextWrapping="Wrap"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="12,0,12,0">
+                  <StackPanel x:Name="DetBoards"/>
+                </ScrollViewer>
               </DockPanel>
             </Border>
           </Grid>
@@ -933,6 +1050,8 @@ $StyleXaml
                   </ListBox.ItemContainerStyle>
                   <ListBox.ItemTemplate>
                     <DataTemplate>
+                      <DockPanel>
+                      <Image DockPanel.Dock="Left" Source="{Binding Art}" Width="40" Height="26" Margin="0,0,10,0" VerticalAlignment="Center"/>
                       <StackPanel>
                         <DockPanel>
                           <Border DockPanel.Dock="Right" CornerRadius="7" Background="{Binding BadgeBg}" Padding="7,1" VerticalAlignment="Center">
@@ -944,6 +1063,7 @@ $StyleXaml
                         </DockPanel>
                         <TextBlock Text="{Binding Sub}" Foreground="$($Pal.Faint)" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                       </StackPanel>
+                      </DockPanel>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
@@ -1157,12 +1277,26 @@ $StyleXaml
                     <Button x:Name="IdentifyAll" Style="{StaticResource Primary}" Content="Identify all (read MACs)"/>
                     <TextBlock Text="reads each board ~5 s and briefly resets it - never during a capture" Foreground="$($Pal.Faint)" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" Width="240"/>
                   </StackPanel>
-                  <DataGrid x:Name="PortGrid">
+                  <DataGrid x:Name="PortGrid" RowHeight="36">
                     <DataGrid.Columns>
-                      <DataGridTextColumn Header="port" Binding="{Binding Port}" Width="70"/>
-                      <DataGridTextColumn Header="MAC" Binding="{Binding Mac}" Width="140"/>
-                      <DataGridTextColumn Header="member board" Binding="{Binding Nick}" Width="140">
-                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Amber)"/></Style></DataGridTextColumn.ElementStyle>
+                      <DataGridTemplateColumn Header="" Width="26">
+                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                          <Ellipse Width="10" Height="10" Fill="{Binding Dot}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                      </DataGridTemplateColumn>
+                      <DataGridTextColumn Header="port" Binding="{Binding Port}" Width="70">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="FontWeight" Value="Bold"/></Style></DataGridTextColumn.ElementStyle>
+                      </DataGridTextColumn>
+                      <!-- MAC: big + monospaced, the last 2 bytes (what tells boards apart) in colour -->
+                      <DataGridTemplateColumn Header="MAC   (last 2 bytes = which board)" Width="215">
+                        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+                          <TextBlock FontFamily="Consolas" FontSize="13.5" VerticalAlignment="Center">
+                            <Run Text="{Binding MacHead, Mode=OneWay}" Foreground="$($Pal.Text)"/><Run Text="{Binding MacTail, Mode=OneWay}" Foreground="$($Pal.Cyan)" FontWeight="Bold"/>
+                          </TextBlock>
+                        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+                      </DataGridTemplateColumn>
+                      <DataGridTextColumn Header="member board" Binding="{Binding Nick}" Width="150">
+                        <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Amber)"/><Setter Property="FontWeight" Value="SemiBold"/></Style></DataGridTextColumn.ElementStyle>
                       </DataGridTextColumn>
                       <DataGridTextColumn Header="device" Binding="{Binding Description}" Width="*">
                         <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Dim)"/></Style></DataGridTextColumn.ElementStyle>
@@ -1173,23 +1307,45 @@ $StyleXaml
                 <Border Grid.Column="1" Style="{StaticResource Card}" Padding="16">
                   <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                      <TextBlock Style="{StaticResource Label}" Text="SELECTED BOARD"/>
-                      <TextBlock x:Name="SelBoard" FontSize="15" FontWeight="SemiBold" Text="Select a port on the left" Margin="0,0,0,12"/>
-                      <TextBlock Style="{StaticResource Label}" Text="LOCATION  (location.txt on its SD card - the board must be running)"/>
-                      <StackPanel Orientation="Horizontal" Margin="0,2,0,12">
-                        <ComboBox x:Name="LocPick" Width="140"/>
-                        <Button x:Name="LocRead" Content="Read"/>
-                        <Button x:Name="LocWrite" Content="Write"/>
-                      </StackPanel>
-                      <TextBlock Style="{StaticResource Label}" Text="DELETE A FOLDER FROM ITS SD CARD  (permanent)"/>
-                      <WrapPanel Margin="0,2,0,12">
-                        <ComboBox x:Name="SdAttack" Width="100"/>
-                        <ComboBox x:Name="SdTopology" Width="100"/>
-                        <ComboBox x:Name="SdLocation" Width="120"/>
-                        <Button x:Name="SdDelete" Content="Delete folder"/>
-                      </WrapPanel>
-                      <TextBlock Style="{StaticResource Label}" Text="WIPE  (full chip erase - the board ends up blank)"/>
-                      <Button x:Name="WipeBoard" Content="Wipe this board" HorizontalAlignment="Left" Margin="0,2,0,12"/>
+                      <Border CornerRadius="14" Padding="14,12" Margin="0,0,0,14" Background="{StaticResource GradCool}">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Left" Width="44" Height="44" CornerRadius="22" Background="#33FFFFFF" Margin="0,0,12,0" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE88E;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Border>
+                          <StackPanel>
+                            <TextBlock Text="SELECTED BOARD" FontSize="10" FontWeight="Bold" Foreground="#DDFFFFFF"/>
+                            <TextBlock x:Name="SelBoard" FontSize="17" FontWeight="Bold" Foreground="White" TextWrapping="Wrap" Text="Select a port on the left"/>
+                            <ContentControl x:Name="SelMac" Margin="0,6,0,0" HorizontalAlignment="Left"/>
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                      <Border Background="$($Pal.Card2)" CornerRadius="12" Padding="12,10" Margin="0,0,0,10" BorderThickness="3,0,0,0" BorderBrush="$($Pal.Cyan)">
+                        <StackPanel>
+                          <TextBlock Style="{StaticResource Label}" Foreground="$($Pal.Cyan)" TextWrapping="Wrap" Text="&#x25C9;  LOCATION  (location.txt on its SD card - the board must be running)"/>
+                          <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <ComboBox x:Name="LocPick" Width="140"/>
+                            <Button x:Name="LocRead" Content="Read"/>
+                            <Button x:Name="LocWrite" Content="Write"/>
+                          </StackPanel>
+                        </StackPanel>
+                      </Border>
+                      <Border Background="$($Pal.Card2)" CornerRadius="12" Padding="12,10" Margin="0,0,0,10" BorderThickness="3,0,0,0" BorderBrush="$($Pal.Amber)">
+                        <StackPanel>
+                          <TextBlock Style="{StaticResource Label}" Foreground="$($Pal.Amber)" Text="&#x25A4;  DELETE A FOLDER FROM ITS SD CARD  (permanent)"/>
+                          <WrapPanel Margin="0,4,0,0">
+                            <ComboBox x:Name="SdAttack" Width="100"/>
+                            <ComboBox x:Name="SdTopology" Width="100"/>
+                            <ComboBox x:Name="SdLocation" Width="120"/>
+                            <Button x:Name="SdDelete" Style="{StaticResource Danger}" Content="Delete folder"/>
+                          </WrapPanel>
+                        </StackPanel>
+                      </Border>
+                      <Border Background="$($Pal.Card2)" CornerRadius="12" Padding="12,10" Margin="0,0,0,10" BorderThickness="3,0,0,0" BorderBrush="$($Pal.Red)">
+                        <StackPanel>
+                          <TextBlock Style="{StaticResource Label}" Foreground="$($Pal.Red)" Text="&#x26A0;  WIPE  (full chip erase - the board ends up blank)"/>
+                          <Button x:Name="WipeBoard" Style="{StaticResource Danger}" Content="Wipe this board" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                        </StackPanel>
+                      </Border>
                     </StackPanel>
                   </ScrollViewer>
                 </Border>
@@ -1262,7 +1418,7 @@ $StyleXaml
         <DockPanel>
           <StackPanel DockPanel.Dock="Top">
             <TextBlock Style="{StaticResource H1}" Text="Data"/>
-            <TextBlock Style="{StaticResource Sub}" Text="Bring captures in from an SD card, trim, archive, sync with GitHub, read run logs and clean up - all from here."/>
+            <TextBlock Style="{StaticResource Sub}" Text="Bring captures in from an SD card, trim, archive, read run logs and clean up - all from here. Sharing with the team: GitHub sync in the sidebar."/>
           </StackPanel>
           <TabControl x:Name="DataTabs" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource SubTab}">
             <TabItem Header="  Import / export  ">
@@ -1425,6 +1581,8 @@ $StyleXaml
                     <CheckBox x:Name="ImpDelete" Content="delete from the card after a verified copy" VerticalAlignment="Center" Margin="0,0,14,0"/>
                     <Button x:Name="ImpPreview" Content="Preview (copies nothing)" IsEnabled="False"/>
                     <Button x:Name="ImpGo" Style="{StaticResource Primary}" Content="Import" IsEnabled="False" Padding="18,7" Margin="0"/>
+                    <Button x:Name="ImpDel" Style="{StaticResource Danger}" Content="Delete from card" IsEnabled="False" Padding="14,7" Margin="8,0,0,0"
+                            ToolTip="Deletes the TICKED files from the SD card (in the reader, or through the board over USB) - nothing is imported. A file the board is still writing is never deleted. Files never imported are listed by name first: deleting those destroys the last copy."/>
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="ImpNew" Content="tick NEW only" Padding="10,4"/>
@@ -1450,19 +1608,6 @@ $StyleXaml
                   <TextBox x:Name="ArcReason" Width="340" Margin="0,0,10,8" Padding="4,3"/>
                   <Button x:Name="ArcPreview" Content="Preview (moves nothing)"/>
                   <Button x:Name="ArcGo" Content="Archive now"/>
-                </WrapPanel>
-              </StackPanel>
-            </TabItem>
-            <TabItem Header="  GitHub sync  ">
-              <StackPanel Margin="0,14,0,0">
-                <TextBlock Foreground="$($Pal.Dim)" TextWrapping="Wrap" Margin="0,0,0,12" Text="Data only (captures, analysis + EDA, run logs, presets) - never code. Push sends what is new on this laptop; pull brings teammates' files."/>
-                <WrapPanel>
-                  <TextBlock Text="what" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,6,8"/>
-                  <ComboBox x:Name="SyncArea" Width="130"/>
-                  <Button x:Name="SyncPush" Style="{StaticResource Primary}" Content="Push to GitHub"/>
-                  <Button x:Name="SyncPull" Content="Pull from GitHub"/>
-                  <Button x:Name="SyncTest" Content="Test the connection"/>
-                  <Button x:Name="SyncAdvanced" Content="Delete / restore on GitHub..."/>
                 </WrapPanel>
               </StackPanel>
             </TabItem>
@@ -1565,14 +1710,31 @@ $StyleXaml
               </Grid>
             </TabItem>
             <TabItem Header="  ESP32 sniffer  ">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Margin="0,14,0,0">
                 <TextBlock Foreground="$($Pal.Dim)" TextWrapping="Wrap" Margin="0,0,0,12" Text="Use a SPARE board - the list shows each port's MAC + nickname, so pick it by name. Flash the sniffer firmware once (output streams below), then record here - Stop ends the file cleanly."/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderThickness="0,3,0,0" BorderBrush="$($Pal.Cyan)">
+                  <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                      <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="15" Background="{StaticResource GradCool}" Margin="0,0,12,0">
+                        <TextBlock Text="1" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Text="Pick the sniffer board  (first time: flash it)" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
                 <WrapPanel>
-                  <TextBlock Text="sniffer board" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,6,8"/>
-                  <ComboBox x:Name="SnPort" Width="460" ItemTemplate="{StaticResource TextItem}" FontFamily="Cascadia Mono, Consolas"/>
+                  <ComboBox x:Name="SnPort" Width="460" ItemTemplate="{StaticResource TextItem}" FontFamily="Cascadia Mono, Consolas" FontSize="13.5"/>
                   <Button x:Name="SnFlash" Content="Flash sniffer firmware"/>
                 </WrapPanel>
-                <TextBlock Style="{StaticResource Label}" Text="FILE IT UNDER" Margin="0,10,0,2"/>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderThickness="0,3,0,0" BorderBrush="$($Pal.Purple)">
+                  <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                      <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="15" Background="{StaticResource GradMain}" Margin="0,0,12,0">
+                        <TextBlock Text="2" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Text="File it under" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
                 <WrapPanel>
                   <CheckBox x:Name="SnTest" Content="just a test (PCAP\standalone)" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,12,8" IsChecked="False" ToolTip="Ticked = PCAP\standalone\esp32_sniffer_*.pcap (no run). Unticked = named after the run below, like every other PCAP."/>
                   <ComboBox x:Name="SnAttack" Width="100"/>
@@ -1582,7 +1744,17 @@ $StyleXaml
                   <TextBlock Text="repeat" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,6,8"/>
                   <TextBox x:Name="SnRepeat" Width="40" Text="1" Margin="0,0,10,8" Padding="4,3"/>
                 </WrapPanel>
-                <WrapPanel Margin="0,6,0,0">
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12" BorderThickness="0,3,0,0" BorderBrush="$($Pal.Green)">
+                  <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                      <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="15" Background="{StaticResource GradGood}" Margin="0,0,12,0">
+                        <TextBlock Text="3" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <TextBlock Text="Record" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
+                <WrapPanel>
                   <CheckBox x:Name="SnLive" Content="also watch LIVE in Wireshark" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,12,8"/>
                   <CheckBox x:Name="SnStartPaused" Content="start paused" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,12,8" ToolTip="Opens the port and listens, but saves nothing until you press Resume - for starting before the experiment does"/>
                   <Button x:Name="SnStart" Style="{StaticResource Primary}" Content="Start recording"/>
@@ -1590,7 +1762,10 @@ $StyleXaml
                   <Button x:Name="SnStop" Content="Stop recording" IsEnabled="False"/>
                   <Button x:Name="SnMac" Content="MacBook sniffer test (opens its window)"/>
                 </WrapPanel>
+                  </StackPanel>
+                </Border>
               </StackPanel>
+              </ScrollViewer>
             </TabItem>
           </TabControl>
         </DockPanel>
@@ -1855,6 +2030,310 @@ $StyleXaml
           </Grid>
         </Grid>
       </TabItem>
+      <TabItem>
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top">
+            <TextBlock Style="{StaticResource H1}" Text="GitHub sync"/>
+            <TextBlock Style="{StaticResource Sub}" Text="Shares captures, analysis + EDA, run logs and presets with the team - never code. It checks everything first, analyses before it sends, never re-uploads duplicates or deleted runs, and updates your folder without ever leaving a half-done merge."/>
+          </StackPanel>
+          <!-- hero: what is going on, one big button -->
+          <Border DockPanel.Dock="Top" CornerRadius="18" Padding="20,16" Margin="0,0,0,12" Background="$($Pal.Card2)" BorderBrush="{StaticResource GradCool}" BorderThickness="2">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="SyncCheck" Content="&#x21BB;  Check" Padding="14,9" Margin="0,0,10,0"
+                        ToolTip="Looks at GitHub and this laptop and plans everything - changes nothing (about 20 s)."/>
+                <Button x:Name="SyncGo" Style="{StaticResource Primary}" Content="Smart sync  &#x2192;" FontSize="15" FontWeight="Bold" Padding="22,11" Margin="0"
+                        ToolTip="1 check  2 analyse what is stale  3 send the ticked files  4 receive the ticked files  5 update your folder. Asks once before anything goes to GitHub."/>
+              </StackPanel>
+              <Border DockPanel.Dock="Left" x:Name="SyncIconBg" Width="56" Height="56" CornerRadius="28" Background="{StaticResource GradCool}" Margin="0,0,16,0" VerticalAlignment="Center">
+                <TextBlock x:Name="SyncIcon" Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="26" Foreground="#0B1020" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="SyncHead" Text="Not checked yet" FontSize="21" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                <TextBlock x:Name="SyncSubHead" Text="Nothing is checked until you press Check (or Smart sync) - and nothing is sent until you confirm." Foreground="$($Pal.Dim)" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <!-- stepper -->
+          <ItemsControl x:Name="SyncSteps" DockPanel.Dock="Top" Margin="0,0,0,10">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{Binding Bg}" BorderBrush="{Binding Edge}" BorderThickness="1.5" CornerRadius="12" Padding="10,7" Margin="0,0,8,0" ToolTip="{Binding Tip}">
+                  <DockPanel>
+                    <Border DockPanel.Dock="Left" Width="24" Height="24" CornerRadius="12" Background="{Binding Dot}" Margin="0,0,8,0">
+                      <TextBlock Text="{Binding Mark}" Foreground="#0B1020" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" Foreground="$($Pal.Text)" FontWeight="SemiBold" FontSize="12.5"/>
+                      <TextBlock Text="{Binding Info}" Foreground="{Binding InfoFg}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <!-- health chips -->
+          <ItemsControl x:Name="SyncChips" DockPanel.Dock="Top" Margin="0,0,0,6">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="{Binding Bg}" CornerRadius="10" Padding="10,3" Margin="0,0,6,6" ToolTip="{Binding Tip}">
+                  <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <!-- banners: blocked (red) / analyse first (amber) -->
+          <Border x:Name="SyncBlock" DockPanel.Dock="Top" Visibility="Collapsed" Background="#3A1E2C" BorderBrush="$($Pal.Red)" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,10">
+            <DockPanel>
+              <Button x:Name="SyncAbortMerge" DockPanel.Dock="Right" Style="{StaticResource Danger}" Content="Abort unfinished merge" Margin="10,0,0,0" Visibility="Collapsed"
+                      ToolTip="git merge --abort: back to your last commit. Every changed file is copied to the backup folder first."/>
+              <TextBlock x:Name="SyncBlockText" Foreground="$($Pal.Red)" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            </DockPanel>
+          </Border>
+          <Border x:Name="SyncGate" DockPanel.Dock="Top" Visibility="Collapsed" Background="#3A2E14" BorderBrush="$($Pal.Amber)" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,10">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="SyncGateAna" Style="{StaticResource Primary}" Content="Analyse them first  &#x2192;" Margin="10,0,8,0"/>
+                <Button x:Name="SyncGateSkip" Content="Send without analysis" Margin="0"
+                        ToolTip="The captures go up; their stale analysis stays on this laptop (never sent). Teammates will see 'not analysed'."/>
+              </StackPanel>
+              <StackPanel>
+                <TextBlock x:Name="SyncGateHead" Foreground="$($Pal.Amber)" FontWeight="Bold" TextWrapping="Wrap"/>
+                <TextBlock x:Name="SyncGateText" Foreground="$($Pal.Text)" TextWrapping="Wrap" FontSize="12" Margin="0,2,0,0"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <!-- bottom actions -->
+          <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <CheckBox x:Name="SyncUpdate" Content="also update my folder" IsChecked="True" VerticalAlignment="Center" Margin="0,0,14,0"
+                        ToolTip="After sending / receiving, bring this folder up to GitHub's latest commit (the safe way: backs up anything in the way, merges your code edits, never leaves a half-done merge)."/>
+              <Button x:Name="SyncSendOnly" Content="Send ticked only"/>
+              <Button x:Name="SyncRecvOnly" Content="Receive ticked only"/>
+              <Button x:Name="SyncFoldOnly" Content="Update my folder only" Margin="0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="SyncBackups" Content="Backups folder" Padding="10,4"/>
+              <Button x:Name="SyncAdvanced2" Content="Delete / restore on GitHub..." Padding="10,4"/>
+              <TextBlock x:Name="SyncFoot" Foreground="$($Pal.Faint)" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+          </DockPanel>
+          <TabControl x:Name="SyncTabs" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource SubTab}">
+            <TabItem x:Name="SyncTabSend" Header="  Send  ">
+              <DockPanel Margin="0,10,0,0">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                  <Button x:Name="SyncSendAll" Content="tick all" Padding="10,3"/>
+                  <Button x:Name="SyncSendNone" Content="tick none" Padding="10,3"/>
+                  <TextBlock x:Name="SyncSendInfo" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="6,0,0,8" TextWrapping="Wrap"/>
+                </StackPanel>
+                <DataGrid x:Name="SyncSendGrid" IsReadOnly="False" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="" Width="44" MinWidth="44" CanUserResize="False">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><CheckBox Style="{StaticResource TickBox}" IsChecked="{Binding Pick, UpdateSourceTrigger=PropertyChanged}" Margin="0"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="status" Width="150">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding BadgeBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="what" Width="88">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Area}" Foreground="{Binding AreaFg}" FontWeight="SemiBold"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="run" Width="300">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTemplateColumn Header="analysis" Width="130">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding AnaBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Ana}" Foreground="{Binding AnaFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+            <TabItem x:Name="SyncTabRecv" Header="  Receive  ">
+              <DockPanel Margin="0,10,0,0">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                  <Button x:Name="SyncRecvAll" Content="tick all" Padding="10,3"/>
+                  <Button x:Name="SyncRecvNone" Content="tick none" Padding="10,3"/>
+                  <TextBlock x:Name="SyncRecvInfo" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="6,0,0,8" TextWrapping="Wrap"/>
+                </StackPanel>
+                <DataGrid x:Name="SyncRecvGrid" IsReadOnly="False" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="" Width="44" MinWidth="44" CanUserResize="False">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><CheckBox Style="{StaticResource TickBox}" IsChecked="{Binding Pick, UpdateSourceTrigger=PropertyChanged}" Margin="0"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="status" Width="150">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding BadgeBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="what" Width="88">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Area}" Foreground="{Binding AreaFg}" FontWeight="SemiBold"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="run" Width="300">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="from" Binding="{Binding Who}" Width="150" Foreground="$($Pal.Dim)"/>
+                        <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+            <TabItem x:Name="SyncTabHeld" Header="  Held back  ">
+              <DockPanel Margin="0,10,0,0">
+                <TextBlock DockPanel.Dock="Top" Foreground="$($Pal.Dim)" TextWrapping="Wrap" Margin="0,0,0,8" Text="Files the sync will NOT move, and why - stale analysis, duplicates of something GitHub already has, files a teammate deleted, an equivalent analysis already there. Hover a badge for the detail."/>
+                <DataGrid x:Name="SyncHeldGrid" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="held back" Width="170">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding BadgeBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="what" Width="88">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Area}" Foreground="{Binding AreaFg}" FontWeight="SemiBold"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="run" Width="300">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+            <TabItem x:Name="SyncTabRuns" Header="  Runs  ">
+              <DockPanel Margin="0,10,0,0">
+                <TextBlock DockPanel.Dock="Top" Foreground="$($Pal.Dim)" TextWrapping="Wrap" Margin="0,0,0,8" Text="Every run, here and on GitHub. Analysis is CURRENT only when its feature table covers every capture of that run (checked by content - file times lie after a pull)."/>
+                <DataGrid x:Name="SyncRunsGrid" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="run" Width="300">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="boards here" Binding="{Binding Here}" Width="95"/>
+                        <DataGridTextColumn Header="on GitHub" Binding="{Binding Hub}" Width="85"/>
+                        <DataGridTemplateColumn Header="analysis here" Width="140">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding AnaLBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding AnaL}" Foreground="{Binding AnaLFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="analysis on GitHub" Width="150">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding AnaRBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding AnaR}" Foreground="{Binding AnaRFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="what to do" Binding="{Binding Note}" Width="*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+            <TabItem x:Name="SyncTabFold" Header="  Your folder  ">
+              <DockPanel Margin="0,10,0,0">
+                <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,10">
+                  <TextBlock x:Name="SyncFoldText" Foreground="$($Pal.Text)" TextWrapping="Wrap"/>
+                </Border>
+                <DataGrid x:Name="SyncFoldGrid" IsReadOnly="True" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="how" Width="150">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding BadgeBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="file in the way" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+            <TabItem x:Name="SyncTabGone" Header="  Cleanup  ">
+              <DockPanel Margin="0,10,0,0">
+                <TextBlock DockPanel.Dock="Top" Foreground="$($Pal.Dim)" TextWrapping="Wrap" Margin="0,0,0,8" Text="Teammates deleted these on GitHub; your copies are byte-identical to GitHub's history, so removing them is undoable (they go to the backups folder, and Restore can bring them back). Never ticked by itself."/>
+                <DataGrid x:Name="SyncGoneGrid" IsReadOnly="False" CanUserAddRows="False" AutoGenerateColumns="False" HeadersVisibility="Column" SelectionMode="Single">
+                      <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="" Width="44" MinWidth="44" CanUserResize="False">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><CheckBox Style="{StaticResource TickBox}" IsChecked="{Binding Pick, UpdateSourceTrigger=PropertyChanged}" Margin="0"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="status" Width="170">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                              <Border Background="{Binding BadgeBg}" CornerRadius="8" Padding="8,1" HorizontalAlignment="Left" ToolTip="{Binding Why}">
+                                <TextBlock Text="{Binding Badge}" Foreground="{Binding BadgeFg}" FontWeight="Bold" FontSize="11"/>
+                              </Border>
+                            </DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="what" Width="88">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Area}" Foreground="{Binding AreaFg}" FontWeight="SemiBold"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="run" Width="300">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
+                      </DataGrid.Columns>
+                    </DataGrid>
+              </DockPanel>
+            </TabItem>
+          </TabControl>
+        </DockPanel>
+      </TabItem>
     </TabControl>
   </DockPanel>
   <!-- toast: short pop-up for plug / unplug and finished tasks -->
@@ -1939,7 +2418,7 @@ function Set-Status([string]$Text, [string]$Hex = $Pal.Dim) {
 }
 
 # ── navigation ────────────────────────────────────────────────────────────────
-$nav = @('NavHome', 'NavCapture', 'NavVerify', 'NavCampaign', 'NavBoards', 'NavData', 'NavWire', 'NavRun')
+$nav = @('NavHome', 'NavCapture', 'NavVerify', 'NavCampaign', 'NavBoards', 'NavData', 'NavWire', 'NavRun', 'NavSync')
 for ($i = 0; $i -lt $nav.Count; $i++) {
     $idx = $i
     $ui[$nav[$i]].Add_Checked({ $ui.Pages.SelectedIndex = $idx }.GetNewClosure())
@@ -2098,6 +2577,26 @@ function Get-LiveMacs {
     # full MAC -> port, for the boards plugged in now whose MAC is read
     $m = @{}; foreach ($r in $script:Live.Values) { if ($r.Mac) { $m[$r.Mac] = $r.Port } }; return $m
 }
+function Get-LivePortList([string[]]$Names) {
+    # Same rows as the wizard's Get-PortList, but a port seen before keeps its
+    # description: Windows is asked (CIM, ~0.3-0.5 s, froze the window on every
+    # plug / unplug) only when a NEW port name shows up (oct. 18 2026).
+    $desc = @{}
+    $new = @($Names | Where-Object { -not $script:Live.Contains($_) })
+    if ($new.Count) {
+        foreach ($q in @("PNPClass = 'Ports'", '')) {
+            try {
+                $cim = if ($q) { Get-CimInstance -ClassName Win32_PnPEntity -Filter $q -ErrorAction SilentlyContinue } else { Get-CimInstance -ClassName Win32_PnPEntity -ErrorAction SilentlyContinue }
+                foreach ($d in @($cim)) { if ($d.Name -match '\((COM\d+)\)') { $desc[$Matches[1]] = ($d.Name -replace '\s*\(COM\d+\)\s*$', '') } }
+            } catch { }
+            if (-not @($new | Where-Object { -not $desc[$_] }).Count) { break }   # all found - skip the slow full list
+        }
+    }
+    foreach ($n in $Names) {
+        $d = if ($script:Live.Contains($n) -and $script:Live[$n].Description) { $script:Live[$n].Description } elseif ($desc[$n]) { $desc[$n] } else { 'unknown device' }
+        [pscustomobject]@{ Port = $n; Description = $d; Kind = (Get-PortKind -Description $d) }
+    }
+}
 function Update-LivePorts([switch]$Force) {
     $names = @(try { [IO.Ports.SerialPort]::GetPortNames() | Sort-Object -Unique } catch { })
     $key = $names -join ','
@@ -2105,7 +2604,7 @@ function Update-LivePorts([switch]$Force) {
     $first = -not $script:LiveNames -and -not $script:LiveInit
     $script:LiveInit = $true
     $script:LiveNames = $key
-    $list = @(Get-PortList)
+    $list = @(Get-LivePortList $names)
     $info = Get-MemberInfo
     foreach ($gone in @($script:Live.Keys | Where-Object { $names -notcontains $_ })) {
         $r = $script:Live[$gone]; $script:Live.Remove($gone)
@@ -2146,7 +2645,7 @@ function Start-MacRead([string]$Port) {
             Show-Toast "Could not read $port" 'Busy (a monitor open?), not an ESP32, or esptool missing - try Read all MACs.' ([string][char]0xE7BA) '#B45309'
         }
         Update-LiveViews
-        if ($ui.Pages.SelectedIndex -eq 1) { Show-PresetDetail }
+        if ($ui.Pages.SelectedIndex -eq 1) { Update-CaptureLive }
     }
 }
 function Set-LiveMac($R, [string]$Mac, [switch]$Quiet) {
@@ -2170,7 +2669,7 @@ function Start-IdAsk([string]$Port) {
         if ($code -eq 0 -and $m.Success) { Set-LiveMac $r $m.Groups[1].Value -Quiet:($r.Prev -eq 'unread') }
         else { $r.State = $r.Prev }
         Update-LiveViews
-        if ($ui.Pages.SelectedIndex -eq 1) { Show-PresetDetail }
+        if ($ui.Pages.SelectedIndex -eq 1) { Update-CaptureLive }
     }
 }
 function Request-MacReadAll {
@@ -2233,6 +2732,7 @@ $script:StateText = @{ new = 'waiting to read'; reading = 'reading MAC...'; aski
                        unread = 'MAC not read yet'
                        paused = 'paused - a capture is running'; skip = 'not an ESP32 bridge - left alone' }
 function Update-LiveViews {
+    $script:LiveVer++   # Run a capture rows re-check their boards
     $boards = @($script:Live.Values | Where-Object { $_.Kind -ne 'BLOCKED' })
     $dot = { param($r) if ($r.State -eq 'ok') { $Pal.Green } elseif ($r.State -in @('reading', 'new')) { $Pal.Cyan } elseif ($r.State -eq 'failed') { $Pal.Red } else { $Pal.Amber } }
     # sidebar
@@ -2272,7 +2772,11 @@ function Update-LiveViews {
     # Boards page grid + the port pickers on other pages
     $sel = if ($ui.PortGrid.SelectedItem) { $ui.PortGrid.SelectedItem.Port }
     $script:PortRows = @($script:Live.Values | ForEach-Object {
+        $mp = @(([string]$_.Mac).ToUpper() -split '[:\-]' | Where-Object { $_ })
         [pscustomobject]@{ Port = $_.Port; Description = $_.Description; Mac = $_.Mac
+                           MacHead = $(if ($mp.Count -ge 6) { ($mp[0..3] -join ':') + ':' } else { [string][char]0x2014 + '  ' })
+                           MacTail = $(if ($mp.Count -ge 6) { $mp[4..($mp.Count - 1)] -join ':' } else { '' })
+                           Dot = (& $brush $(if ($_.Who) { $Pal.Green } elseif ($_.Mac) { $Pal.Cyan } else { $Pal.Amber }))
                            Nick = $(if ($_.Who) { $_.Who } else { $script:StateText[$_.State] }) } })
     $ui.PortGrid.ItemsSource = $script:PortRows
     if ($sel) { $ui.PortGrid.SelectedItem = @($script:PortRows | Where-Object Port -eq $sel)[0] }
@@ -2285,7 +2789,7 @@ $liveTimer.Add_Tick({
     try {
         $changed = Update-LivePorts
         Step-MacReads
-        if ($changed -and $ui.Pages.SelectedIndex -eq 1) { Show-PresetDetail }
+        if ($changed -and $ui.Pages.SelectedIndex -eq 1) { Update-CaptureLive }
     } catch { Set-Status ("Board watcher: " + $_.Exception.Message) $Pal.Red }
 })
 $ui.HomeReadMacs.Add_Click({ Request-MacReadAll })
@@ -2342,7 +2846,7 @@ function Update-Home {
             $ui.HomeNext.Text = Get-SlotText $st.next
             $ui.HomeNextWhy.Text = "next slot in run order, at the location with the most done runs (session $($st.next.session))"
         } else { $ui.HomeNext.Text = 'Everything planned is captured!'; $ui.HomeNextWhy.Text = '' }
-        Update-CampaignMatrix
+        Update-CampaignMatrix; Update-CaptureCampaign
         Set-Status 'Campaign loaded.' $Pal.Green
     }
 }
@@ -2355,7 +2859,7 @@ $quick = @(
     @{ G = [char]0xE73E; T = 'Verify a run';    C = '#34D399'; A = { Show-Page 2 } }
     @{ G = [char]0xE88E; T = 'Boards';          C = '#22D3EE'; A = { Show-Page 4 } }
     @{ G = [char]0xE896; T = 'Import SD card';  C = '#FBBF24'; A = { Show-Page 5; $ui.DataTabs.SelectedIndex = 0 } }
-    @{ G = [char]0xE895; T = 'GitHub sync';     C = '#60A5FA'; A = { Show-Page 5; $ui.DataTabs.SelectedIndex = 2 } }
+    @{ G = [char]0xE895; T = 'GitHub sync';     C = '#60A5FA'; A = { Show-Page 8 } }
 )
 foreach ($q in $quick) {
     $b = New-Object Windows.Controls.Button
@@ -2371,86 +2875,585 @@ foreach ($q in $quick) {
 }
 
 # ── RUN A CAPTURE ─────────────────────────────────────────────────────────────
+# oct. 18 2026 redesign (user: "more fun and friendly, like Campaign"): a preset
+# GALLERY - one box per person (yours first, with a heart), split by attack, a
+# card per preset with a little drawing of its mesh, its campaign status (UP
+# NEXT / NEEDED / REDO / DONE ...) and one dot per board (filled = plugged in).
+# The hidden OwnerPick / AttackPick / PresetGrid stay the real filter and
+# selection - the chips and cards only drive them - so the palette, Campaign,
+# Home and the self-test keep working unchanged.
+$script:OwnerTones = @(@('#8B5CF6', '#EC4899'), @('#22D3EE', '#34D399'), @('#FBBF24', '#FB7185'),
+                       @('#60A5FA', '#A78BFA'), @('#F472B6', '#FB923C'), @('#A3E635', '#22D3EE'))
+$script:AtkGrad = @{ blackhole = @('#BE123C', '#7C3AED'); wormhole = @('#7C3AED', '#DB2777'); baseline = @('#047857', '#0891B2') }
+$script:ScnLook = @{
+    stationary = @{ S = [string][char]0x25C9; C = $Pal.Blue }
+    burst      = @{ S = [string][char]0x2738; C = $Pal.Amber }
+    highload   = @{ S = [string][char]0x25B2; C = '#FB923C' }
+    jitter     = @{ S = [string][char]0x224B; C = $Pal.Cyan }
+    mobility   = @{ S = [string][char]0x279C; C = $Pal.Lime }
+    powercycle = @{ S = [string][char]0x21BB; C = $Pal.Pink }
+}
+# campaign status -> the ribbon on a card
+$script:CardRibbon = @{
+    next    = @{ T = 'UP NEXT';    C = $Pal.Pink;  Tip = 'The next run in campaign order - this is the one to capture now.' }
+    todo    = @{ T = 'NEEDED';     C = $Pal.Lime;  Tip = 'The campaign still needs this run - not captured yet.' }
+    partial = @{ T = 'RE-CAPTURE'; C = '#FB923C';  Tip = 'Captured, but incomplete - capture it again.' }
+    redo    = @{ T = 'REDO';       C = $Pal.Red;   Tip = 'On the redo list - capture it again.' }
+    check   = @{ T = 'CHECK';      C = $Pal.Amber; Tip = 'Done, with a caveat to look at (Campaign page).' }
+    analyse = @{ T = 'ANALYSE';    C = $Pal.Cyan;  Tip = 'Captured - not analysed yet (Verify & analyse page).' }
+    ok      = @{ T = 'DONE';       C = $Pal.Green; Tip = 'Captured and verified - only re-run it on purpose.' }
+    done    = @{ T = 'DONE';       C = $Pal.Green; Tip = 'Captured - only re-run it on purpose.' }
+    off     = @{ T = 'OFF-PLAN';   C = $Pal.Faint; Tip = 'Not in the campaign plan (extra / test run).' }
+}
+$script:SlotByKey = @{}; $script:CardByPath = @{}
+function Get-OwnerTone([string]$Owner) {
+    $all = @($script:Presets | ForEach-Object Owner | Sort-Object -Unique)
+    $i = [array]::IndexOf($all, $Owner); if ($i -lt 0) { $i = 0 }
+    return $script:OwnerTones[$i % $script:OwnerTones.Count]
+}
+function New-Grad([string]$A, [string]$B, [string]$End = '1,1') {
+    $g = New-Object Windows.Media.LinearGradientBrush; $g.StartPoint = '0,0'; $g.EndPoint = $End
+    $g.GradientStops.Add((New-Object Windows.Media.GradientStop ([Windows.Media.ColorConverter]::ConvertFromString($A)), 0))
+    $g.GradientStops.Add((New-Object Windows.Media.GradientStop ([Windows.Media.ColorConverter]::ConvertFromString($B)), 1))
+    return $g
+}
+function New-TopoArt([string]$Topo, [string]$Attack, [double]$W = 64, [double]$H = 38) {
+    # a tiny drawing of the mesh: amber = root, red ring = the blackhole,
+    # purple + dashed arc = the wormhole tunnel, blue = a plain child
+    $cv = New-Object Windows.Controls.Canvas; $cv.Width = $W; $cv.Height = $H; $cv.IsHitTestVisible = $false
+    switch ($Topo -replace '^partial$', 'partial_mesh') {
+        'linear' { $n = @(@(0, 0.5), @(0.33, 0.5), @(0.66, 0.5), @(1, 0.5)); $e = @(@(0, 1), @(1, 2), @(2, 3)); $bad = 1; $tun = @(1, 3) }
+        'tree'   { $n = @(@(0.5, 0), @(0.22, 0.5), @(0.78, 0.5), @(0, 1), @(0.42, 1), @(1, 1)); $e = @(@(0, 1), @(0, 2), @(1, 3), @(1, 4), @(2, 5)); $bad = 1; $tun = @(1, 5) }
+        'star'   { $n = @(@(0.5, 0.5), @(0.5, 0), @(0.95, 0.32), @(0.8, 1), @(0.2, 1), @(0.05, 0.32)); $e = @(@(0, 1), @(0, 2), @(0, 3), @(0, 4), @(0, 5)); $bad = 2; $tun = @(1, 3) }
+        default  { $n = @(@(0.5, 0), @(0.08, 0.45), @(0.92, 0.45), @(0.28, 1), @(0.72, 1)); $e = @(@(0, 1), @(0, 2), @(1, 2), @(1, 3), @(2, 4), @(3, 4), @(1, 4)); $bad = 1; $tun = @(1, 4) }
+    }
+    $r = [math]::Max(3.5, $H / 9)
+    $pt = { param($i) @(($r + $n[$i][0] * ($W - 2 * $r)), ($r + $n[$i][1] * ($H - 2 * $r))) }
+    foreach ($ed in $e) {
+        $a = & $pt $ed[0]; $b = & $pt $ed[1]
+        $l = New-Object Windows.Shapes.Line; $l.X1 = $a[0]; $l.Y1 = $a[1]; $l.X2 = $b[0]; $l.Y2 = $b[1]
+        $l.Stroke = & $brush '#5A5F8A'; $l.StrokeThickness = [math]::Max(1.2, $r / 3.5)
+        [void]$cv.Children.Add($l)
+    }
+    if ($Attack -eq 'wormhole') {
+        $a = & $pt $tun[0]; $b = & $pt $tun[1]
+        $inv = [Globalization.CultureInfo]::InvariantCulture
+        $cy = [math]::Max(0, [math]::Min($a[1], $b[1]) - $H * 0.55)
+        $arc = New-Object Windows.Shapes.Path
+        $arc.Data = [Windows.Media.Geometry]::Parse([string]::Format($inv, 'M {0:0.0},{1:0.0} Q {2:0.0},{3:0.0} {4:0.0},{5:0.0}', $a[0], $a[1], (($a[0] + $b[0]) / 2), $cy, $b[0], $b[1]))
+        $arc.Stroke = & $brush $Pal.Purple; $arc.StrokeThickness = [math]::Max(1.4, $r / 3)
+        $arc.StrokeDashArray = New-Object Windows.Media.DoubleCollection (, [double[]]@(2, 1.5))
+        [void]$cv.Children.Add($arc)
+    }
+    for ($i = 0; $i -lt $n.Count; $i++) {
+        $p = & $pt $i
+        $d = New-Object Windows.Shapes.Ellipse; $d.Width = 2 * $r; $d.Height = 2 * $r
+        if ($i -eq 0) { $d.Fill = & $brush $Pal.Amber }
+        elseif ($Attack -eq 'blackhole' -and $i -eq $bad) { $d.Fill = & $brush '#0B0C14'; $d.Stroke = & $brush $Pal.Red; $d.StrokeThickness = [math]::Max(1.5, $r / 2.5) }
+        elseif ($Attack -eq 'wormhole' -and $tun -contains $i) { $d.Fill = & $brush $Pal.Purple }
+        else { $d.Fill = & $brush $Pal.Blue }
+        [Windows.Controls.Canvas]::SetLeft($d, $p[0] - $r); [Windows.Controls.Canvas]::SetTop($d, $p[1] - $r)
+        [void]$cv.Children.Add($d)
+    }
+    return $cv
+}
+# the same drawing as a frozen picture, for lists that bind it (one per kind)
+$script:TopoImg = @{}
+function Get-TopoImage([string]$Topo, [string]$Attack, [int]$W = 80, [int]$H = 52) {
+    $k = "$Topo|$Attack|$W"; if ($script:TopoImg[$k]) { return $script:TopoImg[$k] }
+    $cv = New-TopoArt $Topo $Attack $W $H
+    $cv.Measure((New-Object Windows.Size $W, $H)); $cv.Arrange((New-Object Windows.Rect 0, 0, $W, $H))
+    $bmp = New-Object Windows.Media.Imaging.RenderTargetBitmap (2 * $W), (2 * $H), 192, 192, ([Windows.Media.PixelFormats]::Pbgra32)
+    $bmp.Render($cv); $bmp.Freeze()
+    $script:TopoImg[$k] = $bmp; return $bmp
+}
+function Test-BoardHere($B, $LiveMacs) {
+    # same rule as the board list: by MAC first (any USB socket), then by port
+    $mac = ([string]$B.Mac).ToLower(); if ($mac -and $LiveMacs[$mac]) { return $true }
+    $port = [string]$B.Port
+    if (-not $port -or -not $script:Live.Contains($port)) { return $false }
+    $other = $script:Live[$port].Mac
+    return (-not $other -or $other -eq $mac)
+}
+function Get-BoardTone($B) {
+    if ($B.Role -eq 'root') { $Pal.Amber } elseif ($B.Kind -eq 'attacker') { $Pal.Red } elseif ($B.Kind -in @('A', 'B')) { $Pal.Purple } else { $Pal.Blue }
+}
+function Get-PresetLook($P) {
+    # the preset's cell on the campaign plan -> a ribbon key (or '' while loading)
+    if (-not $script:Campaign) { return '' }
+    $key = Get-CellKey $P.Attack $P.Topology $P.Location $P.Scenario
+    $nx = $script:Campaign.next
+    if ($nx -and (Get-CellKey $(if ($nx.kind -eq 'benign') { 'baseline' } else { $nx.attack }) $nx.topology $nx.location $nx.scenario) -eq $key) { return 'next' }
+    $s = $script:SlotByKey[$key]
+    if (-not $s) { return 'off' }
+    return (Get-SlotLook $s)
+}
+function New-CapChip([string]$Text, [string]$Fg, [string]$Bg) {
+    $b = New-Object Windows.Controls.Border; $b.CornerRadius = 8; $b.Padding = '7,1'; $b.Margin = '0,0,5,4'; $b.Background = & $brush $Bg
+    $b.Child = New-Text $Text 11 $Fg 'SemiBold'; return $b
+}
+function New-MacChip([string]$Mac, [string]$Tone) {
+    # 20:50:0D:E7:[1C:38] - monospaced, upper case, click copies it
+    $m = $Mac.ToUpper(); $parts = @($m -split '[:\-]')
+    $c = New-Object Windows.Controls.Border; $c.CornerRadius = 6; $c.Padding = '7,2'; $c.Background = & $brush '#12131F'
+    $c.BorderBrush = & $brush $Pal.Line; $c.BorderThickness = 1; $c.Cursor = 'Hand'; $c.VerticalAlignment = 'Center'
+    $c.ToolTip = "$m`nclick to copy"
+    $t = New-Object Windows.Controls.TextBlock; $t.FontFamily = 'Consolas'; $t.FontSize = 13
+    if ($parts.Count -ge 6) {
+        $r1 = New-Object Windows.Documents.Run (($parts[0..3] -join ':') + ':'); $r1.Foreground = & $brush $Pal.Text; $t.Inlines.Add($r1)
+        $r2 = New-Object Windows.Documents.Run ($parts[4..($parts.Count - 1)] -join ':'); $r2.Foreground = & $brush $Tone; $r2.FontWeight = 'Bold'; $t.Inlines.Add($r2)
+    } else { $t.Text = $(if ($m) { $m } else { 'no MAC saved' }); $t.Foreground = & $brush $Pal.Text }
+    $c.Child = $t; $c.Tag = $m
+    $c.Add_MouseLeftButtonUp({ param($x) if ($x.Tag) { try { [Windows.Clipboard]::SetText([string]$x.Tag); Show-Toast 'MAC copied' ([string]$x.Tag) ([string][char]0xE8C8) } catch { } } })
+    return $c
+}
+function New-Avatar([string]$Name, $Tone, [double]$Size) {
+    $a = New-Object Windows.Controls.Border; $a.Width = $Size; $a.Height = $Size; $a.CornerRadius = $Size / 2
+    $a.Background = New-Grad $Tone[0] $Tone[1]; $a.VerticalAlignment = 'Center'
+    $t = New-Text $(if ($Name -eq 'everyone') { [string][char]0x2605 } else { $Name.Substring(0, 1).ToUpper() }) ($Size * 0.48) '#FFFFFF' 'Bold'
+    $t.HorizontalAlignment = 'Center'; $a.Child = $t; return $a
+}
+# frozen, shared brushes for the list rows (cheap, and safe to bind)
+$script:FBrush = @{}
+function Get-FBrush([string]$A, [string]$B = '', [string]$End = '1,0') {
+    $k = "$A|$B|$End"; $x = $script:FBrush[$k]
+    if (-not $x) { $x = $(if ($B) { New-Grad $A $B $End } else { & $brush $A }).psobject.BaseObject; $x.Freeze(); $script:FBrush[$k] = $x }
+    return $x
+}
+$script:RowCache = @{}
+$script:LiveVer = 0; $script:CampVer = 0
+function Format-PresetDate([datetime]$D, [switch]$Ago) {
+    # 'today 3:05 PM' / 'yesterday' / '3 days ago' / 'Oct 05' - friendly, short
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $days = ((Get-Date).Date - $D.Date).Days
+    if ($Ago) {
+        if ($days -le 0) { return 'today' } elseif ($days -eq 1) { return 'yesterday' } elseif ($days -lt 14) { return "$days days ago" }
+        elseif ($days -lt 60) { return "$([math]::Floor($days / 7)) weeks ago" } else { return "$([math]::Floor($days / 30)) months ago" }
+    }
+    if ($days -le 0) { 'today  ' + $D.ToString('h:mm tt', $inv) } elseif ($days -eq 1) { 'yesterday  ' + $D.ToString('h:mm tt', $inv) }
+    elseif ($days -lt 7) { "$days days ago  ·  " + $D.ToString('MMM dd', $inv) } else { $D.ToString('MMM dd, yyyy', $inv) }
+}
+function New-PresetRow($P, $LiveMacs) {
+    # rebuilt only when a board was plugged / identified (LiveVer) or the
+    # campaign / redo list changed (CampVer) - a filter click reuses the row as is
+    $ver = "$($script:LiveVer)|$($script:CampVer)"
+    $hit = $script:RowCache[$P.Path]; if ($hit -and $hit.Ver -eq $ver) { return $hit }
+    $look = Get-PresetLook $P
+    $bs = @($P.Cfg.boards); $mask = -join @($bs | ForEach-Object { if (Test-BoardHere $_ $LiveMacs) { '1' } else { '0' } })
+    $here = ($mask.ToCharArray() | Where-Object { $_ -eq '1' }).Count
+    $ck = "$($P.Path)|$look|$mask"
+    if ($hit -and $hit.Key -eq $ck) { $hit.Ver = $ver; return $hit }
+    $tone = if ($script:AtkTone[$P.Attack]) { $script:AtkTone[$P.Attack] } else { $Pal.Text }
+    $lt = if ($script:LocTone[$P.Location]) { $script:LocTone[$P.Location] } else { $Pal.Blue }
+    $sl = $script:ScnLook[$P.Scenario]; if (-not $sl) { $sl = @{ S = [string][char]0x25CF; C = $Pal.Dim } }
+    $rb = if ($look) { $script:CardRibbon[$look] } else { $null }
+    $ot = Get-OwnerTone $P.Owner
+    $hc = if (-not $bs.Count) { $Pal.Faint } elseif ($here -eq $bs.Count) { $Pal.Green } elseif ($here) { $Pal.Amber } else { $Pal.Faint }
+    $dots = @(@($bs | Sort-Object { if ($_.Role -eq 'root') { 1 } else { 0 } }) | ForEach-Object {
+        $bt = Get-BoardTone $_; $ok = Test-BoardHere $_ $LiveMacs
+        [pscustomobject]@{ Fill = (Get-FBrush $(if ($ok) { $bt } else { '#00000000' })); Stroke = (Get-FBrush $bt); Op = $(if ($ok) { 1.0 } else { 0.55 })
+                           Tip = ("{0}  ·  {1}`n{2}`n{3}" -f $_.Label, $(if ($_.Role -eq 'root') { 'ROOT' } else { [string]$_.Kind }), ([string]$_.Mac).ToUpper(), $(if ($ok) { 'plugged in' } else { "not plugged in (saved on $($_.Port))" })) } })
+    $row = [pscustomobject]@{
+        P = $P; Key = $ck; Ver = $ver; Ready = ($bs.Count -and $here -eq $bs.Count); Look = $look; Dots = $dots
+        CardBg = (Get-FBrush ($tone -replace '#', '#30') $Pal.Card '0,1')
+        Art = (Get-TopoImage $P.Topology $P.Attack 64 38).psobject.BaseObject
+        RowBg = (Get-FBrush ($tone -replace '#', '#2A') $Pal.Card '1,0')
+        AtkText = $P.Attack.ToUpper(); AtkFg = (Get-FBrush $tone)
+        RepText = $(if ($P.Repeat -gt 1) { "   ·   repeat $($P.Repeat)" } else { '' }) + $(if ($P.NameFlag) { '   (!) name' } else { '' })
+        Topo = ($P.Topology -replace '_', ' ')
+        LocText = ($P.Location -replace '_', ' '); LocFg = (Get-FBrush $lt); LocBg = (Get-FBrush ($lt -replace '#', '#2A'))
+        ScnText = "$($sl.S) $($P.Scenario)"; ScnFg = (Get-FBrush $sl.C); ScnBg = (Get-FBrush ($sl.C -replace '#', '#2A'))
+        Owner = $P.Owner; OwnerInit = $P.Owner.Substring(0, 1).ToUpper(); OwnerBg = (Get-FBrush $ot[0] $ot[1] '1,1')
+        DateText = ([string][char]0x25F7 + '  ' + (Format-PresetDate $P.Saved))
+        DateDay = $P.Saved.ToString('MMM dd, yyyy', [Globalization.CultureInfo]::InvariantCulture); DateAgo = (Format-PresetDate $P.Saved -Ago)
+        DateFull = ('saved ' + $P.Saved.ToString('dddd, MMMM dd yyyy  h:mm tt', [Globalization.CultureInfo]::InvariantCulture))
+        HereText = $(if ($bs.Count -and $here -eq $bs.Count) { [string][char]0x2714 + ' all here' } else { "$here/$($bs.Count) here" }); HereFg = (Get-FBrush $hc)
+        RibText = $(if ($look -eq 'next') { [string][char]0x25B6 + ' UP NEXT' } elseif ($rb) { $rb.T } else { '' })
+        RibFg = (Get-FBrush $(if ($look -eq 'next') { '#FFFFFF' } elseif ($rb) { $rb.C } else { $Pal.Faint }))
+        RibBg = $(if ($look -eq 'next') { Get-FBrush '#8B5CF6' '#EC4899' '1,0' } elseif ($rb) { Get-FBrush ($rb.C -replace '#', '#2E') } else { Get-FBrush '#00000000' })
+        Tip = "$($P.File)`n$($P.Boards) boards  ·  key boards: $(if ($P.KeyBoards) { $P.KeyBoards } else { '-' })`nsaved $($P.SavedText)$(if ($rb) { "`n`n$($rb.Tip)" })`n`nclick = look inside  ·  double-click = use it"
+    }
+    $script:RowCache[$P.Path] = $row
+    return $row
+}
+function Update-PresetList($Rows, $LiveMacs) {
+    $script:ListBusy = $true
+    try {
+        $items = New-Object System.Collections.ArrayList
+        $ready = 0
+        foreach ($p in $Rows) { $r = New-PresetRow $p $LiveMacs; if ($r.Ready) { $ready++ }; [void]$items.Add($r) }
+        $ui.PresetList.ItemsSource = $items
+        $sel = $ui.PresetGrid.SelectedItem
+        if ($sel) { $hit = @($items | Where-Object { $_.P.Path -eq $sel.Path }); if ($hit.Count) { $ui.PresetList.SelectedItem = $hit[0] } }
+        $owners = @($Rows | ForEach-Object Owner | Sort-Object -Unique).Count
+        $ui.CapSub.Text = ("{0} preset{1} from {2} {3}  ·  {4} ready to run on this laptop now  ·  click a row to look inside, double-click to use it  ·  pick a name above for their card boxes" -f
+            $Rows.Count, $(if ($Rows.Count -ne 1) { 's' } else { '' }), $owners, $(if ($owners -eq 1) { 'person' } else { 'people' }), $ready)
+    } finally { $script:ListBusy = $false }
+}
+$onPick = {
+    param($s)
+    if ($script:ListBusy) { return }
+    $r = $s.SelectedItem
+    if ($r -and $ui.PresetGrid.SelectedItem -ne $r.P) { $ui.PresetGrid.SelectedItem = $r.P }
+}
+$onUse = { param($s) if ($s.SelectedItem) { $ui.StartCapture.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))) } }
+$ui.PresetList.Add_SelectionChanged($onPick)
+$ui.PresetList.Add_MouseDoubleClick($onUse)
+function Sync-PresetSelection {
+    # the hidden PresetGrid holds THE selection; the list / card groups follow it
+    $p = $ui.PresetGrid.SelectedItem
+    $script:ListBusy = $true
+    try {
+        foreach ($lb in @(@($ui.PresetList) + @($script:CardGroups))) {
+            if (-not $lb -or -not $lb.ItemsSource) { continue }
+            $hit = if ($p) { @($lb.ItemsSource | Where-Object { $_.P.Path -eq $p.Path }) } else { @() }
+            if ($hit.Count) {
+                $lb.SelectedItem = $hit[0]
+                if ($lb -eq $ui.PresetList) { if ($lb.IsVisible) { $lb.ScrollIntoView($hit[0]) } }
+                else { $ct = $lb.ItemContainerGenerator.ContainerFromItem($hit[0]); if ($ct) { $ct.BringIntoView() } }
+            } else { $lb.SelectedItem = $null }
+        }
+    } finally { $script:ListBusy = $false }
+}
+function Update-PresetGallery([switch]$Quiet) {
+    $g = $ui.PresetGallery
+    $g.Children.Clear(); $script:CardGroups = New-Object System.Collections.ArrayList
+    $rows = @($ui.PresetGrid.ItemsSource | Where-Object { $_ })
+    $liveMacs = Get-LiveMacs
+    Update-SlotIndex
+    if (-not $rows.Count) {
+        $ui.PresetList.Visibility = 'Collapsed'; $ui.PresetScroll.Visibility = 'Visible'; $ui.PresetList.ItemsSource = $null
+        $empty = New-Object Windows.Controls.Border; $empty.Style = $win.FindResource('Card'); $empty.Padding = '30,34'
+        $es = New-Object Windows.Controls.StackPanel; $es.HorizontalAlignment = 'Center'
+        $eg = New-Text ([string][char]0x2727) 44 $Pal.Pink; $eg.HorizontalAlignment = 'Center'
+        $et = New-Text 'No preset matches' 18 $Pal.Text 'Bold'; $et.HorizontalAlignment = 'Center'; $et.Margin = '0,6,0,4'
+        $ex = New-Text 'Clear the search / filters, or make a new preset with "+ New preset" (top right).' 12 $Pal.Dim; $ex.HorizontalAlignment = 'Center'
+        foreach ($x in $eg, $et, $ex) { [void]$es.Children.Add($x) }
+        $empty.Child = $es; [void]$g.Children.Add($empty); return
+    }
+    # Everyone -> the fast list; a person -> their card boxes
+    $listMode = ([string]$ui.OwnerPick.SelectedItem -eq 'everyone')
+    $ui.PresetList.Visibility = $(if ($listMode) { 'Visible' } else { 'Collapsed' })
+    $ui.PresetScroll.Visibility = $(if ($listMode) { 'Collapsed' } else { 'Visible' })
+    if ($listMode) { $ui.PresetList.Visibility = 'Visible'; Update-PresetList $rows $liveMacs; Sync-PresetSelection; return }
+    $owners = @($rows | ForEach-Object Owner | Sort-Object -Unique | Sort-Object @{ E = { if ($_ -eq $script:Me) { 0 } elseif ($_ -eq '(unfiled)') { 2 } else { 1 } } }, @{ E = { $_ } })
+    $readyAll = 0
+    foreach ($o in $owners) {
+        $tone = Get-OwnerTone $o
+        $mine = @($rows | Where-Object { $_.Owner -eq $o })
+        $isMe = ($script:Me -and $o -eq $script:Me)
+        # the person's box: soft gradient in their colours, a big initial behind it
+        $box = New-Object Windows.Controls.Border; $box.CornerRadius = 20; $box.Padding = '18,16,6,4'; $box.Margin = '0,0,0,16'
+        $box.Background = New-Grad ($tone[0] -replace '#', '#24') ($tone[1] -replace '#', '#0C')
+        $box.BorderBrush = New-Grad ($tone[0] -replace '#', '#99') ($tone[1] -replace '#', '#30'); $box.BorderThickness = 1.5
+        $layer = New-Object Windows.Controls.Grid
+        $wm = New-Text $(if ($isMe) { [string][char]0x2665 } else { $o.Substring(0, 1).ToUpper() }) 150 ($tone[1] -replace '#', '#16') 'Black'
+        $wm.HorizontalAlignment = 'Right'; $wm.VerticalAlignment = 'Top'; $wm.Margin = '0,-48,18,0'; $wm.IsHitTestVisible = $false
+        [void]$layer.Children.Add($wm)
+        $body = New-Object Windows.Controls.StackPanel
+        # header: avatar + name + what is in the box
+        $hd = New-Object Windows.Controls.DockPanel; $hd.Margin = '0,0,12,6'
+        $av = New-Avatar $o $tone 46; $av.Margin = '0,0,14,0'
+        $fx = New-Object Windows.Media.Effects.DropShadowEffect; $fx.ShadowDepth = 0; $fx.BlurRadius = 16; $fx.Opacity = 0.6; $fx.Color = [Windows.Media.ColorConverter]::ConvertFromString($tone[0]); $av.Effect = $fx
+        [Windows.Controls.DockPanel]::SetDock($av, 'Left'); [void]$hd.Children.Add($av)
+        $nm = New-Object Windows.Controls.StackPanel; $nm.VerticalAlignment = 'Center'
+        $nl = New-Object Windows.Controls.StackPanel; $nl.Orientation = 'Horizontal'
+        [void]$nl.Children.Add((New-Text $(if ($o -eq '(unfiled)') { 'Unfiled' } else { "$o's presets" }) 19 $Pal.Text 'Bold'))
+        if ($isMe) { $yo = New-CapChip ([string][char]0x2665 + '  you') '#FFFFFF' $Pal.Pink; $yo.Margin = '10,4,0,0'; $yo.Background = New-Grad $tone[0] $tone[1]; [void]$nl.Children.Add($yo) }
+        [void]$nm.Children.Add($nl)
+        $sub = New-Text '' 12 $Pal.Dim; $sub.Margin = '0,2,0,0'
+        [void]$nm.Children.Add($sub)
+        [void]$hd.Children.Add($nm)
+        [void]$body.Children.Add($hd)
+        $ready = 0; $needed = 0
+        foreach ($atk in @('blackhole', 'wormhole', 'baseline')) {
+            $set = @($mine | Where-Object { $_.Attack -eq $atk })
+            if (-not $set.Count) { continue }
+            $at = $script:AtkTone[$atk]
+            # divider: attack pill + a line in its colour
+            $band = New-Object Windows.Controls.DockPanel; $band.Margin = '0,10,12,10'
+            $pill = New-Object Windows.Controls.Border; $pill.CornerRadius = 8; $pill.Padding = '10,2'; $pill.Background = & $brush ($at -replace '#', '#33')
+            $pl = New-Object Windows.Controls.StackPanel; $pl.Orientation = 'Horizontal'
+            [void]$pl.Children.Add((New-Text $atk.ToUpper() 11 $at 'Bold')); $pn = New-Text "   $($set.Count)" 11 $Pal.Dim 'SemiBold'; [void]$pl.Children.Add($pn)
+            $pill.Child = $pl; [Windows.Controls.DockPanel]::SetDock($pill, 'Left'); [void]$band.Children.Add($pill)
+            $ln = New-Object Windows.Controls.Border; $ln.Height = 2; $ln.CornerRadius = 1; $ln.Margin = '10,0,0,0'; $ln.VerticalAlignment = 'Center'
+            $ln.Background = New-Grad ($at -replace '#', '#66') ($at -replace '#', '#00') '1,0'
+            [void]$band.Children.Add($ln)
+            [void]$body.Children.Add($band)
+            $items = New-Object System.Collections.ArrayList
+            foreach ($p in $set) {
+                $r = New-PresetRow $p $liveMacs
+                if ($r.Ready) { $ready++ }
+                if ($r.Look -in @('next', 'todo', 'partial', 'redo')) { $needed++ }
+                [void]$items.Add($r)
+            }
+            $lb = New-Object Windows.Controls.ListBox
+            $lb.Style = $win.FindResource('CardGroup'); $lb.ItemContainerStyle = $win.FindResource('PresetCardItem'); $lb.ItemTemplate = $win.FindResource('PresetCardTpl')
+            $lb.ItemsSource = $items
+            $lb.Add_SelectionChanged($onPick); $lb.Add_MouseDoubleClick($onUse)
+            [void]$script:CardGroups.Add($lb)
+            [void]$body.Children.Add($lb)
+        }
+        $readyAll += $ready
+        $bits = @("$($mine.Count) preset$(if ($mine.Count -ne 1) { 's' })")
+        if ($ready) { $bits += "$ready ready to run now" }
+        if ($needed) { $bits += "$needed the campaign still needs" }
+        $sub.Text = $bits -join '   ·   '
+        [void]$layer.Children.Add($body)
+        $box.Child = $layer
+        [void]$g.Children.Add($box)
+    }
+    $ui.CapSub.Text = ("{0} preset{1} from {2} {3}  ·  {4} ready to run on this laptop now  ·  click a card to look inside, double-click to use it" -f
+        $rows.Count, $(if ($rows.Count -ne 1) { 's' } else { '' }), $owners.Count, $(if ($owners.Count -eq 1) { 'person' } else { 'people' }), $readyAll)
+    Sync-PresetSelection
+}
+function Update-SlotIndex {
+    # campaign cell -> slot, for the ribbons and the 'needs it / done' filter
+    $script:SlotByKey = @{}
+    if ($script:Campaign) { foreach ($s in @($script:Campaign.slots)) { $script:SlotByKey[(Get-CellKey $(if ($s.kind -eq 'benign') { 'baseline' } else { $s.attack }) $s.topology $s.location $s.scenario)] = $s } }
+}
+function Update-CaptureChips {
+    # people + attack chips (built from the hidden pickers, kept in step with them)
+    $ui.OwnerChips.Children.Clear()
+    foreach ($o in @($ui.OwnerPick.ItemsSource)) {
+        $rb = New-Object Windows.Controls.RadioButton; $rb.Style = $win.FindResource('Chip'); $rb.GroupName = 'capOwner'; $rb.Tag = $o; $rb.Padding = '0'
+        $sp = New-Object Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'; $sp.Margin = '-6,0,0,0'
+        $tone = if ($o -eq 'everyone') { @('#8B5CF6', '#22D3EE') } else { Get-OwnerTone $o }
+        [void]$sp.Children.Add((New-Avatar $o $tone 20))
+        $n = if ($o -eq 'everyone') { @($script:Presets).Count } else { @($script:Presets | Where-Object { $_.Owner -eq $o }).Count }
+        $nt = New-Object Windows.Controls.TextBlock; $nt.Text = $(if ($o -eq 'everyone') { 'Everyone' } else { $o }); $nt.VerticalAlignment = 'Center'; $nt.Margin = '7,0,0,0'
+        [void]$sp.Children.Add($nt)
+        $ct = New-Text "  $n" 11 $Pal.Faint 'SemiBold'; [void]$sp.Children.Add($ct)
+        if ($o -eq $script:Me) { [void]$sp.Children.Add((New-Text ('  ' + [char]0x2665) 11 $Pal.Pink)) }
+        $rb.Content = $sp
+        $rb.IsChecked = ($o -eq [string]$ui.OwnerPick.SelectedItem)
+        $rb.Add_Checked({ param($x) if ([string]$ui.OwnerPick.SelectedItem -ne [string]$x.Tag) { $ui.OwnerPick.SelectedItem = [string]$x.Tag } })
+        [void]$ui.OwnerChips.Children.Add($rb)
+    }
+    if ($ui.AttackChips.Children.Count) { return }
+    foreach ($a in @($ui.AttackPick.ItemsSource)) {
+        $rb = New-Object Windows.Controls.RadioButton; $rb.Style = $win.FindResource('Chip'); $rb.GroupName = 'capAtk'; $rb.Tag = $a
+        $sp = New-Object Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
+        if ($script:AtkTone[$a]) { $d = New-Object Windows.Shapes.Ellipse; $d.Width = 8; $d.Height = 8; $d.Fill = & $brush $script:AtkTone[$a]; $d.Margin = '0,0,7,0'; $d.VerticalAlignment = 'Center'; [void]$sp.Children.Add($d) }
+        $t = New-Object Windows.Controls.TextBlock; $t.Text = $(if ($a -eq 'all attacks') { 'All' } else { $a }); $t.VerticalAlignment = 'Center'; [void]$sp.Children.Add($t)
+        $rb.Content = $sp
+        $rb.IsChecked = ($a -eq [string]$ui.AttackPick.SelectedItem)
+        $rb.Add_Checked({ param($x) if ([string]$ui.AttackPick.SelectedItem -ne [string]$x.Tag) { $ui.AttackPick.SelectedItem = [string]$x.Tag } })
+        [void]$ui.AttackChips.Children.Add($rb)
+    }
+}
+function Sync-CaptureChips {
+    foreach ($rb in @($ui.OwnerChips.Children)) { if ([string]$rb.Tag -eq [string]$ui.OwnerPick.SelectedItem) { $rb.IsChecked = $true } }
+    foreach ($rb in @($ui.AttackChips.Children)) { if ([string]$rb.Tag -eq [string]$ui.AttackPick.SelectedItem) { $rb.IsChecked = $true } }
+}
+function Update-CaptureHero {
+    # the campaign's next run on top of the page, with the preset for it
+    $n = if ($script:Campaign) { $script:Campaign.next } else { $null }
+    if (-not $n) { $ui.CapHero.Visibility = 'Collapsed'; return }
+    $a = if ($n.kind -eq 'benign') { 'baseline' } else { [string]$n.attack }
+    $key = Get-CellKey $a $n.topology $n.location $n.scenario
+    $hits = @($script:Presets | Where-Object { (Get-CellKey $_.Attack $_.Topology $_.Location $_.Scenario) -eq $key } | Sort-Object Saved -Descending)
+    $ui.CapHeroTitle.Text = "$a  ·  $($n.topology -replace '_', ' ')  ·  $($n.location -replace '_', ' ')  ·  $($n.scenario)"
+    if ($hits.Count) {
+        $liveMacs = Get-LiveMacs; $best = $hits[0]
+        $bs = @($best.Cfg.boards); $here = @($bs | Where-Object { Test-BoardHere $_ $liveMacs }).Count
+        $ui.CapHeroSub.Text = ("{0} preset{1} for it  ·  newest is {2}'s  ·  {3}/{4} of its boards plugged in here" -f $hits.Count, $(if ($hits.Count -ne 1) { 's' } else { '' }), $best.Owner, $here, $bs.Count)
+        $ui.CapHeroGo.Content = 'Pick it  ' + [char]0x2192
+    } else {
+        $ui.CapHeroSub.Text = 'Nobody has a preset for it yet - make one, the cell is filled in for you.'
+        $ui.CapHeroGo.Content = '+  Make its preset'
+    }
+    if ($ui.CapHero.Visibility -ne 'Visible') { $ui.CapHero.Visibility = 'Visible'; $ui.CapHero.BeginAnimation([Windows.UIElement]::OpacityProperty, (New-Fade 0 1 400)) }
+}
+$ui.CapHeroGo.Add_Click({ if ($script:Campaign -and $script:Campaign.next) { Start-CellCapture $script:Campaign.next } })
+function Update-CaptureCampaign {
+    # the campaign plan / redo list arrived or changed: ribbons + banner follow
+    # (only when the page is open - otherwise when it is next opened)
+    $script:CampVer++
+    if (-not $script:Presets) { return }
+    if ($ui.Pages.SelectedIndex -ne 1) { $script:CapDirty = $true; return }
+    Update-CaptureHero; Update-PresetGallery -Quiet
+}
+$ui.Pages.Add_SelectionChanged({
+    param($s, $e)
+    if ($e.OriginalSource -ne $ui.Pages -or $ui.Pages.SelectedIndex -ne 1) { return }
+    if ($script:CapDirty -and $script:Presets) {
+        $script:CapDirty = $false
+        $keep = if ($ui.PresetGrid.SelectedItem) { $ui.PresetGrid.SelectedItem.Path } else { '' }
+        Update-PresetGrid; if ($keep) { Select-Preset $keep }
+        Update-CaptureHero
+    }
+})
+function Update-CaptureLive {
+    # a board plugged in / out / identified: card dots, banner and detail follow
+    if (-not $script:Presets) { return }
+    $keep = if ($ui.PresetGrid.SelectedItem) { $ui.PresetGrid.SelectedItem.Path } else { '' }
+    if ($ui.ReadyOnly.IsChecked) { Update-PresetGrid; if ($keep) { Select-Preset $keep } } else { Update-PresetGallery -Quiet }
+    Update-CaptureHero; Show-PresetDetail
+}
+
 function Update-PresetGrid {
     $who = [string]$ui.OwnerPick.SelectedItem; $atk = [string]$ui.AttackPick.SelectedItem
     # search: every typed word must appear somewhere (cell, owner, file, any MAC)
     $words = @(([string]$ui.PresetSearch.Text).ToLower() -split '\s+' | Where-Object { $_ })
     $ui.PresetSearchHint.Visibility = $(if ($ui.PresetSearch.Text) { 'Collapsed' } else { 'Visible' })
+    $liveMacs = Get-LiveMacs
+    Update-SlotIndex
+    $fTopo = if ($ui.PresetFTopo.SelectedIndex -gt 0) { [string]$ui.PresetFTopo.SelectedItem } else { '' }
+    $fLoc = if ($ui.PresetFLoc.SelectedIndex -gt 0) { [string]$ui.PresetFLoc.SelectedItem } else { '' }
+    $fScn = if ($ui.PresetFScn.SelectedIndex -gt 0) { [string]$ui.PresetFScn.SelectedItem } else { '' }
+    $fState = if ($ui.PresetFNeed.IsChecked) { @('next', 'todo', 'partial', 'redo') } elseif ($ui.PresetFDone.IsChecked) { @('ok', 'done', 'check', 'analyse') } else { $null }
     $rows = @($script:Presets | Where-Object {
         ($who -eq 'everyone' -or $_.Owner -eq $who) -and ($atk -eq 'all attacks' -or $_.Attack -eq $atk) -and
+        (-not $fTopo -or ($_.Topology -replace '^partial$', 'partial_mesh') -eq $fTopo) -and (-not $fLoc -or $_.Location -eq $fLoc) -and
+        (-not $fScn -or $_.Scenario -eq $fScn) -and (-not $fState -or (New-PresetRow $_ $liveMacs).Look -in $fState) -and
+        $(if (-not $ui.ReadyOnly.IsChecked) { $true } else { $bs = @($_.Cfg.boards); $bs.Count -and -not @($bs | Where-Object { -not (Test-BoardHere $_ $liveMacs) }).Count }) -and
         $(if (-not $words.Count) { $true } else {
             $hay = ('{0} {1} {2} {3} {4} {5} {6}' -f $_.Attack, $_.Topology, $_.Location, $_.Scenario, $_.Owner, $_.File, (@($_.Cfg.boards | ForEach-Object { $_.Mac; $_.Port; $_.Label }) -join ' ')).ToLower()
             -not @($words | Where-Object { -not $hay.Contains($_) }).Count }) })
+    # sort (user, oct. 18 2026): newest first by default; 'By type' = the old order
+    $sortText = 'attack > topology > scenario > location > newest'
+    if ($ui.PresetSNew.IsChecked) { $rows = @($rows | Sort-Object Saved -Descending); $sortText = 'newest first' }
+    elseif ($ui.PresetSOld.IsChecked) { $rows = @($rows | Sort-Object Saved); $sortText = 'oldest first' }
+    # keep the selected preset selected when it is still shown
+    $keep = if ($ui.PresetGrid.SelectedItem) { $ui.PresetGrid.SelectedItem.Path } else { '' }
     $ui.PresetGrid.ItemsSource = $rows
+    Sync-CaptureChips
+    Update-PresetGallery
     if ($rows.Count -and $words.Count) { $ui.PresetGrid.SelectedIndex = 0 }   # searching: the best hit is ready to start
-    Set-Status ("{0} preset(s) shown  |  sorted attack > topology > scenario > location > newest" -f $rows.Count)
+    elseif ($keep) { Select-Preset $keep }
+    Set-Status ("{0} preset(s) shown  |  sorted {1}" -f $rows.Count, $sortText)
 }
 function Update-Presets {
     $script:Presets = Get-Presets
+    $script:CardCache = @{}; $script:RowCache = @{}
     $owners = @('everyone') + @($script:Presets | ForEach-Object Owner | Sort-Object -Unique)
     $keep = [string]$ui.OwnerPick.SelectedItem
+    $script:Building = $true
     $ui.OwnerPick.ItemsSource = $owners
     $ui.OwnerPick.SelectedItem = $(if ($owners -contains $keep) { $keep } elseif ($script:Me -and $owners -contains $script:Me) { $script:Me } else { 'everyone' })
     if (-not $ui.AttackPick.ItemsSource) { $ui.AttackPick.ItemsSource = @('all attacks', 'blackhole', 'wormhole', 'baseline'); $ui.AttackPick.SelectedIndex = 0 }
+    $script:Building = $false
+    Update-CaptureChips
     Update-PresetGrid
+    Update-CaptureHero
 }
-$ui.OwnerPick.Add_SelectionChanged({ if ($script:Presets) { Update-PresetGrid } })
-$ui.AttackPick.Add_SelectionChanged({ if ($script:Presets) { Update-PresetGrid } })
+$ui.OwnerPick.Add_SelectionChanged({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } })
+$ui.AttackPick.Add_SelectionChanged({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } })
+$ui.ReadyOnly.Add_Checked({ if ($script:Presets) { Update-PresetGrid } })
+$ui.PresetFTopo.ItemsSource = @('all topologies', 'linear', 'tree', 'star', 'partial_mesh')
+$ui.PresetFLoc.ItemsSource = @('all locations', 'G402', 'DLSU_Library', 'Yuchengco', 'home')
+$ui.PresetFScn.ItemsSource = @('all scenarios', 'stationary', 'burst', 'highload', 'jitter', 'mobility', 'powercycle')
+foreach ($n in 'PresetFTopo', 'PresetFLoc', 'PresetFScn') { $ui[$n].SelectedIndex = 0; $ui[$n].Add_SelectionChanged({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } }) }
+foreach ($n in 'PresetSNew', 'PresetSOld', 'PresetSType', 'PresetFAll', 'PresetFNeed', 'PresetFDone') { $ui[$n].Add_Checked({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } }) }
+$ui.PresetFClear.Add_Click({
+    $script:Building = $true
+    foreach ($n in 'PresetFTopo', 'PresetFLoc', 'PresetFScn') { $ui[$n].SelectedIndex = 0 }
+    $ui.PresetFAll.IsChecked = $true; $ui.ReadyOnly.IsChecked = $false; $ui.AttackPick.SelectedIndex = 0; $ui.PresetSearch.Text = ''
+    $script:Building = $false
+    Update-PresetGrid
+})
+$ui.ReadyOnly.Add_Unchecked({ if ($script:Presets) { Update-PresetGrid } })
 $ui.PresetsRefresh.Add_Click({ Update-Presets; Show-PresetDetail })
 
 function Show-PresetDetail {
     $p = $ui.PresetGrid.SelectedItem
     foreach ($b in 'StartCapture', 'OpenPresetFile', 'PresetEdit', 'PresetCopy', 'PresetDelete') { $ui[$b].IsEnabled = [bool]$p }
-    $ui.FixPorts.IsEnabled = $false
+    $ui.FixPorts.IsEnabled = $false; $ui.FixPorts.Visibility = 'Collapsed'
+    $ui.DetBoards.Children.Clear(); $ui.DetChips.Children.Clear()
     if (-not $p) {
-        $ui.BoardGrid.ItemsSource = $null
-        $ui.DetFile.Text = 'Select a preset above  (double-click one to use it)'
-        foreach ($n in 'DetCell', 'DetPorts', 'DetNote') { $ui[$n].Text = '' }
+        $ui.DetHero.Background = & $brush $Pal.Card2; $ui.DetArt.Content = $null
+        $ui.DetKicker.Text = 'PRESET'; $ui.DetTitle.Text = 'Pick a preset'
+        $ui.DetFile.Text = 'click one on the left to look inside - double-click to use it straight away'
+        foreach ($n in 'DetPorts', 'DetNote', 'DetReadyNum') { $ui[$n].Text = '' }
+        $ui.DetReady.Value = 0
         return
     }
-    $ui.DetFile.Text = $p.File + $(if ($p.NameFlag) { '   (!) name does not match its contents - trust the line below' } else { '' })
-    $ui.DetCell.Text = ("{0}  /  {1}  /  {2}  /  {3}     repeat {4}     owner {5}     saved {6}" -f
-        $p.Attack, $p.Topology, $p.Location, $p.Scenario, $p.Repeat, $p.Owner, $p.SavedText)
+    # header: the attack's colours, the mesh drawing, the cell as chips
+    $gr = $script:AtkGrad[$p.Attack]; if (-not $gr) { $gr = @($Pal.Accent, $Pal.Pink) }
+    $ui.DetHero.Background = New-Grad $gr[0] $gr[1]
+    $ui.DetArt.Content = New-TopoArt $p.Topology $p.Attack 112 70
+    $ui.DetKicker.Text = ("{0}  ·  {1}" -f $p.Attack.ToUpper(), $(if ($p.Owner -eq '(unfiled)') { 'UNFILED' } else { "$($p.Owner.ToUpper())'S PRESET" + $(if ($p.Owner -eq $script:Me) { '  ' + [char]0x2665 } else { '' }) }))
+    $ui.DetTitle.Text = "$($p.Topology -replace '_', ' ')  ·  $($p.Scenario)"
+    $ui.DetFile.Text = $p.File + $(if ($p.NameFlag) { '   (!) name does not match its contents - trust the chips' } else { '' })
+    $sl = $script:ScnLook[$p.Scenario]
+    foreach ($t in @(($p.Location -replace '_', ' '), $(if ($sl) { "$($sl.S) $($p.Scenario)" } else { $p.Scenario }), "repeat $($p.Repeat)", "saved $($p.SavedText)")) {
+        [void]$ui.DetChips.Children.Add((New-CapChip $t '#FFFFFF' '#33FFFFFF'))
+    }
+    $look = Get-PresetLook $p
+    if ($look) { $rb = $script:CardRibbon[$look]; $ch = New-CapChip $(if ($look -eq 'next') { [string][char]0x25B6 + ' UP NEXT' } else { $rb.T }) '#FFFFFF' '#55000000'; $ch.ToolTip = $rb.Tip; [void]$ui.DetChips.Children.Add($ch) }
     # A board is found by its MAC first (COM numbers follow the USB socket, so
     # a board moved to another socket is still "here"), then by its port.
     $liveMacs = Get-LiveMacs
     $livePorts = @($script:Live.Keys)
-    $rows = @(); $moved = 0
+    $moved = 0; $count = 0; $hereN = 0
     $boards = @($p.Cfg.boards | Sort-Object { if ($_.Role -eq 'root') { 1 } else { 0 } })
     foreach ($b in $boards) {
-        $tone = if ($b.Role -eq 'root') { 'root' } elseif ($b.Kind -in @('attacker', 'A', 'B')) { 'attacker' } else { 'child' }
+        $count++
+        $tone = Get-BoardTone $b
         $role = switch ([string]$b.Kind) {
             'attacker' { 'blackhole ATTACKER' } 'victim' { 'blackhole victim' } 'A' { 'tunnel end (auto A/B)' } 'B' { 'tunnel end (auto A/B)' }
             'control' { 'control (plain fw)' } default { if ($b.Role -eq 'root') { 'ROOT' } else { [string]$b.Display } } }
         if ($b.ScenarioTarget) { $role += '  + target' }
+        $sym = if ($b.Role -eq 'root') { [char]0x2605 } elseif ($b.Kind -eq 'attacker') { [char]0x2716 } elseif ($b.Kind -in @('A', 'B')) { [char]0x21C4 } elseif ($b.Kind -eq 'victim') { 'V' } elseif ($b.Kind -eq 'control') { 'C' } else { [char]0x2022 }
         $mac = ([string]$b.Mac).ToLower()
         $at = $liveMacs[$mac]
         $other = if ($script:Live.Contains([string]$b.Port)) { $script:Live[[string]$b.Port].Mac } else { '' }
-        if ($at -and $at -eq $b.Port) { $here = $true; $state = 'plugged in' }
-        elseif ($at) { $here = $true; $state = "on $at (saved $($b.Port))"; $moved++ }
-        elseif ($livePorts -contains [string]$b.Port -and $other -and $other -ne $mac) { $here = $false; $state = "$($b.Port) is another board" }
-        elseif ($livePorts -contains [string]$b.Port) { $here = $true; $state = 'port plugged in (MAC not read)' }
-        else { $here = $false; $state = 'not plugged in' }
+        if ($at -and $at -eq $b.Port) { $here = $true; $state = 'plugged in'; $st = $Pal.Green }
+        elseif ($at) { $here = $true; $state = "on $at"; $st = $Pal.Cyan; $moved++ }
+        elseif ($livePorts -contains [string]$b.Port -and $other -and $other -ne $mac) { $here = $false; $state = "$($b.Port) = another board"; $st = $Pal.Red }
+        elseif ($livePorts -contains [string]$b.Port) { $here = $true; $state = 'port here (MAC not read)'; $st = $Pal.Amber }
+        else { $here = $false; $state = 'not plugged in'; $st = $Pal.Red }
+        if ($here) { $hereN++ }
         $nk = $p.Nick[(Get-ShortMac ([string]$b.Mac))]
-        $rows += [pscustomobject]@{ Label = $b.Label; Role = $role; Tone = $tone; Port = $b.Port; Mac = $b.Mac
-                                    Nick = $(if ($nk) { $nk } else { '-' }); Here = $here; State = $state }
+        # one row: numbered role badge | label + role / port + MAC + nickname | status pill
+        $row = New-Object Windows.Controls.Border; $row.CornerRadius = 12; $row.Padding = '10,7'; $row.Margin = '6,0,6,6'
+        $row.Background = & $brush $Pal.Card2; $row.BorderThickness = '3,0,0,0'; $row.BorderBrush = & $brush $tone
+        $dp = New-Object Windows.Controls.DockPanel
+        $badge = New-Object Windows.Controls.Border; $badge.Width = 30; $badge.Height = 30; $badge.CornerRadius = 15; $badge.Margin = '0,0,10,0'
+        $badge.Background = & $brush ($tone -replace '#', '#33'); $badge.VerticalAlignment = 'Center'
+        $bg = New-Text ([string]$sym) 13 $tone 'Bold'; $bg.HorizontalAlignment = 'Center'; $badge.Child = $bg
+        [Windows.Controls.DockPanel]::SetDock($badge, 'Left'); [void]$dp.Children.Add($badge)
+        $pill = New-Object Windows.Controls.Border; $pill.CornerRadius = 9; $pill.Padding = '8,2'; $pill.VerticalAlignment = 'Center'; $pill.Margin = '8,0,0,0'
+        $pill.Background = & $brush ($st -replace '#', '#2E')
+        $pill.Child = New-Text $(if ($here -and $st -eq $Pal.Green) { [string][char]0x2714 + ' ' + $state } else { $state }) 11 $st 'SemiBold'
+        [Windows.Controls.DockPanel]::SetDock($pill, 'Right'); [void]$dp.Children.Add($pill)
+        $txt = New-Object Windows.Controls.StackPanel; $txt.VerticalAlignment = 'Center'
+        $l1 = New-Object Windows.Controls.TextBlock; $l1.TextTrimming = 'CharacterEllipsis'
+        $r1 = New-Object Windows.Documents.Run ([string]$b.Label); $r1.FontWeight = 'Bold'; $r1.Foreground = & $brush $Pal.Text; $l1.Inlines.Add($r1)
+        $r2 = New-Object Windows.Documents.Run ("   $role"); $r2.FontSize = 11.5; $r2.Foreground = & $brush $tone; $l1.Inlines.Add($r2)
+        # the MAC on its own, big and monospaced; the last two bytes (what tells
+        # two boards apart, same as the short MACs elsewhere) in the role colour
+        $l2 = New-Object Windows.Controls.WrapPanel; $l2.Margin = '0,3,0,0'
+        [void]$l2.Children.Add((New-MacChip ([string]$b.Mac) $tone))
+        $pt = New-Text ("  {0}{1}" -f $b.Port, $(if ($nk) { "  ·  $nk" } else { '' })) 11.5 $Pal.Dim; $pt.TextTrimming = 'CharacterEllipsis'
+        [void]$l2.Children.Add($pt)
+        [void]$txt.Children.Add($l1); [void]$txt.Children.Add($l2)
+        [void]$dp.Children.Add($txt)
+        $row.Child = $dp
+        [void]$ui.DetBoards.Children.Add($row)
     }
-    $ui.BoardGrid.ItemsSource = $rows
-    $ui.FixPorts.IsEnabled = ($moved -gt 0)
-    $miss = @($rows | Where-Object { -not $_.Here }).Count
-    if ($miss) { $ui.DetPorts.Text = "$miss of $($rows.Count) board(s) not plugged in - plug them in; this list updates by itself."; $ui.DetPorts.Foreground = & $brush $Pal.Amber }
-    elseif ($moved) { $ui.DetPorts.Text = "Every board is here, but $moved moved to another USB socket - press 'Use the ports the boards are on now' (the CLI would also re-match them by MAC)."; $ui.DetPorts.Foreground = & $brush $Pal.Cyan }
-    else { $ui.DetPorts.Text = 'Every board is plugged in - ready to start.'; $ui.DetPorts.Foreground = & $brush $Pal.Green }
+    $ui.FixPorts.IsEnabled = ($moved -gt 0); $ui.FixPorts.Visibility = $(if ($moved) { 'Visible' } else { 'Collapsed' })
+    $ui.DetReady.Maximum = [math]::Max(1, $count)
+    $ui.DetReady.BeginAnimation([Windows.Controls.Primitives.RangeBase]::ValueProperty, (New-Fade $ui.DetReady.Value $hereN 500))
+    $ui.DetReadyNum.Text = "$hereN / $count here"
+    $miss = $count - $hereN
+    $rc = if ($miss) { $Pal.Amber } elseif ($moved) { $Pal.Cyan } else { $Pal.Green }
+    $ui.DetReadyNum.Foreground = & $brush $rc
+    if ($miss) { $ui.DetPorts.Text = "$miss of $count board(s) not plugged in - plug them in; this list updates by itself." }
+    elseif ($moved) { $ui.DetPorts.Text = "Every board is here, but $moved moved to another USB socket - press 'Use the ports the boards are on now' (the CLI would also re-match them by MAC)." }
+    else { $ui.DetPorts.Text = [string][char]0x2728 + '  Every board is plugged in - ready to start!' }
+    $ui.DetPorts.Foreground = & $brush $rc
     $ui.DetNote.Text = switch ($p.Attack) {
         'blackhole' { 'Placement: the attacker only drops traffic that passes THROUGH it - put it between the victims and the root (hop 1-2).' }
         'wormhole'  { 'The two tunnel boards pick A (closer to the root) and B themselves at run start. The root waits until the UART works both ways and A is shallower - then type START.' }
         default     { 'Baseline run - no attacker.' }
     }
 }
-$ui.PresetGrid.Add_SelectionChanged({ Show-PresetDetail })
+$ui.PresetGrid.Add_SelectionChanged({ Show-PresetDetail; Sync-PresetSelection })
 function Select-Preset([string]$Path) {
     $hit = @($ui.PresetGrid.ItemsSource | Where-Object { $_.Path -eq $Path })
-    if ($hit.Count) { $ui.PresetGrid.SelectedItem = $hit[0]; $ui.PresetGrid.ScrollIntoView($hit[0]) }
+    if ($hit.Count) { $ui.PresetGrid.SelectedItem = $hit[0] }
 }
 $ui.FixPorts.Add_Click({
     $p = $ui.PresetGrid.SelectedItem; if (-not $p) { return }
@@ -2592,7 +3595,7 @@ $StyleXaml
       <DockPanel>
         <StackPanel Orientation="Horizontal">
           <Button x:Name="EdAdd" Content="+ Add board"/>
-          <Button x:Name="EdRemove" Content="Remove selected"/>
+          <Button x:Name="EdRemove" Style="{StaticResource Danger}" Content="Remove ticked" ToolTip="Removes every ticked board at once (tick the box at the top of the table to tick them all). Nothing ticked = removes the selected rows (Ctrl / Shift + click picks several)."/>
           <ComboBox x:Name="EdMember" Width="120" Margin="12,0,6,8"/>
           <Button x:Name="EdFill" Content="Add this member's boards"/>
         </StackPanel>
@@ -2602,7 +3605,7 @@ $StyleXaml
         </StackPanel>
       </DockPanel>
     </StackPanel>
-    <DataGrid x:Name="EdGrid" IsReadOnly="False" RowHeight="34"/>
+    <DataGrid x:Name="EdGrid" IsReadOnly="False" RowHeight="34" SelectionMode="Extended"/>
   </DockPanel>
 </Window>
 "@
@@ -2633,7 +3636,19 @@ $StyleXaml
     foreach ($col in 'Label', 'Port', 'Role', 'Mac') { [void]$dt.Columns.Add($col, [string]) }
     [void]$dt.Columns.Add('Target', [bool])
     [void]$dt.Columns.Add('Board', [string])
+    # Pick = the tick box in front of every row, so several boards go in one
+    # Remove (user, oct. 18 2026: removing one at a time was a hassle)
+    $pickCol = $dt.Columns.Add('Pick', [bool]); $pickCol.DefaultValue = $false
     $grid = $f.EdGrid
+    $tickCol = New-Object Windows.Controls.DataGridTemplateColumn; $tickCol.Width = 44
+    $tickAll = New-Object Windows.Controls.CheckBox; $tickAll.Style = $ed.FindResource('TickBox'); $tickAll.ToolTip = 'Tick / untick every board'
+    $tickCol.Header = $tickAll
+    $tf = New-Object Windows.FrameworkElementFactory ([Windows.Controls.CheckBox])
+    $tf.SetValue([Windows.FrameworkElement]::StyleProperty, $ed.FindResource('TickBox'))
+    $pb = New-Object Windows.Data.Binding 'Pick'; $pb.Mode = 'TwoWay'; $pb.UpdateSourceTrigger = 'PropertyChanged'
+    $tf.SetBinding([Windows.Controls.Primitives.ToggleButton]::IsCheckedProperty, $pb)
+    $tickCol.CellTemplate = New-Object Windows.DataTemplate; $tickCol.CellTemplate.VisualTree = $tf
+    [void]$grid.Columns.Add($tickCol)
     $mkText = { param($h, $b, $w) $c = New-Object Windows.Controls.DataGridTextColumn; $c.Header = $h; $c.Binding = New-Object Windows.Data.Binding $b; $c.Width = $w; $c }
     [void]$grid.Columns.Add((& $mkText 'LABEL' 'Label' 100))
     $roleCol = New-Object Windows.Controls.DataGridComboBoxColumn
@@ -2786,7 +3801,25 @@ $StyleXaml
         $n = 2; while ($used -contains "node$n") { $n++ }
         [void]$dt.Rows.Add("node$n", '', $(if ($f.EdAttack.SelectedItem -eq 'wormhole') { 'control' } elseif ($f.EdAttack.SelectedItem -eq 'baseline') { 'plain' } else { 'victim' }), '', $false, '')
     })
-    $f.EdRemove.Add_Click({ $r = $grid.SelectedItem; if ($r -is [Data.DataRowView]) { $r.Row.Delete() } })
+    $setRemove = {
+        $n = @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' -and $_['Pick'] -eq $true }).Count
+        $f.EdRemove.Content = $(if ($n) { "Remove $n ticked" } else { 'Remove ticked' })
+    }
+    $dt.add_ColumnChanged({ param($s, $e) if ($e.Column.ColumnName -eq 'Pick') { & $setRemove } })
+    $tickAll.Add_Click({
+        $on = [bool]$tickAll.IsChecked
+        foreach ($r in @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' })) { $r['Pick'] = $on }
+        & $setRemove
+    })
+    $f.EdRemove.Add_Click({
+        [void]$grid.CommitEdit(); [void]$grid.CommitEdit()
+        $rows = @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' -and $_['Pick'] -eq $true })
+        if (-not $rows.Count) { $rows = @($grid.SelectedItems | Where-Object { $_ -is [Data.DataRowView] } | ForEach-Object { $_.Row }) }
+        if (-not $rows.Count) { $f.EdProblems.Text = 'Tick the boards to remove (or select rows with Ctrl / Shift + click), then press Remove.'; return }
+        foreach ($r in $rows) { $r.Delete() }
+        $tickAll.IsChecked = $false; & $setRemove
+        $f.EdProblems.Text = "Removed $($rows.Count) board(s)."
+    })
     $f.EdFill.Add_Click({
         $m = $members | Where-Object { $_.name -eq $f.EdMember.SelectedItem } | Select-Object -First 1
         if (-not $m) { return }
@@ -2967,11 +4000,13 @@ function Update-Cells {
             $c = [pscustomobject]@{ Attack = $rel[0]; Topology = $rel[1]; Location = $rel[2]; Scenario = $rel[3]
                                     Text = ($rel -join '  /  '); Dir = $(if ($analysed) { $adir } else { $leaf.FullName }); ExportDir = $leaf.FullName; AnaDir = $adir
                                     Table = $ft; Analysed = $analysed; Stale = ($analysed -and $newest -gt $atime.AddSeconds(5)); Boards = $telem.Count
-                                    DataTime = $newest; AnaTime = $atime; Look = ''; Badge = ''; BadgeBg = $null; BadgeFg = $null; AtkFg = $null; Rest = ''; Sub = '' }
+                                    DataTime = $newest; AnaTime = $atime; Art = $null; Look = ''; Badge = ''; BadgeBg = $null; BadgeFg = $null; AtkFg = $null; Rest = ''; Sub = '' }
             $v = $script:Verdicts[(Get-AnaKey $c)]
             $c.Look = if (-not $analysed) { 'todo' } elseif ($c.Stale) { 'stale' } elseif ($v) { switch ([int]$v.Code) { 0 { 'ok' } 3 { 'invalid' } 2 { 'incon' } default { 'notok' } } } else { 'done' }
             $bd = $script:AnaBadge[$c.Look]
             $c.Badge = $bd.T; $c.BadgeBg = Get-Brush $bd.Bg; $c.BadgeFg = Get-Brush $bd.Fg
+            # unwrapped: a list cannot show a picture still inside a PowerShell object
+            $c.Art = (Get-TopoImage $c.Topology $c.Attack).psobject.BaseObject
             $c.AtkFg = Get-Brush (Get-AtkHex $c.Attack); $c.Rest = '  /  {0}  /  {1}  /  {2}' -f $c.Topology, $c.Location, $c.Scenario
             $c.Sub = '{0} board(s)  -  data {1}{2}' -f $c.Boards, (Format-When $newest), $(if ($analysed) { "  -  analysed $(Format-When $atime)" } else { '' })
             $cells += $c
@@ -3332,6 +4367,7 @@ function Start-Analysis([string]$Attack, [string]$Topology, [string]$Location, [
         $c = Get-Cell
         if ($c -and (Get-AnaKey $c) -eq $state.Key) { Show-AnaCell; $ui.AnaTabs.SelectedIndex = 0 }
         if ($script:AnaQueue.Count) { Start-NextAnalysis; return }
+        if ($script:SyncResume) { $script:SyncResume = $false; Show-Page 8; Start-SyncCheck -Continue; return }
         Show-Toast 'Analysis finished' $(if ($v) { "$($state.Text)  -  $($v.Trim())" } else { "$($state.Text) (exit $code)" }) ([string][char]0xE9D9) $(if ($code -eq 0) { 'GradGood' } else { 'GradMain' }) { Show-Page 2 } 'Open Verify'
     }
     if ($ok) { Set-Status "Analysing $Text - live output in the activity pane." $Pal.Green }
@@ -3419,7 +4455,7 @@ function Start-RedoList {
         $n = @{}; foreach ($r in $rows) { $n[$r.Status] = 1 + [int]$n[$r.Status] }
         Set-Status ("Redo list: {0} REDO  |  {1} CHECK  |  {2} OK" -f [int]$n.REDO, [int]$n.CHECK, [int]$n.OK) $(if ($n.REDO) { $Pal.Red } else { $Pal.Green })
         if ($n.REDO) { Show-Toast "$([int]$n.REDO) run(s) need a redo" 'They are marked red on the Campaign grid.' ([string][char]0xE72C) '#BE123C' }
-        Update-CampaignMatrix
+        Update-CampaignMatrix; Update-CaptureCampaign
         if ($script:RedoAgain) { Start-RedoList }
     }
 }
@@ -3880,7 +4916,7 @@ $streamTimer.Add_Tick({
         Remove-Item $s.Out, $s.Err -ErrorAction SilentlyContinue
         Write-Activity ("  finished (exit {0})" -f $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
         Set-Status ("Finished: {0} (exit {1})" -f $s.Title, $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
-        if ($s.Done) { try { & $s.Done $s.All.ToString() $code $s.State } catch { Write-Activity ("  " + $_.Exception.Message) $Pal.Red } }
+        if ($s.Done) { try { & $s.Done $s.All.ToString() $code $s.State } catch { Write-Activity ("  {0}   (run_gui.ps1 line {1}: {2})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber, $_.InvocationInfo.Line.Trim()) $Pal.Red } }
     }
 })
 $streamTimer.Start()
@@ -3910,7 +4946,8 @@ function Get-SelectedPort {
 $ui.PortsRefresh.Add_Click({ Update-Ports })
 $ui.PortGrid.Add_SelectionChanged({
     $r = $ui.PortGrid.SelectedItem
-    $ui.SelBoard.Text = $(if ($r) { "$($r.Port)   $(if ($r.Mac) { $r.Mac } else { 'MAC not read yet' })   $($r.Nick)" } else { 'Select a port on the left' })
+    $ui.SelBoard.Text = $(if ($r) { "$($r.Port)   ·   $($r.Nick)" } else { 'Select a port on the left' })
+    $ui.SelMac.Content = $(if ($r -and $r.Mac) { New-MacChip ([string]$r.Mac) $Pal.Cyan } elseif ($r) { New-CapChip 'MAC not read yet' '#FFFFFF' '#33000000' } else { $null })
 })
 # Identify: Get-EspMac.ps1 (esptool read_mac) per port, one at a time, through
 # the same queue as auto-read on plug-in.
@@ -4421,6 +5458,7 @@ function Update-ImpSummary {
     $ui.ImpSummary.Text = ('{0} ticked   -   {1}{2}' -f $n, ($parts -join ', '), $extra)
     $ui.ImpGo.Content = $(if ($n) { "Import $n file(s)  ->" } else { 'Import' })
     $ui.ImpGo.IsEnabled = ($n -gt 0); $ui.ImpPreview.IsEnabled = ($n -gt 0)
+    $ui.ImpDel.IsEnabled = ($n -gt 0); $ui.ImpDel.Content = $(if ($n) { "Delete $n from card" } else { 'Delete from card' })
 }
 function Start-ImpList([switch]$Again) {
     $py = Get-Py; if (-not $py) { return }
@@ -4527,6 +5565,38 @@ $ui.ImpEndRun.Add_Click({
     })
 })
 $ui.ImpGo.Add_Click({ Start-ImpCopy })
+# Delete the ticked files from the card WITHOUT importing (oct. 18 2026, user
+# request). import_sdcard.py --delete-files: one DELETE_SD_FILE per file over
+# USB (the firmware refuses a file it has open), or a plain delete on a card
+# in a reader. Never a STILL RUNNING file; never-imported files are named first.
+function Start-ImpDelete {
+    [void]$ui.ImpGrid.CommitEdit(); [void]$ui.ImpGrid.CommitEdit()
+    $py = Get-Py; if (-not $py -or -not $script:ImpTable) { return }
+    $picked = @($script:ImpTable.Rows | Where-Object { $_.Import })
+    if (-not $picked.Count) { return }
+    $live = @($picked | Where-Object { $_.Look -eq 'live' })
+    $go = @($picked | Where-Object { $_.Look -ne 'live' })
+    if (-not $go.Count) { [void][Windows.MessageBox]::Show('Every ticked file is STILL RUNNING - the board is writing it. End the run first (End the run safely).', 'Nothing deleted'); return }
+    $lost = @($go | Where-Object { $_.Look -notin @('already', 'nodata', 'empty') })
+    $where = if ($ui.SrcPort.IsChecked) { "the card in the board on $($ui.CardPortPick.SelectedItem.Port)" } else { 'the SD card in the reader' }
+    $msg = "Delete {0} file(s) from {1}?  Nothing is imported.{2}{3}" -f $go.Count, $where,
+        $(if ($live.Count) { "`n`n{0} STILL RUNNING file(s) are left alone." -f $live.Count } else { '' }),
+        $(if ($lost.Count) { "`n`n(!) {0} of them are NOT in datasets\exports - this is their LAST copy:`n    {1}" -f $lost.Count, ((@($lost | ForEach-Object { "$($_.Status)  $($_.File)" }) | Select-Object -First 8) -join "`n    ") } else { "`n`nAll of them are already imported (or hold no data)." })
+    if (-not (Confirm-Action $msg 'Delete from card')) { return }
+    if ($lost.Count -and -not (Confirm-Action ("Really delete {0} file(s) that were never imported? This cannot be undone." -f $lost.Count) 'Delete for good')) { return }
+    $a = Get-ImpArgs; if (-not $a) { return }
+    $a += @('--delete-files', '--files', (@($go | ForEach-Object Rel) -join ','))
+    if ($ui.DryRun.IsChecked) { $a += '--dry-run' }
+    [void](Start-StreamJob -Exe $py -ToolArgs $a -Title ("Delete {0} file(s) from the card" -f $go.Count) -NoStop -State $go.Count -OnDone {
+        param($text, $code, $n)
+        $ok = [regex]::Matches($text, '(?m)^\s*(DELETED|WOULD DELETE) ').Count
+        $bad = [regex]::Matches($text, '(?m)^\s*FAILED ').Count
+        if ($bad) { Show-Toast 'Some files were not deleted' ("{0} deleted, {1} failed - the activity pane says why." -f $ok, $bad) ([string][char]0xE7BA) 'GradMain' }
+        else { Show-Toast 'Deleted from the card' ("{0} file(s) removed. Listing the card again..." -f $ok) ([string][char]0xE74D) 'GradGood' }
+        Start-ImpList -Again
+    })
+}
+$ui.ImpDel.Add_Click({ Start-ImpDelete })
 
 function Get-ExportCells {
     $root = Join-Path $base 'datasets\exports'
@@ -4563,25 +5633,356 @@ $ui.ArcGo.Add_Click({
         [void](Start-StreamJob -Exe 'powershell' -ToolArgs $a -Title 'Archive')
     }
 })
-$ui.SyncArea.ItemsSource = @('exports', 'analysis', 'logs', 'presets'); $ui.SyncArea.SelectedIndex = 0
-$sync = {
-    param([string]$Action)
-    $py = Get-Py; if (-not $py) { return }
-    $area = [string]$ui.SyncArea.SelectedItem
-    if ($Action -eq 'push' -and -not (Confirm-Action "Push every new $area file on this laptop to GitHub?")) { return }
-    $a = @('tools\push_data.py', $Action)
-    if ($Action -in @('push', 'pull')) { $a += @('--area', $area, '--yes') }
-    [void](Start-StreamJob -Exe $py -ToolArgs $a -Title "GitHub $Action $area")
+# ── GitHub sync page (oct. 18 2026) ──────────────────────────────────────────
+# tools\smart_sync.py is the brain (status --out json / apply --plan / abort-merge);
+# this page shows its plan and runs it. Nothing reaches GitHub without a confirm.
+$script:Sync = $null; $script:SyncAuto = $false; $script:SyncGateOk = $false; $script:SyncResume = $false; $script:SyncChecked = $null
+$script:SyncLook = @{
+    new        = @{ Text = 'NEW';                Bg = '#1F4D3E'; Fg = $Pal.Green }
+    update     = @{ Text = 'UPDATE';             Bg = '#123A44'; Fg = $Pal.Cyan }
+    replace    = @{ Text = 'REPLACE (analysis)'; Bg = '#123A44'; Fg = $Pal.Cyan }
+    ledger     = @{ Text = 'LEDGER - rows merge';Bg = '#1E2A44'; Fg = $Pal.Blue }
+    conflict   = @{ Text = 'KEEP BOTH';          Bg = '#3A2E14'; Fg = $Pal.Amber }
+    stale      = @{ Text = 'ANALYSE FIRST';      Bg = '#3A2E14'; Fg = $Pal.Amber }
+    duplicate  = @{ Text = 'DUPLICATE';          Bg = '#1E2A44'; Fg = $Pal.Blue }
+    deleted    = @{ Text = 'DELETED ON GITHUB';  Bg = '#3A1E2C'; Fg = $Pal.Red }
+    gone       = @{ Text = 'DELETED ON GITHUB';  Bg = '#3A1E2C'; Fg = $Pal.Red }
+    equivalent = @{ Text = 'SAME ANALYSIS';      Bg = '#2A2E48'; Fg = $Pal.Dim }
+    older      = @{ Text = 'GITHUB IS NEWER';    Bg = '#2A2E48'; Fg = $Pal.Dim }
+    archived   = @{ Text = 'ARCHIVED';           Bg = '#2A2E48'; Fg = $Pal.Dim }
+    differ     = @{ Text = 'YOURS DIFFERS';      Bg = '#3A2E14'; Fg = $Pal.Amber }
 }
-$ui.SyncPush.Add_Click({ & $sync 'push' })
-$ui.SyncPull.Add_Click({ & $sync 'pull' })
-$ui.SyncTest.Add_Click({ & $sync 'test' })
-$ui.SyncAdvanced.Add_Click({
-    # Deleting from / restoring to GitHub picks files one by one - that runs in
-    # push_data.py's own interactive window, never with --yes.
-    $area = [string]$ui.SyncArea.SelectedItem
-    Start-Process powershell -ArgumentList @('-NoExit', '-Command', "Set-Location '$base'; Write-Host 'GitHub delete / restore for $area - choose below.' -ForegroundColor Cyan; `$a = Read-Host 'Type delete or restore'; python tools\push_data.py `$a --area $area")
+$script:SyncFresh = @{
+    fresh = @{ Text = 'CURRENT'; Bg = '#1F4D3E'; Fg = $Pal.Green }; stale = @{ Text = 'STALE'; Bg = '#3A2E14'; Fg = $Pal.Amber }
+    missing = @{ Text = 'NOT ANALYSED'; Bg = '#3A2E14'; Fg = $Pal.Amber }; unknown = @{ Text = 'OLD TABLE'; Bg = '#2A2E48'; Fg = $Pal.Dim }
+    noexports = @{ Text = '-'; Bg = $Pal.Card; Fg = $Pal.Faint }; orphan = @{ Text = 'NO CAPTURES'; Bg = '#2A2E48'; Fg = $Pal.Dim }
+}
+$script:SyncHow = @{
+    same = @{ Text = 'IDENTICAL'; Bg = '#1F4D3E'; Fg = $Pal.Green }; data = @{ Text = "TAKE GITHUB'S"; Bg = '#1E2A44'; Fg = $Pal.Blue }
+    keepmine = @{ Text = 'KEEP YOURS'; Bg = '#123A44'; Fg = $Pal.Cyan }; merge = @{ Text = 'MERGE BOTH'; Bg = '#123A44'; Fg = $Pal.Cyan }
+    conflict = @{ Text = 'CONFLICT'; Bg = '#3A1E2C'; Fg = $Pal.Red }
+}
+$script:AreaHex = @{ exports = $Pal.Cyan; analysis = $Pal.Purple; logs = $Pal.Amber; presets = $Pal.Pink }
+
+function Set-SyncSteps([string[]]$States, [string[]]$Infos = @()) {
+    # states: todo / run / done / warn / skip / fail
+    $names = @('Check', 'Analyse', 'Send', 'Receive', 'Update folder')
+    $tips = @('Compare this laptop with GitHub - changes nothing', 'Re-analyse runs whose captures are newer than their analysis',
+              'Push the ticked files (data only, byte-verified)', 'Copy the ticked teammate files in (yours never overwritten)',
+              "Bring this folder to GitHub's latest commit - backs up, merges, never half-done")
+    $items = for ($i = 0; $i -lt 5; $i++) {
+        $st = if ($i -lt $States.Count) { $States[$i] } else { 'todo' }
+        $look = switch ($st) {
+            'run'  { @{ Dot = $Pal.Cyan;  Edge = $Pal.Cyan;  Bg = '#14304A'; Mark = [string][char]0x2022; Fg = $Pal.Cyan } }
+            'done' { @{ Dot = $Pal.Green; Edge = '#2C6B55';  Bg = '#173A31'; Mark = [string][char]0x2713; Fg = $Pal.Green } }
+            'warn' { @{ Dot = $Pal.Amber; Edge = $Pal.Amber; Bg = '#3A2E14'; Mark = '!'; Fg = $Pal.Amber } }
+            'fail' { @{ Dot = $Pal.Red;   Edge = $Pal.Red;   Bg = '#3A1E2C'; Mark = [string][char]0x2715; Fg = $Pal.Red } }
+            'skip' { @{ Dot = $Pal.Line;  Edge = $Pal.Line;  Bg = $Pal.Card; Mark = '-'; Fg = $Pal.Faint } }
+            default { @{ Dot = $Pal.Line; Edge = $Pal.Line;  Bg = $Pal.Card; Mark = [string]($i + 1); Fg = $Pal.Faint } }
+        }
+        [pscustomobject]@{ Name = $names[$i]; Tip = $tips[$i]; Info = $(if ($i -lt $Infos.Count -and $Infos[$i]) { $Infos[$i] } else { $st -replace 'todo', 'waiting' -replace 'run', 'working...' })
+                           Bg = (Get-Brush $look.Bg); Edge = (Get-Brush $look.Edge); Dot = (Get-Brush $look.Dot); Mark = $look.Mark; InfoFg = (Get-Brush $look.Fg) }
+    }
+    $ui.SyncSteps.ItemsSource = @($items)
+}
+Set-SyncSteps @()
+
+function New-SyncTable([string[]]$Cols) {
+    $dt = New-Object System.Data.DataTable
+    [void]$dt.Columns.Add('Pick', [bool])
+    foreach ($c in $Cols) { [void]$dt.Columns.Add($c, [string]) }
+    foreach ($c in 'BadgeBg', 'BadgeFg', 'AreaFg', 'AtkFg', 'AnaBg', 'AnaFg', 'AnaLBg', 'AnaLFg', 'AnaRBg', 'AnaRFg') { [void]$dt.Columns.Add($c, [object]) }
+    return , $dt   # the comma: PowerShell would unroll an empty DataTable into $null
+}
+function Add-SyncRow($Dt, $It, [hashtable]$Look, [bool]$Pick) {
+    $r = $Dt.NewRow()
+    $r.Pick = $Pick
+    $lk = $Look[[string]$It.kind]; if (-not $lk) { $lk = @{ Text = ([string]$It.kind).ToUpper(); Bg = '#2A2E48'; Fg = $Pal.Dim } }
+    $r.Badge = $lk.Text; $r.BadgeBg = Get-Brush $lk.Bg; $r.BadgeFg = Get-Brush $lk.Fg
+    $r.Area = [string]$It.area; $r.AreaFg = Get-Brush $(if ($script:AreaHex[[string]$It.area]) { $script:AreaHex[[string]$It.area] } else { $Pal.Text })
+    $cp = ([string]$It.cell) -split '/'
+    $r.CAtk = $(if ($cp[0]) { $cp[0] } else { '-' }); $r.AtkFg = Get-Brush (Get-AtkHex $cp[0])
+    $r.CRest = $(if ($cp.Count -gt 1) { '  /  ' + (($cp | Select-Object -Skip 1) -join '  /  ') } else { '' })
+    $r.File = ([string]$It.rel).Split('/')[-1]; $r.Rel = [string]$It.rel; $r.Why = [string]$It.why
+    return $r
+}
+function Show-SyncStatus($St) {
+    $script:Sync = $St; $script:SyncChecked = Get-Date
+    $h = $St.health
+    # chips
+    $chips = New-Object System.Collections.ArrayList
+    $add = { param($t, $hex, $bg, $tip) [void]$chips.Add([pscustomobject]@{ Text = $t; Fg = (Get-Brush $hex); Bg = (Get-Brush $bg); Tip = $tip }) }
+    & $add ("branch  " + $h.branch) $Pal.Cyan '#123A44' "Data follows the branch this folder is on. $($h.url)"
+    & $add ("laptop  " + $h.computer) $Pal.Dim $Pal.Card 'How your pushes are signed (and where KEEP-BOTH copies go: sync_conflicts\<laptop>\)'
+    if ($h.fetched) { & $add ([string][char]0x2713 + '  GitHub reachable') $Pal.Green '#173A31' '' } else { & $add ([string][char]0x2715 + '  GitHub NOT reachable') $Pal.Red '#3A1E2C' (@($h.warnings) -join "`n") }
+    if (@($h.blocking).Count) { & $add ([string][char]0x2715 + '  folder blocked') $Pal.Red '#3A1E2C' (@($h.blocking) -join "`n") } else { & $add ([string][char]0x2713 + '  no unfinished merge') $Pal.Green '#173A31' 'No merge / rebase / cherry-pick half-done in this folder.' }
+    $u = $St.update
+    if ($u.behind) { & $add ([string][char]0x2193 + "  $($u.behind) commit(s) to bring in") $Pal.Blue '#1E2A44' 'GitHub has commits this folder does not - step 5 brings them in safely.' } else { & $add ([string][char]0x2713 + '  folder up to date') $Pal.Green '#173A31' '' }
+    if ($u.ahead) { & $add ([string][char]0x2191 + "  $($u.ahead) code commit(s) not pushed") $Pal.Amber '#3A2E14' 'Commits only this laptop has. Data sync never sends code - push them with git push when ready.' }
+    $cd = @($h.codeDirty).Count
+    if ($cd) { & $add ("$cd code file(s) edited here") $Pal.Dim $Pal.Card ("Never synced (code goes through git commit / push):`n" + ((@($h.codeDirty) | Select-Object -First 12 | ForEach-Object { "  $($_.status) $($_.path)" }) -join "`n")) }
+    if ($h.stashes) { & $add ("$($h.stashes) old stash(es)") $Pal.Amber '#3A2E14' "'git stash list' - make sure nothing is forgotten there." }
+    if ($St.last) { & $add ("last smart sync  " + (Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$St.last.when).LocalDateTime))) $Pal.Dim $Pal.Card ("sent {0}, received {1}" -f $St.last.pushed, $St.last.pulled) }
+    $ui.SyncChips.ItemsSource = @($chips)
+    # blocking banner
+    if (@($h.blocking).Count) {
+        $ui.SyncBlockText.Text = "Your folder needs attention before it can be updated:`n  " + (@($h.blocking) -join "`n  ")
+        $ui.SyncAbortMerge.Visibility = $(if (@($h.blocking) -match 'MERGE') { 'Visible' } else { 'Collapsed' })
+        $ui.SyncBlock.Visibility = 'Visible'
+    } elseif (-not $u.canUpdate -and $u.why) {
+        $ui.SyncBlockText.Text = "Your folder can't be updated automatically: $($u.why)`nSending and receiving data still work."
+        $ui.SyncAbortMerge.Visibility = 'Collapsed'; $ui.SyncBlock.Visibility = 'Visible'
+    } else { $ui.SyncBlock.Visibility = 'Collapsed' }
+    # send / receive / held / cleanup / runs / folder
+    $send = New-SyncTable @('Badge', 'Area', 'CAtk', 'CRest', 'File', 'Rel', 'Why', 'Ana')
+    $held = New-SyncTable @('Badge', 'Area', 'CAtk', 'CRest', 'File', 'Rel', 'Why')
+    foreach ($it in @($St.push)) {
+        if ($it.act -eq 'push') {
+            $r = Add-SyncRow $send $it $script:SyncLook $true
+            if ($it.needsAnalysis) { $f = $script:SyncFresh[[string]$it.needsAnalysis]; $r.Ana = $f.Text; $r.AnaBg = Get-Brush $f.Bg; $r.AnaFg = Get-Brush $f.Fg; $r.Why = $r.Why + "  -  this run's analysis is $($f.Text.ToLower())" }
+            [void]$send.Rows.Add($r)
+        } else { [void]$held.Rows.Add((Add-SyncRow $held $it $script:SyncLook $false)) }
+    }
+    $recv = New-SyncTable @('Badge', 'Area', 'CAtk', 'CRest', 'File', 'Rel', 'Why', 'Who')
+    foreach ($it in @($St.pull)) {
+        if ($it.act -eq 'pull') {
+            $r = Add-SyncRow $recv $it $script:SyncLook $true
+            $r.Who = $(if ($it.who) { "$($it.who)  " + $(if ($it.when) { (Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$it.when).LocalDateTime)) }) } else { '' })
+            [void]$recv.Rows.Add($r)
+        } else { [void]$held.Rows.Add((Add-SyncRow $held $it $script:SyncLook $false)) }
+    }
+    $gone = New-SyncTable @('Badge', 'Area', 'CAtk', 'CRest', 'File', 'Rel', 'Why')
+    foreach ($it in @($St.gone)) { [void]$gone.Rows.Add((Add-SyncRow $gone $it $script:SyncLook $false)) }
+    $runs = New-SyncTable @('CAtk', 'CRest', 'Here', 'Hub', 'AnaL', 'AnaR', 'Note', 'Why')
+    foreach ($c in @($St.cells)) {
+        $r = $runs.NewRow(); $cp = ([string]$c.cell) -split '/'
+        $r.CAtk = $cp[0]; $r.AtkFg = Get-Brush (Get-AtkHex $cp[0]); $r.CRest = '  /  ' + (($cp | Select-Object -Skip 1) -join '  /  ')
+        $r.Here = [string]$c.localBoards + $(if ($c.onlyHere) { "  (+$($c.onlyHere) not sent)" } else { '' })
+        $r.Hub = [string]$c.githubBoards + $(if ($c.onlyGithub) { "  (+$($c.onlyGithub) new)" } else { '' })
+        foreach ($side in @(@('AnaL', [string]$c.localAnalysis), @('AnaR', [string]$c.githubAnalysis))) {
+            $f = $script:SyncFresh[$side[1]]; if (-not $f) { $f = $script:SyncFresh.unknown }
+            $r[$side[0]] = $f.Text; $r[$side[0] + 'Bg'] = Get-Brush $f.Bg; $r[$side[0] + 'Fg'] = Get-Brush $f.Fg
+        }
+        $r.Note = $(if ($c.localAnalysis -in @('stale', 'missing') -and $c.localBoards) { 'analyse here (Smart sync offers it)' }
+                    elseif ($c.onlyHere) { 'captures to send' } elseif ($c.onlyGithub) { 'teammate captures to receive' }
+                    elseif ($c.githubAnalysis -in @('stale', 'missing') -and $c.localAnalysis -eq 'fresh') { "send your analysis - GitHub's is $($c.githubAnalysis)" }
+                    elseif (-not $c.rootHere) { 'no ROOT file here - incomplete run?' } else { 'in sync' })
+        $r.Why = $r.Note
+        [void]$runs.Rows.Add($r)
+    }
+    $fold = New-SyncTable @('Badge', 'File', 'Why')
+    foreach ($o in @($u.obstacles)) {
+        $r = $fold.NewRow(); $lk = $script:SyncHow[[string]$o.how]; if (-not $lk) { $lk = $script:SyncHow.data }
+        $r.Badge = $lk.Text; $r.BadgeBg = Get-Brush $lk.Bg; $r.BadgeFg = Get-Brush $lk.Fg; $r.File = [string]$o.path; $r.Why = [string]$o.text
+        [void]$fold.Rows.Add($r)
+    }
+    $ui.SyncFoldText.Text = $(if (-not $u.behind) { "Your folder already has every commit GitHub has. Nothing to do here." }
+        else { "GitHub has $($u.behind) commit(s) this folder does not" + $(if ($u.ahead) { " (and you have $($u.ahead) of your own - they are merged, never lost)" } else { '' }) + ".`n" +
+               $(if (@($u.obstacles).Count) { "$(@($u.obstacles).Count) file(s) below are in the way; each is backed up first and handled as shown. " } else { 'Nothing is in the way. ' }) +
+               $(if ($u.canUpdate) { "Step 5 brings them in - if anything unexpected happens it rolls back and changes nothing." } else { "BLOCKED: $($u.why)" }) })
+    $script:SyncTables = @{ Send = $send; Recv = $recv; Gone = $gone }
+    foreach ($t in @($send, $recv, $gone)) { $t.Add_ColumnChanged({ param($s, $e) if ($e.Column.ColumnName -eq 'Pick' -and -not $script:SyncBulk) { Update-SyncCounts } }) }
+    $ui.SyncSendGrid.ItemsSource = $send.DefaultView; $ui.SyncRecvGrid.ItemsSource = $recv.DefaultView; $ui.SyncHeldGrid.ItemsSource = $held.DefaultView
+    $ui.SyncGoneGrid.ItemsSource = $gone.DefaultView; $ui.SyncRunsGrid.ItemsSource = $runs.DefaultView; $ui.SyncFoldGrid.ItemsSource = $fold.DefaultView
+    $ui.SyncTabHeld.Header = "  Held back  ($($held.Rows.Count))  "; $ui.SyncTabRuns.Header = "  Runs  ($($runs.Rows.Count))  "
+    $ui.SyncTabFold.Header = $(if ($u.behind) { "  Your folder  ($($u.behind) to bring in)  " } else { '  Your folder  ' })
+    $ui.SyncTabGone.Header = "  Cleanup  ($($gone.Rows.Count))  "
+    Update-SyncCounts
+    Update-SyncGate
+}
+function Get-SyncPicked([string]$Which) {
+    $t = $null; if ($script:SyncTables) { $t = $script:SyncTables[$Which] }   # not "$t = if ...": that unrolls the table
+    if ($null -eq $t) { return @() }
+    return @($t.Rows | Where-Object { $_.Pick } | ForEach-Object { [string]$_.Rel })
+}
+function Update-SyncCounts {
+    $st = $script:Sync; if (-not $st -or -not $script:SyncTables) { return }   # no plan shown (after a sync): keep the result header
+    $ns = @(Get-SyncPicked 'Send').Count; $nr = @(Get-SyncPicked 'Recv').Count; $ng = @(Get-SyncPicked 'Gone').Count
+    $ts = $script:SyncTables.Send.Rows.Count; $tr = $script:SyncTables.Recv.Rows.Count
+    $ui.SyncTabSend.Header = "  Send  ($ns of $ts)  "; $ui.SyncTabRecv.Header = "  Receive  ($nr of $tr)  "
+    $by = @{}; foreach ($r in $script:SyncTables.Send.Rows) { if ($r.Pick) { $by[$r.Area] = 1 + [int]$by[$r.Area] } }
+    $ui.SyncSendInfo.Text = $(if ($ts) { "ticked: " + ((@($by.Keys | Sort-Object | ForEach-Object { "$($by[$_]) $_" })) -join ', ') + "   -   every file is checked byte-for-byte after it is committed" } else { 'Nothing to send - GitHub already has all of your data.' })
+    $ui.SyncRecvInfo.Text = $(if ($tr) { 'your existing files are never overwritten (a replaced analysis is backed up first)' } else { "Nothing to receive - you have all of your teammates' data." })
+    $u = $st.update; $bad = @($st.health.blocking).Count
+    $total = $ns + $nr + $ng + $(if ($u.behind -and $ui.SyncUpdate.IsChecked) { 1 } else { 0 })
+    if ($bad) { $head = 'Your folder needs attention'; $sub = (@($st.health.blocking) -join '  ') ; $icon = [string][char]0xE7BA; $fill = 'GradMain' }
+    elseif (-not $total -and -not $ts -and -not $tr) { $head = 'Everything is in sync'; $sub = 'GitHub and this laptop hold the same data' + $(if ($u.behind) { '' } else { ', and your folder is on the latest commit.' }); $icon = [string][char]0xE73E; $fill = 'GradGood' }
+    else {
+        $bits = @(); if ($ns) { $bits += "$ns to send" }; if ($nr) { $bits += "$nr to receive" }; if ($ng) { $bits += "$ng to clean up" }; if ($u.behind -and $ui.SyncUpdate.IsChecked) { $bits += "$($u.behind) commit(s) to bring in" }
+        $head = $(if ($bits.Count) { $bits -join '  ·  ' } else { 'Nothing ticked' }); $icon = [string][char]0xE895; $fill = 'GradCool'
+        $hold = @($st.push | Where-Object { $_.act -ne 'push' }).Count + @($st.pull | Where-Object { $_.act -ne 'pull' }).Count
+        $sub = "Checked " + (Format-When $script:SyncChecked) + $(if ($hold) { "   -   $hold file(s) held back on purpose (see Held back)" } else { '' }) + "   -   Smart sync asks once before anything goes to GitHub."
+    }
+    $ui.SyncHead.Text = $head; $ui.SyncSubHead.Text = $sub; $ui.SyncIcon.Text = $icon; $ui.SyncIconBg.Background = $win.FindResource($fill)
+    $ui.SyncSendOnly.IsEnabled = ($ns -gt 0); $ui.SyncRecvOnly.IsEnabled = (($nr + $ng) -gt 0); $ui.SyncFoldOnly.IsEnabled = ([bool]$u.behind -and $u.canUpdate -and -not $bad)
+}
+function Get-SyncGateCells {
+    # runs whose captures are being sent while their analysis here is not current
+    $st = $script:Sync; if (-not $st) { return @() }
+    $picked = @(Get-SyncPicked 'Send')
+    $cells = @($st.push | Where-Object { $_.act -eq 'push' -and $_.needsAnalysis -in @('stale', 'missing') -and $picked -contains $_.rel } | ForEach-Object cell)
+    $cells += @($st.push | Where-Object { $_.kind -eq 'stale' -and $_.area -eq 'analysis' } | ForEach-Object cell)
+    return @($cells | Where-Object { $_ -and ($_ -split '/').Count -ge 4 } | Select-Object -Unique)
+}
+function Update-SyncGate {
+    $cells = @(Get-SyncGateCells)
+    if (-not $cells.Count -or $script:SyncGateOk) { $ui.SyncGate.Visibility = 'Collapsed'; return }
+    $ui.SyncGateHead.Text = "{0} run(s) are not analysed for their newest captures" -f $cells.Count
+    $ui.SyncGateText.Text = "Their analysis does not cover every capture, so it would not be sent - teammates would get data with no (or out-of-date) analysis.`n  " + ((@($cells | Select-Object -First 6 | ForEach-Object { $_ -replace '/', ' / ' })) -join "`n  ") + $(if ($cells.Count -gt 6) { "`n  ... and $($cells.Count - 6) more" } else { '' })
+    $ui.SyncGate.Visibility = 'Visible'
+}
+# After a sync (or an abort) NO automatic re-check (user, oct. 18 2026): the sync
+# already verified every file byte-for-byte. The page keeps the result, empties
+# the lists it just acted on (they are out of date now) and marks the plan as old,
+# so the next Smart sync always checks first. Check shows the new state on demand.
+function Set-SyncDone([string]$Head, [string]$Sub, [string]$Fill = 'GradGood', [string]$Glyph = [string][char]0xE73E) {
+    $script:SyncChecked = $null; $script:SyncTables = $null
+    foreach ($gname in 'SyncSendGrid', 'SyncRecvGrid', 'SyncGoneGrid', 'SyncHeldGrid', 'SyncFoldGrid') { $ui[$gname].ItemsSource = $null }
+    $ui.SyncTabSend.Header = '  Send  '; $ui.SyncTabRecv.Header = '  Receive  '; $ui.SyncTabHeld.Header = '  Held back  '
+    $ui.SyncTabFold.Header = '  Your folder  '; $ui.SyncTabGone.Header = '  Cleanup  '
+    $ui.SyncSendInfo.Text = 'Press Check to see what is left to send.'; $ui.SyncRecvInfo.Text = 'Press Check to see what teammates have sent.'
+    $ui.SyncFoldText.Text = 'Press Check to see the folder state after this sync.'
+    $ui.SyncGate.Visibility = 'Collapsed'; $ui.SyncBlock.Visibility = 'Collapsed'
+    $ui.SyncSendOnly.IsEnabled = $false; $ui.SyncRecvOnly.IsEnabled = $false; $ui.SyncFoldOnly.IsEnabled = $false
+    $ui.SyncHead.Text = $Head; $ui.SyncSubHead.Text = $Sub + '   -   press Check to see the latest state.'
+    $ui.SyncIcon.Text = $Glyph; $ui.SyncIconBg.Background = $win.FindResource($Fill)
+}
+function Start-SyncCheck([switch]$Continue) {
+    $py = Get-Py; if (-not $py) { return }
+    $out = Join-Path $env:TEMP ("nis16_sync_{0}.json" -f [guid]::NewGuid().ToString('N').Substring(0, 8))
+    Set-SyncSteps @('run') @('looking at GitHub + this laptop...')
+    $ui.SyncHead.Text = 'Checking...'; $ui.SyncSubHead.Text = 'Comparing every data file here with GitHub (about 20 s) - nothing is changed.'
+    $ui.SyncGo.IsEnabled = $false; $ui.SyncCheck.IsEnabled = $false
+    $ok = Start-StreamJob -Exe $py -ToolArgs @('tools\smart_sync.py', 'status', '--out', $out) -Title 'GitHub sync: check' -State @{ Out = $out; Continue = [bool]$Continue } -OnDone {
+        param($text, $code, $st)
+        $ui.SyncGo.IsEnabled = $true; $ui.SyncCheck.IsEnabled = $true
+        if ($code -ne 0 -or -not (Test-Path $st.Out)) {
+            $err = ($text -split "`r?`n" | Where-Object { $_ -match 'ERROR' } | Select-Object -Last 1)
+            Set-SyncSteps @('fail') @('could not check'); $ui.SyncHead.Text = 'Could not check GitHub'; $ui.SyncSubHead.Text = $(if ($err) { $err.Trim() } else { 'See the activity pane.' })
+            $script:SyncAuto = $false; return
+        }
+        $json = Get-Content -Raw -Encoding UTF8 $st.Out | ConvertFrom-Json; Remove-Item $st.Out -ErrorAction SilentlyContinue
+        Show-SyncStatus $json
+        Set-SyncSteps @('done') @(("{0} to send, {1} to receive" -f @($json.push | Where-Object act -eq 'push').Count, @($json.pull | Where-Object act -eq 'pull').Count))
+        if ($st.Continue) { Continue-SmartSync }
+    }
+    if (-not $ok) { $ui.SyncGo.IsEnabled = $true; $ui.SyncCheck.IsEnabled = $true; Set-SyncSteps @() }
+    else { try { $script:Stream.Proc.PriorityClass = 'BelowNormal' } catch { } }
+}
+function Continue-SmartSync {
+    $st = $script:Sync; if (-not $st) { return }
+    $check = "{0} to send, {1} to receive" -f @(Get-SyncPicked 'Send').Count, @(Get-SyncPicked 'Recv').Count
+    $cells = @(Get-SyncGateCells)
+    if ($cells.Count -and -not $script:SyncGateOk) {
+        Set-SyncSteps @('done', 'warn') @($check, "$($cells.Count) run(s) to analyse")
+        Update-SyncGate; $ui.SyncTabs.SelectedIndex = 0
+        Show-Toast 'Analyse first?' ("{0} run(s) would go up without a current analysis - choose on the amber bar." -f $cells.Count) ([string][char]0xE9D9) 'GradMain'
+        return
+    }
+    Start-SyncApply -Push (Get-SyncPicked 'Send') -Pull (Get-SyncPicked 'Recv') -Remove (Get-SyncPicked 'Gone') -Update ([bool]$ui.SyncUpdate.IsChecked) -Steps
+}
+function Start-SyncApply([string[]]$Push = @(), [string[]]$Pull = @(), [string[]]$Remove = @(), [bool]$Update = $false, [switch]$Steps) {
+    $st = $script:Sync; if (-not $st) { return }
+    $py = Get-Py; if (-not $py) { return }
+    $u = $st.update
+    # after a SEND your folder is always one commit behind (your own data commit), even when the
+    # check said "up to date" - so a send always includes the folder step (smart_sync re-plans it)
+    $doUpdate = $Update -and ([bool]$u.behind -or $Push.Count -gt 0) -and ($u.canUpdate -or -not $u.behind) -and -not @($st.health.blocking).Count
+    $Push = @($Push | Where-Object { $_ }); $Pull = @($Pull | Where-Object { $_ }); $Remove = @($Remove | Where-Object { $_ })
+    if (-not ($Push.Count + $Pull.Count + $Remove.Count) -and -not $doUpdate) {
+        $script:SyncAuto = $false
+        Set-SyncSteps @('done', 'skip', 'skip', 'skip', $(if ($u.behind -and -not $u.canUpdate) { 'warn' } else { 'skip' })) @('nothing to do')
+        Show-Toast 'Nothing to do' 'Everything ticked is already in sync.' ([string][char]0xE73E) 'GradGood'; return
+    }
+    $lines = @()
+    if ($Push.Count) {
+        $by = @{}; foreach ($r in $script:SyncTables.Send.Rows) { if ($Push -contains $r.Rel) { $by[$r.Area] = 1 + [int]$by[$r.Area] } }
+        $lines += ("SEND to GitHub ({0}):  {1}" -f $st.health.branch, ((@($by.Keys | Sort-Object | ForEach-Object { "$($by[$_]) $_" })) -join ', '))
+    }
+    if ($Pull.Count) { $lines += ("RECEIVE {0} teammate file(s) - none of yours overwritten" -f $Pull.Count) }
+    if ($Remove.Count) { $lines += ("CLEAN UP {0} copy(ies) of files deleted on GitHub (moved to backups)" -f $Remove.Count) }
+    if ($doUpdate) { $lines += $(if ($u.behind) { "UPDATE your folder: +{0} commit(s){1}" -f $u.behind, $(if (@($u.obstacles).Count) { ", $(@($u.obstacles).Count) file(s) in the way are backed up first" } else { '' }) } else { "UPDATE your folder to the commit this send creates (keeps it in step with GitHub)" }) }
+    if ($ui.DryRun.IsChecked) { Write-Activity ("DRY RUN - would do:`n  " + ($lines -join "`n  ")) $Pal.Amber; $script:SyncAuto = $false; return }
+    if (-not (Confirm-Action (($lines -join "`n`n") + "`n`nCode is never sent. Go?") 'Smart sync')) { $script:SyncAuto = $false; Set-SyncSteps @('done') @('cancelled'); return }
+    $plan = @{ push = @($Push); pull = @($Pull); remove = @($Remove); update = $doUpdate; allowCodeMerge = $true }
+    $pf = Join-Path $env:TEMP ("nis16_syncplan_{0}.json" -f [guid]::NewGuid().ToString('N').Substring(0, 8))
+    [IO.File]::WriteAllText($pf, ($plan | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding($false)))
+    Set-SyncSteps @('done', $(if ($script:SyncGateOk) { 'skip' } else { 'done' }), $(if ($Push.Count) { 'run' } else { 'skip' }), $(if ($Pull.Count + $Remove.Count) { 'todo' } else { 'skip' }), $(if ($doUpdate) { 'todo' } else { 'skip' }))
+    $ui.SyncHead.Text = 'Syncing...'; $ui.SyncSubHead.Text = 'Do not close the window - git is working (it can not be stopped half-way on purpose).'
+    $ui.SyncGo.IsEnabled = $false; $ui.SyncCheck.IsEnabled = $false
+    $ok = Start-StreamJob -Exe $py -ToolArgs @('tools\smart_sync.py', 'apply', '--plan', $pf) -Title 'GitHub smart sync' -NoStop -State @{ Plan = $pf; Push = $Push.Count; Pull = ($Pull.Count + $Remove.Count); Update = $doUpdate } -OnDone {
+        param($text, $code, $st)
+        Remove-Item $st.Plan -ErrorAction SilentlyContinue
+        $ui.SyncGo.IsEnabled = $true; $ui.SyncCheck.IsEnabled = $true; $script:SyncAuto = $false; $script:SyncGateOk = $false
+        $line = ($text -split "`r?`n" | Where-Object { $_ -match '^RESULT ' } | Select-Object -Last 1)
+        $res = if ($line) { try { $line.Substring(7) | ConvertFrom-Json } catch { $null } } else { $null }
+        if (-not $res) {
+            $err = ($text -split "`r?`n" | Where-Object { $_ -match 'ERROR' } | Select-Object -Last 1)
+            Set-SyncSteps @('done', 'done', 'fail') @('', '', 'stopped')
+            Show-Toast 'Sync stopped' $(if ($err) { $err.Trim() } else { 'See the activity pane - nothing half-done was left behind.' }) ([string][char]0xE783) 'GradMain'
+            Set-SyncDone 'Sync stopped' $(if ($err) { $err.Trim() } else { 'See the activity pane - nothing half-done was left behind' }) 'GradMain' ([string][char]0xE783)
+            return
+        }
+        $upd = $res.updated
+        $s5 = if (-not $st.Update) { 'skip' } elseif ($upd -and $upd.ok) { 'done' } else { 'fail' }
+        Set-SyncSteps @('done', 'done', $(if ($st.Push) { 'done' } else { 'skip' }), $(if ($st.Pull) { 'done' } else { 'skip' }), $s5) @('', '', "$($res.pushed) sent", "$($res.pulled) received", $(if ($upd -and $upd.ok) { "+$($upd.changed) commit(s)" } elseif ($upd) { 'not updated' } else { '' }))
+        $msg = "{0} sent, {1} received{2}" -f $res.pushed, $res.pulled, $(if ($upd -and $upd.ok) { ", folder +$($upd.changed) commit(s)" } elseif ($upd) { " - folder NOT updated: $($upd.why)" } else { '' })
+        Show-Toast $(if ($upd -and -not $upd.ok) { 'Synced - folder not updated' } else { 'Smart sync done' }) $msg ([string][char]0xE895) $(if ($upd -and -not $upd.ok) { 'GradMain' } else { 'GradGood' })
+        Update-Cells; Update-TrimCells
+        $when = (Get-Date).ToString('h:mm tt').ToLower()
+        if ($upd -and -not $upd.ok) { Set-SyncDone 'Synced - folder not updated' ("$msg  ($when)") 'GradMain' ([string][char]0xE7BA) }
+        else { Set-SyncDone 'Sync done' ("$msg  ($when)") }
+    }
+    if (-not $ok) { $ui.SyncGo.IsEnabled = $true; $ui.SyncCheck.IsEnabled = $true }
+}
+$ui.SyncCheck.Add_Click({ $script:SyncGateOk = $false; Start-SyncCheck })
+$ui.SyncGo.Add_Click({
+    $script:SyncAuto = $true; $script:SyncGateOk = $false
+    # a fresh plan unless the shown one is under 2 minutes old (keeps the user's ticks)
+    if ($script:Sync -and $script:SyncChecked -and ((Get-Date) - $script:SyncChecked).TotalMinutes -lt 2) { Continue-SmartSync } else { Start-SyncCheck -Continue }
 })
+$ui.SyncGateSkip.Add_Click({ $script:SyncGateOk = $true; $ui.SyncGate.Visibility = 'Collapsed'; Continue-SmartSync })
+$ui.SyncGateAna.Add_Click({
+    $cells = @(Get-SyncGateCells); if (-not $cells.Count) { return }
+    if (-not (Confirm-Action ("Analyse + verify {0} run(s) one after the other, then continue the sync?`n`n    {1}" -f $cells.Count, ((@($cells | ForEach-Object { $_ -replace '/', ' / ' })) -join "`n    ")) 'Analyse first')) { return }
+    $script:AnaQueue.Clear()
+    foreach ($c in $cells) { $p = $c -split '/'; $script:AnaQueue.Enqueue([pscustomobject]@{ Attack = $p[0]; Topology = $p[1]; Location = $p[2]; Scenario = $p[3]; Text = ($p -join ' / ') }) }
+    $script:SyncResume = $true; $ui.SyncGate.Visibility = 'Collapsed'
+    Set-SyncSteps @('done', 'run') @('', "analysing $($cells.Count) run(s)...")
+    Start-NextAnalysis
+})
+$ui.SyncSendOnly.Add_Click({ Start-SyncApply -Push (Get-SyncPicked 'Send') })
+$ui.SyncRecvOnly.Add_Click({ Start-SyncApply -Pull (Get-SyncPicked 'Recv') -Remove (Get-SyncPicked 'Gone') })
+$ui.SyncFoldOnly.Add_Click({ Start-SyncApply -Update $true })
+$ui.SyncUpdate.Add_Click({ Update-SyncCounts })
+foreach ($pair in @(@('SyncSendAll', 'Send', $true), @('SyncSendNone', 'Send', $false), @('SyncRecvAll', 'Recv', $true), @('SyncRecvNone', 'Recv', $false))) {
+    $w = $pair[1]; $v = $pair[2]
+    $ui[$pair[0]].Add_Click({
+        if (-not $script:SyncTables) { return }
+        $script:SyncBulk = $true   # one recount at the end, not one per row (282 rows = 80 000 updates)
+        try { foreach ($r in $script:SyncTables[$w].Rows) { $r.Pick = $v } } finally { $script:SyncBulk = $false }
+        Update-SyncCounts
+    }.GetNewClosure())
+}
+$ui.SyncAbortMerge.Add_Click({
+    $py = Get-Py; if (-not $py) { return }
+    if (-not (Confirm-Action "Abort the unfinished merge?`n`nThe folder goes back to your last commit. Every changed file is copied to the backups folder first." 'Abort merge')) { return }
+    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\smart_sync.py', 'abort-merge') -Title 'Abort unfinished merge' -NoStop -OnDone {
+        param($text, $code)
+        if ($code -eq 0) { Set-SyncDone 'Unfinished merge aborted' 'Your folder is back on your last commit (changed files copied to Backups first)' }
+        else { Set-SyncDone 'Abort failed' 'See the activity pane' 'GradMain' ([string][char]0xE783) }
+    })
+})
+$ui.SyncBackups.Add_Click({
+    $d = Join-Path $env:LOCALAPPDATA 'NIS16\sync_backup'; [void](New-Item -ItemType Directory -Force $d); Start-Process explorer.exe $d
+})
+$ui.SyncAdvanced2.Add_Click({
+    # Deleting from / restoring to GitHub picks files one by one - push_data.py's
+    # own interactive window, never with --yes.
+    Start-Process powershell -ArgumentList @('-NoExit', '-Command', "Set-Location '$base'; Write-Host 'GitHub delete / restore - type: delete or restore, then the area (exports / analysis / logs / presets)' -ForegroundColor Cyan; `$a = Read-Host 'delete or restore'; `$r = Read-Host 'area'; python tools\push_data.py `$a --area `$r")
+})
+# No automatic check (user, oct. 18 2026): GitHub is only contacted when Check
+# again or Smart sync is pressed. Opening the page just shows the last plan.
 
 function Update-Logs {
     $root = Join-Path $base 'datasets\run_logs'
@@ -5369,7 +6770,7 @@ function Complete-Run {
     $R | Add-Member -NotePropertyName Dirs -NotePropertyValue $dirs -Force
     $sum.Note = "all done in $mins"
     Set-RunState 'DONE' $Pal.Green
-    Set-RunNow ("All {0} board(s) done in {1}" -f @($R.Steps | Where-Object Kind -eq 'board').Count, $mins) ("Exports -> {0}`nNext: import the children's SD cards, then verify this run.{1}" -f $dirs.Export, $(if ($R.LogPath) { "`nRun log saved -> $($R.LogPath) (push it from Data > GitHub sync)" } else { '' })) $Pal.Green ([string][char]0xE73E)
+    Set-RunNow ("All {0} board(s) done in {1}" -f @($R.Steps | Where-Object Kind -eq 'board').Count, $mins) ("Exports -> {0}`nNext: import the children's SD cards, then verify this run.{1}" -f $dirs.Export, $(if ($R.LogPath) { "`nRun log saved -> $($R.LogPath) (share it from the GitHub sync page)" } else { '' })) $Pal.Green ([string][char]0xE73E)
     # boards that never said SAFE in the root's last table must not be unplugged
     $notSafe = @(); if ($script:Dash -and $script:Dash.Rows) { $notSafe = @($script:Dash.Rows | Where-Object { $_.Export -ne 'SAFE' -and $_.Role -notmatch 'ROOT' } | ForEach-Object { $_.Mac }) }
     $crashed = @(); if ($R.Bg) { $crashed = @($R.Bg | Where-Object Crashes -gt 0 | ForEach-Object { '{0} x{1}' -f $_.Label, $_.Crashes }) }
@@ -5907,7 +7308,13 @@ $ui.MePick.Add_SelectionChanged({
     if ($script:Presets -and @($ui.OwnerPick.ItemsSource) -contains $script:Me) { $ui.OwnerPick.SelectedItem = $script:Me }
     Show-Toast "Hi $($script:Me)!" 'Your presets are shown first and new presets are saved under your name.' ([string][char]0xE77B) 'GradMain'
 })
-$ui.PresetSearch.Add_TextChanged({ if ($script:Presets) { Update-PresetGrid } })
+$searchTimer = New-Object Windows.Threading.DispatcherTimer
+$searchTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+$searchTimer.Add_Tick({ $searchTimer.Stop(); if ($script:Presets) { Update-PresetGrid } })
+$ui.PresetSearch.Add_TextChanged({
+    $ui.PresetSearchHint.Visibility = $(if ($ui.PresetSearch.Text) { 'Collapsed' } else { 'Visible' })
+    $searchTimer.Stop(); $searchTimer.Start()
+})
 
 # sidebar badges (live counts next to the page names)
 $script:NavText = @{ NavHome = 'Home'; NavCapture = 'Run a capture'; NavVerify = 'Verify & analyse'; NavCampaign = 'Campaign'
@@ -6040,8 +7447,8 @@ function Invoke-PalItem($I) {
                 'readmacs'  { Request-MacReadAll }
                 'redo'      { Show-Page 3; Start-RedoList }
                 'import'    { Open-Import $null }
-                'sync'      { Show-Page 5; $ui.DataTabs.SelectedIndex = 2 }
-                'logs'      { Show-Page 5; $ui.DataTabs.SelectedIndex = 3 }
+                'sync'      { Show-Page 8 }
+                'logs'      { Show-Page 5; $ui.DataTabs.SelectedIndex = 2 }
                 'pcap'      { Show-Page 6; $ui.WsTabs.SelectedIndex = 0 }
                 'selftest'  { & $click $ui.TSelfTest }
                 'uart'      { & $click $ui.TUartTest }
@@ -6134,6 +7541,10 @@ if (-not $SelfTest) {
     $t0 = Get-Date
     while ($script:Jobs.Count -and ((Get-Date) - $t0).TotalSeconds -lt 60) { & $pump 300 }
     & $shot 'home'
+    # the Everyone list (the fast view)
+    Show-Page 1; $ui.OwnerPick.SelectedItem = 'everyone'; & $pump 300
+    Write-Output ("everyone list: {0} row(s), list shown = {1}" -f @($ui.PresetList.ItemsSource).Count, $ui.PresetList.Visibility)
+    & $shot 'capture_list'
     Show-Page 1
     $ui.OwnerPick.SelectedItem = 'Kyle'
     & $pump 300
@@ -6147,10 +7558,17 @@ if (-not $SelfTest) {
         $bmp2.Render($ed); $enc2 = New-Object Windows.Media.Imaging.PngBitmapEncoder
         $enc2.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($bmp2))
         $fs2 = [IO.File]::Create((Join-Path $ShotDir 'gui_editor.png')); $enc2.Save($fs2); $fs2.Close()
+        # multi-remove: tick 2 boards, one Remove press takes both (the copy is cancelled below)
+        $before = @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' }).Count
+        $ticked = @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' } | Select-Object -First 2); foreach ($r in $ticked) { $r['Pick'] = $true }
+        $btn = [string]$f.EdRemove.Content
+        $f.EdRemove.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
+        $script:EdMulti = ("editor multi-remove: {0} -> {1} board(s), button said '{2}'" -f $before, @($dt.Rows | Where-Object { $_.RowState -ne 'Deleted' }).Count, $btn)
         $ed.DialogResult = $false
     }
     [void](Show-PresetEditor -From $ui.PresetGrid.SelectedItem -AsCopy)
     Write-Output 'shot: gui_editor.png'
+    Write-Output $script:EdMulti
     $script:EditorHook = {
         $f.EdOwner.Text = 'ZZ_GUI_TEST'; $f.EdAttack.SelectedItem = 'wormhole'; $f.EdScenario.SelectedItem = 'burst'
         [void]$dt.Rows.Add('node2', 'COM5', 'tunnel end', '20:50:0d:e7:1c:38', $false)
@@ -6202,6 +7620,7 @@ if (-not $SelfTest) {
     $script:VerQueue.Clear(); foreach ($c in @($script:Cells | Where-Object { $_.Analysed -and $_.Attack -ne 'baseline' } | Select-Object -First 2)) { $script:VerQueue.Enqueue($c) }
     Start-NextVerify; $t0 = Get-Date; while (($script:VerQueue.Count -or $script:Jobs.Count) -and ((Get-Date) - $t0).TotalSeconds -lt 90) { & $pump 300 }
     Write-Output ("check all verdicts: queue drained = {0}, status = {1}" -f ($script:VerQueue.Count -eq 0), $ui.Status.Text)
+    $a0 = @($script:Cells)[0].Art; Write-Output ("run list pictures: {0} ({1}x{2})" -f $(if ($a0) { $a0.GetType().Name } else { 'NONE' }), $(if ($a0) { $a0.PixelWidth } else { 0 }), $(if ($a0) { $a0.PixelHeight } else { 0 }))
     Write-Output ("analysis page: {0} run(s) listed, {1} need analysis, files rows = {2}, plots = {3}" -f @($script:Cells).Count, @($script:Cells | Where-Object { $_.Look -in @('todo', 'stale') }).Count, $ui.AnaFiles.Children.Count, $ui.AnaPlots.Children.Count)
     Show-Page 3
     $t0 = Get-Date
@@ -6232,7 +7651,7 @@ if (-not $SelfTest) {
     & $shot 'palette'
     Invoke-PalItem $ui.PalList.SelectedItem
     Write-Output ("palette -> page {0}" -f $ui.Pages.SelectedIndex)
-    Show-Page 1; $ui.OwnerPick.SelectedItem = 'everyone'; $ui.PresetSearch.Text = 'wormhole g402'; & $pump 200
+    Show-Page 1; $ui.OwnerPick.SelectedItem = 'everyone'; $ui.PresetSearch.Text = 'wormhole g402'; & $pump 700
     Write-Output ("preset search 'wormhole g402': {0} row(s)" -f @($ui.PresetGrid.ItemsSource).Count)
     & $shot 'capture_search'
     $ui.PresetSearch.Text = ''
@@ -6440,6 +7859,25 @@ exit 0
     $ft = @($ui.BoardTabs.Items | Where-Object { [string]$_.Header -match 'Firmware' })[0]; if ($ft) { $ui.BoardTabs.SelectedItem = $ft; Update-PortPick $ui.TSelfPort; $ui.TSelfPort.SelectedIndex = 0; & $shot 'tests'; $ui.BoardTabs.SelectedIndex = 0 }
     Show-Page 6; $st = @($ui.WsTabs.Items | Where-Object { [string]$_.Header -match 'sniffer' })[0]; if ($st) { $ui.WsTabs.SelectedItem = $st; Update-PortPick $ui.SnPort; $ui.SnPort.SelectedIndex = 0; & $shot 'sniffer' }
     Show-Page 5; & $shot 'data'
+    # GitHub sync page: a REAL read-only check (status changes nothing), then the plan as shown
+    $t0 = Get-Date; while ($script:Stream -and ((Get-Date) - $t0).TotalSeconds -lt 60) { & $pump 250 }
+    Show-Page 8; & $pump 400
+    Write-Output ("sync page opened: check started by itself = {0} (must be False)" -f [bool]$script:Stream)
+    $ui.SyncCheck.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
+    $t0 = Get-Date; while (($script:Stream -or -not $script:Sync) -and ((Get-Date) - $t0).TotalSeconds -lt 180) { & $pump 400 }
+    & $pump 400
+    if ($script:Sync) { try { Show-SyncStatus $script:Sync } catch { Write-Output ("sync page ERROR: {0} at line {1}: {2}" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber, $_.InvocationInfo.Line.Trim()) } }
+    if ($script:Sync) {
+        Write-Output ("sync page: head='{0}' | send {1} | receive {2} | held {3} | runs {4} | gate={5} | steps={6}" -f $ui.SyncHead.Text, $script:SyncTables.Send.Rows.Count, $script:SyncTables.Recv.Rows.Count,
+            $ui.SyncHeldGrid.Items.Count, $ui.SyncRunsGrid.Items.Count, $ui.SyncGate.Visibility, ((@($ui.SyncSteps.ItemsSource | ForEach-Object { "$($_.Name)=$($_.Info)" })) -join ', '))
+        Write-Output ("sync chips: " + ((@($ui.SyncChips.ItemsSource | ForEach-Object Text)) -join ' | '))
+    } else { Write-Output 'sync page: NO STATUS (check failed)' }
+    & $shot 'sync'
+    $ui.SyncTabs.SelectedIndex = 3; & $pump 300; & $shot 'sync_runs'
+    Set-SyncDone 'Sync done' '3 sent, 0 received  (self-test)'; & $pump 300
+    $ui.SyncUpdate.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Primitives.ButtonBase]::ClickEvent))); & $pump 200
+    Write-Output ("after a sync: check started by itself = {0} (must be False), head='{1}', send list cleared = {2}, next Smart sync re-checks = {3}" -f [bool]$script:Stream, $ui.SyncHead.Text, ($null -eq $ui.SyncSendGrid.ItemsSource), ($null -eq $script:SyncChecked))
+    & $shot 'sync_done'
     Write-Output ("status: " + $ui.Status.Text)
     $win.Close()
 }

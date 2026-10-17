@@ -2631,3 +2631,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
   **BURST_COUNT 100 -> 300** (user: "add 200 more") in `mesh_config.h:545` + "300 probes" text in run_wizard/menu/run.ps1 + memory/run-scenarios;
   NOT compiled/flashed; burst size is not in the CSV (old 100-probe bursts not comparable). Stationary = 1 probe/s/child (~660/child/run);
   highload 250 ms; run length is set only by root timers (60/300/180/120; jitter + burst-baseline add time), never by send rate.
+- oct. 16-17 (Angelo) — verifications #33-#38, wizard 'b' everywhere + redesign, redo-list topology, wormhole firmware fix + root gates + manual START, verifier redesign (2 wormhole primaries, study tags), preprocess transition/anchor fixes, redo list, wizard redo-list + tunnel prompt fixes.  (rolled from STATUS oct. 18)

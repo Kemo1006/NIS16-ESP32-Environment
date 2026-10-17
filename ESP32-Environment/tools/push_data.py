@@ -102,6 +102,19 @@ class SyncError(Exception):
     pass
 
 
+def canon(area, rel, data):
+    """Line endings made canonical (LF) for analysis tables + presets (oct. 18, 2026).
+
+    A laptop with core.autocrlf=true commits those TEXT files LF while its
+    working copy is CRLF; comparing raw bytes then called every file a normal
+    commit had touched "different" -> KEEP-BOTH copies and re-pushes. Exports and
+    run logs are byte-exact (.gitattributes -text) and are never touched here.
+    Shared with tools/smart_sync.py."""
+    if area in (ANALYSIS, PRESETS) and not rel.lower().endswith(".png") and b"\0" not in data[:8000]:
+        return data.replace(b"\r\n", b"\n")
+    return data
+
+
 def git(args, cwd, check=True, stdin=None, cfg=()):
     # autocrlf off everywhere: pushed bytes, verified bytes and locally staged
     # bytes must be identical or the byte-exact checks below mean nothing.
@@ -644,7 +657,7 @@ def build_plan(ctx, area):
         if in_archive(rel):
             notes["in_archive"].append(rel)
             continue
-        data = (BASE / rel).read_bytes()
+        data = canon(area, rel, (BASE / rel).read_bytes())
         repo_path = ctx.prefix + rel
         name = rel.rsplit("/", 1)[-1]
         remote = (git(["cat-file", "blob", "HEAD:" + repo_path], ctx.sync).stdout
@@ -672,7 +685,7 @@ def build_plan(ctx, area):
                 notes["deleted"].append(rel)
             else:
                 writes.append(("new", rel, repo_path, data))
-        elif remote == data:
+        elif remote == data or canon(area, rel, remote) == data:
             notes["same"] += 1
         elif older_version_on_github(ctx, repo_path, data):
             notes["older"].append(rel)
@@ -867,7 +880,7 @@ def sync_push(ctx, area):
 
         for kind, rel, repo_path, data in writes:
             blob = git(["cat-file", "blob", "HEAD:" + repo_path], ctx.sync).stdout
-            if blob != data or (kind != "ledger" and data != (BASE / rel).read_bytes()):
+            if blob != data or (kind != "ledger" and data != canon(area, rel, (BASE / rel).read_bytes())):
                 raise SyncError("VERIFY FAILED for {} - committed bytes differ from your file. "
                                 "Nothing was pushed.".format(rel))
 
@@ -928,7 +941,7 @@ def pull_back(ctx, area, yes):
                 incoming.append(rel)
             continue
         remote, local = src.read_bytes(), dst.read_bytes()
-        if remote == local:
+        if remote == local or canon(area, rel, remote) == canon(area, rel, local):
             matching.append(rel)
         elif name in LEDGERS:
             r_lines, l_lines = split_ledger(remote)[0], split_ledger(local)[0]

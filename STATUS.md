@@ -5,7 +5,7 @@
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
-- ⚠️ **Pull safely:** `git stash push` (or commit) first, then `git pull --ff-only`, then `git stash pop`.
+- ⚠️ **Sync data:** GUI sidebar **GitHub sync** -> Check -> Smart sync (~5 s check; analyses stale runs first, sends/receives data, updates the folder safely, never half-merges). Code still goes by `git commit` / `git push`.
 
 ## Where things stand
 - **Wormhole 'both B' (oct. 17 7:30 PM run) = UART SELF-ECHO:** 0C80 heard its OWN HELLOs and took them for the peer ('UART OK'). Firmware now ignores own-MAC HELLOs and reports `UART ECHO (own TX->RX)`; root names every end's UART state. Host test 71/71, root + wormhole builds 0 warnings. **Not yet on hardware.** Earlier #37 fix (one-way cable, root gate 1 A + 1 B) is on the boards and held Phase 0 correctly. **8:59 PM wormhole/linear/G402/highload r1 set up right (A H01, B H05, UART OK) - verify it.**
@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run - analyze.ps1 re-trims, don't point tools there by hand.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 18 (Angelo) — GUI look pass: Run a capture = preset gallery (person boxes, mesh-drawing cards, campaign ribbons, UP NEXT banner, readable MACs); Boards/sniffer/Verify list restyled; preset editor multi-remove; capture page ~10x faster (Everyone list / person cards), filters, dates, sort. Uncommitted; another session edits run_gui.ps1 too (GitHub sync page).
 - oct. 17 (Angelo) — GUI: redesign + speed-ups, then FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID no-reset board ID); wormhole audit (star blocked, A24).
-- oct. 16-17 (Angelo) — verifications #33-#38, wizard 'b' everywhere + redesign, redo-list topology, wormhole firmware fix + root gates + manual START, verifier redesign (2 wormhole primaries, study tags), preprocess transition/anchor fixes, redo list, wizard redo-list + tunnel prompt fixes.
