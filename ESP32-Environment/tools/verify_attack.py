@@ -77,6 +77,8 @@ Output: a per-feature 3-sigma report + overall CONFIRMED / NOT-CONFIRMED verdict
 Usage : python tools/verify_attack.py analysis/blackhole/linear_topology/feature_table.csv
         python tools/verify_attack.py <feature_table.csv> --attack wormhole --sigma 3
 """
+import contextlib
+import io
 import argparse
 import math
 import sys
@@ -155,7 +157,10 @@ RATIO_OF_SUMS = {
 # blackhole takes victims from ~1.0 to ~0.0; a tunnel goes from 0 to ~1 msg/s)
 # and far above one-probe noise.
 MIN_EFFECT = {"PDR": 0.10, "ForwardingRatio": 0.10, "NeighbourForwardingRatio": 0.10,
-              "ConsistencyScore": 0.10, "TunnelIntensity": 0.10, "TunnelBytes": 3.0}
+              "ConsistencyScore": 0.10, "TunnelIntensity": 0.10, "TunnelBytes": 3.0,
+              "DuplicateRate": 0.10}
+# DuplicateRate is a ratio in [0, 1] (share of B's windows the root logged twice).
+FEATURE_UPPER_BOUND["DuplicateRate"] = 1.0
 
 # Fewest attack-phase points (blocks of --block windows) a feature needs before
 # its mean is trusted: 6 x 5 s = 30 s of the ~180 s attack.
@@ -174,10 +179,23 @@ SIGNATURES = {
     ],
     "wormhole": [
         ("TunnelIntensity",    "up",   "primary"),    # tunnel active (~0 in baseline)
+        # oct. 16 2026: a SECOND, INDEPENDENT primary. TunnelIntensity is the
+        # attacking boards' own count; this one is measured by the ROOT: the
+        # share of Node B's windows in which the root logged the same probe
+        # twice (Ramirez Gomez et al. 2019: the wormhole's duplicate-packet
+        # signature). Derived here from TunnelLatency, which features.py fills
+        # only where a duplicate arrived (see _add_duplicate_rate).
+        ("DuplicateRate",      "up",   "primary"),
         ("TunnelBytes",        "up",   "secondary"),  # = TunnelIntensity x 30 B: same
                                                       # measurement, so not a 2nd primary
-        ("TunnelLatency",      "up",   "primary"),    # duplicate-arrival spread appears
-        ("LatencyHopRatio",    "down", "secondary"),  # shortcut copy arrives faster (informational)
+        # MEASURED, never scored (oct. 16 2026, team decision): a 3-sigma test
+        # cannot apply. TunnelLatency exists only while the tunnel runs (no
+        # normal-phase values at all); LatencyHopRatio is an unsynchronised
+        # relative delay whose normal spread is wider than its mean (max
+        # attainable |z| 0.23-0.64 on every capture). Kept in the dataset and
+        # printed in section [2] with their values.
+        ("TunnelLatency",      "up",   "measured"),   # spread between a probe's 2 copies
+        ("LatencyHopRatio",    "down", "measured"),   # relative delay per hop
     ],
 }
 
@@ -244,20 +262,17 @@ def _pooled_note(df_nodes, feat, label, attackers, res, sigma):
     honest = per_node[~per_node.index.isin(attackers)]
     atk_val = per_node[per_node.index.isin(attackers)]
     n_h = len(honest)
-    head = (f"average of all {len(per_node)} relays ({len(atk_val)} attacker + {n_h} "
-            f"honest); not counted - the attacker row decides.")
+    tail = ("Same measurement as the attacker row, so never counted (it would count one "
+            "fact twice).")
     if atk_val.empty or any(math.isnan(res[k]) for k in ("mu", "sd", "attack_mean", "z")):
-        return head
-
+        return (f"average over all {len(per_node)} relays ({len(atk_val)} attacker + {n_h} "
+                f"honest). " + tail)
     a = float(atk_val.mean())
     if n_h == 0:
         # Star + blackhole (D-16): every victim is a leaf under the attacker, so
         # the attacker is the ONLY relay and this row is the attacker row again.
-        # The old wording ("the 0 honest relay(s) averaged 1.000") described
-        # relays that do not exist.
-        return head + ("\n      - The attacker is the only relay in this run (e.g. a star hub: every "
-                       "victim is a leaf),\n        so this row is the attacker row itself - no "
-                       "dilution to explain.")
+        return (f"{res['attack_mean']:.3f} - the attacker is the only relay here (e.g. a star "
+                f"hub), so this is the attacker row itself. " + tail)
     h = float(honest.mean())
     line = res["mu"] - sigma * res["sd"]
     if h <= line:
@@ -266,35 +281,16 @@ def _pooled_note(df_nodes, feat, label, attackers, res, sigma):
         cap = "no honest relays at all"
     else:
         k = int(math.floor((line - a) / (h - line)))
-        cap = f"at most about {k} honest relay{'s' if k != 1 else ''}"
-    who = ", ".join(f"{n} {v:.3f}" for n, v in honest.sort_values().items())
-    pts = [
-        f"Attacker {', '.join(atk_val.index)} fell to {a:.3f}; the {n_h} honest relay(s) "
-        f"averaged {h:.3f}" + (f" ({who})." if n_h else "."),
-        "During a blackhole only the attacker stops forwarding. Every honest relay keeps "
-        "passing traffic on - victims that relay included, because they forward INTO the "
-        "attacker - so this average is the attacker's drop diluted by the honest relays.",
-        f"To pass it must fall below {res['mu']:.3f} - {sigma:g} x {res['sd']:.3f} = {line:.3f}. "
-        f"At these values that allows {cap} (approximate: relays contribute different "
-        f"numbers of windows).",
-    ]
-    if status == "PASS":
-        pts += [f"This run has {n_h}, so the drop still shows network-wide ({res['attack_mean']:.3f}, "
-                f"z {res['z']:.2f}): supporting evidence for the attacker row.",
-                "Still not counted: it is the same measurement as the attacker row, so counting "
-                "it too would count one fact twice."]
-    else:
-        pts += [f"This run has {n_h}, so the average only reached {res['attack_mean']:.3f} "
-                f"(z {res['z']:.2f}) and fails.",
-                f"This is NOT evidence against the attack: the attacker's own ratio fell to "
-                f"{a:.3f} (attacker row). Whether this row passes depends on how many honest "
-                f"relays the topology puts around the attacker, which is why the verdict uses "
-                f"the attacker row instead."]
-    indent = " " * 6
-    body = "\n".join(textwrap.fill(p, width=92, initial_indent=indent + "- ",
-                                   subsequent_indent=indent + "  ") for p in pts)
-    return head + "\n" + body
-
+        cap = f"at most ~{k} honest relay{'s' if k != 1 else ''}"
+    # Only the attacker stops forwarding; every honest relay - a victim that
+    # relays included, since it forwards INTO the attacker - stays near 1.0, so
+    # this average passes or fails with the NUMBER of honest relays, not with
+    # the attack (linear G402, 5 honest: 0.826 FAIL; tree G402, 2 honest: PASS).
+    outcome = ("still drops past 3-sigma" if status == "PASS" else
+               "does not reach 3-sigma - NOT evidence against the attack")
+    return (f"network-wide {res['attack_mean']:.3f} (z {res['z']:.2f}) = the attacker's "
+            f"{a:.3f} diluted by {n_h} honest relay(s) at {h:.3f}; it {outcome} (passing "
+            f"allows {cap}). " + tail)
 
 
 def _apply_min_effect(res, feature, mu, am):
@@ -342,7 +338,8 @@ def stat_verdict(baseline, attack, direction, sigma, feature=None, lower_bound=0
             moved = am > mu + eps
             res["z"] = float("inf") if moved else 0.0
             res["frac_beyond"] = float((a > mu + eps).mean())
-        res["note"] = "baseline sd=0 (perfectly stable)"
+        res["note"] = ("the normal phase never varied (sd = 0), so z is infinite: any "
+                       "move in the expected direction counts")
         res["status"] = "PASS" if moved else "FAIL"
         _apply_min_effect(res, feature, mu, am)
         return res
@@ -466,18 +463,59 @@ def _fmt_z(z):
     return f"{z:7.2f}"
 
 
-# Short, fixed-width verdict flags for the table. Verbose notes (citations,
-# thresholds, raw context) never go in the cell - they're collected and
-# printed as numbered footnotes below the table instead, so a long note on
-# one row can't shift every column after it.
+RULE_W = 106  # report width; ASCII only - PowerShell 5.1 (analyze.ps1 | Out-Host) garbles box/emoji glyphs
+
+# Short, fixed-width result words for the tables.
 STATUS_FLAG = {
     "PASS": "PASS",
     "FAIL": "FAIL",
     "INVALID-BASE": "EXCLUDED",
-    "INFEASIBLE": "INFEASIBLE",
-    "INCONCLUSIVE": "INCONCL",
-    "SKIP": "SKIP",
+    "INFEASIBLE": "UNTESTABLE",
+    "INCONCLUSIVE": "NO DATA",
+    "N/A": "N/A",
+    "SKIP": "NO DATA",
 }
+TIER_WORD = {"primary": "primary", "secondary": "support"}
+
+# The study behind each scored feature / check. ONLY studies already vetted in
+# docs/references/2026-09-14_REFERENCES.md and docs/attack-validation/
+# ATTACK-VALIDATION.md section 4 - that list deliberately stops at what is
+# peer-reviewed and checked; do not add a tag here without adding it there.
+STUDIES = {
+    "Z":  "Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack "
+          "test; wormhole = out-of-band tunnel between two nodes",
+    "A":  "Airehrour, Gutierrez & Ray (2018), AJTDE 6(1):41-59 - blackhole = node that "
+          "drops what it should forward; delivered/sent (ForwardingRatio, PDR) collapses",
+    "KW": "Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION "
+          "(only traffic routed through it is lost)",
+    "K":  "Khan et al. (2022), Sustainability 14(24):16630 - healthy ESP-MESH delivers "
+          "PDR > 97 %: the floor for a valid normal phase",
+    "R":  "Ramirez Gomez, Vargas Montoya & Leon Henao (2019), Rev. Colomb. Comput. 20(1) - "
+          "wormhole signature = duplicate packets (same data unit twice)",
+    "H":  "Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with "
+          "timing the claimed path cannot explain (packet leashes)",
+}
+FEATURE_STUDY = {
+    "ForwardingRatio": "A", "PDR": "A", "ConsistencyScore": "A",
+    "IngressEgressDelta": "A", "NeighbourForwardingRatio": "A",
+    "TunnelIntensity": "Z", "TunnelBytes": "Z", "TunnelLatency": "H",
+    "DuplicateRate": "R",
+}
+# Setup-check text -> study, matched on words the checks print.
+CHECK_STUDY = [
+    ("victim", "KW"), ("behind the attacker", "KW"), ("not behind", "KW"),
+    ("forwarded", "A"), ("duplicate", "R"), ("UART", "Z"), ("shallower", "H"),
+    ("REVERSED", "H"), ("SAME DEPTH", "H"),
+]
+
+
+def _check_study(text):
+    tags = []
+    for word, tag in CHECK_STUDY:
+        if word.lower() in text.lower() and tag not in tags:
+            tags.append(tag)
+    return tags
+CHECK_MARK = {"OK": "OK  ", "FAIL": "FAIL", "WARN": "WARN", "SKIP": "--  "}
 
 
 # Set by verify(): True when the last wormhole check found a setup problem
@@ -485,13 +523,55 @@ STATUS_FLAG = {
 _LAST_SETUP_INVALID = [False]
 
 
+def _num(x, nd=3):
+    return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x:.{nd}f}"
+
+
+def _wrap(text, indent, width=RULE_W):
+    """Word-wrap `text` to the report width with a hanging indent."""
+    import textwrap
+    return textwrap.fill(text, width=width, initial_indent=indent,
+                         subsequent_indent=" " * len(indent))
+
+
+def _measured_line(name, feat, r, sigma):
+    """One plain-language line for a feature that is MEASURED, never scored."""
+    am = r["attack_mean"]
+    if feat == "TunnelLatency":
+        if math.isnan(am):
+            return f"{name}: no duplicated probe reached the root - nothing to measure"
+        return (f"{name}: the two copies of B's probes reached the root {am:.1f} ms apart "
+                f"(attack mean). Exists only while the tunnel runs, so there is no normal "
+                f"value to test against - reported as a measurement: the wormhole's timing "
+                f"mismatch")
+    if feat == "LatencyHopRatio":
+        if math.isnan(am) or math.isnan(r["mu"]):
+            return f"{name}: not enough latency data"
+        return (f"{name}: normal {r['mu']:.1f} +- {r['sd']:.1f} -> attack {am:.1f} "
+                f"(z {_fmt_z(r['z']).strip()}). Relative one-way delay per hop (board clocks "
+                f"are not synchronised) with rare 100s-of-ms spikes, so its normal spread is "
+                f"too wide for a 3-sigma test - context only")
+    if r.get("note"):
+        return f"{name}: {r['note']}"
+    return (f"{name}: normal {_num(r['mu'])} +- {_num(r['sd'])} -> attack "
+            f"{_num(r['attack_mean'])} (z {_fmt_z(r['z']).strip()})")
+
+
 def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
+    """Run the 3-sigma test + setup checks for one attack and print the report.
+
+    Output is built first and printed in one go so the RESULT can sit at the
+    top. The decision logic (what counts, what is excluded) is unchanged from
+    the oct. 14 2026 version; only the layout changed (oct. 16 2026).
+    Returns (confirmed, conclusive).
+    """
     label = ATTACK_LABEL[attack]
     raw_lab = pd.to_numeric(df["Label"], errors="coerce")
-    print(f"\n=== Verifying {attack.upper()} (Label {label}) vs baseline (Label 0) ===")
-    print(f"    baseline windows: {int((raw_lab == LABEL_BASELINE).sum())}   "
-          f"attack windows: {int((raw_lab == label).sum())}")
+    n_base_w = int((raw_lab == LABEL_BASELINE).sum())
+    n_atk_w = int((raw_lab == label).sum())
 
+    if attack == "wormhole":
+        df = _add_duplicate_rate(df)
     feats = [f for f, _, _ in SIGNATURES[attack]]
     # Keep the PRE-AGGREGATION frame for the per-node report below: block_aggregate
     # pools `block` windows per point and keeps only the signature features, so it
@@ -502,13 +582,6 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     lab = pd.to_numeric(df["Label"], errors="coerce")
     base_mask = lab == LABEL_BASELINE
     atk_mask = lab == label
-
-    print(f"    aggregation: {agg_note}")
-    print(f"    3-sigma normal-vs-attack test (Zhukabayeva et al. 2025)\n")
-    header = (f"  {'feature':<36}{'tier':<10}{'baseline mu+-sd (n)':<26}"
-              f"{'attack mean (n)':<18}{'z':>7}  {'verdict':<13}ref")
-    print(header)
-    print("  " + "-" * (len(header) - 2))
 
     scoped = ATTACKER_SCOPED.get(attack, {})
     attacker_ids = {}
@@ -536,14 +609,13 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         else:
             rows.append((feat, feat, direction, tier, None))
 
-    primary_pass = 0
-    primary_total = 0
-    primary_excluded = 0
-    primary_missing = 0
-    footnotes = []  # (marker, feature, note) - printed below the table, not in-cell
+    primary_pass = primary_total = primary_excluded = primary_missing = 0
+    scored, measured, notes = [], [], []
+    best = None  # strongest passing primary, for the RESULT line
     for name, feat, direction, tier, node_ids in rows:
         if feat not in df.columns and node_ids is not MISSING_ATTACKER:
-            print(f"  {name:<36}{tier:<10}(column missing)")
+            if tier not in ("info", "measured"):
+                scored.append((name, tier, None, direction))
             continue
         if node_ids is MISSING_ATTACKER:
             empty = pd.Series(dtype=float)
@@ -567,7 +639,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
         floor = BASELINE_FLOOR.get(feat)
         if floor is not None and not math.isnan(r["mu"]) and r["mu"] < floor:
             r["status"] = "INVALID-BASE"
-            r["note"] = (f"baseline mean {r['mu']:.3f} < {floor:g}; Khan et al. (2022) "
+            r["note"] = (f"normal-phase mean {r['mu']:.3f} < {floor:g}; Khan et al. (2022) "
                          f"measured PDR > 0.97 on ESP-MESH, so this baseline is a "
                          f"broken measurement, not a quiet network - excluded")
         ceiling = BASELINE_DISPERSION_CEILING.get(feat)
@@ -575,87 +647,270 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
                 and not math.isnan(r["mu"]) and not math.isnan(r["sd"])
                 and r["mu"] > 0 and (r["sd"] / r["mu"]) > ceiling):
             r["status"] = "INVALID-BASE"
-            r["note"] = (f"baseline {r['mu']:.3f}+-{r['sd']:.3f} has sd/mu = "
+            r["note"] = (f"normal phase {r['mu']:.3f}+-{r['sd']:.3f} has sd/mu = "
                          f"{r['sd'] / r['mu']:.2f} > {ceiling:g} on a bounded ratio; "
                          f"that is a broken measurement, not normal operation "
                          f"(check for pre_baseline contamination) - excluded")
 
-        if tier == "primary" and r["status"] in ("PASS", "FAIL"):
-            primary_total += 1
-            primary_pass += 1 if r["status"] == "PASS" else 0
-        elif tier == "primary" and r["status"] in ("INVALID-BASE", "INFEASIBLE"):
-            primary_excluded += 1
-        mu_s = "n/a" if math.isnan(r["mu"]) else f"{r['mu']:.3f}+-{r['sd']:.3f}"
-        base_s = f"{mu_s} ({r['n_base']})"
-        am_s = "n/a" if math.isnan(r["attack_mean"]) else f"{r['attack_mean']:.3f}"
-        atk_s = f"{am_s} ({r['n_attack']})"
-        arrow = "v" if direction == "down" else "^"
-
         if tier == "info":
             r["note"] = _pooled_note(df_nodes, feat, label, attacker_ids[feat], r, sigma)
-        ref = ""
+            measured.append(f"{name}: {r['note']}")
+            continue
+        if tier == "measured":
+            measured.append(_measured_line(name, feat, r, sigma))
+            continue
+
+        if tier == "primary" and r["status"] in ("PASS", "FAIL"):
+            primary_total += 1
+            if r["status"] == "PASS":
+                primary_pass += 1
+                key = (math.isfinite(r["z"]), abs(r["z"]) if math.isfinite(r["z"]) else 0)
+                if best is None or key > best[2]:
+                    best = (name, r, key)
+        elif tier == "primary" and r["status"] in ("INVALID-BASE", "INFEASIBLE"):
+            primary_excluded += 1
         if r["note"]:
-            footnotes.append((len(footnotes) + 1, name, r["note"]))
-            ref = f"[{footnotes[-1][0]}]"
-        flag = STATUS_FLAG.get(r["status"], r["status"])
-        verdict_s = f"{flag} [{arrow}]"
-        print(f"  {name:<36}{tier:<10}{base_s:<26}{atk_s:<18}{_fmt_z(r['z'])}  "
-              f"{verdict_s:<13}{ref}")
+            notes.append((name, r["note"]))
+        scored.append((name, tier, r, direction))
 
     conclusive = primary_total > 0
     confirmed = conclusive and primary_pass > 0
-    excluded_note = (f" {primary_excluded} primary feature(s) excluded on an invalid "
-                     f"baseline - see notes below." if primary_excluded else "")
-    if primary_missing:
-        excluded_note += (f" {primary_missing} primary feature(s) not tested: the "
-                          f"attacker's telemetry is missing - see notes below.")
-    if footnotes:
-        print("\n  NOTES:")
-        for marker, feat, note in footnotes:
-            print(f"  [{marker}] {feat}: {note}")
-    print()
+
     # SETUP CHECKS (tools/attack_checks.py, oct. 14 2026): topology during the
     # attack, the attacker / victims / tunnel behaving as designed. The 3-sigma
     # table says the features MOVED; these say whether the attack we claim is
     # what moved them. Any FAIL -> SETUP INVALID; WARN / SKIP never change it.
     setup_invalid = False
-    print(f"  SETUP CHECKS ({attack}: attack setup + topology + "
-          f"{'UART tunnel' if attack == 'wormhole' else 'victims'}, from the data):")
     if _checks is None:
-        print("    ?? tools/attack_checks.py could not be imported - setup NOT checked")
+        issues = None
     else:
         try:
             issues = _checks.setup_issues(df_nodes, attack)
         except Exception as e:                      # never block the verdict
             issues = [_checks.Issue(_checks.SKIP, f"setup checks could not run: {e}")]
-        mark = {"OK": "ok ", "FAIL": "!! ", "WARN": "?  ", "SKIP": "-- "}
-        for it in issues:
-            print(f"    {mark.get(it.level, '   ')}{it.text}")
         setup_invalid = any(it.level == _checks.FAIL for it in issues)
-    print()
     # exit 3 means 'the signature passed, but the setup was invalid' - only then.
     _LAST_SETUP_INVALID[0] = setup_invalid and confirmed
-    print_per_node_pdr(df_nodes, label)
+
+    # ── verdict text ─────────────────────────────────────────────────────────
+    count = f"{primary_pass}/{primary_total} primary signature(s) beyond {sigma:g}-sigma"
+    extra = []
+    if primary_excluded:
+        extra.append(f"{primary_excluded} primary excluded (broken or untestable normal phase)")
+    if primary_missing:
+        extra.append(f"{primary_missing} primary not tested (attacker telemetry missing)")
     if confirmed and setup_invalid:
-        print(f"  VERDICT: {attack.upper()} NOT CONFIRMED - SETUP INVALID  "
-              f"({primary_pass}/{primary_total} primary signatures exceed {sigma:g}-sigma,"
-              f" but the SETUP CHECKS above failed).")
-        print("    The features moved, but not because of the attack as designed (see the !!"
-              " lines). Do NOT report this run as a confirmed attack - fix the setup and"
-              " recapture." + excluded_note)
-        return False, conclusive
-    if confirmed:
-        print(f"  VERDICT: {attack.upper()} CONFIRMED  "
-              f"({primary_pass}/{primary_total} primary signatures exceed {sigma:g}-sigma)."
-              + excluded_note)
+        result = "NOT CONFIRMED - SETUP INVALID"
+        why = ("the signature moved, but a setup check FAILED (see [3]) - the attack did not "
+               "run as designed. Do not report it as confirmed; fix the setup and recapture.")
+        verdict = f"{attack.upper()} NOT CONFIRMED - SETUP INVALID  ({count})"
+    elif confirmed:
+        result = "CONFIRMED"
+        b = best[1] if best else None
+        if b is None:
+            why = count
+        elif math.isfinite(b["z"]):
+            why = (f"{best[0]}: normal {b['mu']:.3f} -> attack {b['attack_mean']:.3f}, "
+                   f"{b['z']:+.2f} sigma (needs {sigma:g})")
+        else:
+            why = (f"{best[0]}: normal {b['mu']:.3f} -> attack {b['attack_mean']:.3f}; the "
+                   f"normal phase never varied, so this move is beyond any sigma")
+        verdict = f"{attack.upper()} CONFIRMED  ({count})"
     elif not conclusive:
-        print(f"  VERDICT: INCONCLUSIVE - no primary signature feature had usable data "
-              f"(need a full attack run with the correct node roles present)."
-              + excluded_note)
+        result = "INCONCLUSIVE"
+        why = ("no primary signature had usable data - need a full attack run with the "
+               "attacking node's telemetry present.")
+        verdict = "INCONCLUSIVE - no primary signature feature had usable data"
     else:
-        print(f"  VERDICT: NOT CONFIRMED - no primary signature exceeded {sigma:g}-sigma. "
-              f"Check the attacker setup / run." + excluded_note)
-    return confirmed, conclusive
+        result = "NOT CONFIRMED"
+        why = f"no primary signature reached {sigma:g}-sigma - check the attacker setup / run."
+        verdict = f"NOT CONFIRMED - no primary signature exceeded {sigma:g}-sigma"
+    if extra:
+        verdict += ". " + "; ".join(extra)
+
+    # ── print ────────────────────────────────────────────────────────────────
+    cell = " / ".join(str(_first_val(df_nodes, c)) for c in
+                      ("topology", "location", "scenario") if _first_val(df_nodes, c))
+    rep = _first_val(df_nodes, "run_repeat")
+    title = f" {attack.upper()} VERIFICATION" + (f"  -  {cell}" if cell else "") \
+        + (f"  (r{rep})" if rep not in (None, "") else "")
+    print()
+    print("=" * RULE_W)
+    print(title)
+    print("=" * RULE_W)
+    print(f" RESULT : {result}")
+    print(_wrap(why, "          "))
+    print()
+
+    used = {"Z"}
+    print(" [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]")
+    print(f"     normal phase: {n_base_w} windows   attack phase: {n_atk_w} windows")
+    print(_wrap(f"pooling: {agg_note}", "     "))
+    print()
+    print(f"     {'result':<11}{'feature':<37}{'normal':<17}{'attack':<9}{'z':>7}  "
+          f"{'role':<15}study")
+    print("     " + "-" * (RULE_W - 5))
+    for name, tier, r, direction in scored:
+        arrow = "down" if direction == "down" else "up"
+        if r is None:
+            print(f"     {'NO DATA':<11}{name:<37}(column missing)")
+            continue
+        normal = "n/a" if math.isnan(r["mu"]) else f"{r['mu']:.3f} +- {r['sd']:.3f}"
+        atk = _num(r["attack_mean"])
+        flag = STATUS_FLAG.get(r["status"], r["status"])
+        tag = FEATURE_STUDY.get(name.split(" (")[0], "")
+        used.update([tag] if tag else [])
+        role = f"{TIER_WORD.get(tier, tier)}, {arrow}"
+        print(f"     {flag:<11}{name:<37}{normal:<17}{atk:<9}{_fmt_z(r['z'])}  "
+              f"{role:<15}{('[' + tag + ']') if tag else ''}")
+    if notes:
+        print()
+        for i, (name, note) in enumerate(notes, 1):
+            print(_wrap(f"{name}: {note}", f"     note {i}: "))
+    print()
+
+    if measured:
+        print(" [2] MEASURED, NOT SCORED   shown for context; never part of the verdict")
+        for line in measured:
+            tag = FEATURE_STUDY.get(line.split(":")[0].split(" (")[0], "")
+            if tag and tag != "A":
+                used.add(tag)
+                line += f" [{tag}]"
+            print(_wrap(" ".join(line.split()), "     - "))
+        print()
+
+    print(" [3] SETUP CHECKS   did the attack run as designed? (from the data)")
+    if issues is None:
+        print("     ??   tools/attack_checks.py could not be imported - setup NOT checked")
+    else:
+        order = {"FAIL": 0, "WARN": 1, "SKIP": 2, "OK": 3}
+        for it in sorted(issues, key=lambda i: order.get(i.level, 9)):
+            tags = _check_study(it.text)
+            used.update(tags)
+            text = it.text + ("  " + " ".join(f"[{t}]" for t in tags) if tags else "")
+            print(_wrap(text, f"     {CHECK_MARK.get(it.level, '    ')} "))
+    print()
+
+    print(" [4] PER-NODE DELIVERY (PDR)")
+    print_per_node_pdr(df_nodes, label)
+    _print_unlisted(df_nodes, label)
+
+    if any("Khan" in n for _, n in notes):
+        used.add("K")
+    print(" [5] STUDY BASIS   the peer-reviewed source behind each [tag] above")
+    for tag in STUDIES:
+        if tag in used:
+            print(_wrap(STUDIES[tag], f"     [{tag}]{' ' * (3 - len(tag))}"))
+    print()
+
+    print("-" * RULE_W)
+    print(f" VERDICT: {verdict}")
+    print("-" * RULE_W)
+    # A passing signature with a FAILED setup check is not a confirmation.
+    return confirmed and not setup_invalid, conclusive
+
+
+# ANSI colour per report line, by the words the report itself prints. Used ONLY
+# when stdout is a real terminal (never into a pipe or file - the wizard's
+# transcripts showed raw escapes as mojibake). analyze.ps1 colours the same
+# words itself with Write-Host, which works on every Windows console.
+_ANSI = {"green": "\033[32m", "red": "\033[31m", "yellow": "\033[33m",
+         "cyan": "\033[36;1m", "dim": "\033[90m", "bold": "\033[1m"}
+
+
+def _line_colour(line):
+    t = line.strip()
+    if not t:
+        return None
+    if set(t) <= set("=-"):
+        return "dim"
+    if t.startswith(("RESULT", "VERDICT")):
+        if "NOT CONFIRMED" in t:
+            return "red"
+        if "INCONCLUSIVE" in t:
+            return "yellow"
+        return "green" if "CONFIRMED" in t else "bold"
+    if t.startswith(("[1]", "[2]", "[3]", "[4]", "[5]")) and line.startswith(" ["):
+        return "cyan"
+    if t.startswith(("WORMHOLE VERIFICATION", "BLACKHOLE VERIFICATION")):
+        return "bold"
+    first = t.split()[0]
+    if first in ("PASS", "OK"):
+        return "green"
+    if first == "FAIL":
+        return "red"
+    if first in ("WARN", "UNTESTABLE", "EXCLUDED", "NO", "N/A", "??", "!!"):
+        return "yellow"
+    if first in ("--", "note") or t.startswith("[") and line.startswith("     ["):
+        return "dim"
+    return None
+
+
+def _print_coloured(text):
+    if os.name == "nt":
+        os.system("")              # switches the Windows console into VT mode
+    for line in text.splitlines():
+        c = _line_colour(line)
+        print(f"{_ANSI[c]}{line}\033[0m" if c else line)
+
+
+def _print_unlisted(df, label):
+    """Name every non-root board the per-node PDR table could NOT show, and why.
+
+    Without this the table reads as if only the listed boards were measured
+    (oct. 16 2026, wormhole/tree/DLSU: 2 of 7 children listed, the other 5
+    delivered normally in the raw arrivals)."""
+    if not {"node_id", "Label", "PDR"} <= set(df.columns):
+        return
+    lab = pd.to_numeric(df["Label"], errors="coerce")
+    atk = df[lab == label]
+    listed = set(atk.loc[pd.to_numeric(atk["PDR"], errors="coerce").notna(), "node_id"])
+    role = (df.dropna(subset=["node_role"]).groupby("node_id")["node_role"]
+            .agg(lambda x: str(x.mode().iloc[0])) if "node_role" in df.columns else pd.Series())
+    reasons = {}
+    for n in sorted(set(df["node_id"].dropna()) - listed):
+        r = str(role.get(n, "")).lower()
+        if r == "root":
+            continue
+        if r in ("wormhole_a", "wormhole_b", "blackhole"):
+            why = "attacking board - PDR is computed for plain children only"
+        elif n not in set(atk["node_id"]):
+            why = "no attack windows in the table (see [3])"
+        else:
+            why = "no delivery data in its attack windows"
+        reasons.setdefault(why, []).append(n[-4:] if len(n) > 4 else n)
+    for why, ns in reasons.items():
+        print(_wrap(f"not listed: {', '.join(ns)} - {why}", "     "))
+    if reasons:
+        print()
+
+
+def _add_duplicate_rate(df):
+    """DuplicateRate per window, on Node B's rows only: 1.0 when the root logged
+    one of that window's probes twice, else 0.0 (NaN on every other node).
+
+    features.compute_latency_features fills TunnelLatency ONLY for windows whose
+    probes arrived at the root more than once, so 'TunnelLatency present' is
+    exactly 'the root saw a duplicate'. That makes this the root's own view of
+    the attack - independent of the attacking boards' counters, which is what
+    TunnelIntensity is built from. Not a dataset column; computed here."""
+    if not {"TunnelLatency", "node_role"} <= set(df.columns):
+        return df
+    d = df.copy()
+    is_b = d["node_role"].astype(str).str.lower() == "wormhole_b"
+    dup = pd.to_numeric(d["TunnelLatency"], errors="coerce").notna().astype(float)
+    d["DuplicateRate"] = dup.where(is_b, np.nan)
+    return d
+
+
+def _first_val(df, col):
+    if col not in df.columns:
+        return None
+    v = df[col].dropna()
+    if v.empty:
+        return None
+    x = v.iloc[0]
+    return int(x) if isinstance(x, float) and x.is_integer() else x
 
 
 def print_per_node_pdr(df, label, sigma_note=""):
@@ -714,15 +969,15 @@ def print_per_node_pdr(df, label, sigma_note=""):
         rows.append((k if isinstance(k, tuple) else (k,), b.get(k, float("nan")),
                      r["mean"], int(r["count"])))
     if not rows:
+        print("     no per-node PDR in this table (no plain child with delivery data)")
+        print()
         return
 
     rows.sort(key=lambda t: t[2])   # worst-hit node first
-    print("  PER-NODE PDR (the pooled row above averages these — see "
-          "print_per_node_pdr.__doc__)")
-    hdr = "  {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
+    hdr = "     {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
         "node_id", "built as", "exposure", "hop", "baseline", "attack", "n")
     print(hdr)
-    print("  " + "-" * (len(hdr) - 2))
+    print("     " + "-" * (RULE_W - 5))
     names = {k: i for i, k in enumerate(keys)}
     for key, bmean, amean, n in rows:
         node = key[0]
@@ -740,7 +995,7 @@ def print_per_node_pdr(df, label, sigma_note=""):
         # named for what it actually was during the run, so the table can never
         # be read as "two victims, one of which somehow survived".
         exp_s = EXPOSURE_LABEL.get(str(exp), str(exp))
-        print("  {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
+        print("     {:<20}{:<11}{:<12}{:>5}{:>11}{:>11}{:>7}".format(
             str(node), str(role), exp_s, hop_s, b_s, f"{amean:.4f}", n))
 
     ei = names.get("exposure")
@@ -762,24 +1017,24 @@ def print_per_node_pdr(df, label, sigma_note=""):
     print()
     if victims:
         worst = min(r[2] for r in victim_rows)
-        print("  ** {} VICTIM(S) — the attacker sits on their path to the root. "
+        print("     ** {} VICTIM(S) - the attacker sits on their path to the root. "
               "Worst attack PDR {:.4f}.".format(len(victims), worst))
-        print("     " + ", ".join(str(r[0][0]) for r in victims))
-        print("     This is the population the write-up should quote. The pooled "
+        print("        " + ", ".join(str(r[0][0]) for r in victims))
+        print("        This is the population the write-up should quote. The pooled "
               "PDR above averages")
-        print("     victims with bystanders and describes no actual node.")
+        print("        victims with bystanders and describes no actual node.")
     if bystanders:
-        print("  ** {} node(s) were NOT in the attack path (built as children, "
+        print("     ** {} node(s) were NOT in the attack path (built as children, "
               "never exposed):".format(len(bystanders)))
-        print("     " + ", ".join(str(r[0][0]) for r in bystanders))
-        print("     They sit ABOVE the attacker, so their traffic never transits "
+        print("        " + ", ".join(str(r[0][0]) for r in bystanders))
+        print("        They sit ABOVE the attacker, so their traffic never transits "
               "it. Unaffected BY")
-        print("     CONSTRUCTION — not evidence the attack was weak, and not "
+        print("        CONSTRUCTION - not evidence the attack was weak, and not "
               "victims.")
     if not victims and bystanders:
-        print("  !! No node was downstream of the attacker in this run, so the "
+        print("     !! No node was downstream of the attacker in this run, so the "
               "capture cannot")
-        print("     show a blackhole effect at all. Re-place the attacker and "
+        print("        show a blackhole effect at all. Re-place the attacker and "
               "re-run.")
     print()
 
@@ -822,8 +1077,15 @@ def main():
     any_conclusive = False
     all_confirmed = True
     setup_fail = False
+    colour = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
     for atk in attacks:
-        confirmed, conclusive = verify(df, atk, args.sigma, args.block)
+        if colour:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                confirmed, conclusive = verify(df, atk, args.sigma, args.block)
+            _print_coloured(buf.getvalue())
+        else:
+            confirmed, conclusive = verify(df, atk, args.sigma, args.block)
         any_conclusive = any_conclusive or conclusive
         all_confirmed = all_confirmed and confirmed
         setup_fail = setup_fail or _LAST_SETUP_INVALID[0]

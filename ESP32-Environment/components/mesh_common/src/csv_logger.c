@@ -27,6 +27,7 @@
 #include "freertos/semphr.h"
 
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_spiffs.h"
 #include "driver/uart.h"
 #include "esp_timer.h"
@@ -1863,7 +1864,7 @@ static void serial_export_task(void *arg)
                   "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
                   "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
                   "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | "
-                  "START_ANYWAY");
+                  "START | START_ANYWAY");
 
     /* End-of-run call-to-action. This task only starts AFTER the experiment
      * completes (app_main -> csv_logger_start_export_task), so the banner appears
@@ -2085,6 +2086,21 @@ static void serial_export_task(void *arg)
              * the SOURCE alongside the value because the two readings mean
              * different things and a host that cannot tell them apart would
              * file an estimate as a measurement. ── */
+            /* ── GET_ID — which board is on this port, WITHOUT a reset
+             * (oct. 17 2026). esptool read_mac pulls EN low and reboots the
+             * board, which kills a run in progress; run_gui.ps1 asks this
+             * instead (port opened with DTR/RTS deasserted, like
+             * export_logs.py) and falls back to read_mac only for a board that
+             * does not answer (older firmware, blank chip). The STA MAC is the
+             * eFuse base MAC = what read_mac prints = the NODE_ id. ── */
+            } else if (strcmp(cmd_buf, "GET_ID") == 0) {
+                uint8_t mac[6] = {0};
+                char out[48];
+                esp_read_mac(mac, ESP_MAC_WIFI_STA);
+                snprintf(out, sizeof(out), "ID:NODE_%02X%02X%02X%02X%02X%02X\n",
+                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
+
             } else if (strcmp(cmd_buf, "GET_TIME") == 0) {
                 char out[64];
                 char now[24];
@@ -2104,6 +2120,12 @@ static void serial_export_task(void *arg)
             } else if (strcmp(cmd_buf, "START_ANYWAY") == 0) {
                 phase_listener_request_start_anyway();
                 uart_write_bytes(EXPORT_UART, "START_ANYWAY:OK\n", 16);
+
+            /* ── START — release the root's MANUAL START gate once the layout
+             * is right (MANUAL_START_GATE). Does not override a failing gate. ── */
+            } else if (strcmp(cmd_buf, "START") == 0) {
+                phase_listener_request_start();
+                uart_write_bytes(EXPORT_UART, "START:OK\n", 9);
 
             } else if (strcmp(cmd_buf, "END_RUN") == 0) {
                 int r = phase_listener_end_run_now();

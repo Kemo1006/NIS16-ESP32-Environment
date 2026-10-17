@@ -139,6 +139,12 @@ SEGMENT_ATTACK = "attack"
 SEGMENT_COOLDOWN = "cooldown"
 SEGMENT_REBROADCAST = "baseline_rebroadcast"   # phase 0 seen again after an exit
 SEGMENT_NO_PHASE = "no_phase_seen"             # node never left phase 0 at all
+# A window whose own rows carry TWO real phases (e.g. 0 then 2): the phase
+# changed inside it, so its counters mix both phases. Labelling it by the modal
+# row put the first tunnelled probe of a wormhole run into the BASELINE
+# (oct. 16 2026, wormhole/tree/DLSU: baseline TunnelIntensity 0.009, true 0).
+# It belongs to neither phase -> excluded, like the other unlabelled segments.
+SEGMENT_TRANSITION = "transition"
 
 # Segments that carry a usable ground-truth label. Everything else gets
 # window_label = NaN so it can never enter a benign or attack population.
@@ -253,6 +259,13 @@ class PreprocessReport:
     # Nodes whose phase labels disagree with the root's (phase_sync.py). Their
     # rows are kept for the topology but UNLABELLED - see _unlabel_desynced().
     desynced_nodes: list[str] = field(default_factory=list)
+    # Modal phase of EVERY window, kept or discarded: {(node_id, source_file):
+    # [(window_start, phase), ...]}. assign_segments() falls back to it when a
+    # node's phase exit landed only in discarded windows (oct. 16 2026).
+    window_phases_all: dict = field(default_factory=dict)
+    # Nodes anchored that way (their baseline is kept; their discarded windows
+    # stay discarded).
+    anchored_on_discarded: list[str] = field(default_factory=list)
 
     def discard_fraction(self) -> float:
         if self.windows_total == 0:
@@ -282,7 +295,8 @@ class PreprocessReport:
             lines.append("  Windows per segment (pre_baseline is EXCLUDED, "
                          "window_label = NaN):")
             for seg in (SEGMENT_PRE_BASELINE, SEGMENT_BASELINE, SEGMENT_ATTACK,
-                        SEGMENT_COOLDOWN, SEGMENT_REBROADCAST, SEGMENT_NO_PHASE):
+                        SEGMENT_COOLDOWN, SEGMENT_TRANSITION, SEGMENT_REBROADCAST,
+                        SEGMENT_NO_PHASE):
                 if seg in self.segment_counts:
                     excl = "" if seg in LABELLED_SEGMENTS else "   [excluded]"
                     lines.append(f"    {seg:<22} {self.segment_counts[seg]}{excl}")
@@ -290,6 +304,12 @@ class PreprocessReport:
             lines.append(f"  [WARN] {len(self.nodes_without_phase_exit)} node(s) never "
                          f"left phase 0 — no baseline can be attributed to them:")
             for n in self.nodes_without_phase_exit:
+                lines.append(f"    {n}")
+        if self.anchored_on_discarded:
+            lines.append(f"  [INFO] {len(self.anchored_on_discarded)} node(s) left phase 0 inside "
+                         f"DISCARDED windows (too few samples) - phases anchored on that exit, "
+                         f"their valid baseline kept:")
+            for n in self.anchored_on_discarded:
                 lines.append(f"    {n}")
         if self.root_restarts:
             lines.append(f"  ROOT RESTARTED mid-file on {len(self.root_restarts)} node(s) - "
@@ -1024,6 +1044,8 @@ def build_windows(
     for (node_id, source_file, window_idx), wdf in groups:
         bar.update()
         report.windows_total += 1
+        report.window_phases_all.setdefault((node_id, source_file), []).append(
+            (wdf["window_start"].iloc[0], _modal_label(wdf["phase_id"])))
 
         n_present = (~wdf["_was_missing"]).sum()
         n_total = len(wdf)
@@ -1140,6 +1162,11 @@ def build_windows(
 
         row["window_label"] = _modal_label(wdf["gt_label"])
         row["window_phase_id"] = _modal_label(wdf["phase_id"])
+        # Two REAL phases inside one window = the phase changed mid-window
+        # (PHASE_ID_UNSET does not count: 255 -> 0 is the node joining).
+        real = pd.to_numeric(wdf["phase_id"], errors="coerce").dropna()
+        real = real[real != PHASE_ID_UNSET]
+        row["window_phase_mixed"] = bool(real.nunique() > 1)
 
         rows.append(row)
     bar.close()
@@ -1237,11 +1264,23 @@ def assign_segments(
 
         exited = (phase.loc[idx].ne(0) & phase.loc[idx].notna()
                   & ~is_unset.loc[idx] & ~stale)
-        if not exited.any():
-            report.nodes_without_phase_exit.append(f"{node_id} ({source_file})")
-            continue
-
-        anchor = rows.loc[exited, "window_start"].min()
+        if exited.any():
+            anchor = rows.loc[exited, "window_start"].min()
+        else:
+            # FALLBACK (oct. 16 2026, wormhole/tree/DLSU): the node DID leave
+            # phase 0, but every window from its exit onward was discarded for
+            # too few samples (a telemetry stall). Without an anchor its VALID
+            # baseline windows were thrown out with them (no_phase_seen). Find
+            # the exit in ALL its windows, discarded ones included - the same
+            # first-real-phase rule, after the same root-restart cut.
+            anchor = _anchor_from_all_windows(
+                getattr(report, "window_phases_all", {}).get((node_id, source_file)),
+                rows.loc[stale, "window_start"].max() if stale.any() else None)
+            if anchor is None:
+                report.nodes_without_phase_exit.append(f"{node_id} ({source_file})")
+                continue
+            getattr(report, "anchored_on_discarded", []).append(
+                f"{node_id} ({source_file}): exit at window_start={anchor:g}s")
         t = rows["window_start"] - anchor
         out.loc[idx, "t_anchor_s"] = t
 
@@ -1272,6 +1311,11 @@ def assign_segments(
             report.short_baseline.append(
                 f"{node_id} ({source_file}): phase 0 ran {zero_span:.0f}s but "
                 f"PHASE_BASELINE_S is {PHASE_BASELINE_S}s")
+        # A window that straddles a phase change belongs to neither phase.
+        if "window_phase_mixed" in rows.columns:
+            mixed = rows["window_phase_mixed"].fillna(False).astype(bool)
+            seg[mixed & seg.isin([SEGMENT_BASELINE, SEGMENT_ATTACK,
+                                  SEGMENT_COOLDOWN])] = SEGMENT_TRANSITION
         # Applied LAST so it wins outright: an explicitly-unset phase is never
         # baseline, whatever t_anchor_s says about it.
         seg[is_unset.loc[idx]] = SEGMENT_PRE_BASELINE
@@ -1292,6 +1336,30 @@ def assign_segments(
 
     report.segment_counts = out["segment"].value_counts().to_dict()
     return out
+
+
+def _anchor_from_all_windows(phases, stale_cut):
+    """First window_start whose modal phase is a real phase (not 0, not
+    PHASE_ID_UNSET), from the (window_start, phase) list build_windows()
+    recorded for every window, kept or discarded. Windows up to the last
+    root restart (a 255 after a real phase) and up to `stale_cut` are skipped,
+    mirroring assign_segments(). None when the node never left phase 0."""
+    if not phases:
+        return None
+    phases = sorted(phases, key=lambda x: x[0])
+    cut = stale_cut if stale_cut is not None else -np.inf
+    seen_real = False
+    for start, ph in phases:
+        if pd.isna(ph):
+            continue
+        if ph == PHASE_ID_UNSET and seen_real:
+            cut = max(cut, start)
+        elif ph != PHASE_ID_UNSET:
+            seen_real = True
+    for start, ph in phases:
+        if start > cut and pd.notna(ph) and ph != 0 and ph != PHASE_ID_UNSET:
+            return start
+    return None
 
 
 def _max_consecutive_true(flags: np.ndarray) -> int:

@@ -20,6 +20,9 @@
 #>
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
+# idf.py / esptool.py as the ESP-IDF window defines them - needed when this
+# runs in a child PowerShell (run_gui.ps1). See tools\idf_shims.ps1.
+. (Join-Path $base 'tools\idf_shims.ps1')
 $run  = Join-Path $base 'run.ps1'
 
 # Build output goes OUTSIDE OneDrive -- same tag formula as run.ps1/run_wizard.ps1

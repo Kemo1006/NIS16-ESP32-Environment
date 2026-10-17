@@ -844,11 +844,16 @@ static const char *wh_link_str(uint8_t s)
         case WH_LINK_NONE:    return "UART NO SIGNAL";
         case WH_LINK_LOST:    return "UART LOST";
         case WH_LINK_WAITING: return "UART checking";
+        case WH_LINK_ONEWAY:  return "UART ONE-WAY";
+        case WH_LINK_ECHO:    return "UART ECHO (own TX->RX)";
         default:              return "UART ? (old fw)";
     }
 }
 
-static bool wh_link_bad(uint8_t s) { return s == WH_LINK_NONE || s == WH_LINK_LOST; }
+static bool wh_link_bad(uint8_t s)
+{
+    return s == WH_LINK_NONE || s == WH_LINK_LOST || s == WH_LINK_ONEWAY || s == WH_LINK_ECHO;
+}
 
 static void table_lock(void)   { xSemaphoreTakeRecursive(s_table_mutex, portMAX_DELAY); }
 static void table_unlock(void) { xSemaphoreGiveRecursive(s_table_mutex); }
@@ -1415,8 +1420,10 @@ static void heartbeat_table_print(void)
                                   " B's probes from here", MAC2STR(s_nodes[i].mac));
                 } else if (s_nodes[i].role == NODE_ROLE_WORMHOLE_A
                            || s_nodes[i].role == NODE_ROLE_WORMHOLE_B) {
-                    ESP_LOGE(TAG, "   " MACSTR_UC "  EXTRA %s - a second board claims this end",
-                             MAC2STR(s_nodes[i].mac), node_role_to_str(s_nodes[i].role));
+                    /* its link state is the clue to WHY two boards claim one end */
+                    ESP_LOGE(TAG, "   " MACSTR_UC "  EXTRA %s - a second board claims this end  (%s)",
+                             MAC2STR(s_nodes[i].mac), node_role_to_str(s_nodes[i].role),
+                             wh_link_str(s_nodes[i].wh_link));
                 } else if (on_b_path[i]) {
                     relays++;
                     ESP_LOGI(TAG, "   " MACSTR_UC "  relays B's normal copy - honest, unaffected",
@@ -1633,6 +1640,99 @@ int heartbeat_attacker_child_count(void)
     free(tn);
     table_unlock();
     return result;
+}
+
+bool heartbeat_wormhole_gate_active(void)
+{
+#if (ACTIVE_ATTACK == PHASE_ID_WORMHOLE)
+    return true;
+#else
+    return false;
+#endif
+}
+
+/* WORMHOLE SETUP GATE (oct. 16 2026). The root printed every one of these
+ * problems already (EXPOSURE box) but still started Phase 0, where the ends
+ * LOCK - so a wrong setup could only be fixed by restarting the run. Checked
+ * on fresh heartbeats only, in the order an operator should fix them. */
+bool heartbeat_wormhole_ready(char *why, size_t len)
+{
+    if (len) {
+        why[0] = '\0';
+    }
+    if (!s_table_mutex) {
+        snprintf(why, len, "no heartbeats yet");
+        return false;
+    }
+    const int64_t now = esp_timer_get_time();
+    bool ok = false;
+    table_lock();
+    const size_t cap = s_node_count ? s_node_count : 1;
+    topo_node_t *tn = calloc(cap, sizeof(topo_node_t));
+    int *map = calloc(cap, sizeof(int));
+    if (!tn || !map) {
+        free(tn);
+        free(map);
+        table_unlock();
+        snprintf(why, len, "out of memory");
+        return false;
+    }
+    size_t n = 0;
+    int a = -1, b = -1, n_a = 0, n_b = 0;
+    for (size_t i = 0; i < s_node_count; i++) {
+        const heartbeat_entry_t *e = &s_nodes[i];
+        if ((uint32_t)((now - e->last_seen_us) / 1000LL) > HEARTBEAT_STALE_MS) {
+            continue;
+        }
+        memcpy(tn[n].mac, e->mac, 6);
+        memcpy(tn[n].parent, e->parent_mac, 6);
+        map[n] = (int)i;
+        if (e->role == NODE_ROLE_WORMHOLE_A) { a = (int)n; n_a++; }
+        if (e->role == NODE_ROLE_WORMHOLE_B) { b = (int)n; n_b++; }
+        n++;
+    }
+    if (n_a != 1 || n_b != 1) {
+        /* name every end's link so the cause is on the same line */
+        char links[96] = "";
+        size_t used = 0;
+        for (size_t k = 0; k < n && used < sizeof(links); k++) {
+            const heartbeat_entry_t *e = &s_nodes[map[k]];
+            if (e->role != NODE_ROLE_WORMHOLE_A && e->role != NODE_ROLE_WORMHOLE_B) continue;
+            int w = snprintf(links + used, sizeof(links) - used, "%s%02X%02X %s",
+                             used ? ", " : "", e->mac[4], e->mac[5], wh_link_str(e->wh_link));
+            if (w > 0) used += (size_t)w;
+        }
+        snprintf(why, len, "%d board(s) report WORMHOLE_A and %d WORMHOLE_B - need exactly one"
+                 " of each (%s; a one-way, echoing or loose UART jumper makes both pick the"
+                 " same end)", n_a, n_b, links);
+    } else if (s_nodes[map[a]].wh_link != WH_LINK_OK || s_nodes[map[b]].wh_link != WH_LINK_OK) {
+        snprintf(why, len, "UART link not OK both ways (A: %s, B: %s) - re-seat TX->RX on both"
+                 " jumpers + GND", wh_link_str(s_nodes[map[a]].wh_link),
+                 wh_link_str(s_nodes[map[b]].wh_link));
+    } else {
+        topo_graph_t g;
+        if (!topo_build(&g, tn, n)) {
+            snprintf(why, len, "topology not built yet");
+        } else {
+            int la = g.layer[a], lb = g.layer[b];
+            if (la <= 0 || lb <= 0) {
+                snprintf(why, len, "a wormhole end is not attached to the root yet");
+            } else if (la >= lb) {
+                snprintf(why, len, "A (exit) at H%02d is not closer to the root than B (entry) at"
+                         " H%02d - no shortcut. The ends follow depth until Phase 0, so wait"
+                         " a few seconds, or move a board", la - 1, lb - 1);
+            } else {
+                snprintf(why, len, "A at H%02d, B at H%02d: tunnel skips %d hop(s), UART OK",
+                         la - 1, lb - 1, lb - la);
+                ok = true;
+            }
+            topo_free(&g);
+        }
+    }
+    free(map);
+    free(tn);
+    table_unlock();
+    return ok;
 }
 
 void heartbeat_table_init(void)

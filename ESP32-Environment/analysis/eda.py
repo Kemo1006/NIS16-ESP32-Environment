@@ -154,11 +154,12 @@ SEGMENT_DISPLAY = {
     "cooldown": "Cooldown (after attack)",
     "baseline_rebroadcast": "Rebroadcast (unlabelled)",
     "no_phase_seen": "No phase seen (unlabelled)",
+    "transition": "Phase change mid-window (unlabelled)",
 }
 PHASE_ORDER = [
     "Baseline", "Blackhole attack", "Wormhole attack", "Cooldown (after attack)",
     "Pre-baseline (unlabelled)", "Rebroadcast (unlabelled)",
-    "No phase seen (unlabelled)", "Unlabelled",
+    "No phase seen (unlabelled)", "Phase change mid-window (unlabelled)", "Unlabelled",
 ]
 PHASE_COLORS = {
     "Baseline": "#1f77b4",

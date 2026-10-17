@@ -113,7 +113,16 @@ typedef enum {
     WH_LINK_OK      = 1,   /**< peer's HELLO heard within PEER_FRESH_MS       */
     WH_LINK_NONE    = 2,   /**< NOTHING ever heard from the peer over UART    */
     WH_LINK_LOST    = 3,   /**< heard before, silent for PEER_FRESH_MS now    */
-    WH_LINK_WAITING = 4    /**< just booted - still inside the first window   */
+    WH_LINK_WAITING = 4,   /**< just booted - still inside the first window   */
+    WH_LINK_ONEWAY  = 5,   /**< this end hears the peer, the peer does NOT hear
+                                it (oct. 16 2026): one jumper of the crossed
+                                pair is loose. Before this, each end trusted its
+                                own view and both could pick the SAME role.   */
+    WH_LINK_ECHO    = 6    /**< this end hears its OWN HELLOs (oct. 17 2026):
+                                its TX is bridged to its own RX. Before this the
+                                echo was taken for the peer - 'UART OK' on a
+                                board that never heard the other one, and both
+                                ends B.                                        */
 } wh_link_t;
 
 /* ── Command (Phase 2 — defined now so the wire format is stable) ────────── */

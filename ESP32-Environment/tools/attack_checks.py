@@ -140,7 +140,23 @@ def topology_issues(df, attack, key_nodes=()):
             par = _exposure.resolve_parent(p, sta)
             if par is not None and n in links:
                 union.add((n, par))
-    if topo in _tg.TOPOLOGIES:
+    # Boards in the table with NO attack window (dropped out, or windows
+    # discarded / unlabelled). Their absence breaks the parent chain of the
+    # boards below them, so the partial graph reads as "not attached" - a
+    # statement about missing data, not about the mesh (oct. 16 2026).
+    missing = sorted(set(df["node_id"].dropna()) - set(nodes))
+    if topo in _tg.TOPOLOGIES and missing:
+        status, reason = _tg.validate(topo, _tg.build_graph(links), union)
+        if status == _tg.FAIL or status == _tg.WARN:
+            out.append(Issue(WARN, f"topology during the attack cannot be judged: built from "
+                                   f"{len(nodes)} of {len(nodes) + len(missing)} boards, the"
+                                   f" others have no attack windows ("
+                                   + ", ".join(_short(n) for n in missing)
+                                   + "). The full-run structure check is verify_topology.py"))
+        else:
+            out.append(Issue("OK", f"topology during the attack = {topo} for the {len(nodes)}"
+                                   f" boards with attack windows: {reason}"))
+    elif topo in _tg.TOPOLOGIES:
         status, reason = _tg.validate(topo, _tg.build_graph(links), union)
         if status == _tg.FAIL:
             out.append(Issue(FAIL, f"topology during the attack is NOT {topo}: {reason}"))
@@ -173,7 +189,25 @@ def topology_issues(df, attack, key_nodes=()):
         lvl = FAIL if any(n in key_nodes for n in gone) else WARN
         out.append(Issue(lvl, "no attack-window telemetry from "
                               + ", ".join(_short(n) for n in gone)
-                              + " (board dropped out or its file is missing)"))
+                              + " (board dropped out, its file is missing, or its attack"
+                              " windows were discarded for too few samples)"))
+    # (The no-labelled-window WARN below is skipped for boards the presence
+    # line above already named, so each board is reported once.)
+    # Nodes in the table with NO labelled window at all (e.g. segment
+    # no_phase_seen: preprocessing could not anchor their phases). They are
+    # missing from the structure above, which otherwise reads as boards
+    # "not attached to the root" (oct. 16 2026, wormhole/tree/DLSU).
+    if "segment" in df.columns:
+        lab = df[df["segment"].astype(str).isin(("baseline", "attack", "cooldown"))]
+        unlab = sorted(set(df["node_id"].dropna()) - set(lab["node_id"].dropna())
+                       - set(gone))
+        if unlab:
+            segs = sorted(df.loc[df["node_id"].isin(unlab), "segment"].astype(str).unique())
+            out.append(Issue(WARN, f"{len(unlab)} node(s) have NO labelled window ("
+                                   + ", ".join(segs) + "), so the checks above run without"
+                                   " them: " + ", ".join(_short(n) for n in unlab)
+                                   + " - a data/preprocessing gap, not evidence about the"
+                                   " attack; check those boards' raw exports"))
     return out
 
 
@@ -300,7 +334,21 @@ def wormhole_issues(df):
                                    " nothing re-injected by A reached it"))
         else:
             out.append(Issue("OK", f"the root saw duplicate arrivals in {dup} attack window(s)"))
-    if not any(i.level == FAIL for i in out) and ends:
+    # Only claim the summary when every part of it was actually checked (a
+    # SKIP, e.g. Node A with no labelled windows, means a part was not).
+    # Node A with no attack windows but duplicates at the root: the duplicates
+    # can only come from A re-injecting B's probes, so A demonstrably worked -
+    # its missing windows are a telemetry gap, not a missing attacker (oct. 16
+    # 2026, wormhole/tree/DLSU: A's windows discarded, raw count 181). It is
+    # dropped from the key nodes so the presence check WARNs instead of FAILing.
+    if "TunnelLatency" in df.columns and dup > 0:
+        a_ids = {n for n, r in roles.items() if r == "wormhole_a"}
+        if a_ids and not (set(atk["node_id"].dropna()) & a_ids):
+            ends = ends - a_ids
+            out.append(Issue(WARN, "Node A has no attack windows, but the root logged B's"
+                                   " probes twice - only A re-injects them, so A worked;"
+                                   " its attack telemetry is a data gap (check its raw export)"))
+    if not any(i.level in (FAIL, SKIP) for i in out) and ends:
         out.insert(0, Issue("OK", "one A + one B, roles stable in the experiment,"
                                   " A shallower than B, tunnel carried data"))
     return out, ends

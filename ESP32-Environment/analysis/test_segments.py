@@ -172,6 +172,41 @@ def test_per_node_anchor():
           per_node.loc["NODE_LATE"].to_dict())
 
 
+def test_transition_window_is_excluded():
+    print("\ntransition - a window whose rows change phase belongs to neither phase")
+    phases = [0] * 400 + [2] * 180 + [3] * 120
+    f = _frame(phases)
+    f["window_phase_mixed"] = False
+    f.loc[[399, 580], "window_phase_mixed"] = True     # 0->2 and 2->3 windows
+    out = assign_segments(f, _Report())
+    check("the two straddling windows are 'transition'",
+          list(out.loc[[399, 580], "segment"]) == [preprocess.SEGMENT_TRANSITION] * 2,
+          out.loc[[399, 580], "segment"].tolist())
+    check("and carry no label", out.loc[[399, 580], "window_label"].isna().all())
+    check("baseline loses only that window (299)",
+          (out["segment"] == SEGMENT_BASELINE).sum() == 299)
+    old = assign_segments(_frame(phases), _Report())
+    check("no window_phase_mixed column -> behaviour unchanged",
+          "transition" not in set(old["segment"]))
+
+
+def test_anchor_from_discarded_windows():
+    print("\nanchor - a node whose phase exit fell in DISCARDED windows keeps its baseline")
+    kept = _frame([0] * 300)                      # only the baseline windows survived
+    rep = _Report()
+    rep.window_phases_all = {("NODE_TEST", "test_telem.csv"):
+                             [(float(i), p) for i, p in
+                              enumerate([0] * 300 + [2] * 180 + [3] * 120)]}
+    rep.anchored_on_discarded = []
+    out = assign_segments(kept, rep)
+    check("300 baseline windows kept (were no_phase_seen)",
+          (out["segment"] == SEGMENT_BASELINE).sum() == 300, out["segment"].value_counts().to_dict())
+    check("reported as anchored on a discarded window", len(rep.anchored_on_discarded) == 1)
+    out2 = assign_segments(_frame([0] * 300), _Report())
+    check("without the fallback data it stays no_phase_seen",
+          (out2["segment"] == preprocess.SEGMENT_NO_PHASE).all())
+
+
 def main():
     print(f"assign_segments regression tests "
           f"(PHASE_BASELINE_S={preprocess.PHASE_BASELINE_S})")
@@ -180,6 +215,8 @@ def main():
     test_unset_never_becomes_baseline()
     test_node_that_never_hears_a_broadcast()
     test_per_node_anchor()
+    test_transition_window_is_excluded()
+    test_anchor_from_discarded_windows()
 
     print()
     if _FAILURES:

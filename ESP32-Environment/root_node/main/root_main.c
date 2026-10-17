@@ -421,12 +421,20 @@ static void wait_for_all_children(void)
      * by mesh_common: this file is NOT compiled with -DMESH_TOPOLOGY (only
      * mesh_common is), so a compile-time test here would always read "tree". */
     const bool tree_gate = heartbeat_tree_gate_active();
-    const uint32_t need_s = tree_gate ? TREE_GATE_STABLE_S : ROSTER_GATE_STABLE_S;
+    /* Wormhole: the ends must be set up right BEFORE Phase 0, where they lock
+     * (WORMHOLE_GATE_STABLE_S in mesh_config.h, oct. 16 2026). */
+    const bool wh_gate = heartbeat_wormhole_gate_active();
+    uint32_t need_s = tree_gate ? TREE_GATE_STABLE_S : ROSTER_GATE_STABLE_S;
+    if (wh_gate && need_s < WORMHOLE_GATE_STABLE_S) {
+        need_s = WORMHOLE_GATE_STABLE_S;
+    }
+    char wh_why[256] = "";
     phase_banner("WAITING FOR ALL CHILDREN");
     while (stable_s < need_s) {
         int have = children_in_mesh();
         const int atk_kids = tree_gate ? heartbeat_attacker_child_count() : 0;
-        const bool shape_ok = !tree_gate || (atk_kids >= 1);
+        const bool wh_ok = !wh_gate || heartbeat_wormhole_ready(wh_why, sizeof(wh_why));
+        const bool shape_ok = (!tree_gate || (atk_kids >= 1)) && wh_ok;
         stable_s = (have >= EXPECTED_CHILDREN && shape_ok) ? stable_s + 1 : 0;
         if (phase_listener_start_anyway_requested()) {
             ESP_LOGE(TAG, "[CTRL] START_ANYWAY after %u s - starting with %d/%d children. "
@@ -453,6 +461,11 @@ static void wait_for_all_children(void)
                          EXPECTED_CHILDREN, (unsigned)TREE_GATE_STABLE_S);
             }
         }
+        if (wh_gate && have >= EXPECTED_CHILDREN && !wh_ok && waited_s % ROSTER_GATE_LOG_S == 0) {
+            ESP_LOGW(TAG, "[CTRL] All %d children are in, but the WORMHOLE is not set up: %s. "
+                          "Phase 0 waits (the ends lock their roles at Phase 0).",
+                     EXPECTED_CHILDREN, wh_why);
+        }
         /* Keep announcing while waiting: a child that joins late still
          * starts logging before Phase 0. */
         if (waited_s % PHASE_PREPARE_INTERVAL_S == 0) {
@@ -463,6 +476,63 @@ static void wait_for_all_children(void)
     }
     ESP_LOGI(TAG, "[CTRL] All %d children in the mesh after %u s - starting the run.",
              EXPECTED_CHILDREN, (unsigned)waited_s);
+#endif
+}
+
+/* MANUAL START GATE (MANUAL_START_GATE in mesh_config.h, oct. 16 2026). Runs
+ * after the automatic gates: the root holds Phase 0 until the operator types
+ * START in this monitor, so the layout can be checked and fixed first. A
+ * wormhole build re-checks its setup here too - START never starts a broken
+ * wormhole; START_ANYWAY does, loudly. */
+static void wait_for_operator_start(void)
+{
+#if (MANUAL_START_GATE)
+    if (phase_listener_start_anyway_requested()) {
+        return;                      /* already released, loudly, by the roster gate */
+    }
+    const bool wh_gate = heartbeat_wormhole_gate_active();
+    char wh_why[256] = "";
+    uint32_t waited_s = 0;
+    bool warned_start = false;
+    phase_banner("READY - TYPE  START  TO BEGIN PHASE 0");
+    while (true) {
+        const bool wh_ok = !wh_gate || heartbeat_wormhole_ready(wh_why, sizeof(wh_why));
+        if (phase_listener_start_anyway_requested()) {
+            ESP_LOGE(TAG, "[CTRL] START_ANYWAY - starting Phase 0%s.",
+                     wh_ok ? "" : " with the wormhole NOT set up (say so wherever this run is used)");
+            return;
+        }
+        if (phase_listener_start_requested()) {
+            if (wh_ok) {
+                ESP_LOGI(TAG, "[CTRL] START received after %u s - starting the run.",
+                         (unsigned)waited_s);
+                return;
+            }
+            if (!warned_start) {
+                ESP_LOGE(TAG, "[CTRL] START refused: %s. Fix it (START is kept and fires as soon "
+                              "as it is fixed), or type START_ANYWAY.", wh_why);
+                warned_start = true;
+            }
+        }
+        if (waited_s % MANUAL_START_LOG_S == 0) {
+#if (EXPECTED_CHILDREN > 0)
+            ESP_LOGW(TAG, "[CTRL] READY: %d/%d children in the mesh%s%s. Check the topology table, "
+                          "move boards NOW if needed, then type START (Phase 0 will NOT start "
+                          "by itself).", children_in_mesh(), EXPECTED_CHILDREN,
+                     wh_gate ? "; wormhole: " : "", wh_gate ? wh_why : "");
+#else
+            ESP_LOGW(TAG, "[CTRL] READY%s%s. Check the topology table, move boards NOW if "
+                          "needed, then type START (Phase 0 will NOT start by itself).",
+                     wh_gate ? " - wormhole: " : "", wh_gate ? wh_why : "");
+#endif
+        }
+        /* Children keep logging the stabilisation window while we wait. */
+        if (waited_s % PHASE_PREPARE_INTERVAL_S == 0) {
+            phase_listener_broadcast_prepare();
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        waited_s++;
+    }
 #endif
 }
 
@@ -508,6 +578,7 @@ static void experiment_controller_task(void *arg)
         xTaskDelayUntil(&stab_tick, pdMS_TO_TICKS(1000));
     }
     wait_for_all_children();
+    wait_for_operator_start();
 
     /* Children may have been power-cycled while the gate waited: forget the old
      * per-source seq maxima so their restarted counters are not dropped as

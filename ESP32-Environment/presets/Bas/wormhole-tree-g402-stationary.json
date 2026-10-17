@@ -5,11 +5,11 @@
     "scenario":  "stationary",
     "owner":  "Bas",
     "repeat":  1,
-    "savedAt":  "2026-10-01 16:27",
+    "savedAt":  "2026-10-16 09:21",
     "boards":  [
                    {
                        "Label":  "node2",
-                       "Port":  "COM3",
+                       "Port":  "COM11",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
@@ -18,7 +18,7 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM4",
+                       "Port":  "COM9",
                        "Role":  "child",
                        "Kind":  "B",
                        "Display":  "wormhole Node B (entry)",
@@ -27,7 +27,7 @@
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM6",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "A",
                        "Display":  "wormhole Node A (exit)",

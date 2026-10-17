@@ -222,15 +222,29 @@ param(
                        # "move on" and a distracted 5 s started a USB export nobody
                        # wanted (oct. 4, 2026). Ignored on the root, which always
                        # keeps the export-unless-'n' window.
-    [switch]$BuildOnly # compile this board's exact variant into its build dir and
+    [switch]$BuildOnly, # compile this board's exact variant into its build dir and
                        # stop: no wipe, no flash, no monitor, no export, no port
                        # touched. Exit code = idf.py's. Used by run_wizard.ps1's
                        # pre-build so its builds can never drift from this file's
                        # dir naming / -D flags.
+    [switch]$SharedBuild, # run_gui.ps1 only (oct. 17 2026): one build dir per firmware
+                       # VARIANT instead of per variant + port, so 5 identical victims
+                       # compile once, not 5 times. Safe there because the GUI flashes
+                       # boards one at a time; the CLI keeps per-port dirs (it can
+                       # flash several boards from parallel windows).
+    [string]$GuiMonitor = '' # run_gui.ps1 only (oct. 17 2026): a control folder. The
+                       # monitor is tools\gui_monitor.py instead of idf.py monitor
+                       # (no console needed): the GUI appends commands (START ...)
+                       # to <folder>\send.txt and creates <folder>\stop for Ctrl+].
+                       # <folder>\noexport = the operator chose "skip the export".
+                       # No console prompt is shown (there is no console).
 )
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
+# idf.py / esptool.py as the ESP-IDF window defines them - needed when this
+# runs in a child PowerShell (run_gui.ps1). See tools\idf_shims.ps1.
+. (Join-Path $base 'tools\idf_shims.ps1')
 
 # Build output goes OUTSIDE OneDrive: this repo lives under OneDrive sync, and
 # ninja writing ~1000 objects/build dir under a synced+Defender-scanned folder
@@ -528,7 +542,7 @@ if ($scenarioTag) { $buildSuffix += "_$scenarioTag" }
 # port is a full build (ccache CCACHE_BASEDIR above still shares most objects
 # across ports). Root has its own project dir but is keyed by port too for
 # consistency.
-$portTag     = ($Port -replace '[^A-Za-z0-9]', '')
+$portTag     = if ($SharedBuild) { 'GUI' } else { ($Port -replace '[^A-Za-z0-9]', '') }
 $buildDirName = "build_${buildSuffix}_$portTag"
 # Absolute path under $buildRoot (see top of file) -- idf.py -B accepts an
 # absolute path just as well as a relative one, and this is what actually
@@ -759,12 +773,23 @@ function Show-ScenarioChecklist {
     Write-Host " NOTE : write down the exact clock time you did it (and both spots, for mobility)" -ForegroundColor $c
     Write-Host "        in the ledger -- this tooling does NOT time or beep this for you." -ForegroundColor $c
     Write-Host "====================================================================================" -ForegroundColor $c
-    if ([Environment]::UserInteractive) {
+    if ([Environment]::UserInteractive -and -not $GuiMonitor) {
         Write-Host " Press Enter once you've read this ..." -ForegroundColor DarkGray -NoNewline
         [void][Console]::ReadLine()
     }
 }
 Show-ScenarioChecklist -Scenario $Scenario -IsTarget $ScenarioTarget.IsPresent -Role $Role
+
+# The monitor: idf.py monitor in a console, or (run_gui.ps1, -GuiMonitor) the
+# console-free tools\gui_monitor.py - same port, same "returns when the
+# operator is done with this board" contract.
+function Invoke-BoardMonitor {
+    if ($GuiMonitor) {
+        python (Join-Path $base 'tools\gui_monitor.py') --port $Port --ctl $GuiMonitor
+    } else {
+        idf.py -B $buildDir -p $Port monitor
+    }
+}
 
 # 1) Monitor (optionally flash first). Ctrl+] exits the monitor and returns here.
 Push-Location (Join-Path $base $proj)
@@ -791,13 +816,13 @@ try {
             Write-Host "Check: board plugged DIRECTLY into the laptop (no dock/hub), a short data cable, then re-run." -ForegroundColor Red
             exit 1
         }
-        idf.py -B $buildDir -p $Port monitor
+        Invoke-BoardMonitor
     } else {
         if ($Attack -ne 'none' -or $Topology -ne 'tree') {
             Write-Host "NOTE: -Attack/-Topology have no effect without -Flash; monitoring the CURRENTLY flashed firmware." -ForegroundColor Yellow
         }
         Write-Host "Monitoring $Role on $Port (build=$buildDir). Ctrl+] when it reaches 'terminate' $exitHint." -ForegroundColor Cyan
-        idf.py -B $buildDir -p $Port monitor
+        Invoke-BoardMonitor
     }
 } finally {
     Pop-Location
@@ -833,9 +858,15 @@ if ($skipNow) {
 # so skipping here costs nothing. Press 'n' to skip; any other key (or letting
 # the timer run out) proceeds right away, so correct/intentional -Export runs
 # aren't meaningfully slowed down.
-Write-Host "`nMonitor closed - exporting $Role CSVs from $Port in 5s. Press 'n' to skip." -ForegroundColor Yellow
 $skipExport = $false
-$deadline = (Get-Date).AddSeconds(5)
+if ($GuiMonitor) {
+    # The GUI asked "export or skip?" on its own button - no console to read.
+    $skipExport = Test-Path (Join-Path $GuiMonitor 'noexport')
+    $deadline = Get-Date
+} else {
+    Write-Host "`nMonitor closed - exporting $Role CSVs from $Port in 5s. Press 'n' to skip." -ForegroundColor Yellow
+    $deadline = (Get-Date).AddSeconds(5)
+}
 while ((Get-Date) -lt $deadline) {
     if ([Console]::KeyAvailable) {
         $key = [Console]::ReadKey($true)

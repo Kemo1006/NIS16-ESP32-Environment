@@ -133,6 +133,30 @@ class Wormhole(unittest.TestCase):
         self.assertFalse(c)
         self.assertTrue(inv)
 
+    def test_node_a_unlabelled_is_not_a_cable_fault(self):
+        # oct. 16 2026 wormhole/tree/DLSU: A's raw counter went 0 -> 181 but all
+        # its windows were no_phase_seen, and the check claimed "carried nothing".
+        d = self.df.copy()
+        d.loc[d.node_role == "wormhole_a", "segment"] = "no_phase_seen"
+        self.assertFalse(any("carried nothing" in t for t in fails(d, "wormhole")))
+        texts = [i.text for i in ac.setup_issues(d, "wormhole")]
+        self.assertTrue(any("cannot check UART delivery" in t for t in texts))
+        self.assertTrue(any("NO labelled window" in t for t in texts))
+        self.assertFalse(any("tunnel carried data" in t for t in texts))
+
+    def test_node_a_attack_windows_discarded_but_root_saw_duplicates(self):
+        # A kept its baseline, lost its attack windows (too few samples); the
+        # root's duplicates prove A re-injected -> WARN, not SETUP INVALID.
+        d = self.df.copy()
+        d = d[~((d.node_role == "wormhole_a") & (d.segment == "attack"))]
+        self.assertEqual(fails(d, "wormhole"), [])
+        texts = [i.text for i in ac.setup_issues(d, "wormhole")]
+        self.assertTrue(any("only A re-injects them" in t for t in texts))
+        # ...but with NO duplicates at the root, a missing A still fails.
+        d2 = d.copy()
+        d2["TunnelLatency"] = np.nan
+        self.assertNotEqual(fails(d2, "wormhole"), [])
+
     def test_ends_reversed(self):
         d = self.df.copy()
         d["node_role"] = d.node_role.replace({"wormhole_a": "x", "wormhole_b": "wormhole_a"}) \

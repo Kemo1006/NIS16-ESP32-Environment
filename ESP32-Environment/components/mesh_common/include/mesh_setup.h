@@ -131,6 +131,20 @@ int heartbeat_attacker_child_count(void);
  */
 bool heartbeat_tree_gate_active(void);
 
+/**
+ * @brief Root-only: true on a WORMHOLE build - the root then holds Phase 0
+ *        until heartbeat_wormhole_ready() (oct. 16 2026).
+ */
+bool heartbeat_wormhole_gate_active(void);
+
+/**
+ * @brief Root-only: is the wormhole set up so the run can start? Exactly one
+ *        WORMHOLE_A and one WORMHOLE_B, both reporting the UART link OK (both
+ *        directions), both attached, and A closer to the root than B.
+ * @param why  filled with the first problem found, or the OK summary.
+ */
+bool heartbeat_wormhole_ready(char *why, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

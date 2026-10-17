@@ -1,0 +1,74 @@
+﻿{
+    "attack":  "wormhole",
+    "topology":  "linear",
+    "location":  "Yuchengco",
+    "scenario":  "burst",
+    "owner":  "Kyle",
+    "repeat":  1,
+    "savedAt":  "2026-10-16 22:39",
+    "boards":  [
+                   {
+                       "Label":  "node2",
+                       "Port":  "COM32",
+                       "Role":  "child",
+                       "Kind":  "A",
+                       "Display":  "wormhole tunnel board 1 (entry/exit chosen automatically)",
+                       "Mac":  "20:50:0d:e7:1c:38",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node3",
+                       "Port":  "COM9",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware) + BURST TARGET",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  true
+                   },
+                   {
+                       "Label":  "node4",
+                       "Port":  "COM33",
+                       "Role":  "child",
+                       "Kind":  "B",
+                       "Display":  "wormhole tunnel board 2 (entry/exit chosen automatically)",
+                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node5",
+                       "Port":  "COM10",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node6",
+                       "Port":  "COM34",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM30",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:32:fe:90",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node8",
+                       "Port":  "COM11",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

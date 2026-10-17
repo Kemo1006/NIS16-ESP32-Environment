@@ -5,7 +5,7 @@
 # ASCII-only on purpose (Windows PowerShell 5.1 misreads non-ASCII in .ps1).
 
 $script:BoardMembers = @('Cal', 'Bas', 'Kyle')
-$script:ScenarioTagAnsi = "$([char]27)[38;2;255;170;60m"   # amber - the scenario-job tag, distinct from the role colors
+$script:ScenarioTagAnsi = "$([char]27)[38;5;179m"   # soft amber (calm palette, oct. 17 2026) - the scenario-job tag
 
 function Format-ShortMac {
     # "F4:2D:C9:73:E6:18" -> "F4:18". Already-short "20:38" passes through.

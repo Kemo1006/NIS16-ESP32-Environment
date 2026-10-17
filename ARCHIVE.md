@@ -2582,3 +2582,52 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - Long `idf.py -B <dir>` names — deep paths pass Windows `MAX_PATH`; ninja fails in the **bootloader**
   subproject long after the app compiled, so it looks unrelated. Fixed by short per-variant `Bld` names
   (`bcr`,`bcba`,…) + a preflight warning. ⚠️ **Don't rename them back.** Detail: ARCHIVE.md.
+
+
+## Rolled from MEMORY.md on oct. 17, 2026 (cap)
+- sep. 27, 2026 — **Wireshark view menu (wizard WIRESHARK -> "Open a capture - pick a view"): DEFAULT SCOPE = ALL BOARDS OF THE RUN** (user:
+  "my mesh boards" labels were wrong - the filters always covered every board check_pcap heard). New [2] **MY boards ( >)** submenu = the same
+  7 views limited to one member's boards (`member_boards.json`, matched on first:last MAC byte; member = `my_member.txt`, asks via
+  `Select-MyMember` if unset) + "Another member's boards instead". New "side by side" view = one I/O `sends` line per board (nickname).
+  Views are keyed, not numbered (`Get-PcapScopedView` shared by both menus); BLACKHOLE/WORMHOLE main-menu only, unchanged. `$script:WsColors`
+  6 -> 10. Tested with stubbed Show-Menu/Open-InWireshark on `esp32_sniffer_2026-09-26_233911.pcap`, every view; NOT opened in real Wireshark.
+- sep. 27, 2026 — **ALL DATA MOVED UNDER `ESP32-Environment/datasets/`; CODE STAYED** (user: data + visuals were out of place).
+  `tools/exports`->`datasets/exports`, `analysis/{baseline,blackhole,wormhole}` (CSV/PNG output only)->`datasets/analysis/`,
+  `archive`->`datasets/archive`, `PCAP`->`datasets/PCAP`, `run_logs`->`datasets/run_logs`. `analysis/*.py` + requirements.txt + its .md
+  stay in `analysis/` (callers pass full `-o` paths; `analyze.ps1` now has `$analysisCode` = scripts, `$analysisRoot` = output).
+  Repointed paths + operator messages only, no logic: run_wizard/run/menu/analyze/archive.ps1, tools/ImportBatch.ps1, argparse defaults
+  (export_logs, import_sdcard, run_matrix, verify_topology, validate_integrity, inventory_cells, sniff), slides/refresh_slide_numbers.py,
+  .gitignore, .gitattributes, .vscode/settings.json, .last_import_batch.json. `push_data.py`: EXPORTS/ANALYSIS/LOGS + new ARCHIVE const,
+  analysis depth rule >=5 -> >=6 (same cell-depth guard). Done as a SHA-256-verified COPY (375 files, 258.8 MB identical): auto mode
+  blocked the move, so **the originals are still on disk until the user deletes them.** Verified: parse/py_compile, inventory output
+  identical before/after, wizard Get-RunDirs/Get-RunLogRoot -> datasets/. NOT run: a real capture, push/pull against GitHub.
+  ⚠️ Stage `.gitattributes` WITH the data (else CSV line endings change -> integrity hashes break). ⚠️ GitHub paths change on push:
+  a teammate on the old push_data.py syncs the old folders - `git pull` the code first. **FILEMAP, guides and older entries here still
+  say the OLD paths - the user will fix docs later; trust the code.**
+  SET_TIME gets "no answer" when the board still runs pre-SET_TIME firmware before the reflash - clock then comes from the SD anchor.
+- sep. 26, 2026 — **ESP32 SNIFFER (independent observer, answers panel P6)** — built, ✅ hardware-tested, documented in
+  `docs/packet-capture/WIRESHARK-GUIDE.md` + FILEMAP; full build notes in ARCHIVE.md. What still bites: a SPARE board only (never a run's mesh port),
+  UART0 at **921600** so `idf.py monitor` shows garbage BY DESIGN, output `PCAP/<atk>/<topo>/<loc>/<scen>/` or `standalone/` (git-ignored),
+  **`P` pauses SAVING - the capture has real gaps there, check the .json `pauses` before using a pcap**, and the keep prompt `[Y/n]`
+  deletes .pcap+.json on an explicit `n` with no restore. Quote USB loss / ring drops from the .json alongside any figure.
+  literally" notes are history, not a to-do). Only the paper text (Tables 4.4/4.10, §4.2.4.1) is behind and must be amended.
+
+## Rolled from MEMORY.md (oct. 17, 2026)
+- sep. 27, 2026 (pm) — **ARCHIVE (wizard DATA [7] / `archive.ps1`) NOW ALSO MOVES `datasets/PCAP/` + `datasets/run_logs/`** (user: "include the
+  pcap and run logs so all of the info will be there"). PCAP moves WHOLE (cell folders + `standalone/`, .pcap + .json + _fixed) to
+  `archive/<date>_<label>/PCAP/`; run_logs moves to `.../run_logs/` EXCEPT `run_logs/_archive/` (the log viewer's own archive, stays).
+  Emptied PCAP/run_logs subfolders are removed (writers recreate them). Wizard menu no longer says "nothing to archive" when only
+  pcaps/logs are left, and shows an ALSO MOVES line. Archived pcaps stay git-ignored (`PCAP/` rule) = local to that laptop. Tested:
+  parse, `-WhatIf` on real data, real move in a scratch sandbox. ⚠️ The wizard's Wireshark capture picker + run-log viewer only scan the
+  LIVE folders - archived ones are reachable via "Another file". ⚠️ Leftover pcaps/logs from the 3 already-archived sep. 26-27 runs are
+  still live; archiving now would lump them into ONE new folder - file them into their matching archive by timestamp instead.
+- sep. 27, 2026 (Wireshark review + burst) — **02:05 blackhole/linear pcap = REAL LINEAR, attack WORKED** (user: "is it really linear / why no attack in the graph").
+  Chain ROOT(B0:18) -> node2(20:38) -> node4(F4:18 = BLACKHOLE per mesh_config.h) -> node3(20:80, victim). Proven twice: `verify_topology.py`
+  on the 4 telem CSVs (0 parent switches) AND pcap data frames (only 3 links, none skip a hop). ⚠️ `member_boards.json` still labels 20:38 as
+  attacker - STALE (real one is F4:18); wizard option 9 reads mesh_config.h so it picked the right board. Logs: attacker recv 180 / fwd 0 /
+  drop 180 in phase 1; root arrivals from node3 = 301 / 0 / 120 (base/attack/cool), node2 unaffected. Wireshark looked flat because (1) a
+  02:18:11-30 spike (attacker AP ~8,300 RTS + 757 retries to node3 at teardown) sets the Y axis, (2) 1 probe/s/child so the dip is ~20 -> 9
+  frames/10 s, (3) option 4 / "Attacker - all traffic" count beacons+ACKs. Zoom 0-680 s on the data-frame "Attacker -> parent" line.
+  **BURST_COUNT 100 -> 300** (user: "add 200 more") in `mesh_config.h:545` + "300 probes" text in run_wizard/menu/run.ps1 + memory/run-scenarios;
+  NOT compiled/flashed; burst size is not in the CSV (old 100-probe bursts not comparable). Stationary = 1 probe/s/child (~660/child/run);
+  highload 250 ms; run length is set only by root timers (60/300/180/120; jitter + burst-baseline add time), never by send rate.

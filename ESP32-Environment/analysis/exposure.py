@@ -276,8 +276,18 @@ def wormhole_setup_issues(df: pd.DataFrame) -> list[str]:
             atk = wh[wh["segment"].astype(str) == "attack"]
         ti = pd.to_numeric(atk["TunnelIntensity"], errors="coerce")
         sent = ti[atk["node_role"] == "wormhole_b"].sum()
-        got = ti[atk["node_role"] == "wormhole_a"].sum()
-        if sent > 0 and got <= 0.05 * sent:
+        a_vals = ti[atk["node_role"] == "wormhole_a"]
+        got = a_vals.sum()
+        # Node A with NO labelled attack windows is missing DATA, not a missing
+        # cable: summing nothing gives 0 and used to print "the UART link carried
+        # nothing" (oct. 16 2026, wormhole/tree/DLSU: A's raw counter went
+        # 0 -> 181, but its windows were all no_phase_seen). Say so instead.
+        if sent > 0 and a_vals.notna().sum() == 0:
+            issues.append("cannot check UART delivery from Node A: it has no labelled"
+                          " attack windows. Its raw export's probes_count (= frames"
+                          " received from B) shows it; here the root's duplicates are"
+                          " the delivery evidence")
+        elif sent > 0 and got <= 0.05 * sent:
             # 1 s windows: summing msgs/s over them gives a frame count.
             issues.append(f"Node A RECEIVED ~{got:.0f} tunnel frame(s) vs Node B SENT ~{sent:.0f}"
                           " in the attack - the UART link carried nothing"

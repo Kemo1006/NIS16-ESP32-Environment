@@ -191,6 +191,12 @@ _add("window_label", "Windowed (preprocess)",
 _add("window_phase_id", "Windowed (preprocess)",
      "Most common phase_id among the window's raw rows",
      "0 baseline | 1 blackhole | 2 wormhole | 3 cooldown | 4 terminate | 255 not heard yet")
+_add("window_phase_mixed", "Windowed (preprocess)",
+     "True when the window's raw rows carry two real phases (the phase changed "
+     "inside it)",
+     "True | False",
+     "Such a window gets segment 'transition' and no label: its counters mix two "
+     "phases.")
 _add("t_anchor_s", "Windowed (preprocess)",
      "Time relative to the moment THIS node first left phase 0 (attack start "
      "as seen by this node)",
@@ -198,7 +204,8 @@ _add("t_anchor_s", "Windowed (preprocess)",
      "Lets windows from different boards be lined up without shared clocks.")
 _add("segment", "Windowed (preprocess)",
      "Which part of the experiment the window belongs to",
-     "pre_baseline | baseline | attack | cooldown | baseline_rebroadcast | no_phase_seen",
+     "pre_baseline | baseline | attack | cooldown | transition | baseline_rebroadcast | "
+     "no_phase_seen",
      "pre_baseline = node was up before the experiment's baseline started; "
      "unlabelled and excluded from analysis, but kept.")
 

@@ -77,6 +77,34 @@ $analysisCode = Join-Path $root 'analysis'   # the M6-M8 scripts; their output g
 $ROW_TARGET   = 10000
 
 # ---------------------------------------------------------------- helpers ---
+# Colours verify_attack.py's report line by line from the words it prints
+# (oct. 16 2026). Write-Host colours work on every Windows console; python's
+# own ANSI colours are only used when it writes straight to a terminal, never
+# into this pipe. Write-Host goes to the host, so nothing leaks into a return
+# value (see the Out-Host note above) and $LASTEXITCODE is kept.
+function Write-VerifyReport {
+    param([Parameter(ValueFromPipeline = $true)][AllowEmptyString()][string]$Line)
+    process {
+        $t = $Line.Trim()
+        $first = ($t -split '\s+')[0]
+        $c = $null
+        if ($t -eq '') { }
+        elseif ($t -match '^[=-]+$') { $c = 'DarkGray' }
+        elseif ($t -match '^(RESULT|VERDICT)') {
+            if ($t -match 'NOT CONFIRMED') { $c = 'Red' }
+            elseif ($t -match 'INCONCLUSIVE') { $c = 'Yellow' }
+            elseif ($t -match 'CONFIRMED') { $c = 'Green' }
+        }
+        elseif ($Line -match '^ \[[1-5]\]') { $c = 'Cyan' }
+        elseif ($t -match '^(WORMHOLE|BLACKHOLE) VERIFICATION') { $c = 'White' }
+        elseif ($first -eq 'PASS' -or $first -eq 'OK') { $c = 'Green' }
+        elseif ($first -eq 'FAIL') { $c = 'Red' }
+        elseif (@('WARN', 'UNTESTABLE', 'EXCLUDED', 'NO', 'N/A', '??', '!!') -contains $first) { $c = 'Yellow' }
+        elseif ($first -eq '--' -or $first -eq 'note') { $c = 'DarkGray' }
+        if ($c) { Write-Host $Line -ForegroundColor $c } else { Write-Host $Line }
+    }
+}
+
 # Read-Choice / Read-YesNo mirror menu.ps1's versions on purpose, so both
 # front-ends prompt identically. Keep them in sync if menu.ps1's change.
 
@@ -363,7 +391,7 @@ function Invoke-Validate {
         Write-Host ("No feature_table.csv for {0} yet -- analyze it first." -f $label) -ForegroundColor Yellow
     }
     else {
-        python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack | Out-Host
+        python (Join-Path $root 'tools\verify_attack.py') $features --attack $Target.Attack | Write-VerifyReport
         # Exit 3 (oct. 14 2026) = the signature features moved but a setup check
         # failed (tools/attack_checks.py: topology, attacker/victims, UART tunnel).
         $status.Attack = switch ($LASTEXITCODE) {

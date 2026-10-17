@@ -51,6 +51,7 @@ import os
 import re
 import sys
 from collections import defaultdict
+from datetime import datetime
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_THIS_DIR)
@@ -644,8 +645,13 @@ def _classify(rows, scope):
             "latest": latest, "dup_srcs": dup_srcs, "out_of_scope": out_of_scope}
 
 
-def report_checklist(rows, assign, repeats=1, scope="live"):
+def report_checklist(rows, assign, repeats=1, scope="live", color=False):
     """Tick-box progress table, grouped by location then topology.
+
+    LAYOUT (oct. 17 2026, user: "very messy"): one header with the overall bar,
+    one block per location with its own bar, a fixed scenario grid, then only
+    what needs a decision (NEEDS ATTENTION, NEXT CAPTURE, OFF-PLAN). The old
+    per-run DONE list was dropped - it repeated the grid line for line.
 
     This is what run_wizard.ps1's "Campaign progress" option renders. It reads
     the SAME scan as the inventory above, so the checklist can never drift from
@@ -669,118 +675,115 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
                 copies of one capture in several archives count once.
     """
     c = _classify(rows, scope)
-    have, have_src, attempted = c["have"], c["have_src"], c["attempted"]
+    have, attempted = c["have"], c["attempted"]
     latest, dup_srcs, out_of_scope = c["latest"], c["dup_srcs"], c["out_of_scope"]
+    C = _ansi(color)
+    W = 94
 
     def last_run(atk, topo, loc, scns):
         found = [latest[(atk, topo, loc, s_)] for s_ in scns if (atk, topo, loc, s_) in latest]
         if not found:
             return ""
-        when, scn = max(found)
-        return f"{when.strftime('%b%d %I:%M%p')} ({lbl(scn)})"
+        when, _scn = max(found)
+        return when.strftime("%b %d  %I:%M %p")
 
     def mark(atk, topo, loc, scn):
+        """(plain text, coloured text) of one grid box - same width either way."""
         k = (atk, topo, loc, scn)
         n = have.get(k, 0)
         if repeats > 1:
-            return f"{min(n, repeats)}/{repeats}"
+            t = f"{min(n, repeats)}/{repeats}"
+            return t, (C["g"] if n >= repeats else C["y"] if n or attempted.get(k) else C["d"]) + t + C["x"]
         if n:
-            return "[x]"
-        return "[~]" if attempted.get(k) else "[ ]"
+            return "[x]", f"{C['g']}[x]{C['x']}"
+        if attempted.get(k):
+            return "[~]", f"{C['y']}[~]{C['x']}"
+        return "[ ]", f"{C['d']}[ ]{C['x']}"
 
     total_done = total_planned = 0
-    per_loc_done = defaultdict(int)
+    per_loc = defaultdict(lambda: [0, 0, 0])     # done, partial, planned
     first_open = {}
 
     def tally(atk, topo, loc, scn):
         nonlocal total_done, total_planned
-        got = min(have.get((atk, topo, loc, scn), 0), repeats)
+        k = (atk, topo, loc, scn)
+        got = min(have.get(k, 0), repeats)
         total_planned += repeats
         total_done += got
-        per_loc_done[loc] += got
-        if got < repeats and not attempted.get((atk, topo, loc, scn)):
+        per_loc[loc][0] += got
+        per_loc[loc][1] += 1 if (got < repeats and attempted.get(k)) else 0
+        per_loc[loc][2] += repeats
+        if got < repeats and not attempted.get(k):
             first_open.setdefault(loc, (atk, topo, scn))
-    print()
-    print("=" * 96)
-    where = ("datasets\\exports\\ + datasets\\analysis\\" if scope == "live"
-             else "datasets\\archive\\*\\exports\\ + archive\\*\\analysis\\")
-    print(f"  CAMPAIGN PROGRESS - {scope.upper()}   "
-          f"({'x' if repeats == 1 else str(repeats) + ' repeats'} per cell)   - from {where}")
-    print("  [x] = captured + complete + analysed   [~] = data here, not done yet   "
-          "[ ] = nothing here")
-    print("=" * 96)
 
+    # pre-count so the header can show the totals
     for loc in PLAN_LOCATIONS:
-        print()
-        print()
-        print(f"  -- {loc} " + "-" * (88 - len(loc)))
-        # One FIXED column per scenario (same column in every row); "-" = this
-        # scenario was not drawn for that cell. Run order stays in the plan file.
-        cw = max(len(lbl(s_)) for s_ in SCENARIO_POOL) + 2
-        print(f"    {'topology':<14}{'attack':<11}"
-              + "".join(f"{lbl(s_):<{cw}}" for s_ in SCENARIO_POOL) + "last run")
         for topo in PLAN_TOPOLOGIES:
-            print()
-            drawn = set()
             for atk in PLAN_ATTACKS:
-                scns = assign[(loc, topo, atk)]
-                drawn |= set(scns)
-                for scn in scns:
+                for scn in assign[(loc, topo, atk)]:
                     tally(atk, topo, loc, scn)
-                slots = "".join(
-                    f"{mark(atk, topo, loc, s_) if s_ in scns else '-':<{cw}}"
-                    for s_ in SCENARIO_POOL)
-                print(f"    {topo if atk == PLAN_ATTACKS[0] else '':<14}{atk:<11}{slots}"
-                      f"{last_run(atk, topo, loc, scns)}")
-            # This (location, topology)'s one matched benign run.
             for scn in benign_for(assign, loc, topo):
                 tally("baseline", topo, loc, scn)
-                slots = "".join(
-                    f"{mark('baseline', topo, loc, s_) if s_ == scn else '-':<{cw}}"
-                    for s_ in SCENARIO_POOL)
-                print(f"    {'':<14}{'benign':<11}{slots}"
-                      f"{last_run('baseline', topo, loc, [scn]):<30}"
-                      f"(matched pair for {lbl(scn)} runs)")
+    partial_total = sum(v[1] for v in per_loc.values())
 
-    # Captures that are real but outside this cell's drawn 4: listed, not counted.
+    rule, thin = "  " + "=" * (W - 2), "  " + "-" * (W - 2)
+
+    def fit(text, first, rest):
+        import textwrap
+        return textwrap.fill(" ".join(text.split()), width=W, initial_indent=first,
+                             subsequent_indent=rest, break_on_hyphens=False)
+    print()
+    print(rule)
+    title = f"  CAMPAIGN CHECKLIST  |  {scope.upper()}"
+    stamp = datetime.now().strftime("%b %d, %I:%M %p")
+    print(f"{C['b']}{title}{C['x']}{' ' * (W - len(title) - len(stamp))}{C['d']}{stamp}{C['x']}")
+    print(rule)
+    pct = 100 * total_done / total_planned if total_planned else 0
+    print(f"  {C['b']}{total_done} of {total_planned} runs done{C['x']}   "
+          f"{_bar(total_done, partial_total, total_planned, 44, C)}  {pct:.0f} %")
+    print(f"  {C['g']}[x]{C['x']} done   {C['y']}[~]{C['x']} data here, not done yet   "
+          f"{C['d']}[ ]{C['x']} not captured   {C['d']} . {C['x']} not in the plan")
+    print(f"  {C['d']}benign = the ONE matched no-attack run of that topology (its scenario is "
+          f"the only box){C['x']}")
+
+    cw = max(len(lbl(s_)) for s_ in SCENARIO_POOL) + 2
+    for loc in PLAN_LOCATIONS:
+        d, part, pl = per_loc[loc]
+        head = f"  {loc}"
+        tail = f"{d:>3} / {pl:<3} {_bar(d, part, pl, 20, C)}"
+        tail_plain = f"{d:>3} / {pl:<3} " + "#" * 20
+        print()
+        print(f"{C['c']}{C['b']}{head}{C['x']}{' ' * (W - len(head) - len(tail_plain))}{tail}")
+        print(thin)
+        print(f"  {C['d']}{'':<14}{'':<11}" + "".join(f"{lbl(s_):^{cw}}" for s_ in SCENARIO_POOL)
+              + f"  last capture{C['x']}")
+        for ti, topo in enumerate(PLAN_TOPOLOGIES):
+            if ti:
+                print()
+            rows_ = [(atk, assign[(loc, topo, atk)]) for atk in PLAN_ATTACKS]
+            rows_.append(("baseline", benign_for(assign, loc, topo)))
+            for ri, (atk, scns) in enumerate(rows_):
+                cells = ""
+                for s_ in SCENARIO_POOL:
+                    if s_ in scns:
+                        plain, col = mark(atk, topo, loc, s_)
+                    else:
+                        plain, col = ".", f"{C['d']}.{C['x']}"
+                    pad = cw - len(plain)
+                    cells += " " * (pad // 2) + col + " " * (pad - pad // 2)
+                name = "benign" if atk == "baseline" else atk
+                topo_txt = f"{C['b']}{topo:<14}{C['x']}" if ri == 0 else " " * 14
+                print(f"  {topo_txt}{C['d'] if atk == 'baseline' else ''}{name:<11}"
+                      f"{C['x'] if atk == 'baseline' else ''}{cells}  "
+                      f"{C['d']}{last_run(atk, topo, loc, scns)}{C['x']}")
+
+    # ---- what needs a decision ---------------------------------------------
     planned_keys = set(build_plan(assign))
     off_plan = sorted({k for k in list(have) + list(attempted) if k not in planned_keys})
-
-    print()
-    print("=" * 96)
-    print(f"  done: {total_done} / {total_planned} planned runs")
-    if scope == "live" and out_of_scope:
-        print(f"  ({out_of_scope} archived run(s) not counted here - see the ARCHIVE checklist)")
-    if dup_srcs:
-        print(f"  ({len(dup_srcs)} duplicate copy/copies of one capture counted once:")
-        for a, b in sorted(set(dup_srcs)):
-            print(f"      {a}  ==  {b}")
-        print("   )")
-
-    if off_plan:
-        print()
-        print("  OFF-PLAN (real data, but not one of that cell's drawn scenarios - not counted):")
-        ow = max(len(t) for _a, t, _l, _s in off_plan) + 2
-        lw = max(len(l or '-') for _a, _t, l, _s in off_plan) + 2
-        for atk, topo, loc, scn in off_plan:
-            print(f"    {atk:<10}{topo:<{ow}}{loc or '-':<{lw}}{lbl(scn)}")
-
-    if have_src:
-        print()
-        print(f"  DONE ({scope} capture + analysis):")
-        tw = max([len(k[1]) for k in have_src] + [len("topology")]) + 2
-        for k in sorted(have_src):
-            atk, topo, loc, scn = k
-            reps = ", ".join(f"r{r['repeat']}" for r in have_src[k])
-            print(f"    [x] {atk:<10}{topo:<{tw}}{loc or '-':<8}{lbl(scn):<11} {reps}")
-
-    # ---- what to do next, cheapest first -------------------------------------
-    # A complete capture that only lacks analysis costs one analyze.ps1 call, so
-    # it ranks above any near-miss that needs a new 11-minute capture.
     near = []
     for k, rs in attempted.items():
-        if have.get(k, 0):
-            continue                      # already satisfied by another repeat
+        if have.get(k, 0) or k not in planned_keys:
+            continue
         best = None
         for r in rs:
             if r["verdict"] == "COMPLETE":
@@ -792,36 +795,49 @@ def report_checklist(rows, assign, repeats=1, scope="live"):
                 best = (rank, r)
         near.append((best[0], k, best[1]))
 
+    print()
+    print(rule)
     if near:
         near.sort(key=lambda t: t[0])
-        print()
-        print(f"  NEXT ACTIONS ({scope} cells with data, cheapest fix first):")
-        tw2 = max([len(k[1]) for _r, k, _b in near[:12]] + [len("topology")]) + 2
-        print(f"    {'attack':<11}{'topology':<{tw2}}{'loc':<8}{'scn':<11}{'what is missing'}")
+        print(f"  {C['y']}{C['b']}NEEDS ATTENTION{C['x']}  {C['d']}data here that does not count yet - "
+              f"cheapest fix first{C['x']}")
         for _rank, k, r in near[:12]:
             atk, topo, loc, scn = k
+            what = f"{atk} / {topo} / {loc or '-'} / {lbl(scn)}"
             if r["verdict"] == "COMPLETE":
-                why = _not_done_reason(r)
+                why, colr = _not_done_reason(r), C["y"]
             else:
-                why = "RE-CAPTURE: " + _blocker_summary(r["reasons"])
-            src = "" if scope == "live" else f"   [{r['source']}]"
-            print(f"    {atk:<11}{topo:<{tw2}}{loc or '-':<8}{lbl(scn):<11}{why}{src}")
+                why, colr = "RECAPTURE - " + _blocker_summary(r["reasons"]), C["m"]
+            src = "" if scope == "live" else f"  [{r['source']}]"
+            print(f"    {C['y']}[~]{C['x']} {what:<48}{colr}{why}{C['x']}{C['d']}{src}{C['x']}")
         if len(near) > 12:
-            print(f"    ... and {len(near) - 12} more - run with --plan for every reason.")
-
-    # ---- suggested next capture -----------------------------------------------
-    # Stay at the location with the most progress (fewest trips), first empty cell.
-    if scope == "live" and first_open:
-        loc = max(first_open, key=lambda l: (per_loc_done[l], -PLAN_LOCATIONS.index(l)))
-        atk, topo, scn = first_open[loc]
+            print(f"    {C['d']}... and {len(near) - 12} more - run with --plan for every reason.{C['x']}")
         print()
-        print(f"  SUGGESTED NEXT CAPTURE: {atk} / {topo} / {loc} / {lbl(scn)}   (run.ps1 -Scenario {scn})")
-        print(f"     (next slot in run order, at the location with the most done runs)")
+    if scope == "live" and first_open:
+        loc = max(first_open, key=lambda l: (per_loc[l][0], -PLAN_LOCATIONS.index(l)))
+        atk, topo, scn = first_open[loc]
+        what = "benign" if atk == "baseline" else atk
+        print(f"  {C['g']}{C['b']}NEXT CAPTURE{C['x']}     {C['b']}{what} / {topo} / {loc} / "
+              f"{lbl(scn)}{C['x']}   {C['d']}run.ps1 -Scenario {scn}{C['x']}")
+        print(f"  {C['d']}                 (the location with the most done runs, next slot in run "
+              f"order){C['x']}")
+    if off_plan:
+        names = ", ".join(f"{a_}/{t_}/{l_ or '-'}/{lbl(s_)}" for a_, t_, l_, s_ in off_plan)
+        print(C["d"] + fit(f"{len(off_plan)} cell(s) of real data outside the plan, not "
+                           f"counted: {names}", "  OFF-PLAN         ", " " * 19) + C["x"])
+    notes = []
+    if scope == "live" and out_of_scope:
+        notes.append(f"{out_of_scope} archived run(s) are not counted here (Campaign -> [4] archive).")
+    if dup_srcs:
+        notes.append(f"{len(dup_srcs)} duplicate copy/copies of one capture counted once.")
+    notes.append("A [x] means complete + analysed, not verified: the REDO LIST (Campaign -> [5]) "
+                 "says which done cells still need a recapture.")
+    notes.append("Scenarios are drawn per cell (" + ", ".join(lbl(x) for x in SCENARIO_POOL)
+                 + f") and fixed in tools\\{os.path.basename(PLAN_FILE)}.")
     print()
-    print("  Scenarios are RANDOMISED per cell (4 of: " + ", ".join(lbl(x) for x in SCENARIO_POOL) + "),")
-    print(f"     fixed in tools\\{os.path.basename(PLAN_FILE)}. Each location/topology also has ONE")
-    print("     'benign' (no-attack) run; the 4 topologies of a location use 4 different scenarios.")
-    print("=" * 96)
+    for t in notes:
+        print(C["d"] + fit(t, "  ", "  ") + C["x"])
+    print(rule)
     print()
 
 # ---------------------------------------------------------------------------
@@ -880,6 +896,13 @@ def campaign_status(rows, assign, scope="live"):
         k = (sl["attack"], sl["topology"], sl["location"], sl["scenario"])
         sl["state"] = state(k)
         sl["why"] = why(k) if sl["state"] == "partial" else ""
+        # which KIND of partial (user, oct. 17 2026: 'datasets not analysed yet ->
+        # in progress'): 'analyse' = the latest capture is COMPLETE, only its
+        # analysis is missing / older than the capture; 'recapture' = the capture
+        # itself falls short. '' when not partial.
+        rs = attempted.get(k) or []
+        sl["stage"] = ("" if sl["state"] != "partial"
+                       else "analyse" if rs and rs[-1]["verdict"] == "COMPLETE" else "recapture")
         sl["last"] = latest[k][0].strftime("%Y-%m-%d %H:%M") if k in latest else ""
 
     def count(items):
@@ -1071,6 +1094,9 @@ def main():
     args = ap.parse_args()
     summary_only = bool(args.board or args.sessions or args.json) and not (
         args.checklist or args.plan or args.csv or args.reshuffle)
+    # oct. 17 2026: --checklist on its own is a VIEW (wizard Campaign -> [2]);
+    # the per-run inventory table in front of it was most of the "messy".
+    checklist_only = args.checklist and not (args.plan or args.csv or args.reshuffle)
 
     sources = []
     if os.path.isdir(args.exports):
@@ -1119,6 +1145,13 @@ def main():
             report_sessions(st, color)
         if args.json:
             _write_status_json(st, args.json)
+        return 0
+
+    if checklist_only:
+        color = not args.no_color and sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+        if color and os.name == "nt":
+            os.system("")
+        report_checklist(rows, load_plan(False, None), args.repeats, args.scope, color=color)
         return 0
 
     print()

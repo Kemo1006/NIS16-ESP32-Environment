@@ -389,3 +389,26 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Paper edit** | (1) **Scope and Limitations:** say plainly that the attacks are application-layer emulations on physical hardware, why routing could not be attacked, and what the data does / does not represent. (2) **Attack method sections:** "the attacker drops / tunnels traffic that transits it", not "advertises a false route". (3) **Future work:** route-attraction attacks on an open-source mesh protocol, or ESP-WIFI-MESH's beacon-based parent selection. (4) Defense slide + panel Q&A ("is it a real attack?", "did you try?" - answer honestly, "does placement bias results?"). Draft wording in MEMORY oct. 14, 2026. |
 
 ---
+
+---
+
+## D-21 · Verification + preprocessing refinements (oct. 16-17, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | 3-sigma normal-vs-attack test on the signature features (Zhukabayeva et al. 2025); windows labelled by phase. |
+| **What we do** | (1) **Wormhole has two independent primaries**: TunnelIntensity (the attacking boards' own count) and **DuplicateRate** (root-measured share of Node B's windows with a duplicate arrival; Ramirez Gomez et al. 2019). (2) **TunnelLatency and LatencyHopRatio are reported, not scored**: TunnelLatency exists only while the tunnel runs (no normal-phase distribution); LatencyHopRatio's unsynchronised relative delay is too dispersed (max attainable abs(z) 0.23-0.64). (3) A window whose raw rows span **two phases** is segment `transition` and unlabelled. (4) A node whose phase exit fell in discarded windows is anchored on that exit, so its valid baseline is kept. |
+| **Why** | (1) one self-reported counter is weak evidence; the root's view is independent. (2) a test that can never pass is not evidence either way. (3) the first tunnelled probe was being counted as baseline. (4) a telemetry stall was deleting valid baseline windows. |
+| **Net effect** | Every live verdict unchanged (44 attack cells dry-run); wormhole cells now 2/2 primaries; baseline of wormhole/tree/DLSU exactly 0. |
+| **Paper edit** | Verification method: name both wormhole primaries + the study for each; say the two latency features are descriptive and why; one sentence on transition windows. Checklist A22, B-lat. |
+
+## D-22 · Pre-run gates: wormhole setup gate + manual START (oct. 16, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | Phase 0 starts after mesh stabilisation. |
+| **What we do** | The root holds Phase 0 until (a) every child is in (roster gate), (b) tree+blackhole: the attacker has a child, (c) **wormhole: exactly one A and one B, UART OK both ways, A closer to the root than B**, and then (d) **the operator types START** after checking the topology table (both attacks). START_ANYWAY overrides, loudly. |
+| **Why** | Wormhole ends lock their roles at Phase 0, and tree runs are corrupted by moving boards after it; oct. 16 linear runs started with both ends B (one-way UART jumper). |
+| **Net effect** | No data change; runs that would have been invalid can no longer start. Procedure: "the operator confirmed the layout before the baseline". |
+| **Paper edit** | Methodology / run procedure: one paragraph on the pre-run gates. Checklist A23. |
+

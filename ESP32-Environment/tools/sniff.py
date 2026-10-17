@@ -308,6 +308,9 @@ def main():
     ap.add_argument("--start-paused", action="store_true",
                     help="begin PAUSED (frames heard but not saved) until P is pressed - for a manual "
                          "recording started before the experiment does")
+    ap.add_argument("--pause-file",
+                    help="PAUSED while this file exists, recording when it does not (run_gui.ps1's "
+                         "Pause/Resume button; same pause as the P key, logged in the .json)")
     ap.add_argument("--label", default="", help="free text saved in the .json sidecar (run description)")
     args = ap.parse_args()
 
@@ -371,6 +374,7 @@ def main():
     keys = sys.stdin.isatty()
     if args.start_paused:
         paused.set()
+    next_pause_check = [0.0]
 
     def toggle_pause():
         if paused.is_set():
@@ -515,6 +519,14 @@ def main():
             if args.minutes and now - started_wall >= args.minutes * 60:
                 stop_reason[0] = "time limit (%g min)" % args.minutes
                 break
+            if args.pause_file and now >= next_pause_check[0]:
+                # the GUI's Pause button: a file, checked 4x a second (never a
+                # sleep - the port keeps being read either way)
+                next_pause_check[0] = now + 0.25
+                if os.path.exists(args.pause_file):
+                    paused.set()
+                else:
+                    paused.clear()
             if paused.is_set() and cur_pause is None:
                 cur_pause = {"started": iso_now(), "t0": now, "frames_not_saved": 0}
                 status.note(paint("  PAUSED %s - frames are heard but NOT saved. Press P to %s."

@@ -169,6 +169,8 @@ static uint8_t          s_peer_mac[6] = {0};
 /* Error detection for the auto-switch (reported live and in the end-of-run
  * summary in app_main). */
 static volatile uint32_t s_uart_bad_windows = 0; /* CRC/magic misses = resyncs */
+static volatile uint32_t s_self_echoes      = 0; /* own HELLOs heard back      */
+static volatile int64_t  s_self_echo_last_us = 0;
 static volatile bool     s_role_conflict    = false; /* both locked the same end */
 static volatile bool     s_locked_fallback  = false; /* locked with no peer      */
 static volatile bool     s_shortcut_lost    = false; /* mesh moved after lock    */
@@ -378,12 +380,32 @@ static bool my_mac_lower(void)
 }
 
 /* The role this board SHOULD have right now, from what it knows. */
+/* Defined with role_task's other state below; declared here for peer_is_deaf. */
+static int64_t s_rt_started_us;
+
+/* true once the peer has had time to hear our HELLOs (one HELLO_PERIOD plus
+ * its own reply) and its latest HELLO still says it does NOT. */
+static bool peer_is_deaf(void)
+{
+    return peer_fresh() && !s_peer_hears_me
+           && esp_timer_get_time() - s_rt_started_us > PEER_FRESH_MS * 1000LL;
+}
+
 static uint8_t decide_role(int my_layer)
 {
     const uint8_t fallback = (WORMHOLE_END == WORMHOLE_END_B) ? NODE_ROLE_WORMHOLE_B
                                                               : NODE_ROLE_WORMHOLE_A;
     if (!peer_fresh()) {
         return fallback;
+    }
+    if (peer_is_deaf()) {
+        /* ONE-WAY CABLE (oct. 16 2026 linear runs: both ends B, then both A).
+         * The peer hears nothing, so it sits on ITS build fallback and cannot
+         * move; only this end can make the roles opposite. Depth cannot be
+         * honoured here - the link state goes to the root as WH_LINK_ONEWAY
+         * and the root's wormhole gate holds Phase 0 until the wire is fixed. */
+        return (s_peer_role == NODE_ROLE_WORMHOLE_B) ? NODE_ROLE_WORMHOLE_A
+                                                     : NODE_ROLE_WORMHOLE_B;
     }
     if (s_peer_locked) {
         /* Peer already committed (we rebooted into a running run): mirror it. */
@@ -438,8 +460,15 @@ static int64_t  s_rt_next_link_err_us = 0;
  * the ROOT's dashboard can flag a dead wire (oct. 14 2026 safety net): before
  * that, a dead wire only showed as its symptom - each end silently kept its
  * build-time role, which can come out reversed. */
+static bool self_echo_recent(int64_t now)
+{
+    return s_self_echoes && now - s_self_echo_last_us < PEER_FRESH_MS * 1000LL;
+}
+
 static uint8_t link_state(int64_t now)
 {
+    if (self_echo_recent(now)) return WH_LINK_ECHO;   /* wiring fault at THIS end */
+    if (peer_is_deaf()) return WH_LINK_ONEWAY;
     if (peer_fresh())  return WH_LINK_OK;
     if (s_peer_seen)   return WH_LINK_LOST;
     return (now - s_rt_started_us < PEER_FRESH_MS * 1000LL) ? WH_LINK_WAITING : WH_LINK_NONE;
@@ -550,6 +579,23 @@ static void role_step(void)
 
         uint8_t link = link_state(now);
         node_identity_set_wh_link(link);
+        if (link == WH_LINK_ONEWAY && now >= s_rt_next_link_err_us) {
+            ESP_LOGE(TAG, "!! UART TUNNEL ONE-WAY: this board hears the peer, the peer does NOT"
+                          " hear this board. Re-seat the jumper from THIS board's GPIO%d (TX) to"
+                          " the peer's GPIO%d (RX), and GND -> GND. Roles were forced opposite;"
+                          " the root holds Phase 0 until the wire works both ways.",
+                     WORMHOLE_UART_TX_PIN, WORMHOLE_UART_RX_PIN);
+            s_rt_next_link_err_us = now + LINK_ERR_PERIOD_MS * 1000LL;
+        }
+        if (link == WH_LINK_ECHO && now >= s_rt_next_link_err_us) {
+            ESP_LOGE(TAG, "!! UART TUNNEL ECHO: this board hears its OWN HELLOs (%lu so far) -"
+                          " its GPIO%d (TX) touches its own GPIO%d (RX). Each jumper must go"
+                          " from THIS board's TX to the OTHER board's RX (crossed), + GND -> GND."
+                          " %s The root holds Phase 0 until this is fixed.",
+                     (unsigned long)s_self_echoes, WORMHOLE_UART_TX_PIN, WORMHOLE_UART_RX_PIN,
+                     peer_fresh() ? "The peer IS heard too." : "The peer is NOT heard.");
+            s_rt_next_link_err_us = now + LINK_ERR_PERIOD_MS * 1000LL;
+        }
         if (link == WH_LINK_NONE || link == WH_LINK_LOST) {
             /* Loud and REPEATED - a one-off line scrolls away during mesh setup. */
             if (now >= s_rt_next_link_err_us) {
@@ -708,6 +754,20 @@ static bool rx_handle_window(const wh_frame_t *f)
                      (f->t.probe.magic == PROBE_MAGIC) && (crc == f->t.crc);
     bool hello_ok  = (f->h.magic == WORMHOLE_HELLO_MAGIC) && (crc == f->h.crc);
 
+    if (hello_ok && memcmp(f->h.mac, s_self_mac, 6) == 0) {
+        /* OUR OWN HELLO came back (oct. 17 2026 linear run: 0C80 logged "Peer
+         * heard over UART: <its own MAC>"): this board's TX is bridged to its
+         * own RX. Taken as the peer, the echo made a board that never heard
+         * the other one report 'UART OK' and pick its end against itself -
+         * both ends B. Never a peer; reported as WH_LINK_ECHO instead. */
+        if (s_self_echoes++ == 0) {
+            ESP_LOGE(TAG, "Own HELLO heard back over UART - TX GPIO%d is bridged to this"
+                          " board's own RX GPIO%d. Ignored (not the peer).",
+                     WORMHOLE_UART_TX_PIN, WORMHOLE_UART_RX_PIN);
+        }
+        s_self_echo_last_us = esp_timer_get_time();
+        return true;
+    }
     if (hello_ok) {
         memcpy(s_peer_mac, f->h.mac, 6);
         s_peer_layer   = f->h.layer;

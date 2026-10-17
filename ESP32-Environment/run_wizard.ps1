@@ -54,11 +54,26 @@ param(
     [switch]$DryRun,
     [string]$Preset,
     [int]$Repeat = 0,
-    [switch]$SkipMacCheck
+    [switch]$SkipMacCheck,
+    # Open ONE hardware tool directly and exit when it is done - no menus. Used by
+    # run_gui.ps1 for the tools that build + flash firmware and watch a serial
+    # monitor (oct. 17 2026). Names: selftest, uarttest, macsniffer, flashsniffer.
+    [ValidateSet('', 'selftest', 'uarttest', 'macsniffer', 'flashsniffer')]
+    [string]$Tool = '',
+    [string]$ToolPort = '',
+    # Unattended tool answers (run_gui.ps1, oct. 17 2026): with -ToolPort given,
+    # selftest / uarttest ask nothing - the GUI asked already and shows the output.
+    [string]$ToolPort2 = '',          # uarttest: Node B's port (-ToolPort = Node A)
+    [ValidateSet('', 'root', 'child')][string]$ToolRole = '',   # selftest role (default root)
+    [int]$ToolSecs = 10,              # uarttest: 10 = quick check, 120 = soak
+    [string]$ToolLocation = ''        # selftest: also SET this location, read it back, restore
 )
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
+# idf.py / esptool.py as the ESP-IDF window defines them - needed when this
+# runs in a child PowerShell (run_gui.ps1). See tools\idf_shims.ps1.
+. (Join-Path $base 'tools\idf_shims.ps1')
 
 # Build output goes OUTSIDE OneDrive -- same reasoning and same tag formula as
 # run.ps1 (keep these two in sync so both scripts resolve the SAME build dir
@@ -166,10 +181,12 @@ function ConvertTo-Scenario([string]$Name) {
 # these are raw ANSI 24-bit escapes instead; Windows 10/11's default console and
 # Windows Terminal both render them. $script:AnsiReset MUST follow every use or the
 # color bleeds into whatever Write-Host prints next.
+# oct. 17 2026: muted to the calm palette (user: bright colours hurt the eyes) -
+# same hues as before (gold / teal-blue / pink-red), 256-colour soft tones.
 $script:RoleAnsi = @{
-    root     = "$([char]27)[38;2;254;189;23m"   # #FEBD17
-    child    = "$([char]27)[38;2;27;192;186m"   # #1BC0BA
-    attacker = "$([char]27)[38;2;253;184;217m"  # #FDB8D9
+    root     = "$([char]27)[38;5;180m"   # soft amber   (was #FEBD17)
+    child    = "$([char]27)[38;5;110m"   # soft blue    (was #1BC0BA)
+    attacker = "$([char]27)[38;5;174m"   # soft red     (was #FDB8D9)
 }
 $script:AnsiReset = "$([char]27)[0m"
 
@@ -209,6 +226,28 @@ $script:PresetTagAnsi = @{
     mobility = '38;5;39'; powercycle = '38;5;141'
 }
 
+# CALM PALETTE for the preset pages (oct. 17 2026, user: "too much colour hurts
+# my eyes - colour, but clean"). Colour carries MEANING only, in muted
+# 256-colour tones; ordinary values are plain, structure is dim gray.
+#   red    = blackhole / the attacker / not plugged in
+#   purple = wormhole            green = baseline / plugged in / yours
+#   amber  = the boards that matter (atk, A, B) and the '!' flag
+#   blue   = an ordinary child   dim   = rules, dates, nicknames, column names
+$script:Soft = @{
+    red = '38;5;174'; purple = '38;5;140'; green = '38;5;108'; amber = '38;5;180'
+    blue = '38;5;110'; text = '38;5;252'; dim = '38;5;244'; rule = '38;5;239'
+}
+function Get-SoftAttackColor {
+    param([string]$Attack)
+    switch ($Attack) { 'blackhole' { $script:Soft.red } 'wormhole' { $script:Soft.purple } default { $script:Soft.green } }
+}
+function Format-SoftRole {
+    # A board's role word in its muted colour (the picker's board lines).
+    param([string]$Text, [string]$Role)
+    $c = switch ($Role) { 'attacker' { $script:Soft.red } 'root' { $script:Soft.amber } default { $script:Soft.blue } }
+    "$([char]27)[$($c)m$Text$script:AnsiReset"
+}
+
 function Format-PresetCell {
     # '-- BLACKHOLE / linear / G402 / stationary' with each tag in its color and
     # the '--' and '/' separators dim gray. $Attack is the raw cell value
@@ -245,6 +284,13 @@ function Read-Line {
     # after Clear-Host instead of leaving a blank screen with only the one-line
     # prompt on it - Clear-Host wipes everything Read-Line itself has no memory of.
     param([string]$Prompt, [scriptblock]$Redraw)
+    # Every prompt lines up with the 2-space indent of the screen above it
+    # (oct. 17 2026). Leading blank lines (`n) stay in front of the indent.
+    if ($Prompt) {
+        $nl = $Prompt.Length - $Prompt.TrimStart("`n", "`r").Length
+        $body = $Prompt.Substring($nl)
+        if ($body -and -not $body.StartsWith(' ')) { $Prompt = $Prompt.Substring(0, $nl) + '  ' + $body }
+    }
     while ($true) {
         Write-Host -NoNewline $Prompt
         $raw = Read-Host
@@ -273,6 +319,12 @@ function Test-ClearScreenAnswer {
 
 $script:MainMenuSignal = 'WIZARD-RETURN-TO-MAIN-MENU'
 $script:BackSignal     = 'WIZARD-GO-BACK'
+# 'b' on a menu whose caller has NO previous question to return to (oct. 17
+# 2026, user: "add a back to everything"). Leaves the current tool and lands on
+# the menu it was opened from - the same unwinding 'm' uses, so no call site has
+# to learn a new return value (a caller that never expected -1 would otherwise
+# index an array with it and silently pick the LAST option).
+$script:ToolBackSignal = 'WIZARD-BACK-OUT-OF-TOOL'
 
 function Test-MainMenuAnswer {
     param([string]$Raw)
@@ -299,6 +351,87 @@ function Request-MainMenu {
         return
     }
     throw $script:MainMenuSignal
+}
+
+# ── Screen style (oct. 17 2026) ─────────────────────────────────────────────
+# One look for every screen: a framed title for each tool (same name + hint as
+# its main-menu line, so you always know where you are), a framed app banner,
+# and thin section titles inside a tool. Visual only - no logic depends on them.
+function Write-ToolHeader {
+    param([string]$Title, [string]$Hint)
+    Write-Host ""
+    Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGray
+    Write-Host ("  " + $Title.ToUpper()) -ForegroundColor Cyan
+    if ($Hint) { Write-Host ("  " + $Hint) -ForegroundColor DarkGray }
+    Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGray
+    Write-Host "  b = back to the main menu   |   m = main menu   |   cls = clear" -ForegroundColor DarkGray
+}
+
+function Write-AppBanner {
+    Write-Host ""
+    Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGreen
+    Write-Host "  NIS16  |  CAPTURE RUN WIZARD" -ForegroundColor Green
+    Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGreen
+}
+
+function Write-Section {
+    param([string]$Title, [string]$Color = 'Cyan')
+    Write-Host ""
+    Write-Host ("  {0} {1}" -f $Title, ("-" * [Math]::Max(3, 70 - $Title.Length))) -ForegroundColor $Color
+}
+
+function Request-ToolBack {
+    # Same rules as Request-MainMenu: never once flashing has started.
+    if ($script:NavLocked) {
+        Write-Host ""
+        Write-Host "  'b' is disabled once flashing has started - boards are already part-way" -ForegroundColor Yellow
+        Write-Host "  through this run. Answer the prompt, or Ctrl+C if you really must stop." -ForegroundColor Yellow
+        return
+    }
+    throw $script:ToolBackSignal
+}
+
+function Select-RunCell {
+    # The attack -> topology -> scenario -> location questions that several
+    # tools ask in a row, with REAL step-by-step back: 'b' returns to the
+    # previous question, and 'b' on the first one returns $null so the tool
+    # leaves to the menu it came from. Returns the chosen values + indexes.
+    param(
+        [string[]]$Steps = @('attack', 'topology', 'scenario', 'location'),
+        [string]$AttackTitle = 'Which attack?',
+        [string[]]$AttackOptions = @('none (baseline)', 'blackhole', 'wormhole'),
+        [string[]]$AttackValues  = @('none', 'blackhole', 'wormhole'),
+        [string]$ScenarioTitle = 'Scenario (what this capture used, if any):',
+        [hashtable]$Defaults = @{}
+    )
+    $pick = @{}
+    foreach ($k in $Steps) { $pick[$k] = if ($Defaults.ContainsKey($k)) { [int]$Defaults[$k] } else { 0 } }
+    $i = 0
+    while ($i -lt $Steps.Count) {
+        $k = $Steps[$i]
+        $step = "(step {0} of {1})" -f ($i + 1), $Steps.Count
+        $idx = switch ($k) {
+            'attack'   { Show-Menu -Title "$AttackTitle  $step" -Options $AttackOptions -DefaultIndex $pick[$k] -AllowBack }
+            'topology' { Show-Menu -Title "Topology:  $step" -Options $TOPOLOGIES -DefaultIndex $pick[$k] -AllowBack }
+            'scenario' { Show-Menu -Title "$ScenarioTitle  $step" -Options $SCENARIO_LABELS -DefaultIndex $pick[$k] -AllowBack }
+            'location' { Show-Menu -Title "Location:  $step" -Options $DATA_LOCATIONS -DefaultIndex $pick[$k] -AllowBack }
+        }
+        if ($idx -lt 0) {
+            if ($i -eq 0) { return $null }
+            $i--
+            continue
+        }
+        $pick[$k] = $idx
+        $i++
+    }
+    return [pscustomobject]@{
+        Attack      = if ($pick.ContainsKey('attack'))   { $AttackValues[$pick['attack']] } else { $null }
+        Topology    = if ($pick.ContainsKey('topology')) { $TOPOLOGIES[$pick['topology']] } else { $null }
+        Scenario    = if ($pick.ContainsKey('scenario')) { $SCENARIOS[$pick['scenario']] } else { $null }
+        Location    = if ($pick.ContainsKey('location')) { $DATA_LOCATIONS[$pick['location']] } else { $null }
+        AttackIdx   = $pick['attack']; TopologyIdx = $pick['topology']
+        ScenarioIdx = $pick['scenario']; LocationIdx = $pick['location']
+    }
 }
 
 function Test-ScenarioNeedsTarget {
@@ -359,9 +492,13 @@ function Show-Menu {
     # Captured as a scriptblock (not just run inline) so it can be handed to
     # Read-Line as -Redraw: 'cls' Clear-Hosts the whole screen, and this is the
     # only place that knows how to put the title/options back afterward.
+    # [ 9] and [10] line up: numbers are right-aligned to the widest one.
+    $numW = "$($Options.Count)".Length
     $draw = {
         Write-Host ""
-        Write-Host $Title -ForegroundColor Cyan
+        Write-Host ("  " + ("-" * 72)) -ForegroundColor DarkGray
+        Write-Host ("  " + $Title) -ForegroundColor Cyan
+        Write-Host ("  " + ("-" * 72)) -ForegroundColor DarkGray
         for ($i = 0; $i -lt $Options.Count; $i++) {
             if ($GroupHeaders -and $GroupHeaders.ContainsKey($i)) {
                 Write-Host ""
@@ -381,10 +518,10 @@ function Show-Menu {
                 $nl   = $Options[$i].IndexOf("`n")
                 $head = if ($nl -ge 0) { $Options[$i].Substring(0, $nl) } else { $Options[$i] }
                 $tail = if ($nl -ge 0) { $Options[$i].Substring($nl) } else { '' }
-                Write-Host ("  [{0}] {1}  <- default (press Enter){2}" -f ($i + 1), $head, $tail) -ForegroundColor Green
+                Write-Host ("  [{0}] {1}  <- default (press Enter){2}" -f ("$($i + 1)".PadLeft($numW)), $head, $tail) -ForegroundColor Green
             }
             else {
-                Write-Host ("  [{0}] {1}" -f ($i + 1), $Options[$i])
+                Write-Host ("  [{0}] {1}" -f ("$($i + 1)".PadLeft($numW)), $Options[$i])
             }
         }
     }
@@ -401,7 +538,9 @@ function Show-Menu {
         # 'm' is handled inside Read-Line for every prompt in the wizard; it is
         # advertised here (and on the other hand-written prompts) so it is
         # discoverable rather than a hidden keyword.
-        $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'm' main menu, 'cls' clear" }
+        # 'b' works on every menu (oct. 17 2026): -AllowBack callers go back one
+        # question; every other menu leaves the tool (Request-ToolBack).
+        $navHint = if ($AllowBack) { ", 'b' back, 'm' main menu, 'cls' clear" } else { ", 'b' back to the menu, 'm' main menu, 'cls' clear" }
         if ($AllowDelete) { $navHint = ", 'd<N>' delete (d3,5 or d3-5 for several)" + $navHint }
         # A one-option menu read as "type 1-1", which looks like a typo for a
         # range, and Enter was rejected there even though there was nothing else
@@ -415,7 +554,11 @@ function Show-Menu {
             "Type $range$navHint > "
         }
         $raw = Read-Line $hint -Redraw $draw
-        if ($AllowBack -and (Test-BackAnswer $raw)) { return -1 }
+        if (Test-BackAnswer $raw) {
+            if ($AllowBack) { return -1 }
+            Request-ToolBack      # throws; returns only when flashing has started
+            continue
+        }
         if (-not $raw -and $DefaultIndex -ge 0) { return $DefaultIndex }
         # Enter on a single-option menu takes the only option - there is no other
         # answer it could resolve to, so demanding the keystroke was pure friction.
@@ -499,43 +642,46 @@ function Show-CaptureWizardMenu {
     # though DATA's first item is modeIdx 4 and MAINTENANCE's is modeIdx 1.
     $categories = @(
         @{ Name = 'CAPTURE'; Items = @(
-            @{ Idx = 0; Text = 'Run a capture (attack/baseline + topology - the normal flow)' }
-            @{ Idx = 9; Text = 'Run a capture without a preset (skip the preset picker - answer the menus, like menu.ps1)' }
+            @{ Idx = 0; Name = 'Run a capture'; Hint = 'preset or menus - the normal flow'; Text = 'Run a capture (attack/baseline + topology - the normal flow)' }
+            @{ Idx = 30; Name = 'Open the GUI version'; Hint = 'same wizard in a window - click instead of type'; Text = 'Open run_gui.ps1, the point-and-click version of this wizard (presets, verify, campaign, boards)' }
+            @{ Idx = 9; Name = 'Run a capture, no preset'; Hint = 'skip the preset picker, answer the menus'; Text = 'Run a capture without a preset (skip the preset picker - answer the menus, like menu.ps1)' }
         ) }
         @{ Name = 'DATA'; Items = @(
-            @{ Idx = 4; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
-            @{ Idx = 16; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, run logs, presets. Never code' }
-            @{ Idx = 10; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
-            @{ Idx = 7; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
-            @{ Idx = 20; Text = 'Archive captured data - MOVES exports+analysis+PCAP+run logs into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
-            @{ Idx = 14; Text = 'View a saved run log (a past run''s console output start to end, filed by attack/topology/location - keep, archive, delete or push; no board/COM contact)' }
-            @{ Idx = 28; Text = 'Delete dataset files from THIS LAPTOP (no File Explorer - every file shows its date + time; type DELETE to confirm; GitHub untouched)' }
+            @{ Idx = 4; Name = 'Export captured CSVs'; Hint = 'from a board over USB, or from a pulled SD card'; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
+            @{ Idx = 16; Name = 'Sync data with GitHub'; Hint = 'push / pull data, analysis, run logs, presets'; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, run logs, presets. Never code' }
+            @{ Idx = 10; Name = 'Trim exported CSVs'; Hint = 'keep the real run session; writes trimmed/ copies'; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
+            @{ Idx = 7; Name = 'Run analysis only'; Hint = 'M6 -> M8 on exported CSVs; no board needed'; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
+            @{ Idx = 20; Name = "Archive captured data"; Hint = "MOVE a cell's data into archive\<date>_<label>\"; Text = 'Archive captured data - MOVES exports+analysis+PCAP+run logs into archive\<date>_<label>\ (shows what moves, flags data already archived, warns on COMPLETE runs)' }
+            @{ Idx = 14; Name = "View a saved run log"; Hint = "a past run's console, start to end"; Text = 'View a saved run log (a past run''s console output start to end, filed by attack/topology/location - keep, archive, delete or push; no board/COM contact)' }
+            @{ Idx = 28; Name = 'Delete dataset files'; Hint = 'this laptop only; GitHub untouched'; Text = 'Delete dataset files from THIS LAPTOP (no File Explorer - every file shows its date + time; type DELETE to confirm; GitHub untouched)' }
         ) }
         @{ Name = 'MAINTENANCE'; Items = @(
-            @{ Idx = 1; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
-            @{ Idx = 2; Text = 'Write/update location.txt on an already-running board (over USB)' }
-            @{ Idx = 3; Text = 'Firmware self-test - build + flash ONE board and check the SD/location code (no capture, no attack, no export)' }
-            @{ Idx = 29; Text = 'Wormhole UART tunnel test - flash uart_link_test to Node A + Node B and check the wire BOTH ways (quick or 2-min soak; no mesh, no capture)' }
-            @{ Idx = 6; Text = 'Identify all boards (COM port + MAC, every board at once - no capture, no attack)' }
-            @{ Idx = 17; Text = 'Member board list (edit / open json / snapshots - submenu)' }
-            @{ Idx = 15; Text = 'Delete a folder from a running board''s SD card (e.g. blackhole > linear > G402 - PERMANENT, over USB)' }
+            @{ Idx = 1; Name = 'Wipe a board clean'; Hint = 'full erase, no firmware'; Text = "Wipe a board clean (full erase, no firmware - for when you're not sure what's on it)" }
+            @{ Idx = 2; Name = "Set a board's location"; Hint = "write location.txt over USB"; Text = 'Write/update location.txt on an already-running board (over USB)' }
+            @{ Idx = 3; Name = 'Firmware self-test'; Hint = 'flash ONE board, check SD + location code'; Text = 'Firmware self-test - build + flash ONE board and check the SD/location code (no capture, no attack, no export)' }
+            @{ Idx = 29; Name = 'Wormhole UART cable test'; Hint = 'check the A<->B wire both ways'; Text = 'Wormhole UART tunnel test - flash uart_link_test to Node A + Node B and check the wire BOTH ways (quick or 2-min soak; no mesh, no capture)' }
+            @{ Idx = 6; Name = 'Identify all boards'; Hint = 'COM port + MAC of every board at once'; Text = 'Identify all boards (COM port + MAC, every board at once - no capture, no attack)' }
+            @{ Idx = 17; Name = 'Member board list'; Hint = 'edit / open json / snapshots'; Text = 'Member board list (edit / open json / snapshots - submenu)' }
+            @{ Idx = 15; Name = 'Delete an SD-card folder'; Hint = 'on a running board, over USB - PERMANENT'; Text = 'Delete a folder from a running board''s SD card (e.g. blackhole > linear > G402 - PERMANENT, over USB)' }
         ) }
         @{ Name = 'VERIFY'; Items = @(
-            @{ Idx = 5; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
-            @{ Idx = 18; Text = 'Campaign progress - what is done and what to run next' }
-            @{ Idx = 19; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
+            @{ Idx = 5; Name = 'Verify a run'; Hint = 'paper-backed 3-sigma attack check'; Text = 'Verify a run (paper-backed 3-sigma attack check - no board/COM contact)' }
+            @{ Idx = 18; Name = 'Campaign progress'; Hint = 'checklist, sessions, REDO LIST'; Text = 'Campaign progress - what is done and what to run next' }
+            @{ Idx = 19; Name = "Show a run's topology"; Hint = "parent/child table rebuilt from the CSVs"; Text = 'Show TOPOLOGY STRUCTURE of a captured run (parent/child table rebuilt from the CSVs - for the paper/panel)' }
         ) }
         @{ Name = 'WIRESHARK'; Items = @(
-            @{ Idx = 24; Text = 'Open a capture in Wireshark - pick a view (all boards, MY boards, one board, retries, joins, BLACKHOLE proof, WORMHOLE check...)' }
-            @{ Idx = 25; Text = 'Open the NEWEST capture in Wireshark (overview of ALL boards of the run - no questions)' }
-            @{ Idx = 26; Text = 'ESP32 sniffer board + watch LIVE in Wireshark (flash a SPARE board, record into datasets\PCAP\; Enter stops)' }
-            @{ Idx = 23; Text = 'ESP32 sniffer board - record only, into datasets\PCAP\ (no run; no Mac needed; Enter stops)' }
-            @{ Idx = 21; Text = 'MacBook sniffer test (~2 min, no attack run - proves the Mac Wireless Diagnostics Sniffer records ESP32 frames)' }
-            @{ Idx = 22; Text = 'Check a sniffer capture file (Mac or ESP32 .pcap - mesh beacons/data, capture length, repairs a "cut short" file; then opens it)' }
-            @{ Idx = 27; Text = 'MAC retry rate of a run - REAL 802.11 retries per link, baseline vs attack vs cooldown, from the sniffer (no board/COM contact)' }
+            @{ Idx = 24; Name = 'Open a capture in Wireshark'; Hint = 'pick a view: boards, retries, attack proof'; Text = 'Open a capture in Wireshark - pick a view (all boards, MY boards, one board, retries, joins, BLACKHOLE proof, WORMHOLE check...)' }
+            @{ Idx = 25; Name = 'Open the NEWEST capture'; Hint = 'overview of every board, no questions'; Text = 'Open the NEWEST capture in Wireshark (overview of ALL boards of the run - no questions)' }
+            @{ Idx = 26; Name = 'ESP32 sniffer + live Wireshark'; Hint = 'flash a spare board, watch live; Enter stops'; Text = 'ESP32 sniffer board + watch LIVE in Wireshark (flash a SPARE board, record into datasets\PCAP\; Enter stops)' }
+            @{ Idx = 23; Name = 'ESP32 sniffer, record only'; Hint = 'into datasets\PCAP\; Enter stops'; Text = 'ESP32 sniffer board - record only, into datasets\PCAP\ (no run; no Mac needed; Enter stops)' }
+            @{ Idx = 21; Name = 'MacBook sniffer test'; Hint = '~2 min: does the Mac record ESP32 frames?'; Text = 'MacBook sniffer test (~2 min, no attack run - proves the Mac Wireless Diagnostics Sniffer records ESP32 frames)' }
+            @{ Idx = 22; Name = 'Check a sniffer capture file'; Hint = 'length, beacons, repair a cut-short file'; Text = 'Check a sniffer capture file (Mac or ESP32 .pcap - mesh beacons/data, capture length, repairs a "cut short" file; then opens it)' }
+            @{ Idx = 27; Name = 'MAC retry rate of a run'; Hint = 'real 802.11 retries: baseline vs attack'; Text = 'MAC retry rate of a run - REAL 802.11 retries per link, baseline vs attack vs cooldown, from the sniffer (no board/COM contact)' }
         ) }
     )
     $exitIdx = 8
+    $script:MenuItems = @{}
+    foreach ($cat in $categories) { foreach ($item in $cat.Items) { $script:MenuItems[$item.Idx] = $item } }
 
     $order = @()
     foreach ($cat in $categories) { foreach ($item in $cat.Items) { $order += $item.Idx } }
@@ -550,21 +696,28 @@ function Show-CaptureWizardMenu {
             Show-MemberBoards -Path (Join-Path $base 'member_boards.json')
         }
         Write-Host ""
-        Write-Host "What do you want to do?" -ForegroundColor Cyan
+        Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGray
+        Write-Host "  WHAT DO YOU WANT TO DO?" -ForegroundColor Cyan
+        Write-Host ("  " + ("=" * 72)) -ForegroundColor DarkGray
         foreach ($cat in $categories) {
             Write-Host ""
-            Write-Host ("-- {0}" -f $cat.Name) -ForegroundColor DarkCyan
+            Write-Host ("  {0} {1}" -f $cat.Name, ("-" * [Math]::Max(3, 70 - $cat.Name.Length))) -ForegroundColor DarkCyan
             foreach ($item in $cat.Items) {
                 $num = $display[$item.Idx]
-                if ($item.Idx -eq 0) {
-                    Write-Host ("  [{0}] {1}  <- default (press Enter)" -f $num, $item.Text) -ForegroundColor Green
-                } else {
-                    Write-Host ("  [{0}] {1}" -f $num, $item.Text)
-                }
+                # Short name + one-line hint, both hand-written to fit (oct. 17
+                # 2026: the auto-split long texts overflowed and broke the column).
+                # The full explanation stays in Text for anyone reading this file.
+                $name = $item.Name
+                $more = $item.Hint
+                if ($item.Idx -eq 0) { $name += '   <- Enter' }
+                Write-Host ("  [{0,2}] " -f $num) -NoNewline -ForegroundColor $(if ($item.Idx -eq 0) { 'Green' } else { 'Gray' })
+                Write-Host $name.PadRight(36) -NoNewline -ForegroundColor $(if ($item.Idx -eq 0) { 'Green' } else { 'White' })
+                Write-Host $more -ForegroundColor DarkGray
             }
         }
         Write-Host ""
-        Write-Host ("  [{0}] Exit the wizard" -f $display[$exitIdx])
+        Write-Host ("  [{0,2}] " -f $display[$exitIdx]) -NoNewline -ForegroundColor Gray
+        Write-Host "Exit the wizard" -ForegroundColor White
     }
     & $draw
 
@@ -574,7 +727,8 @@ function Show-CaptureWizardMenu {
         if ($tries -gt $script:MaxPromptTries) {
             throw "No valid selection for 'What do you want to do?' after $script:MaxPromptTries attempts - aborting. (Running non-interactively?)"
         }
-        $raw = Read-Line "Press Enter to keep [1], or type 1-$($order.Count) for another option, 'm' main menu, 'cls' clear > " -Redraw $draw
+        Write-Host ("  Enter = [1]   |   1-{0} = pick   |   b = back (inside a tool)   |   m = this menu   |   cls = clear" -f $order.Count) -ForegroundColor DarkGray
+        $raw = Read-Line "  > " -Redraw $draw
         if (-not $raw) { return 0 }
         $n = 0
         if ([int]::TryParse($raw, [ref]$n) -and $n -ge 1 -and $n -le $order.Count) { return $order[$n - 1] }
@@ -681,8 +835,8 @@ function Test-PortSafeToTouch {
         Write-Host ""
         Write-Host ("REFUSED: {0} is '{1}'." -f $Port, $desc) -ForegroundColor Red
         Write-Host ("That is not an ESP32, so the wizard will not {0}." -f $Action) -ForegroundColor Red
-        Write-Host "esptool resets a port by pulling DTR/RTS, which other USB hardware is" -ForegroundColor Red
-        Write-Host "not built to survive. Unplug it or pick a real board instead." -ForegroundColor Red
+        Write-Host "  esptool resets a port by pulling DTR/RTS, which other USB hardware is" -ForegroundColor Red
+        Write-Host "  not built to survive. Unplug it or pick a real board instead." -ForegroundColor Red
         return $false
     }
 
@@ -691,7 +845,7 @@ function Test-PortSafeToTouch {
     Write-Host ""
     Write-Host ("{0} is '{1}' - not a recognised USB-to-UART bridge." -f $Port, $desc) -ForegroundColor Yellow
     Write-Host ("If it is NOT one of your ESP32s, {0} could damage or confuse it." -f $Action) -ForegroundColor Yellow
-    Write-Host "Use 'identify a port' first if you are unsure." -ForegroundColor Yellow
+    Write-Host "  Use 'identify a port' first if you are unsure." -ForegroundColor Yellow
     $ans = Read-Line ("  Type the port name ({0}) to confirm it IS your board, anything else to skip > " -f $Port)
     if ($ans.Trim().ToUpper() -eq $Port.ToUpper()) { return $true }
 
@@ -730,8 +884,8 @@ function Select-MultiplePorts {
 
     $bridges = @($Ports | Where-Object { $_.Kind -eq 'BRIDGE' })
     Write-Host ""
-    Write-Host "Only pick boards you've confirmed ARE your ESP32s (use 'identify' above" -ForegroundColor DarkGray
-    Write-Host "first if unsure) - anything else on this list is some other USB device." -ForegroundColor DarkGray
+    Write-Host "  Only pick boards you've confirmed ARE your ESP32s (use 'identify' above" -ForegroundColor DarkGray
+    Write-Host "  first if unsure) - anything else on this list is some other USB device." -ForegroundColor DarkGray
     if ($bridges.Count -gt 0) {
         Write-Host ("Type 'all' for the {0} detected ESP32 board(s): {1}" -f $bridges.Count, (($bridges | ForEach-Object { $_.Port }) -join ', ')) -ForegroundColor DarkGray
     }
@@ -899,7 +1053,7 @@ function Select-Port {
         # "Key cannot be null" instead of printing "no COM ports detected".
         $shown = @($Ports | Where-Object { $_ -and $Taken -notcontains $_.Port })
         Write-Host ""
-        Write-Host "Select port for $For :" -ForegroundColor Cyan
+        Write-Host "  Select port for $For :" -ForegroundColor Cyan
         if ($shown.Count -eq 0) {
             if ($Ports.Count -eq 0) {
                 Write-Host "  (no COM ports detected - a charge-only USB cable creates no port)" -ForegroundColor Yellow
@@ -1024,7 +1178,7 @@ function Invoke-WipeBoards {
 
     while ($true) {
         Write-Host ""
-        Write-Host "Wipe which board? (full chip erase - board ends up BLANK, no firmware at all)" -ForegroundColor Cyan
+        Write-Host "  Wipe which board? (full chip erase - board ends up BLANK, no firmware at all)" -ForegroundColor Cyan
         if ($ports.Count -eq 0) {
             Write-Host "  (no COM ports detected - a charge-only USB cable creates no port)" -ForegroundColor Yellow
         }
@@ -1061,8 +1215,8 @@ function Invoke-WipeBoards {
 
             Write-Host ""
             Write-Host ("This PERMANENTLY erases everything on the {0} board(s) below - firmware," -f $picked.Count) -ForegroundColor Yellow
-            Write-Host "SD-status cache, all of it. There is no undo; each board must be reflashed" -ForegroundColor Yellow
-            Write-Host "afterward to do anything." -ForegroundColor Yellow
+            Write-Host "  SD-status cache, all of it. There is no undo; each board must be reflashed" -ForegroundColor Yellow
+            Write-Host "  afterward to do anything." -ForegroundColor Yellow
             foreach ($p in $picked) {
                 $tag = ''
                 if ($script:IdentifiedPorts.ContainsKey($p.Port)) { $tag = "  [{0}]" -f $script:IdentifiedPorts[$p.Port] }
@@ -1149,6 +1303,10 @@ function Invoke-WipeBoards {
 }
 
 function Invoke-FirmwareSelfTest {
+    # -Port given = unattended (run_gui.ps1): no question is asked; -Location
+    # adds the write round trip, the monitor offer is skipped.
+    param([string]$Port, [string]$Role, [string]$Location)
+    $auto = [bool]$Port
     # Build + flash ONE board and prove the SD/location code works - no capture,
     # no attack, no topology shaping, no export, no analysis, nothing written to
     # exports/ or analysis/. Exists because the only way to try a firmware change
@@ -1167,19 +1325,24 @@ function Invoke-FirmwareSelfTest {
     # on a board that is actually fine. A root never waits for a parent.
     if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
         Write-Host ""
-        Write-Host "idf.py is not on PATH - run this from the 'ESP-IDF 5.3 PowerShell' window." -ForegroundColor Red
+        Write-Host "  idf.py is not on PATH - run this from the 'ESP-IDF 5.3 PowerShell' window." -ForegroundColor Red
         return
     }
 
-    $ports = Get-PortList
-    $port  = Select-Port -For 'the board to self-test' -Ports $ports
-    if (-not $port) { return }
+    if ($auto) {
+        $port = $Port
+        $role = if ($Role -eq 'child') { 'child' } else { 'root' }
+    } else {
+        $ports = Get-PortList
+        $port  = Select-Port -For 'the board to self-test' -Ports $ports
+        if (-not $port) { return }
 
-    $roleIdx = Show-Menu -Title 'Flash which role for the test?' -Options @(
-        'root  (recommended - boots standalone, no parent needed)',
-        'child (only if a root is already powered on, or it will sit waiting to join)'
-    ) -DefaultIndex 0
-    $role = if ($roleIdx -eq 1) { 'child' } else { 'root' }
+        $roleIdx = Show-Menu -Title 'Flash which role for the test?' -Options @(
+            'root  (recommended - boots standalone, no parent needed)',
+            'child (only if a root is already powered on, or it will sit waiting to join)'
+        ) -DefaultIndex 0
+        $role = if ($roleIdx -eq 1) { 'child' } else { 'root' }
+    }
     $proj = if ($role -eq 'root') { 'root_node' } else { 'child_node' }
 
     # Same build-dir naming run.ps1 uses for a baseline/tree run on this port, so
@@ -1203,7 +1366,7 @@ function Invoke-FirmwareSelfTest {
         $sdkconfigH     = Join-Path $buildDir "config\sdkconfig.h"
         $sdkconfigOk    = (Test-Path $sdkconfigH) -and (Select-String -Path $sdkconfigH -Pattern '^#define CONFIG_IDF_TARGET_ESP32\b' -Quiet)
         if ($pathMismatch -or -not $sdkconfigOk) {
-            Write-Host "Stale build dir '$buildDir' is misconfigured (moved repo or interrupted build) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
+            Write-Host "  Stale build dir '$buildDir' is misconfigured (moved repo or interrupted build) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
             Remove-Item -Recurse -Force $buildDir
         }
     }
@@ -1229,7 +1392,7 @@ function Invoke-FirmwareSelfTest {
         return
     }
 
-    $go = Read-Line "`nBuild and flash $port now? [y/N] > "
+    $go = if ($auto) { 'y' } else { Read-Line "`nBuild and flash $port now? [y/N] > " }
     if ($go -ne 'y' -and $go -ne 'Y') { Write-Host "  Cancelled." -ForegroundColor DarkGray; return }
 
     Push-Location (Join-Path $base $proj)
@@ -1245,7 +1408,7 @@ function Invoke-FirmwareSelfTest {
     if ($flashRc -ne 0) {
         Write-Host ""
         Write-Host ("BUILD/FLASH FAILED (exit {0}) - the checks below are skipped." -f $flashRc) -ForegroundColor Red
-        Write-Host "A compile error here is the firmware change itself; scroll up for the first error." -ForegroundColor Red
+        Write-Host "  A compile error here is the firmware change itself; scroll up for the first error." -ForegroundColor Red
         return
     }
     Write-Host "`nFlashed OK." -ForegroundColor Green
@@ -1253,7 +1416,7 @@ function Invoke-FirmwareSelfTest {
     # The board reboots into the SD check, then mesh init, then csv_logger_init()
     # - which is what starts the serial command task. Poll rather than guess a
     # single delay: a root is quick, a child that joins a mesh is not.
-    Write-Host "Waiting for the board to boot and start its serial command task ..." -ForegroundColor DarkGray
+    Write-Host "  Waiting for the board to boot and start its serial command task ..." -ForegroundColor DarkGray
     $read     = $null
     $deadline = (Get-Date).AddSeconds(75)
     $attempt  = 0
@@ -1292,14 +1455,15 @@ function Invoke-FirmwareSelfTest {
         # the SAME value come out of the card. Optional, because it does change
         # what is on the card.
         Write-Host ""
-        $rtAns = Read-Line "Also test the write path (SET a location, then read it back)? [y/N] > "
+        $rtAns = if ($auto) { $(if ($Location) { 'y' } else { 'n' }) } else { Read-Line "Also test the write path (SET a location, then read it back)? [y/N] > " }
         if ($rtAns -eq 'y' -or $rtAns -eq 'Y') {
             $wasLoc = if ($read.State -eq 'OK') { $read.Value } else { $null }
             if ($wasLoc) {
                 Write-Host ("  This card currently says {0}. It will be restored at the end." -f $wasLoc) -ForegroundColor DarkGray
             }
             $rtOptions = @($LOCATIONS) + @('Cancel - skip the write test')
-            $rtIdx = Show-Menu -Title 'Write which location for the test?' -Options $rtOptions -DefaultIndex -1
+            $rtIdx = if ($auto) { [array]::IndexOf(@($LOCATIONS), $Location) } else { Show-Menu -Title 'Write which location for the test?' -Options $rtOptions -DefaultIndex -1 }
+            if ($rtIdx -lt 0) { $rtIdx = $LOCATIONS.Count }
             if ($rtIdx -lt $LOCATIONS.Count) {
                 $rtLoc = $LOCATIONS[$rtIdx]
 
@@ -1344,18 +1508,18 @@ function Invoke-FirmwareSelfTest {
     # A location written over serial only takes effect on the NEXT boot check, so
     # confirming 'SD ENV: OK' means rebooting - which the monitor does anyway.
     Write-Host ""
-    $monAns = Read-Line "Open the monitor to watch the boot log ('SD ENV:' line)? Ctrl+] quits. [y/N] > "
+    $monAns = if ($auto) { 'n' } else { Read-Line "Open the monitor to watch the boot log ('SD ENV:' line)? Ctrl+] quits. [y/N] > " }
     if ($monAns -eq 'y' -or $monAns -eq 'Y') {
         Push-Location (Join-Path $base $proj)
         try {
-            Write-Host "Press Ctrl+] to leave the monitor and come back here." -ForegroundColor Cyan
+            Write-Host "  Press Ctrl+] to leave the monitor and come back here." -ForegroundColor Cyan
             idf.py -B $buildDir -p $port monitor
         }
         finally { Pop-Location }
     }
 
     Write-Host ""
-    Write-Host "Self-test done. Nothing was exported and no run was recorded." -ForegroundColor Green
+    Write-Host "  Self-test done. Nothing was exported and no run was recorded." -ForegroundColor Green
 }
 
 function Read-UartLinkStats {
@@ -1539,6 +1703,9 @@ function Write-UartTunnelResults {
 }
 
 function Invoke-UartTunnelTest {
+    # -PortA/-PortB given = unattended (run_gui.ps1): one listen of -Seconds, no menus.
+    param([string]$PortA, [string]$PortB, [int]$Seconds = 10)
+    $auto = [bool]($PortA -and $PortB)
     # Checks the wormhole's physical A<->B UART wire on its own, without a mesh,
     # a roster or a capture: flashes uart_link_test (ESP32-Environment\
     # uart_link_test, same UART1 pins + baud as WORMHOLE_UART_* in mesh_config.h)
@@ -1548,25 +1715,29 @@ function Invoke-UartTunnelTest {
     # firmware - a normal wormhole capture run flashes the real firmware back.
     if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
         Write-Host ""
-        Write-Host "idf.py is not on PATH - run this from the 'ESP-IDF 5.3 PowerShell' window." -ForegroundColor Red
+        Write-Host "  idf.py is not on PATH - run this from the 'ESP-IDF 5.3 PowerShell' window." -ForegroundColor Red
         return
     }
 
-    $ports = Get-PortList
-    $portA = Select-Port -For 'Node A (tunnel EXIT - RECEIVES the tunnelled probes)' -Ports $ports
-    if (-not $portA) { return }
-    $portB = Select-Port -For 'Node B (tunnel ENTRY - SENDS probes into the tunnel)' -Ports $ports -Taken @($portA)
-    if (-not $portB) { return }
+    if ($auto) { $portA = $PortA; $portB = $PortB } else {
+        $ports = Get-PortList
+        $portA = Select-Port -For 'Node A (tunnel EXIT - RECEIVES the tunnelled probes)' -Ports $ports
+        if (-not $portA) { return }
+        $portB = Select-Port -For 'Node B (tunnel ENTRY - SENDS probes into the tunnel)' -Ports $ports -Taken @($portA)
+        if (-not $portB) { return }
+    }
     if ($portA -eq $portB) {
         Write-Host "  Node A and Node B must be two different boards on two different ports." -ForegroundColor Red
         return
     }
 
-    $durIdx = Show-Menu -Title 'How long to test?' -Options @(
-        'Quick check - 10 s, is the wire connected at all',
-        'Soak test   - 2 min, counts LOST and GARBLED pings each way (use this for long / extended jumper wires)'
-    ) -DefaultIndex 0
-    $secs = if ($durIdx -eq 1) { 120 } else { 10 }
+    if ($auto) { $secs = if ($Seconds -ge 120) { 120 } else { 10 } } else {
+        $durIdx = Show-Menu -Title 'How long to test?' -Options @(
+            'Quick check - 10 s, is the wire connected at all',
+            'Soak test   - 2 min, counts LOST and GARBLED pings each way (use this for long / extended jumper wires)'
+        ) -DefaultIndex 0
+        $secs = if ($durIdx -eq 1) { 120 } else { 10 }
+    }
 
     $proj = 'uart_link_test'
     $dir  = Get-SafeBuildDir -Proj $proj -DirName 'build_uart_link_test'
@@ -1601,7 +1772,7 @@ function Invoke-UartTunnelTest {
         return
     }
 
-    $go = Read-Line ("`nBuild and flash uart_link_test to {0} (Node A) AND {1} (Node B) now? [y/N] > " -f $portA, $portB)
+    $go = if ($auto) { 'y' } else { Read-Line ("`nBuild and flash uart_link_test to {0} (Node A) AND {1} (Node B) now? [y/N] > " -f $portA, $portB) }
     if ($go -ne 'y' -and $go -ne 'Y') { Write-Host "  Cancelled." -ForegroundColor DarkGray; return }
 
     $prevEap = $ErrorActionPreference
@@ -1618,7 +1789,7 @@ function Invoke-UartTunnelTest {
             }
             if ($LASTEXITCODE -ne 0) {
                 Write-Host ("BUILD/FLASH FAILED on {0} ({1}) - nothing to listen to. A compile error is in" -f $t.Port, $t.Name) -ForegroundColor Red
-                Write-Host "uart_link_test\main\uart_link_test.c; a flash error is usually the cable or a hub." -ForegroundColor Red
+                Write-Host "  uart_link_test\main\uart_link_test.c; a flash error is usually the cable or a hub." -ForegroundColor Red
                 return
             }
         }
@@ -1630,6 +1801,7 @@ function Invoke-UartTunnelTest {
     while ($true) {
         $stats = Read-UartLinkStats -PortA $portA -PortB $portB -Seconds $secs
         Write-UartTunnelResults -Stats $stats
+        if ($auto) { break }
         $other = if ($secs -eq 120) { 'Quick check now (10 s)' } else { 'Soak test now (2 min) - for long / extended wires' }
         $next = Show-Menu -Title 'Next?' -Options @(
             ("Listen again for {0} s - same boards, NO reflash (e.g. after reseating or wiggling a wire)" -f $secs),
@@ -1665,7 +1837,7 @@ function Invoke-SetLocationBoards {
 
     while ($true) {
         Write-Host ""
-        Write-Host "Write/update location.txt on which ALREADY-RUNNING board?" -ForegroundColor Cyan
+        Write-Host "  Write/update location.txt on which ALREADY-RUNNING board?" -ForegroundColor Cyan
         if ($ports.Count -eq 0) {
             Write-Host "  (no COM ports detected - a charge-only USB cable creates no port)" -ForegroundColor Yellow
         }
@@ -1747,8 +1919,8 @@ function Invoke-SetLocationBoards {
             if ($blind.Count -gt 0) {
                 Write-Host ""
                 Write-Host ("{0} board(s) above could not be read - for those this is still a BLIND" -f $blind.Count) -ForegroundColor Yellow
-                Write-Host "overwrite of whatever the card holds. A board that has not booted yet, or" -ForegroundColor Yellow
-                Write-Host "is running firmware from before GET_LOCATION, cannot report its location." -ForegroundColor Yellow
+                Write-Host "  overwrite of whatever the card holds. A board that has not booted yet, or" -ForegroundColor Yellow
+                Write-Host "  is running firmware from before GET_LOCATION, cannot report its location." -ForegroundColor Yellow
             }
             if ($toWrite.Count -eq 0) {
                 Write-Host "`n  Every board picked is already set to $loc - nothing to write." -ForegroundColor Green
@@ -1973,7 +2145,7 @@ function Select-CardFiles {
 
     $draw = {
         Write-Host ""
-        Write-Host "On this card:" -ForegroundColor Cyan
+        Write-Host "  On this card:" -ForegroundColor Cyan
         Write-Host "  (leftmost column = when the run ACTUALLY RAN, from runs.csv. Newest first;" -ForegroundColor DarkGray
         Write-Host "   green = newest on this card, yellow = left behind by an earlier session.)" -ForegroundColor DarkGray
         Write-Host "  A leading ~ means that board has never been given a real clock, so the time" -ForegroundColor DarkGray
@@ -2520,13 +2692,13 @@ function Invoke-ImportSdCard {
 
     Write-Host ""
     if ($fromBoard) {
-        Write-Host "Reading the card THROUGH the board over USB - the card stays where it is." -ForegroundColor DarkGray
-        Write-Host "Needs firmware with LIST_SD (reflash if the listing comes back empty), and" -ForegroundColor DarkGray
-        Write-Host "idf.py monitor must be closed - only one program can hold a COM port." -ForegroundColor DarkGray
+        Write-Host "  Reading the card THROUGH the board over USB - the card stays where it is." -ForegroundColor DarkGray
+        Write-Host "  Needs firmware with LIST_SD (reflash if the listing comes back empty), and" -ForegroundColor DarkGray
+        Write-Host "  idf.py monitor must be closed - only one program can hold a COM port." -ForegroundColor DarkGray
     }
     else {
-        Write-Host "Pop the SD card out of the board and read it with a card reader on THIS" -ForegroundColor DarkGray
-        Write-Host "laptop - nothing here touches a board or a COM port." -ForegroundColor DarkGray
+        Write-Host "  Pop the SD card out of the board and read it with a card reader on THIS" -ForegroundColor DarkGray
+        Write-Host "  laptop - nothing here touches a board or a COM port." -ForegroundColor DarkGray
     }
 
     # Step machine, same shape/back-navigation as the capture flow's attack ->
@@ -2581,8 +2753,8 @@ function Invoke-ImportSdCard {
             }
             4 {
                 Write-Host ""
-                Write-Host "Which attempt (repeat) does this card belong to? Same numbering as a normal" -ForegroundColor DarkGray
-                Write-Host "capture's r1/r2/r3 - the board itself has no way to know this." -ForegroundColor DarkGray
+                Write-Host "  Which attempt (repeat) does this card belong to? Same numbering as a normal" -ForegroundColor DarkGray
+                Write-Host "  capture's r1/r2/r3 - the board itself has no way to know this." -ForegroundColor DarkGray
                 $r = Read-RepeatNumber -Attack $attack -Topology $topology -DefaultRepeat $repeat -AllowBack
                 if ($r -eq -1) { $step = 3; continue askFlow }
                 $repeat = $r
@@ -2722,7 +2894,7 @@ function Invoke-ImportSdCard {
         }
         else {
             Write-Host ""
-            Write-Host "Insert the card (or plug in its reader), then pick it below:" -ForegroundColor Cyan
+            Write-Host "  Insert the card (or plug in its reader), then pick it below:" -ForegroundColor Cyan
             if ($drives.Count -eq 0) {
                 Write-Host "  (no drives detected - unusual; type a path manually below)" -ForegroundColor Yellow
             }
@@ -2818,13 +2990,12 @@ function Invoke-ShowTopologyStructure {
     #   parent's SoftAP BSSID (its STA MAC + 1), which is why reading the CSV by
     #   eye never lines up - this resolves it for you.
     Write-Host ""
-    Write-Host "Nothing here touches a board or a COM port -- rebuilds the topology from" -ForegroundColor DarkGray
-    Write-Host "an already-exported run's CSVs. UPLINK = that node's PARENT." -ForegroundColor DarkGray
+    Write-Host "  Nothing here touches a board or a COM port -- rebuilds the topology from" -ForegroundColor DarkGray
+    Write-Host "  an already-exported run's CSVs. UPLINK = that node's PARENT." -ForegroundColor DarkGray
 
-    $attackIdx = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 1
-    $sAttack   = @('none', 'blackhole', 'wormhole')[$attackIdx]
-    $topoIdx   = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
-    $sTopology = $TOPOLOGIES[$topoIdx]
+    $cell = Select-RunCell -Steps @('attack', 'topology') -Defaults @{ attack = 1 }
+    if (-not $cell) { return }
+    $sAttack = $cell.Attack; $sTopology = $cell.Topology
     $sLocation = Read-Line "Location (blank = search every location) > "
 
     # verify_topology.py takes the CLI topology name ('partial'); the wizard's
@@ -2925,10 +3096,9 @@ function Invoke-ArchiveMenu {
     # already lives in an archive, and whether any of it is a COMPLETE run that
     # the campaign is currently counting.
     Write-Host ""
-    Write-Host "=== Archive captured data ===" -ForegroundColor Cyan
-    Write-Host "Archiving MOVES datasets\exports\, generated datasets\analysis\ output, the sniffer" -ForegroundColor DarkGray
-    Write-Host "captures in datasets\PCAP\ and the run logs in datasets\run_logs\ (not _archive\) into" -ForegroundColor DarkGray
-    Write-Host "archive\<date>_<label>\ and resets the working tree. Nothing is deleted." -ForegroundColor DarkGray
+    Write-Host "  Archiving MOVES datasets\exports\, generated datasets\analysis\ output, the sniffer" -ForegroundColor DarkGray
+    Write-Host "  captures in datasets\PCAP\ and the run logs in datasets\run_logs\ (not _archive\) into" -ForegroundColor DarkGray
+    Write-Host "  archive\<date>_<label>\ and resets the working tree. Nothing is deleted." -ForegroundColor DarkGray
 
     $exportsRoot = Join-Path $base 'datasets\exports'
     $archiveRoot = Join-Path $base 'datasets\archive'
@@ -3120,13 +3290,25 @@ function Invoke-CampaignChecklist {
         $env:PYTHONIOENCODING = 'utf-8'
         python $inv --board
         while ($true) {
-            Write-Host "  [1] all sessions   [2] full checklist   [3] why runs failed   [4] archive" -ForegroundColor DarkGray
+            Write-Host "  [1] all sessions   [2] full checklist   [3] why runs failed   [4] archive   [5] REDO LIST" -ForegroundColor DarkGray
             $pick = Read-Line "  Enter = back > "
             switch ($pick) {
                 '1' { python $inv --sessions }
                 '2' { python $inv --checklist --scope live }
                 '3' { python $inv --plan }
                 '4' { python $inv --checklist --scope archive }
+                # oct. 16 2026: what to capture AGAIN, each reason traced to its evidence
+                '5' {
+                    # needs pandas (it runs the verifier); the IDF python on PATH has none
+                    $redoPy = $null
+                    foreach ($cand in @('python', 'python3', 'py')) {
+                        if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
+                        & $cand -c "import pandas" 2>$null
+                        if ($LASTEXITCODE -eq 0) { $redoPy = $cand; break }
+                    }
+                    if ($redoPy) { & $redoPy (Join-Path $base 'tools\redo_list.py') }
+                    else { Write-Host "  No python with pandas found - pip install -r analysis\requirements.txt" -ForegroundColor Yellow }
+                }
                 default { return }
             }
         }
@@ -3181,15 +3363,16 @@ function Invoke-VerifyRun {
     # run" action, extended with the topology/scenario/location questions
     # Get-RunDirs needs to find the right feature_table.csv on its own.
     Write-Host ""
-    Write-Host "Checks a captured run's feature_table.csv against the published 3-sigma" -ForegroundColor DarkGray
-    Write-Host "attack signature. Needs M7 (features.py) already run for this run." -ForegroundColor DarkGray
+    Write-Host "  Checks a captured run's feature_table.csv against the published 3-sigma" -ForegroundColor DarkGray
+    Write-Host "  attack signature. Needs M7 (features.py) already run for this run." -ForegroundColor DarkGray
 
-    $vAttackIdx = Show-Menu -Title 'Which attack to verify?' -Options @(
+    $cell = Select-RunCell -AttackTitle 'Which attack to verify?' -AttackOptions @(
         'auto-detect (reads Label values in the feature table)',
         'blackhole',
         'wormhole'
-    ) -DefaultIndex 0
-    $vAttack = @('auto', 'blackhole', 'wormhole')[$vAttackIdx]
+    ) -AttackValues @('auto', 'blackhole', 'wormhole')
+    if (-not $cell) { return }
+    $vAttack = $cell.Attack
 
     # feature_table.csv lives under the same attack/topology/location/scenario
     # tree Get-RunDirs computes for a capture. 'auto' has no folder of its own
@@ -3197,12 +3380,9 @@ function Invoke-VerifyRun {
     # menu.ps1's verify flow) - it's just a starting guess, overridable below.
     $folderAttack = if ($vAttack -eq 'auto') { 'blackhole' } else { $vAttack }
 
-    $topoIdx     = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
-    $topology    = $TOPOLOGIES[$topoIdx]
-    $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
-    $scenario    = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
-    $location    = $DATA_LOCATIONS[$locationIdx]
+    $topology    = $cell.Topology
+    $scenario    = $cell.Scenario
+    $location    = $cell.Location
 
     $dirs  = Get-RunDirs -Attack $folderAttack -Topology $topology -Location $location -Scenario $scenario
     $table = Select-VerifyTable -AnalysisDir $dirs.Analysis -ExportDir $dirs.Export
@@ -3235,8 +3415,8 @@ function Invoke-CheckSnifferFile {
     param([string]$Path)
     if (-not $Path) {
         Write-Host ""
-        Write-Host "Mac capture: copy the .pcap / .pcapng to this laptop first - newer macOS keeps it in /var/tmp." -ForegroundColor DarkGray
-        Write-Host "ESP32 sniffer capture: it is already here, under datasets\PCAP\." -ForegroundColor DarkGray
+        Write-Host "  Mac capture: copy the .pcap / .pcapng to this laptop first - newer macOS keeps it in /var/tmp." -ForegroundColor DarkGray
+        Write-Host "  ESP32 sniffer capture: it is already here, under datasets\PCAP\." -ForegroundColor DarkGray
         $Path = Read-Line "Capture file path (drag the file into this window, then Enter) > "
     }
     if (-not $Path) { return }
@@ -3258,8 +3438,7 @@ function Invoke-MacRetryReport {
     $datasets = Join-Path $base 'datasets'
     while ($true) {
         Write-Host ""
-        Write-Host "=== MAC retry rate (from the sniffer) ===" -ForegroundColor Cyan
-        Write-Host "Pairing every capture in datasets\PCAP\ with its run (cached - only new/changed captures are re-read) ..." -ForegroundColor DarkGray
+        Write-Host "  Pairing every capture in datasets\PCAP\ with its run (cached - only new/changed captures are re-read) ..." -ForegroundColor DarkGray
         & python $tool --all
         if ($LASTEXITCODE -ne 0) {
             Write-Host ("pcap_retry.py --all failed (exit {0}) - see the error above." -f $LASTEXITCODE) -ForegroundColor Red
@@ -3280,7 +3459,7 @@ function Invoke-MacRetryReport {
         }
         if ($usable.Count -eq 0) {
             Write-Host ""
-            Write-Host "No capture has retry data yet (the reasons are listed above). Record a run with the ESP32 sniffer first." -ForegroundColor Yellow
+            Write-Host "  No capture has retry data yet (the reasons are listed above). Record a run with the ESP32 sniffer first." -ForegroundColor Yellow
             Read-Host "Press Enter to return to the menu" | Out-Null
             return
         }
@@ -3336,9 +3515,8 @@ function Invoke-MacSnifferTest {
     if ($hit) { $chan = [int]$hit.Matches[0].Groups[1].Value }
 
     Write-Host ""
-    Write-Host "=== MacBook sniffer test (short - no attack run) ===" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "On the MAC, before starting:" -ForegroundColor Cyan
+    Write-Host "  On the MAC, before starting:" -ForegroundColor Cyan
     Write-Host "  1. Wi-Fi must be ON but NOT joined to any network." -ForegroundColor Yellow
     Write-Host "     (Option-click the Wi-Fi icon -> 'Disconnect from <network>'. Do NOT switch Wi-Fi off -"
     Write-Host "      the Sniffer uses the Wi-Fi radio, so Wi-Fi OFF = nothing to capture with = empty file.)"
@@ -3349,7 +3527,7 @@ function Invoke-MacSnifferTest {
     Write-Host "  4. Put the Mac within 1-2 metres of the boards."
     Write-Host "  Don't press Start yet - the countdown below tells you when."
     Write-Host ""
-    Write-Host "On the BOARDS: power them on with the normal mesh firmware (root at least; children optional)." -ForegroundColor Cyan
+    Write-Host "  On the BOARDS: power them on with the normal mesh firmware (root at least; children optional)." -ForegroundColor Cyan
     Write-Host "  They'll start a normal run schedule and write a SHORT, incomplete run to their SD cards -" -ForegroundColor DarkGray
     Write-Host "  that's expected. Don't import it as a real capture." -ForegroundColor DarkGray
 
@@ -3417,7 +3595,7 @@ function Invoke-MacSnifferTest {
     Write-Host ""
     Write-Host ">>> Click STOP in the Mac's Sniffer window NOW. <<<" -ForegroundColor Green
     Write-Host ""
-    Write-Host "What this laptop saw:" -ForegroundColor Cyan
+    Write-Host "  What this laptop saw:" -ForegroundColor Cyan
     $rootAlive = $false
     if (-not $rootPort) {
         Write-Host "  (root serial not monitored - can't confirm the mesh was transmitting)" -ForegroundColor DarkGray
@@ -3432,7 +3610,7 @@ function Invoke-MacSnifferTest {
     }
 
     Write-Host ""
-    Write-Host "Now get the Mac's file:" -ForegroundColor Cyan
+    Write-Host "  Now get the Mac's file:" -ForegroundColor Cyan
     Write-Host "  - WAIT ~10 s after Stop before touching the file. Opening/copying it while the Sniffer is" -ForegroundColor Yellow
     Write-Host "    still writing is what gives 'cut short in the middle of a packet' (or a 0-byte file)." -ForegroundColor Yellow
     Write-Host "  - Newer macOS saves it in /var/tmp (Finder: Cmd+Shift+G, type /var/tmp), older ones on the Desktop."
@@ -3441,9 +3619,9 @@ function Invoke-MacSnifferTest {
     $pc = Read-Line "Paste the copied capture file's path here to check it now (Enter to skip) > "
     if ($pc) { Invoke-CheckSnifferFile -Path $pc; return }
     Write-Host ""
-    Write-Host "Or check it by eye in Wireshark: filter  wlan.sa_resolved contains ""Espressif""" -ForegroundColor DarkGray
+    Write-Host "  Or check it by eye in Wireshark: filter  wlan.sa_resolved contains ""Espressif""" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "Result:" -ForegroundColor Cyan
+    Write-Host "  Result:" -ForegroundColor Cyan
     Write-Host "  PASS  - Espressif frames are in the file -> the Mac sniffer works; do the real run the same way." -ForegroundColor Green
     Write-Host "  HALF  - file has frames but no Espressif ones -> Mac works; wrong channel, or too far from the boards."
     Write-Host "  FAIL  - file is 0 bytes / no frames at all:" -ForegroundColor Yellow
@@ -3601,7 +3779,7 @@ function Stop-SnifferCapture {
     param($Capture, [string[]]$Macs = @())
     if (-not $Capture) { return }
     Write-Host ""
-    Write-Host "Stopping the sniffer capture ..." -ForegroundColor Cyan
+    Write-Host "  Stopping the sniffer capture ..." -ForegroundColor Cyan
     New-Item -ItemType File -Force -Path $Capture.Stop | Out-Null
     if (-not $Capture.Process.WaitForExit(20000)) {
         # It only waits past 20 s if it is sitting on its own error prompt.
@@ -3671,8 +3849,8 @@ function Select-PacketCapture {
     if ($idx -eq 2) { return @{ Mode = 'mac' } }
 
     Write-Host ""
-    Write-Host "The sniffer must be an EXTRA board - not one of this run's mesh boards. It gets" -ForegroundColor DarkGray
-    Write-Host "the sniffer firmware, listens only (never transmits), and stays plugged in here." -ForegroundColor DarkGray
+    Write-Host "  The sniffer must be an EXTRA board - not one of this run's mesh boards. It gets" -ForegroundColor DarkGray
+    Write-Host "  the sniffer firmware, listens only (never transmits), and stays plugged in here." -ForegroundColor DarkGray
     while ($true) {
         $ports = @(Get-PortList | Where-Object { $_.Kind -ne 'BLOCKED' })
         $port = Select-Port -For 'the SNIFFER board (spare board - gets the sniffer firmware)' -Ports $ports -Taken $Taken
@@ -3693,7 +3871,7 @@ function Select-PacketCapture {
 function Show-MacCaptureChecklist {
     $chan = Get-MeshChannel
     Write-Host ""
-    Write-Host "=== MacBook sniffer - set it up now ===" -ForegroundColor Magenta
+    Write-Section -Title 'MACBOOK SNIFFER - SET IT UP NOW' -Color Magenta
     Write-Host "  1. Wi-Fi ON but NOT joined to any network (Option-click Wi-Fi -> Disconnect)." -ForegroundColor Magenta
     Write-Host "  2. Option-click Wi-Fi -> Open Wireless Diagnostics -> Window -> Sniffer." -ForegroundColor Magenta
     Write-MacSnifferSettings -Channel $chan
@@ -3717,10 +3895,12 @@ function Select-SnifferFiling {
     ) -DefaultIndex 0
     if ($idx -eq 1) { return (Get-StampedPath -Dir (Join-Path $base 'datasets\PCAP\standalone') -Head 'esp32_sniffer' -Ext '.pcap') }
 
-    $f.Attack = Show-Menu -Title 'Attack type:' -Options @('baseline  (no attack)', 'blackhole', 'wormhole') -DefaultIndex $f.Attack
-    $f.Topology = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex $f.Topology
-    $f.Location = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex $f.Location
-    $f.Scenario = Show-Menu -Title 'Scenario:' -Options $SCENARIO_LABELS -DefaultIndex $f.Scenario
+    $cell = Select-RunCell -Steps @('attack', 'topology', 'location', 'scenario') -AttackTitle 'Attack type:' `
+        -AttackOptions @('baseline  (no attack)', 'blackhole', 'wormhole') -ScenarioTitle 'Scenario:' `
+        -Defaults @{ attack = $f.Attack; topology = $f.Topology; location = $f.Location; scenario = $f.Scenario }
+    if (-not $cell) { return $null }
+    $f.Attack = $cell.AttackIdx; $f.Topology = $cell.TopologyIdx
+    $f.Location = $cell.LocationIdx; $f.Scenario = $cell.ScenarioIdx
     while ($true) {
         $raw = Read-Line ("Repeat number (the r<N> of the run it belongs to) > [{0}] " -f $f.Repeat)
         $n = 0
@@ -3770,7 +3950,7 @@ function Invoke-Esp32SnifferStandalone {
     }
     Write-Host ""
     Write-Host "  >>> It starts PAUSED - press  P  to START recording (and P again to pause/resume). <<<" -ForegroundColor Yellow
-    Write-Host "Recording - P = pause/resume, ENTER = stop (it asks: press Y to confirm). Not Ctrl+C: that can close the wizard too." -ForegroundColor Yellow
+    Write-Host "  Recording - P = pause/resume, ENTER = stop (it asks: press Y to confirm). Not Ctrl+C: that can close the wizard too." -ForegroundColor Yellow
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try { & python @pyArgs }
@@ -3942,7 +4122,7 @@ function Get-PcapMeshMap {
     # stderr is left alone on purpose: it shows the file/packet count, or why it failed.
     param([string]$Path)
     Write-Host ""
-    Write-Host "Reading the capture for your boards' MACs (a big Mac capture takes ~10 s) ..." -ForegroundColor DarkGray
+    Write-Host "  Reading the capture for your boards' MACs (a big Mac capture takes ~10 s) ..." -ForegroundColor DarkGray
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try { $raw = & python (Join-Path $base 'tools\check_pcap.py') --map-json $Path }
@@ -4417,7 +4597,7 @@ function Invoke-IdentifyAllBoards {
     $configured = Get-ConfiguredAttackerMac
 
     Write-Host ""
-    Write-Host "Summary:" -ForegroundColor Cyan
+    Write-Host "  Summary:" -ForegroundColor Cyan
     foreach ($r in $results) {
         $macDisp = if ($r.Mac) { $r.Mac } else { '(unread)' }
         $role = if ($r.Node -match '\(ROOT\)') { 'root' } elseif ($configured -and $r.Mac -eq $configured) { 'attacker' } else { 'child' }
@@ -4575,17 +4755,13 @@ function Invoke-RunAnalysisOnly {
     # topology this laptop never itself flashed). Mirrors menu.ps1's "Run
     # analysis only" action - keep the two in sync.
     Write-Host ""
-    Write-Host "Nothing here touches a board or a COM port -- runs preprocess.py -> features.py" -ForegroundColor DarkGray
+    Write-Host "  Nothing here touches a board or a COM port -- runs preprocess.py -> features.py" -ForegroundColor DarkGray
     Write-Host "-> eda.py over an already-exported folder." -ForegroundColor DarkGray
 
-    $attackIdx   = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 0
-    $rAttack     = @('none', 'blackhole', 'wormhole')[$attackIdx]
-    $topoIdx     = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
-    $rTopology   = $TOPOLOGIES[$topoIdx]
-    $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
-    $rScenario   = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
-    $rLocation   = $DATA_LOCATIONS[$locationIdx]
+    $cell = Select-RunCell
+    if (-not $cell) { return }
+    $rAttack = $cell.Attack; $rTopology = $cell.Topology
+    $rScenario = $cell.Scenario; $rLocation = $cell.Location
 
     $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
     if (-not (Test-Path $dirs.Export)) {
@@ -4649,12 +4825,12 @@ function Invoke-RunAnalysisOnly {
         & $featuresPy preprocess.py $inputDir -o $windowedOut @repArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "Preprocess failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
-        Write-Host "M7: features.py ..." -ForegroundColor Cyan
+        Write-Host "  M7: features.py ..." -ForegroundColor Cyan
         & $featuresPy features.py $inputDir -o $featOut @repArgs
         if ($LASTEXITCODE -ne 0) { Write-Host "Features step failed (exit $LASTEXITCODE)." -ForegroundColor Red; return }
 
         if ($edaPy) {
-            Write-Host "M8: eda.py ..." -ForegroundColor Cyan
+            Write-Host "  M8: eda.py ..." -ForegroundColor Cyan
             & $edaPy eda.py $featOut -o $edaOut
             if ($LASTEXITCODE -ne 0) {
                 Write-Host ("EDA failed (exit $LASTEXITCODE); feature_table$sfx.csv is fine, see the error above.") -ForegroundColor Yellow
@@ -4662,7 +4838,7 @@ function Invoke-RunAnalysisOnly {
                 Write-Host ("Done -> {0}" -f $edaOut) -ForegroundColor Green
             }
         } else {
-            Write-Host "Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
+            Write-Host "  Skipping M8/EDA: $featuresPy lacks matplotlib/seaborn/scipy/scikit-learn." -ForegroundColor Yellow
             Write-Host "  Fix once: pip install -r analysis\requirements.txt" -ForegroundColor DarkGray
         }
     } finally { Pop-Location }
@@ -4770,27 +4946,23 @@ function Invoke-TrimOnly {
     # extra is needed here to keep the raw dataset intact.
     # Mirrors menu.ps1's "Trim exported CSVs only" action - keep the two in sync.
     Write-Host ""
-    Write-Host "Nothing here touches a board or a COM port -- runs tools\trim_run.py --apply" -ForegroundColor DarkGray
-    Write-Host "over an already-exported folder. Writes to a trimmed\ subfolder; the raw" -ForegroundColor DarkGray
-    Write-Host "export is never modified or deleted." -ForegroundColor DarkGray
+    Write-Host "  Nothing here touches a board or a COM port -- runs tools\trim_run.py --apply" -ForegroundColor DarkGray
+    Write-Host "  over an already-exported folder. Writes to a trimmed\ subfolder; the raw" -ForegroundColor DarkGray
+    Write-Host "  export is never modified or deleted." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "SMART TRIM (sep. 21, 2026): one exported CSV can hold several boot" -ForegroundColor DarkGray
-    Write-Host "sessions - flashing, the real run, and the export power-cycle. It used to" -ForegroundColor DarkGray
-    Write-Host "keep the LONGEST one, which silently kept the junk whenever a board was" -ForegroundColor DarkGray
-    Write-Host "left plugged in longer than a short or aborted run lasted. It now keeps" -ForegroundColor DarkGray
-    Write-Host "the session that actually shows a PHASE PROGRESSION (baseline -> attack ->" -ForegroundColor DarkGray
-    Write-Host "cooldown -> terminate); an idle session logs PHASE_ID_UNSET and is rejected" -ForegroundColor DarkGray
-    Write-Host "outright. Each session is printed WITH the reasons for its score, so read" -ForegroundColor DarkGray
-    Write-Host "the report - it will also warn you if TWO sessions look like real runs." -ForegroundColor DarkGray
+    Write-Host "  SMART TRIM (sep. 21, 2026): one exported CSV can hold several boot" -ForegroundColor DarkGray
+    Write-Host "  sessions - flashing, the real run, and the export power-cycle. It used to" -ForegroundColor DarkGray
+    Write-Host "  keep the LONGEST one, which silently kept the junk whenever a board was" -ForegroundColor DarkGray
+    Write-Host "  left plugged in longer than a short or aborted run lasted. It now keeps" -ForegroundColor DarkGray
+    Write-Host "  the session that actually shows a PHASE PROGRESSION (baseline -> attack ->" -ForegroundColor DarkGray
+    Write-Host "  cooldown -> terminate); an idle session logs PHASE_ID_UNSET and is rejected" -ForegroundColor DarkGray
+    Write-Host "  outright. Each session is printed WITH the reasons for its score, so read" -ForegroundColor DarkGray
+    Write-Host "  the report - it will also warn you if TWO sessions look like real runs." -ForegroundColor DarkGray
 
-    $attackIdx   = Show-Menu -Title 'Which attack?' -Options @('none (baseline)', 'blackhole', 'wormhole') -DefaultIndex 0
-    $rAttack     = @('none', 'blackhole', 'wormhole')[$attackIdx]
-    $topoIdx     = Show-Menu -Title 'Topology:' -Options $TOPOLOGIES -DefaultIndex 0
-    $rTopology   = $TOPOLOGIES[$topoIdx]
-    $scenarioIdx = Show-Menu -Title 'Scenario (what this capture used, if any):' -Options $SCENARIO_LABELS -DefaultIndex 0
-    $rScenario   = $SCENARIOS[$scenarioIdx]
-    $locationIdx = Show-Menu -Title 'Location:' -Options $DATA_LOCATIONS -DefaultIndex 0
-    $rLocation   = $DATA_LOCATIONS[$locationIdx]
+    $cell = Select-RunCell
+    if (-not $cell) { return }
+    $rAttack = $cell.Attack; $rTopology = $cell.Topology
+    $rScenario = $cell.Scenario; $rLocation = $cell.Location
 
     $dirs = Get-RunDirs -Attack $rAttack -Topology $rTopology -Location $rLocation -Scenario $rScenario
     if (-not (Test-Path $dirs.Export)) {
@@ -4828,71 +5000,71 @@ function Invoke-DataSync {
     $py = Join-Path $base 'tools\push_data.py'
     Write-Host ""
     if ($Mode -eq 'delete') {
-        Write-Host "Removes ALL of that data or only SOME files (pick folders, then all or some of their files)" -ForegroundColor DarkGray
-        Write-Host "from GitHub. Each file shows when it was uploaded: green = last 30 min, yellow = older." -ForegroundColor DarkGray
-        Write-Host "A normal commit - GitHub's history keeps the files, so 'Restore deleted data' can undo it;" -ForegroundColor DarkGray
-        Write-Host "then offers to delete this laptop's copies too." -ForegroundColor DarkGray
-        Write-Host "Teammates are asked on their next pull; their push never re-uploads a deleted file." -ForegroundColor DarkGray
-        Write-Host "Asks you to type DELETE before anything goes." -ForegroundColor DarkGray
+        Write-Host "  Removes ALL of that data or only SOME files (pick folders, then all or some of their files)" -ForegroundColor DarkGray
+        Write-Host "  from GitHub. Each file shows when it was uploaded: green = last 30 min, yellow = older." -ForegroundColor DarkGray
+        Write-Host "  A normal commit - GitHub's history keeps the files, so 'Restore deleted data' can undo it;" -ForegroundColor DarkGray
+        Write-Host "  then offers to delete this laptop's copies too." -ForegroundColor DarkGray
+        Write-Host "  Teammates are asked on their next pull; their push never re-uploads a deleted file." -ForegroundColor DarkGray
+        Write-Host "  Asks you to type DELETE before anything goes." -ForegroundColor DarkGray
     } elseif ($Mode -eq 'delete-local') {
-        Write-Host "Removes files from THIS LAPTOP only - GitHub is never touched and teammates see nothing." -ForegroundColor DarkGray
-        Write-Host "This is the one for clearing out junk: a botched run, a duplicate import, files you" -ForegroundColor DarkGray
-        Write-Host "never want to share. Pick ALL or SOME (folders first, then all or some of their files);" -ForegroundColor DarkGray
-        Write-Host "each file says whether GitHub has a copy." -ForegroundColor DarkGray
-        Write-Host "A file GitHub already has can come back with a pull. A file only this laptop has is GONE" -ForegroundColor DarkGray
+        Write-Host "  Removes files from THIS LAPTOP only - GitHub is never touched and teammates see nothing." -ForegroundColor DarkGray
+        Write-Host "  This is the one for clearing out junk: a botched run, a duplicate import, files you" -ForegroundColor DarkGray
+        Write-Host "  never want to share. Pick ALL or SOME (folders first, then all or some of their files);" -ForegroundColor DarkGray
+        Write-Host "  each file says whether GitHub has a copy." -ForegroundColor DarkGray
+        Write-Host "  A file GitHub already has can come back with a pull. A file only this laptop has is GONE" -ForegroundColor DarkGray
         Write-Host "- and if the SD card was cleared on import, that was the last copy, so it is listed by" -ForegroundColor DarkGray
-        Write-Host "name before you confirm." -ForegroundColor DarkGray
-        Write-Host "Asks you to type DELETE before anything goes. Ledgers (the run registry) and archive" -ForegroundColor DarkGray
-        Write-Host "folders are never offered." -ForegroundColor DarkGray
+        Write-Host "  name before you confirm." -ForegroundColor DarkGray
+        Write-Host "  Asks you to type DELETE before anything goes. Ledgers (the run registry) and archive" -ForegroundColor DarkGray
+        Write-Host "  folders are never offered." -ForegroundColor DarkGray
     } elseif ($Mode -eq 'restore') {
-        Write-Host "Lists every delete on GitHub (yours or a teammate's), newest first. The files you pick go" -ForegroundColor DarkGray
-        Write-Host "back on GitHub exactly as they were, and back on this laptop unless you have a different copy." -ForegroundColor DarkGray
+        Write-Host "  Lists every delete on GitHub (yours or a teammate's), newest first. The files you pick go" -ForegroundColor DarkGray
+        Write-Host "  back on GitHub exactly as they were, and back on this laptop unless you have a different copy." -ForegroundColor DarkGray
     } elseif ($Mode -eq 'test') {
-        Write-Host "Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
-        Write-Host "them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
-        Write-Host "pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
+        Write-Host "  Makes 3 dummy CSVs (10 rows: Animal, Sex) under sync_test\<this computer>\ and pushes" -ForegroundColor DarkGray
+        Write-Host "  them the same way real data is pushed. Run it on a second laptop too (without" -ForegroundColor DarkGray
+        Write-Host "  pulling first) - both computers' files must end up on GitHub." -ForegroundColor DarkGray
     } elseif ($Area -eq 'logs') {
         if ($Mode -eq 'pull') {
-            Write-Host "Copies teammates' saved run logs from GitHub into datasets\run_logs\<attack>\<topology>\<location>\" -ForegroundColor DarkGray
-            Write-Host "(never code). Lists them and asks first; a log you already have - or archived - is never" -ForegroundColor DarkGray
-            Write-Host "overwritten or brought back. Pushes nothing." -ForegroundColor DarkGray
+            Write-Host "  Copies teammates' saved run logs from GitHub into datasets\run_logs\<attack>\<topology>\<location>\" -ForegroundColor DarkGray
+            Write-Host "  (never code). Lists them and asks first; a log you already have - or archived - is never" -ForegroundColor DarkGray
+            Write-Host "  overwritten or brought back. Pushes nothing." -ForegroundColor DarkGray
         } else {
-            Write-Host "Pushes your saved run logs (.log console transcripts) under datasets\run_logs\ (never code)." -ForegroundColor DarkGray
-            Write-Host "Archived logs (datasets\run_logs\_archive\) stay local. Shows what will go up and asks first." -ForegroundColor DarkGray
+            Write-Host "  Pushes your saved run logs (.log console transcripts) under datasets\run_logs\ (never code)." -ForegroundColor DarkGray
+            Write-Host "  Archived logs (datasets\run_logs\_archive\) stay local. Shows what will go up and asks first." -ForegroundColor DarkGray
         }
     } elseif ($Area -eq 'presets') {
         if ($Mode -eq 'pull') {
-            Write-Host "Copies teammates' saved presets from GitHub into presets\<them>\ (never code). Lists them" -ForegroundColor DarkGray
-            Write-Host "and asks first; a preset you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+            Write-Host "  Copies teammates' saved presets from GitHub into presets\<them>\ (never code). Lists them" -ForegroundColor DarkGray
+            Write-Host "  and asks first; a preset you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
         } else {
-            Write-Host "Pushes your saved presets under presets\<you>\ (never code, never capture data)." -ForegroundColor DarkGray
-            Write-Host "Shows what will go up and asks before pushing, then offers teammates' new presets." -ForegroundColor DarkGray
+            Write-Host "  Pushes your saved presets under presets\<you>\ (never code, never capture data)." -ForegroundColor DarkGray
+            Write-Host "  Shows what will go up and asks before pushing, then offers teammates' new presets." -ForegroundColor DarkGray
         }
     } elseif ($Mode -eq 'pull') {
-        Write-Host "Copies teammates' capture CSVs from GitHub into datasets\exports\ (never code). Lists them and" -ForegroundColor DarkGray
-        Write-Host "asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
-        Write-Host "Each file shows when it was imported: green = newer than your latest SD import, or a card" -ForegroundColor DarkGray
-        Write-Host "from that same run (same folder + repeat, a board you did not import), yellow = older." -ForegroundColor DarkGray
+        Write-Host "  Copies teammates' capture CSVs from GitHub into datasets\exports\ (never code). Lists them and" -ForegroundColor DarkGray
+        Write-Host "  asks first; a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+        Write-Host "  Each file shows when it was imported: green = newer than your latest SD import, or a card" -ForegroundColor DarkGray
+        Write-Host "  from that same run (same folder + repeat, a board you did not import), yellow = older." -ForegroundColor DarkGray
     } elseif ($Area -eq 'analysis') {
         if ($Mode -eq 'pull') {
-            Write-Host "Copies teammates' analysis + EDA output from GitHub into analysis\<attack>\<topology>\<site>\" -ForegroundColor DarkGray
-            Write-Host "(feature_table.csv, windowed_dataset.csv, eda_output\*.png/.csv). Lists them and asks first;" -ForegroundColor DarkGray
-            Write-Host "a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
+            Write-Host "  Copies teammates' analysis + EDA output from GitHub into analysis\<attack>\<topology>\<site>\" -ForegroundColor DarkGray
+            Write-Host "  (feature_table.csv, windowed_dataset.csv, eda_output\*.png/.csv). Lists them and asks first;" -ForegroundColor DarkGray
+            Write-Host "  a file you already have is never overwritten. Pushes nothing." -ForegroundColor DarkGray
         } else {
-            Write-Host "Pushes your analysis + EDA RESULTS under analysis\<attack>\<topology>\<site>\ - the plots and" -ForegroundColor DarkGray
-            Write-Host "tables a teammate cannot regenerate without your raw data. These are .gitignore'd (they are" -ForegroundColor DarkGray
-            Write-Host "rebuilt by -Analyze), so they never reach GitHub any other way." -ForegroundColor DarkGray
-            Write-Host "Only .csv/.png/.json/.md at cell depth go up - the pipeline's own .py is never pushed." -ForegroundColor DarkGray
+            Write-Host "  Pushes your analysis + EDA RESULTS under analysis\<attack>\<topology>\<site>\ - the plots and" -ForegroundColor DarkGray
+            Write-Host "  tables a teammate cannot regenerate without your raw data. These are .gitignore'd (they are" -ForegroundColor DarkGray
+            Write-Host "  rebuilt by -Analyze), so they never reach GitHub any other way." -ForegroundColor DarkGray
+            Write-Host "  Only .csv/.png/.json/.md at cell depth go up - the pipeline's own .py is never pushed." -ForegroundColor DarkGray
         }
     } else {
-        Write-Host "Pushes raw capture CSVs under datasets\exports\ (never code, never trimmed\)." -ForegroundColor DarkGray
-        Write-Host "Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
-        Write-Host "Each file shows when it was imported: green = your latest SD import (every card up to the" -ForegroundColor DarkGray
-        Write-Host "N to 'Import another card?') or newer, yellow = an earlier import." -ForegroundColor DarkGray
+        Write-Host "  Pushes raw capture CSVs under datasets\exports\ (never code, never trimmed\)." -ForegroundColor DarkGray
+        Write-Host "  Shows what will go up and asks before pushing, then offers teammates' new files." -ForegroundColor DarkGray
+        Write-Host "  Each file shows when it was imported: green = your latest SD import (every card up to the" -ForegroundColor DarkGray
+        Write-Host "  N to 'Import another card?') or newer, yellow = an earlier import." -ForegroundColor DarkGray
     }
     if ($Mode -eq 'push') {
-        Write-Host "At the confirm prompt, 'd' deletes unnecessary files from this laptop first - nothing is" -ForegroundColor DarkGray
-        Write-Host "pushed until you answer y, so it doubles as a way to prune what the listing shows." -ForegroundColor DarkGray
+        Write-Host "  At the confirm prompt, 'd' deletes unnecessary files from this laptop first - nothing is" -ForegroundColor DarkGray
+        Write-Host "  pushed until you answer y, so it doubles as a way to prune what the listing shows." -ForegroundColor DarkGray
     }
     Push-Location $base
     try {
@@ -5136,7 +5308,7 @@ function Read-RemoteAttackerMac {
     $list = @($attackers) + @($others)
     if ($attackers.Count -gt 0) {
         Write-Host ""
-        Write-Host "Attacker boards this laptop knows of (best evidence first):" -ForegroundColor Cyan
+        Write-Host "  Attacker boards this laptop knows of (best evidence first):" -ForegroundColor Cyan
         for ($i = 0; $i -lt $attackers.Count; $i++) {
             $e = $attackers[$i]
             $name = if ($e.Name) { " ($($e.Name))" } else { '' }
@@ -5146,7 +5318,7 @@ function Read-RemoteAttackerMac {
     }
     if ($others.Count -gt 0) {
         Write-Host ""
-        Write-Host "Other known boards (never an attacker yet - pick one for a NEW attacker):" -ForegroundColor Cyan
+        Write-Host "  Other known boards (never an attacker yet - pick one for a NEW attacker):" -ForegroundColor Cyan
         for ($j = 0; $j -lt $others.Count; $j++) {
             $e = $others[$j]
             $name = if ($e.Name) { " ($($e.Name))" } else { '' }
@@ -5532,7 +5704,7 @@ function Invoke-DeleteSdFolder {
         $portOpts += 'Done - back to the main menu'
 
         Write-Host ""
-        Write-Host "The board must already be booted with its SD card in (same as writing location.txt)." -ForegroundColor DarkGray
+        Write-Host "  The board must already be booted with its SD card in (same as writing location.txt)." -ForegroundColor DarkGray
         $pIdx = Show-Menu -Title 'Delete a folder from the SD card of which ALREADY-RUNNING board?' -Options $portOpts -DefaultIndex -1
         if ($pIdx -eq $portOpts.Count - 1) { return }
 
@@ -5673,11 +5845,11 @@ function Set-AttackSubRoles {
         }
     }
     elseif ($Attack -eq 'wormhole') {
-        $idxA = Show-Menu -Title "WIRED TUNNEL BOARD 1 of 2 (wormhole, labelled Node A) - either cable end is fine: at run start the two boards pick A/B themselves by depth (deeper = B); this choice is only the backup if the cable link fails" -Options $labels -AllowBack
+        $idxA = Show-Menu -Title "TUNNEL CABLE - board 1 of 2: pick EITHER board on the UART cable. No A/B choice here: at run start the two boards decide entry/exit themselves by depth, and the root will not start until they agree" -Options $labels -AllowBack
         if ($idxA -ge 0) {
             $idxB = -1
             while ($true) {
-                $idxB = Show-Menu -Title "WIRED TUNNEL BOARD 2 of 2 (wormhole, labelled Node B) - the OTHER end of the same UART cable" -Options $labels -AllowBack
+                $idxB = Show-Menu -Title "TUNNEL CABLE - board 2 of 2: the OTHER board on the same UART cable" -Options $labels -AllowBack
                 if ($idxB -eq -1 -or $idxB -ne $idxA) { break }
                 Write-Host "   Pick the OTHER end of the cable - board 2 must be a different board from board 1." -ForegroundColor Yellow
             }
@@ -6052,7 +6224,7 @@ function Select-MyMember {
 
     $names = @(Get-PresetMemberNames)
     Write-Host ""
-    Write-Host "Whose laptop is this? (used to put YOUR presets first, and to file new ones)" -ForegroundColor Cyan
+    Write-Host "  Whose laptop is this? (used to put YOUR presets first, and to file new ones)" -ForegroundColor Cyan
     Write-Host "  Stored in my_member.txt - change it any time from the member board list menu." -ForegroundColor DarkGray
     $opts = @($names) + @('Skip - do not remember')
     $idx = Show-Menu -Title 'This laptop belongs to:' -Options $opts -DefaultIndex ([Math]::Max(0, $names.IndexOf($mine)))
@@ -6378,7 +6550,7 @@ function Invoke-ViewRunLog {
             }
             if ($archivedCount -eq 0) {
                 Write-Host "`nNo saved run logs yet - they're saved under datasets\run_logs\<attack>\<topology>\<location>\ when" -ForegroundColor Yellow
-                Write-Host "you answer yes to 'Save a full log of this run' before a capture." -ForegroundColor Yellow
+                Write-Host "  you answer yes to 'Save a full log of this run' before a capture." -ForegroundColor Yellow
                 return
             }
         }
@@ -6577,7 +6749,7 @@ function Sync-RosterPortsByMac {
     }
 
     Write-Host ""
-    Write-Host "Reading the MAC on each plugged-in port to find the preset's boards ..." -ForegroundColor DarkGray
+    Write-Host "  Reading the MAC on each plugged-in port to find the preset's boards ..." -ForegroundColor DarkGray
     $macMap = Get-LiveMacMap -Ports $Ports
     $portByMac = @{}
     foreach ($k in $macMap.Keys) { $portByMac[$macMap[$k]] = $k }
@@ -6707,7 +6879,7 @@ function Read-RepeatNumber {
     # because that's what the M4 matrix actually needs per cell; 4+ is a plain
     # example line, not a special case, so typing 4, 5, 12... just works and
     # was never blocked - the old wording just never said so.
-    Write-Host "Which attempt at this same capture is this?" -ForegroundColor Cyan
+    Write-Host "  Which attempt at this same capture is this?" -ForegroundColor Cyan
     Write-Host ("  1 = first time capturing '{0} + {1}'" -f $Topology, $attackWord) -ForegroundColor DarkGray
     Write-Host "  2 = you already captured it once, this is the second attempt" -ForegroundColor DarkGray
     Write-Host "  3 = third attempt" -ForegroundColor DarkGray
@@ -6916,12 +7088,12 @@ function Edit-PresetInteractive {
         $peers = @($draft | Where-Object { $_.Role -ne 'root' })
         Write-Host ""
         if ($topology -eq 'star') {
-            Write-Host "STAR + blackhole: the ATTACKER is the HUB." -ForegroundColor Cyan
+            Write-Host "  STAR + blackhole: the ATTACKER is the HUB." -ForegroundColor Cyan
             Write-Host "  root -> ATTACKER -> every victim. Each victim joins ONLY the attacker's MAC" -ForegroundColor Cyan
             Write-Host "  (the run builds it into their firmware), so the wrong board here = no victim joins." -ForegroundColor Yellow
         }
         else {
-            Write-Host "The ATTACKER relays victim probes in baseline, then drops them in the attack phase." -ForegroundColor Cyan
+            Write-Host "  The ATTACKER relays victim probes in baseline, then drops them in the attack phase." -ForegroundColor Cyan
             Write-Host "  It only drops what passes THROUGH it - place it between the victims and the root." -ForegroundColor DarkGray
         }
         Write-Host ("  Now: {0}" -f (& $attackerText $draft)) -ForegroundColor DarkGray
@@ -7184,7 +7356,7 @@ function Edit-PresetInteractive {
             # floor is the children this preset itself lists.
             $kidsHere = @($draft | Where-Object { $_.Role -ne 'root' }).Count
             Write-Host ""
-            Write-Host "How many CHILDREN does the root wait for before it starts the run?" -ForegroundColor Cyan
+            Write-Host "  How many CHILDREN does the root wait for before it starts the run?" -ForegroundColor Cyan
             Write-Host "  Count every non-root board in the run, on ALL laptops (victims, attacker, controls)." -ForegroundColor DarkGray
             Write-Host ("  This preset lists {0} of them. 0 = not set: the run asks each time." -f $kidsHere) -ForegroundColor DarkGray
             $cur = if ($expected -gt 0) { "$expected" } else { 'not set' }
@@ -7364,38 +7536,85 @@ function Show-PresetDetails {
     $attackWord = [string]$Cfg.attack
     if ($attackWord -eq 'none') { $attackWord = 'baseline' }
 
-    Write-Host ""
-    Write-Host "------------------------------------------------------------" -ForegroundColor Green
-    Write-Host ("  Preset   : {0}" -f (Split-Path -Leaf $Path)) -ForegroundColor Cyan
-    # Whose boards, stated before the roster itself: two members' preset for the
-    # same cell are the same filename, so this is the line that tells them apart.
+    # LAYOUT (oct. 17 2026, user: "detailed but clean and colourful"): framed
+    # header with the cell in the picker's colours, a real BOARDS table, then the
+    # existing checks under titled sections. Same information as before.
+    $e = [char]27
+    $R = $script:AnsiReset
+    $tag = {
+        param([string]$Text, [string]$Key)
+        # Calm palette: only the ATTACK gets a colour; the other fields are plain.
+        $code = switch ($Key) { 'BLACKHOLE' { $script:Soft.red } 'WORMHOLE' { $script:Soft.purple } 'BASELINE' { $script:Soft.green } default { $script:Soft.text } }
+        "$e[$($code)m$Text$R"
+    }
     $ownerName = Get-PresetOwnerFromPath -FullName $Path
     if (-not $ownerName -and $Cfg.PSObject.Properties['owner']) { $ownerName = [string]$Cfg.owner }
     $myName = Get-MyMember
-    $ownerTag = if (-not $ownerName) { '(unfiled - not in a member folder)' }
-                elseif ($myName -and $ownerName -eq $myName) { "{0}  (you)" -f $ownerName }
-                else { $ownerName }
-    $ownerColor = if (-not $ownerName) { 'Yellow' } elseif ($myName -and $ownerName -eq $myName) { 'Green' } else { 'Cyan' }
-    Write-Host ("  Boards of: {0}" -f $ownerTag) -ForegroundColor $ownerColor
-    if ($Cfg.savedAt) { Write-Host ("  Saved    : {0}" -f [string]$Cfg.savedAt) -ForegroundColor DarkGray }
+    $ownerTxt = if (-not $ownerName) { "$e[$($script:Soft.amber)munfiled$R  $e[$($script:Soft.dim)m(not in a member folder)$R" }
+                elseif ($myName -and $ownerName -eq $myName) { "$e[$($script:Soft.green)m$($ownerName.ToUpper())$R  $e[$($script:Soft.dim)m(you)$R" }
+                else { "$e[$($script:Soft.text)m$($ownerName.ToUpper())$R" }
+    $savedTxt = if ($Cfg.savedAt) {
+        $pd = [datetime]::MinValue
+        if ([datetime]::TryParseExact([string]$Cfg.savedAt, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::None, [ref]$pd)) {
+            $pd.ToString('MMM dd, yyyy   hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)
+        } else { [string]$Cfg.savedAt }
+    } else { 'not recorded' }
+    $atkKey = if ($attackWord -eq 'baseline') { 'BASELINE' } else { $attackWord.ToUpper() }
+    $field = { param([string]$Label, [string]$Value) "$e[$($script:Soft.dim)m{0,-10}$R{1}" -f $Label, $Value }
+    $pad = { param([string]$Shown, [string]$Plain, [int]$W) $Shown + (' ' * [Math]::Max(1, $W - $Plain.Length)) }
+
     Write-Host ""
-    Write-Host ("  Attack   : {0}" -f $attackWord)
-    Write-Host ("  Topology : {0}" -f [string]$Cfg.topology)
-    Write-Host ("  Scenario : {0}" -f $cfgScenario)
-    Write-Host ("  Location : {0}" -f [string]$Cfg.location)
-    Write-Host ("  Repeat   : {0}" -f [int]$Cfg.repeat)
+    Write-Host ("  " + ("=" * 76)) -ForegroundColor DarkGray
+    Write-Host ("  PRESET   " + (Split-Path -Leaf $Path)) -ForegroundColor Cyan
+    Write-Host ("  " + ("=" * 76)) -ForegroundColor DarkGray
+    $ownerPlain = if ($ownerName) { $ownerName } else { 'unfiled (not in a member folder)' }
+    Write-Host ("   " + (& $pad (& $field 'owner' $ownerTxt) ("owner     " + $ownerPlain + $(if ($myName -and $ownerName -eq $myName) { '  (you)' })) 40) + (& $field 'saved' $savedTxt))
+    Write-Host ("   " + (& $pad (& $field 'attack' (& $tag $attackWord.ToUpper() $atkKey)) ("attack    " + $attackWord) 40) +
+                (& $field 'topology' (& $tag ([string]$Cfg.topology) ([string]$Cfg.topology))))
+    Write-Host ("   " + (& $pad (& $field 'location' (& $tag ([string]$Cfg.location) ([string]$Cfg.location))) ("location  " + [string]$Cfg.location) 40) +
+                (& $field 'scenario' (& $tag $cfgScenario $cfgScenario)) + "     $e[90mrepeat$R  $([int]$Cfg.repeat)")
+
+    # ---- BOARDS: one aligned table, flash order, root last -----------------
     Write-Host ""
-    Write-Host "  Boards (root is always last):"
+    Write-Host ("  BOARDS  {0}" -f ("-" * 68)) -ForegroundColor Cyan
+    Write-Host "  (flashed in this order - the root always last)" -ForegroundColor DarkGray
+    Write-Host ("   {0,-3}{1,-9}{2,-34}{3,-8}{4,-20}{5}" -f '#', 'label', 'role', 'port', 'MAC', 'status') -ForegroundColor DarkGray
     $step = 0
+    $missing = 0
     foreach ($b in $Roster) {
         $step++
         $mac = if ($b.Mac) { $b.Mac } else { 'not recorded' }
-        $miss = ''
-        if ($live -notcontains $b.Port) { $miss = '  << port NOT PRESENT' }
-        if ($b.ScenarioTarget) { $miss = "  << $cfgScenario TARGET$miss" }
-        $line = ("   [{0}] {1,-8} {2,-27} {3,-7} {4,-19}{5}" -f $step, $b.Label, $b.Display, $b.Port, $mac, $miss).TrimEnd()
+        $here = $live -contains $b.Port
+        if (-not $here) { $missing++ }
         $role = Get-BoardColorRole $b
-        if ($miss) { Write-Host $line -ForegroundColor Yellow } else { Write-Host (Colorize-Role $line $role) }
+        # Short, fixed-width role for the table (the long Display text broke the
+        # columns); the scenario target is in the status column instead.
+        $roleTxt = switch ($b.Kind) {
+            'attacker' { 'blackhole ATTACKER' }
+            'victim'   { 'blackhole victim' }
+            'A'        { 'tunnel end (auto A/B)' }
+            'B'        { 'tunnel end (auto A/B)' }
+            'control'  { 'control (plain fw)' }
+            'root'     { 'ROOT' }
+            default    { if ($b.Role -eq 'root') { 'ROOT' } else { ([string]$b.Display -replace '\s*\+\s*\S+ TARGET$', '') } }
+        }
+        if ($roleTxt.Length -gt 33) { $roleTxt = $roleTxt.Substring(0, 30) + '...' }
+        $roleCell = Format-SoftRole $roleTxt.PadRight(33) $role
+        $portTxt = if ($b.Port) { [string]$b.Port } else { '-' }
+        $portCell = "$e[$($script:Soft.text)m$($portTxt.PadRight(7))$R"
+        $status = @()
+        if ($b.ScenarioTarget) { $status += "$e[$($script:Soft.amber)m$cfgScenario target$R" }
+        $status += $(if ($here) { "$e[$($script:Soft.green)mplugged in$R" } else { "$e[$($script:Soft.red)mnot plugged in$R" })
+        $macCell = if ($b.Mac) { $mac.PadRight(19) } else { "$e[90m$($mac.PadRight(19))$R" }
+        Write-Host ("   {0,-3}{1,-9}{2} {3} {4} {5}" -f $step, $b.Label, $roleCell, $portCell, $macCell, ($status -join '  '))
+    }
+    Write-Host ""
+    if ($missing -eq 0) {
+        Write-Host "   ok  every board's port is plugged in" -ForegroundColor Green
+    } else {
+        Write-Host ("   !   {0} of {1} port(s) not plugged in - plug the boards in, or use 'Auto-detect ports' below" -f $missing, $Roster.Count) -ForegroundColor Yellow
+        Write-Host "       (COM numbers follow the USB socket, so a saved port can change)" -ForegroundColor DarkGray
     }
 
     # Free cross-check (a file read, no board contact): does this preset's attacker
@@ -7412,18 +7631,19 @@ function Show-PresetDetails {
         # healthy. This cannot be checked from the roster (placement is physical),
         # so it is stated here, before flashing, where it can still be acted on.
         Write-Host ""
+        Write-Host ("  ATTACK SETUP  {0}" -f ("-" * 62)) -ForegroundColor Cyan
         if ([string]$Cfg.topology -eq 'star') {
             # STAR + BLACKHOLE (D-16): victims are firmware-pinned to the attacker's
             # AP, so here the MAC below is load-bearing again - a wrong one means
             # the victims never join and the root holds Phase 0.
-            Write-Host "STAR + BLACKHOLE = ATTACKER IS THE HUB (D-16):" -ForegroundColor Cyan
+            Write-Host "  STAR + BLACKHOLE = ATTACKER IS THE HUB (D-16):" -ForegroundColor Cyan
             Write-Host "  Root -> attacker -> every victim. Put the attacker in the middle, the root ~1 m" -ForegroundColor Cyan
             Write-Host "  beside it, victims in a ring around the ATTACKER. Power: root, attacker, victims." -ForegroundColor Cyan
             Write-Host "  Victims ONLY join the MAC below - it MUST be this preset's attacker, or no" -ForegroundColor Yellow
             Write-Host "  victim joins at all (the mismatch warning below is NOT bookkeeping for star)." -ForegroundColor Yellow
             Write-Host "  Check after the run: tools\verify_topology.py ... --expect star" -ForegroundColor DarkGray
         }
-        Write-Host "PLACEMENT MATTERS NOW (C7 Option 1):" -ForegroundColor Cyan
+        Write-Host "  PLACEMENT MATTERS NOW (C7 Option 1):" -ForegroundColor Cyan
         Write-Host "  The attacker only drops traffic that PASSES THROUGH it. Put it BETWEEN the" -ForegroundColor Cyan
         Write-Host "  victims and the root - near the root (hop 1-2) is safest. An attacker at the" -ForegroundColor Cyan
         Write-Host "  far end of a chain, or as a leaf, intercepts nothing and the run will show NO" -ForegroundColor Cyan
@@ -7482,10 +7702,28 @@ function Show-PresetDetails {
         }
     }
 
+    if ([string]$Cfg.attack -eq 'wormhole') {
+        $ends = @($Roster | Where-Object { $_.Kind -in @('A', 'B') })
+        Write-Host ""
+        Write-Host ("  ATTACK SETUP  {0}" -f ("-" * 62)) -ForegroundColor Cyan
+        if ($ends.Count -eq 2) {
+            Write-Host ("   tunnel cable boards   {0} + {1}" -f $ends[0].Label, $ends[1].Label) -ForegroundColor White
+        } else {
+            Write-Host ("   !  {0} tunnel board(s) on this laptop - a wormhole needs exactly the 2 on the UART cable" -f $ends.Count) -ForegroundColor Yellow
+            Write-Host "      (fine if both ends live on another laptop's preset)" -ForegroundColor DarkGray
+        }
+        Write-Host "   who is A / B          decided BY THE BOARDS at run start: closer to the root = A (exit)," -ForegroundColor DarkGray
+        Write-Host "                         deeper = B (entry). Nothing to pick here." -ForegroundColor DarkGray
+        Write-Host "   before Phase 0        the root waits until exactly 1 A + 1 B, UART OK both ways and" -ForegroundColor DarkGray
+        Write-Host "                         A closer to the root - then type START in the root monitor." -ForegroundColor DarkGray
+    }
+
     Write-Host ""
-    Write-Host ("  Exports  -> {0}" -f $dirs.Export)
-    Write-Host ("  Analysis -> {0}" -f $dirs.Analysis)
-    Write-Host "------------------------------------------------------------" -ForegroundColor Green
+    Write-Host ("  OUTPUT  {0}" -f ("-" * 68)) -ForegroundColor Cyan
+    $rel = { param([string]$P) if ($P.StartsWith($base)) { $P.Substring($base.Length).TrimStart('\') } else { $P } }
+    Write-Host ("   " + "$e[90mexports $R  " + (& $rel $dirs.Export))
+    Write-Host ("   " + "$e[90manalysis$R  " + (& $rel $dirs.Analysis))
+    Write-Host ("  " + ("=" * 76)) -ForegroundColor DarkGray
 }
 
 function Format-RunParams {
@@ -7511,6 +7749,30 @@ function Format-RunParams {
 # catches it; a genuine error still propagates untouched. The body is left at its
 # original indentation on purpose - re-indenting ~1200 lines would bury the real
 # change in whitespace noise, and PowerShell does not care either way.
+# -Tool: run one tool straight away (run_gui.ps1 launches these), then exit.
+if ($Tool) {
+    $toolFailed = $false
+    try {
+        switch ($Tool) {
+            'selftest'     { Invoke-FirmwareSelfTest -Port $ToolPort -Role $ToolRole -Location $ToolLocation }
+            'uarttest'     { Invoke-UartTunnelTest -PortA $ToolPort -PortB $ToolPort2 -Seconds $ToolSecs }
+            'macsniffer'   { Invoke-MacSnifferTest }
+            'flashsniffer' {
+                if (-not $ToolPort) { Write-Host "  -ToolPort COMx is required for flashsniffer." -ForegroundColor Yellow }
+                elseif (Invoke-FlashSniffer -Port $ToolPort) { Write-Host "  Sniffer firmware is on $ToolPort - record from the GUI." -ForegroundColor Green }
+                else { $toolFailed = $true }
+            }
+        }
+    } catch {
+        if ($_.Exception.Message -notin @($script:MainMenuSignal, $script:ToolBackSignal)) { throw }
+    }
+    Write-Host ""
+    Write-Host "  Done - you can close this window." -ForegroundColor DarkGray
+    # a failed flash must not read as success in the GUI's activity pane
+    if ($toolFailed) { exit 1 }
+    return
+}
+
 $originalPreset = $Preset
 :wizard while ($true) {
 try {
@@ -7544,15 +7806,25 @@ if (-not $Preset) {
     # picker / manual menus below.
     while ($true) {
         Write-Host ""
-        Write-Host "=== Capture run wizard ===" -ForegroundColor Green
+        Write-AppBanner
         if ($DryRun) { Write-Host "DRY RUN - nothing will be flashed." -ForegroundColor Yellow }
         $bannerShown = $true
 
         $modeIdx = Show-CaptureWizardMenu
 
-        if ($modeIdx -eq 8) { Write-Host ""; Write-Host "Bye - nothing was flashed." -ForegroundColor DarkGray; exit 0 }
+        if ($modeIdx -eq 8) { Write-Host ""; Write-Host "  Bye - nothing was flashed." -ForegroundColor DarkGray; exit 0 }
+        # Every tool opens under the same framed title as its menu line.
+        if ($modeIdx -ne 0 -and $modeIdx -ne 9 -and $script:MenuItems -and $script:MenuItems.ContainsKey($modeIdx)) {
+            Write-ToolHeader -Title $script:MenuItems[$modeIdx].Name -Hint $script:MenuItems[$modeIdx].Hint
+        }
         if ($modeIdx -eq 0) { break }
         if ($modeIdx -eq 9) { $forceManual = $true; break }
+        if ($modeIdx -eq 30) {
+            # The GUI runs in its own STA window; this CLI stays open behind it.
+            Start-Process powershell -ArgumentList @('-STA', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f (Join-Path $base 'run_gui.ps1'))) | Out-Null
+            Write-Host "  Opened the GUI in its own window. This CLI stays here." -ForegroundColor DarkGray
+            continue
+        }
         if ($modeIdx -eq 1) { Invoke-WipeBoards; continue }
         if ($modeIdx -eq 2) { Invoke-SetLocationBoards; continue }
         if ($modeIdx -eq 3) { Invoke-FirmwareSelfTest; continue }
@@ -7621,7 +7893,7 @@ if (-not $Preset) {
     if ($presetFiles.Count -gt 0) {
         if (-not $bannerShown) {
             Write-Host ""
-            Write-Host "=== Capture run wizard ===" -ForegroundColor Green
+            Write-AppBanner
             if ($DryRun) { Write-Host "DRY RUN - nothing will be flashed." -ForegroundColor Yellow }
             $bannerShown = $true
         }
@@ -7630,6 +7902,10 @@ if (-not $Preset) {
         $picking   = $true
 
         while ($picking) {
+            # Re-read every pass: the owner step below narrows $presetFiles to one
+            # person, and 'b' must come back to ALL owners (and see deletions).
+            $presetFiles = @(Get-PresetFiles)
+            if ($presetFiles.Count -eq 0) { break }
             # Ordered YOUR member's presets first, then the other members, then
             # anything still unfiled - nothing is hidden, because flashing an
             # absent member's boards from their preset is a normal thing to do
@@ -7649,18 +7925,35 @@ if (-not $Preset) {
                     Scenario = (ConvertTo-Scenario $(if ($pc.PSObject.Properties['scenario']) { [string]$pc.scenario }))
                 }
             }
+            # When each preset was SAVED: its own savedAt (a git pull resets the file
+            # time), the file time only as a fallback. Drives the sort and the column.
+            $whenOf = @{}
+            foreach ($pf in $presetFiles) {
+                $w = $pf.LastWriteTime
+                $pc = Read-PresetFile -Path $pf.FullName
+                if ($pc -and $pc.PSObject.Properties['savedAt'] -and $pc.savedAt) {
+                    $parsed = [datetime]::MinValue
+                    if ([datetime]::TryParseExact([string]$pc.savedAt, 'yyyy-MM-dd HH:mm',
+                            [Globalization.CultureInfo]::InvariantCulture,
+                            [Globalization.DateTimeStyles]::None, [ref]$parsed)) { $w = $parsed }
+                }
+                $whenOf[$pf.FullName] = $w
+            }
             # Position in the wizard's own option lists (baseline before blackhole,
             # home before G402 ...); anything not listed sorts after them.
             $rank = { param($list, $v) $i = [array]::IndexOf(@($list), $v); if ($i -lt 0) { 99 } else { $i } }
             $byCell = {
                 param($items)
+                # attack -> topology -> scenario (the wizard's own list order), then
+                # location, then NEWEST SAVED first inside the same cell (oct. 17 2026,
+                # user). Unreadable files last.
                 @($items | Sort-Object `
                     @{ Expression = { if ($cellOf[$_.FullName]) { 0 } else { 1 } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $ATTACKS $c.Attack } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $TOPOLOGIES $c.Topology } } }, `
-                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $DATA_LOCATIONS $c.Location } } }, `
                     @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $SCENARIOS $c.Scenario } } }, `
-                    @{ Expression = { $_.LastWriteTime }; Descending = $true })
+                    @{ Expression = { $c = $cellOf[$_.FullName]; if ($c) { & $rank $DATA_LOCATIONS $c.Location } } }, `
+                    @{ Expression = { $whenOf[$_.FullName] }; Descending = $true })
             }
             $groups = New-Object System.Collections.Specialized.OrderedDictionary
             if ($myMember) {
@@ -7675,79 +7968,166 @@ if (-not $Preset) {
             $loose = @($presetFiles | Where-Object { -not $_.Owner })
             if ($loose.Count -gt 0) { $groups['-- UNFILED (not in a member folder yet)'] = & $byCell $loose }
 
+            # STEP 1 - WHOSE PRESETS? (oct. 17 2026, user: "four options: CAL, BASTI,
+            # KYLE and NO PRESET"). One line per person with how many presets and
+            # the newest; then only that person's list. 'b' on the list comes back here.
+            $ownerKeys = @($groups.Keys | Where-Object { @($groups[$_]).Count -gt 0 })
+            $ownerOpts = @()
+            foreach ($k in $ownerKeys) {
+                $isMine = $k -like '-- YOURS*'
+                $who = ($k -replace '^-- ', '') -replace '^YOURS \((.+)\)$', '$1'
+                $who = ($who -replace ' \(not in a member folder yet\)$', '').ToUpper()
+                $its = @($groups[$k])
+                $newest = ($its | ForEach-Object { $whenOf[$_.FullName] } | Measure-Object -Maximum).Maximum
+                $line = "{0,-10}{1,3} preset{2}   newest {3}" -f $who, $its.Count, $(if ($its.Count -eq 1) { ' ' } else { 's' }),
+                    $newest.ToString('MMM dd  hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)
+                if ($isMine) { $line += "   $([char]27)[$($script:Soft.green)m<- yours$($script:AnsiReset)" }
+                $ownerOpts += $line
+            }
+            $ownerOpts += 'No preset - create one by answering the menus'
+            $ownerIdx = Show-Menu -Title 'Load a saved preset - whose?' -Options $ownerOpts -DefaultIndex 0
+            if ($ownerIdx -eq $ownerKeys.Count) { break }
+            $pickedKey = $ownerKeys[$ownerIdx]
+            $only = New-Object System.Collections.Specialized.OrderedDictionary
+            $only[$pickedKey] = $groups[$pickedKey]
+            $groups = $only
+
+            # ONE CLEAN ROW PER PRESET + ITS FULL BOARD LIST (oct. 17 2026). The row
+            # is a fixed-column summary (cell, board count, the boards that matter,
+            # saved time) so the list scans top to bottom; the boards (role, MAC,
+            # nickname) stay underneath because the team tells presets apart by MAC.
+            $nickByMac = Get-MemberNicknameMap
+            # Column header sits over the option text. Show-Menu prints rows as
+            # "  [NN] " (5 + digits columns) and does NOT indent a heading's 2nd line.
+            $pad = ' ' * (5 + "$($presetFiles.Count + 1)".Length)
+            $colHead = $pad + ("{0,-10}{1,-9}{2,-13}{3,-11}{4,-27}{5}" -f 'attack', 'topology', 'location', 'scenario', 'boards', 'saved')
+            # Same indent for every preset's boards, from the FINAL list size.
+            $boardIndent = ' ' * (7 + "$($presetFiles.Count + 1)".Length)
             $presetFiles = @()
             $headers = @{}
+            $opts = @()
+            $anyMismatch = $false
+            $firstGroup = $true
             foreach ($key in $groups.Keys) {
                 $items = @($groups[$key])
                 if ($items.Count -eq 0) { continue }
-                # Two levels: the member heading, then an indented sub-heading per
-                # cell (attack / topology / location / scenario) - the member heading
-                # and its first cell share one header entry, later cells get their own.
-                $lastCell = $null
-                $firstOfMember = $true
+                $title = ($key -replace '^-- ', '').ToUpper()
+                # Owner heading with a rule, then (first group only) the column names.
+                $e_ = [char]27
+                $title = "$title $e_[90m" + ('-' * [Math]::Max(3, 80 - $title.Length)) + $script:AnsiReset
+                $ownerHdr = if ($firstGroup) { "$title`n$e_[90m$colHead$($script:AnsiReset)" } else { $title }
+                $firstGroup = $false
+                # DIVIDERS (oct. 17 2026, user): a band per ATTACK, a sub-heading per
+                # TOPOLOGY - the list is sorted attack -> topology -> scenario, so a
+                # divider goes wherever either one changes. Show-Menu indents only a
+                # heading's FIRST line, so every later line carries its own indent.
+                $lastAtk = $null; $lastTopo = $null
                 foreach ($pf in $items) {
-                    $c = $cellOf[$pf.FullName]
-                    $cellKey = if ($c) { '{0}|{1}|{2}|{3}' -f $c.Attack, $c.Topology, $c.Location, $c.Scenario } else { 'unreadable' }
-                    if ($firstOfMember -or $cellKey -ne $lastCell) {
-                        $sub = if ($c) {
-                            '  ' + (Format-PresetCell -Attack $c.Attack -Topology $c.Topology -Location $c.Location -Scenario $c.Scenario)
-                        } else { '  -- UNREADABLE' }
-                        $headers[$presetFiles.Count] = if ($firstOfMember) { $key + "`n  " + $sub } else { $sub }   # Show-Menu indents only a header's first line
-                        $lastCell = $cellKey
-                        $firstOfMember = $false
+                    $hc = $cellOf[$pf.FullName]
+                    $hdr = @()
+                    if ($null -ne $ownerHdr) { $hdr += $ownerHdr; $ownerHdr = $null }
+                    if ($hc -and $hc.Attack -ne $lastAtk) {
+                        $aw = if ($hc.Attack -eq 'none') { 'BASELINE' } else { $hc.Attack.ToUpper() }
+                        $ac = Get-SoftAttackColor $hc.Attack
+                        $band = "$e_[$($ac)m$aw  " + ('=' * [Math]::Max(3, 74 - $aw.Length)) + $script:AnsiReset
+                        # first heading line: Show-Menu adds the 2-space indent itself
+                        $hdr += $(if ($hdr.Count) { "`n  $band" } else { $band })
+                        $lastAtk = $hc.Attack; $lastTopo = $null
                     }
+                    if ($hc -and $hc.Topology -ne $lastTopo) {
+                        $tc = $script:Soft.text
+                        $tw = [string]$hc.Topology
+                        $sub = "$e_[$($tc)m$tw$($script:AnsiReset) $e_[$($script:Soft.rule)m" + ('-' * [Math]::Max(3, 66 - $tw.Length)) + $script:AnsiReset
+                        $hdr += $(if ($hdr.Count) { "     $sub" } else { "   $sub" })
+                        $lastTopo = $hc.Topology
+                    }
+                    if ($hdr.Count) { $headers[$presetFiles.Count] = ($hdr -join "`n") }
                     $presetFiles += $pf
-                }
-            }
-
-            # Show-Menu takes numbers only - there is no letter escape - so the
-            # opt-out has to be the last numbered entry.
-            # Each preset lists its boards (role, MAC, member nickname) under the
-            # summary line, root last like the run order - "3 board(s)" alone
-            # didn't say WHICH boards, so telling two G402 presets apart meant
-            # opening each one.
-            $nickByMac = Get-MemberNicknameMap
-            $opts = @($presetFiles | ForEach-Object {
-                $c = Read-PresetFile -Path $_.FullName
-                if (-not $c) { "{0,-26} (unreadable)" -f $_.Name }
-                else {
-                    # attack / topology / location / scenario are the sub-heading above.
-                    # Date + time the preset was saved: the file's own savedAt
-                    # (Save-Preset), since a git pull resets the file's modified
-                    # time to the pull - the file time is only the fallback for
-                    # presets saved before savedAt existed.
-                    $when = $_.LastWriteTime
-                    if ($c.PSObject.Properties['savedAt'] -and $c.savedAt) {
-                        $parsed = [datetime]::MinValue
-                        if ([datetime]::TryParseExact([string]$c.savedAt, 'yyyy-MM-dd HH:mm',
-                                [Globalization.CultureInfo]::InvariantCulture,
-                                [Globalization.DateTimeStyles]::None, [ref]$parsed)) { $when = $parsed }
+                    $c = Read-PresetFile -Path $pf.FullName
+                    if (-not $c) { $opts += ("{0}   (unreadable file)" -f $pf.Name); continue }
+                    $cell = $cellOf[$pf.FullName]
+                    # Saved time: the file's own savedAt (a git pull resets the file time).
+                    $when = $whenOf[$pf.FullName]
+                    $roster = @((ConvertTo-Roster -Cfg $c).Roster)
+                    $short = { param($m) if ($m) { (Format-ShortMac $m).ToUpper() } else { '?' } }
+                    $key_ = @()
+                    foreach ($bd in $roster) {
+                        switch ($bd.Kind) {
+                            'attacker' { $key_ += ('atk ' + (& $short $bd.Mac)) }
+                            'A'        { $key_ += ('A ' + (& $short $bd.Mac)) }
+                            'B'        { $key_ += ('B ' + (& $short $bd.Mac)) }
+                        }
                     }
-                    $head = "{0,-44} {1} board(s), {2}" -f
-                        $_.Name, @($c.boards).Count, $when.ToString('MMM dd hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)
-                    $boardLines = @((ConvertTo-Roster -Cfg $c).Roster | ForEach-Object {
+                    $n = $roster.Count
+                    $boards = "{0} board{1}" -f $n, $(if ($n -eq 1) { '' } else { 's' })
+                    # attacker first, then tunnel end A before B - same order every row
+                    $key_ = @($key_ | Sort-Object { switch -Regex ($_) { '^atk' { 0 } '^A ' { 1 } default { 2 } } })
+                    if ($key_.Count) { $boards += '  ' + ($key_ -join ' ') }
+                    elseif ($n -eq 1 -and $roster[0].Role -eq 'root') { $boards += '  root only' }
+                    # File name vs contents: a re-saved preset can keep an old name
+                    # (e.g. 'tree-...' holding a linear setup). Flag it so nobody
+                    # picks by the name.
+                    $flag = ' '
+                    if ($cell) {
+                        $want = ('{0}-{1}-{2}-{3}' -f $cell.Attack, $cell.Topology, $cell.Location, $cell.Scenario).ToLower() -replace '^none-', 'baseline-' -replace '-partial-', '-partial_mesh-'
+                        $base_ = [IO.Path]::GetFileNameWithoutExtension($pf.Name).ToLower()
+                        if (-not $base_.StartsWith($want)) { $flag = '!'; $anyMismatch = $true }
+                    }
+                    $atkTxt = if ($cell) { $(if ($cell.Attack -eq 'none') { 'baseline' } else { $cell.Attack }) } else { '?' }
+                    # Each column padded as PLAIN text first, then coloured - an ANSI
+                    # code inside -f padding would count as width and break the columns.
+                    # Colours = $script:Soft (calm palette): meaning only.
+                    $paint = {
+                        param([string]$Text, [int]$Width, [string]$Code)
+                        $plain = $Text.PadRight($Width)
+                        if ($Code) { "$([char]27)[$($Code)m$plain$($script:AnsiReset)" } else { $plain }
+                    }
+                    $atkKey = if ($atkTxt -eq 'baseline') { 'BASELINE' } else { $atkTxt.ToUpper() }
+                    $nBoards = ("{0} board{1}" -f $n, $(if ($n -eq 1) { '' } else { 's' }))
+                    $keyTxt  = $boards.Substring($nBoards.Length).Trim()
+                    $row = (& $paint $atkTxt 10 (Get-SoftAttackColor $cell.Attack)) +
+                           (& $paint ([string]$cell.Topology) 9 $script:Soft.text) +
+                           (& $paint ([string]$cell.Location) 13 $script:Soft.text) +
+                           (& $paint ([string]$cell.Scenario) 11 $script:Soft.text) +
+                           (& $paint $nBoards 10 $script:Soft.dim) +
+                           (& $paint $keyTxt 17 $script:Soft.amber) +
+                           (& $paint ($when.ToString('MMM dd  hh:mm tt', [Globalization.CultureInfo]::InvariantCulture)) 17 $script:Soft.dim) +
+                           $(if ($flag -eq '!') { "$([char]27)[$($script:Soft.amber)m!$($script:AnsiReset)" } else { ' ' })
+                    # FULL board list under the row (oct. 17 2026: the team reads the
+                    # MACs here to tell presets apart). Indented under the row's text,
+                    # one aligned line per board: role, full MAC, member nickname.
+                    $ind = $boardIndent
+                    # Display order only: the boards that matter first, root last.
+                    $shown = @($roster | Sort-Object { switch ($_.Kind) { 'attacker' { 0 } 'A' { 1 } 'B' { 2 } 'root' { 9 } default { if ($_.Role -eq 'root') { 9 } else { 5 } } } }, Label)
+                    $boardLines = @($shown | ForEach-Object {
                         $role = Get-BoardColorRole $_
                         $roleText = switch ($_.Kind) { 'A' { 'Node A' } 'B' { 'Node B' } default { $role } }
                         $mac  = if ($_.Mac) { $_.Mac } else { 'MAC not recorded' }
                         $nick = '-'
                         if ($_.Mac -and $nickByMac.Count -gt 0) {
-                            $short = Format-ShortMac $_.Mac
-                            if ($nickByMac.ContainsKey($short)) { $nick = $nickByMac[$short] }
+                            $sm = Format-ShortMac $_.Mac
+                            if ($nickByMac.ContainsKey($sm)) { $nick = $nickByMac[$sm] }
                         }
-                        "      {0} {1,-17}  {2}" -f (Colorize-Role $roleText.PadRight(8) $role), $mac, $nick
+                        "{0}{1}  {2,-17}   $([char]27)[$($script:Soft.dim)m{3}$($script:AnsiReset)" -f $ind, (Format-SoftRole $roleText.PadRight(9) $role), $mac, $nick
                     })
-                    (@($head) + $boardLines) -join "`n"
+                    $opts += ((@($row) + $boardLines) -join "`n")
                 }
-            })
-            # A blank line after each preset's board list so the blocks don't run
-            # together - except where a member heading follows, since Show-Menu
-            # already prints a blank line above every heading.
+            }
+            # A blank line between presets so the board lists don't run together
+            # (none where a group heading follows - Show-Menu spaces those itself).
+            $rule = "`n" + $boardIndent + "$([char]27)[$($script:Soft.rule)m" + ('-' * 74) + $script:AnsiReset
             for ($oi = 0; $oi -lt $opts.Count; $oi++) {
-                if (-not $headers.ContainsKey($oi + 1)) { $opts[$oi] += "`n" }
+                if (-not $headers.ContainsKey($oi + 1)) { $opts[$oi] += $rule }
             }
             $opts += 'No preset - answer the menus instead'
+            if ($anyMismatch) {
+                Write-Host ""
+                Write-Host "  ! = the file NAME does not match what the preset contains (an old name kept after editing)." -ForegroundColor DarkGray
+                Write-Host "    Trust the columns, not the name." -ForegroundColor DarkGray
+            }
 
-            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers -AllowDelete
+            $idx = Show-Menu -Title 'Load a saved preset?' -Options $opts -DefaultIndex 0 -GroupHeaders $headers -AllowDelete -AllowBack
+            if ($idx -eq -1) { continue }   # 'b' -> back to "whose presets?"
             if ($idx -eq -2) {
                 # d<N> / d3,5 / d3-5 on the list: delete on the spot, no need to open
                 # the preset first. Numbers refer to the list as shown, so the whole
@@ -7961,10 +8341,10 @@ if (-not $Preset) {
 
                     4 {
                         Write-Host ""
-                        Write-Host "This sends SET_LOCATION over USB to whatever is CURRENTLY running on each" -ForegroundColor DarkGray
-                        Write-Host "port -- it only works if that board already booted this session (mesh" -ForegroundColor DarkGray
-                        Write-Host "joined). It fixes a card an already-running board reported broken; it does" -ForegroundColor DarkGray
-                        Write-Host "NOT help a board that hasn't been flashed/booted yet." -ForegroundColor DarkGray
+                        Write-Host "  This sends SET_LOCATION over USB to whatever is CURRENTLY running on each" -ForegroundColor DarkGray
+                        Write-Host "  port -- it only works if that board already booted this session (mesh" -ForegroundColor DarkGray
+                        Write-Host "  joined). It fixes a card an already-running board reported broken; it does" -ForegroundColor DarkGray
+                        Write-Host "  NOT help a board that hasn't been flashed/booted yet." -ForegroundColor DarkGray
                         $presetLoc = [string]$cfg.location
                         Write-Host ""
                         Write-Host ("Reading each board's current location.txt ({0} board(s), a few seconds each) ..." -f $preview.Count) -ForegroundColor DarkGray
@@ -8028,12 +8408,12 @@ if (-not $Preset) {
                         else {
                             $att = $preview | Where-Object { $_.Kind -eq 'attacker' } | Select-Object -First 1
                             if (-not $att) {
-                                Write-Host "This preset has no attacker board - nothing to fix." -ForegroundColor Yellow
+                                Write-Host "  This preset has no attacker board - nothing to fix." -ForegroundColor Yellow
                             }
                             else {
                                 $wantMac = Get-ConfiguredAttackerMac
                                 if (-not $wantMac) {
-                                    Write-Host "Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h - edit it by hand." -ForegroundColor Yellow
+                                    Write-Host "  Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h - edit it by hand." -ForegroundColor Yellow
                                 }
                                 elseif ($DryRun) {
                                     # This action's whole point is a fresh hardware read, so there is
@@ -8275,7 +8655,7 @@ if ($Preset) {
 
     if (-not $bannerShown) {
         Write-Host ""
-        Write-Host "=== Capture run wizard ===" -ForegroundColor Green
+        Write-AppBanner
         $bannerShown = $true
     }
     # The picker already showed the file and its full contents - don't repeat it.
@@ -8307,7 +8687,7 @@ if ($Preset) {
     $remoteHere = @($roster | Where-Object { -not $_.Port })
     if ($remoteHere.Count -gt 0) {
         Write-Host ""
-        Write-Host "This preset records these boards as on ANOTHER laptop (no COM port saved):" -ForegroundColor Yellow
+        Write-Host "  This preset records these boards as on ANOTHER laptop (no COM port saved):" -ForegroundColor Yellow
         foreach ($r in $remoteHere) {
             $lbl = if ($r.Label) { $r.Label } else { '(no label)' }
             Write-Host ("  {0,-10} {1}" -f $lbl, $r.Display) -ForegroundColor Yellow
@@ -8340,15 +8720,15 @@ if ($Preset) {
 
     if ($missing.Count -gt 0) {
         Write-Host ""
-        Write-Host "These ports in the preset are not plugged in right now:" -ForegroundColor Yellow
+        Write-Host "  These ports in the preset are not plugged in right now:" -ForegroundColor Yellow
         foreach ($m in $missing) {
             Write-Host ("  {0,-8} {1,-7} {2}" -f $m.Label, $m.Port, $m.Display) -ForegroundColor Yellow
         }
         $toPick = $missing
         if ($canReadMacs) {
-            Write-Host "COM numbers follow the USB socket, not the board - moving boards to other" -ForegroundColor DarkGray
-            Write-Host "sockets or a hub renumbers them. The preset recorded each board's MAC, so" -ForegroundColor DarkGray
-            Write-Host "the wizard can find which port each one is on now." -ForegroundColor DarkGray
+            Write-Host "  COM numbers follow the USB socket, not the board - moving boards to other" -ForegroundColor DarkGray
+            Write-Host "  sockets or a hub renumbers them. The preset recorded each board's MAC, so" -ForegroundColor DarkGray
+            Write-Host "  the wizard can find which port each one is on now." -ForegroundColor DarkGray
             $findAns = Read-Line "`nFind the boards by their recorded MAC? (reads each plugged-in ESP32 port, briefly resets it) [Y/n] > "
             if ($findAns -ne 'n' -and $findAns -ne 'N') {
                 $sync     = Sync-RosterPortsByMac -Roster $roster -Ports $livePorts
@@ -8358,7 +8738,7 @@ if ($Preset) {
         }
         elseif ($haveMacs) {
             $why = if ($DryRun) { 'dry run' } else { '-SkipMacCheck' }
-            Write-Host "Not reading boards to match them by MAC ($why) - pick the ports by hand." -ForegroundColor DarkGray
+            Write-Host "  Not reading boards to match them by MAC ($why) - pick the ports by hand." -ForegroundColor DarkGray
         }
     }
     elseif ($canReadMacs) {
@@ -8375,7 +8755,7 @@ if ($Preset) {
 
     if ($toPick.Count -gt 0) {
         Write-Host ""
-        Write-Host "These boards still need a port:" -ForegroundColor Yellow
+        Write-Host "  These boards still need a port:" -ForegroundColor Yellow
         foreach ($m in $toPick) {
             $macTxt = if ($m.Mac) { $m.Mac } else { 'no MAC recorded' }
             Write-Host ("  {0,-8} was {1,-7} {2}  ({3})" -f $m.Label, $m.Port, $m.Display, $macTxt) -ForegroundColor Yellow
@@ -8439,7 +8819,7 @@ else {
     # ------------------------------------------------------- from menus -----
     if (-not $bannerShown) {
         Write-Host ""
-        Write-Host "=== Capture run wizard ===" -ForegroundColor Green
+        Write-AppBanner
         if ($DryRun) { Write-Host "DRY RUN - nothing will be flashed." -ForegroundColor Yellow }
         $bannerShown = $true
     }
@@ -8572,10 +8952,10 @@ else {
                     }
 
                     Write-Host ""
-                    Write-Host "Is this ONE experiment's boards ALSO split across other laptops? e.g. this" -ForegroundColor DarkGray
-                    Write-Host "laptop runs the root + some children, another runs the attacker + the rest." -ForegroundColor DarkGray
-                    Write-Host "Answer the roster questions below for the FULL experiment on every laptop," -ForegroundColor DarkGray
-                    Write-Host "then mark which of the OTHER boards are physically here when asked." -ForegroundColor DarkGray
+                    Write-Host "  Is this ONE experiment's boards ALSO split across other laptops? e.g. this" -ForegroundColor DarkGray
+                    Write-Host "  laptop runs the root + some children, another runs the attacker + the rest." -ForegroundColor DarkGray
+                    Write-Host "  Answer the roster questions below for the FULL experiment on every laptop," -ForegroundColor DarkGray
+                    Write-Host "  then mark which of the OTHER boards are physically here when asked." -ForegroundColor DarkGray
                     $multiAns = Read-Line "`nSplit across multiple laptops? [y/N] (or 'b' back, 'm' main menu) > "
                     if (Test-BackAnswer $multiAns) { continue rootStep }
                     $multiLaptop = ($multiAns -eq 'y' -or $multiAns -eq 'Y')
@@ -8586,8 +8966,8 @@ else {
 
             6 {
                 Write-Host ""
-                Write-Host "CHILD boards = every physical ESP32 EXCEPT the root - you'll pick the root" -ForegroundColor DarkGray
-                Write-Host "separately in the next step, so don't count it here." -ForegroundColor DarkGray
+                Write-Host "  CHILD boards = every physical ESP32 EXCEPT the root - you'll pick the root" -ForegroundColor DarkGray
+                Write-Host "  separately in the next step, so don't count it here." -ForegroundColor DarkGray
                 Write-Host "  e.g. 3 ESP32s total (1 root + 2 children)  -> enter 2" -ForegroundColor DarkGray
                 Write-Host "       10 ESP32s total (1 root + 9 children) -> enter 9" -ForegroundColor DarkGray
                 Write-Host "       just the root, no children at all     -> enter 0" -ForegroundColor DarkGray
@@ -8644,17 +9024,17 @@ else {
                     if ($localNeeded -gt $ports.Count) {
                         Write-Host ""
                         Write-Host ("{0} boards need ports but only {1} are plugged in right now." -f $localNeeded, $ports.Count) -ForegroundColor Yellow
-                        Write-Host "When you reach a board that isn't plugged in yet, pick 'a' at the port prompt -" -ForegroundColor Yellow
-                        Write-Host "swap it onto a free USB port and the wizard will find it for you." -ForegroundColor Yellow
+                        Write-Host "  When you reach a board that isn't plugged in yet, pick 'a' at the port prompt -" -ForegroundColor Yellow
+                        Write-Host "  swap it onto a free USB port and the wizard will find it for you." -ForegroundColor Yellow
                     }
                 }
 
                 if ($multiLaptop -and $childCount -gt 0) {
                     Write-Host ""
                     Write-Host ("Now naming all {0} children one at a time. For EACH one, after its label," -f $childCount) -ForegroundColor Cyan
-                    Write-Host "you'll be asked 'Is it plugged into THIS laptop?' - say Y only for a board" -ForegroundColor Cyan
-                    Write-Host "physically at your desk right now; say N for anything on another laptop" -ForegroundColor Cyan
-                    Write-Host "(it gets recorded as remote and skipped - no port question for it)." -ForegroundColor Cyan
+                    Write-Host "  you'll be asked 'Is it plugged into THIS laptop?' - say Y only for a board" -ForegroundColor Cyan
+                    Write-Host "  physically at your desk right now; say N for anything on another laptop" -ForegroundColor Cyan
+                    Write-Host "  (it gets recorded as remote and skipped - no port question for it)." -ForegroundColor Cyan
                 }
 
                 $i = 1
@@ -8832,7 +9212,7 @@ else {
                         $menuLabels += 'Neither - BOTH tunnel ends are on ANOTHER laptop'
                     }
 
-                    $idxA = Show-Menu -Title 'WIRED TUNNEL BOARD 1 of 2 (wormhole, labelled Node A) - either cable end is fine: at run start the two boards pick A/B themselves by depth (deeper = B); this choice is only the backup if the cable link fails' -Options $menuLabels -AllowBack
+                    $idxA = Show-Menu -Title 'TUNNEL CABLE - board 1 of 2: pick EITHER board on the UART cable. No A/B choice here: at run start the two boards decide entry/exit themselves by depth, and the root will not start until they agree' -Options $menuLabels -AllowBack
                     if ($idxA -eq -1) { Undo-LastChild; $step = 7; continue flow }
 
                     if ($multiLaptop -and $idxA -eq $bothRemoteIdx) {
@@ -8890,7 +9270,7 @@ else {
                     # A be local while B is remote.
                     $idxB = -1
                     while ($true) {
-                        $idxB = Show-Menu -Title 'WIRED TUNNEL BOARD 2 of 2 (wormhole, labelled Node B) - the OTHER end of the same UART cable' -Options $labels -AllowBack
+                        $idxB = Show-Menu -Title 'TUNNEL CABLE - board 2 of 2: the OTHER board on the same UART cable' -Options $labels -AllowBack
                         if ($idxB -eq -1) { continue flow }   # re-ask Node A (step 8 re-entry strips synthetics)
                         if ($idxB -eq $idxA) {
                             Write-Host "  Pick the OTHER end of the cable - board 2 must be a different board from board 1." -ForegroundColor Yellow
@@ -9113,7 +9493,7 @@ if ($remoteBoards.Count -gt 0) {
 }
 if ($runRoster.Count -eq 0) {
     Write-Host ""
-    Write-Host "No boards on THIS laptop - nothing to flash/run/save here." -ForegroundColor Yellow
+    Write-Host "  No boards on THIS laptop - nothing to flash/run/save here." -ForegroundColor Yellow
     return
 }
 
@@ -9124,9 +9504,9 @@ $swapMode = ($distinct.Count -lt $runRoster.Count) -or ($distinct.Count -gt (Get
 
 if ($swapMode) {
     Write-Host ""
-    Write-Host "More boards than free USB ports: some will need to be swapped in during the" -ForegroundColor Yellow
-    Write-Host "run. Right before such a board's turn, the wizard checks whether its port is" -ForegroundColor Yellow
-    Write-Host "still live and, if not, pauses and auto-detects the new one." -ForegroundColor Yellow
+    Write-Host "  More boards than free USB ports: some will need to be swapped in during the" -ForegroundColor Yellow
+    Write-Host "  run. Right before such a board's turn, the wizard checks whether its port is" -ForegroundColor Yellow
+    Write-Host "  still live and, if not, pauses and auto-detects the new one." -ForegroundColor Yellow
 }
 
 $cleanBuild = $false   # set below only if the user opts into it at the prompt
@@ -9157,9 +9537,9 @@ if ($attack -eq 'blackhole') {
         # silently trusting whatever mesh_config.h already happens to hold.
         if ($victimCount -eq 0) {
             Write-Host ""
-            Write-Host "WARNING: this roster has an attacker but NO local victims." -ForegroundColor Red
-            Write-Host "Nothing on THIS laptop addresses probes to it, so it contributes no attack" -ForegroundColor Red
-            Write-Host "signature from here (other laptops' victims may still see it)." -ForegroundColor Red
+            Write-Host "  WARNING: this roster has an attacker but NO local victims." -ForegroundColor Red
+            Write-Host "  Nothing on THIS laptop addresses probes to it, so it contributes no attack" -ForegroundColor Red
+            Write-Host "  signature from here (other laptops' victims may still see it)." -ForegroundColor Red
         }
 
         $wantMac = Get-ConfiguredAttackerMac
@@ -9174,8 +9554,8 @@ if ($attack -eq 'blackhole') {
             Write-Host ("Not asking for {0}'s MAC ({1})." -f $remoteAttacker.Label, $why) -ForegroundColor DarkGray
         }
         else {
-            Write-Host "Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
-            Write-Host "board', run on the ATTACKER'S laptop), then type the printed MAC back here." -ForegroundColor DarkGray
+            Write-Host "  Get it from that laptop first (run_wizard.ps1, or menu.ps1's 'Identify a" -ForegroundColor DarkGray
+            Write-Host "  board', run on the ATTACKER'S laptop), then type the printed MAC back here." -ForegroundColor DarkGray
             $typedMac = Read-RemoteAttackerMac -Who $remoteAttacker.Label -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
 
             if (-not $typedMac) {
@@ -9186,7 +9566,7 @@ if ($attack -eq 'blackhole') {
             }
             else {
                 Write-Host ""
-                Write-Host "MISMATCH - victims built on THIS laptop would carry NO attack signature." -ForegroundColor Red
+                Write-Host "  MISMATCH - victims built on THIS laptop would carry NO attack signature." -ForegroundColor Red
                 Write-Host ("  mesh_config.h expects : {0}" -f $wantMac) -ForegroundColor Red
                 Write-Host ("  you entered           : {0}" -f $typedMac) -ForegroundColor Red
 
@@ -9211,7 +9591,7 @@ if ($attack -eq 'blackhole') {
                         Write-Host "  Continuing without fixing - victims built here will carry no attack signature." -ForegroundColor Yellow
                     }
                     2 {
-                        Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
+                        Write-Host "  Aborted - nothing flashed." -ForegroundColor Yellow
                         return
                     }
                 }
@@ -9227,7 +9607,7 @@ if ($attack -eq 'blackhole') {
             # load-bearing for STAR (D-16): without it they fall back to this
             # laptop's mesh_config.h and, if stale, never join (oct. 1, 2026).
             Write-Host ""
-            Write-Host "No attacker board is recorded in this roster, but it has local victim(s)." -ForegroundColor Yellow
+            Write-Host "  No attacker board is recorded in this roster, but it has local victim(s)." -ForegroundColor Yellow
             Write-Host "  If the attacker is on ANOTHER laptop, type its MAC (printed by that laptop's" -ForegroundColor DarkGray
             Write-Host "  wizard) so it is built into the victims here. Blank = there is no attacker." -ForegroundColor DarkGray
             if ($SkipMacCheck -or $DryRun) {
@@ -9237,23 +9617,23 @@ if ($attack -eq 'blackhole') {
                 $typedMac = Read-RemoteAttackerMac -Who 'Attacker' -LocalMacs @($roster | Where-Object { $_.Port -and $_.Mac } | ForEach-Object { $_.Mac })
             }
             if (-not $typedMac) {
-                Write-Host "WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
-                Write-Host "blackhole to observe and the capture carries no attack signature." -ForegroundColor Red
+                Write-Host "  WARNING: no attacker - no node will drop transiting traffic, so there is no" -ForegroundColor Red
+                Write-Host "  blackhole to observe and the capture carries no attack signature." -ForegroundColor Red
             }
         }
     }
     else {
         if ($victimCount -eq 0) {
             Write-Host ""
-            Write-Host "WARNING: this roster has an attacker but NO victims." -ForegroundColor Red
-            Write-Host "No probes will be generated, so nothing transits the attacker and there is" -ForegroundColor Red
-            Write-Host "no blackhole to observe - the capture carries no attack signature." -ForegroundColor Red
+            Write-Host "  WARNING: this roster has an attacker but NO victims." -ForegroundColor Red
+            Write-Host "  No probes will be generated, so nothing transits the attacker and there is" -ForegroundColor Red
+            Write-Host "  no blackhole to observe - the capture carries no attack signature." -ForegroundColor Red
         }
 
         $wantMac = Get-ConfiguredAttackerMac
         Write-Host ""
         if (-not $wantMac) {
-            Write-Host "Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h - verify it by hand." -ForegroundColor Yellow
+            Write-Host "  Could not read BLACKHOLE_ATTACKER_MAC from mesh_config.h - verify it by hand." -ForegroundColor Yellow
         }
         else {
             Write-Host ("mesh_config.h BLACKHOLE_ATTACKER_MAC = {0}" -f $wantMac) -ForegroundColor Cyan
@@ -9283,7 +9663,7 @@ if ($attack -eq 'blackhole') {
                 if ($gotMac) { $macsRead[$att.Port] = $gotMac }
 
                 if (-not $gotMac) {
-                    Write-Host "Could not read that board's MAC (port busy, no board, or esptool missing)." -ForegroundColor Yellow
+                    Write-Host "  Could not read that board's MAC (port busy, no board, or esptool missing)." -ForegroundColor Yellow
                     $ans = Read-Line "Continue without verifying? [y/N] > "
                     if ($ans -ne 'y' -and $ans -ne 'Y') { Write-Host "Aborted." -ForegroundColor Yellow; return }
                 }
@@ -9296,7 +9676,7 @@ if ($attack -eq 'blackhole') {
                 }
                 else {
                     Write-Host ""
-                    Write-Host "MISMATCH - this run would produce NO attack signature." -ForegroundColor Red
+                    Write-Host "  MISMATCH - this run would produce NO attack signature." -ForegroundColor Red
                     Write-Host ("  mesh_config.h expects : {0}" -f $wantMac) -ForegroundColor Red
                     Write-Host ("  {0} on {1} actually is : {2}" -f $att.Label, $att.Port, $gotMac) -ForegroundColor Red
 
@@ -9327,7 +9707,7 @@ if ($attack -eq 'blackhole') {
                             Write-Host "  Continuing without fixing - this run will carry no attack signature." -ForegroundColor Yellow
                         }
                         2 {
-                            Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
+                            Write-Host "  Aborted - nothing flashed." -ForegroundColor Yellow
                             return
                         }
                     }
@@ -9341,7 +9721,7 @@ elseif ($attack -eq 'wormhole') {
     $nb = $children | Where-Object { $_.Kind -eq 'B' } | Select-Object -First 1
     Write-Host ""
     if ($na -and $nb) {
-        Write-Host "Before flashing, confirm the A<->B cable is wired between" -ForegroundColor Yellow
+        Write-Host "  Before flashing, confirm the A<->B cable is wired between" -ForegroundColor Yellow
         Write-Host "  $($na.Label) and $($nb.Label), and that uart_link_test passed" -ForegroundColor Yellow
         Write-Host "  (main menu > MAINTENANCE > Wormhole UART tunnel test)." -ForegroundColor Yellow
         # oct. 14 2026: a reversed-ends run was finished, analysed and pushed before
@@ -9355,7 +9735,7 @@ elseif ($attack -eq 'wormhole') {
         # Roster has only one tunnel end - its A<->B cable partner isn't in this run.
         $end = if ($na) { $na } else { $nb }
         Write-Host ("This roster flashes wormhole Node {0} ({1}) without its A<->B cable partner." -f $end.Kind, $end.Label) -ForegroundColor Yellow
-        Write-Host "Both ends must be wired + uart_link_test'd together before a real capture." -ForegroundColor Yellow
+        Write-Host "  Both ends must be wired + uart_link_test'd together before a real capture." -ForegroundColor Yellow
     }
     # else: this roster flashes neither tunnel end (controls/root only) - no cable note.
 }
@@ -9399,7 +9779,7 @@ if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt
         }
     }
     Write-Host ""
-    Write-Host "The root will NOT start the run until every child is in the mesh." -ForegroundColor Cyan
+    Write-Host "  The root will NOT start the run until every child is in the mesh." -ForegroundColor Cyan
     Write-Host "  Count EVERY non-root board flashed on another laptop - victims included, not just" -ForegroundColor DarkGray
     Write-Host ("  the {0} already in this roster. Ask the other laptops if unsure." -f $known) -ForegroundColor DarkGray
     if ($defRemote -ge 0) {
@@ -9436,7 +9816,7 @@ if ($rootIsLocal -and (($multiLaptop -eq $true) -or $script:remoteChildCount -gt
 $script:rootPostExport = 'analyze'
 if ($rootIsLocal) {
     Write-Host ""
-    Write-Host "After the ROOT exports, what should run?" -ForegroundColor Cyan
+    Write-Host "  After the ROOT exports, what should run?" -ForegroundColor Cyan
     Write-Host "   [1] Auto-trim + analyze (M6-M8)   - children's CSVs already exported over USB"
     Write-Host "   [2] Auto-trim only                - children come in later from SD cards; run analyze.ps1 then"
     Write-Host "   [3] Neither - export only"
@@ -9497,7 +9877,7 @@ if ($attack -eq 'blackhole') {
         Write-Host "  (this laptop's mesh_config.h no longer decides it)." -ForegroundColor DarkGray
     }
     elseif ($topology -eq 'star') {
-        Write-Host "WARNING: the attacker's MAC is unknown on this laptop, so victims fall back to" -ForegroundColor Red
+        Write-Host "  WARNING: the attacker's MAC is unknown on this laptop, so victims fall back to" -ForegroundColor Red
         Write-Host ("  mesh_config.h ({0}). In STAR + blackhole victims join ONLY that board -" -f (Get-ConfiguredAttackerMac)) -ForegroundColor Red
         Write-Host "  if it is not this run's attacker, no victim joins. Abort at the plan and fix the MAC." -ForegroundColor Red
     }
@@ -9847,7 +10227,7 @@ if (-not $DryRun) {
     if ($pbAns -ne 'n' -and $pbAns -ne 'N') {
         if ($cleanBuild) {
             Write-Host ""
-            Write-Host "Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
+            Write-Host "  Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
             foreach ($r in @($buildRoot, $shortBuildRoot)) {
                 Remove-Item -Recurse -Force (Join-Path $r 'child_node\build_*') -ErrorAction SilentlyContinue
                 Remove-Item -Recurse -Force (Join-Path $r 'root_node\build_*')  -ErrorAction SilentlyContinue
@@ -9894,7 +10274,7 @@ if (-not $DryRun) {
         if ($failed.Count -gt 0) {
             Write-Host ""
             Write-Host ("BUILD FAILED for: {0}" -f ($failed -join ', ')) -ForegroundColor Red
-            Write-Host "Nothing was flashed. Fix the compile error above and re-run the wizard." -ForegroundColor Red
+            Write-Host "  Nothing was flashed. Fix the compile error above and re-run the wizard." -ForegroundColor Red
             return
         }
         Write-Host ""
@@ -9915,8 +10295,8 @@ if ($preBuilt) {
     if ($nextIdx -in @(1, 2)) { & $savePresetFlow $false }
     if ($nextIdx -in @(2, 3)) {
         Write-Host ""
-        Write-Host "Stopped before flashing - no board was touched." -ForegroundColor Yellow
-        Write-Host "Builds are cached per COM port: rerun on the same ports and the flash step skips compiling." -ForegroundColor DarkGray
+        Write-Host "  Stopped before flashing - no board was touched." -ForegroundColor Yellow
+        Write-Host "  Builds are cached per COM port: rerun on the same ports and the flash step skips compiling." -ForegroundColor DarkGray
         if ($originalPreset) {
             # -Preset is the "just run this" entry point, so there is no mode menu
             # behind it to return to.
@@ -9932,7 +10312,7 @@ else {
 
 if ($DryRun) {
     Write-Host ""
-    Write-Host "DRY RUN - exact commands that would run:" -ForegroundColor Yellow
+    Write-Host "  DRY RUN - exact commands that would run:" -ForegroundColor Yellow
     if ($cleanBuild) {
         Write-Host "  (would first remove build_* under $buildRoot and $shortBuildRoot)" -ForegroundColor DarkGray
     }
@@ -9940,14 +10320,14 @@ if ($DryRun) {
         Write-Host ("  .\run.ps1 " + (Format-RunParams $p.Params)) -ForegroundColor DarkGray
     }
     Write-Host ""
-    Write-Host "Nothing was flashed." -ForegroundColor Yellow
+    Write-Host "  Nothing was flashed." -ForegroundColor Yellow
     return
 }
 
 if (-not $preBuilt) {
     $go = Read-Line "`nProceed? [y/N] > "
     if ($go -ne 'y' -and $go -ne 'Y') {
-        Write-Host "Aborted - nothing flashed." -ForegroundColor Yellow
+        Write-Host "  Aborted - nothing flashed." -ForegroundColor Yellow
         return
     }
 }
@@ -9995,7 +10375,7 @@ $script:NavLocked = $true
 
 if ($cleanBuild) {
     Write-Host ""
-    Write-Host "Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
+    Write-Host "  Removing build_* under $buildRoot and $shortBuildRoot ..." -ForegroundColor Yellow
     # BLACKHOLE_ATTACKER_MAC lives in the shared mesh_common header, which BOTH
     # projects compile against - so both build trees have to go, not just child_node.
     # Both roots: Get-SafeBuildDir puts over-long build dirs under the short one.
@@ -10006,12 +10386,12 @@ if ($cleanBuild) {
 }
 
 Write-Host ""
-Write-Host "Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too)." -ForegroundColor Yellow
+Write-Host "  Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too)." -ForegroundColor Yellow
 if ($children.Count -gt 0) {
     Write-Host ""
-    Write-Host "A CHILD flashed before the root has nothing to join yet, so it will spam" -ForegroundColor Yellow
+    Write-Host "  A CHILD flashed before the root has nothing to join yet, so it will spam" -ForegroundColor Yellow
     Write-Host "'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck." -ForegroundColor Yellow
-    Write-Host "It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see" -ForegroundColor Yellow
+    Write-Host "  It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see" -ForegroundColor Yellow
     Write-Host "'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on." -ForegroundColor Yellow
 }
 
@@ -10043,7 +10423,7 @@ if ($rootStep -and $plan[0].Board.Role -ne 'root' -and -not $DryRun) {
     $rp = $rootStep.Board.Port
     Write-Host ""
     Write-Host ("Parking the root on {0} (bootloader, firmware kept) - its OLD firmware would otherwise" -f $rp) -ForegroundColor Yellow
-    Write-Host "send a stale TERMINATE that stops the children before the new root even starts." -ForegroundColor Yellow
+    Write-Host "  send a stale TERMINATE that stops the children before the new root even starts." -ForegroundColor Yellow
     & esptool.py --chip esp32 --port $rp --after no_reset read_mac | Out-Null
     if ($LASTEXITCODE -eq 0) {
         & esptool.py --chip esp32 --port $rp --before no_reset --after no_reset read_mac | Out-Null
@@ -10141,7 +10521,7 @@ foreach ($p in $plan) {
         if ($b.Role -eq 'root') {
             Write-Host ""
             Write-Host ("WARNING: root step returned exit {0}." -f $LASTEXITCODE) -ForegroundColor Yellow
-            Write-Host "Exports should still be on disk - check the folders below before re-running." -ForegroundColor Yellow
+            Write-Host "  Exports should still be on disk - check the folders below before re-running." -ForegroundColor Yellow
         }
         else {
             Write-Host ""
@@ -10170,11 +10550,11 @@ Write-Host "  Exports  -> $exportDir" -ForegroundColor Green
 Write-Host "  Analysis -> $analysisDir" -ForegroundColor Green
 Write-Host "             (windowed_dataset.csv, feature_table.csv, eda_output\)" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "Check the attack signature: in the root's *_arrivals.csv, each victim's" -ForegroundColor DarkGray
-Write-Host "src_mac should go silent during gt_label=1 rows and resume at cooldown." -ForegroundColor DarkGray
+Write-Host "  Check the attack signature: in the root's *_arrivals.csv, each victim's" -ForegroundColor DarkGray
+Write-Host "  src_mac should go silent during gt_label=1 rows and resume at cooldown." -ForegroundColor DarkGray
 if ($attack -ne 'none') {
     Write-Host ""
-    Write-Host "Graded run? Record it:  python tools\run_matrix.py --autorecord" -ForegroundColor DarkGray
+    Write-Host "  Graded run? Record it:  python tools\run_matrix.py --autorecord" -ForegroundColor DarkGray
 }
 }
 finally {
@@ -10201,16 +10581,17 @@ break wizard
 catch {
     # Only the 'm' escape is handled here; every real failure keeps its original
     # behaviour (message, stack, non-zero exit) by being rethrown untouched.
-    if ($_.Exception.Message -ne $script:MainMenuSignal) { throw }
+    if ($_.Exception.Message -ne $script:MainMenuSignal -and
+        $_.Exception.Message -ne $script:ToolBackSignal) { throw }
     if ($originalPreset) {
         # -Preset is the "just run this" entry point, so there is no mode menu
         # behind it to return to.
         Write-Host ""
-        Write-Host "Nothing to go back to (-Preset was given) - exiting." -ForegroundColor DarkGray
+        Write-Host "  Nothing to go back to (-Preset was given) - exiting." -ForegroundColor DarkGray
         break wizard
     }
     Write-Host ""
-    Write-Host "Back to the main menu - nothing was flashed." -ForegroundColor Cyan
+    Write-Host "  Back to the main menu - nothing was flashed." -ForegroundColor Cyan
     $bannerShown = $false
     continue wizard
 }

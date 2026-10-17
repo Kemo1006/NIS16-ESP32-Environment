@@ -217,6 +217,28 @@
  *  START_ANYWAY releases it, same as the roster gate. */
 #define TREE_GATE_STABLE_S     15U
 
+/** WORMHOLE SETUP GATE (oct. 16 2026) - every wormhole root build. On top of
+ *  the roster gate, Phase 0 waits until the heartbeat table shows exactly one
+ *  WORMHOLE_A and one WORMHOLE_B, both with the UART link OK in BOTH directions,
+ *  and A closer to the root than B (mesh_setup.c heartbeat_wormhole_ready), for
+ *  WORMHOLE_GATE_STABLE_S in a row. Why: the ends LOCK their roles at Phase 0;
+ *  a one-way jumper or a reversed placement could only be fixed by restarting
+ *  the run (oct. 16 linear runs: both B, then both A). START_ANYWAY releases it. */
+#define WORMHOLE_GATE_STABLE_S 15U
+
+/** MANUAL START GATE (oct. 16 2026, user request) - blackhole AND wormhole.
+ *  After every automatic gate passes, the root does NOT start Phase 0 by
+ *  itself: it prints a READY summary and waits for the operator to type START
+ *  in its monitor. Lets the team check / reshape the layout first instead of
+ *  racing a timer - moving boards after Phase 0 corrupts the baseline (tree
+ *  runs) and cannot change a locked wormhole role. START does not override a
+ *  failing gate; START_ANYWAY overrides everything. Build with
+ *  -DMANUAL_START_GATE=0 for the old automatic start. */
+#ifndef MANUAL_START_GATE
+#define MANUAL_START_GATE      1
+#endif
+#define MANUAL_START_LOG_S     15U   /* READY reminder cadence                 */
+
 /** Phase 0 — Baseline: normal operation, no manipulation. */
 #ifndef PHASE_BASELINE_S
 #define PHASE_BASELINE_S    300U       /* 5 minutes */

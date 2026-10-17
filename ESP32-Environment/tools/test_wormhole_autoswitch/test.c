@@ -39,6 +39,7 @@ static const uint8_t MAC2[6] = {0x20, 0x50, 0x0D, 0xE7, 0x1C, 0x38};   /* higher
 #define PEER_FRESH_MS_TEST 5000                 /* = PEER_FRESH_MS in the firmware */
 static bool link_12 = true, link_21 = true;   /* each direction of the cable */
 static int  noise   = 0;                       /* garbage bytes per transfer  */
+static bool echo_1  = false;                   /* b1's TX bridged to its own RX */
 static int  fails = 0, checks = 0;
 
 #define CHECK(cond, ...) do { checks++; if (cond) { printf("    ok   "); } \
@@ -52,6 +53,7 @@ static void wire(void)
         if (noise) { uint8_t g[64]; for (int i = 0; i < noise; i++) g[i] = (uint8_t)(0xA5 ^ i * 37); b2_deliver(g, noise); }
         b2_deliver(buf, n);
     }
+    if (echo_1 && n) b1_deliver(buf, n);
     n = b2_take_tx(buf, sizeof buf);
     if (link_21 && n) {
         if (noise) { uint8_t g[64]; for (int i = 0; i < noise; i++) g[i] = (uint8_t)(0x5A ^ i * 53); b1_deliver(g, noise); }
@@ -73,7 +75,7 @@ static void fresh(int l1, int l2)
 {
     g_now_us += 60 * 1000000LL;          /* far from any earlier scenario */
     g_phase = PHASE_ID_UNSET; g_terminated = false;
-    link_12 = link_21 = true; noise = 0;
+    link_12 = link_21 = true; noise = 0; echo_1 = false;
     b1_boot(MAC1, l1); b2_boot(MAC2, l2);
 }
 
@@ -136,8 +138,9 @@ int main(int argc, char **argv)
     printf("\n[3c] Half a cable: b1 -> b2 jumper bad, b2 -> b1 fine\n");
     fresh(1, 6); link_12 = false;
     run(7000);
-    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_NONE,
-          "b1 hears b2 (OK), b2 hears nothing (NO SIGNAL) - root sees ONE bad end");
+    CHECK(b1_hb_link() == WH_LINK_ONEWAY && b2_hb_link() == WH_LINK_NONE,
+          "b1 hears b2 but b2 is deaf (ONE-WAY), b2 hears nothing (NO SIGNAL)"
+          " - the root's wormhole gate holds Phase 0");
 
     printf("\n[3d] Cable pulled mid-run\n");
     fresh(1, 6); run(2000); g_phase = PHASE_ID_BASELINE; run(500);
@@ -217,6 +220,52 @@ int main(int argc, char **argv)
     printf("    note b1=%c b2=%c - a one-way cable cannot be fixed by software; the fallback"
            " error on b1 and the root's REVERSED/duplicate check are what catch it\n",
            b1_end(), b2_end());
+
+    printf("\n[9] oct. 16 2026 linear run: one-way cable, and the deaf board's fallback"
+           " AGREES with the hearing board's depth pick (both would be B)\n");
+    /* b1 = E618: fallback B, shallower (H4), DEAF (b2 -> b1 dead). b2 = 1C38:
+     * deeper (H6), hears b1. Old code: b2 deeper -> B by depth, b1 stuck on
+     * its fallback B -> BOTH B (the root printed "2 report WORMHOLE_B"). */
+    fresh(4, 6); link_21 = false;
+    run(7000);                                    /* past the deaf-detection grace */
+    CHECK(b1_end() != b2_end(), "pre-Phase-0: ends opposite despite the one-way cable"
+          " (b1=%c b2=%c)", b1_end(), b2_end());
+    CHECK(b1_end() == 'B' && b2_end() == 'A', "deaf b1 keeps its fallback B, hearing b2 takes A");
+    CHECK(b2_hb_link() == WH_LINK_ONEWAY && b1_hb_link() == WH_LINK_NONE,
+          "heartbeats: b2 ONE-WAY, b1 NO SIGNAL -> the root's gate holds Phase 0");
+    link_21 = true; run(3000);
+    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_OK, "jumper re-seated: both OK");
+    run(2000);
+    CHECK(b1_end() == 'A' && b2_end() == 'B',
+          "after the repair the ends re-pick BY DEPTH before Phase 0: shallow b1 = A,"
+          " deep b2 = B (b1=%c b2=%c)", b1_end(), b2_end());
+    g_phase = PHASE_ID_BASELINE; run(500);
+    CHECK(b1_locked() && b2_locked() && !b1_fallback() && !b2_fallback(),
+          "...and lock cleanly at Phase 0");
+
+    printf("\n[9b] Mirrored (oct. 16 log 2: both A): the deaf board's fallback is A\n");
+    /* b2 (fallback A) is deaf (b1 -> b2 dead) and SHALLOWER; b1 hears it, is deeper. */
+    fresh(6, 3); link_12 = false;
+    run(7000);
+    CHECK(b1_end() != b2_end(), "ends opposite (b1=%c b2=%c)", b1_end(), b2_end());
+    CHECK(b1_hb_link() == WH_LINK_ONEWAY && b2_hb_link() == WH_LINK_NONE,
+          "hearing b1 reports ONE-WAY, deaf b2 NO SIGNAL");
+
+    printf("\n[10] Oct. 17 linear run: b1's TX echoes into its OWN RX, b2 -> b1 dead\n");
+    /* 0C80 (b1, fallback B, deep H6) logged "Peer heard over UART: <its own
+     * MAC>"; 1C38 (b2, fallback A, H2) heard 0C80. Old code took the echo for
+     * the peer: b1 'UART OK', and the root saw 2 x WORMHOLE_B. */
+    fresh(2, 6); b1_set_layer(6); b2_set_layer(2); echo_1 = true; link_21 = false;
+    run(7000);
+    CHECK(b1_hb_link() == WH_LINK_ECHO, "b1 reports UART ECHO, not UART OK (got %u)", b1_hb_link());
+    CHECK(b2_hb_link() == WH_LINK_ONEWAY, "b2 hears b1 but b1 is deaf to b2: ONE-WAY (got %u)", b2_hb_link());
+    CHECK(b1_end() != b2_end(), "ends opposite despite the echo (b1=%c b2=%c)", b1_end(), b2_end());
+    echo_1 = false; link_21 = true; run(7000);
+    CHECK(b1_hb_link() == WH_LINK_OK && b2_hb_link() == WH_LINK_OK, "wiring fixed: both OK");
+    CHECK(b1_end() == 'B' && b2_end() == 'A', "re-picked by depth: deep b1 = B, shallow b2 = A");
+    g_phase = PHASE_ID_BASELINE; run(500);
+    CHECK(b1_locked() && b2_locked() && !b1_fallback() && !b2_fallback(), "locks cleanly at Phase 0");
+    opposite_and_consistent("[10]");
 
     printf("\n%d check(s), %d failure(s)\n", checks, fails);
     return fails ? 1 : 0;

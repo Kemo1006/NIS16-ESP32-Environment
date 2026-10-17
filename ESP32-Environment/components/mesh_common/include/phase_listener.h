@@ -211,6 +211,12 @@ void phase_listener_keep_running_after_terminate(void);
 void phase_listener_request_start_anyway(void);
 bool phase_listener_start_anyway_requested(void);
 
+/** START (serial, oct. 16 2026): the operator confirms the layout is right
+ *  and releases the root's MANUAL START gate (MANUAL_START_GATE). Unlike
+ *  START_ANYWAY it does NOT override a failing roster / tree / wormhole gate. */
+void phase_listener_request_start(void);
+bool phase_listener_start_requested(void);
+
 #ifdef __cplusplus
 }
 #endif

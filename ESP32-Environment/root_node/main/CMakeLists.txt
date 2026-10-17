@@ -31,6 +31,12 @@ if(DEFINED EXPECTED_CHILDREN)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE EXPECTED_CHILDREN=${EXPECTED_CHILDREN})
     message(STATUS "root_node: EXPECTED_CHILDREN=${EXPECTED_CHILDREN} (0 = roster gate off)")
 endif()
+# MANUAL_START_GATE (mesh_config.h, oct. 16 2026): 1 = root waits for START
+# before Phase 0 (default); -DMANUAL_START_GATE=0 = the old automatic start.
+if(DEFINED MANUAL_START_GATE)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE MANUAL_START_GATE=${MANUAL_START_GATE})
+    message(STATUS "root_node: MANUAL_START_GATE=${MANUAL_START_GATE}")
+endif()
 
 if(DEFINED TRAFFIC_PROFILE)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE TRAFFIC_PROFILE=${TRAFFIC_PROFILE})

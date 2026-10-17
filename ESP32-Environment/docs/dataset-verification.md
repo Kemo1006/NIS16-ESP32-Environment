@@ -16,6 +16,263 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
+## 🔎 VERIFICATION #40 — Oct 17, 2026 · ~10:10 PM — wormhole · linear · G402 · stationary r1 (oct. 14 3:02 PM recapture)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted
+> **Request:** "linear G402 stat has warning and it says I need to verify it but when I verify it still the warning persist"
+> (Campaign tile CHECK: "verification #12 said redo, but a newer capture exists" + "D6 asks for a recapture". The GUI's
+> Verify button runs the checks but writes no block and ticks no D-row, so the tile could never clear by itself.)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear | G402 | stationary | r1 | oct. 14 ~2:50–3:02 PM (Kyle's recapture after #12; `2f0c34d`) | root telem + arrivals, ends 0C80 (B) + 1C38 (A), 5 controls (`exports/.../stationary/*.csv`, NOT `trimmed/`) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Which files the analysis used | ✅ the recapture | `feature_table.csv` / `windowed_dataset.csv` `source_file` = the 2:50–3:02 PM files only. ⚠️ `exports/.../stationary/trimmed/` still holds the OLD 1:40 PM run (#12) - never point a tool at it by hand; analyze.ps1 re-trims |
+| `validate_integrity` | ✅ PASS (5 WARN) | 0 FAIL. The 5 controls are named `..._linear_none_...` (flashed before the oct. 14 wormhole-control fix) yet carry phase 2 rows - filename label only, their rows are phase-labelled correctly |
+| `verify_topology --expect linear` | ✅ | chain of 8, B0CB → ... → 0C80; baseline re-routing free; E618 1 parent switch outside the baseline |
+| `verify_attack` 3-sigma | ✅ 2/2 primaries | TunnelIntensity 0 → 1.000 and root-measured DuplicateRate 0 → 1.000 (normal sd 0 → z +inf); TunnelBytes 0 → 30 (support) |
+| Setup checks | ✅ all OK | one A + one B, roles stable, **A shallower than B** (1C38 layer 3, 0C80 layer 8 → 5 hops skipped), UART B sent ~180 / A received ~180 (100 %), root saw duplicates in 180 attack windows |
+| PDR (controls) | ✅ | all 5 controls 1.0000 baseline and attack (a wormhole duplicates, it does not drop) |
+| Tunnel latency (measured, not scored) | ℹ️ 29.3 ms | the two copies of B's probes reached the root 29.3 ms apart (#12's reversed run: 28 ms, the good #10 run: 2.8 ms) |
+
+**Verdict: ✅ WORMHOLE CONFIRMED - USABLE.** The oct. 14 3:02 PM capture (taken again after #12) fixes everything #12 found (ends no longer
+reversed, A shallower, tunnel 100 %). Supersedes #12 for this cell → checklist **D6 ticked**, C10 marked superseded.
+Footnote only: the 5 control files' names say `none` (old firmware label) - the folder and the phase column are what
+the analysis uses.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #39 — Oct 17, 2026 · ~6:30 PM — blackhole · tree · G402 · highload r1: file choice from the SD cards + trim + analysis
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted
+> **Request:** "check which files or datasets are the correct one ... you the one who choose for tree g402 blackhole highload
+> and also trim it then analysis it" (after node3 `20:80` showed only ABORTED files in the GUI)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | highload | r1 | oct. 17 ~5:00–5:41 PM (firmware built 4:55 PM) | root 3218 telem+arrivals, attacker 1C38 (already imported) + 6 victims read off their SD cards over USB (read-only, no reset, no delete) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Which file per board | ⚠️ chosen by content | Crashed boards left the run split over several boot files. One file per board (preprocess assumes one file = one run per node), picked with `trim_run.py`'s own rule (attack phase + progression, size = tiebreak): B768 b2 · D7B4 b4 (3/3 phases) · ED80 b4 · FE90 b4 (301/181/37 s, then PANIC) · E618 b3 (baseline + 79 s attack, then INT_WDT) · **0C80 b3 (attack 181 s + 21 s cooldown; its baseline is in b2, cut by a PANIC 12 s before the attack)** |
+| How each piece ENDED (card `runs.csv` → `ended_by`) | ❌ 5 firmware crashes | 0C80 PANIC · E618 PANIC → INT_WDT → PANIC · FE90 PANIC. NOT power cuts and NOT the GUI: every earlier run on all 7 cards ends POWERON/none, never a crash - PANIC/INT_WDT appear only in this 5 PM run. Victim-side firmware changes since the last commit are inert (enum value, GET_ID/START commands, attacker-MAC line overridden by `-DBH_ATTACKER_MAC_HEX`) - cause NOT found (no serial backtrace: children had no monitor during the run) |
+| A plain import would have kept | ❌ junk | `import_sdcard.py`'s "same node + repeat" guard keeps a board's FIRST piece - for FE90 and E618 that is stabilise-only (phase 255). Pieces were staged per folder and chosen by hand |
+| `validate_integrity` | ✅ PASS (6 WARN) | short/missing phases on 0C80, E618, FE90 (the crash cuts), B768 attack 126 s (heard the attack late), ED80 6.4 Hz sampling |
+| `verify_topology` | ❌ FAIL | B768: 3 parent switches, converged only at 542 s (inside baseline) - its path ran through boards that crashed and rebooted |
+| `verify_attack` 3-sigma | ✅ signature / ❌ setup | ForwardingRatio(attacker) 1.000 → 0.000 (z −152) and PDR → 0.761 pooled: 2/2 primaries PASS. Victims B768 0.24, 0C80 0.50; 4 boards above the attacker stay 1.00. **Setup FAIL: B768 changed parent during the attack** |
+
+**Verdict: ❌ BLACKHOLE NOT CONFIRMED - SETUP INVALID → recapture blackhole/tree/G402/highload.** The attack itself
+worked (attacker forwarded 0 %, both victims collapsed); the mesh around it did not hold because 3 victims crashed
+(PANIC / INT_WDT) and their children re-parented. Fix or at least CATCH the crash before the recapture: watch every
+child's serial port during the run so the crash backtrace is recorded (GUI change, oct. 17). Analysis tables written
+for the record under `datasets/analysis/blackhole/tree/G402/highload/`.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #38 — Oct 17, 2026 · ~2:40 AM — TOPOLOGY SWEEP of every live cell (redo list) + wizard navigation
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted
+> **Request:** "include data that has warnings on their topology - only a warning, but if it is really wrong tell the user
+> to redo it ... very smart and honest" + wizard: "add back to everything ... user friendly"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all (49 live cells) | all 4 | G402 · DLSU_Library · Yuchengco (+ home, off-plan) | all | latest per cell | sep. 30 – oct. 17 | `datasets/exports/**` raw telem CSVs |
+
+| Check | Result | Detail |
+|---|---|---|
+| Structure rebuilt from raw CSVs (`verify_topology` rules) | ⚠️ 1 new REDO | **blackhole/linear/Yuchengco/stationary: NOT a linear chain** - `ED80` had 2 children (a branch), plus `B768` re-routed during the baseline. Already REDO for 94.5 % coverage (Kyle's D7); this is a 2nd, independent reason |
+| Shared finding | ⚠️ team decision | all **11** live partial_mesh cells are structurally plain trees (no child ever used a 2nd parent) - checklist **B-pm**; shown ONCE in the redo list, not as 11 per-cell CHECKs |
+| Other topology notes | ✅ explained | wormhole/tree/G402/stationary = flat like a star (already REDO, D3); blackhole/tree/G402/stationary: `ED80` re-routed in the baseline + attack (already REDO, D1) |
+| Redo list result | ✅ | 5 REDO · 1 CHECK (wormhole/linear/G402: re-verify, #12/D6 superseded) · 40 OK (33 never checked by a person) |
+| Wizard navigation (`tools/test_wizard_nav.ps1`) | ✅ 15/15 | 'b' on every menu (previous question where one exists, else back to the menu the tool came from); 'm' unchanged; 'b' blocked after flashing starts; question chains step back one at a time; main menu renders with no errors. **Bug found + fixed:** `[Console]::WindowWidth` throws without a real console (transcripts) - the test now fails on any printed error (mutation-checked) |
+
+**Verdict: ✅ topology sweep clean apart from the cells already on the redo list; one new hard reason for
+blackhole/linear/Yuchengco/stationary. Wizard navigation verified by test, not yet clicked through live.**
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #37 — Oct 17, 2026 · ~2:30 AM — WORMHOLE END-TO-END · firmware auto-switch + root gates + verifier + preprocessing
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted (firmware, verifier, preprocess, tools)
+> **Request:** "check each topology and scenario for wormhole if every one has autoswitch ... is TunnelIntensity the only way
+> ... add other paper ... put a safety net ... make sure to fix the issue in wormhole. VERIFY EVERYTHING"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear, tree | DLSU_Library, G402, Yuchengco | stationary, highload | r1 | oct. 7 - oct. 16 | all 5 live wormhole cells + the user's two oct. 16 root logs (linear: both B, then both A) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Root cause of "both B" / "both A" (user logs) | ✅ found | A **one-way UART jumper**: one end hears the peer, the peer hears nothing and sits on its BUILD fallback. Before the lock, `decide_role` ignored the peer's `hears_peer` flag, so the hearing end could pick the SAME end (log 1: deaf E618 fallback B + deeper 1C38 -> B; log 2 after re-plugging: the other direction failed -> both A). The reversed ends at 105 s were boards moved AFTER Phase 0 (roles lock there) |
+| Topology / scenario coverage | ✅ same everywhere | `wormhole_victim.c` has no topology or scenario branch in the role logic - one image, one rule for linear/tree/star/partial and every scenario. Linear only exposed the cable fault |
+| Fix 1 - ends | ✅ | `peer_is_deaf()`: before the lock a deaf peer makes this end take the OPPOSITE role; new link state `WH_LINK_ONEWAY` ("UART ONE-WAY") in the heartbeat + a repeated error naming the jumper to re-seat |
+| Fix 2 - root wormhole gate | ✅ | `heartbeat_wormhole_ready()`: Phase 0 waits (WORMHOLE_GATE_STABLE_S = 15 s) for exactly 1 A + 1 B, both `UART OK` (both directions), both attached, A closer to the root than B. START_ANYWAY overrides |
+| Fix 3 - manual START gate (both attacks) | ✅ | `MANUAL_START_GATE` (default 1): after every automatic gate the root prints READY and waits for the operator to type **START** in its monitor; START never starts a broken wormhole. `-DMANUAL_START_GATE=0` restores the automatic start |
+| Host test (real `wormhole_victim.c`, simulated cable) | ✅ 62/62 | +[9] the oct. 16 linear case (old code: both B) and [9b] the mirror (both A): ends now opposite, ONE-WAY/NO SIGNAL reported, re-pick by depth after the jumper is fixed, clean lock. [3c] updated: the hearing end reports ONE-WAY, not OK |
+| Firmware builds (ESP-IDF 5.5.4) | ✅ 5/5, 0 warnings | root wormhole (roster gate on), root tree+blackhole, root without manual gate, wormhole end, blackhole victim. Not yet flashed / run on hardware |
+| Verifier - 2nd independent signature | ✅ | NEW primary **DuplicateRate** = share of Node B's windows in which the ROOT logged a probe twice (root-measured, independent of the attackers' own TunnelIntensity count) [Ramirez Gomez et al. 2019]. All 5 wormhole cells: **2/2 primaries** (linear/DLSU 0.012 -> 1.000, z 9.17; others normal 0 -> 1.000). Tests 21/21 |
+| Preprocessing - phase-change windows | ✅ | A window whose rows carry two real phases is now segment `transition` (excluded). Wormhole/tree/DLSU: B's baseline TunnelIntensity 1 -> **0**, 8 windows reclassified. Dry run on every attack cell: verdicts unchanged (one apparent change = a stale `trimmed/` folder in wormhole/linear/G402, not the fix) |
+
+### Findings
+- The auto-switch logic was right for every topology; what it lacked was using the peer's "I hear you" bit BEFORE the
+  lock. A one-way jumper is a WIRING fault software cannot repair - the fix makes it impossible to start a run on it.
+- `datasets/exports/wormhole/linear/G402/stationary/trimmed/` still holds the OLD reversed 1:40 PM run; analyze.ps1
+  re-trims so live tables are right, but do not point tools at that folder by hand.
+- Hardware still to prove: flash ROOT + both tunnel boards, pull one jumper on purpose -> root must say UART ONE-WAY and
+  hold Phase 0; re-seat -> READY -> type START.
+
+**Verdict: ✅ wormhole fixed in firmware (tests + builds), verifier has 2 independent primaries, every live wormhole cell
+CONFIRMED 2/2. ⚠️ Firmware not yet run on hardware - reflash root + tunnel boards before the next wormhole run.**
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #36 — Oct 16, 2026 · ~3:15 PM — WORMHOLE PIPELINE AUDIT · raw exports vs analysis · tree · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted analysis/verifier changes
+> **Request:** "fix the analysis and preprocessing etc of wormhole, check if there is issue there like calculations and compare it with the datasets itself"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 16 | `exports/.../trimmed/` (9 files) vs `analysis/.../feature_table.csv` (re-built) |
+
+| Check (feature table vs raw) | Result | Detail |
+|---|---|---|
+| Counter deltas per segment (all 6 counters, every labelled node) | ✅ match | e.g. B attack: tunnelled 179 (raw 181), tx 179 (181); root probes 1223 (1232). Shortfalls = rows inside discarded windows only |
+| TunnelIntensity (B `retry_count`, A `probes_count`) | ✅ match | B attack sum 179 = `retry_count_delta` 179; baseline 1 = the transition window (see below) |
+| Duplicates / TunnelLatency vs root arrivals | ✅ match | raw: 181 dup seq, all phase 2, spread 17.6 ms; table: 179 attack windows, 17.7 ms. 0 dups in raw phase 0/3 |
+| PDR (children) vs root arrivals by seq | ✅ match | `704B`, `2805` PDR 1.000 every phase = root logged every seq they sent |
+| Label vs segment vs window phase | ✅ consistent | attack ⇔ Label 2 ⇔ phase 2; baseline/cooldown ⇔ Label 0; excluded segments ⇔ Label NaN |
+| **Phase anchor for stalled boards** | ❌ → ✅ **fixed** (`analysis/preprocess.py`) | Bug: a node's phase anchor came only from KEPT windows. The 4 stalled boards' exit fell in discarded windows, so ALL their windows - incl. ~300 s of valid baseline - became `no_phase_seen`. Now `build_windows` records every window's phase and `assign_segments` falls back to it (same first-real-phase + root-restart rules). Result: baseline windows 1555 → 2028; the 4 boards' attack windows stay discarded (too few samples - correct). Dry-run on the only other cells with `no_phase_seen` (blackhole/tree/G402 burst + stationary): **identical** (their exclusions are real dropout / desync). `test_segments.py` passes |
+| Verifier after re-analysis | ✅ CONFIRMED | TunnelIntensity z **10.86** (was 8.91 with the smaller baseline). A's missing attack windows → WARN, not FAIL, because the root's duplicates can only come from A re-injecting (new test; with NO duplicates a missing A still FAILs). Tests 21/21; sweep of all 44 attack cells: only this cell's verdict changed |
+
+### Findings (not changed - for the team)
+- ⚠️ **Node B has PDR = NaN by design** (`features.compute_pdr_features` rule 1: PDR only on role `child`). Raw: root got every
+  B seq once in baseline/cooldown and twice in the attack (181 unique). Fine for the verdict (PDR is not a wormhole
+  signature) but B's PDR column is empty in the dataset - say so if the paper reports per-role PDR.
+- ⚠️ **One transition window per node is labelled baseline although it holds the first tunnelled probe** (window phase =
+  modal row). Gives B 1 tunnel count + 1 TunnelLatency value in the baseline. Negligible (baseline mean 0.009) - boundary
+  effect, not a bug.
+- ⚠️ **Cooldown is short in the table** (B 79 of ~120 s, `704B` 68 of 117) - discarded windows; B also bunched (6.5 %), the
+  same stall at a milder level.
+- The 4-board telemetry stall itself (#34) is unchanged - this only stops it from deleting their valid baseline.
+
+**Verdict: ✅ calculations match the raw data; one preprocessing bug fixed; WORMHOLE CONFIRMED.** Cell usability = D8.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #35 — Oct 16, 2026 · ~2:40 PM — VERIFIER FIX · wormhole · tree · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted verifier changes
+> **Request:** "fix this like why its inconcl and infeasible ... make sure that verification are based from a study"
+> + "is this real that tunnel isnt working ... please fix the verifier"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 16 | same feature table as #34 (no data changed) |
+
+| Check | Result | Detail |
+|---|---|---|
+| "Node A RECEIVED ~0 ... UART link carried nothing" | ✅ fixed (verifier bug) | It summed A's attack windows, and A has NONE (all `no_phase_seen`), so 0 = missing data, not a missing cable. A's raw `probes_count` (frames received from B) = 0 → 181. Now: A with no labelled attack windows → `-- cannot check UART delivery from Node A` (SKIP, not FAIL; `analysis/exposure.py`). A real cable fault (A has windows, ~0 received) still FAILs (test `test_no_uart_cable`) |
+| Summary line "A shallower than B, tunnel carried data" | ✅ fixed | was printed although neither was checked; now only when no check was skipped (`tools/attack_checks.py`) |
+| "topology: 2 node(s) ... not attached" | ✅ explained | NEW warn line names the nodes with no labelled window (`0C80, 1C38, FE90, ED80`) = a preprocessing gap, not evidence about the attack |
+| TunnelLatency `INCONCL` | ✅ now `N/A` + note | Correct by design: it is the gap between the 2 copies of one probe, which exist only while the tunnel runs → no baseline. The 3-sigma method (Zhukabayeva et al. 2025) needs a normal distribution, so it cannot apply. Attack value 18.2 ms reported descriptively = the timing mismatch of Hu, Perrig & Johnson (2003). Never counted in the verdict (unchanged) |
+| LatencyHopRatio `INFEASIBLE` | ✅ unchanged + WHY added | Unsynchronised clocks → relative one-way delay; normal mesh has rare 100s-of-ms spikes → baseline 45.9 ± 191.6, max attainable abs(z) 0.24. Secondary, never in the verdict. Raw check: B's latency median 21.5 ms baseline vs copies 28.8 / 43.9 ms in the attack - with a 1-hop shortcut the tunnel copy is NOT faster, so make no latency claim for this run |
+| Tests | ✅ 20/20 | `test_verify_attack.py` (+1 new: A unlabelled ≠ cable fault), `test_topology_graph.py` OK |
+| Sweep, all 3 wormhole cells, old vs new | ✅ only this cell changed | linear/DLSU + linear/G402 CONFIRMED before and after; tree/DLSU SETUP INVALID → **CONFIRMED** |
+
+### Findings
+- **"Baseline windows" ≠ the attack happening in the baseline.** The 3-sigma method compares the attack phase against
+  the NORMAL phase of the same run; `baseline windows: 1555` is the size of that normal reference.
+- **Attack verdict: ✅ WORMHOLE CONFIRMED** - TunnelIntensity z 8.91; root logged 2 copies of all 181 B probes; A's raw
+  counter 181 received / 181 re-injected (cite these raw counts for checklist B-wh, since A's windows are unlabelled).
+- **Dataset completeness unchanged from #34:** 4 of 8 boards (incl. A) have no labelled windows (telemetry stall). The
+  attack is verified; whether the CELL is usable with 4 boards missing is the team's call (D8: recapture, or footnote).
+
+**Verdict: ✅ ATTACK CONFIRMED (verifier false alarm removed). Cell usability → D8 decision.**
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #34 — Oct 16, 2026 · ~2:10 PM — wormhole · tree · DLSU_Library · stationary (re-check after #33 fixes)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted exports
+> **Request:** "check the trimmed why node 2 is doubled and after checking or fixing it proceed to analysis"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 16 | same as #33, B replaced by `child_node4_..._0149PM` (card `r4_b8`, 6667 rows); node2 `_0128PM` archived |
+
+| Check | Result | Detail |
+|---|---|---|
+| node2 doubled in `trimmed/` | ✅ fixed | A was exported twice (`_0128PM`, `_0132PM`); `_0128PM` = strict subset (0 rows differ, `_0132PM` +1 attack row). `trim_run.py` copies every export into `trimmed/`, so the duplicate came back on every run. Moved to `datasets/archive/2026-10-16_wormhole-tree-DLSU-dup-nodeA/` (README there) |
+| New B file | ✅ correct run | role `wormhole_b`, phases 0/2/3 = 3005/1806/1205 (= root), parent `FE90` layer 3 throughout |
+| `analyze.ps1 -Verify` integrity / topology | ✅ PASS / PASS | tree, 8 nodes, depth 4, 0 parent switches |
+| `verify_attack.py` signature | ✅ TunnelIntensity z 8.91 PASS | TunnelLatency INCONCL + LatencyHopRatio INFEASIBLE = by design (STATUS) |
+| Setup check "A RECEIVED ~0 vs B SENT ~179" | ❌ FALSE ALARM | A's raw `probes_count` (= UART frames received, `wormhole_victim.c`) goes 0 → **181** in the attack; A's `tx_count` (re-injected) 0 → 181; root got 362 B arrivals. The check reads A's attack WINDOWS, and A has none (all `no_phase_seen`) |
+| Telemetry timing per board | ❌ new stall | bunched rows (< 20 ms apart; healthy = 100 ms): **A 28 %, `0C80` 28 %, `FE90` 30 %, `ED80` 32 %** (root's 4 direct children); `704B` 8 %, B 6.5 %, `2805` 5 %; root 1 %. Same boards in oct. 11-12 tree runs: 0.3-2 %. Pattern = sampler blocked, then `xTaskDelayUntil` catches up with several rows in < 1 ms. The loop only reads state + `csv_logger_append_telemetry` → a slow storage write is the likely blocker (UNVERIFIED). Starts ~260 s into A's log, i.e. inside the baseline |
+| Effect on analysis | ❌ | 10 Hz grid drops same-tick rows → those 4 boards' windows fall below `MIN_VALID_SAMPLES` → no phase exit → `no_phase_seen` (EXCLUDED). Labelled: root, B, `704B`, `2805` only |
+
+### Findings
+- **The tunnel worked end to end** (B tunnelled 181, A received 181 and re-injected 181, root logged each B probe twice).
+- **Verdict SETUP INVALID is caused by the logging stall, not by the attack.** Not fixed: the only analysis-side
+  fix would be a method change (anchoring phases on raw rows, or relaxing the window rule) = a D-entry decision for the team.
+- The stall is NEW (same boards clean on oct. 11-12) and worst on the root's direct children. Not diagnosed - check those
+  boards' serial logs (SD / SPIFFS write warnings) and card free space before the next run.
+
+**Verdict: ❌ NOT USABLE as a dataset cell (4 of 8 boards incl. Node A unlabelled) → RECAPTURE.** Keep these files as
+hardware proof of a working tree tunnel (1-hop shortcut). Before recapturing, find the cause of the stall, or it will repeat.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #33 — Oct 16, 2026 · ~1:45 PM — wormhole · tree · DLSU_Library · stationary
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `52da079` + uncommitted exports
+> **Request:** "i dont get it why no attack happened can you check the actual datasets" (verifier said INCONCLUSIVE)
+> **Numbering:** #33 because STATUS.md lists Kyle's #14-#32 (not yet pushed into this file) - avoids a collision on merge.
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 16 (exports 1:02-1:35 PM) | root `_0102PM` telem+arrivals, children node2-node8 in `datasets/exports/wormhole/tree/DLSU_Library/stationary/` |
+
+| Check | Result | Detail |
+|---|---|---|
+| `verify_attack.py --attack wormhole` | ❌ INCONCLUSIVE | Tunnel features "no attack-phase values"; setup: "ROOT logged no duplicate arrivals"; topology "2 node(s)" |
+| Raw root arrivals vs verifier | ⚠️ verifier is wrong about the RUN, right about the TABLE | Root `_arrivals.csv`, phase 2: B `F4:2D:C9:73:E6:18` = **362** arrivals (= 2 × 181) vs ~177 for every other node; **362 duplicate (src, seq) arrivals, all in phase 2, all from B**. Phase 0 / 3: B = 300 / 120 like everyone else. **The tunnel fired.** |
+| Node B's export (`child_node4_..._0125PM`) | ❌ WRONG FILE | 2110 rows, ends at t = 223 s, phases 255/0 only (never reached the attack), parent `20:50:0D:E7:1C:39` = under A at layer 3. That is an EARLIER, aborted boot (B under A layout), not the run the root recorded (root: 3006/1806/1205 rows in phases 0/2/3) |
+| Run match, other files | ✅ same run | node5 `704B` + node6 `2805` (6667 rows) and root (6668) match exactly (phase 0/2/3 = 3006/1806-ish/1205); node6 is the card's `r4_b9` = the right pick, `r3_b8` is an earlier run. node2/3/7/8 have the same phase durations (300 s / 180 s), offset only by boot time |
+| Telemetry density, root's 4 direct children (`1C38` A, `0C80`, `FE90`, `ED80`) | ❌ thinned from ~340 s | 10 rows/s through the baseline, then ~9.4/s just before the attack, ~3-6/s in the attack, ~1-3/s in cooldown (node3: 200 → 188 → 118 → 64 → 16 rows per 20 s). Nodes at H02/H03 (`704B`, `2805`) stay at 10/s the whole run. Root arrivals from those 4 stay normal (~177 in phase 2) - their PROBES got through, only their own logging thinned |
+| Analysis tables | ❌ 5 of 8 nodes excluded | windowing kept those 5 only up to t ≈ 210-307 s (later windows < `MIN_VALID_SAMPLES`), so none saw a phase exit → segment `no_phase_seen` (EXCLUDED). Only root + `704B` + `2805` carry labels → verifier saw 2 children, no A, no B |
+| Duplicate export | ✅ handled | node2 (A) exported twice (`_0128PM`, `_0132PM`); preprocess archived `_0128PM` to `trimmed/_archive/` |
+
+### Findings
+- **The attack DID happen.** The root received every one of B's attack-phase probes twice. The INCONCLUSIVE verdict
+  comes from the analysis inputs, not from the hardware.
+- ❌ **Cause 1 (fixable now): wrong Node B file imported.** B's card holds the real run; the imported file is an aborted
+  earlier boot. Re-import B's newest COMPLETE file (~6600+ rows, phases 0/2/3; parent should be the layout seen at the
+  run, not `...1C:39`), delete `child_node4_..._0125PM_telem.csv` + its `trimmed/` copy, re-run analysis.
+- ❌ **Cause 2 (not fixed, cause unconfirmed): the 4 root-direct children logged sparsely from just before the attack.**
+  Probes reached the root normally, so the mesh worked; the boards' own telemetry rows thinned. Not diagnosed here.
+  Candidate, UNVERIFIED: the documented root-RX / flow-control throttling (`docs/highload-collapse/COOLDOWN-RECOVERY-2026-09-30.md` §12)
+  blocking `esp_mesh_send()` on the root's direct children (7 children + B's duplicates). Check those boards' serial
+  logs / SD for errors before deciding. Until then A (`1C38`) has no usable attack windows → A-side tunnel features stay empty.
+- Shortcut was 1 hop (A H01, B H02 natural formation, user's choice) - footnote, not a rejection.
+
+**Verdict: ❌ NOT USABLE as analysed — RE-IMPORT B, then re-verify.** Hardware evidence (root arrivals) shows a working
+tunnel. If A + the 3 other H01 children are still excluded after B's re-import, the cell needs a recapture or an
+explained exclusion.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #13 — Oct 14, 2026 · 2:46 PM — VERIFIER AUDIT · all 42 analysed cells (blackhole + wormhole)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a295a91` + uncommitted verifier changes

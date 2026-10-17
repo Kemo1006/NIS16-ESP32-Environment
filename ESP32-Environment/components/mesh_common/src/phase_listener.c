@@ -76,6 +76,11 @@ static volatile bool     s_start_anyway = false;
 void phase_listener_request_start_anyway(void) { s_start_anyway = true; }
 bool phase_listener_start_anyway_requested(void) { return s_start_anyway; }
 
+/* Set by the START serial command - the root's manual start gate. */
+static volatile bool     s_start_ok = false;
+void phase_listener_request_start(void) { s_start_ok = true; }
+bool phase_listener_start_requested(void) { return s_start_ok; }
+
 /* Root-side broadcast sequence counter (only the root increments this). */
 static uint32_t s_bcast_seq = 0;
 
