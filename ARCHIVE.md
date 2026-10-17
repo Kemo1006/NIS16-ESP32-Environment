@@ -2632,3 +2632,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
   NOT compiled/flashed; burst size is not in the CSV (old 100-probe bursts not comparable). Stationary = 1 probe/s/child (~660/child/run);
   highload 250 ms; run length is set only by root timers (60/300/180/120; jitter + burst-baseline add time), never by send rate.
 - oct. 16-17 (Angelo) — verifications #33-#38, wizard 'b' everywhere + redesign, redo-list topology, wormhole firmware fix + root gates + manual START, verifier redesign (2 wormhole primaries, study tags), preprocess transition/anchor fixes, redo list, wizard redo-list + tunnel prompt fixes.  (rolled from STATUS oct. 18)
+
+## Rolled from STATUS.md (oct. 18, 2026)
+- oct. 17 (Angelo) — GUI: redesign + speed-ups, then FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID no-reset board ID); wormhole audit (star blocked, A24).

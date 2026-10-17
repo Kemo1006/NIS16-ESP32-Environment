@@ -1,11 +1,11 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 17, 2026 ~8 PM (Angelo's laptop, wormhole self-echo fix + GUI audit). HEAD `52da079`; **everything below was PUSHED oct. 18 ~12:10 AM** (local-only: wizard attacker MAC in mesh_config.h, derived archive files) - commit + push before anyone pulls. Kyle's verifications #14-#32 are on HIS laptop only. Facts + reasons: top entries of MEMORY.md.
+**Updated:** oct. 18, 2026 ~1:45 AM (Angelo's laptop, SESSION SUMMARY: GitHub sync page + smart_sync.py, card delete, already-imported scan). HEAD `b6f8cc8`, **everything PUSHED** (local-only on purpose: the wizard's attacker MAC in `mesh_config.h`, `ESP32-Environment/sync_test/` test junk, derived files in `ESP32-Environment/archive/`). Kyle's verifications #14-#32 are on HIS laptop only. Facts + reasons: top entries of MEMORY.md.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
-- ⚠️ **Sync data:** GUI sidebar **GitHub sync** -> Check -> Smart sync (~5 s check; analyses stale runs first, sends/receives data, updates the folder safely, never half-merges). Code still goes by `git commit` / `git push`.
+- ⚠️ **Sync data:** GUI sidebar **GitHub sync** -> Check -> Smart sync (~5 s check, only when pressed; analyses stale runs first, sends/receives data, updates the folder safely, never half-merges). Code still goes by `git commit` / `git push`. Teammates: pull `b6f8cc8` first - the CLI `push_data.py` also got the line-ending fix that stops fake KEEP-BOTH copies.
 
 ## Where things stand
 - **Wormhole 'both B' (oct. 17 7:30 PM run) = UART SELF-ECHO:** 0C80 heard its OWN HELLOs and took them for the peer ('UART OK'). Firmware now ignores own-MAC HELLOs and reports `UART ECHO (own TX->RX)`; root names every end's UART state. Host test 71/71, root + wormhole builds 0 warnings. **Not yet on hardware.** Earlier #37 fix (one-way cable, root gate 1 A + 1 B) is on the boards and held Phase 0 correctly. **8:59 PM wormhole/linear/G402/highload r1 set up right (A H01, B H05, UART OK) - verify it.**
@@ -22,7 +22,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 ## Next step
 0. GET_ID compiles (verified by the user's oct. 17 4:40 PM builds). Live run now: identical boards compile once, failed ones recompile alone, failed flashes retry/skip, resume after a stop.
 1. **Re-wire the tunnel** (0C80 GPIO17 must NOT touch its own GPIO16: crossed TX->other RX both ways + GND), **reflash ROOT + both tunnel boards**, then check the dashboard: 1 A (shallower) + 1 B, `UART OK` on both -> READY -> type `START`.
-2. **Commit + push** (firmware: `child_node/main/wormhole_victim.c`, `components/mesh_common/*`, `root_node/main/{root_main.c,CMakeLists.txt}`; analysis: `analysis/{preprocess,exposure,eda,column_legend,test_segments}.py`; tools: `verify_attack.py`, `attack_checks.py`, `test_verify_attack.py`, `redo_list.py`, `test_wormhole_autoswitch/test.c`; `analyze.ps1`, `run_wizard.ps1`; docs + rebuilt wormhole/tree/DLSU tables). Do NOT push `mesh_config.h` attacker-MAC lines if the wizard changed them.
+2. **First real use of the new pages:** GitHub sync (Check -> Smart sync on each laptop, after pulling `b6f8cc8`) and Data > 'Delete from card' (tested on a fake card only). `baseline/linear/home/highload` is NOT ANALYSED here or on GitHub - analyse it. Do NOT push `mesh_config.h` attacker-MAC lines.
 3. Work the redo list (wizard Campaign [5]). wormhole/linear/G402/stationary re-verified = OK (#40, D6 ticked). A Campaign CHECK 'newer capture exists' clears only with a logged verification block, not the Verify button.
 4. Optional: re-run `analyze.ps1 -All` so every table uses the `transition` segment (verdicts unchanged, dry-run proven).
 5. Decide star wormhole (checklist A24) before anyone runs it. First real GUI run: Run a capture -> Start -> Live run (compile, wipe+flash+run, START on the dashboard, Finish + export root); then Data > Import / export. Check the port pickers show MACs after the reflash (GET_ID).
@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run - analyze.ps1 re-trims, don't point tools there by hand.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 18 (Angelo) — GUI look pass: Run a capture = preset gallery (person boxes, mesh-drawing cards, campaign ribbons, UP NEXT banner, readable MACs); Boards/sniffer/Verify list restyled; preset editor multi-remove; capture page ~10x faster (Everyone list / person cards), filters, dates, sort. Uncommitted; another session edits run_gui.ps1 too (GitHub sync page).
-- oct. 17 (Angelo) — GUI: redesign + speed-ups, then FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID no-reset board ID); wormhole audit (star blocked, A24).
+- oct. 18 (Angelo, 2 sessions) — GitHub sync page + `tools/smart_sync.py` (stale-analysis gate, dup/delete guards, LF-canonical analysis/presets = the KEEP-BOTH root cause, safe folder update; check 152 s -> ~5 s; no auto re-check), Data page 'Delete from card' + already-imported-by-content scan, old Data sync tab removed. The other session's GUI look pass (preset gallery, restyles, ~10x faster capture page) went up in the SAME commit `b6f8cc8`.
+- oct. 17 (Angelo) — first push of everything (`be5115c`): FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID), wormhole audit (star blocked, A24).
