@@ -1,0 +1,96 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261014110138
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 20356
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\star\G402\burst\blackhole-star-g402-burst_r1_oct14_1101AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] ROOT - ROOT (announces the phases) on COM12 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 11:12 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+
+  ROSTER GATE: this root WAITS until all 7 children are in the mesh before Phase 0.
+  Every child must already be on its FINAL power (powerbank/charger) - a board moved
+  after this point cuts its own capture. The monitor prints 'WAITING: n/N' every 10 s;
+  if a child is truly gone, type START_ANYWAY + Enter there (the run is then SHORT).
+  .\run.ps1 -Port COM12 -Role root -Label ROOT -Topology star -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: ROOT (on COM12, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM12 (topology=star, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_blackhole_star_burst_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+I (712590) MESH_SETUP: --------------------------------------------------------------------------
+I (712600) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (712610) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (712620) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x01
+I (712630) MESH_SETUP:  H01   20:50:0D:E7:0C:80  BLACKHOLE  B0:CB:D8:F3:32:18  0x06
+I (712640) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (712640) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD      20:50:0D:E7:0C:80  0x00
+I (712650) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD      20:50:0D:E7:0C:80  0x00
+I (712660) MESH_SETUP:  H02   20:50:0D:E7:1C:38  CHILD      20:50:0D:E7:0C:80  0x00
+I (712670) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:0C:80  0x00
+I (712680) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (712690) MESH_SETUP: --------------------------------------------------------------------------
+I (712700) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (712710) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (712710) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:0C:80  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (712720) MESH_SETUP:      +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (712730) MESH_SETUP:      +-- [H02] CHILD      B4:BF:E9:32:FE:90
+I (712740) MESH_SETUP:      +-- [H02] CHILD      70:4B:CA:25:B7:68
+I (712740) MESH_SETUP:      +-- [H02] CHILD      20:50:0D:E7:1C:38
+I (712750) MESH_SETUP:      +-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (712760) MESH_SETUP:      `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (712760) MESH_SETUP: --------------------------------------------------------------------------
+I (712770) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (712780) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (BLACKHOLE)
+I (712790) MESH_SETUP:    B4:BF:E9:34:ED:80  VICTIM - its traffic transits the attacker
+I (712800) MESH_SETUP:    B4:BF:E9:32:FE:90  VICTIM - its traffic transits the attacker
+I (712800) MESH_SETUP:    70:4B:CA:25:B7:68  VICTIM - its traffic transits the attacker
+I (712810) MESH_SETUP:    20:50:0D:E7:1C:38  VICTIM - its traffic transits the attacker
+I (712820) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (712830) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (712840) MESH_SETUP:  6 victim(s), 0 bystander(s). Only the victims can show the attack; report PDR per node.
+I (712850) MESH_SETUP: ==========================================================================
+I (712880) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=24  label=0  (0 failed sends)
+I (718440) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=25  label=0  (0 failed sends)
+
+Monitor closed - exporting root CSVs from COM12 in 5s. Press 'n' to skip.
+Exporting root CSVs from COM12 ...
+
+Done in 1m 09s. Files are in datasets\exports\.
+
+Export + analysis: 1m 09s total
+
+All 1 board(s) done in 13 min 47 sec.
+    ROOT     13 min 47 sec   (root)
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\star\G402\burst
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\blackhole\star\G402\burst
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261014111526
+**********************

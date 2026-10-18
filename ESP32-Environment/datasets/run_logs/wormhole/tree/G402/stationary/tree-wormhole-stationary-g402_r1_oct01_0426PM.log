@@ -1,0 +1,104 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261001162610
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 3236
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\tree-wormhole-stationary-g402_r1_oct01_0426PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+A CHILD flashed before the root has nothing to join yet, so it will spam
+'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck.
+It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see
+'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on.
+
+=== [1/4] child_4 - control (plain firmware) on COM11 (MAC 70:4b:ca:25:b7:68) ===
+  .\run.ps1 -Port COM11 -Role child -Label child_4 -Topology tree -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack none -DestAttack wormhole -Export -Mac 70:4b:ca:25:b7:68
+Setting COM11's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM11 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_4 (on COM11, MAC 70:4b:ca:25:b7:68)
+Flashing + monitoring child on COM11 (topology=tree, attack=none, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_none_tree_COM11). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM11 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM11's SPIFFS.
+To export later:  python tools\export_logs.py --port COM11 --role child --topology tree --attack none --repeat 1 --scenario stationary --location G402 --label child_4 --attack-dir wormhole
+
+=== [2/4] child_5 - control (plain firmware) on COM3 (MAC 28:05:a5:32:d7:b4) ===
+  .\run.ps1 -Port COM3 -Role child -Label child_5 -Topology tree -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack none -DestAttack wormhole -Export -Mac 28:05:a5:32:d7:b4
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_5 (on COM3, MAC 28:05:a5:32:d7:b4)
+Flashing + monitoring child on COM3 (topology=tree, attack=none, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_none_tree_COM3). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM3 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM3's SPIFFS.
+To export later:  python tools\export_logs.py --port COM3 --role child --topology tree --attack none --repeat 1 --scenario stationary --location G402 --label child_5 --attack-dir wormhole
+
+=== [3/4] child_6 - control (plain firmware) on COM12 (MAC b4:bf:e9:32:fe:90) ===
+  .\run.ps1 -Port COM12 -Role child -Label child_6 -Topology tree -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack none -DestAttack wormhole -Export -Mac b4:bf:e9:32:fe:90
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_6 (on COM12, MAC b4:bf:e9:32:fe:90)
+Flashing + monitoring child on COM12 (topology=tree, attack=none, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_none_tree_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM12 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM12's SPIFFS.
+To export later:  python tools\export_logs.py --port COM12 --role child --topology tree --attack none --repeat 1 --scenario stationary --location G402 --label child_6 --attack-dir wormhole
+
+=== [4/4] child_7 - control (plain firmware) on COM7 (MAC b4:bf:e9:34:ed:80) ===
+  .\run.ps1 -Port COM7 -Role child -Label child_7 -Topology tree -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack none -DestAttack wormhole -Export -Mac b4:bf:e9:34:ed:80
+Setting COM7's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM7 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_7 (on COM7, MAC b4:bf:e9:34:ed:80)
+Flashing + monitoring child on COM7 (topology=tree, attack=none, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_none_tree_COM7). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM7 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM7's SPIFFS.
+To export later:  python tools\export_logs.py --port COM7 --role child --topology tree --attack none --repeat 1 --scenario stationary --location G402 --label child_7 --attack-dir wormhole
+
+All 4 board(s) done in 10 min 01 sec.
+    child_4  1 min 21 sec
+    child_5  5 min 03 sec
+    child_6  1 min 50 sec
+    child_7  1 min 47 sec
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261001163611
+**********************

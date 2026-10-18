@@ -1,0 +1,102 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261012191825
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 12712
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\wormhole\linear\Yuchengco\stationary\wormhole-linear-dlsu_library-stationary_r1_oct12_0718PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] node1 - ROOT (announces the phases) on COM12 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 19:29 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+  .\run.ps1 -Port COM12 -Role root -Label node1 -Topology linear -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -Export -ExpectedChildren 0 -Mac b0:cb:d8:f3:32:18
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node1 (on COM12, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM12 (topology=linear, attack=wormhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_wormhole_linear_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+I (709569) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (709579) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (709579) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x01
+I (709589) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD       B0:CB:D8:F3:32:18  0x01
+I (709599) MESH_SETUP:  H02   20:50:0D:E7:1C:38  WORMHOLE_A  B4:BF:E9:34:ED:80  0x01
+I (709609) MESH_SETUP:  H03   B4:BF:E9:32:FE:90  CHILD       20:50:0D:E7:1C:38  0x01
+I (709619) MESH_SETUP:  H04   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x01
+I (709629) MESH_SETUP:  H05   28:05:A5:32:D7:B4  CHILD       70:4B:CA:25:B7:68  0x01
+I (709639) MESH_SETUP:  H06   F4:2D:C9:73:E6:18  CHILD       28:05:A5:32:D7:B4  0x01
+I (709639) MESH_SETUP:  H07   20:50:0D:E7:0C:80  WORMHOLE_B  F4:2D:C9:73:E6:18  0x00
+I (709649) MESH_SETUP: ---------------------------------------------------------------------------
+I (709659) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (709669) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (709679) MESH_SETUP:  `-- [H01] CHILD       B4:BF:E9:34:ED:80
+I (709679) MESH_SETUP:      `-- [H02] WORMHOLE_A  20:50:0D:E7:1C:38
+I (709689) MESH_SETUP:          `-- [H03] CHILD       B4:BF:E9:32:FE:90
+I (709699) MESH_SETUP:              `-- [H04] CHILD       70:4B:CA:25:B7:68
+I (709709) MESH_SETUP:                  `-- [H05] CHILD       28:05:A5:32:D7:B4
+I (709709) MESH_SETUP:                      `-- [H06] CHILD       F4:2D:C9:73:E6:18
+I (709719) MESH_SETUP:                          `-- [H07] WORMHOLE_B  20:50:0D:E7:0C:80
+I (709729) MESH_SETUP: ---------------------------------------------------------------------------
+I (709739) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+I (709749) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H07  RSSI  -61  phase 0x04 TERMINATE  "Board-20:80"
+I (709759) MESH_SETUP:    EXIT   A  20:50:0D:E7:1C:38  H02  RSSI  -67  phase 0x04 TERMINATE  "Board-20:38"
+I (709769) MESH_SETUP:    Normal copy : B 0C80 > E618 > D7B4 > B768 > FE90 > 1C38(A) > ED80 > ROOT  = 7 hop(s) over the mesh
+I (709789) MESH_SETUP:    Tunnel copy : B 0C80 =UART=> A 1C38 > ROOT  = wire + 2 hop(s)
+I (709789) MESH_SETUP:    Shortcut    : the tunnel skips 5 hop(s)
+I (709799) MESH_SETUP: ---------------------------------------------------------------------------
+I (709809) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (709819) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (709829) MESH_SETUP:    F4:2D:C9:73:E6:18  relays B's normal copy - honest, unaffected
+I (709839) MESH_SETUP:    B4:BF:E9:34:ED:80  relays B's normal copy - honest, unaffected
+I (709849) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+I (709859) MESH_SETUP:    B4:BF:E9:32:FE:90  relays B's normal copy - honest, unaffected
+I (709869) MESH_SETUP:    28:05:A5:32:D7:B4  relays B's normal copy - honest, unaffected
+I (709879) MESH_SETUP:    70:4B:CA:25:B7:68  relays B's normal copy - honest, unaffected
+I (709889) MESH_SETUP:  OK: A (exit) at H02, B (entry) at H07 - the tunnel skips 5 hop(s). 5 relay(s) carry B's normal copy, 0 node(s) not involved.
+I (709899) MESH_SETUP:     EXPECT during the attack: the root logs every Node B probe TWICE (normal + tunnel copy, tunnel copy faster). Report B's duplicates + latency, not PDR.
+I (709919) MESH_SETUP: ===========================================================================
+I (712739) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=24  label=0  (0 failed sends)
+
+Monitor closed - exporting root CSVs from COM12 in 5s. Press 'n' to skip.
+Exporting root CSVs from COM12 ...
+   saved 6617 data rows -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\wormhole\linear\Yuchengco\stationary\root_node1_linear_wormhole_r1_
+oct12_0731PM_telem.csv
+-> EXPORT_ARRIVALS ...
+   [####################] 100.0%  381 KB/381 KB  3895 rows  11 KB/s
+   saved 3894 data rows -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\wormhole\linear\Yuchengco\stationary\root_node1_linear_wormhole_r1_
+oct12_0732PM_arrivals.csv
+Done in 1m 18s. Files are in datasets\exports\.
+
+Export + analysis: 1m 18s total
+
+All 1 board(s) done in 13 min 51 sec.
+    node1    13 min 51 sec   (root)
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\wormhole\linear\Yuchengco\stationary
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\wormhole\linear\Yuchengco\stationary
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261012193216
+**********************

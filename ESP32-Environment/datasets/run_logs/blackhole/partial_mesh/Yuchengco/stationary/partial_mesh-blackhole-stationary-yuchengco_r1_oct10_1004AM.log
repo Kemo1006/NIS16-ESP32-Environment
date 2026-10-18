@@ -1,0 +1,63 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261010100437
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 7608
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\partial_mesh\Yuchengco\stationary\partial_mesh-blackhole-stationary-yuchengco_r1_oct10_1004AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] root - ROOT (announces the phases) on COM3 (MAC not read) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 10:15 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+
+  ROSTER GATE: this root WAITS until all 7 children are in the mesh before Phase 0.
+  Every child must already be on its FINAL power (powerbank/charger) - a board moved
+  after this point cuts its own capture. The monitor prints 'WAITING: n/N' every 10 s;
+  if a child is truly gone, type START_ANYWAY + Enter there (the run is then SHORT).
+  .\run.ps1 -Port COM3 -Role root -Label root -Topology partial -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 7
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: root (on COM3)
+Flashing + monitoring root on COM3 (topology=partial, attack=blackhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_blackhole_partial_COM3). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting root CSVs from COM3 in 5s. Press 'n' to skip.
+Exporting root CSVs from COM3 ...
+
+Done in 1m 17s. Files are in datasets\exports\.
+
+Export + analysis: 1m 17s total
+
+All 1 board(s) done in 13 min 34 sec.
+    root     13 min 34 sec   (root)
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\partial_mesh\Yuchengco\stationary
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\blackhole\partial_mesh\Yuchengco\stationary
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261010101811
+**********************
