@@ -16,6 +16,7 @@
 
 function Reset-PreStart {
     $script:Pre = @{ Boards = @{}; Kids = ''; KidsOk = $null; Wh = $null; WhText = ''; StabAt = $null; Phase0At = $null; ClockText = '' }
+    try { Reset-TopoWatch } catch { }     # gui\TopoWatch.ps1
     if ($script:PrePanel) { $script:PrePanel.Visibility = 'Visible'; Update-PreStartPanel }
 }
 
@@ -30,13 +31,26 @@ function Read-PreStartLine($Board, [string]$Line) {
     if (-not $Board -or -not $Line) { return }
     if (-not $script:Pre) { Reset-PreStart }
     $P = $script:Pre; $lab = [string]$Board.Label; $changed = $false
-    if ($Line -match 'Recorded location: (\S+)') { (Get-PreBoard $lab).Loc = $Matches[1]; $changed = $true }
+    if ($Line -match 'Recorded location: (\S+)') { $v = $Matches[1]; (Get-PreBoard $lab).Loc = $v; $changed = $true; if ($Board.Mac) { Set-CardLoc ([string]$Board.Mac) $v 'its boot report' } }
     elseif ($Line -match 'SD_STATUS: clock: set from') { (Get-PreBoard $lab).Clock = 'host'; $changed = $true }
     elseif ($Line -match '\(clock: (\w+)\)') { (Get-PreBoard $lab).Clock = $Matches[1]; $changed = $true }
     elseif ($Line -match 'SD_STATUS: clock: .*(build-stamp|BUILD-TIME|ESTIMATE)') { $pb = Get-PreBoard $lab; if ($pb.Clock -ne 'host') { $pb.Clock = 'build' }; $changed = $true }
     elseif ($Line -match 'Firmware built: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)') { try { (Get-PreBoard $lab).Built = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null) } catch { }; $changed = $true }
     elseif ($Line -match 'Attacker MAC from (?:NVS|compiled default): ([0-9A-Fa-f:]{17})') { (Get-PreBoard $lab).AttMac = $Matches[1].ToLower(); $changed = $true }
+    if ($Line -match '^ARCHIVED: (.+)$') {
+        # run.ps1 archived the OLD capture of this run (same repeat) after the root's new export
+        Add-RunAlert ('Re-capture: the older capture of this run was archived ({0}) - this run replaces it' -f $Matches[1]) $Pal.Cyan
+        # its verdict went to the archive too - forget it here, or the next Verify writes it back
+        try {
+            $pl = $script:Run.Plan
+            $k = '{0}/{1}/{2}/{3}' -f $(if ($pl.Attack -in @('none', 'baseline')) { 'baseline' } else { $pl.Attack }), ($pl.Topology -replace '^partial$', 'partial_mesh'), $pl.Location, $pl.Scenario
+            if ($script:Verdicts -and $script:Verdicts.ContainsKey($k)) { [void]$script:Verdicts.Remove($k) }
+        } catch { }
+    }
     if ($Board.Role -eq 'root') {
+        try { Read-TopoWatchLine $Line } catch { }     # layout watch during baseline / attack
+        try { Read-PlacementLine $Line } catch { }     # tree + blackhole: who to move under the attacker
+        if ($Line -match 'TOPOLOGY TREE|n/a = no parent') { $changed = $true }   # the root's table just ended: weak links may have changed
         if ($Line -match '\[CTRL\] Waiting \d+ s for mesh to stabilise') { $P.StabAt = Get-Date; $P.Phase0At = $null; $changed = $true }
         elseif ($Line -match '\[CTRL\] (?:READY|WAITING): (\d+)/(\d+) children') { $P.Kids = "$($Matches[1])/$($Matches[2])"; $P.KidsOk = ([int]$Matches[1] -ge [int]$Matches[2]); $changed = $true }
         elseif ($Line -match 'OK: A \(exit\) at (H\d+), B \(entry\) at (H\d+)') { $P.Wh = $true; $P.WhText = "A at $($Matches[1]), B at $($Matches[2])"; $changed = $true }
@@ -75,6 +89,16 @@ function Get-PreStartChecks {
         $span = if ($times.Count -gt 1 -and ($times[-1] - $times[0]).TotalMinutes -ge 1) { '{0} to {1}' -f $times[0].ToString('MMM dd HH:mm'), $times[-1].ToString('MMM dd HH:mm') } else { $times[-1].ToString('MMM dd HH:mm') }
         $out += @{ Name = 'Firmware built'; State = 'ok'; Text = "$($bt.Count) board(s), $span" }
     } else { $out += @{ Name = 'Firmware built'; State = 'wait'; Text = '-' } }
+    # a weak link is the one that re-parents mid-run - move it BEFORE START
+    $weak = @(); try { $weak = @(Get-WeakLinks) } catch { }
+    $hasTable = $script:Dash -and $script:Dash.Rows -and $script:Dash.Rows.Count
+    $out += @{ Name = 'Links strong enough'; State = $(if (-not $hasTable) { 'wait' } elseif ($weak.Count) { 'bad' } else { 'ok' })
+               Text = $(if ($weak.Count) { 'weak: ' + ($weak -join ', ') + ' - may change parent mid-run: move it closer BEFORE START' } elseif ($hasTable) { 'every child above -80 dBm to its parent' } else { 'waiting for the root''s table' }) }
+    if ($R.Plan.Attack -eq 'blackhole' -and ($R.Plan.Topology -in @('tree', 'partial', 'partial_mesh'))) {
+        $ac = $null; try { $ac = Get-AttackerChildState } catch { }
+        $out += @{ Name = 'Attacker has a child'; State = $(if (-not $ac) { 'wait' } elseif ($ac.Kids) { 'ok' } else { 'bad' })
+                   Text = $(if (-not $ac) { 'waiting for the root''s tree' } elseif ($ac.Kids) { "$($ac.Kids) board(s) under the attacker" } else { 'NONE - the attack would drop nothing. ' + (Get-PlacementAdvice) }) }
+    }
     if ($R.Plan.Attack -eq 'blackhole') {
         $am = ([string]$R.Plan.AttackerMac).ToLower()
         $vs = @($P.Boards.Keys | Where-Object { $P.Boards[$_].AttMac })

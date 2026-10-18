@@ -38,6 +38,8 @@ def read_board(path):
     """{node, rows, phases{id: n}, roles{id: [role...]}, seconds, last_phase} for one telem CSV."""
     phases, roles = {}, {}
     rows = 0
+    old_rows = 0          # rows of an EARLIER root session at the top of the file (see below)
+    seen_real = False
     node = ""
     t0 = t1 = None
     last = None
@@ -49,6 +51,14 @@ def read_board(path):
                 ts = int(r.get("timestamp_us") or 0)
             except ValueError:
                 continue
+            # Same rule as analysis/preprocess.py (root restart): a board that kept
+            # running while the root was re-flashed logs <old phases> -> 255 -> 0 ...
+            # in ONE file. Everything up to the last 255 that follows a real phase is
+            # the earlier session - excluded by the analysis, so not counted here.
+            if ph == 255 and seen_real and last != 255:
+                old_rows += rows
+                phases, roles, rows, t0 = {}, {}, 0, None
+            seen_real = seen_real or ph != 255
             rows += 1
             node = node or (r.get("node_id") or "")
             phases[ph] = phases.get(ph, 0) + 1
@@ -67,6 +77,7 @@ def read_board(path):
         "roles": {ph: sorted(rs, key=lambda k: -rs[k]) for ph, rs in roles.items()},
         "seconds": round((t1 - t0) / 1e6) if rows else 0,
         "last_phase": last,
+        "old_rows": old_rows,
     }
 
 
@@ -76,7 +87,11 @@ def summarise(folder, expect=None):
     files = sorted(f for f in glob.glob(os.path.join(folder, "*_telem.csv")))
     boards = [read_board(f) for f in files]
     boards = [b for b in boards if b["rows"]]
-    issues = []
+    issues, notes = [], []
+    for b in boards:
+        if b["old_rows"]:
+            notes.append(f"{_short(b['node'])}: the first {b['old_rows']:,} rows are an EARLIER root session (it kept running while the "
+                         f"root was re-flashed) - excluded by the analysis (root-restart rule), not counted above")
     by_node = {}
     for b in boards:
         by_node.setdefault(b["node"] or b["file"], []).append(b)
@@ -123,7 +138,7 @@ def summarise(folder, expect=None):
                 issues.append(f"{len(ends[need])} boards logged as {need}: " + ", ".join(_short(n) for n in sorted(ends[need])))
     if expect and len(by_node) < expect:
         issues.append(f"{len(by_node)} of {expect} expected boards are here - {expect - len(by_node)} not imported yet")
-    return {"folder": folder, "attack": attack, "boards": boards, "issues": issues,
+    return {"folder": folder, "attack": attack, "boards": boards, "issues": issues, "notes": notes,
             "complete": bool(boards) and not issues}
 
 
@@ -151,6 +166,8 @@ def render(s):
     else:
         out.append(f"RESULT: LOOK - {len(s['issues'])} thing(s) to check:")
         out += [f"  - {i}" for i in s["issues"]]
+    if s.get("notes"):
+        out += ["", "NOTES (not problems):"] + [f"  - {n}" for n in s["notes"]]
     return "\n".join(out)
 
 

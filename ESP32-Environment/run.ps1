@@ -242,6 +242,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $base = $PSScriptRoot
+$script:Ps1Started = Get-Date   # files older than this belong to an EARLIER capture (archive_replaced.py)
 # idf.py / esptool.py as the ESP-IDF window defines them - needed when this
 # runs in a child PowerShell (run_gui.ps1). See tools\idf_shims.ps1.
 . (Join-Path $base 'tools\idf_shims.ps1')
@@ -949,7 +950,26 @@ try {
 } finally {
     Pop-Location
 }
+$exportCode = $LASTEXITCODE
 Write-Host ("Done in {0}. Files are in datasets\exports\." -f (Format-Elapsed ([int]$exportStopwatch.Elapsed.TotalSeconds))) -ForegroundColor Green
+
+# A RE-capture of a run already in exports (same attack/topology/location/scenario
+# AND the same repeat) replaces it (user, oct. 18 2026): once the ROOT's new export
+# is safe, the older files of that repeat - their trimmed/ copies, the analysis built
+# from them, the run logs of that older session (> 3 h before this root's flash) and
+# the GUI's verify report + verdict of it - move to archive\<date>_<run>-r<N>-replaced\. Only files older
+# than this run.ps1's start move, so this run's own files (and children imported
+# afterwards) stay; another repeat (r2 next to r1) is a separate capture and stays.
+if ($Role -eq 'root' -and $Flash -and -not $BuildOnly -and $exportCode -eq 0 -and $Location) {   # a NEW capture, never a re-export
+    $arcAttack = if ($Attack -ne 'none') { $Attack } else { 'baseline' }
+    $arcScn = if ($Scenario -eq 'none') { 'stationary' } else { $Scenario }
+    Push-Location (Join-Path $base 'tools')
+    try {
+        python archive_replaced.py --attack $arcAttack --topology $Topology --location $Location --scenario $arcScn --repeat $Repeat `
+            --before $script:Ps1Started.ToString('yyyy-MM-dd HH:mm') --require-new --logs-before $script:Ps1Started.AddHours(-3).ToString('yyyy-MM-dd HH:mm') --by ("the re-capture whose root exported {0}" -f (Get-Date).ToString('yyyy-MM-dd HH:mm')) |
+            ForEach-Object { Write-Host $_ -ForegroundColor $(if ($_ -match '^ARCHIVED') { 'Cyan' } else { 'DarkGray' }) }
+    } catch { } finally { Pop-Location }
+}
 if ($Clean) { Write-Host "Board logs wiped (--delete) - next run starts empty. SD card mirror archived (--archive-sd), not deleted." -ForegroundColor Green }
 
 # 3) Optional auto-analysis (M6+M7+M8). The CSVs stay put in exports\; we just READ

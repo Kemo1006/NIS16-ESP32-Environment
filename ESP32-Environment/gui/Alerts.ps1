@@ -19,7 +19,7 @@ $script:Dot = '  ' + [string][char]0x00B7 + '  '
 $script:AlertKinds = @(
     @{ K = 'crash';    Rx = '(?i)crash|panic|watchdog|\bWDT\b|guru|abort';                 G = 0xE7BA; T = 'CRASH' }
     @{ K = 'power';    Rx = '(?i)brownout|power cut|POWERON|unplugged';                    G = 0xE945; T = 'POWER' }
-    @{ K = 'port';     Rx = '(?i)could not open|held by|port .*busy';                      G = 0xE88E; T = 'PORT' }
+    @{ K = 'port';     Rx = '(?i)could not open|held by|port .*busy|LOST|disappeared';                      G = 0xE88E; T = 'PORT' }
     @{ K = 'location'; Rx = '(?i)location';                                                G = 0xE707; T = 'LOCATION' }
     @{ K = 'tunnel';   Rx = '(?i)UART|tunnel|wormhole';                                    G = 0xE71B; T = 'TUNNEL' }
     @{ K = 'start';    Rx = '(?-i)\bSTART(_ANYWAY)?\b|\bREADY\b';                                           G = 0xE768; T = 'START' }

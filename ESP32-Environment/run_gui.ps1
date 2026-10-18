@@ -2752,6 +2752,9 @@ function Get-LivePortList([string[]]$Names) {
 }
 function Update-LivePorts([switch]$Force) {
     $names = @(try { [IO.Ports.SerialPort]::GetPortNames() | Sort-Object -Unique } catch { })
+    # -SelfTest only ever sees its own stand-in ports (COM96+): a real board plugged
+    # into this laptop is never listed, read, watched or reset by a test (oct. 18 2026)
+    if ($SelfTest) { $names = @($script:Live.Keys | Where-Object { [int]($_ -replace '\D', '') -ge 96 } | Sort-Object) }
     $key = $names -join ','
     if (-not $Force -and $key -eq $script:LiveNames) { return $false }
     $first = -not $script:LiveNames -and -not $script:LiveInit
@@ -3001,6 +3004,7 @@ function Update-Home {
         } else { $ui.HomeNext.Text = 'Everything planned is captured!'; $ui.HomeNextWhy.Text = '' }
         Update-CampaignMatrix; Update-CaptureCampaign
         Set-Status 'Campaign loaded.' $Pal.Green
+        Update-CampPanelFresh
     }
 }
 $ui.HomeRefresh.Add_Click({ Update-Home; Update-LivePorts -Force | Out-Null })
@@ -4643,7 +4647,7 @@ function Start-RedoList([string[]]$Only = @()) {
         Set-Status ("Redo list: {0} REDO  |  {1} CHECK  |  {2} OK" -f [int]$n.REDO, [int]$n.CHECK, [int]$n.OK) $(if ($n.REDO) { $Pal.Red } else { $Pal.Green })
         if ($n.REDO -and -not $st.Part) { Show-Toast "$([int]$n.REDO) run(s) need a redo" 'They are marked red on the Campaign grid.' ([string][char]0xE72C) '#BE123C' }
         Update-CampaignMatrix; Update-CaptureCampaign
-        if ($script:CampSlot) { try { Show-CampaignCell $script:CampSlot } catch { } }
+        Set-RedoCheckedTimes @($st.Only) ([bool]$st.Part); Update-CampPanelFresh
         if ($script:RedoAgain) { Start-RedoList }
     }
 }
@@ -4878,6 +4882,7 @@ function Show-CampaignCell($S) {
         $card.Child = $sp; [void]$body.Children.Add($card)
     }
     Add-NextStepCard $body $a $S.topology $S.location $S.scenario
+    Add-CampFreshness $body $S    # gui\CampaignPanel.ps1
     $hasCell = [bool](Find-AnalysedCell $S)
     $ui.CampCapture.IsEnabled = $true
     $ui.CampCapture.Content = $(if ($look -in @('todo', 'partial')) { [string][char]0x25B6 + '  Capture this run' } else { [string][char]0x21BB + '  Capture it again' })
@@ -5076,6 +5081,7 @@ function Start-StreamJob {
     # must not cut it (a cut SD read is the CP210x blue-screen trigger)
     param([string]$Exe, [string[]]$ToolArgs, [string]$Title, [scriptblock]$OnDone, $State = $null, [switch]$NoStop)
     if ($script:Stream) { [void][Windows.MessageBox]::Show('Another task is still running - wait for it or press Stop.', 'Busy'); return $false }
+    Release-WatchedPorts $ToolArgs    # gui\RunSafety.ps1: a crash watch never blocks a read of the same port
     $out = [IO.Path]::GetTempFileName(); $err = [IO.Path]::GetTempFileName()
     $env:PYTHONIOENCODING = 'utf-8'; $env:PYTHONUNBUFFERED = '1'; $env:NO_COLOR = '1'
     $quoted = @($ToolArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } })
@@ -5089,6 +5095,7 @@ function Start-StreamJob {
     $script:Stream = [pscustomobject]@{ Proc = $p; Out = $out; Err = $err; PosO = [long]0; PosE = [long]0
                                         All = (New-Object Text.StringBuilder); Done = $OnDone; State = $State; Title = $Title; NoStop = [bool]$NoStop }
     $ui.StopTask.IsEnabled = $true
+    Update-BusyButtons $true
     $ui.ActivityPane.Visibility = 'Visible'; $ui.ToggleActivity.Content = 'Hide activity'
     Set-Status ("Running: " + $Title) $Pal.Amber
     return $true
@@ -5109,6 +5116,7 @@ $streamTimer.Add_Tick({
         $code = $s.Proc.ExitCode
         $script:Stream = $null
         $ui.StopTask.IsEnabled = $false
+        Update-BusyButtons $false
         Remove-Item $s.Out, $s.Err -ErrorAction SilentlyContinue
         Write-Activity ("  finished (exit {0})" -f $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
         Set-Status ("Finished: {0} (exit {1})" -f $s.Title, $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
@@ -5151,24 +5159,26 @@ $ui.IdentifyAll.Add_Click({
     if (-not $script:PortRows.Count) { [void][Windows.MessageBox]::Show('No COM ports - plug a board in.', 'Identify'); return }
     if (Confirm-Action ("Identify all {0} board(s)?`n`nEach is first ASKED who it is (GET_ID - no reset). Only a board that does not answer would need a reset, and you are asked again before that happens." -f $script:PortRows.Count)) { Request-MacReadAll }
 })
-$ui.LocPick.ItemsSource = @('G402', 'DLSU_Library', 'Yuchengco', 'home'); $ui.LocPick.SelectedIndex = 0
+$ui.LocPick.ItemsSource = @('G402', 'DLSU_Library', 'Yuchengco', 'home')   # chosen per board by gui\BoardLocation.ps1
 $ui.LocRead.Add_Click({
     $r = Get-SelectedPort; $py = Get-Py; if (-not $r -or -not $py) { return }
-    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\export_logs.py', '--port', $r.Port, '--get-location') -Title "Read location on $($r.Port)")
+    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\export_logs.py', '--port', $r.Port, '--get-location') -Title "Read location on $($r.Port)" -State $r -OnDone { param($t, $c, $s) Complete-LocRead $t $s })
 })
 $ui.LocWrite.Add_Click({
     $r = Get-SelectedPort; $py = Get-Py; if (-not $r -or -not $py) { return }
     $loc = [string]$ui.LocPick.SelectedItem
+    if (-not $loc) { [void][Windows.MessageBox]::Show('Pick the location to write first.', 'Location'); return }
     if ($ui.DryRun.IsChecked) { Write-Activity "DRY RUN - would write location $loc to $($r.Port)." $Pal.Amber; return }
     if (Confirm-Action "Write location '$loc' to the SD card of the board on $($r.Port)?") {
-        [void](Start-StreamJob -Exe $py -ToolArgs @('tools\export_logs.py', '--port', $r.Port, '--set-location', $loc) -Title "Set location $loc on $($r.Port)")
+        [void](Start-StreamJob -Exe $py -ToolArgs @('tools\export_logs.py', '--port', $r.Port, '--set-location', $loc) -Title "Set location $loc on $($r.Port)" -State @{ R = $r; Loc = $loc } -OnDone { param($t, $c, $s) Complete-LocWrite $t $c $s })
     }
 })
 foreach ($pair in @(@('SdAttack', @('blackhole', 'wormhole', 'baseline')), @('SdTopology', @('linear', 'tree', 'star', 'partial_mesh')), @('SdLocation', @('G402', 'DLSU_Library', 'Yuchengco', 'home')))) {
-    $ui[$pair[0]].ItemsSource = $pair[1]; $ui[$pair[0]].SelectedIndex = 0
+    $ui[$pair[0]].ItemsSource = $pair[1]; $ui[$pair[0]].SelectedIndex = -1   # a permanent delete: pick every part on purpose
 }
 $ui.SdDelete.Add_Click({
     $r = Get-SelectedPort; $py = Get-Py; if (-not $r -or -not $py) { return }
+    if (-not $ui.SdAttack.SelectedItem -or -not $ui.SdTopology.SelectedItem -or -not $ui.SdLocation.SelectedItem) { [void][Windows.MessageBox]::Show('Pick the attack, topology AND location of the folder to delete.', 'Delete SD folder'); return }
     $rel = '{0}/{1}/{2}' -f $ui.SdAttack.SelectedItem, $ui.SdTopology.SelectedItem, $ui.SdLocation.SelectedItem
     if ($ui.DryRun.IsChecked) { Write-Activity "DRY RUN - would delete $rel from the SD card on $($r.Port)." $Pal.Amber; return }
     if (Confirm-Action "PERMANENTLY delete the folder`n`n    $rel`n`nand everything inside it from the SD card of the board on $($r.Port)?" 'Delete SD folder') {
@@ -5577,8 +5587,11 @@ function Show-ImpList($Items) {
         if ($cur.Count) { $clusters += , $cur }
         foreach ($cl in $clusters) {
             if (@($cl).Count -lt 2) { continue }
+            # oct. 18 2026 (F4:18): a board that crashed and rebooted closes only its post-crash TAIL
+            # cleanly - a clean file under half the size of the biggest piece is that tail, not the run
+            $maxSz = (@($cl) | ForEach-Object { Get-PieceSize $_ } | Measure-Object -Maximum).Maximum
             $bp = @($cl) | Sort-Object @{ E = { if ($null -ne $_.phases) { [int](@($_.phases) -contains 1 -or @($_.phases) -contains 2) } else { 0 } }; Descending = $true },
-                                       @{ E = { [int]($_.clean -eq $true) }; Descending = $true },
+                                       @{ E = { [int]($_.clean -eq $true -and (Get-PieceSize $_) -ge 0.5 * $maxSz) }; Descending = $true },
                                        @{ E = { if ($null -ne $_.bytes -and [long]$_.bytes -ge 0) { [long]$_.bytes } elseif ($null -ne $_.rows) { [long]$_.rows * 80 } else { 0 } }; Descending = $true } | Select-Object -First 1
             foreach ($f in @($cl)) { $best[[string]$f.rel] = @{ Rel = $bp.rel; N = @($cl).Count } }
         }
@@ -5718,6 +5731,7 @@ $ui.ImpAll.Add_Click({ if ($script:ImpTable) { foreach ($r in $script:ImpTable.R
 $ui.ImpNone.Add_Click({ if ($script:ImpTable) { foreach ($r in $script:ImpTable.Rows) { $r.Import = $false } } })
 $ui.ImpNew.Add_Click({ if ($script:ImpTable) { foreach ($r in $script:ImpTable.Rows) { $r.Import = ($r.Look -eq 'new') } } })
 function Start-ImpCopy([switch]$Preview) {
+    if (Test-TaskBusy $(if ($Preview) { 'The preview' } else { 'The import' })) { return }
     [void]$ui.ImpGrid.CommitEdit(); [void]$ui.ImpGrid.CommitEdit()
     $py = Get-Py; if (-not $py -or -not $script:ImpTable) { return }
     $picked = @($script:ImpTable.Rows | Where-Object { $_.Import })
@@ -6699,12 +6713,14 @@ function New-RunPlan($P) {
 
 function Open-RunPage($P) {
     if ($script:Run -and $script:Run.Active) { Show-Page 7; [void][Windows.MessageBox]::Show('A run is already going on the Live run page.', 'Live run'); return }
+    $keepWatches = @(Get-AliveWatches)    # gui\RunSafety.ps1: the new run takes over the old run's crash watches
     $plan = New-RunPlan $P
     $script:Run = [pscustomobject]@{ Plan = $plan; Steps = (New-Object System.Collections.ArrayList); Current = $null; Active = $false
                                      Proc = $null; Out = ''; Err = ''; PosO = [long]0; PosE = [long]0; BufO = ''; BufE = ''; Ctl = ''
                                      Started = $null; LogPath = ''; Parked = $false; Used = @{}; Built = $false; GoAfterBuild = $false
                                      BuildQueue = $null; Wait = $null; Dash = $null; Phase = 'setup'; Alarm = $null; StopAfterFlash = $false; AutoAt = $null
                                      Builds = $null; BuildEntry = $null; Failed = $null; Picked = $null; Skipped = 0 }
+    if ($keepWatches.Count) { $script:Run | Add-Member -NotePropertyName Bg -NotePropertyValue (New-Object System.Collections.ArrayList) -Force; foreach ($w in $keepWatches) { [void]$script:Run.Bg.Add($w) } }
     $c = $plan
     $ui.RunTitle.Text = '{0}  /  {1}  /  {2}  /  {3}' -f $(if ($c.Attack -eq 'none') { 'baseline' } else { $c.Attack }), $c.Topology, $c.Location, $c.Scenario
     $ui.RunSub.Text = '{0}  -  {1} board(s) on this laptop{2}  -  {3}' -f $P.File, $c.Local.Count,
@@ -7007,6 +7023,7 @@ function Start-RunStep($St) {
 }
 function Start-RunBoardProc($St) {
     $R = $script:Run; $b = $St.Board
+    if ($b.Role -eq 'root') { Invoke-BeforeRootFlash $St }    # gui\RunSafety.ps1: watch every child, offer a clean restart
     Stop-CrashWatchOn ([string]$b.Port)
     $R.Ctl = Join-Path $script:RunCtlRoot ("ctl_{0}_{1}" -f ($b.Label -replace '[^\w-]', ''), (Get-Date).ToString('HHmmss'))
     New-Item -ItemType Directory -Force -Path $R.Ctl | Out-Null
@@ -7141,7 +7158,9 @@ function Complete-Run {
 }
 function Finish-RunStopped {
     $R = $script:Run
-    Stop-CrashWatch
+    # the flashed children KEEP RUNNING after a stop - keep listening to them
+    # (oct. 18 2026: a victim crashed unwatched after a stop + root-only re-run)
+    $script:PrevAttemptSeg = $(if ($script:Dash) { [int]$script:Dash.Seg } else { -1 })
     Save-LastUsedPreset 'stopped'
     foreach ($x in @($R.Steps | Where-Object { $_.State -in @('waiting', 'running', 'attention') })) { $x.State = 'skipped' }
     $R.Active = $false; $R.Phase = 'stopped'; $R.Wait = $null
@@ -7402,6 +7421,7 @@ function Read-BoardLine([string]$Line) {
         Update-RunSteps
         return
     }
+    if ($Line -match '^\[monitor\] LOST') { Add-RunAlert ("{0}: {1}" -f $b.Label, ($Line -replace '^\[monitor\] ', '')) $Pal.Red }
     if ($Line -match '\[monitor\] could not open') { $hold = Get-PortHolderText ([string]$b.Port); Add-RunAlert ("{0}: {1}{2}" -f $b.Label, $Line, $(if ($hold) { " - $($b.Port) is $hold" } else { '' })) $Pal.Red }
     if (-not $R.Booted -and $Line -match '=== .*STARTING') {
         $R.Booted = $true
@@ -7883,7 +7903,7 @@ $win.Add_PreviewKeyDown({
     if ($ctrl -and $e.Key -eq 'F' -and $ui.Pages.SelectedIndex -eq 1) { [void]$ui.PresetSearch.Focus(); $e.Handled = $true; return }
     if ($e.Key -eq 'F5') {
         switch ($ui.Pages.SelectedIndex) {
-            0 { Update-Home; [void](Update-LivePorts -Force) } 1 { Update-Presets; Show-PresetDetail } 2 { if (Test-PageStale 'analyse') { Update-Cells } } 3 { Update-Home; Update-RedoIfChanged }
+            0 { Update-Home; [void](Update-LivePorts -Force) } 1 { Update-Presets; Show-PresetDetail } 2 { Update-Cells } 3 { Update-Home; Update-RedoIfChanged }
             4 { Update-Ports; Update-Members } 5 { Update-Cards; Update-TrimCells; Update-Logs } 6 { Update-Pcaps }
         }
         Set-Status 'Refreshed.' $Pal.Green; $e.Handled = $true
@@ -7973,10 +7993,10 @@ if (-not $SelfTest) {
     Write-Output $script:EdMulti
     $script:EditorHook = {
         $f.EdOwner.Text = 'ZZ_GUI_TEST'; $f.EdAttack.SelectedItem = 'wormhole'; $f.EdScenario.SelectedItem = 'burst'
-        [void]$dt.Rows.Add('node2', 'COM5', 'tunnel end', '20:50:0d:e7:1c:38', $false)
-        [void]$dt.Rows.Add('node3', 'COM6', 'control', '20:50:0d:e7:0c:80', $true)
-        [void]$dt.Rows.Add('node4', 'COM7', 'tunnel end', 'f4:2d:c9:73:e6:18', $false)
-        [void]$dt.Rows.Add('root', 'COM3', 'root', 'b0:cb:d8:f3:32:18', $false)
+        [void]$dt.Rows.Add('node2', 'COM205', 'tunnel end', '20:50:0d:e7:1c:38', $false)
+        [void]$dt.Rows.Add('node3', 'COM206', 'control', '20:50:0d:e7:0c:80', $true)
+        [void]$dt.Rows.Add('node4', 'COM207', 'tunnel end', 'f4:2d:c9:73:e6:18', $false)
+        [void]$dt.Rows.Add('root', 'COM203', 'root', 'b0:cb:d8:f3:32:18', $false)
         & $pump 200
         $f.EdSave.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
         if (-not $script:EditorSavedPath) { $script:EditorProblems = $f.EdProblems.Text; $ed.DialogResult = $false }
@@ -7998,9 +8018,9 @@ if (-not $SelfTest) {
     # a burst target on a tunnel end must be refused (the CLI would throw at Start)
     $script:EditorHook = {
         $f.EdOwner.Text = 'ZZ_GUI_TEST'; $f.EdAttack.SelectedItem = 'wormhole'; $f.EdScenario.SelectedItem = 'burst'
-        [void]$dt.Rows.Add('node2', 'COM5', 'tunnel end', '20:50:0d:e7:1c:38', $true)
-        [void]$dt.Rows.Add('node4', 'COM7', 'tunnel end', 'f4:2d:c9:73:e6:18', $false)
-        [void]$dt.Rows.Add('root', 'COM3', 'root', 'b0:cb:d8:f3:32:18', $false)
+        [void]$dt.Rows.Add('node2', 'COM205', 'tunnel end', '20:50:0d:e7:1c:38', $true)
+        [void]$dt.Rows.Add('node4', 'COM207', 'tunnel end', 'f4:2d:c9:73:e6:18', $false)
+        [void]$dt.Rows.Add('root', 'COM203', 'root', 'b0:cb:d8:f3:32:18', $false)
         & $pump 200
         $f.EdSave.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
         $script:EditorProblems = $f.EdProblems.Text
@@ -8246,7 +8266,7 @@ exit 0
     $wl = Join-Path $env:TEMP 'nis16_crashwatch_test.log'
     Set-Content -Path $wl -Encoding UTF8 -Value @('I (1000) VICTIM: probe sent', "Guru Meditation Error: Core  0 panic'ed (LoadProhibited). Exception was unhandled.", 'Backtrace: 0x400d1234:0x3ffb1230 0x400d5678:0x3ffb1250', 'rst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)', '')
     $script:Run = [pscustomobject]@{ Bg = (New-Object System.Collections.ArrayList); LogPath = '' }
-    [void]$script:Run.Bg.Add([pscustomobject]@{ Label = 'node4'; Port = 'COM33'; Proc = [pscustomobject]@{ HasExited = $true }; Log = $wl; Pos = [long]0; Buf = ''; Ctl = $env:TEMP; Elf = (Join-Path $env:TEMP 'no_such_firmware.elf'); Crashes = 0; Last = '' })
+    [void]$script:Run.Bg.Add([pscustomobject]@{ Label = 'node4'; Port = 'COM233'; Proc = [pscustomobject]@{ HasExited = $true }; Log = $wl; Pos = [long]0; Buf = ''; Ctl = $env:TEMP; Elf = (Join-Path $env:TEMP 'no_such_firmware.elf'); Crashes = 0; Last = '' })
     $script:Dash = @{ Alerts = (New-Object System.Collections.ArrayList) }
     Read-CrashWatch
     Write-Output ("crash watch: crashes counted = {0}, alerts = {1}" -f $script:Run.Bg[0].Crashes, ((@($script:Dash.Alerts | ForEach-Object Text)) -join ' || '))

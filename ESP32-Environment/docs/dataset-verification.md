@@ -16,6 +16,57 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #44 — Oct 18, 2026 · ~8:30 PM — blackhole · tree · G402 · stationary r1 (recapture): why "signature PASS" but "SETUP INVALID"
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `fa545e3` + uncommitted
+> **Request:** "check the blackhole tree G402 stationary validation notes - why it says it passes the attack signature but the setup is invalid, how is it possible"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18, root 7:21 PM | the 8 files of #43 (F4:18 = card `r11_b18`), analysed 8:16 PM (GUI report `%LOCALAPPDATA%/NIS16/reports/blackhole__tree__G402__stationary.txt`) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity | ✅ PASS | 7 PASS, 2 WARN: F4:18's attack 152 s / no cooldown (the crash, #43); the root saw F4:18 never return after the attack |
+| [1] Attack signature (3-sigma) | ✅ 2/2 primaries | attacker ForwardingRatio 1.000 → 0.000, PDR 1.000 → 0.512; NeighbourForwardingRatio 0.999 → 0.000 confirms it from the neighbours; 3 victims behind the attacker PDR 1.0 → **0.0**, 3 boards above it stayed 1.0 |
+| [3] Setup checks | ❌ 2 FAIL | **D7B4 and ED80 changed parent DURING the attack** - the attack windows mix two layouts |
+| Why they moved | ⚠️ caused by the F4:18 crash | layout before the attack: root → **1C38 (attacker)** → **F4:18** → D7B4 (parent F4:2D:C9:73:E6:19) → ED80. F4:18 crashed at attack **+152 s**; at **+158 s** both D7B4 and ED80 show parent 00:00 (lost), then re-joined at +161 / +163 s (D7B4 under the attacker, ED80 under D7B4). Nothing moved during the baseline (Gate 2: "baseline re-routing free: YES"; it fails only on convergence - two logs start inside a phase) |
+| Topology gate | ⚠️ FAIL | "converged within 60 s: NO" for D7B4 / ED80 (late moves during the attack) - same cause |
+
+**Verdict: ❌ NOT CONFIRMED - SETUP INVALID (correct, not contradictory).** The signature test asks "did the attacker's
+path lose its traffic?" - yes, clearly. The setup check asks "did the attack run in ONE layout?" - no: the victim under the
+attacker crashed 152 s in and took its two children with it, so the last ~22 s of the attack are a second layout. The
+verifier's rule is strict on purpose. Recapture once the victim crash (C12 / D9) is understood - or ask the adviser whether
+a verdict on the attack window BEFORE the first parent change is acceptable (that would be a method change → D-entry).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
+## 🔎 VERIFICATION #43 — Oct 18, 2026 · ~8:15 PM — blackhole · tree · G402 · stationary r1 (recapture): 20:38 + F4:18 export warnings vs their SD cards
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `fa545e3` + uncommitted
+> **Request:** "I have warning and issues on exporting 20:38 and F4:18 - look at the exported files and the board files itself to compare which one is the correct one"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18, children flashed 6:28–6:35 PM, root 7:21 PM, root export 7:38 PM | root + 7 children in `exports/blackhole/tree/G402/stationary/` (the Sept 30 r1 was archived the same evening, see `archive/2026-10-18_blackhole-tree-G402-stationary-r1-replaced/`) |
+
+| Check | Result | Detail |
+|---|---|---|
+| 20:38 (attacker 1C38) export vs card (COM33) | ✅ correct file | export = card `r5_b11`, the only clean file (9,347 rows, byte-identical 821,000 B); `r4_b10` / `r2_b8` = earlier attempts, POWERON-aborted |
+| 20:38 "attack 214 s / cooldown 156 s" warning | ✅ not a problem | the first **742 rows** (phase 1 for 33 s, phase 3 for 41 s) are the TAIL of an earlier root attempt the board heard before the 7:21 PM root; then 255 → 0 (300 s) → 1 (180 s) → 3. `preprocess.py`'s root-restart rule marks everything before the last 255 that follows a real phase as `pre_baseline` (excluded). `trim_run.py` does NOT cut it (one boot session) - the analysis does. `run_summary.py` now applies the same rule (shows it as a NOTE) |
+| F4:18 (E618) export vs card (COM9) | ❌ wrong piece exported → 🔧 replaced | the board booted **8×** this session; 2 boots ended by **PANIC**. The exported file = card `r12_b19` (the only CLEAN one): 19 s of attack + cooldown after a crash, **no baseline** (1,397 rows). Card `r11_b18` (ended by PANIC, 6,880 rows) = stabilise 235 s + **baseline 300 s** + **attack 152 s** → now in exports; `r12_b19` moved to `archive/2026-10-18_blackhole-tree-G402-stationary-r1-F418-tail-piece/` (+ REPLACED.txt) |
+| Where F4:18 sat | ⚠️ finding | parent during the whole file = **20:50:0D:E7:1C:39 (the attacker)** at layer 3: the victim directly under the blackhole **crashed 152 s into the attack** - same pattern as verification #39 (blackhole/tree/G402/highload: victims PANIC / INT_WDT, D9) |
+| Run summary after the swap | ⚠️ | 7 boards complete (baseline 300 s, attack 180 s, cooldown 120 s); F4:18 = baseline + 152 s of attack, no cooldown |
+
+**Verdict: ⚠️ USABLE WITH A FOOTNOTE - not yet analysed / verified.** 20:38's export was right (its old-attempt prefix is excluded by the
+analysis). F4:18's export was the wrong boot piece and is replaced by the one with the baseline. F4:18 - the victim under the attacker -
+crashed during the attack: its attack data stops at 152 s. Report it (checklist C12) and treat it together with D9 (victim crashes under
+blackhole): decide recapture vs footnote after the crash cause is known.
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #42 — Oct 18, 2026 · ~4:10 PM — wormhole · linear · DLSU_Library · highload r1: Data page "OTHER RUN" + every board's SD file
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `ac68a5e` + uncommitted

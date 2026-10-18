@@ -76,3 +76,16 @@ function Update-RedoIfChanged {
     if (-not $ch.Count) { return }
     if ($ch.Count -gt 8) { Start-RedoList } else { Start-RedoList -Only $ch }
 }
+
+function Get-OneCellStamp([string]$Key) {
+    # the same [count, newest ticks] as Get-CellStamps, for ONE run folder only -
+    # what a Campaign tile click needs (~1 ms instead of a scan of every run)
+    $n = 0L; $t = 0L
+    foreach ($area in 'exports', 'analysis') {
+        $d = Join-Path $base ("datasets\{0}\{1}" -f $area, ($Key -replace '/', '\'))
+        if (-not [IO.Directory]::Exists($d)) { continue }
+        foreach ($f in ([IO.DirectoryInfo]$d).EnumerateFiles('*', 'AllDirectories')) { $n++; if ($f.LastWriteTimeUtc.Ticks -gt $t) { $t = $f.LastWriteTimeUtc.Ticks } }
+    }
+    if (-not $n) { return $null }
+    return [long[]]@($n, $t)
+}

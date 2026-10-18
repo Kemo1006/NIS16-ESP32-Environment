@@ -47,11 +47,31 @@ function Invoke-CollectRunCli {
     $a = @((Join-Path $base 'tools\collect_run.py'), '--ports', ($use -join ','), '--attack', $p.Attack, '--topology', $p.Topology, '--location', $p.Location,
            '--scenario', $p.Scenario, '--repeat', "$rep", '--since', (Get-Date).AddHours(-[int]$hrs).ToString('yyyy-MM-dd HH:mm'), '--roster', $p.Path)
     if ($p.RootMac) { $a += @('--skip-mac', $p.RootMac) }
-    $go = Read-Host ("  Read {0} port(s) now? [y/N]" -f $use.Count)
+    $wl = Read-Host "  Could these cards have recorded the WRONG location (location.txt left on the last site)? [y/N]"
+    if ($wl -eq 'y' -or $wl -eq 'Y') { $a += '--allow-other-location' }
+    # safety net (oct. 18 2026): SCAN first - copies nothing - and copy only the files shown
+    $go = Read-Host ("  Scan {0} port(s) now (reads the cards, copies nothing)? [y/N]" -f $use.Count)
     if ($go -ne 'y' -and $go -ne 'Y') { Write-Host "  Cancelled - nothing read." -ForegroundColor DarkGray; return }
-    $before = @(Get-ExportCsvSet -Base $base); $t0 = Get-UnixNow
+    $plan = [IO.Path]::GetTempFileName()
     $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'   # PS 5.1: a native stderr line must not abort this
-    try { & python @a } finally { $ErrorActionPreference = $prev }
+    try { & python @a --dry-run --plan-json $plan | Where-Object { $_ -match '^COLLECT' } | ForEach-Object { Write-Host "  $_" } } finally { $ErrorActionPreference = $prev }
+    $rows = @(); try { $rows = @(Get-Content $plan -Raw | ConvertFrom-Json | ForEach-Object { $_ }) } catch { }
+    Remove-Item $plan -ErrorAction SilentlyContinue
+    $okRows = @($rows | Where-Object { $_.state -eq 'OK' })
+    Write-Host ""
+    foreach ($r in $rows) {
+        $c = switch ([string]$r.state) { 'OK' { 'Green' } 'SKIP' { 'DarkGray' } default { 'Yellow' } }
+        Write-Host ("  {0,-6} {1,-13} {2,-5} {3}" -f $r.port, $r.mac, $r.state, $(if ($r.name) { "$($r.name)  ran $($r.started)  ($($r.cell))" } else { $r.why })) -ForegroundColor $c
+        if ($r.name -and $r.why) { Write-Host ("                            {0}" -f $r.why) -ForegroundColor DarkGray }
+    }
+    if (-not $okRows.Count) { Write-Host "  Nothing to collect - the reasons are above (nothing was copied)." -ForegroundColor Yellow; return }
+    $go = Read-Host ("  Copy EXACTLY these {0} file(s) (the OK rows above)? [y/N]" -f $okRows.Count)
+    if ($go -ne 'y' -and $go -ne 'Y') { Write-Host "  Nothing copied." -ForegroundColor DarkGray; return }
+    $pick = ($okRows | ForEach-Object { '{0}={1}' -f $_.port, ($_.rel -replace '\\', '/') }) -join ';'
+    $a2 = @($a); $a2[2] = (@($okRows | ForEach-Object { $_.port }) -join ',')
+    $before = @(Get-ExportCsvSet -Base $base); $t0 = Get-UnixNow
+    $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { & python @a2 --pick $pick } finally { $ErrorActionPreference = $prev }
     Save-ImportBatch -Base $base -Before $before -Started $t0
 }
 

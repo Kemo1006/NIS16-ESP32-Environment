@@ -2638,3 +2638,15 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - oct. 17 (Angelo) — first push of everything (`be5115c`): FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID), wormhole audit (star blocked, A24).  (rolled from STATUS oct. 18)
 - **Preprocess:** `transition` segment for windows spanning 2 phases; anchor fallback keeps a stalled board's baseline (D-21).  (rolled from STATUS oct. 18)
 - **Wizard:** 'b' works on every menu (back one question, or back out of the tool); question chains step back; main menu = short aligned names + hints; Campaign -> [2] checklist redesigned; every tool opens under the same framed title, status lines + prompts aligned. Test `tools/test_wizard_nav.ps1` 15/15.  (rolled from STATUS oct. 18)
+
+## Rolled from MEMORY.md (oct. 18, 2026 ~8:10 PM, line cap)
+- sep. 25, 2026 — **10 Hz sampling + 1 s windows are PANEL/ADVISER-MANDATED — never "restore" 1 Hz / 5 s** (D-1/D-9 "to restore
+- ⚠️ **PS 5.1 promotes a native command's FIRST STDERR LINE to a TERMINATING error** under
+  `$ErrorActionPreference='Stop'` — a tool writing a progress bar to stderr kills its caller with an EMPTY
+  exception message. **Grep every `& python ... 2>&1` before shipping.** Detail: ARCHIVE.md.
+- ⛔⛔ **BSOD 0xB8 = a CP210x driver bug (`silabser.sys`) that fires when its RECEIVE BUFFER FILLS — a board port left open but not read** (oct. 7 entry; corrects oct. 4). Never `time.sleep()` or wait for input with a board port open — use `serial_guard.discard_for()`; every new serial opener must call `serial_guard.grow_rx_queue()` right after open (.NET `SerialPort`: `ReadBufferSize = 1MB` before `Open()`). Still: no Ctrl+C mid-export, boards DIRECT into the laptop. USB selective suspend is off. Older detail: ARCHIVE.md.
+- **Git repo root is this whole folder** (`THESIS3/` on Basti's laptop: `OneDrive\Documents\Thesis\THESIS3`;
+  code, docs, `Paper/`, `ESP32-Environment/` all inside it), NOT `ESP32-Environment/` alone — branch **`THESIS3`**
+  (was `Unified` before sep. 2026), remote `origin` =
+  `https://github.com/Kemo1006/NIS16-ESP32-Environment`. GitHub IS the laptop-to-laptop transport: a `git pull`
+  elsewhere gets the same MEMORY.md/STATUS.md/code. (Corrected sep. 17, 2026; was stale before that.)

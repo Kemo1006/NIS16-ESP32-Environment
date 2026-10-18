@@ -48,6 +48,11 @@ def main():
     os.makedirs(a.ctl, exist_ok=True)
     send_path = os.path.join(a.ctl, "send.txt")
     stop_path = os.path.join(a.ctl, "stop")
+    # oct. 18 2026: a 'reset' file restarts the board (EN pulse through RTS - the
+    # dev board's auto-reset circuit; DTR stays low so it boots normally, not into
+    # the bootloader). The GUI uses it for a clean start between run attempts; the
+    # monitor keeps listening, so the restart itself is in the log.
+    reset_path = os.path.join(a.ctl, "reset")
     sent = 0                     # bytes of send.txt already sent
 
     ser = serial.Serial()
@@ -68,9 +73,21 @@ def main():
     pending = b""
     next_ctl = 0.0
     deadline = time.monotonic() + a.max_hours * 3600 if a.max_hours > 0 else None
+    lost = False
     try:
         while True:
-            chunk = ser.read(4096)
+            try:
+                chunk = ser.read(4096)
+            except serial.SerialException as e:
+                # The COM port vanished under us (oct. 18 2026: a traceback ending in
+                # "ClearCommError failed (Access is denied)"): the board was unplugged,
+                # its cable / hub dropped, or a reset re-enumerated it - Windows may
+                # give it ANOTHER COM number when it comes back (COM3 -> COM30).
+                print(f"[monitor] LOST {a.port}: the board disappeared (unplugged, cable/USB reset "
+                      f"or a reset re-enumerated it) - plug it back; it may come back on ANOTHER "
+                      f"COM number. ({e})", flush=True)
+                lost = True
+                break
             if chunk:
                 pending += chunk
                 *lines, pending = pending.split(b"\n")
@@ -83,6 +100,16 @@ def main():
             next_ctl = now + CTL_POLL_S
             if os.path.exists(stop_path):
                 break
+            if os.path.exists(reset_path):
+                try:
+                    os.remove(reset_path)
+                except OSError:
+                    pass
+                ser.dtr = False
+                ser.rts = True             # EN low
+                time.sleep(0.12)
+                ser.rts = False            # EN high -> normal boot
+                print("[monitor] board restarted (EN pulse) - a clean start for the next attempt", flush=True)
             if deadline and now > deadline:
                 print("[monitor] time limit reached - closing", flush=True)
                 break
@@ -104,9 +131,12 @@ def main():
         if pending:
             out.write(pending + b"\n")
             out.flush()
-        ser.close()
+        try:
+            ser.close()
+        except (serial.SerialException, OSError):
+            pass                      # a vanished port cannot be closed cleanly
     print("[monitor] closed", flush=True)
-    return 0
+    return 3 if lost else 0
 
 
 if __name__ == "__main__":

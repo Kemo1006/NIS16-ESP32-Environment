@@ -3,18 +3,28 @@
 # Shown by itself after an Import (Data page) and after Collect all children.
 # Dot-sourced by run_gui.ps1. ASCII only.
 
-function Show-RunSummary([string]$Folder, [int]$Expect = 0, [string]$Title = '') {
+function Show-RunSummary([string]$Folder, [int]$Expect = 0, [string]$Title = '', [hashtable]$Then = $null) {
+    # -Then @{ A; T; L; S; Text }: analyse + verify that run by itself when the summary says COMPLETE
+    # (oct. 18 2026, item 8 - after a Collect). A run with something to check is never auto-verified.
     if (-not $script:Py -or -not $Folder -or -not (Test-Path $Folder)) { return }
     $json = [IO.Path]::GetTempFileName()
     $a = @('tools\run_summary.py', $Folder, '--json', $json)
     if ($Expect -gt 0) { $a += @('--expect', "$Expect") }
-    Start-ToolJob -Exe $script:Py -ToolArgs $a -State @{ Json = $json; Title = $Title; Folder = $Folder } -OnDone {
+    Start-ToolJob -Exe $script:Py -ToolArgs $a -State @{ Json = $json; Title = $Title; Folder = $Folder; Then = $Then } -OnDone {
         param($text, $code, $st)
         $s = $null
         try { $s = Get-Content $st.Json -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
         Remove-Item $st.Json -ErrorAction SilentlyContinue
         if (-not $s) { Set-Status ('Run summary failed: ' + (($text -split "`n" | Where-Object { $_ } | Select-Object -Last 1))) $Pal.Red; return }
         Show-RunSummaryWindow $s $st.Title
+        if ($st.Then -and $s.complete) {
+            $t = $st.Then
+            if ($script:Stream) { Show-Toast 'Run complete' ("Analyse + verify $($t.Text) when '$($script:Stream.Title)' is done.") ([string][char]0xE9D9) 'GradCool'; return }
+            Show-Toast 'Run complete - analysing it' ("Every board holds the whole run: analyse + verify $($t.Text) starts now.") ([string][char]0xE9D9) 'GradGood'
+            [void](Start-Analysis $t.A $t.T $t.L $t.S $t.Text)
+        } elseif ($st.Then) {
+            Show-Toast 'Not analysed automatically' 'The run summary found something to check first - see its window.' ([string][char]0xE7BA) 'GradMain'
+        }
     }
 }
 

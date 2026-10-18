@@ -45,9 +45,16 @@ function Initialize-GuiDataPage {
     $b.Add_Click({ Invoke-UndoLastImport })
     [void]$host_.Children.Add($b)
     $script:ImpUndoBtn = $b
+    $c = New-Object Windows.Controls.Button
+    $c.Content = 'Collect all plugged-in boards'; $c.Margin = '8,0,0,0'; $c.Padding = '12,7'
+    $c.ToolTip = 'Reads every plugged-in board''s SD card (one at a time, the root left out) and files the run picked above - also when a card recorded the wrong location. Same as the Live run''s Collect.'
+    $c.Add_Click({ Start-CollectFromDataPage })
+    [void]$host_.Children.Add($c)
+    $script:ImpCollectBtn = $c
 }
 
 function Invoke-UndoLastImport {
+    if (Test-TaskBusy 'Undo') { return }
     $rec = Get-ImportBatch -Base $base
     if (-not $rec -or -not @($rec.files).Count) { [void][Windows.MessageBox]::Show('No import is recorded on this laptop (or it was undone already).', 'Undo last import'); return }
     $when = try { [DateTimeOffset]::FromUnixTimeSeconds([long]$rec.finished).LocalDateTime.ToString('MMM dd  hh:mm tt') } catch { '?' }
@@ -63,4 +70,36 @@ function Invoke-UndoLastImport {
     Show-Toast 'Import undone' ("{0} file(s) moved to archive\_undone_imports" -f $r.Moved) ([string][char]0xE7A7) 'GradCool' { if ($script:UndoDir) { Start-Process explorer $script:UndoDir } } 'Open the folder'
     try { Update-TrimCells; Update-Cells } catch { }
     if ($script:ImpItems.Count) { try { Show-ImpList $script:ImpItems } catch { } }
+}
+
+# -- one task at a time: the buttons say so (oct. 18 2026: Import clicked again while
+#    an import was running opened a second confirm box over the first copy)
+function Update-BusyButtons([bool]$Busy) {
+    $title = if ($Busy -and $script:Stream) { [string]$script:Stream.Title } else { '' }
+    foreach ($n in 'ImpGo', 'ImpPreview', 'ImpDel', 'ImpList', 'LocRead', 'LocWrite', 'SdDelete') {
+        $b = $ui[$n]; if (-not $b) { continue }
+        if ($Busy) { $b.IsEnabled = $false; $b.ToolTip = "Wait - '$title' is still running (one task at a time)." } else { $b.ClearValue([Windows.FrameworkElement]::ToolTipProperty) }
+    }
+    foreach ($b in @($script:ImpUndoBtn, $script:ImpCollectBtn)) { if ($b) { $b.IsEnabled = -not $Busy } }
+    if ($Busy) {
+        if ($title -match '(?i)^import') { $ui.ImpGo.Content = 'Importing... wait' }
+    } else {
+        foreach ($n in 'ImpList', 'LocRead', 'LocWrite', 'SdDelete') { if ($ui[$n]) { $ui[$n].IsEnabled = $true } }
+        try { Update-ImpSummary } catch { }        # Import / Preview / Delete follow the ticked rows again
+        if (-not $script:ImpTable) { $ui.ImpGo.Content = 'Import' }
+    }
+}
+
+function Test-TaskBusy([string]$What) {
+    # $true (and says so) while another task runs - checked BEFORE any confirm box opens
+    if (-not $script:Stream) { return $false }
+    [void][Windows.MessageBox]::Show("$What is not started: '$($script:Stream.Title)' is still running.`n`nWait for it to finish - its progress is in the activity pane.", 'Busy')
+    return $true
+}
+
+function Get-PieceSize($F) {
+    # one card file's size for comparing the pieces of one run: bytes, else rows x ~80 B
+    if ($null -ne $F.bytes -and [long]$F.bytes -ge 0) { return [long]$F.bytes }
+    if ($null -ne $F.rows) { return [long]$F.rows * 80 }
+    return 0L
 }
