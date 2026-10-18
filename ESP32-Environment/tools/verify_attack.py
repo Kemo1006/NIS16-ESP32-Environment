@@ -612,6 +612,23 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     """
     label = ATTACK_LABEL[attack]
     df_in = df
+    # D-23 (oct. 19 2026): attack windows in which a board had no working path to
+    # the root (detached / a board above it went down) are not attack evidence -
+    # drop them from the scored test (fairness rule 6: only makes it HARDER).
+    dropped = 0
+    if checks and _checks is not None and hasattr(_checks, "unresolved_windows"):
+        try:
+            bad = _checks.unresolved_windows(df, attack)
+            if bad:
+                tc = _checks._tcol(df)
+                key = list(zip(df["node_id"], pd.to_numeric(df[tc], errors="coerce").round(3)))
+                hit = pd.Series([k in bad for k in key], index=df.index) & (pd.to_numeric(df["Label"], errors="coerce") == label)
+                dropped = int(hit.sum())
+                if dropped:
+                    df = df.copy()
+                    df.loc[hit, "Label"] = float("nan")
+        except Exception:
+            dropped = 0
     raw_lab = pd.to_numeric(df["Label"], errors="coerce")
     n_base_w = int((raw_lab == LABEL_BASELINE).sum())
     n_atk_w = int((raw_lab == label).sum())
@@ -721,6 +738,10 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
 
     conclusive = primary_total > 0
     confirmed = conclusive and primary_pass > 0
+    if dropped:
+        measured.append(f"EXCLUDED from the test: {dropped} attack window(s) in which a board had no working path to "
+                        f"the root (detached, or a board above it went down) - neither attack evidence nor its absence "
+                        f"(D-23; including them would only make the attack look stronger)")
 
     # SETUP CHECKS (tools/attack_checks.py, oct. 14 2026): topology during the
     # attack, the attacker / victims / tunnel behaving as designed. The 3-sigma

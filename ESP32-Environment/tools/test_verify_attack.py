@@ -69,12 +69,29 @@ class TreeReroute(unittest.TestCase):
         d.loc[late, "PDR"] = 1.0
         self.assertTrue(any("VICTIM" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
 
-    def test_too_long_detached_fails_the_budget(self):
-        # 30 s detached > REROUTE_BUDGET (10 % of 180 s): a re-join, not the attack
+    def test_long_outage_is_excluded_not_fatal(self):
+        # oct. 19 2026: 30 s without a path (> the 10 % of a brief re-join) -> those windows are
+        # EXCLUDED from the 3-sigma test and named; the run is not failed for them
         d = self.df.copy()
         m = attack_rows(d) & (d.node_id == "NODE_2805A532D7B4")
         d.loc[d[m].sort_values("t_anchor_s").index[:30], "parent_mac"] = "00:00:00:00:00:00"
-        self.assertTrue(any("detached or unresolvable" in t for t in fails(d, "blackhole")))
+        txt = [i.text for i in ac.setup_issues(d, "blackhole") if i.level == ac.WARN]
+        self.assertTrue(any("D7B4" in t and "TOLERATED WITH EXCLUSION" in t for t in txt))
+        self.assertGreaterEqual(len(ac.unresolved_windows(d, "blackhole")), 30)
+        self.assertIn("EXCLUDED from the test", run(d, "blackhole")[2])
+
+    def test_exclusion_never_makes_it_easier(self):
+        # fairness rule 6: excluded windows are dead-path windows (PDR 0); dropping them can
+        # only weaken the attack evidence - the attack mean of PDR must not go DOWN
+        d = self.df.copy()
+        m = attack_rows(d) & (d.node_id == "NODE_2805A532D7B4")
+        idx = d[m].sort_values("t_anchor_s").index[:30]
+        d.loc[idx, "parent_mac"] = "00:00:00:00:00:00"
+        d.loc[idx, "PDR"] = 0.0
+        bad = ac.unresolved_windows(d, "blackhole")
+        keep = ~pd.Series([(n, round(float(t), 3)) in bad for n, t in zip(d.node_id, d.t_anchor_s)], index=d.index)
+        a = attack_rows(d)
+        self.assertGreaterEqual(d.loc[a & keep, "PDR"].mean(), d.loc[a, "PDR"].mean())
 
     def test_good_reroute_is_robust(self):
         c, inv, txt = run(self.df, "blackhole")

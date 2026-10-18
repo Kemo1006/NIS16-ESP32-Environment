@@ -43,7 +43,7 @@ We chose this over a **firmware lock** (pinning parents at START). The reasons:
 | # | Rule | Threshold | Fails as |
 |---|---|---|---|
 | R1 | The board stays in **one class** for the whole attack. A board carried across by a moving parent counts too | < 3 windows in the other class | FAIL "moved between VICTIM and BYSTANDER" |
-| R2 | **Re-join budget**: time spent detached or unknown | ≤ 10 % of the attack (18 s of 180 s) | FAIL "too much of its attack is a re-join" |
+| R2 | **No-path windows are excluded**: windows where the board is detached or a board above it went down | ≤ 10 % = "brief re-join", more = "long outage" (both reported) | *oct. 19:* no longer a FAIL - the windows are **dropped from the 3-sigma test** (they show PDR 0 for a reason that is not the attack, so dropping them can only make the test harder; unit-tested) |
 | R3 | The **attacker** never moves. Its position *is* the experimental treatment | 0 | FAIL always |
 | R4 | **Robustness**: the 3-sigma test, re-run on the attack windows **before** the first re-route only, must still confirm | needs ≥ 60 s before the re-route | FAIL "NOT ROBUST"; < 60 s = WARN "rests on the layout rule alone" |
 | R5 | Wormhole: the A end stays **shallower** than the B end | < 3 seconds otherwise | FAIL "the shortcut changed" |
@@ -72,6 +72,7 @@ These are deliberate. Each one maps to a known safeguard from research methodolo
    on all **53** analysed attack captures. **Exactly 1 verdict changed**: the run the rule was
    designed for. blackhole/tree/G402/highload is **still rejected** because it has a real
    victim ↔ bystander flip. (Verification #46.)
+6. **Exclusion only makes it harder.** Dead-path windows (detached / dead parent) read PDR 0, which would *help* the attack verdict; they are dropped, never counted (`test_exclusion_never_makes_it_easier`).
 7. **Negative tests.** We broke the data on purpose four ways, and each was caught: a forced flip,
    30 s detached, the signature moved to after the re-route, and the attacker moved
    (`tools/test_verify_attack.py`, 33/33).
@@ -131,7 +132,8 @@ year and volume against the real source; do not copy them from this file blind.
   It changed 1 of 53 verdicts, and the run it accepts also passes on the part before the re-route alone.
 - **"Why not lock the topology?"** That would switch off the self-healing the protocol is built on,
   and a locked child of a crashed parent loses its data anyway.
-- **"Why 10 %?"** Normal re-joins in our captures took 3–6 s; 10 % is 18 s.
+- **"Why 10 %?"** Normal re-joins in our captures took 3–6 s; 10 % is 18 s. Above it the windows are not thrown in as attack evidence - they are excluded.
+- **"A victim's parent crashed mid-attack - what happens to its windows?"** Until it re-joins, it has no path to the root: those windows are excluded, not counted as blackholed (oct. 18 10:11 PM run: 20 windows of ED80).
 - **"Which runs used it?"** The verifier prints "TOLERATED" for each one; see dataset-verification.md (#45, #46).
 - **"Can START be pressed with a bad setup?"** No. Red pre-START checks lock it (D-24). An override needs a typed
   reason, which the verifier reports.

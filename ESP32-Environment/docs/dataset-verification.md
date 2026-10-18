@@ -16,6 +16,32 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #47 — Oct 19, 2026 · ~12:30 AM — blackhole · tree · G402 · stationary r1 (10:11 PM recapture): collected, 70:68 fixed, verdict under D-23 exclusion rule
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `9ca5929` + this change
+> **Request:** "do the export for the recent run" · "why didn't the setup pass - the change happened only under the blackhole, don't be too strict, don't be biased" · "why is 70:68 missing baseline, attack and cooldown"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18, root session 9:55 PM log (START 37 s after READY), root export 10:11 PM | root + 6 children in `exports/blackhole/tree/G402/stationary/` (ED80 + 1C38 imported by hand 10:58 / 11:01 PM; 0C80, F4:18, D7B4, 70:68 by Collect 11:08-11:17 PM). **FE90 not collected** (COM32 `SD_NO_CARD` / COM3 no answer) |
+
+| Check | Result | Detail |
+|---|---|---|
+| 70:68 piece | ❌ → 🔧 | Collect v1 filed `r7_b18` = 319 s of stabilise only ("missing baseline, attack, cooldown"); then `r8_b19` (most data) = the **9:40 PM root attempt**. Right piece = **`r10_b114`**: boot order b19 < b113 < b114, and the 9:55 PM log last heard 70:68 ~24 s into the attack (OFFLINE at +58.7 s, 35 s timeout) = its 29 s of attack. Both wrong files in `archive/2026-10-19_blackhole-tree-G402-stationary-r1-B768-stabilise-only/` (+ REPLACED.txt) |
+| 70:68 coverage | ⚠️ | baseline 300 s, attack **29 s**, no cooldown: the board went down 29 s into the attack (94 reboots between b19 and b113 = a boot loop between the two attempts) - D9 / C12 pattern, 3rd victim under the attacker |
+| [1] Attack signature | ✅ 2/2 primaries | attacker ForwardingRatio 1.000 → 0.000, PDR 1.000 → 0.25 pooled; 4 victims PDR 1.0 → **0.0**, 0C80 (above the attacker) stayed 1.0 |
+| ED80 re-route | ⚠️ TOLERATED WITH EXCLUSION | its parent 70:68 went down → 20 of 160 attack windows had no traceable path (detached / dead parent) → **excluded from the 3-sigma test**; VICTIM in every traceable window. Before the 70:68 fix (only the wrong piece in the table) it read 52/160 → FAIL under the old budget rule |
+| Robustness re-test | ⚠️ untestable | only 42 s of attack before the first re-route (needs 60 s) - the verdict rests on the layout rule; say so |
+| 20:38 cooldown | ⚠️ | 92 s vs ~120 s on the others (file imported by hand at 11:01 PM) - check its card if cooldown is quoted |
+| Gate 2 (topology convergence) | ⚠️ not a verdict input | "converged within 60 s: NO" for 0C80 / 1C38 = their files start with the **9:40 PM root attempt** (kept running across the root re-flash); the analysis excludes those rows (root-restart rule), the convergence timer does not |
+| Sweep vs `5c5e3e1` | ✅ | 54 captures: only this run changed (SETUP INVALID → CONFIRMED). Tests 34/34 |
+
+**Verdict: ✅ BLACKHOLE CONFIRMED, with footnotes** - 70:68 only 29 s of attack (crashed / reset), ED80's 20 dead-path
+windows excluded, robustness untestable (42 s), FE90 not collected. Checklist C13.
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #46 — Oct 18, 2026 · ~11:30 PM — verifier change: D-23 made outcome-blind + budget + robustness; regression sweep over every analysed capture
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `7f50858` + this change

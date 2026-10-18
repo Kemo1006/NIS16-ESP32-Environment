@@ -31,8 +31,10 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -147,11 +149,100 @@ CRASH_ENDS = ("PANIC", "INT_WDT", "TASK_WDT", "WDT")
 MIN_PIECE_B = 80_000         # ~1,000 rows = ~100 s: smaller is a boot fragment, not a run
 
 
-def _crashed_leaves(files, attack_dir, topology):
-    """The card folders where this board CRASHED in this attack + topology (ended_by)."""
+def _crashed_leaves(files, attack_dir, topology, since=None):
+    """The card folders where this board CRASHED in this attack + topology (ended_by),
+    in THIS run's time window - an older run's crash is not looked up again."""
     return sorted({f"{f.get('attack')}/{f.get('topology')}/{f.get('location')}" for f in files
                    if f.get("kind") == "telem" and f.get("filed_under") == attack_dir and f.get("topology") == topology
-                   and str(f.get("ended_by") or "").upper() in CRASH_ENDS})
+                   and str(f.get("ended_by") or "").upper() in CRASH_ENDS
+                   and not (since and _when(f.get("started")) and _when(f.get("started")) < since)})
+
+
+# ---- "does the data look good?" (oct. 19 2026) --------------------------------------
+# User: "make Collect allow the datasets that look good". The card's own labels
+# (clean / aborted, size, start time) do not say whether a file HOLDS the run: B7:68's
+# piece picked by size + time held only 319 s of stabilise. So every file is checked
+# by its CONTENT after the copy (into a temp folder first): rows per phase, with the
+# root-restart rule of run_summary.py / preprocess.py. The pieces are tried NEWEST BOOT
+# FIRST and the first one holding a baseline wins - NOT the one with the most data:
+# B7:68's card held two pieces with a full baseline (b19 = the 9:40 PM root attempt,
+# 53 s of attack; b114 = the 9:55 PM run, 29 s), and "most data" took the wrong run.
+# A root session that reached Phase 0 is a run; the newest one is the run being
+# collected (a stopped attempt is always older). A piece without a usable baseline is
+# never filed - it is reported, the card is not touched.
+HZ = 10                      # telemetry rows per second
+FULL = {0: 270 * HZ, "attack": 120 * HZ, 3: 90 * HZ}   # >= 90 % baseline, 2/3 attack, 3/4 cooldown
+MIN_BASELINE_ROWS = 60 * HZ  # under 60 s of baseline the 3-sigma test has nothing to compare with
+MAX_TRIES = 4                # pieces copied per board at most
+
+
+def _coverage(path):
+    import run_summary
+    b = run_summary.read_board(path)
+    ph = b["phases"]
+    return {"stab": ph.get(255, 0), "base": ph.get(0, 0), "attack": ph.get(1, 0) + ph.get(2, 0), "cool": ph.get(3, 0),
+            "old": b.get("old_rows", 0)}
+
+
+def _cov_text(c):
+    return (f"baseline {c['base'] // HZ} s, attack {c['attack'] // HZ} s, cooldown {c['cool'] // HZ} s"
+            + (f", stabilise {c['stab'] // HZ} s" if c["stab"] else ""))
+
+
+def _grade(c):
+    """FULL | PARTIAL | SHORT_BASELINE | NO_RUN"""
+    if c["base"] >= FULL[0] and c["attack"] >= FULL["attack"] and c["cool"] >= FULL[3]:
+        return "FULL"
+    if c["base"] >= FULL[0] and c["attack"] > 0:
+        return "PARTIAL"
+    if c["base"] >= MIN_BASELINE_ROWS:
+        return "SHORT_BASELINE"
+    return "NO_RUN"
+
+
+def _score(c):
+    return c["base"] + c["attack"] + c["cool"]
+
+
+def _boot(f):
+    try:
+        return int(f.get("boot") or -1)
+    except (TypeError, ValueError):
+        return -1
+
+
+def _alternatives(files, chosen, want_atk, topology, location, since, allow_other):
+    """Other telemetry pieces of this run on the card, newest boot first."""
+    out = []
+    for f in files:
+        if f.get("kind") != "telem" or f.get("rel") == chosen.get("rel") or f.get("live"):
+            continue
+        if not (f.get("filed_under") == want_atk and f.get("topology") == topology):
+            continue
+        if f.get("location") != location and not allow_other:
+            continue
+        st = _when(f.get("started"))
+        if since and st and st < since:
+            continue
+        if _size(f) < MIN_PIECE_B:
+            continue
+        out.append(f)
+    return sorted(out, key=_boot, reverse=True)
+
+
+def _import_one(src_args, f, a, outdir):
+    """Copy ONE card file into outdir with import_sdcard.py; (path or None, stdout)."""
+    imp = [_py(), os.path.join(HERE, "import_sdcard.py")] + src_args + [
+        "--repeat", str(a.repeat), "--scenario", a.scenario, "--files", f["rel"], "--outdir", outdir]
+    if f.get("clean") is not True:
+        imp.append("--include-aborted")
+    if f.get("location") != a.location:
+        imp += ["--file-location", a.location]
+    if a.roster:
+        imp += ["--roster", a.roster]
+    p = subprocess.run(imp, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=HERE)
+    hits = glob.glob(os.path.join(outdir, "**", "*_telem.csv"), recursive=True) if p.returncode == 0 else []
+    return (max(hits, key=os.path.getmtime) if hits else None), p.stdout + (p.stderr if p.returncode else "")
 
 
 def _fetch_crashes(kind, s, leaves, node, run_logs):
@@ -381,31 +472,59 @@ def main():
             _say(label, mac, "OK", f"would copy {f.get('name')} ({f.get('rows') or '?'} rows, ran {f.get('started')})" + (f" - {note}" if note else ""))
             ok += 1
             continue
-        imp = [_py(), os.path.join(HERE, "import_sdcard.py")] + src_args + [
-            "--repeat", str(a.repeat), "--scenario", a.scenario, "--files", f["rel"], "--outdir", a.outdir]
-        if f.get("clean") is not True:
-            imp.append("--include-aborted")          # no manifest (unknown) or a crash-ended piece picked on purpose
-        if f.get("location") != a.location:
-            imp += ["--file-location", a.location]
-        if a.roster:
-            imp += ["--roster", a.roster]
-        if a.dry_run:
-            imp.append("--dry-run")
-        p = subprocess.run(imp, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=HERE)
-        for line in p.stdout.splitlines():
-            if line.strip():
-                print("   " + line, flush=True)
-        if p.returncode != 0:
-            _say(label, mac, "FAIL", f"import_sdcard.py exited {p.returncode}: {(p.stderr.strip().splitlines() or [''])[-1]}")
-            row.update(state="FAIL", why=f"import failed (exit {p.returncode})")
-            fail += 1
+        if a.dry_run:                            # a CLI dry run: say what would be copied
+            _say(label, mac, "OK", f"would copy {f.get('name')} ({f.get('rows') or '?'} rows, ran {f.get('started')})"
+                 + (f" - {note}" if note else ""))
+            ok += 1
             continue
-        _say(label, mac, "OK", (("would copy " if a.dry_run else "") + f"{f.get('name')} ({f.get('rows') or '?'} rows, ran {f.get('started')})")
-             + (f" - {note}" if note else ""))
+        # copy into a temp folder, look INSIDE, keep only a piece that holds the run
+        want_atk = "baseline" if a.attack in ("none", "baseline") else a.attack
+        tmp = tempfile.mkdtemp(prefix="collect_")
+        tried, best = [], None
+        try:
+            alts = _alternatives(files, f, want_atk, topology, a.location, since, a.allow_other_location)
+            # newest boot first; the picked file leads only when nothing newer is on the card
+            order = sorted([f] + alts, key=_boot, reverse=True)
+            for cand in order[:MAX_TRIES]:
+                sub = os.path.join(tmp, str(len(tried)))
+                path, out = _import_one(src_args, cand, a, sub)
+                if not path:
+                    tried.append(f"{cand.get('name')}: copy failed ({(out.strip().splitlines() or ['?'])[-1][:80]})")
+                    continue
+                c = _coverage(path)
+                g = _grade(c)
+                tried.append(f"{cand.get('name')} ({'clean' if cand.get('clean') else 'ended by ' + str(cand.get('ended_by') or 'a reset')}): {_cov_text(c)} -> {g}")
+                print(f"   checked {cand.get('name')}: {_cov_text(c)} -> {g}", flush=True)
+                if g != "NO_RUN":
+                    best = (cand, c, path, g)        # the newest session that holds a baseline
+                    break
+                if best is None:
+                    best = (cand, c, path, g)
+            if best is None or best[3] == "NO_RUN":
+                why = "no piece on the card holds this run's baseline - nothing filed. Pieces checked: " + "; ".join(tried)
+                _say(label, mac, "FAIL", why)
+                row.update(state="FAIL", why=why)
+                fail += 1
+                continue
+            cand, c, path, g = best
+            os.makedirs(dest_dir, exist_ok=True)
+            dest = os.path.join(dest_dir, os.path.basename(path))
+            if os.path.exists(dest):
+                dest = dest[:-len("_telem.csv")] + f"_{dt.datetime.now():%H%M%S}_telem.csv"
+            shutil.move(path, dest)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        verdict = {"FULL": "", "PARTIAL": "PARTIAL - ", "SHORT_BASELINE": "SHORT BASELINE - "}[g]
+        if cand is not f:
+            note = (f"took the NEWEST piece that holds a baseline ({cand.get('name')}, boot {_boot(cand)}), "
+                    f"not {f.get('name')}" + (f"; {note}" if note else ""))
+        text = (f"{verdict}{cand.get('name')} -> {os.path.basename(dest)}: {_cov_text(c)}" + (f" - {note}" if note else ""))
+        _say(label, mac, "OK", text)
+        row.update(state="OK", why=text, rel=cand.get("rel", ""), name=cand.get("name", ""))
         ok += 1
         # the board crashed in this run: its card also holds WHERE (crash_record.c,
         # firmware since oct. 18 2026) - fetch + decode it next to the run's logs
-        crashed = _crashed_leaves(files, attack_dir, topology)
+        crashed = _crashed_leaves(files, attack_dir, topology, since)
         if crashed and not a.dry_run:
             node = str(f.get("node") or "")
             _fetch_crashes(kind, s, crashed, node,

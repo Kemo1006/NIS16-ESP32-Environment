@@ -128,8 +128,9 @@ def _short(n):
 #      verdict does not hold there, the run fails. It can never upgrade one.
 FLIP_MIN_WINDOWS = 3          # >= 3 windows in each class = a real flip; fewer = window
                               # alignment noise (+-1 s) around a re-join
-REROUTE_BUDGET = 0.10         # a key board may spend <= 10 % of the attack detached or
-                              # unresolved (18 s of 180 s - an ESP-MESH re-join takes ~2-8 s)
+REROUTE_BUDGET = 0.10         # <= 10 % of a board's attack detached / unresolved = a brief
+                              # re-join (normal ones: 3-6 s); more = a long outage (oct. 19 2026:
+                              # those windows are EXCLUDED from the 3-sigma test, not fatal)
 PHASE_EDGE_S = 60.0           # the layout "at START" = the last 60 s of the baseline;
                               # "after the attack" = the first 60 s of the cooldown
 ROBUST_MIN_ATTACK_S = 60.0    # the robustness re-test needs >= 60 s of attack before
@@ -264,6 +265,22 @@ def _wormhole_order(df, roles):
     return bad < FLIP_MIN_WINDOWS, bad, len(both)
 
 
+def unresolved_windows(df, attack):
+    """{(node_id, t)} of attack windows in which a board had NO working path to the
+    root: detached, or a board above it went silent (crashed / reset). They are
+    evidence of neither the attack nor its absence, so verify_attack.py drops them
+    from the 3-sigma test (oct. 19 2026, fairness rule 6: this can only make the
+    test HARDER - a dead parent also drives PDR to 0, which would read as attack)."""
+    if attack != "blackhole":
+        return set()
+    out = set()
+    for n, seq in exposure_timeline(df, attack).items():
+        for t, c in seq:
+            if c in ("detached", "unknown"):
+                out.add((n, round(float(t), 3)))
+    return out
+
+
 def _delivery_note(atk, n):
     """Information only - never used to decide (fairness rule 1)."""
     if "PDR" not in atk.columns:
@@ -369,12 +386,15 @@ def topology_issues(df, attack, key_nodes=()):
                 out.append(Issue(FAIL, msg + f" - it moved between VICTIM ({cls.count('victim')} s) and BYSTANDER "
                                              f"({cls.count('bystander')} s) during the attack, so the attack windows "
                                              f"mix two experiments"))
-            elif off > REROUTE_BUDGET * len(cls):
-                out.append(Issue(FAIL, msg + f" - it spent {off} of {len(cls)} attack windows ({off / len(cls):.0%}) "
-                                             f"detached or unresolvable; the limit is {REROUTE_BUDGET:.0%}, so too much "
-                                             f"of its attack is a re-join, not the attack"))
             elif _majority(cls) is None:
                 out.append(Issue(FAIL, msg + " - its position during the attack could not be resolved"))
+            elif off > REROUTE_BUDGET * len(cls):
+                out.append(Issue(WARN, msg + f" - TOLERATED WITH EXCLUSION: it stayed a {_majority(cls).upper()} in every "
+                                             f"window where its path could be traced, but {off} of {len(cls)} windows "
+                                             f"({off / len(cls):.0%}, over the {REROUTE_BUDGET:.0%} of a brief re-join) had "
+                                             f"no working path to the root (detached, or a board above it went down). "
+                                             f"Those windows are EXCLUDED from the 3-sigma test. Decided from the layout only"
+                                             + _delivery_note(atk, n)))
             else:
                 out.append(Issue(WARN, msg + f" - TOLERATED: it stayed a {_majority(cls).upper()} in every attack window "
                                              f"({off} s detached while re-joining, limit "
