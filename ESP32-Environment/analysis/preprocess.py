@@ -834,6 +834,33 @@ def rebase_timestamps(raw: pd.DataFrame) -> pd.DataFrame:
 # Step 3 — Missing-sample handling (per-node, before windowing)
 # ─────────────────────────────────────────────────────────────────────────
 
+# A sample may be up to SAMPLE_LATE_TICKS late, never early: the firmware samples with
+# FreeRTOS xTaskDelayUntil (fixed period from an anchor), which, when the task was held
+# up, returns at once for each missed period - the samples are TAKEN, just bunched
+# (measured oct. 19 2026, FE90 tree/G402/stationary: 258 ms, then 1 ms, 41 ms, 100 ms...).
+# 3 ticks = 300 ms covers the hold-ups seen (p99 278 ms). Beyond it a hole is a hole.
+SAMPLE_LATE_TICKS = 3
+
+
+def _assign_ticks(x):
+    """One sample per tick, each on the EARLIEST free tick in [x - SAMPLE_LATE_TICKS, x + 0.5]
+    (x = time in ticks, ascending). A sample with no free tick there collides with the one
+    before it (the duplicate rule then drops it). Never invents a sample, never counts one
+    twice, never moves one earlier than it could have been scheduled."""
+    import numpy as np
+    out = np.empty(len(x), dtype=np.int64)
+    last = None
+    for i, v in enumerate(x):
+        c = int(np.ceil(v - SAMPLE_LATE_TICKS - 1e-9))
+        if last is not None:
+            c = max(c, last + 1)
+            if c > v + 0.5:
+                c = last
+        out[i] = c
+        last = c if last is None else max(last, c)
+    return out
+
+
 def _fill_node_gaps(node_df: pd.DataFrame, report: PreprocessReport) -> pd.DataFrame:
     """
     Apply the thesis's missing-value rules to one (node, run) timeline,
@@ -858,9 +885,12 @@ def _fill_node_gaps(node_df: pd.DataFrame, report: PreprocessReport) -> pd.DataF
     caller (handle_missing_values) enforces this grouping.
     """
     import warnings
-    node_df = node_df.copy()
-    # Grid index is in TICKS of 1/GRID_HZ seconds, not whole seconds.
-    t_int = (node_df["t_rel"] * GRID_HZ).round().astype(int)
+    node_df = node_df.copy().sort_values("t_rel")
+    # Grid index is in TICKS of 1/GRID_HZ seconds, not whole seconds. Each sample goes
+    # to the tick it was SCHEDULED for, not simply the nearest one (oct. 19 2026, D-25):
+    # see _assign_ticks - plain rounding put late, back-to-back samples on one tick and
+    # left false holes that discarded up to 59 % of a healthy board's windows.
+    t_int = pd.Series(_assign_ticks((node_df["t_rel"] * GRID_HZ).to_numpy()), index=node_df.index)
 
     # Guard against a corrupt timestamp. A single garbage timestamp_us value
     # (e.g. 4.0e15 µs seen from an esp_timer glitch) survives numeric coercion
@@ -892,7 +922,7 @@ def _fill_node_gaps(node_df: pd.DataFrame, report: PreprocessReport) -> pd.DataF
         # every real capture at rates > 1 Hz, so it's tallied on `report` and
         # shown once in the quality summary rather than warned per node/file.
         node_df["_t_int"] = t_int
-        node_df["_t_frac_err"] = (node_df["t_rel"] - t_int).abs()
+        node_df["_t_frac_err"] = (node_df["t_rel"] * GRID_HZ - t_int).abs()
         node_df = (
             node_df
             .sort_values(["_t_int", "_t_frac_err"])

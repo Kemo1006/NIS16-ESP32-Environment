@@ -134,7 +134,7 @@ class TreeReroute(unittest.TestCase):
         self.assertIn("CONFIDENCE: MINOR GAPS", txt)
         self.assertIn("MINOR GAP (result not affected): E618 (victim): only 151 of", txt)
         self.assertIn("MINOR GAP (result not affected): E618: only 0 of", txt)
-        self.assertIn("impact check: without E618", txt)
+        self.assertIn("impact check: without 1C38, E618, FE90", txt)
         self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED - minor gaps"', txt)
 
     def test_short_attack_is_judged_by_the_impact_check(self):
@@ -150,7 +150,7 @@ class TreeReroute(unittest.TestCase):
         # grade itself is not asserted; the 28 s board alone must be MINOR)
         self.assertIn("MINOR GAP (result not affected): E618 (victim): only 28 of", txt)
         self.assertNotIn("MAJOR GAP (affects the result): E618", txt)
-        self.assertIn("impact check: without E618", txt)
+        self.assertIn("impact check: without 1C38, E618, FE90", txt)
 
     def test_failed_impact_check_makes_it_major(self):
         # the same gaps, but the attack is NOT confirmed without the board: MAJOR
@@ -159,9 +159,26 @@ class TreeReroute(unittest.TestCase):
                ac.Issue(W, "IMPACT CHECK FAILED: without E618 the attack is not confirmed - the result depends on them")]
         g = va._confidence(True, False, True, iss)
         self.assertEqual(g[0], "MAJOR GAPS")
-        self.assertEqual(len(g[2]), 1)
-        self.assertTrue(g[1][0].startswith("the small gaps DO change the result"))
+        # a failed impact check promotes the board's gap too - never "result not affected"
+        self.assertEqual(len(g[2]), 0)
+        self.assertEqual(len(g[1]), 2)
+        self.assertTrue(any(x.startswith("without the boards with gaps the attack is no longer confirmed") for x in g[1]))
         self.assertEqual(va._confidence(True, False, True, iss[:1])[0], "MINOR GAPS")
+
+    def test_gaps_on_most_boards_are_major(self):
+        # the impact check may not set aside more than half the network (verification #53)
+        iss = [ac.Issue(ac.WARN, "IMPACT CHECK FAILED: gaps on 5 of 7 boards (0C80, 1C38, B768, ED80, FE90) - more "
+                                 "than half the network; the attack cannot be re-tested on the boards that are left")]
+        g = va._confidence(True, False, True, iss)
+        self.assertEqual(g[0], "MAJOR GAPS")
+        self.assertTrue(g[1][0].startswith("5 of 7 boards have gaps"))
+
+    def test_gap_inside_a_phase_is_a_gap(self):
+        # S9: windows missing in the MIDDLE of a phase, under the 95 % coverage floor
+        it = ac.Issue(ac.WARN, "FE90 (child) - a bystander - has attack windows for only 73 of 179 s (40%, floor 95%): "
+                               "windows missing INSIDE the attack (too few samples, or the board stalled)")
+        self.assertEqual(va._gap(it)[0], "minor")
+        self.assertIn("FE90 (bystander): windows for only 73 of 179 s of its attack (40%)", va._gap(it)[2])
 
     def test_decision_ignores_delivery(self):
         # fairness rule 1: the tolerate / reject decision must not read PDR
@@ -180,6 +197,25 @@ class Blackhole(unittest.TestCase):
         cls.atk_id = cls.df.loc[cls.df.node_role == "blackhole", "node_id"].iloc[0]
         cls.victims = set(cls.df.loc[cls.df.exposure == "downstream", "node_id"])
         cls.bystanders = set(cls.df.loc[cls.df.exposure == "upstream", "node_id"])
+
+    def test_benign_baseline_is_confirmed_benign(self):
+        # the baseline of a good run is normal traffic: no signature, healthy (verification #53)
+        d = self.df[self.df.segment.astype(str) == "baseline"].copy()
+        with contextlib.redirect_stdout(io.StringIO()):
+            ok, concl = va.verify_benign(d)
+        self.assertTrue(concl)
+        self.assertTrue(ok, va._LAST_BENIGN[0])
+
+    def test_benign_with_a_dropping_relay_is_not_benign(self):
+        # a relay that drops half its traffic with no attacker = not a clean reference
+        d = self.df[self.df.segment.astype(str) == "baseline"].copy()
+        late = d.t_anchor_s > d.t_anchor_s.median()
+        relay = (d.node_id == self.atk_id) & late
+        d.loc[relay, "forward_count_delta"] = (d.loc[relay, "recv_count_delta"] * 0.5).round()
+        with contextlib.redirect_stdout(io.StringIO()):
+            ok, concl = va.verify_benign(d)
+        self.assertFalse(ok)
+        self.assertTrue(any("forwarded only" in w for w in va._LAST_BENIGN[0]["why"]))
 
     def test_good_capture_confirmed_and_clean(self):
         c, inv, _ = run(self.df, "blackhole")

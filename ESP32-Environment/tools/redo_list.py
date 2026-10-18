@@ -158,6 +158,15 @@ def run_verifier(ft, attack):
         import verify_attack as va
         import attack_checks as ac
         df = pd.read_csv(ft, low_memory=False)
+        if attack in ("baseline", "none"):
+            # a benign capture: shown normal by verify_benign (oct. 19 2026)
+            with contextlib.redirect_stdout(io.StringIO()):
+                benign, conclusive = va.verify_benign(df)
+            b = va._LAST_BENIGN[0]
+            if b["word"] == "BENIGN CONFIRMED":
+                tag = "major: " if b["major"] else "minor: "
+                return ("CONFIRMED " + b["grade"], "", [tag + g for g in b["gaps"]])
+            return ("INCONCLUSIVE" if not conclusive else "NOT CONFIRMED", "; ".join(b["why"][:2]), [])
         with contextlib.redirect_stdout(io.StringIO()):
             confirmed, conclusive = va.verify(df, attack, 3.0)
         # the verifier's own issues (incl. its re-test) - the same footnotes as the report
@@ -257,12 +266,15 @@ def assess(cell, runs, planned, vlog, drows):
     elif latest["analysis"] == "stale":
         add(CHECK, "analysis is older than the capture", "analysis", "re-run analyze.ps1")
 
-    if attack != "baseline" and os.path.isfile(ft):
+    if os.path.isfile(ft):
         v = run_verifier(ft, attack)
         word, fail, gaps = v
         if word == "SETUP INVALID":
             add(REDO, "signature moved but the attack did not run as designed: "
                 + _short_board(fail), "verifier", "fix the setup, then recapture")
+        elif word in ("NOT CONFIRMED", "INCONCLUSIVE") and attack == "baseline":
+            add(REDO, f"benign {word.lower()}: " + (fail or "too little data"), "verifier",
+                "not a clean normal reference - recapture the benign run (check load / placement first)")
         elif word in ("NOT CONFIRMED", "INCONCLUSIVE"):
             add(REDO, f"attack {word.lower()}" + (f": {_short_board(fail)}" if fail else
                 " - no primary signature reached 3-sigma"), "verifier",

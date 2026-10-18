@@ -641,6 +641,12 @@ def _gap(it):
         kept, gone = int(m.group(1)), int(m.group(2))
         return "minor", who, (f"{who}{role}: only {kept} of {kept + gone} s of its attack were recorded "
                               f"- the last {gone} s are missing (it went silent, or too few samples)")
+    m = re.search(r"has (baseline|attack) windows for only (\d+) of (\d+) s \((\d+)%", t)
+    if m:
+        # gaps INSIDE a phase (S9): the impact check decides, like any other per-board gap
+        role = role or (" (bystander)" if "a bystander" in t else "")
+        return "minor", who, (f"{who}{role}: windows for only {m.group(2)} of {m.group(3)} s of its {m.group(1)} "
+                              f"({m.group(4)}%) - gaps inside the {m.group(1)} (too few samples, or it stalled)")
     if "COOLDOWN" in t and ("has NO" in t or "only" in t):
         got = re.search(r"only (\d+) s of", t)
         full = re.search(r"the others: (\d+) s", t)
@@ -658,8 +664,12 @@ def _gap(it):
             return "major", "", (f"only {b - a} of {b} victim-seconds could be tested - the other {a} ({m.group(3)}%) "
                                  f"had no path to the root and were left out")
         return "major", "", "most of the victims' attack time had no path to the root and was left out of the test"
+    if t.startswith("IMPACT CHECK FAILED: gaps on"):
+        m = re.search(r"gaps on (\d+) of (\d+) boards \(([^)]*)\)", t)
+        return "major", "", (f"{m.group(1)} of {m.group(2)} boards have gaps ({m.group(3)}) - more than half the network, "
+                             f"so the boards left cannot show the gaps are harmless" if m else t)
     if t.startswith("IMPACT CHECK FAILED"):
-        return "major", "", "the small gaps DO change the result: " + t.split(": ", 1)[-1]
+        return "major", "", "without the boards with gaps the attack is no longer confirmed: " + t.split(": ", 1)[-1]
     return None
 
 
@@ -697,6 +707,10 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
             notes.append("whether the run was force-started could not be checked (no run log saved)")
             break
     major, minor, notes = (list(dict.fromkeys(x)) for x in (major, minor, notes))
+    if any(it.level == "WARN" and it.text.startswith("IMPACT CHECK FAILED") for it in issues):
+        # the impact check could not clear them: these gaps DO matter - listed as major, never
+        # as "result not affected" (verification #53)
+        major, minor = major + minor, []
     notes_all = notes + good
     if major:
         return "MAJOR GAPS", major, minor, notes_all, []
@@ -707,6 +721,9 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
     return "STRONG", [], [], notes_all, []
 
 
+IMPACT_MAX_SHARE = 0.5   # the impact check may set aside at most half the non-root boards
+
+
 def _impact_issue(df_in, attack, sigma, block, issues):
     """IMPACT CHECK (oct. 19 2026): re-run the 3-sigma test WITHOUT the boards that have
     only minor gaps. Still confirmed -> the gaps do not change the result (OK). Not
@@ -714,6 +731,14 @@ def _impact_issue(df_in, attack, sigma, block, issues):
     boards = sorted({g[1] for g in (_gap(i) for i in issues if i.level == "WARN") if g and g[0] == "minor" and g[1]})
     if not boards:
         return None
+    # the check removes the boards with gaps; if that is MOST of the network, what is left is a
+    # minority (often no control group) and cannot show the gaps are incidental (verification #53)
+    roles = df_in.groupby("node_id")["node_role"].first() if "node_role" in df_in.columns else pd.Series(dtype=str)
+    total = sum(1 for _n, r in roles.items() if str(r) not in _checks._exposure.ROOT_ROLES)
+    if total and len(boards) > IMPACT_MAX_SHARE * total:
+        return _checks.Issue(_checks.WARN, f"IMPACT CHECK FAILED: gaps on {len(boards)} of {total} boards "
+                                           f"({', '.join(boards)}) - more than half the network; the attack cannot be "
+                                           f"re-tested on the boards that are left")
     keep = ~df_in["node_id"].astype(str).str[-4:].str.upper().isin([b.upper() for b in boards])
     saved = (_LAST_SETUP_INVALID[0], list(_LAST_ISSUES[0]))
     try:
@@ -1486,11 +1511,183 @@ def print_per_node_pdr(df, label, sigma_note=""):
     print()
 
 
+# ---- BENIGN VERIFICATION (oct. 19 2026, verification #53) -------------------------
+# A benign (no-attack) capture is the NORMAL reference, so it has to be shown normal,
+# with the SAME tests and thresholds the attack verifier uses, pointed the other way:
+#   [1] NO-ATTACK TEST  the 3-sigma test [Z] of BOTH attack signatures, the later phase
+#                       (where an attack would run) vs the baseline: none may pass
+#   [2] HEALTH          every phase delivers >= BASELINE_FLOOR PDR [K] and every relay
+#                       forwards >= 90 % [A] - what an attack-free mesh does
+#   [3] DATA            every board has windows for >= 95 % of each phase (S9 floor)
+# BENIGN CONFIRMED = no signature + healthy; BENIGN NOT CONFIRMED = a signature passed or
+# a phase was unhealthy (normal traffic that is not normal cannot be the reference);
+# INCONCLUSIVE = too little data to test.
+BENIGN_RELAY_FLOOR = 0.90    # an honest relay forwards >= 90 % (same value as BASELINE_FLOOR)
+_LAST_BENIGN = [None]
+
+
+def _benign_control(df):
+    """The phase an attack WOULD have run in: 'attack', else 'cooldown', else the
+    second half of the baseline. Returns (mask, name)."""
+    seg = df["segment"].astype(str) if "segment" in df.columns else pd.Series("", index=df.index)
+    for s in ("attack", "cooldown"):
+        m = seg == s
+        if m.sum() >= MIN_ATTACK_POINTS * DEFAULT_BLOCK_WINDOWS:
+            return m, s
+    base = seg == "baseline"
+    tc = "t_anchor_s" if "t_anchor_s" in df.columns else "window_start"
+    cut = pd.to_numeric(df.loc[base, tc], errors="coerce").median()
+    return base & (pd.to_numeric(df[tc], errors="coerce") > cut), "second half of the baseline"
+
+
+def verify_benign(df):
+    """Report for a benign capture. Returns (benign, conclusive)."""
+    import attack_checks as ac
+    seg = df["segment"].astype(str) if "segment" in df.columns else pd.Series("", index=df.index)
+    ctl, ctl_name = _benign_control(df)
+    base = (seg == "baseline") & ~ctl
+    meta = df.iloc[0] if len(df) else {}
+    where = " / ".join(str(meta.get(k, "?")) for k in ("topology", "location", "scenario")) if len(df) else "?"
+    out = io.StringIO()
+
+    def P(s=""):
+        print(s, file=out)
+
+    P("=" * RULE_W)
+    P(f" BENIGN VERIFICATION  -  {where}")
+    P("=" * RULE_W)
+
+    # [1] the same 3-sigma test, both signatures, control phase vs baseline
+    sig_rows, passed, tested = [], [], 0
+    for attack in ("blackhole", "wormhole"):
+        d = df[base | ctl].copy()
+        d["Label"] = float("nan")
+        d.loc[base[d.index], "Label"] = LABEL_BASELINE
+        d.loc[ctl[d.index], "Label"] = ATTACK_LABEL[attack]
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            ok, concl = verify(d, attack, 3.0, checks=False)
+        tested += bool(concl)
+        if ok:
+            passed.append(attack)
+        for ln in buf.getvalue().splitlines():
+            m = re.match(r"^\s{5}([A-Z][A-Z-]+(?: [A-Z]+)?)\s{2,}(\S.*)$", ln)
+            if m and ("primary" in ln or "support" in ln):
+                sig_rows.append((attack, m.group(1), m.group(2)))
+
+    # [2] health: delivery per phase, forwarding per relay
+    health, bad_health = [], []
+    for name, m in (("baseline", base), (ctl_name, ctl)):
+        x = df[m]
+        if "PDR" in x.columns:
+            v = pd.to_numeric(x["PDR"], errors="coerce").dropna()
+            if len(v):
+                okk = v.mean() >= BASELINE_FLOOR["PDR"]
+                health.append(("OK" if okk else "FAIL",
+                               f"{name}: delivery (PDR) {v.mean():.3f} - a healthy ESP-MESH delivers > 0.97, "
+                               f"floor {BASELINE_FLOOR['PDR']:.2f}  [K]"))
+                if not okk:
+                    bad_health.append(f"the {name} delivered only {v.mean():.0%} (floor {BASELINE_FLOOR['PDR']:.0%}) "
+                                      f"with no attacker")
+        if {"forward_count_delta", "recv_count_delta"} <= set(x.columns):
+            for n, g in x.groupby("node_id"):
+                rec = pd.to_numeric(g["recv_count_delta"], errors="coerce").sum()
+                fwd = pd.to_numeric(g["forward_count_delta"], errors="coerce").sum()
+                if rec >= 20 and fwd / rec < BENIGN_RELAY_FLOOR:
+                    health.append(("FAIL", f"{name}: {str(n)[-4:]} forwarded only {fwd / rec:.0%} of {int(rec)} "
+                                           f"packets  [A]"))
+                    bad_health.append(f"{str(n)[-4:]} forwarded only {fwd / rec:.0%} in the {name} with no attacker")
+    if not any(h[0] == "FAIL" and "forwarded" in h[1] for h in health):
+        health.append(("OK", "every relay forwarded >= 90 % of what it received in both phases  [A]"))
+
+    # [3] data: windows per board per phase (the S9 floor)
+    gaps = []
+    tc = "t_anchor_s" if "t_anchor_s" in df.columns else "window_start"
+    roles = df.groupby("node_id")["node_role"].first() if "node_role" in df.columns else {}
+    nonroot = [n for n in df["node_id"].dropna().unique()
+               if str(roles.get(n, "")) not in ac._exposure.ROOT_ROLES]
+    for name, m in (("baseline", base), (ctl_name, ctl)):
+        x = df[m]
+        if x.empty:
+            continue
+        tt = pd.to_numeric(x[tc], errors="coerce")
+        whole = int(round(tt.max() - tt.min())) + 1
+        for n in nonroot:
+            have = len(set(tt[x["node_id"] == n].round().dropna().astype(int)))
+            if whole >= 20 and have < ac.WINDOW_COVERAGE_FLOOR * whole:
+                gaps.append((str(n)[-4:], f"{str(n)[-4:]}: windows for only {have} of {whole} s of its {name} "
+                                          f"({int(100 * have / whole)}%)"))
+
+    conclusive = tested > 0 and base.sum() > 0 and ctl.sum() > 0
+    benign = conclusive and not passed and not bad_health
+    word = "INCONCLUSIVE" if not conclusive else ("BENIGN CONFIRMED" if benign else "BENIGN NOT CONFIRMED")
+    P(f" RESULT : {word}")
+    P(f"          baseline vs {ctl_name} - the phase an attack would have run in")
+    P()
+    P(f" [1] NO-ATTACK TEST   3-sigma test of both attack signatures: {ctl_name} vs baseline  [Z]")
+    P("     a benign capture must NOT pass either signature (a pass = the data looks attacked)")
+    for attack, res, rest in sig_rows:
+        P(f"     {attack:10} {res:12} {rest}")
+    P()
+    P(" [2] HEALTH   what an attack-free mesh does")
+    for lvl, txt in health:
+        P(_wrap(f"{CHECK_MARK.get(lvl, lvl)} {txt}", "     "))
+    P()
+    P(f" [3] DATA   windows per board per phase (floor {ac.WINDOW_COVERAGE_FLOOR:.0%})")
+    if not gaps:
+        P("     OK   every board has windows for the whole of each phase")
+    for _b, g in gaps:
+        P(_wrap("WARN " + g, "     "))
+    P()
+    P(" [5] STUDY BASIS")
+    for k in ("Z", "A", "K"):
+        P(_wrap(f"[{k}]  {STUDIES[k]}", "     "))
+    P()
+    P("-" * RULE_W)
+    why = ["the " + a + " signature PASSED on normal traffic (" + ctl_name + " vs baseline)" for a in passed] + bad_health
+    if word == "BENIGN CONFIRMED":
+        P(" VERDICT: BENIGN CONFIRMED  (no attack signature, healthy delivery)")
+    elif word == "INCONCLUSIVE":
+        P(" VERDICT: BENIGN INCONCLUSIVE - too little data to test")
+    else:
+        P(" VERDICT: BENIGN NOT CONFIRMED - " + "; ".join(why[:2]))
+    boards = sorted({b for b, _ in gaps})
+    if word != "BENIGN CONFIRMED":
+        grade = "NOT CONFIRMED"
+        P(" CONFIDENCE: NOT CONFIRMED - " + ("too little data to test" if word == "INCONCLUSIVE"
+                                            else "this is not a clean normal reference"))
+        for w in (why or ["too little data"]):
+            P(_wrap(w, "     x "))
+    else:
+        major = len(boards) > IMPACT_MAX_SHARE * max(len(nonroot), 1)
+        grade = "MAJOR GAPS" if major else ("MINOR GAPS" if gaps else "STRONG")
+        say = {"STRONG": "benign confirmed, all board data present, nothing to note",
+               "MINOR GAPS": f"benign confirmed; {_n(len(gaps), 'small gap')} in the data - recapture advised",
+               "MAJOR GAPS": f"benign confirmed, but {len(boards)} of {len(nonroot)} boards have gaps - "
+                             f"recapture required"}[grade]
+        P(f" CONFIDENCE: {grade} - {say}")
+        P(_wrap("NO ATTACK: neither the blackhole nor the wormhole signature passed", "     + "))
+        P(_wrap("HEALTH: delivery and forwarding normal in every phase", "     + "))
+        for _b, g in gaps:
+            P(_wrap(("MAJOR GAP (affects the result): " if major else "MINOR GAP (result not affected): ") + g, "     ~ "))
+        if not gaps:
+            P(_wrap("DATA: every board has usable data for every phase", "     + "))
+        P(_wrap(f"REPORT AS: \"BENIGN CONFIRMED{' - major gaps' if major else (' - minor gaps' if gaps else '')}\""
+                + (f" + {_n(len(gaps), 'footnote')} (copy them to the thesis checklist)" if gaps else ""), "     = "))
+    P("-" * RULE_W)
+    print(out.getvalue(), end="")
+    _LAST_ISSUES[0] = []
+    _LAST_SETUP_INVALID[0] = False
+    _LAST_BENIGN[0] = {"word": word, "grade": grade, "gaps": [g for _b, g in gaps], "why": why,
+                       "major": grade == "MAJOR GAPS"}
+    return benign, conclusive
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="NIS16 paper-backed attack verification (3-sigma normal-vs-attack).")
     ap.add_argument("feature_table", help="Path to a feature_table.csv (M7 output, needs 'Label').")
-    ap.add_argument("--attack", choices=["auto", "blackhole", "wormhole"], default="auto",
+    ap.add_argument("--attack", choices=["auto", "blackhole", "wormhole", "none"], default="auto",
                     help="Which attack to verify (default: auto-detect from Label values).")
     ap.add_argument("--sigma", type=float, default=3.0, help="Sigma threshold (default 3).")
     ap.add_argument("--block", type=int, default=DEFAULT_BLOCK_WINDOWS,
@@ -1513,11 +1710,12 @@ def main():
         print("ERROR: no 'Label' column - is this an M7 feature_table.csv?")
         sys.exit(2)
 
+    if args.attack == "none" or (args.attack == "auto" and not detect_attacks(df)):
+        # a benign capture: show that it is normal (oct. 19 2026)
+        benign, conclusive = verify_benign(df)
+        sys.exit(0 if benign else (1 if conclusive else 2))
     if args.attack == "auto":
         attacks = detect_attacks(df)
-        if not attacks:
-            print("This looks like a BASELINE-only table (no Label 1 or 2) - nothing to verify.")
-            sys.exit(0)
     else:
         attacks = [args.attack]
 

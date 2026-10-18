@@ -106,6 +106,8 @@ from the checks above by fixed rules:
 | **MAJOR GAPS** | confirmed, but the result relies on missing data: a board never measured in the attack, most victim time with no path, or a FAILED impact check | 🟠 RECAPTURE REQUIRED | "BLACKHOLE CONFIRMED - major gaps" |
 | **NOT CONFIRMED** | no signature, too little data, or the setup was invalid | 🔴 REDO | the failed check(s) are the reason |
 
+**Update (verification #53):** gaps INSIDE a phase now count too (each board needs windows for >= 95 % of every phase - the project's coverage floor), the impact check may set aside at most half the boards, and benign runs are verified. Every threshold, its basis and the sensitivity results: [GRADING-AND-THRESHOLDS.md](GRADING-AND-THRESHOLDS.md).
+
 Applied to all 52 analysed attack runs (oct. 19, verification #52): **7 STRONG, 40 GOOD, 1 MINOR GAPS, 2 MAJOR GAPS,
 2 NOT CONFIRMED**. No fixed time cut decides minor vs major - the impact check does (an earlier "< 60 s = major" rule
 overrode it on tree/G402/stationary and was removed; re-grading with any cut from 30 to 120 s moves no grade).

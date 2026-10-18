@@ -4350,6 +4350,9 @@ function Show-AnaReport([string]$Text) {
         $nt.TextWrapping = 'Wrap'; $nb.Child = $nt; [void]$ui.AnaResult.Children.Add($nb)
     }
     $mem = Get-MemberInfo
+    # oct. 19 2026: the four validity questions on top + the shared signature card
+    $bits = $null; try { $bits = ConvertFrom-ReportText $t } catch { }
+    if ($bits -and ($bits.Verdict -or $bits.Sig.Count)) { try { [void]$ui.AnaResult.Children.Add((New-ValidityStrip $bits 4)) } catch { } }
     # gates (analyze.ps1's validation summary)
     $gates = @($lines | Where-Object { $_ -match '^\s*(integrity|topology|attack)\s*:\s*(.+)$' })
     if ($gates.Count) {
@@ -4393,7 +4396,15 @@ function Show-AnaReport([string]$Text) {
             elseif ($why.Count) { $why[$why.Count - 1] = [string]$why[$why.Count - 1] + ' ' + $tr }
         }
     }
-    if ($feat.Count) {
+    if ($bits -and $bits.Sig.Count) {
+        try { [void]$ui.AnaResult.Children.Add((New-SignatureCard $bits)) } catch { }
+        if ($measured.Count) {
+            $card = New-AnaCard 'MEASURED, NOT SCORED  -  shown for context, never part of the verdict'
+            foreach ($m in $measured) { $tb = New-Text ([string][char]0x2022 + ' ' + $m) 11.5 $Pal.Dim; $tb.TextWrapping = 'Wrap'; $tb.Margin = '0,3,0,0'; [void]$card.Panel.Children.Add($tb) }
+            [void]$ui.AnaResult.Children.Add($card.Border)
+        }
+    }
+    elseif ($feat.Count) {
         $card = New-AnaCard 'ATTACK SIGNATURE  -  3-sigma test, normal phase vs attack phase'
         $grid = New-Object Windows.Controls.Grid
         # the last column (role) takes whatever width is left, so it is never cut
@@ -4641,7 +4652,7 @@ function Show-AnaCell {
     $ui.AnaInfo.Text = '{0} board file(s)  -  data {1}  -  {2}{3}' -f $c.Boards, (Format-When $c.DataTime),
         $(if ($c.Analysed) { "analysed $(Format-When $c.AnaTime)" } else { 'NOT analysed yet' }),
         $(if ($c.Stale) { '  -  NEW DATA since the analysis: analyse again' } else { '' })
-    $ui.DoVerify.IsEnabled = $c.Analysed -and $c.Attack -ne 'baseline'
+    $ui.DoVerify.IsEnabled = [bool]$c.Analysed
     if ($v) { Set-VerdictBanner ([int]$v.Code) ([string]$v.Line); if ($v.PSObject.Properties['Data'] -and $v.Data) { $ui.VerdictText.Text += "   -   from $($v.Data) data, $($v.When)" } } else { $ui.Verdict.Visibility = 'Collapsed' }
     $rep = Get-AnaReport (Get-AnaKey $c)
     Show-AnaReport $rep
@@ -4655,11 +4666,10 @@ foreach ($n in 'AnaUseTrim', 'AnaUseRaw') { $ui[$n].Add_Checked({ if (Get-Cell) 
 # ── actions ──────────────────────────────────────────────────────────────────
 $ui.DoVerify.Add_Click({
     $c = Get-Cell; if (-not $c -or -not $script:Py) { return }
-    if ($c.Attack -eq 'baseline') { Add-Report 'Baseline cells have no attack to verify - use the topology check.'; return }
     if (-not $c.Analysed) { [void][Windows.MessageBox]::Show('This run is not analysed yet - press Analyse + verify.', 'Verify'); return }
     $ui.Verdict.Visibility = 'Collapsed'
     Set-Status 'Running the attack verifier...'
-    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\verify_attack.py', $c.Table, '--attack', $c.Attack) -State (Get-AnaKey $c) -OnDone {
+    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\verify_attack.py', $c.Table, '--attack', $(if ($c.Attack -eq 'baseline') { 'none' } else { $c.Attack })) -State (Get-AnaKey $c) -OnDone {
         param($text, $code, $key)
         Save-AnaResult $key $text $code
         Update-Cells                      # first: it re-selects the run and redraws from the cache
@@ -4744,7 +4754,7 @@ function Start-NextVerify {
         }
     } catch { }
     Set-Status ("Checking verdicts: {0} ({1} left)" -f $c.Text, $script:VerQueue.Count) $Pal.Cyan
-    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\verify_attack.py', $c.Table, '--attack', $c.Attack) -State (Get-AnaKey $c) -OnDone {
+    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\verify_attack.py', $c.Table, '--attack', $(if ($c.Attack -eq 'baseline') { 'none' } else { $c.Attack })) -State (Get-AnaKey $c) -OnDone {
         param($text, $code, $key)
         Save-AnaResult $key $text $code
         Start-NextVerify
@@ -4752,7 +4762,7 @@ function Start-NextVerify {
 }
 $ui.AnaVerifyAll.Add_Click({
     if (-not $script:Py) { return }
-    $todo = @($script:Cells | Where-Object { $_.Analysed -and $_.Attack -ne 'baseline' })
+    $todo = @($script:Cells | Where-Object { $_.Analysed })
     if (-not $todo.Count) { return }
     $script:VerQueue.Clear(); foreach ($c in $todo) { $script:VerQueue.Enqueue($c) }
     $script:VerQueueTotal = $todo.Count
@@ -5086,7 +5096,7 @@ function Show-CampaignCell($S) {
     $hasCell = [bool](Find-AnalysedCell $S)
     $ui.CampCapture.IsEnabled = $true
     $ui.CampCapture.Content = $(if ($look -in @('todo', 'partial')) { [string][char]0x25B6 + '  Capture this run' } else { [string][char]0x21BB + '  Capture it again' })
-    $ui.CampVerify.IsEnabled = $hasCell -and $a -ne 'baseline'
+    $ui.CampVerify.IsEnabled = $hasCell
     $ui.CampAnalyse.IsEnabled = $look -ne 'todo'
     $ui.CampOpen.IsEnabled = $look -ne 'todo'
     # oct. 19 2026: a click only moves the white selection border - the old code rebuilt
@@ -8064,7 +8074,7 @@ function Get-PalItems {
             [void]$it.Add((New-PalItem 'campaign run' (Get-SlotText $s) $lk.T ([char]0xE787) $lk.Bd 'slot' $s))
         }
     }
-    foreach ($c in @($script:Cells)) { if ($c.Attack -ne 'baseline' -and $c.Analysed) { [void]$it.Add((New-PalItem 'verify' ("verify  " + $c.Text) 'run the attack verifier' ([char]0xE73E) $Pal.Green 'verify' $c)) } }
+    foreach ($c in @($script:Cells)) { if ($c.Analysed) { [void]$it.Add((New-PalItem 'verify' ("verify  " + $c.Text) 'run the attack verifier' ([char]0xE73E) $Pal.Green 'verify' $c)) } }
     return $it
 }
 function Update-PalList {

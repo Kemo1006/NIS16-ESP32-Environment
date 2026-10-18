@@ -433,3 +433,14 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Why** | User: "START can be pressed even when the requirements are not done" - the old checks only asked Yes/No. |
 | **Net effect** | No data change; a faulty start can no longer happen silently, and an overridden one is footnoted by the verifier. |
 | **Paper edit** | Run procedure (with A23): "START is locked until the pre-run checks pass; any override is logged with a reason and reported." Checklist A27. |
+
+## D-25 · Samples placed on the tick they were scheduled for, not the nearest one (oct. 19, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | Telemetry is resampled to a uniform grid; a window needs 80 % of its samples (§4.2.4.1 point 4), gaps of 1-2 samples are interpolated. |
+| **What we did before** | Each row went to the NEAREST 0.1 s tick (`round`). The firmware samples with FreeRTOS `xTaskDelayUntil`: when the task is held up it takes the missed samples back-to-back (e.g. 258 ms, 1 ms, 41 ms). Two bunched rows then shared one tick and left a false hole; three holes discarded the window. FE90 (blackhole/tree/G402/stationary) lost 59 % of its attack windows with **no sample missing** on the SD card (1,807 rows in 182 s). |
+| **What we do now** | `analysis/preprocess.py _assign_ticks`: each sample takes the earliest free tick it could have been scheduled for, at most 3 ticks (300 ms, measured p99 278 ms) late and never early. One sample per tick; nothing is invented, interpolated further, or counted twice. The 80 % / 1-2 sample rules are unchanged. |
+| **Why** | The old rule measured our resampling, not the board. A missing window should mean a missing sample. |
+| **Net effect** | See verification #53: clean boards unchanged; boards with bunched timestamps recover their windows (FE90 10 % -> 0 % discarded, ED80 15 % -> 0 %). Verdicts unchanged; grades become truer (e.g. blackhole/linear/G402/stationary MINOR -> GOOD, blackhole/tree/G402/stationary MAJOR -> MINOR). Requires re-running analyze.ps1 on every run. |
+| **Paper edit** | Preprocessing: one sentence - "samples were aligned to the tick they were scheduled for (FreeRTOS fixed-period sampling delivers late samples, never early ones), tolerating up to 300 ms of lateness". Checklist B-tick. |

@@ -16,6 +16,39 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #53 — Oct 19, 2026 · ~5:30 AM — thresholds, signature formulas, missing windows, benign runs: honest re-assessment
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `8ac4515` + this change (pushed)
+> **Request:** "check the thresholds are correct and have a basis; do we need a paper; what causes stalling / missing samples and can it be fixed; show the attack signature in Campaign and Verify; check every feature's calculation and study; why does an incomplete dataset still pass; re-assess the grading; what does verify do for benign"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 52 attack runs + 1 benign | every analysed cell; re-analysed in scratch only (repo tables untouched) |
+
+| Check | Result | Detail |
+|---|---|---|
+| **Missing windows — root cause** | ❌ -> 🔧 | NOT the boards: FE90 logged 1,807 rows in 182 s of attack (full 10 Hz) yet lost 59 % of its windows. Firmware samples with `xTaskDelayUntil`; held-up samples come late and bunched; preprocessing's nearest-tick rounding put two on one tick, left false holes, and the 8-of-10 rule discarded the window. Fix D-25 (`_assign_ticks`): each sample on the tick it was scheduled for (≤ 300 ms late, never early) |
+| Re-analysis with D-25 (trim → preprocess → features, like analyze.ps1) | ✅ | **52/52 verdicts identical**; 2 grades change, both explained: blackhole/linear/G402/stationary MINOR -> GOOD (gaps were the artifact); blackhole/tree/G402/stationary MAJOR -> MINOR (only B768's real crash at +28 s is left; the attacker's 'missing end' was the artifact too) |
+| Gaps inside a phase (new check S9) | ✅ added | before: only a board going silent at the END was seen. Now every board needs windows for ≥ 95 % of each phase (the project's own coverage floor) |
+| Impact check scope | ✅ added | may set aside at most half the boards (otherwise no control group is left); a failed check makes those gaps MAJOR, never "result not affected" |
+| Placebo test (`tools/audit_false_positives.py`, new) | ✅ 0 FP | normal vs normal, both signatures, 104 tests: 0 false confirmations. 3-sigma alone passed once (home/highload: congestion took forwarding to 86 % pre-attack) - the attacker check (< 50 %) blocked it |
+| Grade thresholds sensitivity | ✅ | every grade threshold moved down/up: 0 moves except at extremes (window floor 80 % / 98 %); majority rule 1/3..2/3: 0 moves |
+| Verdict thresholds (`audit_threshold_sensitivity.py`) | ✅ 0 flips | unchanged |
+| Signature formulas vs code | ✅ | FR = forward/recv (Eq 4.2, ratio-of-sums, attacker-scoped), PDR by sequence number (5 attribution rules), IED (Eq 4.3), CS (Eq 4.15, = FR information -> support only), NFR (neighbours' witness), TunnelIntensity (Eq 4.16), DuplicateRate [R]. Caveat stated: with sd = 0 the 3-sigma test reduces to MIN_EFFECT |
+| Benign verification (new `--attack none`) | ✅ added | no-attack test (both signatures must stay still) + health (PDR ≥ 0.90 [K], relays ≥ 90 % [A]) + data. **The one benign capture (baseline/linear/home/highload) is NOT a clean reference**: cooldown PDR 0.72, two relays 83-85 % with no attacker |
+| Hard-coded / forced results | ✅ none | one bare literal (cooldown 0.5) made a named, documented constant |
+| Tests | ✅ 44/44 | + benign confirmed / dropping relay not benign / majority rule / S9 gap |
+| GUI | ✅ | VALIDITY strip (ATTACK · SIGNATURE · SETUP · DATASET) + ATTACK SIGNATURE card on Campaign and Verify; EXCLUDED / NO DATA rows now shown; Verify works on benign runs; self-test exit 0 |
+
+**Verdict: ✅ the verdicts were right and stay right; the GRADES were too strict where our own preprocessing
+manufactured gaps — fixed at the cause (D-25), not by loosening a threshold. Thresholds now listed with their basis
+(study / proposal / platform docs / engineering bound + sensitivity) in docs/attack-validation/GRADING-AND-THRESHOLDS.md.
+To apply: re-run `analyze.ps1 -All` (the repo's analysis tables still use the old alignment), then Verify / Check all
+verdicts. Recapture: the benign run (not clean); tree/G402/stationary advised (B768 crash), D2 / D8 / D9 as before.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #52 — Oct 19, 2026 · ~3:30 AM — final grade scale (MINOR GAPS / MAJOR GAPS) + bias re-check
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4e8a826` + this change

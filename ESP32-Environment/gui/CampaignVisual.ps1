@@ -14,12 +14,28 @@ function Get-CampReportBits([string]$Key) {
     # what the panel needs from the saved verify report, or $null
     $t = ''; try { $t = Get-AnaReport $Key } catch { }
     if (-not $t) { return $null }
-    $t = $t -replace "\x1b\[[0-9;]*m", ''
+    return (ConvertFrom-ReportText $t)
+}
+
+function ConvertFrom-ReportText([string]$Text) {
+    # one parser for a verify report (attack or benign) - the Campaign panel and the Verify page
+    $t = $Text -replace "\x1b\[[0-9;]*m", ''
     $lines = $t -split "`r?`n"
-    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @(); Proof = '' }
-    $sk = $false; $inConf = $false; $lastKind = ''   # which item a wrapped line continues
+    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @(); Proof = ''; Sig = @(); Benign = $false }
+    $sk = $false; $inConf = $false; $lastKind = ''; $sec = ''   # which item a wrapped line continues
     foreach ($ln in $lines) {
         $tr = $ln.Trim()
+        if ($ln -match '^\s*\[(\d)\]\s') { $sec = $Matches[1]; continue }
+        if ($tr -match '^BENIGN VERIFICATION') { $o.Benign = $true; continue }
+        if ($sec -eq '1') {
+            # [1] ATTACK SIGNATURE / NO-ATTACK TEST rows: result, feature, normal, attack, z, role, [study]
+            $parts = @($tr -split '\s{2,}'); $an = ''
+            if ($parts.Count -ge 2 -and $parts[0] -in @('blackhole', 'wormhole')) { $an = $parts[0]; $parts = @($parts | Select-Object -Skip 1) }
+            if ($parts.Count -ge 6 -and $parts[0] -match '^(PASS|FAIL|EXCLUDED|NO DATA|INVALID-BASE|N/A|INCONCL\S*|INFEASIBLE|SKIP|WARN|NOT TESTED)$') {
+                $o.Sig += , @{ Res = $parts[0]; Feat = $parts[1]; Norm = $parts[2]; Atk = $parts[3]; Z = $parts[4]; Role = $parts[5]; Tag = $(if ($parts.Count -ge 7) { $parts[6] } else { '' }); For = $an }
+            }
+            continue
+        }
         if ($sk) { if (-not $tr) { $sk = $false } else { $o.Sketch += $(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr }) }; continue }
         if ($tr -match '^VERDICT\s*:\s*(.+)$') { $o.Verdict = $Matches[1]; continue }
         if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $inConf = $true; continue }
@@ -129,6 +145,92 @@ function New-CampNoteRow([string]$Kind, [string]$Fg, [string]$Bg, [string]$Text)
     return $g
 }
 
+function New-ValidityStrip($Rep, [int]$Columns = 2) {
+    # four questions, one light each - the run's VALIDITY at a glance (oct. 19 2026):
+    #   ATTACK     did the attack happen (the verdict)?   SIGNATURE  how many primary features moved?
+    #   SETUP      did it run as designed (topology, roles, start)?   DATASET  is the data complete?
+    $v = [string]$Rep.Verdict
+    $atk = if ($Rep.Benign) {
+               if ($v -match 'BENIGN CONFIRMED') { @('ok', 'none - benign') } elseif ($v -match 'INCONCLUSIVE') { @('warn', 'untestable') } else { @('bad', 'not clean') }
+           } elseif ($v -match 'SETUP INVALID') { @('bad', 'not as designed') } elseif ($v -match 'NOT CONFIRMED|INCONCLUSIVE') { @('bad', 'not seen') } elseif ($v -match 'CONFIRMED') { @('ok', 'seen') } else { @('todo', '-') }
+    $prim = @($Rep.Sig | Where-Object { $_.Role -match 'primary' })
+    $pass = @($prim | Where-Object { $_.Res -eq 'PASS' }).Count
+    $sig = if (-not $prim.Count) { @('todo', '-') }
+           elseif ($Rep.Benign) { if ($pass) { @('bad', "$pass moved") } else { @('ok', 'all still') } }
+           elseif ($pass) { @('ok', "$pass/$($prim.Count) primary") } else { @('bad', "0/$($prim.Count) primary") }
+    $fails = @($Rep.Glance | Where-Object { $_[1] -eq 'FAIL' }).Count
+    $topoW = @($Rep.Glance | Where-Object { $_[0] -eq 'TOPOLOGY' -and $_[1] -eq 'WARN' }).Count
+    $warnS = @($Rep.Glance | Where-Object { $_[1] -eq 'WARN' -and $_[0] -notin @('BOARDS', 'OTHER', 'RE-TEST', 'TOPOLOGY') }).Count
+    $set = if ($Rep.Benign -or -not $Rep.Glance.Count) { @('na', '-') } elseif ($fails) { @('bad', "$fails check(s) failed") } elseif ($topoW) { @('ok', 'moves allowed') } elseif ($warnS) { @('ok', 'as designed, notes') } else { @('ok', 'as designed') }
+    $data = switch ($Rep.Grade) { { $_ -in 'STRONG', 'GOOD' } { @('ok', 'complete') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } default { @('na', '-') } }
+    $ug = New-Object Windows.Controls.Primitives.UniformGrid; $ug.Columns = $Columns; $ug.Margin = '0,0,0,8'   # 2 x 2 in the narrow run panel, 4 in a row on Verify
+    foreach ($c in @(@('ATTACK', $atk), @('SIGNATURE', $sig), @('SETUP', $set), @('DATASET', $data))) {
+        $st = $c[1][0]
+        $hex = switch ($st) { 'ok' { $Pal.Green } 'warn' { $Pal.Amber } 'major' { $Pal.Orange } 'bad' { $Pal.Red } default { $Pal.Faint } }
+        $g = switch ($st) { 'ok' { [char]0x2714 } 'bad' { [char]0x2716 } { $_ -in 'warn', 'major' } { [char]0x26A0 } default { [char]0x2013 } }
+        $b = New-Object Windows.Controls.Border; $b.CornerRadius = 8; $b.Padding = '8,5'; $b.Margin = '0,0,6,6'; $b.Background = Get-Brush '#1A1D30'
+        $b.BorderBrush = Get-Brush $hex; $b.BorderThickness = '0,0,0,2'
+        $sp = New-Object Windows.Controls.StackPanel
+        [void]$sp.Children.Add((New-Text $c[0] 9.5 $Pal.Faint 'SemiBold'))
+        $w = New-Text ([string]$g + ' ' + $c[1][1]) 11.5 $hex 'Bold'; $w.TextTrimming = 'CharacterEllipsis'; $w.ToolTip = $c[1][1]; [void]$sp.Children.Add($w)
+        $b.Child = $sp; [void]$ug.Children.Add($b)
+    }
+    return $ug
+}
+
+function New-SignatureCard($Rep) {
+    # the attack signature, one row per feature: did it move, from what to what, how far
+    # (z), is it a primary, which study it comes from. Shared by Campaign and Verify.
+    $card = New-Object Windows.Controls.Border; $card.CornerRadius = 12; $card.Padding = '14,10'; $card.Margin = '0,0,0,10'
+    $card.Background = Get-Brush $Pal.Card; $card.BorderBrush = Get-Brush $Pal.Line; $card.BorderThickness = 1
+    $sp = New-Object Windows.Controls.StackPanel
+    $title = if ($Rep.Benign) { 'NO-ATTACK TEST   both signatures must stay still' } else { 'ATTACK SIGNATURE   3-sigma test, normal phase vs attack phase' }
+    [void]$sp.Children.Add((New-Text $title 10.5 $Pal.Faint 'SemiBold'))
+    $rule = if ($Rep.Benign) { 'A benign run is clean when NO feature passes - a pass would mean normal traffic looks attacked.' }
+            else { 'Confirmed when a PRIMARY feature moves past 3 sigma AND by at least 0.10; support features only add weight. [Z]' }
+    $rt = New-Text $rule 11 $Pal.Dim; $rt.TextWrapping = 'Wrap'; $rt.Margin = '0,2,0,6'; [void]$sp.Children.Add($rt)
+    foreach ($s in $Rep.Sig) {
+        $prim = [string]$s.Role -match 'primary'
+        $lk = switch -Regex ($s.Res) { '^PASS' { @($(if ($Rep.Benign) { $Pal.Red } else { $Pal.Green }), $(if ($Rep.Benign) { '#3A1E2C' } else { '#1F4D3E' })) }
+                                      '^FAIL' { @($(if ($Rep.Benign) { $Pal.Green } else { $Pal.Dim }), '#262A45') }
+                                      '^(EXCLUDED|INVALID)' { @($Pal.Amber, '#3A2E14') } default { @($Pal.Faint, '#232742') } }
+        $g = New-Object Windows.Controls.Grid; $g.Margin = '0,3,0,3'
+        $c0 = New-Object Windows.Controls.ColumnDefinition; $c0.Width = '78'; [void]$g.ColumnDefinitions.Add($c0)
+        [void]$g.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition))
+        $chip = New-Object Windows.Controls.Border; $chip.CornerRadius = 4; $chip.Padding = '0,1'; $chip.Margin = '0,1,8,0'; $chip.VerticalAlignment = 'Top'
+        $chip.Background = Get-Brush $lk[1]; $chip.BorderBrush = Get-Brush $lk[0]; $chip.BorderThickness = 1
+        # benign: a pass means the feature MOVED on normal traffic (bad), a fail that it stayed STILL (good)
+        $word = if ($Rep.Benign -and $s.Res -eq 'PASS') { 'MOVED' } elseif ($Rep.Benign -and $s.Res -eq 'FAIL') { 'STILL' } else { [string]$s.Res }
+        $ct = New-Text $word 9.5 $lk[0] 'Bold'; $ct.HorizontalAlignment = 'Center'; $chip.Child = $ct; [void]$g.Children.Add($chip)
+        $col = New-Object Windows.Controls.StackPanel; [Windows.Controls.Grid]::SetColumn($col, 1)
+        $h = New-Object Windows.Controls.TextBlock; $h.TextWrapping = 'Wrap'; $h.FontSize = 12; $h.FontFamily = 'Segoe UI'
+        $r1 = New-Object Windows.Documents.Run ([string]$s.Feat); $r1.FontWeight = $(if ($prim) { 'Bold' } else { 'Normal' }); $r1.Foreground = Get-Brush $Pal.Text; [void]$h.Inlines.Add($r1)
+        $r2 = New-Object Windows.Documents.Run ('   ' + $(if ($prim) { 'PRIMARY' } else { 'support' }) + $(if ($s.For) { ' - ' + $s.For } else { '' }) + '  ' + $s.Tag)
+        $r2.FontSize = 10.5; $r2.Foreground = Get-Brush $(if ($prim) { $Pal.Cyan } else { $Pal.Faint }); [void]$h.Inlines.Add($r2)
+        [void]$col.Children.Add($h)
+        $nv = ([string]$s.Norm -split '\s')[0]; $av = [string]$s.Atk
+        $vt = New-Text ('normal {0}   ' -f $s.Norm + [char]0x2192 + '   {0} {1}      z {2}' -f $(if ($Rep.Benign) { 'later' } else { 'attack' }), $av, $s.Z) 11 $Pal.Dim
+        [void]$col.Children.Add($vt)
+        $dn = 0.0; $da = 0.0
+        if ([double]::TryParse($nv, [ref]$dn) -and [double]::TryParse($av, [ref]$da) -and $dn -ge 0 -and $dn -le 1 -and $da -ge 0 -and $da -le 1) {
+            # a ratio: two thin bars on one 0..1 scale - how far it moved, at a glance
+            foreach ($pair in @(@($dn, $Pal.Green), @($da, $lk[0]))) {
+                $bar = New-Object Windows.Controls.Grid; $bar.Height = 4; $bar.Margin = '0,2,0,0'
+                $ca = New-Object Windows.Controls.ColumnDefinition; $ca.Width = New-Object Windows.GridLength ([math]::Max($pair[0], 0.0001)), 'Star'
+                $cb = New-Object Windows.Controls.ColumnDefinition; $cb.Width = New-Object Windows.GridLength ([math]::Max(1 - $pair[0], 0.0001)), 'Star'
+                [void]$bar.ColumnDefinitions.Add($ca); [void]$bar.ColumnDefinitions.Add($cb)
+                $b1 = New-Object Windows.Controls.Border; $b1.Background = Get-Brush $pair[1]; $b1.CornerRadius = 2; [void]$bar.Children.Add($b1)
+                $b2 = New-Object Windows.Controls.Border; $b2.Background = Get-Brush '#2A2E48'; $b2.CornerRadius = 2; [Windows.Controls.Grid]::SetColumn($b2, 1); [void]$bar.Children.Add($b2)
+                [void]$col.Children.Add($bar)
+            }
+        }
+        [void]$g.Children.Add($col)
+        [void]$sp.Children.Add($g)
+    }
+    $card.Child = $sp
+    return $card
+}
+
 function Add-CampVisual($Body, $S, [string]$Look) {
     $isBase = ($S.kind -eq 'benign' -or $S.attack -in @('none', 'baseline'))
     $key = Get-SlotKeyPath $S                                    # gui\CampaignPanel.ps1
@@ -139,7 +241,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     # 1. JOURNEY
     $cap = switch ($Look) { 'todo' { @('todo', 'not yet') } 'partial' { @('warn', 'incomplete') } default { @('ok', $(if ($S.last) { (([string]$S.last -split ' ') | Select-Object -First 2) -join ' ' } else { '' })) } }
     $ana = if ($Look -eq 'todo') { @('todo', '') } elseif ($Look -eq 'analyse' -or -not $hasAna) { @('warn', 'press Analyse') } else { @('ok', '') }
-    if ($isBase) { $ver = @('na', 'baseline run'); $grd = @('na', '') }
+    if ($isBase -and -not $rep) { $ver = @('todo', $(if ($hasAna) { 'press Verify' } else { '' })); $grd = @('todo', '') }
     else {
         $ver = if ($Look -in @('todo', 'partial')) { @('todo', '') }
                elseif (-not $rep -and -not $v) { @('todo', $(if ($hasAna) { 'press Verify' } else { '' })) }
@@ -152,7 +254,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
                else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } 'NOT CONFIRMED' { @('bad', 'not confirmed') } default { @('todo', '') } } }
     }
     Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]))
-    if ($isBase -or -not $rep) { return }
+    if (-not $rep) { return }
 
     # 2. VERDICT tile
     $tone = switch ($rep.Grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F'; Bd = '#7C3F1A' } } default { @{ Fg = $Pal.Red; Bg = '#33192A'; Bd = '#6B2A3F' } } }
@@ -160,6 +262,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     $tile = New-Object Windows.Controls.Border; $tile.CornerRadius = 12; $tile.Padding = '14,10'; $tile.Margin = '0,0,8,10'
     $tile.Background = Get-Brush $tone.Bg; $tile.BorderBrush = Get-Brush $tone.Bd; $tile.BorderThickness = 1
     $tp = New-Object Windows.Controls.StackPanel
+    if (-not $rep.Old) { [void]$tp.Children.Add((New-ValidityStrip $rep)) }
     $big = New-Text $(if ($rep.Old) { 'OLD REPORT' } else { [string]$rep.Grade }) 17 $tone.Fg 'Bold'
     $big.TextWrapping = 'Wrap'; [void]$tp.Children.Add($big)
     $sub = New-Text $(if ($rep.Old) { 'Made by an older verifier - press Verify to update it.' } else { [string]$rep.Say }) 11.5 $Pal.Dim
@@ -215,6 +318,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     if ($rep.Nodes.Count) { try { [void]$wrap.Children.Add((New-CampDeliveryChart $rep.Nodes)) } catch { } }
     Set-CampRespLayout $wrap ($ui.CampDetBody.ActualWidth -ge 700)
     [void]$Body.Children.Add($wrap)
+    if ($rep.Sig.Count) { try { [void]$Body.Children.Add((New-SignatureCard $rep)) } catch { } }
 
     # 2b. PHASE TIMELINE per board (cached; background read the first time)
     try { Add-CampTimeline $Body $S } catch { }

@@ -140,6 +140,11 @@ FLAP_MIN_CHANGES = 4          # >= 4 parent changes in one attack = an unstable 
 SILENT_TAIL_S = 10.0          # a board whose windows stop >= 10 s before the attack ends went silent
 MIN_VICTIM_EVIDENCE_S = 60    # < 60 traceable victim-seconds in the whole attack = too little to judge
 NOPATH_SHARE_WARN = 0.25      # > 25 % of the victims' attack time without a path = weakened evidence
+COOLDOWN_MIN_SHARE = 0.5      # a board with < 50 % of the others' cooldown = no usable recovery measurement
+WINDOW_COVERAGE_FLOOR = 0.95  # a board needs windows for >= 95 % of the seconds of a phase - the project's
+                              # own sample-coverage floor (Milestone 5; validate_integrity / inventory_cells)
+                              # applied to the WINDOWS. Measured oct. 19: median 100 %, only 10 of 409
+                              # board-attack phases below it, so it marks real anomalies, not noise
 
 
 def _tcol(df):
@@ -385,10 +390,33 @@ def _more_situations(df, attack, atk, roles, key_nodes, moved, timeline, scenari
                 if roles.get(n) in _exposure.ROOT_ROLES:
                     continue
                 got = float(have.get(n, 0.0))
-                if got < 0.5 * full:
+                if got < COOLDOWN_MIN_SHARE * full:
                     out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) has {'NO' if got <= 0 else f'only {got:.0f} s of'} "
                                            f"COOLDOWN (the others: {full:.0f} s) - its recovery is not measured; the "
                                            f"verdict (baseline vs attack) does not use the cooldown"))
+    # S9 GAPS INSIDE A PHASE (oct. 19 2026, verification #53): S2/S3 only see a board that goes
+    # silent at the END; windows can also be missing in the MIDDLE (too few samples while the
+    # board stalls / logs unevenly). Baseline: over the whole phase. Attack: over the board's own
+    # first..last window (the end is S2/S3's job - never counted twice).
+    for seg in ("baseline", "attack"):
+        ph = _seg(df, seg)
+        if ph.empty or "node_id" not in ph.columns:
+            continue
+        tcp = _tcol(ph)
+        p0, p1 = float(ph[tcp].min()), float(ph[tcp].max())
+        for n, g in ph.groupby("node_id"):
+            if roles.get(n) in _exposure.ROOT_ROLES:
+                continue
+            a, b = (float(g[tcp].min()), float(g[tcp].max())) if seg == "attack" else (p0, p1)
+            whole = int(round(b - a)) + 1
+            have = len(set(g[tcp].round().astype(int)))
+            if whole >= 20 and have < WINDOW_COVERAGE_FLOOR * whole:
+                who = roles.get(n, "?")
+                what = ("the ATTACKER" if who in _exposure.ATTACK_ROLES else
+                        "a victim" if n in key_nodes else "a bystander")
+                out.append(Issue(WARN, f"{_short(n)} ({who}) - {what} - has {seg} windows for only {have} of {whole} s "
+                                       f"({int(100 * have / whole)}%, floor {WINDOW_COVERAGE_FLOOR:.0%}): windows missing INSIDE "
+                                       f"the {seg} (too few samples, or the board stalled)"))
     return out
 
 
