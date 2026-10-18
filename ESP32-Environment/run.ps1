@@ -390,10 +390,25 @@ if ($stale -and -not $BuildOnly) {
 # command. Best-effort throughout -- a board that is unplugged, busy, or still
 # running pre-SET_TIME firmware just keeps the old estimate, and nothing about
 # a run depends on this succeeding.
+#
+# Same connection: make location.txt match -Location (oct. 18 2026). The card's
+# folder comes from location.txt, not from -Location - a DLSU_Library run was
+# filed on every card as G402 because nobody re-set it. Written only when it
+# differs; the flash below reboots the board, which is when it applies.
 if (-not $BuildOnly) {
     Write-Host "Setting $Port's clock from this laptop (so captures get real dates) ..." -ForegroundColor DarkGray
+    $timeArgs = @('--port', $Port, '--set-time')
+    if ($Location) { $timeArgs += @('--ensure-location', $Location) }
     Push-Location (Join-Path $base 'tools')
-    try { python export_logs.py --port $Port --set-time } catch { } finally { Pop-Location }
+    try {
+        python export_logs.py @timeArgs | ForEach-Object {
+            $c = switch -Regex ($_) { '^LOCATION_CHECK: OK' { 'Green' } '^LOCATION_CHECK: FIXED' { 'Cyan' } '^LOCATION_CHECK:' { 'Yellow' } default { 'Gray' } }
+            Write-Host $_ -ForegroundColor $c
+            if ($_ -match '^LOCATION_CHECK: (FIXED|UNKNOWN|FAILED)' -and -not $Flash) {
+                Write-Host "  No -Flash here, so nothing reboots this board: power-cycle it before the run or its card keeps the old location." -ForegroundColor Yellow
+            }
+        }
+    } catch { } finally { Pop-Location }
 }
 
 if ($Wipe -and -not $BuildOnly) {

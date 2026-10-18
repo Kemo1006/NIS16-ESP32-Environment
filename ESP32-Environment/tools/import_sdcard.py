@@ -1023,6 +1023,13 @@ def main():
                         "<MAC>_...); with it the file is named exactly as a USB "
                         "export of that board would be (child_node2_...), so one "
                         "run's files all look alike however they came off the board.")
+    p.add_argument("--file-location", default=None, choices=export_logs.LOCATIONS,
+                   help="File the copied files under THIS location instead of the "
+                        "card's own <location> folder. Only for a card whose "
+                        "location.txt was wrong for the run (oct. 18 2026: a "
+                        "DLSU_Library run recorded as G402); the operator vouches "
+                        "for the site. Each such copy says so in the output. Not "
+                        "used by --list-json.")
     p.add_argument("--delete-source", action="store_true",
                    help="Delete each card file after its copy has been VERIFIED "
                         "(destination exists and has the same row count). Only "
@@ -1180,6 +1187,10 @@ def _run(source, args):
             continue
 
         file_under, refile_why, refile_proven = _filing_dir(source, rel, attack_dir, m, roster)
+        if args.file_location and args.file_location != location:
+            print(f"  NOTE  {rel}: the card recorded {location}; filed under "
+                  f"{args.file_location} (--file-location, operator override)")
+            location = args.file_location
         dest_args = _dest_args_for(m, attack_dir, topo_dir, location, roster, args, file_under)
         # None over --port (see the module docstring): reported as "?" rather
         # than 0, because 0 rows is a real state on this project and the two

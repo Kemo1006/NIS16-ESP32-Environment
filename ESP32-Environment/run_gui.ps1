@@ -5378,6 +5378,13 @@ function Find-ImportedCopy($F, [string]$Scenario, [int]$Repeat, $Index) {
     }
     return $unsure
 }
+function Test-ImpLocOnly([string]$Cell, [string]$Pick) {
+    # same attack + topology, different location = a card whose location.txt was
+    # left on the last site (oct. 18 2026), not a different experiment
+    if (-not $Pick -or -not $Cell) { return $false }
+    $c = $Cell -split ' / '; $p = $Pick -split ' / '
+    return ($c.Count -eq 3 -and $p.Count -eq 3 -and $c[0] -eq $p[0] -and $c[1] -eq $p[1] -and $c[2] -ne $p[2])
+}
 function Show-ImpList($Items) {
     $script:ImpItems = @($Items)
     $mem = Get-MemberInfo
@@ -5443,7 +5450,8 @@ function Show-ImpList($Items) {
             'aborted' { $cz = Get-AbortCauseText $f; 'Started, never closed cleanly - ' + $(if ($cz) { $cz } else { (Get-EndedText $f.ended_by) }) }
             'samerep' { "The same board + repeat is already in exports ($alreadyName) - may be an OLDER run; a new run needs a new repeat number." }
             'already' { "Already imported as $alreadyName (same board, same rows - found by scanning all of datasets\exports, whatever the file is called)" }
-            'other'   { "The board recorded this under $cell - not the run you picked ($pick). It would be filed under $cell, not under your pick. Tick it only if that is right." }
+            'other'   { if (Test-ImpLocOnly $cell $pick) { "Only the LOCATION differs: the card recorded $cell, you picked $pick. A card files by its own location.txt - if it still held the last site, this IS your run. Tick it and Import asks to file it under your pick." }
+                        else { "The board recorded this under $cell - not the run you picked ($pick). It would be filed under $cell, not under your pick. Tick it only if that is right." } }
             'piece'   { "Nothing wrong with this file - it is just NOT NEEDED. This board rebooted during the run, so the run is split over $($grp.N) files, and the analysis uses ONE file per board: the best piece (with the attack, then the biggest) is already ticked." }
             default   { 'Not in exports yet.' }
         }
@@ -5559,6 +5567,21 @@ function Start-ImpCopy([switch]$Preview) {
     $a = Get-ImpArgs; if (-not $a) { return }
     $a += @('--files', (@($picked | ForEach-Object Rel) -join ','))
     if ($ui.ImpAborted.IsChecked -or @($picked | Where-Object { $_.Look -eq 'aborted' }).Count) { $a += '--include-aborted' }
+    # ticked files whose card recorded another LOCATION for the same attack +
+    # topology: offer to file them under the picked run (import --file-location)
+    $pk = Get-ImpPick; $locOnly = @($picked | Where-Object { Test-ImpLocOnly ([string]$_.Cell) $pk })
+    $refile = $false
+    if ($locOnly.Count) {
+        $other = @($picked | Where-Object { [string]$_.Cell -ne $pk -and -not (Test-ImpLocOnly ([string]$_.Cell) $pk) })
+        $wantLoc = ($pk -split ' / ')[2]; $cardLoc = @($locOnly | ForEach-Object { ([string]$_.Cell -split ' / ')[2] } | Select-Object -Unique) -join ', '
+        if ($other.Count) {
+            [void][Windows.MessageBox]::Show("{0} ticked file(s) were recorded as {1}, and {2} are from a different attack / topology.`n`nImport them separately: tick only the {1} ones to file them under {3}." -f $locOnly.Count, $cardLoc, $other.Count, $wantLoc, 'Mixed runs', 'OK', 'Warning')
+            return
+        }
+        $ans = [Windows.MessageBox]::Show("{0} file(s) were recorded on the card as {1}, but the run you picked is {2}.`n`nThe card files by its own location.txt, which may still hold the last site.`n`nYes = file them under {2} (this run really was at {2})`nNo = keep the card's {1}" -f $locOnly.Count, $cardLoc, $wantLoc, 'File under which location?', 'YesNoCancel', 'Question')
+        if ($ans -eq 'Cancel') { return }
+        if ($ans -eq 'Yes') { $a += @('--file-location', $wantLoc); $refile = $true }
+    }
     if ($Preview -or $ui.DryRun.IsChecked) { $a += '--dry-run' }
     elseif ($ui.SrcCard.IsChecked -and $ui.ImpDelete.IsChecked) { $a += '--delete-source' }
     if (-not $Preview -and -not $ui.DryRun.IsChecked) {
@@ -5569,7 +5592,7 @@ function Start-ImpCopy([switch]$Preview) {
         if (-not (Confirm-Action $msg 'Import')) { return }
     }
     $state = @{ Before = @(Get-ExportCsvSet -Base $base); Started = (Get-UnixNow); Preview = [bool]($Preview -or $ui.DryRun.IsChecked); N = $picked.Count
-                Cell = @($picked | ForEach-Object Cell | Group-Object | Sort-Object Count -Descending)[0].Name }
+                Cell = $(if ($refile) { $pk } else { @($picked | ForEach-Object Cell | Group-Object | Sort-Object Count -Descending)[0].Name }) }
     [void](Start-StreamJob -Exe $py -ToolArgs $a -Title $(if ($state.Preview) { "Preview: import $($picked.Count) file(s)" } else { "Import $($picked.Count) file(s)" }) -NoStop -State $state -OnDone {
         param($text, $code, $st)
         if ($st.Preview) {
@@ -7097,6 +7120,19 @@ function Read-BoardLine([string]$Line) {
             Set-RunNow ("{0} booted" -f $b.Label) 'Press "Done with this board" to flash the next one.' $Pal.Green ([string][char]0xE73E)
             Update-RunSteps
             if ($ui.RunAutoNext.IsChecked) { $R | Add-Member -NotePropertyName AutoAt -NotePropertyValue ((Get-Date).AddSeconds(3)) -Force }
+        }
+    }
+    # location.txt (oct. 18 2026): run.ps1 fixes it before the flash; the boot
+    # report is the proof. A card that still disagrees files the whole run under
+    # the wrong site, so fix it from here and say exactly what to do.
+    if ($Line -match '^LOCATION_CHECK: FIXED (.+)$') { Add-RunAlert ("{0}: location.txt {1}" -f $b.Label, $Matches[1]) $Pal.Cyan }
+    elseif ($Line -match '^LOCATION_CHECK: (UNKNOWN|FAILED)') { Add-RunAlert ("{0}: could not check location.txt before the flash - checking at boot instead" -f $b.Label) $Pal.Amber }
+    elseif ($Line -match 'Recorded location: (\S+)') {
+        $want = [string]$R.Plan.Location; $have = $Matches[1]
+        if ($want -and $have -ne $want) {
+            Send-RunCommand "SET_LOCATION=$want"
+            Add-RunAlert ("{0}: its card records '{1}', not '{2}' - location.txt rewritten. POWER-CYCLE {0} now (before START), or its SD data is filed under {1}" -f $b.Label, $have, $want) $Pal.Red
+            Show-Toast 'Wrong location on a card' ("{0} records {1}, the run is {2}. Fixed - power-cycle {0} before START." -f $b.Label, $have, $want) ([string][char]0xE783) 'GradMain'
         }
     }
     if ($Line -match 'Writing at 0x[0-9a-f]+\.\.\. \((\d+) ?%\)') { $R.Current.Note = "flashing $($Matches[1])%"; Update-RunSteps }

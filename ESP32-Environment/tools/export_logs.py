@@ -635,6 +635,44 @@ SCENARIOS = ["stationary", "burst", "highload", "jitter", "mobility", "powercycl
 SCENARIO_ALIASES = {"none": "stationary"}
 
 
+def _read_reply(ser: serial.Serial, done, timeout_s: float):
+    """First stripped line for which done(line) is true, or None on timeout."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        raw = ser.readline()
+        if not raw:
+            continue
+        line = raw.decode("utf-8", errors="replace").strip()
+        if done(line):
+            return line
+    return None
+
+
+def _ensure_location(ser: serial.Serial, want: str) -> str:
+    """Make location.txt say `want`, writing only when it does not already.
+
+    The board files its SD mirror under location.txt, NOT under whatever the
+    laptop was told (oct. 18 2026: a DLSU_Library run landed on every card as
+    G402, the value left over from the day before). Prints one machine-readable
+    LOCATION_CHECK line and returns its state; never raises on a bad answer."""
+    _send_command(ser, "GET_LOCATION")
+    line = _read_reply(ser, lambda l: l.startswith(("LOCATION:", "ERROR:")), 5)
+    if line is None or line.startswith("ERROR:"):
+        print(f"LOCATION_CHECK: UNKNOWN {line or 'no answer (firmware before GET_LOCATION, or still booting)'}")
+        return "UNKNOWN"
+    have = line[len("LOCATION:"):]
+    if have == want:
+        print(f"LOCATION_CHECK: OK {want}")
+        return "OK"
+    _send_command(ser, f"SET_LOCATION={want}")
+    ack = _read_reply(ser, lambda l: l == "LOCATION_SET" or l.startswith("ERROR:"), 5)
+    if ack == "LOCATION_SET":
+        print(f"LOCATION_CHECK: FIXED {have} -> {want} (applies on the next boot)")
+        return "FIXED"
+    print(f"LOCATION_CHECK: FAILED {have} -> {want}: {ack or 'no ack'}")
+    return "FAILED"
+
+
 def canon_scenario(scenario):
     """Canonical scenario name; empty/None/"none" -> "stationary"."""
     s = scenario or "stationary"
@@ -785,6 +823,12 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--ensure-location", dest="ensure_location", choices=LOCATIONS, default=None,
+                   help="Read location.txt and write this value ONLY if it differs, in "
+                        "the same connection. Combines with --set-time (run.ps1 sends "
+                        "both right before a flash, so the flash's reboot applies it). "
+                        "Prints one 'LOCATION_CHECK: OK|FIXED|FAILED|UNKNOWN ...' line. "
+                        "Never fatal: the exit code is --set-time's.")
     p.add_argument("--end-run", dest="end_run", action="store_true",
                    help="End this board's run NOW and close its files cleanly "
                         "(firmware END_RUN), for a board the card listing shows as "
@@ -863,6 +907,11 @@ def main() -> int:
 
     with ser:
         _drain(ser)
+
+        if args.ensure_location:
+            _ensure_location(ser, args.ensure_location)
+            if not args.set_time:
+                return 0
 
         if args.list:
             _list_files(ser)

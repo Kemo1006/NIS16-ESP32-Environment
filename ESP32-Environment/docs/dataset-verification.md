@@ -16,6 +16,34 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #42 — Oct 18, 2026 · ~4:10 PM — wormhole · linear · DLSU_Library · highload r1: Data page "OTHER RUN" + every board's SD file
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `ac68a5e` + uncommitted
+> **Request:** "check the data page why the list ... tag a correct data as other run tag. check each board to verify it and know the other run is the correct data"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear | DLSU_Library | highload | r1 | oct. 18, children flashed ~2:57–3:03 PM, root 3:25 PM, TERMINATE ~3:37 PM | root telem + arrivals (USB export) + 7 children telem from their SD cards (`exports/wormhole/linear/DLSU_Library/highload/`) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Why "OTHER RUN" | ⚠️ cards had the wrong site | Every card's `location.txt` still said **G402** (left from oct. 17), so all 7 children filed the run under `wormhole/linear/G402/` on the card. The root's boot report says the same: `Recorded location: G402`, although run.ps1 got `-Location DLSU_Library`. The Data page was right to flag it: an import would have gone into the REAL G402/highload cell (oct. 17 r1) |
+| Same run on every board | ✅ | 7 clean files (`runs.csv` clean), all from the 14:51–14:52 flash, booted 14:57–15:03, closed at TERMINATE. COM31 (root) could not be listed (port busy); its data came over USB |
+| Phases per board (copied off the card, read with pandas) | ✅ complete | FE90, E618, ED80, D7B4, B768: 6,387 rows, phase 0 ≈ 3,005, phase 2 = 1,806, phase 3 = 1,206; 0C80 (B): 6,129 rows; 1C38 (A): 6,867 rows, same phase counts. Span 613–687 s |
+| Tunnel roles | ✅ | 0C80 = `wormhole_b` all run; 1C38 = `wormhole_a` in phases 0/2/3 (`wormhole_b` for 6 stabilise rows only, before the auto pick). Root table at TERMINATE: B H05, A H02, UART OK both, shortcut 3 hops |
+| Root export | ✅ | 7,218 telem rows + 16,210 arrival rows, already under DLSU_Library (USB export uses -Location) |
+| ED80 imported earlier by the user | ✅ moved | `victim_NODE-B4BFE934ED80_..._oct18_0356PM_telem.csv` had been filed into **G402/highload**; byte-identical to the card copy; moved to DLSU_Library/highload. G402/highload analysis (1:19 AM) predates it - not contaminated |
+| ℹ️ 1C38 size | ℹ️ | card manifest 6,869 rows / 605,677 B, copy 6,867 rows / 605,493 B (the import counts only complete rows) |
+
+**Verdict: ✅ CORRECT DATA - USABLE (filed by operator).** All 8 boards hold one complete wormhole/linear/highload run; only the site
+label on the cards was wrong. The 6 other children were copied off the cards and filed under DLSU_Library together with ED80. **Not analysed yet.**
+Thesis footnote (checklist C11): location for this capture comes from the operator / preset / run log, not from `location.txt`.
+Fix so it cannot recur: run.ps1 now checks + rewrites `location.txt` before every flash (`export_logs.py --ensure-location`), the
+GUI alerts on a mismatched boot report, and the Data page offers "file under the picked location" (`import_sdcard.py --file-location`).
+
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════════════════════════════════ -->
+
 ## 🔎 VERIFICATION #41 — Oct 18, 2026 · ~4:40 AM — CODE AUDIT: hardcoded / forced / fake values (firmware, analysis, verifier, tools)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `1ebd623` + uncommitted (one comment fix)

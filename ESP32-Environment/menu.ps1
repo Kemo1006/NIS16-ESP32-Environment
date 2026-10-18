@@ -1978,12 +1978,13 @@ if ($action -eq 2) {
                 $r = Read-YesNo -Question "Export CSVs from every board when its monitor is exited?" -Default $export -AllowBack
                 if ($script:BackSignal -eq $r) { $step = 4; $dir = -1; continue settings }
                 $export = $r
-                if (-not $export) { $loc = $null; $clean = $false }
+                # flashing needs the site too: run.ps1 writes it to location.txt (oct. 18 2026)
+                if (-not $export) { $clean = $false; if (-not $flash) { $loc = $null } }
                 $step = 6; $dir = 1; continue settings
             }
 
             6 {
-                if (-not $export) { $step += $dir; continue settings }
+                if (-not $export -and -not $flash) { $step += $dir; continue settings }
                 $r = Select-Location -Current $loc -AllowBack
                 if ($script:BackSignal -eq $r) { $step = 5; $dir = -1; continue settings }
                 $loc = $r
@@ -2020,7 +2021,7 @@ if ($action -eq 2) {
 
         if ($wipe)   { $new.Params['Wipe']   = $true }
         if ($flash)  { $new.Params['Flash']  = $true }
-        if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc }
+        if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc } elseif ($loc) { $new.Params['Location'] = $loc }
         if ($clean)  { $new.Params['Clean']  = $true }
         $new.CmdText = Format-BoardCmdText -Params $new.Params
 
@@ -2152,7 +2153,7 @@ if ($action -eq 2) {
             } else {
                 if ($wipe)   { $new.Params['Wipe']   = $true }
                 if ($flash)  { $new.Params['Flash']  = $true }
-                if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc }
+                if ($export) { $new.Params['Export'] = $true; $new.Params['Location'] = $loc } elseif ($loc) { $new.Params['Location'] = $loc }
                 if ($clean)  { $new.Params['Clean']  = $true }
                 $new.CmdText = Format-BoardCmdText -Params $new.Params
                 $boards += $new
@@ -3445,12 +3446,13 @@ $dir  = 1
             # Answering "no" here retires every export-only answer, so a
             # forward pass can't smuggle a stale location/analyze/clean from
             # an earlier "yes" into the command line.
-            if (-not $export) { $loc = $null; $analyze = $false; $clean = $false }
+            # flashing needs the site too: run.ps1 writes it to location.txt (oct. 18 2026)
+            if (-not $export) { $analyze = $false; $clean = $false; if (-not $flash) { $loc = $null } }
             $step = 12; $dir = 1; continue flow
         }
 
         12 {
-            if (-not $export) { $step += $dir; continue flow }
+            if (-not $export -and -not $flash) { $step += $dir; continue flow }
             $r = Select-Location -Current $loc -AllowBack
             if ($script:BackSignal -eq $r) { $step = 11; $dir = -1; continue flow }
             $loc = $r
@@ -3487,6 +3489,7 @@ if ($isScenarioTarget) { $p['ScenarioTarget'] = $true; $cmdText += ' -ScenarioTa
 if ($wipe)    { $p['Wipe']    = $true; $cmdText += ' -Wipe' }
 if ($flash)   { $p['Flash']   = $true; $cmdText += ' -Flash' }
 if ($export)  { $p['Export']  = $true; $p['Location'] = $loc; $cmdText += " -Export -Location $loc" }
+elseif ($loc) { $p['Location'] = $loc; $cmdText += " -Location $loc" }
 if ($clean)   { $p['Clean']   = $true; $cmdText += ' -Clean' }
 if ($analyze) { $p['Analyze'] = $true; $cmdText += ' -Analyze' }
 
