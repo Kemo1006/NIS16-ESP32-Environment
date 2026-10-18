@@ -242,6 +242,9 @@ def _fmt_eta(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
+_PROG_LAST = [0.0]
+
+
 def _render_progress(received: int, total: int, rows: int,
                      start: float, final: bool = False) -> None:
     """Draw a single-line progress bar on stderr, updated in place with '\\r'.
@@ -284,6 +287,16 @@ def _render_progress(received: int, total: int, rows: int,
     # PowerShell `2>&1`), '\r' does not return to anything: each redraw lands
     # as its own line, so a 540 KB import printed ~500 progress lines, all at
     # once after python exited. Captured -> the final line only.
+    # oct. 19 2026: the GUI (NIS16_PROGRESS=1) gets a machine line at most every
+    # 0.5 s - "PROGRESS: <pct|-1> <received> <total> <rows>" - drawn as its
+    # progress bar and never shown in the activity pane.
+    if os.environ.get("NIS16_PROGRESS") == "1":
+        now = time.time()
+        if final or now - _PROG_LAST[0] >= 0.5:
+            _PROG_LAST[0] = now
+            p = (100.0 if final else min(99.9, received * 100.0 / total)) if total > 0 else -1.0
+            sys.stderr.write(f"PROGRESS: {p:.1f} {received} {total} {rows}\n")
+            sys.stderr.flush()
     if not sys.stderr.isatty():
         if final:
             sys.stderr.write(msg + "\n")

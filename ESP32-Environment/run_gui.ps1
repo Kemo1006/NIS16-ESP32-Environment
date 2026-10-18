@@ -4642,6 +4642,7 @@ $ui.DoTopology.Add_Click({
         '--location', $c.Location, '--scenario', $c.Scenario, '--structure', '--expect', $topo) -OnDone { param($text, $code) Add-Report $text; Set-Status 'Topology check finished.' }
 })
 $script:AnaQueue = New-Object System.Collections.Queue
+$script:AnaQueueTotal = 0     # set by Analyse everything new - the progress bar shows run k of N
 function Start-Analysis([string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario, [string]$Text, [switch]$Raw) {
     # analyze.ps1 -Verify in the activity pane (its own process, so a numpy
     # warning on stderr cannot stop it - MEMORY oct. 7) - no console window
@@ -4675,6 +4676,7 @@ function Start-NextAnalysis {
 }
 $ui.DoAnalyze.Add_Click({
     $c = Get-Cell; if (-not $c) { return }
+    $script:AnaQueueTotal = 0
     [void](Start-Analysis $(if ($c.Attack -eq 'baseline') { 'none' } else { $c.Attack }) $c.Topology $c.Location $c.Scenario $c.Text -Raw:([bool]$ui.AnaUseRaw.IsChecked))
 })
 $ui.AnaAllNew.Add_Click({
@@ -4688,13 +4690,21 @@ $ui.AnaAllNew.Add_Click({
     $script:AnaQueueRaw = ($ans -eq 'No')
     $ui.AnaUseTrim.IsChecked = -not $script:AnaQueueRaw; $ui.AnaUseRaw.IsChecked = $script:AnaQueueRaw
     $script:AnaQueue.Clear(); foreach ($c in $todo) { $script:AnaQueue.Enqueue($c) }
+    $script:AnaQueueTotal = $todo.Count
     Start-NextAnalysis
 })
 $ui.AnaRefresh.Add_Click({ Update-Cells; Set-Status 'Run list refreshed.' })
 $script:VerQueue = New-Object System.Collections.Queue
 function Start-NextVerify {
-    if (-not $script:VerQueue.Count) { Update-Cells; Show-AnaCell; $ui.AnaVerifyAll.IsEnabled = $true; Set-Status 'Every analysed run has a verdict now.' $Pal.Green; return }
+    if (-not $script:VerQueue.Count) { try { Stop-TaskProgress 0 } catch { }; Update-Cells; Show-AnaCell; $ui.AnaVerifyAll.IsEnabled = $true; Set-Status 'Every analysed run has a verdict now.' $Pal.Green; return }
     $c = $script:VerQueue.Dequeue()
+    try {
+        if ($script:Prog -and $script:Prog.On -and $script:VerQueueTotal) {
+            $k = $script:VerQueueTotal - $script:VerQueue.Count
+            $script:Prog.Kind = 'redo'; $script:Prog.Pct = 100.0 * ($k - 1) / $script:VerQueueTotal; $script:Prog.Stage = "run $k of $($script:VerQueueTotal): $($c.Text)"
+            Show-TaskProgress
+        }
+    } catch { }
     Set-Status ("Checking verdicts: {0} ({1} left)" -f $c.Text, $script:VerQueue.Count) $Pal.Cyan
     Start-ToolJob -Exe $script:Py -ToolArgs @('tools\verify_attack.py', $c.Table, '--attack', $c.Attack) -State (Get-AnaKey $c) -OnDone {
         param($text, $code, $key)
@@ -4707,6 +4717,8 @@ $ui.AnaVerifyAll.Add_Click({
     $todo = @($script:Cells | Where-Object { $_.Analysed -and $_.Attack -ne 'baseline' })
     if (-not $todo.Count) { return }
     $script:VerQueue.Clear(); foreach ($c in $todo) { $script:VerQueue.Enqueue($c) }
+    $script:VerQueueTotal = $todo.Count
+    try { Start-TaskProgress 'Checking verdicts' @() } catch { }
     $ui.AnaVerifyAll.IsEnabled = $false
     Start-NextVerify
 })
@@ -5211,6 +5223,7 @@ function Start-StreamJob {
     $script:Stream = [pscustomobject]@{ Proc = $p; Out = $out; Err = $err; PosO = [long]0; PosE = [long]0
                                         All = (New-Object Text.StringBuilder); Done = $OnDone; State = $State; Title = $Title; NoStop = [bool]$NoStop }
     $ui.StopTask.IsEnabled = $true
+    try { Start-TaskProgress $Title $ToolArgs } catch { }   # gui\Progress.ps1
     Update-BusyButtons $true
     $ui.ActivityPane.Visibility = 'Visible'; $ui.ToggleActivity.Content = 'Hide activity'
     Set-Status ("Running: " + $Title) $Pal.Amber
@@ -5223,7 +5236,9 @@ $streamTimer.Add_Tick({
     $po = $s.PosO; $pe = $s.PosE
     $t = (Read-NewText $s.Out ([ref]$po)) + (Read-NewText $s.Err ([ref]$pe))
     $s.PosO = $po; $s.PosE = $pe
-    if ($t) { [void]$s.All.Append($t); Write-Activity $t.TrimEnd("`r", "`n") }
+    try { Update-TaskProgress $t } catch { }
+    if ($t -and $t.Contains('PROGRESS:')) { $t = (@($t -split "`n" | Where-Object { $_ -notmatch '^\s*PROGRESS:' }) -join "`n") }
+    if ($t -and $t.Trim()) { [void]$s.All.Append($t); Write-Activity $t.TrimEnd("`r", "`n") }
     if ($s.Proc.HasExited) {
         Start-Sleep -Milliseconds 100
         $po = $s.PosO; $pe = $s.PosE
@@ -5231,6 +5246,7 @@ $streamTimer.Add_Tick({
         if ($t) { [void]$s.All.Append($t); Write-Activity $t.TrimEnd("`r", "`n") }
         $code = $s.Proc.ExitCode
         $script:Stream = $null
+        try { Stop-TaskProgress $code } catch { }
         $ui.StopTask.IsEnabled = $false
         Update-BusyButtons $false
         Remove-Item $s.Out, $s.Err -ErrorAction SilentlyContinue
@@ -6962,6 +6978,7 @@ function Read-RunOutput {
             if ($null -eq $ln) { continue }
             $ln = $ln -replace "\x1b\[[0-9;]*m", ''
             if ($ln -match '^#< CLIXML' -or $ln -match '^<Objs ') { continue }
+            if ($ln -match '^\s*PROGRESS:') { try { Update-LiveExportProgress $ln } catch { }; continue }   # gui\Progress.ps1
             $lines += $ln
         }
     }
