@@ -885,7 +885,24 @@ $StyleXaml
                  name shows their card boxes). Virtualised: only visible rows exist. -->
             <ListBox x:Name="PresetList" Grid.Column="0" Margin="0,0,14,0" Background="Transparent" BorderThickness="0" Visibility="Collapsed"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
-                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel">
+                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
+                     VirtualizingPanel.IsVirtualizingWhenGrouping="True">
+              <ListBox.GroupStyle>
+                <GroupStyle>
+                  <GroupStyle.HeaderTemplate>
+                    <DataTemplate>
+                      <DockPanel Margin="0,6,6,10">
+                        <Border DockPanel.Dock="Left" CornerRadius="8" Padding="10,2" Background="{Binding Items[0].AtkBg}">
+                          <TextBlock FontSize="11" FontWeight="Bold">
+                            <Run Text="{Binding Name, Mode=OneWay}" Foreground="{Binding Items[0].AtkFg, Mode=OneWay}"/><Run Text="   " /><Run Text="{Binding ItemCount, Mode=OneWay}" Foreground="$($Pal.Dim)"/>
+                          </TextBlock>
+                        </Border>
+                        <Border Height="2" CornerRadius="1" Margin="10,0,0,0" VerticalAlignment="Center" Background="{Binding Items[0].AtkLine}"/>
+                      </DockPanel>
+                    </DataTemplate>
+                  </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+              </ListBox.GroupStyle>
               <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
                   <Setter Property="Padding" Value="0"/>
@@ -3059,6 +3076,7 @@ function New-PresetRow($P, $LiveMacs) {
         Art = (Get-TopoImage $P.Topology $P.Attack 64 38).psobject.BaseObject
         RowBg = (Get-FBrush ($tone -replace '#', '#2A') $Pal.Card '1,0')
         AtkText = $P.Attack.ToUpper(); AtkFg = (Get-FBrush $tone)
+        AtkBg = (Get-FBrush ($tone -replace '#', '#33')); AtkLine = (Get-FBrush ($tone -replace '#', '#66') ($tone -replace '#', '#00') '1,0')
         RepText = $(if ($P.Repeat -gt 1) { "   ·   repeat $($P.Repeat)" } else { '' }) + $(if ($P.NameFlag) { '   (!) name' } else { '' })
         Topo = ($P.Topology -replace '_', ' ')
         LocText = ($P.Location -replace '_', ' '); LocFg = (Get-FBrush $lt); LocBg = (Get-FBrush ($lt -replace '#', '#2A'))
@@ -3083,6 +3101,9 @@ function Update-PresetList($Rows, $LiveMacs) {
         $ready = 0
         foreach ($p in $Rows) { $r = New-PresetRow $p $LiveMacs; if ($r.Ready) { $ready++ }; [void]$items.Add($r) }
         $ui.PresetList.ItemsSource = $items
+        # a heading per attack - the rows arrive already grouped (attack, then date)
+        $view = [Windows.Data.CollectionViewSource]::GetDefaultView($items)
+        if ($view -and -not $view.GroupDescriptions.Count) { $view.GroupDescriptions.Add((New-Object Windows.Data.PropertyGroupDescription 'AtkText')) }
         $sel = $ui.PresetGrid.SelectedItem
         if ($sel) { $hit = @($items | Where-Object { $_.P.Path -eq $sel.Path }); if ($hit.Count) { $ui.PresetList.SelectedItem = $hit[0] } }
         $owners = @($Rows | ForEach-Object Owner | Sort-Object -Unique).Count
@@ -3313,8 +3334,10 @@ function Update-PresetGrid {
             -not @($words | Where-Object { -not $hay.Contains($_) }).Count }) })
     # sort (user, oct. 18 2026): newest first by default; 'By type' = the old order
     $sortText = 'attack > topology > scenario > location > newest'
-    if ($ui.PresetSNew.IsChecked) { $rows = @($rows | Sort-Object Saved -Descending); $sortText = 'newest first' }
-    elseif ($ui.PresetSOld.IsChecked) { $rows = @($rows | Sort-Object Saved); $sortText = 'oldest first' }
+    # (user: "group the same attacks, then sort by date" - never one mixed patchwork)
+    $atkRank = @{ E = { $r = @('blackhole', 'wormhole', 'baseline').IndexOf([string]$_.Attack); if ($r -lt 0) { 9 } else { $r } } }
+    if ($ui.PresetSNew.IsChecked) { $rows = @($rows | Sort-Object $atkRank, @{ E = { $_.Saved }; Descending = $true }); $sortText = 'by attack, newest first' }
+    elseif ($ui.PresetSOld.IsChecked) { $rows = @($rows | Sort-Object $atkRank, @{ E = { $_.Saved } }); $sortText = 'by attack, oldest first' }
     # keep the selected preset selected when it is still shown
     $keep = if ($ui.PresetGrid.SelectedItem) { $ui.PresetGrid.SelectedItem.Path } else { '' }
     $ui.PresetGrid.ItemsSource = $rows
