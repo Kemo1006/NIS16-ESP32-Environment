@@ -79,7 +79,12 @@ function Invoke-BeforeRootFlash($St) {
         $script:PrevAttemptSeg = -1
         $alive = @(Get-AliveWatches | Where-Object { ([string]$_.Port).ToUpper() -ne ([string]$St.Board.Port).ToUpper() })
         $phase = @('stabilise', 'baseline', 'attack', 'cooldown', 'end')[[Math]::Min(4, [Math]::Max(0, $prev))]
-        if ($alive.Count -and (Confirm-Action ("The last attempt was stopped in its {0} phase. The {1} children still have THAT session open in their files - the new run would be appended to it.`n`nRestart them now, right before the root, so this run starts clean files?`n`n(Recommended. Each board restarts in ~2 s and is still watched; its old, abandoned file closes as ABORTED.)" -f $phase, $alive.Count) 'Clean start for the children')) {
+        if (-not $alive.Count) {
+            # the usual setup: the children run on powerbanks / adapters, only the root is on USB
+            [void][Windows.MessageBox]::Show(("The last attempt was stopped in its {0} phase. The children (on powerbanks / adapters) still have THAT session open in their files - this run would be appended to it.`n`nPower-cycle EVERY child now (unplug its power ~2 s, plug it back) BEFORE the root starts, so this run starts clean files.`n`nPress OK when they are back on." -f $phase), 'Clean start for the children', 'OK', 'Information')
+            Write-RunConsole ("  asked to power-cycle the children by hand (the last attempt was stopped in its {0} phase)" -f $phase) $Pal.Cyan
+        }
+        elseif (Confirm-Action ("The last attempt was stopped in its {0} phase. The {1} children still have THAT session open in their files - the new run would be appended to it.`n`nRestart them now, right before the root, so this run starts clean files?`n`n(Recommended. Each board restarts in ~2 s and is still watched; its old, abandoned file closes as ABORTED.)" -f $phase, $alive.Count) 'Clean start for the children') {
             foreach ($w in $alive) { try { Set-Content -Path (Join-Path $w.Ctl 'reset') -Value 'reset' -ErrorAction Stop } catch { } }
             Write-RunConsole ("  restarted {0} child board(s) for a clean start: {1}" -f $alive.Count, ((@($alive | ForEach-Object Label)) -join ', ')) $Pal.Cyan
             Add-RunAlert ("{0} children restarted for a clean start (the last attempt was stopped in its {1} phase)" -f $alive.Count, $phase) $Pal.Cyan

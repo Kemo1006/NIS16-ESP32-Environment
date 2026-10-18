@@ -9,6 +9,7 @@ idf_component_register(
         "src/blackhole_target.c"
         "src/probe_relay.c"
         "src/health_log.c"
+        "src/crash_record.c"
     INCLUDE_DIRS
         "include"
     REQUIRES
@@ -53,3 +54,7 @@ endif()
 if(DEFINED BH_ATTACKER_MAC_HEX)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE BH_ATTACKER_MAC_HEX=${BH_ATTACKER_MAC_HEX})
 endif()
+
+# crash_record.c: keep a crash's PC + backtrace across the reboot (oct. 18 2026,
+# checklist C12 / D9) - the panic handler is wrapped, then runs exactly as before.
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_panic_handler")

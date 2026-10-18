@@ -21,7 +21,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Next step
 1. **Re-wire the tunnel** (0C80 GPIO17 must NOT touch its own GPIO16: crossed TX->other RX both ways + GND), **reflash ROOT + both tunnel boards**, then check the dashboard: 1 A (shallower) + 1 B, `UART OK` on both -> READY -> type `START`.
-1b. **blackhole/tree/G402/stationary r1: RECAPTURE** (#44: signature PASS but SETUP INVALID - victim F4:18 under the attacker crashed at attack +152 s and knocked 2 children off; C12 🟨). Restart the GUI first (crash watch now survives; the backtrace is what C12/D9 need). Same repeat -> the old one archives itself.
+1b. **blackhole/tree/G402/stationary r1: RECAPTURE** (#44, C12 🟨). Restart the GUI, Wipe + Flash EVERY board (new firmware: [HEALTH] + crash record on the SD card - children are on powerbanks, so the card is where a child's crash is recorded). If a victim crashes again: Collect fetches + decodes `crashes_<node>.csv` (datasets/run_logs/<cell>/crashes/) - send it. Same repeat -> the old capture archives itself.
 2. **First real use of the new pages:** GitHub sync (Check -> Smart sync on each laptop, after pulling `b6f8cc8`) and Data > 'Delete from card' (tested on a fake card only). `baseline/linear/home/highload` is NOT ANALYSED here or on GitHub - analyse it. Do NOT push `mesh_config.h` attacker-MAC lines.
 3. Work the redo list (wizard Campaign [5]). wormhole/linear/G402/stationary re-verified = OK (#40, D6 ticked). A Campaign CHECK 'newer capture exists' clears only with a logged verification block, not the Verify button.
 4. Optional: re-run `analyze.ps1 -All` so every table uses the `transition` segment (verdicts unchanged, dry-run proven).

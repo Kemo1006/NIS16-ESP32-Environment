@@ -18,6 +18,7 @@
  */
 
 #include "health_log.h"
+#include "crash_record.h"
 #include "mesh_config.h"
 
 #include <stdint.h>
@@ -89,6 +90,10 @@ static void health_task(void *arg)
             }
         }
         ESP_LOGI(TAG, "[HEALTH] %s", line);
+        /* kept in RTC memory: if this board crashes, crashes_<node>.csv on its
+         * card says what memory looked like just before (crash_record.c) */
+        crash_record_note_health((uint32_t)(esp_timer_get_time() / 1000000LL), heap, floor, big,
+                                 low_task, low_task ? low_free : 0u);
 
         /* Loud when something is close to the edge - the line the crash watch
          * and a person reading the log should not miss. */

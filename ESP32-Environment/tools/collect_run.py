@@ -67,6 +67,28 @@ def _when(text):
         return None
 
 
+CRASH_ENDS = ("PANIC", "INT_WDT", "TASK_WDT", "WDT")
+
+
+def _crashed_leaves(files, attack_dir, topology):
+    """The card folders where this board CRASHED in this attack + topology (ended_by)."""
+    return sorted({f"{f.get('attack')}/{f.get('topology')}/{f.get('location')}" for f in files
+                   if f.get("kind") == "telem" and f.get("filed_under") == attack_dir and f.get("topology") == topology
+                   and str(f.get("ended_by") or "").upper() in CRASH_ENDS})
+
+
+def _fetch_crashes(kind, s, leaves, node, run_logs):
+    """tools/fetch_crashes.py for one board: copy + decode crashes_<node>.csv (oct. 18 2026)."""
+    a = [_py(), os.path.join(HERE, "fetch_crashes.py")] + (["--port", s] if kind == "port" else ["--card", s])
+    for lf in leaves:
+        a += ["--leaf", lf]
+    a += ["--node", node, "--out", run_logs]
+    p = subprocess.run(a, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=HERE)
+    for line in p.stdout.splitlines():
+        if line.strip():
+            print("   " + line, flush=True)
+
+
 def _rows_in(path):
     with open(path, "rb") as fh:
         return max(0, sum(1 for _ in fh) - 1)
@@ -280,6 +302,13 @@ def main():
         _say(label, mac, "OK", (("would copy " if a.dry_run else "") + f"{f.get('name')} ({f.get('rows') or '?'} rows, ran {f.get('started')})")
              + (f" - {note}" if note else ""))
         ok += 1
+        # the board crashed in this run: its card also holds WHERE (crash_record.c,
+        # firmware since oct. 18 2026) - fetch + decode it next to the run's logs
+        crashed = _crashed_leaves(files, attack_dir, topology)
+        if crashed and not a.dry_run:
+            node = str(f.get("node") or "")
+            _fetch_crashes(kind, s, crashed, node,
+                           os.path.join(BASE, "datasets", "run_logs", attack_dir, topology, a.location, a.scenario, "crashes"))
     print(f"\nCOLLECT_SUMMARY: ok={ok} skip={skipn} fail={fail}", flush=True)
     if a.plan_json:
         with open(a.plan_json, "w", encoding="utf-8") as fh:

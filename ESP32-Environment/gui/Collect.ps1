@@ -236,6 +236,13 @@ function Start-CollectTicked {
             $hold = Get-PortHolderText $f.Groups[1].Value
             Write-Activity ("  {0}: {1}{2}" -f $f.Groups[1].Value, $f.Groups[3].Value.Trim(), $(if ($hold) { "   ->  $hold" } else { '' })) $Pal.Amber
         }
+        # crash records fetched off the cards (tools/fetch_crashes.py via collect_run.py)
+        foreach ($cm in @([regex]::Matches($text, '(?m)^\s*CRASHES: (NODE_[0-9A-Fa-f]{12}) (\d+) record\(s\) -> (.+)$'))) {
+            $dec = ($cm.Groups[3].Value.Trim() -replace '\.csv$', '.decoded.txt')
+            Write-Activity ("  CRASH RECORD of {0}: {1} crash(es), decoded -> {2}" -f $cm.Groups[1].Value, $cm.Groups[2].Value, $dec) $Pal.Red
+            Show-Toast ("{0} crashed during this run" -f $cm.Groups[1].Value) 'Its crash record (where it crashed + memory before it) was fetched and decoded - open it.' ([string][char]0xE783) 'GradMain' { if ($script:LastCrashFile -and (Test-Path $script:LastCrashFile)) { Start-Process notepad $script:LastCrashFile } } 'Open it'
+            $script:LastCrashFile = $dec
+        }
         $C = $script:Col
         if ($m.Success) {
             $okN = [int]$m.Groups[1].Value; $failN = [int]$m.Groups[3].Value

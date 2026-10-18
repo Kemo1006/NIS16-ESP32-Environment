@@ -28,6 +28,7 @@
 #include "esp_chip_info.h"
 #include "esp_idf_version.h"
 #include "esp_mac.h"
+#include "crash_record.h"
 #include "esp_system.h"   /* esp_reset_reason(): why THIS boot happened */
 #include "esp_log.h"
 
@@ -1186,6 +1187,26 @@ sd_status_result_t sd_status_run_boot_check(void)
                 strlcpy(s_run_dir, dest_dir, sizeof(s_run_dir));
                 s_boot_count = boot_count;
                 result = SD_STATUS_OK;
+                /* oct. 18 2026 (C12 / D9): the previous boot CRASHED - write where
+                 * (PC + backtrace, kept in RTC memory by crash_record.c) and the
+                 * last [HEALTH] reading to crashes_<node>.csv next to the run's
+                 * files, one row per crash. A child on a powerbank has no laptop
+                 * listening, so this file is the only copy. */
+                char crow[256];
+                if (crash_record_take(s_reset_is_crash, boot_count, s_reset_reason, crow, sizeof(crow))) {
+                    char cpath[176];
+                    snprintf(cpath, sizeof(cpath), "%s/crashes_%s.csv", dest_dir, node_id);
+                    FILE *cr = fopen(cpath, "r");
+                    const bool fresh = (cr == NULL);
+                    if (cr) fclose(cr);
+                    FILE *cf = fopen(cpath, "a");
+                    if (cf) {
+                        if (fresh) fprintf(cf, "%s\n", crash_record_csv_header());
+                        fprintf(cf, "%s\n", crow);
+                        fclose(cf);
+                    }
+                    ESP_LOGE(TAG, "CRASH RECORD (previous boot): %s -> %s", crow, cf ? cpath : "NOT written (card)");
+                }
             } else {
                 ESP_LOGE(TAG, "Report write FAILED at %s: errno=%d (%s)", dest_path, errno, strerror(errno));
                 result = SD_STATUS_WRITE_FAILED;
