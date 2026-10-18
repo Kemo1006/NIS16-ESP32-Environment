@@ -100,6 +100,16 @@ function Get-TaskPct {
     return $pc
 }
 
+function Set-CollectWindowProgress([bool]$Ind, [double]$Value, [string]$Text, [string]$Hex) {
+    # the Collect window has its own bar (it can cover the main status bar)
+    $C = $script:Col
+    if (-not $C -or -not $C.Prog -or -not $script:CollectWin -or -not $script:CollectWin.IsVisible) { return }
+    $C.Prog.Panel.Visibility = 'Visible'
+    $C.Prog.Bar.IsIndeterminate = $Ind; if (-not $Ind) { $C.Prog.Bar.Value = $Value }
+    $C.Prog.Text.Text = $Text
+    if ($Hex) { $C.Prog.Bar.Foreground = Get-Brush $Hex; $C.Prog.Text.Foreground = Get-Brush $Hex }
+}
+
 function Show-TaskProgress {
     $P = $script:Prog; if (-not $P -or -not $P.On) { return }
     $P.Last = Get-Date
@@ -114,6 +124,7 @@ function Show-TaskProgress {
         $P.Bar.IsIndeterminate = $true
         $P.Text.Text = '{0}{1}  -  {2} elapsed' -f $(if ($P.Stage) { $P.Stage } else { $P.Title }), $q, (Format-Span $el)
     }
+    if ($P.Kind -eq 'collect') { try { Set-CollectWindowProgress $P.Bar.IsIndeterminate $P.Bar.Value $P.Text.Text $Pal.Cyan } catch { } }
 }
 
 function Stop-TaskProgress([int]$Code) {
@@ -124,6 +135,7 @@ function Stop-TaskProgress([int]$Code) {
     $hex = if ($Code -eq 0) { $Pal.Green } else { $Pal.Amber }
     $P.Bar.Foreground = Get-Brush $hex; $P.Text.Foreground = Get-Brush $hex
     $P.Text.Text = '{0}  {1} in {2}' -f $(if ($Code -eq 0) { [string][char]0x2714 } else { '!' }), $(if ($Code -eq 0) { 'done' } else { "ended (exit $Code)" }), (Format-Span $el)
+    if ($P.Kind -eq 'collect') { try { Set-CollectWindowProgress $false 100 $P.Text.Text $hex } catch { } }
     # fade out after 5 s unless the next task (a queue) starts first
     $t = New-Object Windows.Threading.DispatcherTimer; $t.Interval = [TimeSpan]::FromSeconds(5)
     $t.Add_Tick({ param($s, $e) $s.Stop(); if ($script:Prog -and -not $script:Prog.On) { $script:Prog.Panel.Visibility = 'Collapsed' } })

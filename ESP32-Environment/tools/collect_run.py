@@ -240,9 +240,24 @@ def _import_one(src_args, f, a, outdir):
         imp += ["--file-location", a.location]
     if a.roster:
         imp += ["--roster", a.roster]
-    p = subprocess.run(imp, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=HERE)
+    # oct. 19 2026: the card read's PROGRESS lines (export_logs.py, when the GUI set
+    # NIS16_PROGRESS=1) go straight through to our stderr, live, so the GUI's bar
+    # moves INSIDE a board; everything else is collected as before
+    err = []
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as fo:
+        p = subprocess.Popen(imp, stdout=fo, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                             errors="replace", cwd=HERE)
+        for line in p.stderr:
+            if line.startswith("PROGRESS:"):
+                sys.stderr.write(line)
+                sys.stderr.flush()
+            else:
+                err.append(line)
+        p.wait()
+        fo.seek(0)
+        out = fo.read()
     hits = glob.glob(os.path.join(outdir, "**", "*_telem.csv"), recursive=True) if p.returncode == 0 else []
-    return (max(hits, key=os.path.getmtime) if hits else None), p.stdout + (p.stderr if p.returncode else "")
+    return (max(hits, key=os.path.getmtime) if hits else None), out + ("".join(err) if p.returncode else "")
 
 
 def _fetch_crashes(kind, s, leaves, node, run_logs):

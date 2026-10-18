@@ -111,6 +111,12 @@ function Show-CollectDialog {
     [void]$btns.Children.Add($bScan); [void]$btns.Children.Add($bGo); [void]$btns.Children.Add($bRetry)
     $status = New-Text 'Not scanned yet.' 12 $Pal.Faint; $status.Margin = '14,0,0,0'; $status.VerticalAlignment = 'Center'; [void]$btns.Children.Add($status)
     [void]$head.Children.Add($btns)
+    # oct. 19 2026: the scan / collect progress, IN this window (gui\Progress.ps1 feeds it)
+    $cp = New-Object Windows.Controls.StackPanel; $cp.Margin = '0,0,0,10'; $cp.Visibility = 'Collapsed'
+    $cpb = New-Object Windows.Controls.ProgressBar; $cpb.Height = 8; $cpb.Minimum = 0; $cpb.Maximum = 100; $cpb.BorderThickness = 0
+    $cpb.Background = Get-Brush '#2A2E48'; $cpb.Foreground = Get-Brush $Pal.Cyan
+    $cpt = New-Text '' 11.5 $Pal.Cyan; $cpt.Margin = '0,4,0,0'
+    [void]$cp.Children.Add($cpb); [void]$cp.Children.Add($cpt); [void]$head.Children.Add($cp)
     [void]$root.Children.Add($head)
     $sv = New-Object Windows.Controls.ScrollViewer; $sv.VerticalScrollBarVisibility = 'Auto'
     $rows = New-Object Windows.Controls.StackPanel; $sv.Content = $rows
@@ -118,7 +124,8 @@ function Show-CollectDialog {
     $w.Content = $root
     $script:CollectWin = $w
     $script:Col = @{ A = $cA; T = $cT; L = $cL; S = $cS; R = $cR; W = $cW; Other = $other; Rows = $rows; Scan = $bScan; Go = $bGo; Retry = $bRetry; Status = $status
-                     PortLine = $portLine; FixedPorts = @($Ports); RunStart = $RunStart; Plan = $null; Checks = @{} }
+                     PortLine = $portLine; FixedPorts = @($Ports); RunStart = $RunStart; Plan = $null; Checks = @{}
+                     Prog = @{ Panel = $cp; Bar = $cpb; Text = $cpt } }
     foreach ($c in @($cA, $cT, $cL, $cS, $cW)) { $c.Add_SelectionChanged({ Clear-CollectScan }) }
     $cR.Add_TextChanged({ Clear-CollectScan }); $other.Add_Click({ Clear-CollectScan })
     $bScan.Add_Click({ Start-CollectScan })
