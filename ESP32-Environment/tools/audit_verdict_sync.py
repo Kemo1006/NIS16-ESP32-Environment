@@ -3,9 +3,11 @@
 (REDO / CHECK / OK) agree, for every analysed attack run? (oct. 19 2026, verification #51)
 
   R1  NOT CONFIRMED / SETUP INVALID / INCONCLUSIVE -> the redo list has a verifier REDO
-  R2  CONFIRMED + STRONG    -> no verifier reason in the redo list (OK)
-  R3  CONFIRMED + QUALIFIED -> one verifier CHECK naming the same number of footnotes
-  R4  a REDO on a CONFIRMED run comes from a NON-verifier source (capture completeness,
+  R2  CONFIRMED + STRONG / GOOD -> OK (green DONE, same note count); MINOR GAPS ->
+      one verifier CHECK with the same minor-gap count (yellow DONE - RECAPTURE ADVISED)
+  R3  CONFIRMED + MAJOR GAPS -> one 'verifier-data' REDO naming the same data gaps
+      (orange RECAPTURE REQUIRED)
+  R4  any other REDO on a CONFIRMED run comes from a NON-verifier source (capture completeness,
       structure, the verification log, a thesis-checklist D-row) - and that source is named
   R5  each run's redo severity = the worst of its reasons (computed, never set by hand)
 
@@ -35,11 +37,12 @@ for c in cells:
         conf, concl = va.verify(df, c['attack'], 3.0)
     txt = buf.getvalue()
     verdict = re.search(r'VERDICT: (.+?)(\s{2}\(|$)', txt, re.M).group(1).strip()
-    grade = (re.search(r'CONFIDENCE: (\S+)', txt) or [None, '?'])[1]
-    nfoot = len(re.findall(r'(?m)^     ~ ', txt))
+    grade = (re.search(r'CONFIDENCE: (STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED)', txt) or [None, '?'])[1]
+    ngap = len(re.findall(r'(?m)^     ~ MAJOR GAP \(affects the result\): ', txt))
+    nmin = len(re.findall(r'(?m)^     ~ MINOR GAP ', txt))
     reasons = c['reasons']                       # (sev, text, evidence, fix)
-    ver = [r for r in reasons if r[2] == 'verifier']
-    other = [r for r in reasons if r[2] != 'verifier']
+    ver = [r for r in reasons if r[2] in ('verifier', 'verifier-data')]
+    other = [r for r in reasons if r[2] not in ('verifier', 'verifier-data')]
     sev = c['severity']
     name = '/'.join(key)
     # R5
@@ -50,14 +53,26 @@ for c in cells:
         if not any(r[0] == rl.REDO for r in ver):
             bad.append(f'R1 {name}: verdict "{verdict}" but the redo list has no verifier REDO')
     else:
-        if grade == 'STRONG' and ver:
-            bad.append(f'R2 {name}: STRONG but the redo list has verifier reason(s): {[r[1][:60] for r in ver]}')
-        if grade == 'QUALIFIED':
-            q = [r for r in ver if r[1].startswith('CONFIRMED (qualified)')]
-            m = re.search(r'with (\d+) footnote', q[0][1]) if q else None
-            if len(q) != 1 or not m or int(m.group(1)) != nfoot:
-                bad.append(f'R3 {name}: report has {nfoot} footnote(s), redo list says {q[0][1][:70] if q else "nothing"}')
-        if sev == rl.REDO and not any(r[0] == rl.REDO for r in other):
+        if grade == 'MINOR GAPS':
+            q = [r for r in ver if r[0] == rl.CHECK and r[1].startswith('CONFIRMED - MINOR GAPS')]
+            m = re.search(r'\((\d+) minor gap', q[0][1]) if q else None
+            if len(q) != 1 or not m or int(m.group(1)) != nmin:
+                bad.append(f'R2 {name}: report has {nmin} minor gap(s), redo list says {q[0][1][:70] if q else "nothing"}')
+        if grade in ('STRONG', 'GOOD') and any(r[0] != rl.OK for r in ver):
+            bad.append(f'R2 {name}: {grade} but the redo list has a verifier CHECK/REDO: {[r[1][:60] for r in ver]}')
+        if grade == 'MINOR GAPS' and any(r[0] == rl.REDO for r in ver):
+            bad.append(f'R2 {name}: {grade} but the redo list has a verifier CHECK/REDO: {[r[1][:60] for r in ver]}')
+        if grade == 'GOOD':
+            q = [r for r in ver if r[1].startswith('CONFIRMED - GOOD')]
+            m = re.search(r'\((\d+) note', q[0][1]) if q else None
+            nnote = len(re.findall(r'(?m)^     ~ note: ', txt))
+            if len(q) != 1 or not m or int(m.group(1)) != nnote:
+                bad.append(f'R2 {name}: report has {nfoot} note(s), redo list says {q[0][1][:70] if q else "nothing"}')
+        if grade == 'MAJOR GAPS':
+            q = [r for r in ver if r[0] == rl.REDO and r[2] == 'verifier-data' and r[1].startswith('CONFIRMED - MAJOR GAPS')]
+            if len(q) != 1 or q[0][1].split(' | ')[0].count(';') + 1 != ngap:
+                bad.append(f'R3 {name}: report has {ngap} data gap(s), redo list says {q[0][1][:70] if q else "nothing"}')
+        if sev == rl.REDO and grade != 'MAJOR GAPS' and not any(r[0] == rl.REDO for r in other):
             bad.append(f'R4 {name}: CONFIRMED but REDO without a non-verifier REDO source')
     src = sorted({r[2] if not r[2].startswith('verification') else 'verification log' for r in reasons if r[0] == rl.REDO})
     rows.append((name, verdict.replace(c['attack'].upper() + ' ', ''), grade, sev, ', '.join(src)))

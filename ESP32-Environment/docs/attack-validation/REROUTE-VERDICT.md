@@ -98,18 +98,18 @@ never hidden.
 Under the VERDICT line (which is unchanged) the report now prints a **CONFIDENCE** grade, worked out
 from the checks above by fixed rules:
 
-| Grade | When | How to report it |
-|---|---|---|
-| **STRONG** | confirmed; nothing moved, nothing left out, nothing to footnote | "BLACKHOLE CONFIRMED" |
-| **SOUND** | confirmed; boards moved but were allowed **and** the re-test on the part before the first move confirmed it again | "BLACKHOLE CONFIRMED (sound: moves allowed, re-test passed)" |
-| **QUALIFIED** | confirmed, but with footnotes (re-test not possible, a board went silent, start overridden, evidence partly left out, ...) | "BLACKHOLE CONFIRMED (qualified: N footnotes)" - each footnote goes to the thesis checklist |
-| **-** | not confirmed | the failed check(s) are listed as the reason |
+| Grade | When | Campaign / Verify status | How to report it |
+|---|---|---|---|
+| **STRONG** | confirmed; all board data present, nothing to note | 🟢 DONE | "BLACKHOLE CONFIRMED" |
+| **GOOD** | confirmed; all board data present, notes for the report (e.g. allowed moves, no run log) | 🟢 DONE | "BLACKHOLE CONFIRMED" + N footnotes |
+| **MINOR GAPS** | confirmed; some data is missing (a board cut short / short attack / no cooldown) but the **impact check** - the 3-sigma test re-run WITHOUT those boards - still confirms the attack | 🟡 DONE - RECAPTURE ADVISED | "BLACKHOLE CONFIRMED - minor gaps" + footnotes |
+| **MAJOR GAPS** | confirmed, but the result relies on missing data: a board never measured in the attack, most victim time with no path, or a FAILED impact check | 🟠 RECAPTURE REQUIRED | "BLACKHOLE CONFIRMED - major gaps" |
+| **NOT CONFIRMED** | no signature, too little data, or the setup was invalid | 🔴 REDO | the failed check(s) are the reason |
 
-Applied to all 54 analysed captures (oct. 19, after the #50 fix): **7 STRONG, 43 QUALIFIED, 2 not confirmed**; 0 verdicts
-changed. Most QUALIFIED runs carry ONE footnote - "force-start could not be checked (no run log saved)" (42 runs
-captured before run logs were saved). A first version graded 48 STRONG because it silently dropped warnings that
-were not on its footnote list - fixed in #50: **any warning becomes a footnote**, so STRONG means every check
-passed, the force-start check included.
+Applied to all 52 analysed attack runs (oct. 19, verification #52): **7 STRONG, 40 GOOD, 1 MINOR GAPS, 2 MAJOR GAPS,
+2 NOT CONFIRMED**. No fixed time cut decides minor vs major - the impact check does (an earlier "< 60 s = major" rule
+overrode it on tree/G402/stationary and was removed; re-grading with any cut from 30 to 120 s moves no grade).
+Any warning lands somewhere (#50), so STRONG means every check passed.
 
 Example (10:11 PM run):
 
@@ -273,11 +273,11 @@ Three answers come out of two programs, and they answer **different questions**:
 | Answer | Program | Question | Decided by |
 |---|---|---|---|
 | **VERDICT** | `verify_attack.py` | did the attack happen in this data? | the 3-sigma test on the attack's signature [Zhukabayeva 2025; Airehrour 2018] + the setup checks |
-| **CONFIDENCE** | `verify_attack.py` | how cleanly? | STRONG = every check passed · QUALIFIED = confirmed with footnotes (ANY warning is one) · - = not confirmed |
+| **CONFIDENCE** | `verify_attack.py` | how cleanly? | STRONG · GOOD (notes) · MINOR GAPS (missing data the result does not need - impact check) · MAJOR GAPS (the result needs it) · NOT CONFIRMED |
 | **REDO / CHECK / OK** | `redo_list.py` | is this run good enough to keep for the thesis? | the worst of: capture completeness (all boards, >= 95 % samples), structure on the raw files, analysis freshness, **the verifier above**, the verification log, thesis-checklist D-rows |
 
 So **CONFIRMED + REDO is not a contradiction**: the attack happened, but the dataset is incomplete (e.g. tree/G402/burst:
-7 of 8 boards, checklist D2). They line up everywhere else: STRONG = OK, QUALIFIED = CHECK, not confirmed = REDO.
+7 of 8 boards, checklist D2). They line up everywhere else: STRONG / GOOD = OK (🟢 DONE), MINOR GAPS = CHECK (🟡 DONE - RECAPTURE ADVISED), MAJOR GAPS = REDO from `verifier-data` (🟠 RECAPTURE REQUIRED), not confirmed = REDO from `verifier` (🔴 REDO).
 
 **Proof it is not tuned:** moving every threshold by about half up and down (728 re-judgements) changes **no** verdict;
 two absurd control settings do change many - so the verdicts sit far from every threshold and are decided by the data.

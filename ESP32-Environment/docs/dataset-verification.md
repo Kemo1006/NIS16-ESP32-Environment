@@ -16,6 +16,35 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #52 — Oct 19, 2026 · ~3:30 AM — final grade scale (MINOR GAPS / MAJOR GAPS) + bias re-check
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4e8a826` + this change
+> **Request:** "two types of incomplete data, minor (won't affect the result) and major; check for anything hard-coded / forced that became biased; why is tree/G402/stationary MAJOR instead of MINOR?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 52 attack runs | every analysed attack cell |
+
+| Check | Result | Detail |
+|---|---|---|
+| Grades (all runs) | ✅ | 7 STRONG · 40 GOOD · 1 MINOR GAPS (blackhole/tree/G402/stationary) · 2 MAJOR GAPS (blackhole/tree/G402/burst, wormhole/tree/DLSU_Library/stationary) · 2 NOT CONFIRMED |
+| **Bias found** | ❌ -> 🔧 | a fixed rule called a board with **< 60 s** of attack windows a MAJOR gap even when the report's own IMPACT CHECK (3-sigma test re-run WITHOUT that board) still confirmed the attack. tree/G402/stationary: B768 had 28 s, attack held without it -> was MAJOR, now **MINOR**. Fixed: a board that WAS measured in the attack (cut short / short / no cooldown) is a MINOR candidate and the impact check decides; a failed impact check = MAJOR |
+| Minor/major cut-off sensitivity | ✅ 0 moves | all 52 runs re-graded with the cut at 30 / 45 / 60 / 90 / 120 s: no grade moves |
+| Verdict thresholds (`audit_threshold_sensitivity.py`) | ✅ 0 flips | 14 settings ±~50 %; the two absurd controls flip 31 / 14 (the test can fail) |
+| Verifier vs redo list (`audit_verdict_sync.py`) | ✅ all 5 rules hold | rules rewritten for the new pairing (below) |
+| Hard-coded run names | ✅ none in code | run names appear only in comments / docstrings |
+| Tests | ✅ 40/40 | new: short attack judged by the impact check; failed impact check -> MAJOR |
+
+**Status pairing (one rule, verifier -> redo list -> GUI):** GOOD / STRONG = OK = 🟢 DONE · MINOR GAPS = CHECK = 🟡 DONE -
+RECAPTURE ADVISED · MAJOR GAPS = REDO (evidence `verifier-data`) = 🟠 RECAPTURE REQUIRED · NOT CONFIRMED = REDO (`verifier`) = 🔴 REDO.
+Gap lines are now specific ("1C38 (attacker): only 117 of 179 s of its attack were recorded - the last 62 s are missing").
+
+**Verdict: ✅ no forced or biased result left; one over-strict fixed rule removed (it could only make a grade WORSE, never
+better); grades do not depend on the cut-off; verifier, redo list and GUI agree on every run.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #51 — Oct 19, 2026 · ~2:50 AM — verdict, grade and REDO: in sync? hard-coded? decided by the data? backed by studies?
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5f0d326` + this change

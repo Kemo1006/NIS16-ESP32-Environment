@@ -172,7 +172,10 @@ def run_verifier(ft, attack):
         # oct. 19 2026: the grade + its short footnotes (verify_attack._confidence) -
         # the notes panel shows ONE line per run, not every raw warning
         try:
-            grade, notes = va._confidence(True, False, True, issues)
+            grade, major_, minor_, notes_, _ = va._confidence(True, False, True, issues)
+            # tagged so the three kinds are counted apart
+            notes = (["major: " + g for g in major_] + ["minor: " + g for g in minor_]
+                     + ["note: " + n for n in notes_ if not n.startswith(("the re-test on the part BEFORE", "impact check:"))])
         except Exception:
             grade, notes = "", []
         return ("CONFIRMED " + grade if grade else "CONFIRMED", "", notes if grade else gaps)
@@ -268,11 +271,25 @@ def assess(cell, runs, planned, vlog, drows):
             add(CHECK, fail, "verifier", "re-run analyze.ps1, then the verifier")
         if word.startswith("CONFIRMED "):
             grade = word.split(" ", 1)[1]
-            if grade == "QUALIFIED":
-                add(CHECK, f"CONFIRMED (qualified) - report it with {len(gaps)} footnote(s): " + "; ".join(gaps),
-                    "verifier", "keep it: copy the footnotes to the thesis checklist (or recapture for a STRONG run)")
-            elif grade == "SOUND":
-                add(OK, "CONFIRMED (sound) - boards moved, the moves were allowed and the re-test passed", "verifier")
+            dmaj = [g[len("major: "):] for g in gaps if g.startswith("major: ")]
+            dmin = [g[len("minor: "):] for g in gaps if g.startswith("minor: ")]
+            dnote = [g[len("note: "):] for g in gaps if g.startswith("note: ")]
+            if grade == "MAJOR GAPS":
+                # the attack is visible but data the result relies on is missing: orange
+                # RECAPTURE REQUIRED ('verifier-data' = not the verifier rejecting the attack)
+                add(REDO, "CONFIRMED - MAJOR GAPS: " + "; ".join(dmaj)
+                    + (" | minor: " + "; ".join(dmin) if dmin else "") + (" | notes: " + "; ".join(dnote) if dnote else ""),
+                    "verifier-data", "recapture required: data the result relies on is missing")
+            elif grade == "MINOR GAPS":
+                # data missing, but not data the result needs (impact check passed): yellow
+                # DONE - RECAPTURE ADVISED - usable with the gaps as footnotes
+                add(CHECK, f"CONFIRMED - MINOR GAPS ({len(dmin)} minor gap{'' if len(dmin) == 1 else 's'}, result not affected): "
+                    + "; ".join(dmin) + (" | notes: " + "; ".join(dnote) if dnote else ""), "verifier",
+                    "recapture advised (optional): usable as is, the gaps are footnotes")
+            elif grade == "GOOD":
+                # nothing missing - the notes are for the report, nothing to do
+                add(OK, f"CONFIRMED - GOOD ({len(dnote)} note{'' if len(dnote) == 1 else 's'} for the report): "
+                    + "; ".join(dnote), "verifier")
             gaps = []
         for g in gaps:
             text = _short_board(g)

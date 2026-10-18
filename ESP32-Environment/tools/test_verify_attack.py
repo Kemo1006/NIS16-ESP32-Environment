@@ -128,9 +128,40 @@ class TreeReroute(unittest.TestCase):
         self.assertTrue(w and w[0].level == ac.WARN)
 
     def test_confidence_grades(self):
+        # 7:21 PM run: E618 kept 151 s of its attack and lost its cooldown -> MINOR gaps,
+        # and the impact check (the test re-run without E618) still confirms
         c, inv, txt = run(self.df, "blackhole")
-        self.assertIn("CONFIDENCE: QUALIFIED", txt)          # moves allowed + footnotes
-        self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED (qualified', txt)
+        self.assertIn("CONFIDENCE: MINOR GAPS", txt)
+        self.assertIn("MINOR GAP (result not affected): E618 (victim): only 151 of", txt)
+        self.assertIn("MINOR GAP (result not affected): E618: only 0 of", txt)
+        self.assertIn("impact check: without E618", txt)
+        self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED - minor gaps"', txt)
+
+    def test_short_attack_is_judged_by_the_impact_check(self):
+        # cut E618's attack to its first 28 s: no fixed "< 60 s = major" rule - the attack
+        # still holds without E618, so it is MINOR (tree/G402/stationary, B768, oct. 19 2026)
+        d = self.df.copy()
+        a = attack_rows(d)
+        t0 = d.loc[a, "t_anchor_s"].min()
+        d = d[~(a & (d.node_id == "NODE_F42DC973E618") & (d.t_anchor_s > t0 + 28))]
+        d = d[~((d.segment.astype(str) == "cooldown") & (d.node_id == "NODE_F42DC973E618"))]
+        txt = run(d, "blackhole")[2]
+        # (this cut also leaves 66% of victim time with no path - a separate MAJOR gap, so the
+        # grade itself is not asserted; the 28 s board alone must be MINOR)
+        self.assertIn("MINOR GAP (result not affected): E618 (victim): only 28 of", txt)
+        self.assertNotIn("MAJOR GAP (affects the result): E618", txt)
+        self.assertIn("impact check: without E618", txt)
+
+    def test_failed_impact_check_makes_it_major(self):
+        # the same gaps, but the attack is NOT confirmed without the board: MAJOR
+        W = ac.WARN
+        iss = [ac.Issue(W, "E618 (child) - a victim - has NO attack windows after +28 s (151 s before the end): x"),
+               ac.Issue(W, "IMPACT CHECK FAILED: without E618 the attack is not confirmed - the result depends on them")]
+        g = va._confidence(True, False, True, iss)
+        self.assertEqual(g[0], "MAJOR GAPS")
+        self.assertEqual(len(g[2]), 1)
+        self.assertTrue(g[1][0].startswith("the small gaps DO change the result"))
+        self.assertEqual(va._confidence(True, False, True, iss[:1])[0], "MINOR GAPS")
 
     def test_decision_ignores_delivery(self):
         # fairness rule 1: the tolerate / reject decision must not read PDR
@@ -165,19 +196,22 @@ class Blackhole(unittest.TestCase):
 
     def test_clean_run_is_strong_and_broken_run_says_why(self):
         # STRONG needs EVERY check to pass, the force-start check included (a normal
-        # START in the run log); without a run log the same run is QUALIFIED
+        # START in the run log); without a run log the same run is GOOD (a note, no data gap)
         real = ac.start_anyway_issues
         try:
             ac.start_anyway_issues = lambda df, **k: [ac.Issue("OK", "normal START - no START_ANYWAY in the root's run log")]
             self.assertIn("CONFIDENCE: STRONG", run(self.df, "blackhole")[2])
         finally:
             ac.start_anyway_issues = real
-        self.assertIn("could not be checked (no run log saved)", run(self.df, "blackhole")[2])
+        txt = run(self.df, "blackhole")[2]
+        self.assertIn("could not be checked (no run log saved)", txt)
+        self.assertIn("CONFIDENCE: GOOD", txt)                  # nothing missing -> a note, not a data gap
+        self.assertIn("DATA: every board has usable data", txt)
         d = self.df.copy()
         m = attack_rows(d) & (d.node_id == self.atk_id)
         d.loc[m, "forward_count_delta"] = d.loc[m, "recv_count_delta"]
         txt = run(d, "blackhole")[2]
-        self.assertIn("CONFIDENCE: - (not confirmed)", txt)
+        self.assertIn("CONFIDENCE: NOT CONFIRMED", txt)
 
     def test_attacker_was_a_leaf(self):
         d = self.df.copy()

@@ -86,7 +86,7 @@ function Read-Line { throw 'This step needs typed input - it is not available fr
 $Pal = @{
     Bg = '#11121D'; Panel = '#181A2A'; Card = '#20233A'; Card2 = '#272B47'; Line = '#2F3352'; Hover = '#2B2F50'
     Text = '#ECEEFF'; Dim = '#A3A8C8'; Faint = '#6D7299'
-    Red = '#FB7185'; Purple = '#C084FC'; Green = '#34D399'; Amber = '#FBBF24'; Blue = '#60A5FA'
+    Red = '#FB7185'; Purple = '#C084FC'; Green = '#34D399'; Amber = '#FBBF24'; Orange = '#FB923C'; Blue = '#60A5FA'
     Pink = '#F472B6'; Cyan = '#22D3EE'; Lime = '#A3E635'
     Accent = '#8B5CF6'; Accent2 = '#22D3EE'
 }
@@ -544,7 +544,12 @@ $timer.Add_Tick({
         Remove-Item $j.Out, $j.Err -ErrorAction SilentlyContinue
         # State is passed in, not captured with GetNewClosure(): a closure cannot
         # see this script's own functions (Set-Status, New-Card ...).
-        try { & $j.Done $text $j.Proc.ExitCode $j.State } catch { Set-Status ("Could not show the result: " + $_.Exception.Message) $Pal.Red }
+        try { & $j.Done $text $j.Proc.ExitCode $j.State } catch {
+            # oct. 19 2026: say WHERE (a bare message cost a guessing round)
+            $msg = "Could not show the result: {0}  (line {1}: {2})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber, ([string]$_.InvocationInfo.Line).Trim()
+            Set-Status $msg $Pal.Red
+            if ($SelfTest) { Write-Output ("TOOLJOB ERROR: " + $msg) }
+        }
     }
 })
 $timer.Start()
@@ -1046,7 +1051,7 @@ $StyleXaml
                 <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                   <RadioButton x:Name="AnaFAll" Style="{StaticResource Chip}" GroupName="anaf" Content="all" IsChecked="True"/>
                   <RadioButton x:Name="AnaFTodo" Style="{StaticResource Chip}" GroupName="anaf" Content="needs analysis"/>
-                  <RadioButton x:Name="AnaFBad" Style="{StaticResource Chip}" GroupName="anaf" Content="not confirmed"/>
+                  <RadioButton x:Name="AnaFBad" Style="{StaticResource Chip}" GroupName="anaf" Content="needs a recapture / redo"/>
                   <Button x:Name="AnaFClear" Content="clear filters" Padding="10,4" FontSize="11"/>
                 </WrapPanel>
                 <TextBlock x:Name="AnaCount" DockPanel.Dock="Top" Foreground="$($Pal.Faint)" FontSize="11" Margin="2,0,0,6"/>
@@ -1189,7 +1194,7 @@ $StyleXaml
           <TabControl x:Name="CampTabs" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource SubTab}">
             <TabItem Header="  &#x25A6;  Checklist grid  ">
               <Grid Margin="0,10,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*" MinWidth="320"/></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="380"/><ColumnDefinition Width="10"/><ColumnDefinition Width="400" MinWidth="320"/></Grid.ColumnDefinitions>
                 <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE" ToolTip="Drag to make the run panel wider or narrower"/>
                 <DockPanel Grid.Column="0" Margin="0,0,4,0">
                   <WrapPanel DockPanel.Dock="Top">
@@ -4181,6 +4186,29 @@ $script:AnaBadge = @{
     notok   = @{ T = 'NOT CONFIRMED'; Bg = '#3A1E2C'; Fg = $Pal.Red }
     done    = @{ T = 'ANALYSED';      Bg = '#2A2E48'; Fg = $Pal.Dim }
 }
+function Get-RunStatus([string]$A, [string]$T, [string]$L, [string]$S, [string]$Look) {
+    # one run's status in the Campaign words: the redo verdict when it is known, else the
+    # verifier code; IN PROGRESS when the analysis is missing / older than the data
+    if ($Look -in @('todo', 'stale')) { return @{ K = 'progress'; T = $(if ($Look -eq 'stale') { 'IN PROGRESS - new data' } else { 'IN PROGRESS' }); Bg = '#0F3644'; Fg = $Pal.Cyan } }
+    $ck = Get-CellKey $A $T $L $S
+    $map = @{ ok = @('DONE', '#123B33', $Pal.Green); check = @('DONE - RECAPTURE ADVISED', '#42330F', $Pal.Amber); required = @('RECAPTURE REQUIRED', '#43260F', '#FB923C')
+              redo = @('REDO', '#46182A', $Pal.Red); loading = @('CHECKING...', '#2A2E48', '#E5E7EB') }
+    $k = $null
+    if ($script:RedoChecking.Contains($ck) -or (-not $script:Redo.Count -and -not $ui.LoadRedo.IsEnabled)) { $k = 'loading' }
+    elseif ($script:Redo[$ck]) {
+        $r = $script:Redo[$ck]
+        $k = switch ([string]$r.severity) {
+            'REDO' { Get-RedoKind $r }
+            'CHECK' { 'check' }
+            default { 'ok' } }
+        # yellow says WHY: minor gaps -> recapture advised; any other caveat -> check the notes
+        if ($k -eq 'check' -and -not @($r.reasons | Where-Object { [string]$_.text -like 'CONFIRMED - MINOR GAPS*' }).Count) { $map['check'] = @('DONE - CHECK NOTES', '#42330F', $Pal.Amber) }
+    }
+    else { $k = switch ($Look) { 'ok' { 'ok' } 'done' { 'ok' } default { 'redo' } } }      # no redo entry (e.g. baseline): the verifier code
+    $m = $map[$k]
+    return @{ K = $k; T = $m[0]; Bg = $m[1]; Fg = $m[2] }
+}
+
 function Update-Cells {
     $keep = if ($ui.CellPick.SelectedItem) { $ui.CellPick.SelectedItem.Text } else { '' }
     $exp = Join-Path $base 'datasets\exports'; $ana = Join-Path $base 'datasets\analysis'
@@ -4198,11 +4226,13 @@ function Update-Cells {
             $c = [pscustomobject]@{ Attack = $rel[0]; Topology = $rel[1]; Location = $rel[2]; Scenario = $rel[3]
                                     Text = ($rel -join '  /  '); Dir = $(if ($analysed) { $adir } else { $leaf.FullName }); ExportDir = $leaf.FullName; AnaDir = $adir
                                     Table = $ft; Analysed = $analysed; Stale = ($analysed -and $newest -gt $atime.AddSeconds(5)); Boards = $telem.Count
-                                    DataTime = $newest; AnaTime = $atime; Art = $null; Look = ''; Badge = ''; BadgeBg = $null; BadgeFg = $null; AtkFg = $null; Rest = ''; Sub = '' }
+                                    DataTime = $newest; AnaTime = $atime; Art = $null; Look = ''; Status = ''; Badge = ''; BadgeBg = $null; BadgeFg = $null; AtkFg = $null; Rest = ''; Sub = '' }
             $v = $script:Verdicts[(Get-AnaKey $c)]
             $c.Look = if (-not $analysed) { 'todo' } elseif ($c.Stale) { 'stale' } elseif ($v) { switch ([int]$v.Code) { 0 { 'ok' } 3 { 'invalid' } 2 { 'incon' } default { 'notok' } } } else { 'done' }
-            $bd = $script:AnaBadge[$c.Look]
-            $c.Badge = $bd.T; $c.BadgeBg = Get-Brush $bd.Bg; $c.BadgeFg = Get-Brush $bd.Fg
+            # oct. 19 2026: the badge uses the SAME words / colours as the Campaign tile
+            # (DONE / DONE - WITH MINOR GAPS / MAJOR GAPS / REDO / IN PROGRESS / CHECKING...)
+            $st_ = Get-RunStatus $rel[0] $rel[1] $rel[2] $rel[3] $c.Look
+            $c.Status = $st_.K; $c.Badge = $st_.T; $c.BadgeBg = Get-Brush $st_.Bg; $c.BadgeFg = Get-Brush $st_.Fg
             # unwrapped: a list cannot show a picture still inside a PowerShell object
             $c.Art = (Get-TopoImage $c.Topology $c.Attack).psobject.BaseObject
             $c.AtkFg = Get-Brush (Get-AtkHex $c.Attack); $c.Rest = '  /  {0}  /  {1}  /  {2}' -f $c.Topology, $c.Location, $c.Scenario
@@ -4221,8 +4251,11 @@ function Update-Cells {
     Update-AnaFilter
     $todo = @($script:Cells | Where-Object { $_.Look -in @('todo', 'stale') }).Count
     $ui.AnaAllNew.Content = $(if ($todo) { "Analyse everything new ($todo)" } else { 'Everything is analysed' }); $ui.AnaAllNew.IsEnabled = [bool]$todo
-    $ui.AnaSub.Text = '{0} captured run(s): {1} need analysis, {2} confirmed, {3} setup invalid / not confirmed. Click a run - its result, every board''s file and the plots show on the right.' -f $script:Cells.Count, $todo,
-        @($script:Cells | Where-Object Look -eq 'ok').Count, @($script:Cells | Where-Object { $_.Look -in @('invalid', 'notok', 'incon') }).Count
+    # the same five words as the Campaign page (oct. 19 2026)
+    $cntS = @{}; foreach ($x in $script:Cells) { $cntS[$x.Status] = 1 + [int]$cntS[$x.Status] }
+    $ui.AnaSub.Text = ('{0} captured run(s):  {1} DONE  -  {2} DONE - RECAPTURE ADVISED  -  {3} RECAPTURE REQUIRED  -  {4} REDO  -  {5} IN PROGRESS{6}.  Click a run - its result, every board''s file and the plots show on the right.' -f
+        $script:Cells.Count, [int]$cntS['ok'], [int]$cntS['check'], [int]$cntS['required'], [int]$cntS['redo'], [int]$cntS['progress'],
+        $(if ([int]$cntS['loading']) { "  -  $([int]$cntS['loading']) CHECKING..." } else { '' }))
 }
 $ui.AnaFAtk.ItemsSource = @('all attacks', 'baseline', 'blackhole', 'wormhole')
 $ui.AnaFTopo.ItemsSource = @('all topologies', 'linear', 'tree', 'star', 'partial_mesh')
@@ -4234,7 +4267,7 @@ function Test-AnaShown($O) {
         if ($ui[$pair[0]].SelectedIndex -gt 0 -and [string]$O.($pair[1]) -ne [string]$ui[$pair[0]].SelectedItem) { return $false }
     }
     if ($ui.AnaFTodo.IsChecked -and $O.Look -notin @('todo', 'stale')) { return $false }
-    if ($ui.AnaFBad.IsChecked -and $O.Look -notin @('invalid', 'notok', 'incon')) { return $false }
+    if ($ui.AnaFBad.IsChecked -and $O.Status -notin @('redo', 'required', 'check')) { return $false }
     $q = ([string]$ui.AnaSearch.Text).Trim().ToLower()
     if (-not $q) { return $true }
     $hay = ('{0} {1} {2}' -f $O.Text, $O.Badge, $O.Sub).ToLower() -replace 'partial_mesh', 'partial_mesh partial mesh'
@@ -4273,6 +4306,7 @@ function Set-VerdictBanner([int]$Code, [string]$Line, [switch]$Toast) {
     $ui.VerdictIcon.Text = [string]$lk.G
     $ui.Verdict.Background = $(if ($lk.B -like '#*') { & $brush $lk.B } else { $win.FindResource($lk.B) })
     $ui.Verdict.Visibility = 'Visible'
+    try { Set-VerdictGradeLook } catch { }     # gui\VerdictDesign.ps1: the grade's words / colour win
     $ui.Verdict.BeginAnimation([Windows.UIElement]::OpacityProperty, (New-Fade 0 1 300))
     if ($Toast -and (Get-Cell)) { Show-Toast $lk.T (Get-Cell).Text ([string]$lk.G) $lk.B }
 }
@@ -4465,8 +4499,8 @@ function Show-AnaReport([string]$Text) {
     $ci = -1; for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match '^\s*CONFIDENCE\s*:') { $ci = $i; break } }
     if ($ci -ge 0) {
         $head = $lines[$ci].Trim() -replace '^CONFIDENCE\s*:\s*', ''
-        $grade = ($head -split '\s+')[0]
-        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'SOUND' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'QUALIFIED' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } default { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } }
+        $grade = if ($head -match '^(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $Matches[1] } else { ($head -split '\s+')[0] }
+        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F' } } 'NOT CONFIRMED' { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } default { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } }
         $card = New-AnaCard ('CONFIDENCE  -  ' + $head) $lk.Fg
         $items = New-Object System.Collections.ArrayList
         for ($i = $ci + 1; $i -lt $lines.Count; $i++) {
@@ -4476,8 +4510,8 @@ function Show-AnaReport([string]$Text) {
             elseif ($items.Count -and $t -match '^\s{7,}\S') { $items[$items.Count - 1][1] += ' ' + $t.Trim() }
         }
         foreach ($it in $items) {
-            $hex = switch ($it[0]) { '+' { $Pal.Green } '~' { $Pal.Amber } '=' { $Pal.Cyan } default { $Pal.Red } }
-            $g = switch ($it[0]) { '+' { [string][char]0x2714 } '~' { [string][char]0x26A0 } '=' { [string][char]0x2192 } default { [string][char]0x2716 } }
+            $hex = switch ($it[0]) { '+' { $Pal.Green } '~' { Get-IncompleteHex $it[1] } '=' { $Pal.Cyan } default { $Pal.Red } }
+            $g = switch ($it[0]) { '+' { [string][char]0x2714 } '~' { Get-IncompleteGlyph $it[1] } '=' { [string][char]0x2192 } default { [string][char]0x2716 } }
             $dp = New-Object Windows.Controls.DockPanel; $dp.Margin = '0,3,0,3'
             $ic = New-Text $g 13 $hex 'Bold'; $ic.Width = 24; [Windows.Controls.DockPanel]::SetDock($ic, 'Left'); [void]$dp.Children.Add($ic)
             $tx = New-Text $it[1] 12.5 $(if ($it[0] -eq '=') { $Pal.Text } else { $hex }) $(if ($it[0] -eq '=') { 'SemiBold' } else { 'Normal' }); $tx.TextWrapping = 'Wrap'; [void]$dp.Children.Add($tx)
@@ -4739,6 +4773,7 @@ function Get-CellKey($Attack, $Topology, $Location, $Scenario) {
     $a = if ($Attack -in @('none', 'benign')) { 'baseline' } else { [string]$Attack }
     ('{0}|{1}|{2}|{3}' -f $a, ($Topology -replace '^partial$', 'partial_mesh'), $Location, $Scenario).ToLower()
 }
+$script:RedoChecking = New-Object 'System.Collections.Generic.HashSet[string]'    # cell keys being re-checked right now
 function Start-RedoList([string[]]$Only = @()) {
     # -Only attack/topology/location/scenario,...: re-check just those runs and
     # merge them in (gui\Stamps.ps1 finds what changed) - seconds, not a minute
@@ -4753,6 +4788,8 @@ function Start-RedoList([string[]]$Only = @()) {
     Set-Status $(if ($part) { "Re-checking the $($Only.Count) run(s) whose data changed..." } else { 'Building the redo list - it re-checks every live cell (about a minute)...' }) $Pal.Amber
     $json = [IO.Path]::GetTempFileName()
     $ta = @('tools\redo_list.py', '--json', $json, '--no-color'); if ($part) { $ta += @('--only', ($Only -join ',')) }
+    foreach ($o in @($Only)) { $q = $o -split '/'; if ($q.Count -eq 4) { [void]$script:RedoChecking.Add((Get-CellKey $q[0] $q[1] $q[2] $q[3])) } }
+    if ($part) { try { Update-CampaignMatrix; Update-Cells } catch { } }    # their tiles turn white "CHECKING..." now
     Start-ToolJob -Exe $script:Py -ToolArgs $ta -State @{ Json = $json; Part = $part; Only = $Only } -OnDone {
         param($text, $code, $st)
         $json = $st.Json
@@ -4761,6 +4798,7 @@ function Start-RedoList([string[]]$Only = @()) {
         try { $items = Get-Content $json -Raw -Encoding UTF8 | ConvertFrom-Json } catch { Set-Status 'Could not read the redo list.' $Pal.Red; return }
         Remove-Item $json -ErrorAction SilentlyContinue
         $rank = @{ REDO = 0; CHECK = 1; OK = 2 }
+        $script:RedoChecking.Clear()
         if (-not $st.Part) { $script:Redo = @{} }
         else { foreach ($o in @($st.Only)) { $q = $o -split '/'; if ($q.Count -eq 4) { $script:Redo.Remove((Get-CellKey $q[0] $q[1] $q[2] $q[3])) } } }
         foreach ($it in @($items)) { $script:Redo[(Get-CellKey $it.attack $it.topology $it.location $it.scenario)] = $it }
@@ -4793,20 +4831,44 @@ $ui.CampRefresh.Add_Click({ Update-Home })
 
 # tile look per state: background, border, glyph, label
 $script:TileLook = @{
-    ok      = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'Done - verified' }
-    done    = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'Done' }
-    redo    = @{ Bg = '#46182A'; Bd = $Pal.Red;   G = [char]0xE72C; T = 'Needs a REDO' }
-    check   = @{ Bg = '#42330F'; Bd = $Pal.Amber; G = [char]0xE7BA; T = 'Done - CHECK it' }
-    analyse = @{ Bg = '#0F3644'; Bd = $Pal.Cyan;  G = [char]0xE9D2; T = 'In progress - not analysed yet' }   # captured OK, analysis missing / older than the capture
-    partial = @{ Bg = '#3A2412'; Bd = '#FB923C';  G = [char]0xE916; T = 'Incomplete - re-capture' }
+    # oct. 19 2026 - one colour scheme with the verifier's grade (user's choice):
+    #   green  DONE                    STRONG / GOOD (one green only)
+    #   yellow DONE - RECAPTURE ADVISED      MINOR GAPS (result not affected), or another CHECK
+    #   orange RECAPTURE REQUIRED            MAJOR GAPS (data the result relies on is missing),
+    #                                        or another source demands a recapture
+    #   red    REDO                    NOT CONFIRMED / setup invalid / a checklist recapture
+    ok         = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'DONE' }
+    done       = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'DONE' }
+    check      = @{ Bg = '#42330F'; Bd = $Pal.Amber; G = [char]0xE7BA; T = 'DONE - RECAPTURE ADVISED / CHECK NOTES' }
+    required   = @{ Bg = '#43260F'; Bd = '#FB923C';  G = [char]0xE916; T = 'RECAPTURE REQUIRED' }
+    redo       = @{ Bg = '#46182A'; Bd = $Pal.Red;   G = [char]0xE72C; T = 'REDO' }
+    # white + sync icon: the run's check has not come back yet (start-up, or a re-check
+    # after its files changed) - never shows a colour from stale information
+    loading    = @{ Bg = '#2A2E48'; Bd = '#E5E7EB';  G = [char]0xE895; T = 'CHECKING...' }
+    analyse = @{ Bg = '#0F3644'; Bd = $Pal.Cyan;  G = [char]0xE9D2; T = 'IN PROGRESS - not analysed yet' }   # captured OK, analysis missing / older than the capture
+    partial = @{ Bg = '#43260F'; Bd = '#FB923C';  G = [char]0xE916; T = 'RECAPTURE REQUIRED' }     # the same orange as "required" - one legend entry
     todo    = @{ Bg = '#1B1E33'; Bd = $Pal.Line;  G = '';           T = 'To do' }
+}
+function Get-RedoKind($R) {
+    # red REDO when the VERIFIER rejects the attack; orange RECAPTURE REQUIRED when the attack
+    # is confirmed and another source (checklist, completeness, structure, log) asks for it
+    $verifierRedo = @($R.reasons | Where-Object { [string]$_.severity -eq 'REDO' -and [string]$_.evidence -eq 'verifier' }).Count
+    if ($verifierRedo) { return 'redo' }
+    return 'required'
 }
 function Get-SlotLook($S) {
     # captured OK but not analysed yet: any redo verdict is about the OLDER data
     if ([string]$S.stage -eq 'analyse') { return 'analyse' }
-    $r = $script:Redo[(Get-CellKey $S.attack $S.topology $S.location $S.scenario)]
+    $ck = Get-CellKey $S.attack $S.topology $S.location $S.scenario
+    # checking: the redo check has not come back yet (start-up), or THIS run is being re-checked
+    if ($S.state -ne 'todo' -and ((-not $script:Redo.Count -and -not $ui.LoadRedo.IsEnabled) -or $script:RedoChecking.Contains($ck))) { return 'loading' }
+    $r = $script:Redo[$ck]
     if ($r -and $S.state -ne 'todo') {
-        switch ([string]$r.severity) { 'REDO' { return 'redo' } 'CHECK' { return 'check' } 'OK' { if ($S.state -eq 'done') { return 'ok' } } }
+        switch ([string]$r.severity) {
+            'REDO' { return (Get-RedoKind $r) }
+            'CHECK' { return 'check' }
+            'OK' { if ($S.state -eq 'done') { return 'ok' } }
+        }
     }
     switch ([string]$S.state) { 'done' { 'done' } 'partial' { 'partial' } default { 'todo' } }
 }
@@ -4814,7 +4876,7 @@ function Test-SlotShown($S, [string]$Look) {
     $f = if ($ui.CfTodo.IsChecked) { 'todo' } elseif ($ui.CfRedo.IsChecked) { 'redo' } elseif ($ui.CfDone.IsChecked) { 'done' } else { 'all' }
     switch ($f) {
         'todo' { return $Look -in @('todo', 'partial', 'analyse') }
-        'redo' { return $Look -in @('redo', 'check') }
+        'redo' { return $Look -in @('redo', 'required', 'partial', 'check') }
         'done' { return $Look -in @('ok', 'done', 'check') }
     }
     return $true
@@ -4899,7 +4961,7 @@ function Update-CampaignMatrix {
                         & $put $dot $row ($c + $i); continue
                     }
                     $look = Get-SlotLook $s
-                    if ($look -in @('ok', 'done', 'check', 'redo')) { $done++ }
+                    if ($look -in @('ok', 'done', 'check')) { $done++ }
                     $lk = $script:TileLook[$look]
                     $t = New-Object Windows.Controls.Border
                     $t.Width = $tileW; $t.Height = 36; $t.CornerRadius = 9; $t.Cursor = 'Hand'
@@ -4949,14 +5011,14 @@ function Update-CampaignMatrix {
     try { [void]$ui.CampStats.Children.Add((New-CampRing ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check) $all.Count)) } catch { }
     foreach ($chip in @(
         @{ T = 'planned'; N = $all.Count; C = $Pal.Text; Tip = 'Every run in the campaign plan (for the locations shown).' },
-        @{ T = 'done'; N = ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check); C = $Pal.Green; Tip = 'Captured AND usable: OK, done, or only flagged CHECK. Runs marked REDO are NOT in here.' },
+        @{ T = 'done'; N = ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check); C = $Pal.Green; Tip = 'Usable: DONE (green) + DONE - RECAPTURE ADVISED (yellow). Recapture required (orange) and REDO (red) are NOT in here.' },
         # user, oct. 17 2026: one number for "how much have we actually captured", good or not
-        @{ T = 'captured (incl. redo)'; N = ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check + [int]$cnt.redo + [int]$cnt.analyse); C = $Pal.Purple; Tip = 'Every run that has data, INCLUDING the ones that must be redone or are not analysed yet = done + redo + in progress. Shows how much capturing has happened; done shows how much of it counts.' },
+        @{ T = 'captured (incl. redo)'; N = ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check + [int]$cnt.required + [int]$cnt.partial + [int]$cnt.redo + [int]$cnt.analyse); C = $Pal.Purple; Tip = 'Every run that has data, INCLUDING the ones that must be redone or are not analysed yet = done + redo + in progress. Shows how much capturing has happened; done shows how much of it counts.' },
         @{ T = 'in progress'; N = [int]$cnt.analyse; C = $Pal.Cyan; Tip = 'Captured OK, NOT ANALYSED yet (or the analysis is older than the capture) - click it, press Analyse.' },
-        @{ T = 'incomplete'; N = [int]$cnt.partial; C = '#FB923C'; Tip = 'Captured, but the capture falls short (coverage, boards missing) - re-capture it.' },
+        @{ T = 'recapture advised'; N = [int]$cnt.check; C = $Pal.Amber; Tip = 'Yellow - DONE, RECAPTURE ADVISED: the attack is confirmed; some data is missing (MINOR GAPS - e.g. a board cut short or no cooldown) but the impact check proves the result does not need it. Usable with footnotes; a recapture makes it complete. Also counted in done.' },
+        @{ T = 'recapture required'; N = ([int]$cnt.required + [int]$cnt.partial); C = '#FB923C'; Tip = 'Orange - RECAPTURE REQUIRED: the attack is confirmed, but the dataset must be captured again (MAJOR GAPS - the result relies on what is missing; or a board missing, a capture cut short, a checklist recapture).' },
         @{ T = 'to do'; N = [int]$cnt.todo; C = $Pal.Dim; Tip = 'Not captured yet.' },
-        @{ T = 'redo'; N = [int]$cnt.redo; C = $Pal.Red; Tip = 'Captured but must be captured again (redo list).' },
-        @{ T = 'check'; N = [int]$cnt.check; C = $Pal.Amber; Tip = 'Usable, but has a caveat to look at (also counted in done).' })) {
+        @{ T = 'redo'; N = [int]$cnt.redo; C = $Pal.Red; Tip = 'Red - REDO: the attack is NOT confirmed or the setup was invalid - everything has to be captured again.' })) {
         $b = New-Object Windows.Controls.Border; $b.CornerRadius = 12; $b.Padding = '14,8'; $b.Margin = '0,0,10,6'; $b.Background = & $brush $Pal.Card
         $b.BorderBrush = & $brush $Pal.Line; $b.BorderThickness = 1; $b.ToolTip = $chip.Tip
         $sp = New-Object Windows.Controls.StackPanel; $sp.Orientation = 'Horizontal'
@@ -4967,7 +5029,7 @@ function Update-CampaignMatrix {
     $ui.CampSub.Text = ("{0} planned runs · {1} hours of capturing left · click a tile for details, right-click to capture it straight away{2}" -f
         $st.total.planned, [math]::Round($st.hours_left), $(if (-not $script:Redo.Count) { ' · redo check still running...' } elseif ($script:RedoOffPlan) { " · $($script:RedoOffPlan) off-plan run(s) need attention (Table tab)" } else { '' }))
     $ui.CampLegend.Children.Clear()
-    foreach ($k in 'ok', 'analyse', 'partial', 'todo', 'redo', 'check') {
+    foreach ($k in 'ok', 'check', 'required', 'redo', 'analyse', 'loading', 'todo') {
         $lk = $script:TileLook[$k]
         $sw = New-Object Windows.Controls.Border; $sw.Width = 14; $sw.Height = 14; $sw.CornerRadius = 4; $sw.Background = & $brush $lk.Bg; $sw.BorderBrush = & $brush $lk.Bd; $sw.BorderThickness = 1.5
         $sw.Margin = '0,0,6,0'
@@ -5096,6 +5158,11 @@ function Get-LineColor([string]$Line) {
 # COM ports, [CTRL], compile progress, flash %, error / OK words highlighted.
 $script:BrushCache = @{}
 function Get-Brush([string]$Hex) {
+    if (-not $Hex) {
+        # to the ERROR stream: a Write-Output here would become part of the returned value
+        if ($SelfTest) { [Console]::Error.WriteLine('EMPTY COLOUR from: ' + ((Get-PSCallStack | Select-Object -Skip 1 -First 4 | ForEach-Object { '{0}:{1}' -f $_.Command, $_.ScriptLineNumber }) -join ' <- ')) }
+        $Hex = $Pal.Faint
+    }
     $b = $script:BrushCache[$Hex]
     if (-not $b) { $b = (New-Object Windows.Media.BrushConverter).ConvertFromString($Hex); $b.Freeze(); $script:BrushCache[$Hex] = $b }
     return $b

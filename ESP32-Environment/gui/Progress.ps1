@@ -145,7 +145,7 @@ function Stop-TaskProgress([int]$Code) {
     # fade out after 5 s unless the next task (a queue) starts first
     $t = New-Object Windows.Threading.DispatcherTimer; $t.Interval = [TimeSpan]::FromSeconds(5)
     $t.Add_Tick({ param($s, $e) $s.Stop(); if ($script:Prog -and -not $script:Prog.On) { $script:Prog.Panel.Visibility = 'Collapsed' } })
-    $P.Hide = $t; $t.Start()
+    $P.Hide = $t; $script:ProgHideTimer = $t; $t.Start()   # script var: run_gui.ps1 stops every script-scope timer on close
 }
 
 function Update-LiveExportProgress([string]$Line) {

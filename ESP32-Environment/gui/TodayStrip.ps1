@@ -68,7 +68,7 @@ function Update-TodayStrip {
     }
     if ($done.Count) {
         foreach ($d in @($done | Sort-Object { $_.When } -Descending | Select-Object -First 6)) {
-            $grade = ''; try { $b = Get-CampReportBits $d.Key; if ($b -and $b.Grade) { $grade = $(if ($b.Grade -eq '-') { '' } else { ' - ' + $b.Grade }) } } catch { }
+            $grade = ''; try { $b = Get-CampReportBits $d.Key; if ($b -and $b.Grade) { $grade = $(if ($b.Old) { ' - old report' } elseif ($b.Grade -eq 'NOT CONFIRMED') { '' } else { ' - ' + $b.Grade }) } } catch { }
             $word = switch ($d.Code) { 0 { 'CONFIRMED' } 3 { 'SETUP INVALID' } 2 { 'INCONCLUSIVE' } default { 'NOT CONFIRMED' } }
             $dot = switch ($d.Code) { 0 { $Pal.Green } 1 { $Pal.Red } default { $Pal.Amber } }
             Add-TodayLine $ana.Panel $dot ($d.Key -replace '/', ' / ') ('{0}{1}   -   {2}' -f $word, $grade, $d.When.ToString('h:mm tt'))

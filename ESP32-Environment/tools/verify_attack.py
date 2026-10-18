@@ -590,93 +590,181 @@ def _reroute_lines(issues, measured):
     return out
 
 
-# oct. 19 2026 (user: "enhance the final verdict"). The VERDICT line itself is unchanged
-# (the GUI, Campaign and redo list read it); this adds a CONFIDENCE grade and the
-# reasons, from the checks above only - fixed rules, no new judgement:
-#   STRONG     confirmed; nothing moved, nothing left out, nothing to footnote
-#   SOUND      confirmed; boards moved but were allowed AND the re-test on the part
-#              before the first move confirmed it again (ROBUST)
-#   QUALIFIED  confirmed; report it WITH its footnotes (re-test not possible, a board
-#              went silent, start overridden, evidence partly left out, ...)
-#   -          not confirmed: the main reason(s) instead
+# ---- CONFIDENCE GRADE (oct. 19 2026, final form; user: "make the grading perfect, not
+# confusing" + "two kinds of incomplete data"). The VERDICT line above is unchanged (the
+# GUI, Campaign and redo list read it). From the checks above only - fixed rules:
+#
+#   STRONG           attack confirmed, all board data present, nothing to note
+#   GOOD             attack confirmed, all board data present, notes for the report
+#   MINOR GAPS  attack confirmed; some data is missing but NOT data the result needs:
+#                    a board's cooldown (the verdict compares baseline vs attack only), or
+#                    part of a board's attack (cut at the end, or only N s of it) - and the
+#                    IMPACT CHECK proves it: the 3-sigma test re-run WITHOUT those boards
+#                    still confirms the attack. (oct. 19 2026: a fixed "< 60 s = major" rule
+#                    was dropped - it overrode the impact check's evidence on tree/G402/
+#                    stationary, where B768 had 28 s and the attack held without it.)
+#   MAJOR GAPS  attack confirmed and visible, but data the result relies on is missing:
+#                    a board never measured in the attack (dropped out before it / no
+#                    labelled window), a large share of victim time with no path - or
+#                    minor gaps that FAILED the impact check
+#   NOT CONFIRMED    no attack signature, too little to test, or the setup was invalid
+#
+# Every warning lands somewhere (verification #50). The Campaign / Verify status scale
+# (user, oct. 19): green DONE = STRONG / GOOD (redo list OK) . yellow DONE - RECAPTURE ADVISED =
+# MINOR GAPS (CHECK) . orange RECAPTURE REQUIRED = MAJOR GAPS (REDO,
+# evidence 'verifier-data'), or another source demands a recapture . red REDO = NOT CONFIRMED
+GRADES = ("STRONG", "GOOD", "MINOR GAPS", "MAJOR GAPS", "NOT CONFIRMED")
 _FOOTNOTE = [  # (words in a WARN, short footnote)
-    ("robustness re-test not possible", "the re-test on the part before the first move was not possible"),
-    ("robustness re-test inconclusive", "the re-test on the part before the first move was inconclusive"),
-    ("TOLERATED", "a board moved but stayed in the same role (allowed)"),
-    ("has NO attack windows after", "a board has no windows for the end of the attack"),
-    ("FLAPPED", "a board's link was unstable (many parent changes)"),
+    ("robustness re-test not possible", "the re-test on the seconds before the first move was not possible (too short)"),
+    ("robustness re-test inconclusive", "the re-test on the seconds before the first move was inconclusive"),
+    ("TOLERATED", "moved to a new parent but kept the same role - allowed"),
+    ("FLAPPED", "its link was unstable - many parent changes"),
     ("during the BASELINE", "the layout changed during the baseline"),
     ("when START was pressed", "a board's role changed between the baseline and the attack"),
     ("in the first", "a board's role changed between the attack and the cooldown"),
-    ("NOT in the baseline", "a board joined only in the attack"),
-    ("left out - over", "a large share of victim time had no path and was left out"),
-    ("no attack-window telemetry", "a board dropped out before the attack"),
+    ("NOT in the baseline", "joined only during the attack"),
     ("FORCE-STARTED", "the run was force-started (START_ANYWAY)"),
     ("overridden by the operator", "START was pressed over failed pre-START checks"),
-    ("NO labelled window", "a board has no usable windows (no phase seen) - the checks ran without it"),
 ]
 
 
+def _gap(it):
+    """('major' | 'minor', board, text) when the issue is a DATA GAP, else None."""
+    t = it.text
+    who = t.split(" ", 1)[0] if t[:4].isalnum() else ""
+    role = (" (attacker)" if "the ATTACKER" in t or re.match(r"\S+ \((blackhole|wormhole)", t) else
+            " (victim)" if "a victim" in t else "")
+    m = re.search(r"has NO attack windows after \+(\d+) s \((\d+) s before the end\)", t)
+    if m:
+        # measured, but only part of the attack: the impact check decides (no fixed cut).
+        # "X of Y s" is drawn as a recorded / missing bar by the GUI.
+        kept, gone = int(m.group(1)), int(m.group(2))
+        return "minor", who, (f"{who}{role}: only {kept} of {kept + gone} s of its attack were recorded "
+                              f"- the last {gone} s are missing (it went silent, or too few samples)")
+    if "COOLDOWN" in t and ("has NO" in t or "only" in t):
+        got = re.search(r"only (\d+) s of", t)
+        full = re.search(r"the others: (\d+) s", t)
+        return "minor", who, (f"{who}{role}: only {got.group(1) if got else 0} of {full.group(1) if full else '?'} s of "
+                              f"cooldown were recorded - its recovery after the attack is not measured "
+                              f"(the verdict compares baseline and attack only)")
+    if "no attack-window telemetry" in t:
+        return "major", "", t.split("telemetry from ", 1)[-1].split(" (")[0] + ": dropped out before the attack, so it was never measured"
+    if "NO labelled window" in t:
+        return "major", "", t.rsplit(": ", 1)[-1].split(" - ")[0] + ": no usable windows (no phase was seen), so the checks ran without it"
+    if "left out - over" in t:
+        m = re.search(r"(\d+) of (\d+) victim-seconds \((\d+)%\)", t)
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            return "major", "", (f"only {b - a} of {b} victim-seconds could be tested - the other {a} ({m.group(3)}%) "
+                                 f"had no path to the root and were left out")
+        return "major", "", "most of the victims' attack time had no path to the root and was left out of the test"
+    if t.startswith("IMPACT CHECK FAILED"):
+        return "major", "", "the small gaps DO change the result: " + t.split(": ", 1)[-1]
+    return None
+
+
 def _confidence(confirmed, setup_invalid, conclusive, issues):
-    """(grade, [reasons]) - see the table above."""
+    """(grade, major gaps, minor gaps, notes, why_not) - see the table above."""
     issues = issues or []
     if not confirmed or setup_invalid:
         fails = [i.text for i in issues if i.level == "FAIL"]
         if setup_invalid and fails:
-            return "-", ["the setup check that failed: " + f for f in fails[:3]]
-        return "-", (["no primary signature moved beyond the threshold"] if conclusive
-                     else ["no primary signature could be tested"])
-    notes, tolerated, robust = [], False, False
+            return "NOT CONFIRMED", [], [], [], ["setup invalid: " + f for f in fails[:3]]
+        return "NOT CONFIRMED", [], [], [], (["no primary signature moved beyond the threshold"] if conclusive
+                                             else ["no primary signature could be tested (too little data)"])
+    major, minor, notes, good = [], [], [], []
     for it in issues:
-        if it.level == "OK" and it.text.startswith("ROBUST:"):
-            robust = True
+        if it.level == "OK" and it.text.startswith(("ROBUST:", "IMPACT CHECK:")):
+            good.append(it.text.split(":", 1)[0].lower().replace("robust", "the re-test on the part BEFORE the first move confirmed it again")
+                        if it.text.startswith("ROBUST:") else "impact check: " + it.text.split(": ", 1)[1])
+            continue
         if it.level != "WARN":
             continue
-        if "TOLERATED" in it.text and not it.text.startswith("robustness"):
-            tolerated = True
+        g = _gap(it)
+        if g:
+            (major if g[0] == "major" else minor).append(g[2])
+            continue
         for words, short in _FOOTNOTE:
             if words in it.text:
                 who = it.text.split(" ", 1)[0] if it.text[:4].isalnum() else ""
-                notes.append(f"{short}" + (f" ({who})" if who and not who.startswith(("the", "only", "this", "no", "START", "robustness")) else ""))
+                board = who and not who.startswith(("the", "only", "this", "no", "START", "robustness"))
+                notes.append(f"{who}: {short}" if board else (short[0].upper() + short[1:] if short.startswith(("moved", "its", "joined")) else short))
                 break
         else:
-            # oct. 19 2026 (user: "make sure there is no bias"): a warning whose words fit
-            # no entry above is NEVER dropped - it becomes a footnote as it is. Before, an
-            # unlisted warning (a board with no usable windows) left a run graded STRONG.
-            notes.append(" ".join(it.text.split())[:110] + ("..." if len(it.text) > 110 else ""))
-    # a run whose force-start check could not be made (no run log saved) is not
-    # "nothing to footnote" - say it could not be checked
+            notes.append(" ".join(it.text.split())[:110] + ("..." if len(it.text) > 110 else ""))   # never dropped (#50)
     for it in issues:
         if it.level == "SKIP" and it.text.startswith("START_ANYWAY"):
             notes.append("whether the run was force-started could not be checked (no run log saved)")
             break
-    extra = [n for n in notes if not n.startswith("a board moved but stayed")]
-    if not notes:
-        return "STRONG", ["nothing moved, nothing was left out, nothing to footnote"]
-    if tolerated and robust and not extra:
-        return "SOUND", notes + ["the re-test on the part BEFORE the first move confirmed it again"]
-    return "QUALIFIED", list(dict.fromkeys(notes))
+    major, minor, notes = (list(dict.fromkeys(x)) for x in (major, minor, notes))
+    notes_all = notes + good
+    if major:
+        return "MAJOR GAPS", major, minor, notes_all, []
+    if minor:
+        return "MINOR GAPS", [], minor, notes_all, []
+    if notes:
+        return "GOOD", [], [], notes_all, []
+    return "STRONG", [], [], notes_all, []
+
+
+def _impact_issue(df_in, attack, sigma, block, issues):
+    """IMPACT CHECK (oct. 19 2026): re-run the 3-sigma test WITHOUT the boards that have
+    only minor gaps. Still confirmed -> the gaps do not change the result (OK). Not
+    confirmed -> they DO (the grade becomes MAJOR GAPS). Only ever makes it stricter."""
+    boards = sorted({g[1] for g in (_gap(i) for i in issues if i.level == "WARN") if g and g[0] == "minor" and g[1]})
+    if not boards:
+        return None
+    keep = ~df_in["node_id"].astype(str).str[-4:].str.upper().isin([b.upper() for b in boards])
+    saved = (_LAST_SETUP_INVALID[0], list(_LAST_ISSUES[0]))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            ok, conclusive = verify(df_in[keep].copy(), attack, sigma, block, checks=False)
+    finally:
+        _LAST_SETUP_INVALID[0], _LAST_ISSUES[0] = saved
+    names = ", ".join(boards)
+    if ok:
+        return _checks.Issue("OK", f"IMPACT CHECK: without {names} (the boards with minor gaps) the attack is still "
+                                   f"confirmed - the gaps do not change the result")
+    return _checks.Issue(_checks.WARN, f"IMPACT CHECK FAILED: without {names} the attack is "
+                                       f"{'not confirmed' if conclusive else 'untestable'} - the result depends on them")
+
+
+def _n(k, word):
+    """'1 note' / '2 notes' - no "(s)"."""
+    return f"{k} {word}" + ("" if k == 1 else "s")
 
 
 def _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count):
-    grade, why = _confidence(confirmed, setup_invalid, conclusive, issues)
-    if grade == "-":
-        print(f" CONFIDENCE: - (not confirmed)")
-        for w in why:
+    grade, major, minor, notes, why_not = _confidence(confirmed, setup_invalid, conclusive, issues)
+    if grade == "NOT CONFIRMED":
+        print(" CONFIDENCE: NOT CONFIRMED - " + ("the setup was invalid" if setup_invalid else
+                                                ("no attack signature" if conclusive else "too little data to test")))
+        for w in why_not:
             print(_wrap(w, "     x "))
         return
-    say = {"STRONG": "nothing to footnote",
-           "SOUND": "boards moved, but the moves were allowed and the attack held on the part before them",
-           "QUALIFIED": f"confirmed - report it WITH these {len(why)} footnote(s)"}[grade]
+    good = [n for n in notes if n.startswith(("the re-test on the part BEFORE", "impact check:"))]
+    real = [n for n in notes if n not in good]
+    say = {"STRONG": "attack confirmed, all board data present, nothing to note",
+           "GOOD": f"attack confirmed, all board data present, {_n(len(real), 'note')} for the report",
+           "MINOR GAPS": f"attack confirmed; {_n(len(minor), 'small gap')} in the data, none of which change{'s' if len(minor) == 1 else ''} the result - recapture advised",
+           "MAJOR GAPS": f"attack confirmed, but data the result relies on is missing ({_n(len(major), 'major gap')}) - recapture required"}[grade]
     print(f" CONFIDENCE: {grade} - {say}")
-    print(_wrap(f"signature: {count}", "     + "))
-    print(_wrap("setup: no check failed", "     + "))
-    for w in why:
-        print(_wrap(w, "     ~ " if grade == "QUALIFIED" else "     + "))
-    tag = {"STRONG": "", "SOUND": " (sound: moves allowed, re-test passed)",
-           "QUALIFIED": f" (qualified: {len(why)} footnote(s))"}[grade]
+    print(_wrap(f"ATTACK: confirmed - {count}", "     + "))
+    print(_wrap("SETUP: no check failed", "     + "))
+    for g in major:
+        print(_wrap("MAJOR GAP (affects the result): " + g, "     ~ "))
+    for g in minor:
+        print(_wrap("MINOR GAP (result not affected): " + g, "     ~ "))
+    if not major and not minor:
+        print(_wrap("DATA: every board has usable data for the whole attack", "     + "))
+    for n in good:
+        print(_wrap(n, "     + "))
+    for n in real:
+        print(_wrap("note: " + n, "     ~ "))
+    tag = {"STRONG": "", "GOOD": "", "MINOR GAPS": " - minor gaps", "MAJOR GAPS": " - major gaps"}[grade]
+    foot = len(major) + len(minor) + len(real)
     print(_wrap(f"REPORT AS: \"{attack.upper()} CONFIRMED{tag}\""
-                + (" - copy the footnotes to the thesis checklist" if grade == "QUALIFIED" else ""), "     = "))
+                + (f" + {_n(foot, 'footnote')} (copy them to the thesis checklist)" if foot else ""), "     = "))
 
 
 def _print_reroute_why(issues, measured, setup_invalid):
@@ -1003,6 +1091,12 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
                 rob = _checks.Issue(_checks.WARN, f"robustness re-test could not run: {e}")
             if rob is not None:
                 issues.append(rob)
+            try:
+                imp = _impact_issue(df_in, attack, sigma, block, issues)
+            except Exception as e:                  # never block the verdict
+                imp = _checks.Issue(_checks.WARN, f"impact check could not run: {e}")
+            if imp is not None:
+                issues.append(imp)
         setup_invalid = any(it.level == _checks.FAIL for it in issues)
     # exit 3 means 'the signature passed, but the setup was invalid' - only then.
     _LAST_SETUP_INVALID[0] = setup_invalid and confirmed
@@ -1177,7 +1271,8 @@ def _line_colour(line):
     if "NOT ALLOWED" in t and ("+-- " in t or "`-- " in t):
         return "red"
     if t.startswith("CONFIDENCE"):
-        return "red" if "not confirmed" in t else ("green" if ("STRONG" in t or "SOUND" in t) else "yellow")
+        return ("red" if "NOT CONFIRMED" in t.upper() else "green" if t.startswith(("CONFIDENCE: STRONG", "CONFIDENCE: GOOD"))
+                else "yellow")
     if t.startswith(("+ ", "= ")):
         return "green"
     if t.startswith("~ "):

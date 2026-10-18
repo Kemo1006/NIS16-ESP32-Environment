@@ -372,6 +372,23 @@ def _more_situations(df, attack, atk, roles, key_nodes, moved, timeline, scenari
         elif had_victims:
             out.append(Issue("OK", f"victim evidence: {vic} traceable VICTIM-seconds"
                                    + (f", {nopath} no-path seconds left out ({nopath / (vic + nopath):.0%})" if nopath else "")))
+    # S8 COOLDOWN coverage (oct. 19 2026): the 3-sigma verdict compares baseline vs attack
+    # only, so a missing / short cooldown never changes it - it costs that board's
+    # RECOVERY measurement. Reported as a minor data gap.
+    cool = _seg(df, "cooldown")
+    if not cool.empty and "node_id" in cool.columns:
+        tcc = _tcol(cool)
+        full = float(cool[tcc].max() - cool[tcc].min()) if len(cool) else 0.0
+        if full > 0:
+            have = cool.groupby("node_id")[tcc].agg(lambda v: float(v.max() - v.min()) + 1.0)
+            for n in sorted(set(_seg(df, "baseline")["node_id"].dropna())):
+                if roles.get(n) in _exposure.ROOT_ROLES:
+                    continue
+                got = float(have.get(n, 0.0))
+                if got < 0.5 * full:
+                    out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) has {'NO' if got <= 0 else f'only {got:.0f} s of'} "
+                                           f"COOLDOWN (the others: {full:.0f} s) - its recovery is not measured; the "
+                                           f"verdict (baseline vs attack) does not use the cooldown"))
     return out
 
 

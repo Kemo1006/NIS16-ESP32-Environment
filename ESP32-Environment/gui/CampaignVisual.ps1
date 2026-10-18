@@ -16,21 +16,24 @@ function Get-CampReportBits([string]$Key) {
     if (-not $t) { return $null }
     $t = $t -replace "\x1b\[[0-9;]*m", ''
     $lines = $t -split "`r?`n"
-    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @() }
+    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @(); Proof = '' }
     $sk = $false; $inConf = $false; $lastKind = ''   # which item a wrapped line continues
     foreach ($ln in $lines) {
         $tr = $ln.Trim()
         if ($sk) { if (-not $tr) { $sk = $false } else { $o.Sketch += $(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr }) }; continue }
         if ($tr -match '^VERDICT\s*:\s*(.+)$') { $o.Verdict = $Matches[1]; continue }
-        if ($tr -match '^CONFIDENCE\s*:\s*(\S+)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $inConf = $true; continue }
+        if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $inConf = $true; continue }
+        # a report from before the final grades (oct. 19 2026) - shown as an OLD report
+        if ($tr -match '^CONFIDENCE\s*:\s*(SOUND|WITH NOTES|QUALIFIED|-)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $o.Old = $true; $inConf = $true; continue }
         if ($inConf) {
             if ($tr -match '^-{20,}' -or -not $tr) { $inConf = $false; continue }
             if ($tr -match '^~\s+(.+)$') { $o.Notes += $Matches[1]; $lastKind = 'n' }
             elseif ($tr -match '^x\s+(.+)$') { $o.Fails += $Matches[1]; $lastKind = 'f' }
             elseif ($tr -match '^=\s+REPORT AS:\s*(.+)$') { $o.ReportAs = $Matches[1]; $lastKind = 'r' }
+            elseif ($tr -match '^\+\s+impact check:\s*(.+)$') { $o.Proof = $Matches[1]; $lastKind = 'p' }
             elseif ($tr -match '^\+\s') { $lastKind = '' }
             elseif ($ln -match '^\s{7,}\S') {
-                switch ($lastKind) { 'n' { $o.Notes[-1] += ' ' + $tr } 'f' { $o.Fails[-1] += ' ' + $tr } 'r' { $o.ReportAs += ' ' + $tr } }
+                switch ($lastKind) { 'n' { $o.Notes[-1] += ' ' + $tr } 'f' { $o.Fails[-1] += ' ' + $tr } 'r' { $o.ReportAs += ' ' + $tr } 'p' { $o.Proof += ' ' + $tr } }
             }
             continue
         }
@@ -40,7 +43,7 @@ function Get-CampReportBits([string]$Key) {
             $o.Nodes += @{ Node = $Matches[1]; Exp = $Matches[3]; Hop = $Matches[4]; Base = $Matches[5]; Atk = $Matches[6] }
         }
     }
-    $o.Old = [bool]($o.Verdict -and -not $o.Grade)
+    $o.Old = [bool]($o.Old -or ($o.Verdict -and -not $o.Grade))
     return $o
 }
 
@@ -51,15 +54,15 @@ function New-CampPill([string]$Text, [string]$Fg, [string]$Bg, [double]$Size = 1
 }
 
 function Add-CampJourney($Body, $Steps) {
-    # $Steps: @( @(label, state, detail) ) - state ok | warn | bad | todo | na
+    # $Steps: @( @(label, state, detail) ) - state ok | warn | major | bad | todo | na
     # one column per step; each column draws the left / right half of the line that
     # joins its dot to its neighbours, so the line runs dot to dot at any width
     $g = New-Object Windows.Controls.Grid; $g.Margin = '0,2,0,12'
     for ($i = 0; $i -lt $Steps.Count; $i++) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = New-Object Windows.GridLength 1, 'Star'; [void]$g.ColumnDefinitions.Add($cd) }
     for ($i = 0; $i -lt $Steps.Count; $i++) {
         $st = $Steps[$i]
-        $hex = switch ($st[1]) { 'ok' { $Pal.Green } 'warn' { $Pal.Amber } 'bad' { $Pal.Red } default { '#4B5075' } }
-        $glyph = switch ($st[1]) { 'ok' { [string][char]0x2714 } 'warn' { '!' } 'bad' { [string][char]0x2716 } 'na' { '-' } default { [string]($i + 1) } }
+        $hex = switch ($st[1]) { 'ok' { $Pal.Green } 'warn' { $Pal.Amber } 'major' { $Pal.Orange } 'bad' { $Pal.Red } default { '#4B5075' } }
+        $glyph = switch ($st[1]) { 'ok' { [string][char]0x2714 } { $_ -in 'warn', 'major' } { '!' } 'bad' { [string][char]0x2716 } 'na' { '-' } default { [string]($i + 1) } }
         $cell = New-Object Windows.Controls.Grid
         $halves = New-Object Windows.Controls.Grid; $halves.VerticalAlignment = 'Top'; $halves.Margin = '0,12,0,0'
         foreach ($k in 0, 1) { [void]$halves.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition)) }
@@ -87,6 +90,45 @@ function Add-CampJourney($Body, $Steps) {
     [void]$Body.Children.Add($g)
 }
 
+function New-CampNoteRow([string]$Kind, [string]$Fg, [string]$Bg, [string]$Text) {
+    # one note: a fixed-width chip on the left, the sentence wrapping beside it (aligned rows)
+    $g = New-Object Windows.Controls.Grid; $g.Margin = '0,3,0,3'
+    $c0 = New-Object Windows.Controls.ColumnDefinition; $c0.Width = '52'; [void]$g.ColumnDefinitions.Add($c0)
+    [void]$g.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition))
+    $chip = New-Object Windows.Controls.Border; $chip.CornerRadius = 4; $chip.Padding = '0,1'; $chip.Margin = '0,1,8,0'; $chip.VerticalAlignment = 'Top'
+    $chip.Background = Get-Brush $Bg; $chip.BorderBrush = Get-Brush $Fg; $chip.BorderThickness = 1
+    $ct = New-Text $Kind 9.5 $Fg 'Bold'; $ct.HorizontalAlignment = 'Center'; $chip.Child = $ct
+    [void]$g.Children.Add($chip)
+    $col = New-Object Windows.Controls.StackPanel; [Windows.Controls.Grid]::SetColumn($col, 1)
+    # "1C38 (attacker): only ..." -> the board name bold, the rest plain
+    $t = New-Object Windows.Controls.TextBlock; $t.TextWrapping = 'Wrap'; $t.LineHeight = 17; $t.FontSize = 12; $t.FontFamily = 'Segoe UI'
+    $t.Foreground = Get-Brush $(if ($Kind -in 'NOTE', 'PROOF') { $Pal.Dim } else { $Pal.Text })
+    if ($Text -match '^([0-9A-F]{4}(?: \([a-z]+\))?):\s*(.+)$') {
+        $r1 = New-Object Windows.Documents.Run ($Matches[1] + '  '); $r1.FontWeight = 'Bold'; $r1.Foreground = Get-Brush $Fg; [void]$t.Inlines.Add($r1)
+        $Text = $Matches[2]
+    }
+    $Text = $Text.Substring(0, 1).ToUpper() + $Text.Substring(1)
+    [void]$t.Inlines.Add((New-Object Windows.Documents.Run $Text))
+    [void]$col.Children.Add($t)
+    if ($Kind -in 'MINOR', 'MAJOR' -and $Text -match '(\d+) of (\d+) (s|victim-seconds)') {
+        $have = [double]$Matches[1]; $all = [double]$Matches[2]; $u = $(if ($Matches[3] -eq 's') { ' s' } else { '' })
+        if ($all -gt 0) {
+            $bar = New-Object Windows.Controls.Grid; $bar.Height = 6; $bar.Margin = '0,5,0,1'
+            $ca = New-Object Windows.Controls.ColumnDefinition; $ca.Width = New-Object Windows.GridLength ([math]::Max($have, 0.0001)), 'Star'
+            $cb = New-Object Windows.Controls.ColumnDefinition; $cb.Width = New-Object Windows.GridLength ([math]::Max($all - $have, 0.0001)), 'Star'
+            [void]$bar.ColumnDefinitions.Add($ca); [void]$bar.ColumnDefinitions.Add($cb)
+            $b1 = New-Object Windows.Controls.Border; $b1.Background = Get-Brush $Pal.Green; $b1.CornerRadius = '3,0,0,3'; [void]$bar.Children.Add($b1)
+            $b2 = New-Object Windows.Controls.Border; $b2.Background = Get-Brush $Bg; $b2.BorderBrush = Get-Brush $Fg; $b2.BorderThickness = 1; $b2.CornerRadius = '0,3,3,0'
+            [Windows.Controls.Grid]::SetColumn($b2, 1); [void]$bar.Children.Add($b2)
+            [void]$col.Children.Add($bar)
+            $cap = New-Text ('{0:0}{2} recorded   {3}   {1:0}{2} missing' -f $have, ($all - $have), $u, [char]0x00B7) 10 $Pal.Faint
+            [void]$col.Children.Add($cap)
+        }
+    }
+    [void]$g.Children.Add($col)
+    return $g
+}
+
 function Add-CampVisual($Body, $S, [string]$Look) {
     $isBase = ($S.kind -eq 'benign' -or $S.attack -in @('none', 'baseline'))
     $key = Get-SlotKeyPath $S                                    # gui\CampaignPanel.ps1
@@ -107,30 +149,42 @@ function Add-CampVisual($Body, $S, [string]$Look) {
                elseif ($v -and $v.Code -eq 0) { @('ok', 'confirmed') } elseif ($v) { @('bad', 'not confirmed') } else { @('todo', '') }
         $grd = if (-not $rep) { @('todo', '') }
                elseif ($rep.Old) { @('warn', 'old report - press Verify') }
-               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'SOUND' { @('ok', 'sound') } 'QUALIFIED' { @('warn', "$($rep.Notes.Count) footnote(s)") } '-' { @('bad', 'not confirmed') } default { @('todo', '') } } }
+               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } 'NOT CONFIRMED' { @('bad', 'not confirmed') } default { @('todo', '') } } }
     }
     Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]))
     if ($isBase -or -not $rep) { return }
 
     # 2. VERDICT tile
-    $tone = switch ($rep.Grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'SOUND' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'QUALIFIED' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } default { @{ Fg = $Pal.Red; Bg = '#33192A'; Bd = '#6B2A3F' } } }
+    $tone = switch ($rep.Grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F'; Bd = '#7C3F1A' } } default { @{ Fg = $Pal.Red; Bg = '#33192A'; Bd = '#6B2A3F' } } }
     if ($rep.Old) { $tone = @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } }
-    $tile = New-Object Windows.Controls.Border; $tile.CornerRadius = 12; $tile.Padding = '14,10'; $tile.Margin = '0,0,10,10'; $tile.Width = 330
+    $tile = New-Object Windows.Controls.Border; $tile.CornerRadius = 12; $tile.Padding = '14,10'; $tile.Margin = '0,0,8,10'
     $tile.Background = Get-Brush $tone.Bg; $tile.BorderBrush = Get-Brush $tone.Bd; $tile.BorderThickness = 1
     $tp = New-Object Windows.Controls.StackPanel
-    $hd = New-Object Windows.Controls.DockPanel
-    $big = New-Text $(if ($rep.Old) { 'OLD REPORT' } elseif ($rep.Grade -eq '-') { 'NOT CONFIRMED' } else { [string]$rep.Grade }) 20 $tone.Fg 'Bold'
-    [Windows.Controls.DockPanel]::SetDock($big, 'Left'); [void]$hd.Children.Add($big)
-    $sub = New-Text $(if ($rep.Old) { 'made by an older verifier - press Verify to update' } else { [string]$rep.Say }) 11.5 $Pal.Dim
-    $sub.TextWrapping = 'Wrap'; $sub.Margin = '12,6,0,0'; [void]$hd.Children.Add($sub)
-    [void]$tp.Children.Add($hd)
-    foreach ($n in @($rep.Notes | Select-Object -First 6)) {
-        $r = New-Text ([string][char]0x26A0 + '  ' + $n) 12 $Pal.Amber; $r.TextWrapping = 'Wrap'; $r.Margin = '0,4,0,0'; [void]$tp.Children.Add($r)
+    $big = New-Text $(if ($rep.Old) { 'OLD REPORT' } else { [string]$rep.Grade }) 17 $tone.Fg 'Bold'
+    $big.TextWrapping = 'Wrap'; [void]$tp.Children.Add($big)
+    $sub = New-Text $(if ($rep.Old) { 'Made by an older verifier - press Verify to update it.' } else { [string]$rep.Say }) 11.5 $Pal.Dim
+    $sub.TextWrapping = 'Wrap'; $sub.Margin = '0,2,0,6'; [void]$tp.Children.Add($sub)
+    foreach ($n in @($rep.Notes | Select-Object -First 8)) {
+        $kind = if ($n -match '^MAJOR GAP') { @('MAJOR', $Pal.Orange, '#35200F') } elseif ($n -match '^MINOR GAP') { @('MINOR', $Pal.Amber, '#2E2716') } else { @('NOTE', $Pal.Dim, '#262A45') }
+        $say = ($n -replace '^(MAJOR|MINOR) GAP \([^)]*\):\s*', '' -replace '^note:\s*', '')
+        [void]$tp.Children.Add((New-CampNoteRow $kind[0] $kind[1] $kind[2] $say))
     }
-    foreach ($f in @($rep.Fails | Select-Object -First 3)) {
-        $r = New-Text ([string][char]0x2716 + '  ' + $f) 12 $Pal.Red; $r.TextWrapping = 'Wrap'; $r.Margin = '0,4,0,0'; [void]$tp.Children.Add($r)
+    foreach ($f in @($rep.Fails | Select-Object -First 3)) { [void]$tp.Children.Add((New-CampNoteRow 'FAIL' $Pal.Red '#3A1E2C' $f)) }
+    if ($rep.Proof) { [void]$tp.Children.Add((New-CampNoteRow 'PROOF' $Pal.Green '#16352B' $rep.Proof)) }
+    if (@($rep.Notes | Where-Object { $_ -match '^(MAJOR|MINOR) GAP' }).Count) {
+        # the two words, explained once, right where they are used
+        $key = New-Object Windows.Controls.Border; $key.CornerRadius = 8; $key.Padding = '10,6'; $key.Margin = '0,8,0,0'; $key.Background = Get-Brush '#1A1D30'
+        $ks = New-Object Windows.Controls.StackPanel
+        foreach ($kk in @(@('MINOR GAP', $Pal.Amber, 'data is missing, but the attack is still confirmed without it (proved by the impact check)'),
+                          @('MAJOR GAP', $Pal.Orange, 'the result relies on the missing data - capture the run again'))) {
+            $kt = New-Object Windows.Controls.TextBlock; $kt.TextWrapping = 'Wrap'; $kt.FontSize = 11; $kt.Margin = '0,1,0,1'
+            $k1 = New-Object Windows.Documents.Run ($kk[0] + '  '); $k1.FontWeight = 'Bold'; $k1.Foreground = Get-Brush $kk[1]; [void]$kt.Inlines.Add($k1)
+            $k2 = New-Object Windows.Documents.Run $kk[2]; $k2.Foreground = Get-Brush $Pal.Faint; [void]$kt.Inlines.Add($k2)
+            [void]$ks.Children.Add($kt)
+        }
+        $key.Child = $ks; [void]$tp.Children.Add($key)
     }
-    if ($rep.ReportAs) { $ra = New-Text ('report as  ' + $rep.ReportAs) 12 $Pal.Cyan 'SemiBold'; $ra.TextWrapping = 'Wrap'; $ra.Margin = '0,8,0,0'; [void]$tp.Children.Add($ra) }
+    if ($rep.ReportAs) { $ra = New-Text ('Report as: ' + ($rep.ReportAs -replace '\s*\(copy them to the thesis checklist\)', '')) 12 $Pal.Cyan 'SemiBold'; $ra.TextWrapping = 'Wrap'; $ra.Margin = '0,8,0,0'; [void]$tp.Children.Add($ra) }
     if ($rep.Glance.Count) {
         $wp = New-Object Windows.Controls.WrapPanel; $wp.Margin = '0,8,0,0'
         foreach ($gl in $rep.Glance) {
@@ -149,9 +203,17 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     }
     $tile.Child = $tp
     # verdict tile + delivery chart: side by side in a wide panel, stacked in a narrow one
-    $wrap = New-Object Windows.Controls.WrapPanel
+    # (both STRETCH - fixed widths left holes, oct. 19 2026)
+    # (a Grid, not a UniformGrid: stacked, each keeps its own height - no empty block)
+    $wrap = New-Object Windows.Controls.Grid; $wrap.Tag = 'resp'
+    [void]$wrap.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition))
+    [void]$wrap.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition))
+    [void]$wrap.RowDefinitions.Add((New-Object Windows.Controls.RowDefinition)); [void]$wrap.RowDefinitions.Add((New-Object Windows.Controls.RowDefinition))
+    $wrap.RowDefinitions[0].Height = 'Auto'; $wrap.RowDefinitions[1].Height = 'Auto'
+    Register-CampResponsive
     [void]$wrap.Children.Add($tile)
     if ($rep.Nodes.Count) { try { [void]$wrap.Children.Add((New-CampDeliveryChart $rep.Nodes)) } catch { } }
+    Set-CampRespLayout $wrap ($ui.CampDetBody.ActualWidth -ge 700)
     [void]$Body.Children.Add($wrap)
 
     # 2b. PHASE TIMELINE per board (cached; background read the first time)
@@ -210,8 +272,8 @@ function Set-CampTileTip($Tile) {
     if (-not $c -or $c.T -ne $stamp) {
         $b = Get-CampReportBits $key
         $line = if (-not $b) { '' } elseif ($b.Old) { 'old report - press Verify' }
-                elseif ($b.Grade -eq '-') { 'NOT CONFIRMED' }
-                elseif ($b.Grade) { 'CONFIRMED - ' + $b.Grade + $(if ($b.Notes.Count) { " ($($b.Notes.Count) footnote(s))" } else { '' }) } else { '' }
+                elseif ($b.Grade -eq 'NOT CONFIRMED') { 'NOT CONFIRMED' }
+                elseif ($b.Grade) { 'CONFIRMED - ' + $b.Grade } else { '' }
         $c = @{ T = $stamp; Line = $line }; $script:CampTipCache[$key] = $c
     }
     if ($c.Line) { $Tile.ToolTip = [string]$Tile.ToolTip + "`nverdict: " + $c.Line }
@@ -246,9 +308,38 @@ function New-CampRing([int]$Done, [int]$Total) {
     return $b
 }
 
+function New-ShareBar([double]$Share, [string]$Hex, [double]$H) {
+    # a track that fills its space, with a coloured share of it - no fixed pixel width
+    $g = New-Object Windows.Controls.Grid; $g.Height = $H; $g.VerticalAlignment = 'Center'
+    $tr = New-Object Windows.Controls.Border; $tr.CornerRadius = $H / 2; $tr.Background = Get-Brush '#2A2E48'
+    [Windows.Controls.Grid]::SetColumnSpan($tr, 2); [void]$g.Children.Add($tr)
+    foreach ($w in $Share, (1.0 - $Share)) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = New-Object Windows.GridLength ([Math]::Max(0.0001, $w)), 'Star'; [void]$g.ColumnDefinitions.Add($cd) }
+    if ($Share -gt 0) { $fl = New-Object Windows.Controls.Border; $fl.CornerRadius = $H / 2; $fl.Background = Get-Brush $Hex; [void]$g.Children.Add($fl) }
+    return $g
+}
+
+function Register-CampResponsive {
+    # once: a wide run panel shows tile + chart side by side, a narrow one stacks them
+    if ($script:CampRespOn) { return }
+    $script:CampRespOn = $true
+    $ui.CampDetBody.Add_SizeChanged({
+        param($s, $e)
+        foreach ($c in $s.Children) { if ($c -is [Windows.Controls.Grid] -and [string]$c.Tag -eq 'resp') { Set-CampRespLayout $c ($e.NewSize.Width -ge 700) } }
+    })
+}
+function Set-CampRespLayout($G, [bool]$Wide) {
+    # wide: tile | chart side by side; narrow: tile over chart, full width
+    $G.ColumnDefinitions[1].Width = $(if ($Wide) { New-Object Windows.GridLength 1, 'Star' } else { New-Object Windows.GridLength 0 })
+    if ($G.Children.Count -gt 1) {
+        $c = $G.Children[1]
+        [Windows.Controls.Grid]::SetColumn($c, $(if ($Wide) { 1 } else { 0 })); [Windows.Controls.Grid]::SetRow($c, $(if ($Wide) { 0 } else { 1 }))
+    }
+    $G.Children[0].Margin = $(if ($Wide) { '0,0,8,10' } else { '0,0,0,10' })
+}
+
 function New-CampDeliveryChart($Nodes) {
     # delivery per board, baseline vs attack, from the report's [4] table (no data read)
-    $card = New-Object Windows.Controls.Border; $card.CornerRadius = 12; $card.Padding = '14,10'; $card.Margin = '0,0,10,10'; $card.Width = 330
+    $card = New-Object Windows.Controls.Border; $card.CornerRadius = 12; $card.Padding = '14,10'; $card.Margin = '0,0,8,10'
     $card.Background = Get-Brush $Pal.Card; $card.BorderBrush = Get-Brush $Pal.Line; $card.BorderThickness = 1
     $sp = New-Object Windows.Controls.StackPanel
     [void]$sp.Children.Add((New-Text 'DELIVERY PER BOARD   baseline -> attack' 10.5 $Pal.Faint 'SemiBold'))
@@ -258,19 +349,20 @@ function New-CampDeliveryChart($Nodes) {
         $vic = [string]$n.Exp -match 'VICTIM'
         $nick = ''; if ($mac.Length -ge 12) { $k = $mem[($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToLower()]; if ($k) { $nick = ' ' + $k.Nick } }
         $row = New-Object Windows.Controls.Grid; $row.Margin = '0,5,0,0'
-        foreach ($w in 92, 1) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = $(if ($w -eq 1) { New-Object Windows.GridLength 1, 'Star' } else { New-Object Windows.GridLength $w }); [void]$row.ColumnDefinitions.Add($cd) }
-        $nm = New-Text ($(if ($mac.Length -ge 12) { $mac.Substring(0, 2) + ':' + $mac.Substring(10, 2) } else { $mac }) + $nick) 11 $(if ($vic) { '#FCA5A5' } else { $Pal.Cyan }) 'SemiBold'
+        foreach ($w in 86, 1) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = $(if ($w -eq 1) { New-Object Windows.GridLength 1, 'Star' } else { New-Object Windows.GridLength $w }); [void]$row.ColumnDefinitions.Add($cd) }
+        # the same 4-character ID the notes use (D7B4), then the Boards-page label (28:B4)
+        $nm = New-Object Windows.Controls.TextBlock; $nm.FontSize = 11; $nm.FontFamily = 'Segoe UI'
+        $q1 = New-Object Windows.Documents.Run ($(if ($mac.Length -ge 4) { $mac.Substring($mac.Length - 4) } else { $mac })); $q1.FontWeight = 'SemiBold'; $q1.Foreground = Get-Brush $(if ($vic) { '#FCA5A5' } else { $Pal.Cyan }); [void]$nm.Inlines.Add($q1)
+        $q2 = New-Object Windows.Documents.Run ($(if ($mac.Length -ge 12) { '  ' + $mac.Substring(0, 2) + ':' + $mac.Substring(10, 2) } else { '' }) + $nick); $q2.Foreground = Get-Brush $Pal.Faint; [void]$nm.Inlines.Add($q2)
         $nm.ToolTip = "$($n.Node)  -  $($n.Exp.Trim())  -  hop $($n.Hop)"; $nm.TextTrimming = 'CharacterEllipsis'
         [Windows.Controls.Grid]::SetColumn($nm, 0); [void]$row.Children.Add($nm)
         $bars = New-Object Windows.Controls.StackPanel
         foreach ($pair in @(@('baseline', $n.Base, $Pal.Green), @('attack', $n.Atk, $(if ($vic) { $Pal.Red } else { $Pal.Cyan })))) {
             $v = 0.0; $ok = [double]::TryParse([string]$pair[1], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$v)
             $line = New-Object Windows.Controls.DockPanel; $line.Margin = '0,1,0,1'
-            $val = New-Text $(if ($ok) { '{0:0.00}' -f $v } else { '-' }) 10 $Pal.Dim; $val.Width = 32; [Windows.Controls.DockPanel]::SetDock($val, 'Right'); [void]$line.Children.Add($val)
-            $track = New-Object Windows.Controls.Border; $track.Height = 7; $track.CornerRadius = 3.5; $track.Background = Get-Brush '#2A2E48'; $track.Width = 170; $track.HorizontalAlignment = 'Left'
-            $fill = New-Object Windows.Controls.Border; $fill.Height = 7; $fill.CornerRadius = 3.5; $fill.HorizontalAlignment = 'Left'; $fill.Background = Get-Brush $pair[2]
-            $fill.Width = $(if ($ok) { [Math]::Max(0, [Math]::Min(1, $v)) * 170 } else { 0 })
-            $track.Child = $fill; [void]$line.Children.Add($track)
+            $val = New-Text $(if ($ok) { '{0:0.00}' -f $v } else { '-' }) 10 $Pal.Dim; $val.Width = 32; $val.TextAlignment = 'Right'; [Windows.Controls.DockPanel]::SetDock($val, 'Right'); [void]$line.Children.Add($val)
+            $f = if ($ok) { [Math]::Max(0.0, [Math]::Min(1.0, $v)) } else { 0.0 }
+            [void]$line.Children.Add((New-ShareBar $f $pair[2] 7))
             [void]$bars.Children.Add($line)
         }
         [Windows.Controls.Grid]::SetColumn($bars, 1); [void]$row.Children.Add($bars)
@@ -327,6 +419,10 @@ function Add-CampTimeline($Body, $S) {
 }
 
 function Show-CampTimeline($Card, $Items) {
+    # the colours live HERE: this also runs from a background job's callback, where a
+    # script-level table was not visible (an empty colour -> an error, oct. 19 2026)
+    $PhaseHex = @{ '255' = '#4B5075'; '254' = '#4B5075'; '0' = '#3DDC97'; '1' = '#FF5C9A'; '2' = '#FF5C9A'; '3' = '#3FD0FF'; '4' = '#A78BFA' }
+    $PhaseWord = @{ '255' = 'stabilise'; '254' = 'prepare'; '0' = 'baseline'; '1' = 'attack'; '2' = 'attack'; '3' = 'cooldown'; '4' = 'terminate' }
     $sp = $Card.Child
     while ($sp.Children.Count -gt 1) { $sp.Children.RemoveAt(1) }
     $Items = @($Items | Sort-Object { if ($_.role -eq 'root') { 0 } else { 1 } }, { [string]$_.node })
@@ -344,17 +440,21 @@ function Show-CampTimeline($Card, $Items) {
         $nm.ToolTip = "$($it.node)  -  $role  -  $($it.file)"; $nm.TextTrimming = 'CharacterEllipsis'
         [Windows.Controls.Grid]::SetColumn($nm, 0); [void]$row.Children.Add($nm)
         $right = New-Object Windows.Controls.StackPanel
-        $bar = New-Object Windows.Controls.StackPanel; $bar.Orientation = 'Horizontal'; $bar.Height = 12
+        $bar = New-Object Windows.Controls.Grid; $bar.Height = 12
         $ph = @{}; foreach ($pp in $it.phases.PSObject.Properties) { $ph[$pp.Name] = [int]$pp.Value }
         $seen = @{}
         foreach ($id in @($it.seq)) {
             $id = [string]$id; if ($seen[$id]) { continue }; $seen[$id] = $true
             $n = [int]$ph[$id]; if ($n -le 0) { continue }
-            $seg = New-Object Windows.Controls.Border; $seg.Height = 12; $seg.Width = [Math]::Max(2, $W * $n / $maxRows); $seg.Margin = '0,0,1,0'
-            $seg.Background = Get-Brush $(if ($script:PhaseHex[$id]) { $script:PhaseHex[$id] } else { '#6B7393' })
-            $seg.ToolTip = '{0}: {1:N0} rows (~{2:N0} s)' -f $(if ($script:PhaseWord[$id]) { $script:PhaseWord[$id] } else { "phase $id" }), $n, ($n / 10)
-            [void]$bar.Children.Add($seg)
+            $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = New-Object Windows.GridLength ([double]$n), 'Star'; [void]$bar.ColumnDefinitions.Add($cd)
+            $seg = New-Object Windows.Controls.Border; $seg.Height = 12; $seg.Margin = '0,0,1,0'
+            $seg.Background = Get-Brush $(if ($PhaseHex[$id]) { $PhaseHex[$id] } else { '#6B7393' })
+            $seg.ToolTip = '{0}: {1:N0} rows (~{2:N0} s)' -f $(if ($PhaseWord[$id]) { $PhaseWord[$id] } else { "phase $id" }), $n, ($n / 10)
+            [Windows.Controls.Grid]::SetColumn($seg, $bar.ColumnDefinitions.Count - 1); [void]$bar.Children.Add($seg)
         }
+        # the rest of the row stays empty, so a shorter file is a shorter bar
+        $rest = [double]$maxRows - [double]$it.rows
+        if ($rest -gt 0) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = New-Object Windows.GridLength $rest, 'Star'; [void]$bar.ColumnDefinitions.Add($cd) }
         [void]$right.Children.Add($bar)
         $miss = @(); if (-not $ph['0']) { $miss += 'no baseline' }; if (-not ($ph['1'] -or $ph['2'])) { $miss += 'no attack' }; if (-not $ph['3']) { $miss += 'no cooldown' }
         $info = '{0:N0} s' -f [double]$it.seconds
@@ -369,8 +469,8 @@ function Show-CampTimeline($Card, $Items) {
     }
     $lg = New-Object Windows.Controls.WrapPanel; $lg.Margin = '0,8,0,0'
     foreach ($id in '255', '0', '1', '3') {
-        $d = New-Object Windows.Controls.Border; $d.Width = 10; $d.Height = 10; $d.CornerRadius = 2; $d.Margin = '0,2,4,0'; $d.Background = Get-Brush $script:PhaseHex[$id]
-        [void]$lg.Children.Add($d); $l = New-Text ($script:PhaseWord[$id] + '    ') 10.5 $Pal.Faint; [void]$lg.Children.Add($l)
+        $d = New-Object Windows.Controls.Border; $d.Width = 10; $d.Height = 10; $d.CornerRadius = 2; $d.Margin = '0,2,4,0'; $d.Background = Get-Brush $PhaseHex[$id]
+        [void]$lg.Children.Add($d); $l = New-Text ($PhaseWord[$id] + '    ') 10.5 $Pal.Faint; [void]$lg.Children.Add($l)
     }
     [void]$sp.Children.Add($lg)
 }
