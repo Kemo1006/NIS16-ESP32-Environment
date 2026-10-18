@@ -203,5 +203,55 @@ class Statistics(unittest.TestCase):
         self.assertEqual(r["status"], "INCONCLUSIVE")
 
 
+class StartAnyway(unittest.TestCase):
+    """START_ANYWAY is only in the root's run log - the check must find a real
+    forced start, ignore help text, and blame only THIS capture's log."""
+    ROOT_OK = ("I (6048) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...\n"
+               "W (66058) ROOT_MAIN: [CTRL] WAITING: 6/7 children. Fix it, or type START_ANYWAY.\n"
+               "I (90000) ROOT_MAIN: [CTRL] START received after 3 s - starting the run.\n")
+    ROOT_FORCED = ("I (6048) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...\n"
+                   "\x1b[0;31mE (99000) ROOT_MAIN: [CTRL] START_ANYWAY after 120 s - starting with 6/7 children.\x1b[0m\n")
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.cell = os.path.join(self.tmp, "blackhole", "tree", "G402", "highload")
+        os.makedirs(self.cell)
+        self.df = pd.DataFrame({"attack": ["blackhole"], "topology": ["tree"], "location": ["G402"],
+                                "scenario": ["highload"],
+                                "source_file": ["root_root_tree_blackhole_r1_oct17_0541PM_telem.csv"]})
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def log(self, name, text):
+        with open(os.path.join(self.cell, name), "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+    def level(self):
+        return ac.start_anyway_issues(self.df, logs_root=self.tmp)[0].level
+
+    def test_forced_start_warns(self):
+        self.log("blackhole-tree-g402-highload_r1_oct17_0524PM.log", self.ROOT_FORCED)
+        self.assertEqual(self.level(), ac.WARN)
+
+    def test_normal_start_with_help_text_is_ok(self):
+        self.log("blackhole-tree-g402-highload_r1_oct17_0524PM.log", self.ROOT_OK)
+        self.assertEqual(self.level(), "OK")
+
+    def test_older_forced_attempt_is_not_this_run(self):
+        self.log("blackhole-tree-g402-highload_r1_oct17_0458PM.log", self.ROOT_FORCED)
+        self.log("blackhole-tree-g402-highload_r1_oct17_0524PM.log", self.ROOT_OK)
+        self.assertEqual(self.level(), "OK")
+
+    def test_no_log_skips(self):
+        self.assertEqual(self.level(), ac.SKIP)
+
+    def test_log_from_another_day_is_ignored(self):
+        self.log("blackhole-tree-g402-highload_r1_oct15_0524PM.log", self.ROOT_FORCED)
+        self.assertEqual(self.level(), ac.SKIP)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

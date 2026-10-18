@@ -37,7 +37,9 @@ Checks, by group:
 from __future__ import annotations
 
 import os
+import re
 import sys
+from datetime import datetime, timedelta
 from typing import NamedTuple
 
 import pandas as pd
@@ -354,12 +356,102 @@ def wormhole_issues(df):
     return out, ends
 
 
+# ── START_ANYWAY (oct. 18 2026, verification #41 / checklist B-force) ─────────
+# START_ANYWAY releases the root's safety gate (a child missing, or the wormhole
+# ends not A-shallower-than-B). The root says so ONLY on its serial output -
+# nothing goes into the SD-card CSVs - so the verifier could CONFIRM a forced
+# run without a word. The run logs (datasets/run_logs/<attack>/<topology>/
+# <location>/<scenario>/, written by the GUI / wizard monitors) DO hold the
+# root's output: find the ones started in the hours before this capture was
+# exported and look for the root's own forced-start lines (help text that
+# merely MENTIONS START_ANYWAY does not count).
+RUN_LOGS = os.path.join(os.path.dirname(_HERE), "datasets", "run_logs")
+RUN_LOG_WINDOW_H = 4          # a run log must start at most this long before the export
+_FORCED = re.compile(r"\[CTRL\] START_ANYWAY (?:after|-)|START_ANYWAY:OK")
+_ROOT_SAW = re.compile(r"\[CTRL\]")
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_MON = {m: i for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+def stamp_from_name(name, year=None):
+    """The time in a capture / log file name: 'oct18_0338PM', 'sept27_0311am'
+    or '20260914_204207'. None when the name carries no time."""
+    m = re.search(r"(\d{8})_(\d{6})", name)
+    if m:
+        try:
+            return datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M%S")
+        except ValueError:
+            pass
+    m = re.search(r"(?i)(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)(\d{1,2})_(\d{4})(am|pm)", name)
+    if not m:
+        return None
+    mon = _MON[m.group(1).lower()[:3]]
+    hh, mm = int(m.group(3)[:2]), int(m.group(3)[2:])
+    if hh == 12:
+        hh = 0
+    if m.group(4).lower() == "pm":
+        hh += 12
+    try:
+        return datetime(year or datetime.now().year, mon, int(m.group(2)), hh, mm)
+    except ValueError:
+        return None
+
+
+def start_anyway_issues(df, logs_root=RUN_LOGS):
+    """WARN if this capture's run was released with START_ANYWAY, OK if the root's
+    log shows a normal start, SKIP when no root log was saved for it."""
+    try:
+        # NOT _first(): it lowercases, and the folders are 'G402', 'DLSU_Library'
+        cell = [str(df[c].dropna().iloc[0]) if c in df.columns and df[c].notna().any() else ""
+                for c in ("attack", "topology", "location", "scenario")]
+        if any(v in ("", "None", "nan") for v in cell):
+            return [Issue(SKIP, "START_ANYWAY: the table does not name its cell - cannot find the run log")]
+        folder = os.path.join(logs_root, *cell)
+        stamps = [stamp_from_name(str(f)) for f in df.get("source_file", pd.Series(dtype=str)).dropna().unique()]
+        stamps = [s for s in stamps if s]
+        if not stamps:
+            return [Issue(SKIP, "START_ANYWAY: no export time in the file names - cannot match a run log")]
+        export = max(stamps)
+        if not os.path.isdir(folder):
+            return [Issue(SKIP, f"START_ANYWAY: no run log saved for this cell ({os.path.relpath(folder, logs_root)}) "
+                                f"- cannot tell whether the root's gate was overridden")]
+        # the root log of THIS capture = the latest one started before the export
+        # (an earlier aborted / forced attempt in the same window is not this run)
+        best = None
+        for name in sorted(os.listdir(folder)):
+            if not name.endswith(".log"):
+                continue
+            path = os.path.join(folder, name)
+            year = datetime.fromtimestamp(os.path.getmtime(path)).year
+            st = stamp_from_name(name, year)
+            if not st or not (export - timedelta(hours=RUN_LOG_WINDOW_H) <= st <= export + timedelta(minutes=5)):
+                continue
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                text = _ANSI.sub("", fh.read())
+            if _ROOT_SAW.search(text) and (best is None or st > best[0]):
+                best = (st, name, text)
+        if best:
+            hit = _FORCED.search(best[2])
+            if hit:
+                text = best[2]
+                line = text[text.rfind("\n", 0, hit.start()) + 1:text.find("\n", hit.end())].strip()
+                return [Issue(WARN, "this run was FORCE-STARTED with START_ANYWAY (the root's safety gate was "
+                                    f"overridden) - footnote it or recapture (checklist B-force). {best[1]}: {line[:140]}")]
+            return [Issue("OK", f"normal START - no START_ANYWAY in the root's run log ({best[1]})")]
+        return [Issue(SKIP, f"START_ANYWAY: no root run log from the {RUN_LOG_WINDOW_H} h before this capture "
+                            f"({export:%b %d %I:%M %p}) - cannot tell whether the gate was overridden")]
+    except Exception as e:                      # this check must never break the others
+        return [Issue(SKIP, f"START_ANYWAY check could not run: {e}")]
+
+
 def setup_issues(df, attack):
-    """All checks for one attack: attack-specific first, then topology."""
+    """All checks for one attack: attack-specific first, then topology, then
+    whether the run was force-started."""
     if attack == "blackhole":
         issues, key = blackhole_issues(df)
     elif attack == "wormhole":
         issues, key = wormhole_issues(df)
     else:
         return []
-    return issues + topology_issues(df, attack, key)
+    return issues + topology_issues(df, attack, key) + start_anyway_issues(df)

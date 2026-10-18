@@ -114,9 +114,10 @@ ATTACK_LABEL = {"blackhole": LABEL_BLACKHOLE, "wormhole": LABEL_WORMHOLE}
 DEFAULT_BLOCK_WINDOWS = 5
 
 # Lowest baseline mean at which a feature can still serve as a "normal" reference.
-# Khan et al. (2022) measured PDR > 0.97 on ESP-MESH; 0.50 is deliberately far
-# below that, so this fires only on a measurement that is plainly broken rather
-# than on a merely lossy run.
+# Khan et al. (2022) measured PDR > 0.97 on ESP-MESH. The floor was 0.50 and was
+# RAISED to 0.90 in the F1-F3 audit (commit 0382647, see ARCHIVE.md): still
+# below 0.97, so it fires on a broken measurement, not on a merely lossy run.
+# A primary below it is EXCLUDED (INVALID-BASE), never counted as a FAIL.
 BASELINE_FLOOR = {"PDR": 0.90, "ForwardingRatio": 0.90}
 
 # A bounded ratio whose baseline standard deviation exceeds this fraction of its

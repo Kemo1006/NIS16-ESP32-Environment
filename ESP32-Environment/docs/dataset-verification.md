@@ -13,6 +13,37 @@ the verdict. ✅ = OK · ⚠️ = OK with a caveat / fixed · ❌ = not usable.
 `tools/verify_attack.py` (3-sigma attack test) · analysis tables vs exports ·
 EDA plots (time series + PCA/t-SNE).
 
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #41 — Oct 18, 2026 · ~4:40 AM — CODE AUDIT: hardcoded / forced / fake values (firmware, analysis, verifier, tools)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `1ebd623` + uncommitted (one comment fix)
+> **Request:** "can you check if there is hardcoded in our code and forced or fake"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | all | - (code, not one capture) | firmware `child_node/`, `root_node/`, `components/mesh_common/`; `analysis/*.py`; `tools/*.py`; `run.ps1`, `run_wizard.ps1`, `run_gui.ps1`; plus a scan of `datasets/exports`, `datasets/analysis`, `datasets/run_logs` |
+
+| Check | Result | Detail |
+|---|---|---|
+| Fake / synthetic data | ✅ none in the data | `analysis/generate_fake_data.py` + `generate_eda_fake_data.py` are TEST generators: they write to `fake_data/` / `eda_fake_data/` (not `datasets/`) with names like `NODE_VICTIM01_RUN_001_telem.csv`; no such file or folder exists anywhere in `datasets/`; no `random` in preprocess / features / exposure / eda. ⚠️ minor: the generator stamps two REAL board MACs (`28:05:A5:32:D7:B4`, `1C:C3:AB:FA:54:98`) on its fake rows - only a risk if a fake file were renamed into `datasets/` |
+| Gap filling (made-up samples) | ✅ bounded + marked | linear interpolation / forward-fill of at most 2 samples (0.2 s, `MAX_INTERP_GAP_SAMPLES`), every filled point flagged `_was_missing`, a window needs ≥ 8 of 10 REAL samples (Section 4.2.4.1); `rssi_dbm == 0` (no parent) is treated as missing, not as a reading |
+| Labels (gt_label / phase) | ✅ from the hardware | set by the root's phase broadcasts (`phase_listener.c`), not by the analysis; `PHASE_*_S` lengths are READ from `mesh_config.h` (`mesh_config_int`) in preprocess + validate_integrity, not copied |
+| Firmware randomness | ✅ by design | only `esp_random()` in `root_main.c` for the **jitter** scenario (adds extra seconds to phases); nothing else simulated |
+| Forced verdicts | ✅ none | real 3-sigma test; protections against fake significance: MIN_EFFECT (≥ 0.10 change), ≥ 6 attack points, setup checks can turn CONFIRMED into SETUP INVALID; a verification-log ✅ can never clear a verifier REDO (`redo_list.py` severity = worst reason) |
+| Hardcoded per-run / per-board special cases | ✅ none | no MAC, run name, date or location is special-cased in `analysis/` or the verifier; no hand-written exclusion / "OK" lists; EDA/leakage exclusions are rule-based and printed with their reason |
+| Hardcoded MACs | ⚠️ 2 known | `BLACKHOLE_ATTACKER_MAC` in `mesh_config.h` = the wizard's per-laptop compiled fallback (boards can override in NVS; deliberately never pushed). `WORMHOLE_NODE_A_MAC` = DEAD constant (wired UART tunnel, A/B auto-switch) - unused, misleading only |
+| Hardcoded paths / COM ports | ✅ | only in comments and in the GUI self-test's pretend boards; self-test turns "save a run log" OFF (no fake logs in `datasets/run_logs`, checked) |
+| Dry run | ✅ | writes nothing (only prints WOULD …) |
+| Verifier thresholds (hand-picked) | ⚠️ not in the paper | `BASELINE_FLOOR` 0.90, `BASELINE_DISPERSION_CEILING` 0.15, `MIN_EFFECT`, `MIN_ATTACK_POINTS` 6, 5-window blocks, and **CONFIRMED = ≥ 1 primary passes**; a broken-baseline primary is EXCLUDED, not a FAIL → checklist **B-rules**. Stale code comment said the floor was 0.50 → corrected (comment only; value was raised 0.50→0.90 on purpose, ARCHIVE.md); `test_verify_attack.py` 21/21 OK |
+| START_ANYWAY (gate override) | ⚠️ invisible to the verifier | the root logs it only to serial (the run log), not to the SD CSVs → a forced-start run could be CONFIRMED with no flag. Scan of this laptop's `datasets/run_logs/`: 0 real uses (all 10 hits are help text). Runs without a saved run log cannot be checked → checklist **B-force** |
+
+**Verdict: ✅ NO FAKE OR FORCED DATA; ⚠️ 2 disclosure gaps.** Nothing fabricates, simulates or forces values into the dataset or the verdicts;
+gap-filling and labelling are bounded, marked and hardware-sourced. To fix before the paper: state the verifier's extra rules (B-rules) and
+make START_ANYWAY runs traceable (B-force - footnote, or add a run-log check to the verifier). Optional cleanup: delete the dead
+`WORMHOLE_NODE_A_MAC`, use made-up MACs in the fake-data generator.
+
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════════════════════════════════ -->
 
