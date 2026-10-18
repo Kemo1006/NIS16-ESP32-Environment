@@ -1,0 +1,90 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261014100217
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 20356
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\linear\G402\highload\blackhole-linear-g402-stationary-sept25_r1_oct14_1002AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] root - ROOT (announces the phases) on COM12 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 10:13 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+
+  ROSTER GATE: this root WAITS until all 7 children are in the mesh before Phase 0.
+  Every child must already be on its FINAL power (powerbank/charger) - a board moved
+  after this point cuts its own capture. The monitor prints 'WAITING: n/N' every 10 s;
+  if a child is truly gone, type START_ANYWAY + Enter there (the run is then SHORT).
+  .\run.ps1 -Port COM12 -Role root -Label root -Topology linear -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: root (on COM12, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM12 (topology=linear, attack=blackhole, scenario=highload, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_blackhole_linear_highload_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting root CSVs from COM12 in 5s. Press 'n' to skip.
+Exporting root CSVs from COM12 ...
+:0C:80  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (756470) MESH_SETUP:                          `-- [H07] CHILD      B4:BF:E9:34:ED:80
+I (756470) MESH_SETUP: --------------------------------------------------------------------------
+I (756480) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (756490) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (756500) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (BLACKHOLE)
+I (756510) MESH_SETUP:    20:50:0D:E7:1C:38  not in the attack path - above the attacker, will be UNAFFECTED
+I (756520) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (756530) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (756540) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (756550) MESH_SETUP:    B4:BF:E9:34:ED:80  VICTIM - its traffic transits the attacker
+I (756560) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (756570) MESH_SETUP: ==========================================================================
+I (759010) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=22  label=0  (0 failed sends)
+I (764560) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=23  label=0  (0 failed sends)
+I (770110) PHASE_LISTENER: [ROOT] Broadcast phase_id=4  seq=24  label=0  (0 failed sends)
+
+
+Monitor closed - exporting root CSVs from COM12 in 5s. Press 'n' to skip.
+Exporting root CSVs from COM12 ...
+-> EXPORT_LOGS ...
+   [####################] 100.0%  491 KB/491 KB  6710 rows  11 KB/s
+   saved 6709 data rows -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\linear\G402\highload\root_root_linear_blackhole_r1_oct14_
+1016AM_telem.csv
+-> EXPORT_ARRIVALS ...
+   [####################] 100.0%  1.4 MB/1.4 MB  14433 rows  11 KB/s                      ########--]  93.2%  1.3 MB/1.4 MB  13466 rows  11 KB/s  ETA 0
+   saved 14432 data rows -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\linear\G402\highload\root_root_linear_blackhole_r1_oct14
+_1018AM_arrivals.csv
+Done in 2m 54s. Files are in datasets\exports\.
+
+Export + analysis: 2m 54s total
+
+All 1 board(s) done in 16 min 23 sec.
+    root     16 min 23 sec   (root)
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\linear\G402\highload
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\blackhole\linear\G402\highload
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261014101840
+**********************

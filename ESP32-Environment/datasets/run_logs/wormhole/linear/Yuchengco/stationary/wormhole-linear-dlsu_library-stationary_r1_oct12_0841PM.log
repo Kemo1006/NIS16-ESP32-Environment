@@ -1,0 +1,88 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261012204143
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 12712
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\wormhole\linear\Yuchengco\stationary\wormhole-linear-dlsu_library-stationary_r1_oct12_0841PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] node1 - ROOT (announces the phases) on COM12 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 20:52 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+  .\run.ps1 -Port COM12 -Role root -Label node1 -Topology linear -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -Export -ExpectedChildren 0 -Mac b0:cb:d8:f3:32:18
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+e, 240MHz, VRef calibration
+in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take
+ a while)...
+Chip erase completed success
+fully in 4.1 seconds.
+Hard resetting via RTS pin..
+.
+Board: node1 (on COM12, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM12 (topology=linear, attack=wormhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_wormhole_linear_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Hard resetting via RTS pin...
+Done
+I (28629) MESH_SETUP: -----------------------------------------------------------------------
+I (28629) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+I (28649) MESH_SETUP:    ENTRY  B  F4:2D:C9:73:E6:18  H06  RSSI  -83  phase 0xFF UNSET      "Board-F4:18"
+I (28659) MESH_SETUP:    EXIT   A  20:50:0D:E7:0C:80  H07  RSSI  -45  phase 0xFF UNSET      "Board-20:80"
+I (28669) MESH_SETUP:    Normal copy : B E618 > B768 > FE90 > ED80 > 1C38 > D7B4 > ROOT  = 6 hop(s) over the mesh
+I (28679) MESH_SETUP:    Tunnel copy : B E618 =UART=> A 0C80 > ROOT  = wire + 7 hop(s)
+E (28689) MESH_SETUP:    Shortcut    : NONE - the tunnel copy travels 7 hop(s), B's normal copy 6
+I (28699) MESH_SETUP: -----------------------------------------------------------------------
+I (28699) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (28709) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+I (28719) MESH_SETUP:    28:05:A5:32:D7:B4  relays B's normal copy - honest, unaffected
+I (28729) MESH_SETUP:    B4:BF:E9:32:FE:90  relays B's normal copy - honest, unaffected
+I (28739) MESH_SETUP:    B4:BF:E9:34:ED:80  relays B's normal copy - honest, unaffected
+I (28749) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (28759) MESH_SETUP:    70:4B:CA:25:B7:68  relays B's normal copy - honest, unaffected
+I (28769) MESH_SETUP:    F4:2D:C9:73:E6:18  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+E (28779) MESH_SETUP:  !! WORMHOLE ENDS REVERSED: A (exit) is at H07, B (entry) at H06. The tunnelled copy would NOT be a shortcut - it arrives
+no faster than B's normal copy.
+E (28799) MESH_SETUP:     A must be CLOSER to the root than B. Auto-switch boards fix this themselves before Phase 0 when they hear each other o
+ver UART - if it persists, check the cable. Same depth: move one board. Pre-auto-switch firmware: reflash both.
+I (28819) MESH_SETUP: =======================================================================
+
+Monitor closed - exporting root CSVs from COM12 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on the board (COM12) - import it from its SD card later, or export with the command below.
+To export later:  python tools\export_logs.py --port COM12 --role root --topology linear --attack wormhole --repeat 1 --scenario stationary --location Yuchengco --label node1
+
+All 1 board(s) done in 1 min 08 sec.
+    node1    1 min 08 sec   (root)
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\wormhole\linear\Yuchengco\stationary
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\wormhole\linear\Yuchengco\stationary
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20261012204251
+**********************

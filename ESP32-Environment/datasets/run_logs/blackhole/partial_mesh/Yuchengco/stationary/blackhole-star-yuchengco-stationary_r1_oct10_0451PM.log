@@ -1,0 +1,59 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261010165153
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 7608
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\partial_mesh\Yuchengco\stationary\blackhole-star-yuchengco-stationary_r1_oct10_0451PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+A CHILD flashed before the root has nothing to join yet, so it will spam
+'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck.
+It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see
+'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on.
+
+=== [1/7] child_1 - blackhole ATTACKER on COM8 (MAC 20:50:0d:e7:1c:38) ===
+  .\run.ps1 -Port COM8 -Role child -Label child_1 -Topology partial -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack blackhole -BlackholeRole attacker -AttackerMac 20:50:0d:e7:0c:80 -Export -SkipExportNow -Mac 20:50:0d:e7:1c:38
+Setting COM8's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM8 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+  Attacker MAC for this build: 20:50:0d:e7:0c:80 (from the wizard, overrides mesh_config.h)
+Board: child_1 (on COM8, MAC 20:50:0d:e7:1c:38)
+Flashing + monitoring child on COM8 (topology=partial, attack=blackhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_partial_attacker_COM8). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM8) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM8 --role child --topology partial --attack blackhole --repeat 1 --scenario stationary --location Yuchengco --label child_1
+
+=== [2/7] child_2 - blackhole victim on COM11 (MAC 20:50:0d:e7:0c:80) ===
+  .\run.ps1 -Port COM11 -Role child -Label child_2 -Topology partial -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack blackhole -BlackholeRole victim -AttackerMac 20:50:0d:e7:0c:80 -Export -SkipExportNow -Mac 20:50:0d:e7:0c:80
+Setting COM11's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM11 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+  Attacker MAC for this build: 20:50:0d:e7:0c:80 (from the wizard, overrides mesh_config.h)
+Board: child_2 (on COM11, MAC 20:50:0d:e7:0c:80)
+Flashing + monitoring child on COM11 (topology=partial, attack=blackhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_partial_victim_COM11). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+PS>TerminatingError(): "The pipeline has been stopped."
+>> TerminatingError(): "The pipeline has been stopped."
+PS>TerminatingError(): "The pipeline has been stopped."
+**********************
+Windows PowerShell transcript end
+End time: 20261010165350
+**********************

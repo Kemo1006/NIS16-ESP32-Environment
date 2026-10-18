@@ -1,0 +1,52 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261007132101
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 8888
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\partial_mesh\DLSU_Library\stationary\tree-blackhole-stationary-dlsu_library_r1_oct07_0121PM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+A CHILD flashed before the root has nothing to join yet, so it will spam
+'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck.
+It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see
+'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on.
+
+=== [1/4] child_4 - blackhole victim on COM15 (MAC 70:4b:ca:25:b7:68) ===
+  .\run.ps1 -Port COM15 -Role child -Label child_4 -Topology partial -Location DLSU_Library -Repeat 1 -Scenario stationary -Wipe -Flash -Attack blackhole -BlackholeRole victim -AttackerMac 20:50:0d:e7:1c:38 -Export -SkipExportNow -Mac 70:4b:ca:25:b7:68
+Setting COM15's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM15 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+erase_flash didn't run (port busy? board unplugged?) -- falling back to serial DELETE_LOGS.
+
+  Attacker MAC for this build: 20:50:0d:e7:1c:38 (from the wizard, overrides mesh_config.h)
+Board: child_4 (on COM15, MAC 70:4b:ca:25:b7:68)
+Flashing + monitoring child on COM15 (topology=partial, attack=blackhole, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_partial_victim_COM15). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+
+
+Flash FAILED on COM15 (usually a USB serial glitch). Retrying once at 115200 baud ...
+
+
+Flash FAILED twice on COM15 - NOT exporting (the board has no firmware on it).
+Check: board plugged DIRECTLY into the laptop (no dock/hub), a short data cable, then re-run.
+
+FAILED: child_4 (blackhole victim) returned exit 1.
+Aborting - the remaining 3 board(s) were NOT run.
+**********************
+Windows PowerShell transcript end
+End time: 20261007132206
+**********************

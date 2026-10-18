@@ -1,0 +1,104 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260930115459
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 3900
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\linear\G402\burst\linear-blackhole-burst-g402_sept30_1154AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+A CHILD flashed before the root has nothing to join yet, so it will spam
+'[FIND] ... fail to find a network' for up to 60s - that is NORMAL, not stuck.
+It boots fine either way. Do not wait it out - press Ctrl+] as soon as you see
+'=== VICTIM NODE STARTING ===' (or the matching attack banner) and move on.
+
+=== [1/4] child_4 - blackhole victim on COM12 (MAC not read) ===
+  .\run.ps1 -Port COM12 -Role child -Label child_4 -Topology linear -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -BlackholeRole victim -Export
+Setting COM12's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM12 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_4 (on COM12)
+Flashing + monitoring child on COM12 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_linear_victim_COM12). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM12 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM12's SPIFFS.
+To export later:  python tools\export_logs.py --port COM12 --role child --topology linear --attack blackhole --repeat 1 --scenario burst --location G402 --label child_4
+
+=== [2/4] child_5 - blackhole victim on COM3 (MAC not read) ===
+  .\run.ps1 -Port COM3 -Role child -Label child_5 -Topology linear -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -BlackholeRole victim -Export
+Setting COM3's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_5 (on COM3)
+Flashing + monitoring child on COM3 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_linear_victim_COM3). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM3 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM3's SPIFFS.
+To export later:  python tools\export_logs.py --port COM3 --role child --topology linear --attack blackhole --repeat 1 --scenario burst --location G402 --label child_5
+
+=== [3/4] child_6 - blackhole victim on COM9 (MAC not read) ===
+  .\run.ps1 -Port COM9 -Role child -Label child_6 -Topology linear -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -BlackholeRole victim -Export
+Setting COM9's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM9 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_6 (on COM9)
+Flashing + monitoring child on COM9 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_linear_victim_COM9). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM9 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM9's SPIFFS.
+To export later:  python tools\export_logs.py --port COM9 --role child --topology linear --attack blackhole --repeat 1 --scenario burst --location G402 --label child_6
+
+=== [4/4] child_7 - blackhole victim on COM4 (MAC not read) ===
+  .\run.ps1 -Port COM4 -Role child -Label child_7 -Topology linear -Location G402 -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -BlackholeRole victim -Export
+Setting COM4's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM4 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: child_7 (on COM4)
+Flashing + monitoring child on COM4 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\child_node\build_child_blackhole_linear_victim_COM4). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+
+Monitor closed - exporting child CSVs from COM4 in 5s. Press 'n' to skip.
+Export skipped. Data is safe on COM4's SPIFFS.
+To export later:  python tools\export_logs.py --port COM4 --role child --topology linear --attack blackhole --repeat 1 --scenario burst --location G402 --label child_7
+
+All 4 board(s) done in 4 min 09 sec.
+    child_4  49 sec
+    child_5  43 sec
+    child_6  1 min 24 sec
+    child_7  1 min 13 sec
+  Exports  -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\exports\blackhole\linear\G402\burst
+  Analysis -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\analysis\blackhole\linear\G402\burst
+             (windowed_dataset.csv, feature_table.csv, eda_output\)
+
+Check the attack signature: in the root's *_arrivals.csv, each victim's
+src_mac should go silent during gt_label=1 rows and resume at cooldown.
+
+Graded run? Record it:  python tools\run_matrix.py --autorecord
+**********************
+Windows PowerShell transcript end
+End time: 20260930115908
+**********************

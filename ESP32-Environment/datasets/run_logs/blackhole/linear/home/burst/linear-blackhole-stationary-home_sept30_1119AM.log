@@ -1,0 +1,43 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260930111914
+Username: LAPTOP-O7JMND47\ongky
+RunAs User: LAPTOP-O7JMND47\ongky
+Configuration Name: 
+Machine: LAPTOP-O7JMND47 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -NoExit -File C:\Espressif/Initialize-Idf.ps1 -IdfId esp-idf-b6a194b5a91072dd391c1b6ce749efc8
+Process ID: 20848
+PSVersion: 5.1.26100.9444
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9444
+BuildVersion: 10.0.26100.9444
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+  Logging this run -> D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\linear\home\burst\linear-blackhole-stationary-home_sept30_1119AM.log
+
+Exit each monitor with Ctrl+]  -  NOT Ctrl+C (Ctrl+C kills this wizard too).
+
+=== [1/1] node1 - ROOT (announces the phases) on COM10 (MAC b0:cb:d8:f3:32:18) ===
+
+  This is the root: the experiment runs 11 min once the mesh forms.
+  Expected TERMINATE around 11:30 - set an alarm, nothing needs you until then.
+  Then come back and press Ctrl+] to auto-export.
+  .\run.ps1 -Port COM10 -Role root -Label node1 -Topology linear -Location home -Repeat 1 -Scenario burst -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 0 -Mac b0:cb:d8:f3:32:18
+Setting COM10's clock from this laptop (so captures get real dates) ...
+
+Full-erasing COM10 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+
+Board: node1 (on COM10, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM10 (topology=linear, attack=blackhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment_35ef1e88\root_node\build_root_blackhole_linear_burst_COM10). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+
+
+PS>TerminatingError(): "The pipeline has been stopped."
+>> TerminatingError(): "The pipeline has been stopped."
+PS>TerminatingError(): "The pipeline has been stopped."
+**********************
+Windows PowerShell transcript end
+End time: 20260930112157
+**********************
