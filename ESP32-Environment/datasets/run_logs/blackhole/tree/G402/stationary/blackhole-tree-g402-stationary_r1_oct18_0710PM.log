@@ -1,0 +1,2493 @@
+NIS16 Capture Studio run log - blackhole-tree-g402-stationary.json - 18/10/2026 7:10:35 pm
+Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\stationary\blackhole-tree-g402-stationary_r1_oct18_0710PM.log
+
+> root  -  ROOT  -  ROOT (announces the phases) on COM30   .\run.ps1 -Port COM30 -Role root -Label root -Topology tree -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack blackhole -Export -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18 -SharedBuild   (07:10:35 pm)
+Setting COM30's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-18 19:10:36 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM30 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM30
+Connecting......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 4.0 seconds.
+Hard resetting via RTS pin...
+Board: root (on COM30, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM30 (topology=tree, attack=blackhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_blackhole_tree_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Executing action: flash
+Running ninja in directory 'C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_blackhole_tree_GUI'
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_blackhole_tree_GUI\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_blackhole_tree_GUI/partition_table/partition-table.bin" "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_blackhole_tree_GUI/root_node.bin""
+root_node.bin binary size 0x1221e0 bytes. Smallest app partition is 0x180000 bytes. 0x5de20 bytes (24%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_blackhole_tree_GUI\bootloader\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_blackhole_tree_GUI/bootloader/bootloader.bin""
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D "WORKING_DIRECTORY=C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_blackhole_tree_GUI" -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM30 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 root_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM30
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00132fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16526...
+Writing at 0x00001000... (50 %)
+Writing at 0x00007569... (100 %)
+Wrote 26160 bytes (16526 compressed) at 0x00001000 in 0.5 seconds (effective 414.3 kbit/s)...
+Hash of data verified.
+Compressed 1188320 bytes to 741110...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001c0d2... (4 %)
+Writing at 0x00029b46... (6 %)
+Writing at 0x00035d0b... (8 %)
+Writing at 0x0003f1a7... (10 %)
+Writing at 0x00048848... (13 %)
+Writing at 0x0004e0b1... (15 %)
+Writing at 0x00054018... (17 %)
+Writing at 0x00059b5b... (19 %)
+Writing at 0x0005f5a4... (21 %)
+Writing at 0x00064e30... (23 %)
+Writing at 0x0006aa4f... (26 %)
+Writing at 0x0007085d... (28 %)
+Writing at 0x000766d4... (30 %)
+Writing at 0x0007c831... (32 %)
+Writing at 0x000827ef... (34 %)
+Writing at 0x00088574... (36 %)
+Writing at 0x0008e454... (39 %)
+Writing at 0x00093d4b... (41 %)
+Writing at 0x00099435... (43 %)
+Writing at 0x0009ebe3... (45 %)
+Writing at 0x000a41dc... (47 %)
+Writing at 0x000a9b8c... (50 %)
+Writing at 0x000af278... (52 %)
+Writing at 0x000b491d... (54 %)
+Writing at 0x000b9dd0... (56 %)
+Writing at 0x000bf863... (58 %)
+Writing at 0x000c5621... (60 %)
+Writing at 0x000cafe1... (63 %)
+Writing at 0x000d0799... (65 %)
+Writing at 0x000d6143... (67 %)
+Writing at 0x000dc0c9... (69 %)
+Writing at 0x000e193d... (71 %)
+Writing at 0x000e748f... (73 %)
+Writing at 0x000ed145... (76 %)
+Writing at 0x000f2afd... (78 %)
+Writing at 0x000f893b... (80 %)
+Writing at 0x000fe5c1... (82 %)
+Writing at 0x00103f89... (84 %)
+Writing at 0x0010a234... (86 %)
+Writing at 0x00112da9... (89 %)
+Writing at 0x00119844... (91 %)
+Writing at 0x0011f557... (93 %)
+Writing at 0x001256db... (95 %)
+Writing at 0x0012b30f... (97 %)
+Writing at 0x00130790... (100 %)
+Wrote 1188320 bytes (741110 compressed) at 0x00010000 in 17.6 seconds (effective 539.2 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1536.2 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2430.1 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM30 at 115200 baud
+I (190) esp_image: segment 3: paddr=00050020 vaddr=400d0020 size=d1734h (857908) map
+I (483) esp_image: segment 4: paddr=0012175c vaddr=4008aa5c size=10a38h ( 68152) load
+I (510) esp_image: segment 5: paddr=0013219c vaddr=50000000 size=00020h (    32) load
+I (523) boot: Loaded app from partition at offset 0x10000
+I (527) boot: Set actual ota_seq=1 in otadata[0]
+I (527) boot: Disabling RNG early entropy source...
+I (538) cpu_start: Multicore app
+I (547) cpu_start: GPIO 3 and 1 are used as console UART I/O pins
+I (547) cpu_start: Pro cpu start user code
+I (547) cpu_start: cpu freq: 160000000 Hz
+I (552) app_init: Application information:
+I (556) app_init: Project name:     root_node
+I (561) app_init: App version:      backup/angelo-2026-10-01-197-gf
+I (568) app_init: Compile time:     Oct 18 2026 18:47:46
+I (574) app_init: ELF file SHA256:  e7ac76c5d...
+I (580) app_init: ESP-IDF:          v5.5.4-dirty
+I (585) efuse_init: Min chip rev:     v0.0
+I (590) efuse_init: Max chip rev:     v3.99 
+I (595) efuse_init: Chip rev:         v3.1
+I (600) heap_init: Initializing. RAM available for dynamic allocation:
+I (607) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (613) heap_init: At 3FFBC7C0 len 00023840 (142 KiB): DRAM
+I (619) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (625) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (632) heap_init: At 4009B494 len 00004B6C (18 KiB): IRAM
+I (640) spi_flash: detected chip: generic
+I (643) spi_flash: flash io: dio
+I (648) main_task: Started on CPU0
+I (658) main_task: Calling app_main()
+I (658) ROOT_MAIN: === ROOT NODE STARTING ===
+I (658) SD_STATUS: clock seeded from build stamp 2026-10-18 18:47:46 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (668) SD_STATUS: Reset reason: POWERON
+I (678) sdspi_transaction: cmd=52, R1 response: command not supported
+I (718) sdspi_transaction: cmd=5, R1 response: command not supported
+I (748) SD_STATUS: clock: set from the card's host anchor -> 2026-10-18 19:10:36 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_B0CBD8F33218) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-18 19:10:36 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: blackhole
+  Build topology: tree
+  Firmware built: 2026-10-18 18:47:46
+  Run started: 2026-10-18 19:10:36 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_B0CBD8F33218 (MAC B0:CB:D8:F3:32:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 6
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 1
+I (1738) ROOT_MAIN: SD ENV: OK -- /sdcard/blackhole/tree/G402/status_NODE_B0CBD8F33218.txt
+I (1748) NODE_ID: Identity: "Board-B0:18" role=ROOT mac=b0:cb:d8:f3:32:18 (via MAC (no node_config.txt nickname))
+I (1788) wifi:wifi driver task: 3ffcbd20, prio:23, stack:6656, core=0
+I (1788) wifi:wifi firmware version: 0947e8b
+I (1788) wifi:wifi certification version: v7.0
+I (1788) wifi:config NVS flash: enabled
+I (1788) wifi:config nano formatting: disabled
+I (1798) wifi:Init data frame dynamic rx buffer num: 32
+I (1798) wifi:Init static rx mgmt buffer num: 5
+I (1808) wifi:Init management short buffer num: 32
+I (1808) wifi:Init dynamic tx buffer num: 32
+I (1808) wifi:Init static rx buffer size: 1600
+I (1818) wifi:Init static rx buffer num: 10
+I (1818) wifi:Init dynamic rx buffer num: 32
+I (1828) wifi_init: rx ba win: 6
+I (1828) wifi_init: accept mbox: 6
+I (1828) wifi_init: tcpip mbox: 32
+I (1838) wifi_init: udp mbox: 6
+I (1838) wifi_init: tcp mbox: 6
+I (1848) wifi_init: tcp tx win: 5760
+I (1848) wifi_init: tcp rx win: 5760
+I (1848) wifi_init: tcp mss: 1440
+I (1858) wifi_init: WiFi IRAM OP enabled
+I (1858) wifi_init: WiFi RX IRAM OP enabled
+I (1868) wifi:Set ps type: 0, coexist: 0
+I (1878) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1878) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1888) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1968) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1978) wifi:mode : sta (b0:cb:d8:f3:32:18) + softAP (b0:cb:d8:f3:32:19)
+I (1978) wifi:enable tsf
+I (1988) wifi:Total power save buffer number: 16
+I (1988) wifi:Init max length of beacon: 752/752
+I (1988) wifi:Init max length of beacon: 752/752
+I (1998) mesh: <nvs>read layer:0, err:0x1102
+I (1998) mesh: <nvs>read assoc:0, err:0x1102
+I (1998) MESH_SETUP: Topology shaping: TREE (max_layer=25, max_children=10)
+I (2008) wifi:Set ps type: 0, coexist: 0
+I (2008) mesh: [IO]disable self-organizing<stop reconnect>
+I (2018) mesh: [IO]disable self-organizing<reconnect>
+I (2018) mesh: [CONFIG]invalid router settings, ssid_len:0, ssid:, bssid:00:00:00:00:00:00
+I (2048) wifi:Total power save buffer number: 16
+I (2298) MESH_SETUP: Root mesh RX queue: 64 (default 32).
+I (2308) mesh: [MANUAL]designated as root and router is not set
+I (2308) MESH_SETUP: Mesh stack started.
+I (2308) MESH_SETUP: Mesh started. Node ID: NODE_B0CBD8F33218  Role: 0
+I (2938) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (2938) wifi:station: 20:50:0d:e7:1c:38 join, AID=1, bgn, 20
+I (2938) MESH_SETUP: Routing table updated (node added).
+I (2948) MESH_SETUP: ==============================
+I (2948) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2958) MESH_SETUP: ==============================
+I (2948) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (2968) wifi:station: b4:bf:e9:32:fe:90 join, AID=2, bgn, 20
+I (2978) MESH_SETUP: Child connected: aid=1 MAC=20:50:0d:e7:1c:38
+I (2978) MESH_SETUP: ==============================
+I (2988) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2988) MESH_SETUP: ==============================
+I (2998) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3008) MESH_SETUP: Mesh connected. Layer: 1  Root: NO
+I (3008) MESH_SETUP: Routing table updated (node added).
+I (3018) MESH_SETUP: ==============================
+I (3028) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (3028) MESH_SETUP: ==============================
+I (3038) MESH_SETUP: Child connected: aid=2 MAC=b4:bf:e9:32:fe:90
+I (3038) MESH_SETUP: ==============================
+I (3048) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (3048) MESH_SETUP: ==============================
+I (3038) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (3068) wifi:station: 20:50:0d:e7:0c:80 join, AID=3, bgn, 20
+I (3068) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3078) MESH_SETUP: Routing table updated (node added).
+I (3088) MESH_SETUP: ==============================
+I (3088) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (3098) MESH_SETUP: ==============================
+I (3098) MESH_SETUP: Child connected: aid=3 MAC=20:50:0d:e7:0c:80
+I (3108) MESH_SETUP: ==============================
+I (3108) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (3118) MESH_SETUP: ==============================
+I (3128) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3138) ROOT_MAIN: Node ID: NODE_B0CBD8F33218   Run ID: RUN_001
+I (3138) PHASE_LISTENER: Phase listener task running.
+I (3148) PHASE_LISTENER: Phase listener started.
+I (3148) MESH_SETUP: =================================================================
+I (3158) MESH_SETUP:  MESH TOPOLOGY
+I (3158) MESH_SETUP:  TYPE        : TREE
+I (3168) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (3168) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (3178) MESH_SETUP:  REACHABLE   : 0x01 (1)
+I (3178) MESH_SETUP:  STATUS      : OK
+I (3188) MESH_SETUP:  DETAIL      : 1 node(s), depth 1
+I (3188) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (3198) MESH_SETUP: -----------------------------------------------------------------
+I (3208) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (3218) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (3228) MESH_SETUP:  n/a = no parent link to measure (root)
+I (3228) MESH_SETUP: =================================================================
+W (3238) SPIFFS: mount failed, -10025. formatting...
+I (4168) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (4178) wifi:station: 70:4b:ca:25:b7:68 join, AID=4, bgn, 20
+I (4178) MESH_SETUP: Routing table updated (node added).
+I (4178) MESH_SETUP: ==============================
+I (4188) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (4188) MESH_SETUP: ==============================
+I (4198) MESH_SETUP: Child connected: aid=4 MAC=70:4b:ca:25:b7:68
+I (4208) MESH_SETUP: ==============================
+I (4208) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (4218) MESH_SETUP: ==============================
+I (4218) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (6258) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
+I (6258) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
+I (6438) CSV_LOGGER: Arrivals file:  /spiffs/arrivals.csv
+I (6638) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.
+I (6648) CSV_LOGGER: Logger ready. Role: root
+I (6648) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY
+===========You can ctrl + ] to export the data=========
+I (6688) CSV_LOGGER: CSV export task started on init (debug).
+I (6698) ROOT_MAIN: Logging to: /spiffs/telem.csv
+I (6698) ROOT_MAIN: Probe sink + heartbeat table registered (via phase-listener dispatch).
+I (6708) ROOT_MAIN: Telemetry task running at 100 ms interval.
+I (6718) MESH_SETUP: Heartbeat sender running at 7000 ms interval.
+I (6718) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...
+I (6728) ROOT_MAIN: [CTRL] Sending PREPARE every 5 s so children log the stabilisation window.
+I (6738) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.
+I (6818) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.
+I (6908) CSV_LOGGER: SD mirror: /sdcard/blackhole/tree/G402/root_NODE_B0CBD8F33218_r5_b6_telem.csv
+I (7018) MESH_SETUP: Routing table updated (node added).
+I (7018) MESH_SETUP: ==============================
+I (7018) MESH_SETUP:   MESH CONNECTED: 8 node(s)
+I (7028) MESH_SETUP: ==============================
+I (7048) CSV_LOGGER: SD mirror: /sdcard/blackhole/tree/G402/root_NODE_B0CBD8F33218_r5_b6_arrivals.csv
+I (7138) MESH_SETUP: ==================================================================
+I (7138) MESH_SETUP:  MESH TOPOLOGY
+I (7138) MESH_SETUP:  TYPE        : TREE
+I (7138) MESH_SETUP:  NODE COUNT  : 0x02 (2)
+I (7148) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (7148) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (7158) MESH_SETUP:  STATUS      : WARN
+I (7158) MESH_SETUP:  DETAIL      : 1 node(s), depth 1; 1 node(s) not attached to the root
+I (7168) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (7178) MESH_SETUP: ------------------------------------------------------------------
+I (7188) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (7198) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (7208) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD   -69  0xFF UNSET       0  not yet
+I (7208) MESH_SETUP:  n/a = no parent link to measure (root)
+I (7218) MESH_SETUP: ------------------------------------------------------------------
+I (7228) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (7238) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (7238) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (7248) MESH_SETUP: ------------------------------------------------------------------
+I (7258) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (7268) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (7278) MESH_SETUP: ==================================================================
+I (7888) MESH_SETUP: ==================================================================
+I (7888) MESH_SETUP:  MESH TOPOLOGY
+I (7888) MESH_SETUP:  TYPE        : TREE
+I (7888) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (7898) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (7898) MESH_SETUP:  REACHABLE   : 0x03 (3)
+I (7908) MESH_SETUP:  STATUS      : OK
+I (7908) MESH_SETUP:  DETAIL      : 3 node(s), depth 3
+I (7918) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (7928) MESH_SETUP: ------------------------------------------------------------------
+I (7928) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (7938) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       1  not yet
+I (7948) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD   -75  0xFF UNSET       0  not yet
+I (7958) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -69  0xFF UNSET       0  not yet
+I (7968) MESH_SETUP:  n/a = no parent link to measure (root)
+I (7978) MESH_SETUP: ------------------------------------------------------------------
+I (7978) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (7988) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (7998) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (8008) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (8008) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:0C:80  0x00
+I (8018) MESH_SETUP: ------------------------------------------------------------------
+I (8028) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (8038) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (8048) MESH_SETUP:  `-- [H01] CHILD  20:50:0D:E7:0C:80
+I (8048) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (8058) MESH_SETUP: ==================================================================
+I (10608) MESH_SETUP: ==================================================================
+I (10608) MESH_SETUP:  MESH TOPOLOGY
+I (10608) MESH_SETUP:  TYPE        : TREE
+I (10618) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (10618) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (10628) MESH_SETUP:  REACHABLE   : 0x03 (3)
+W (10628) MESH_SETUP:  STATUS      : WARN
+I (10638) MESH_SETUP:  DETAIL      : 3 node(s), depth 3; 1 node(s) not attached to the root
+I (10638) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10648) MESH_SETUP: ------------------------------------------------------------------
+I (10658) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10668) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       3  not yet
+I (10678) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD   -75  0xFF UNSET       2  not yet
+I (10688) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -69  0xFF UNSET       3  not yet
+I (10698) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -82  0xFF UNSET       0  not yet
+I (10698) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10708) MESH_SETUP: ------------------------------------------------------------------
+I (10718) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10728) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10728) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (10738) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (10748) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:0C:80  0x00
+I (10758) MESH_SETUP: ------------------------------------------------------------------
+I (10768) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10778) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (10778) MESH_SETUP:  `-- [H01] CHILD  20:50:0D:E7:0C:80
+I (10788) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (10798) MESH_SETUP: ==================================================================
+I (10928) MESH_SETUP: ==================================================================
+I (10928) MESH_SETUP:  MESH TOPOLOGY
+I (10928) MESH_SETUP:  TYPE        : TREE
+I (10938) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (10938) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (10948) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (10948) MESH_SETUP:  STATUS      : WARN
+I (10958) MESH_SETUP:  DETAIL      : 4 node(s), depth 3; 1 node(s) not attached to the root
+I (10958) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10968) MESH_SETUP: ------------------------------------------------------------------
+I (10978) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10988) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (10998) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD   -75  0xFF UNSET       3  not yet
+I (11008) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -81  0xFF UNSET       0  not yet
+I (11018) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -69  0xFF UNSET       3  not yet
+I (11028) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -82  0xFF UNSET       0  not yet
+I (11028) MESH_SETUP:  n/a = no parent link to measure (root)
+I (11038) MESH_SETUP: ------------------------------------------------------------------
+I (11048) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (11058) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (11058) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (11068) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (11078) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:0C:80  0x00
+I (11088) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (11098) MESH_SETUP: ------------------------------------------------------------------
+I (11098) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (11108) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (11118) MESH_SETUP:  +-- [H01] CHILD  20:50:0D:E7:0C:80
+I (11128) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (11128) MESH_SETUP:  `-- [H01] CHILD  70:4B:CA:25:B7:68
+I (11138) MESH_SETUP: ==================================================================
+I (11148) MESH_SETUP: ==================================================================
+I (11158) MESH_SETUP:  MESH TOPOLOGY
+I (11158) MESH_SETUP:  TYPE        : TREE
+I (11168) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (11168) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (11178) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (11178) MESH_SETUP:  STATUS      : WARN
+I (11178) MESH_SETUP:  DETAIL      : 5 node(s), depth 3; 1 node(s) not attached to the root
+I (11188) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (11198) MESH_SETUP: ------------------------------------------------------------------
+I (11208) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (11218) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (11228) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD   -75  0xFF UNSET       3  not yet
+I (11238) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -81  0xFF UNSET       0  not yet
+I (11248) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -62  0xFF UNSET       0  not yet
+I (11248) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -69  0xFF UNSET       4  not yet
+I (11258) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -82  0xFF UNSET       0  not yet
+I (11268) MESH_SETUP:  n/a = no parent link to measure (root)
+I (11278) MESH_SETUP: ------------------------------------------------------------------
+I (11288) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (11288) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (11298) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x03
+I (11308) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (11318) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:0C:80  0x00
+I (11328) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (11328) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x00
+I (11338) MESH_SETUP: ------------------------------------------------------------------
+I (11348) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (11358) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (11368) MESH_SETUP:  +-- [H01] CHILD  20:50:0D:E7:0C:80
+I (11368) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (11378) MESH_SETUP:  +-- [H01] CHILD  70:4B:CA:25:B7:68
+I (11378) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (11388) MESH_SETUP: ==================================================================
+I (11798) MESH_SETUP: ======================================================================
+I (11798) MESH_SETUP:  MESH TOPOLOGY
+I (11798) MESH_SETUP:  TYPE        : TREE
+I (11798) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (11808) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (11808) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (11818) MESH_SETUP:  STATUS      : OK
+I (11818) MESH_SETUP:  DETAIL      : 7 node(s), depth 3
+I (11828) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (11838) MESH_SETUP: ----------------------------------------------------------------------
+I (11848) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (11858) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       5  not yet
+I (11868) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -75  0xFF UNSET       3  not yet
+I (11868) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -59  0xFF UNSET       0  not yet
+I (11878) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -81  0xFF UNSET       0  not yet
+I (11888) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0xFF UNSET       0  not yet
+I (11898) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -69  0xFF UNSET       4  not yet
+I (11908) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       1  not yet
+I (11918) MESH_SETUP:  n/a = no parent link to measure (root)
+I (11928) MESH_SETUP: ----------------------------------------------------------------------
+I (11938) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (11938) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (11948) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (11958) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x01
+I (11968) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (11978) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (11978) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (11988) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (11998) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (12008) MESH_SETUP: ----------------------------------------------------------------------
+I (12018) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (12028) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (12028) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (12038) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (12048) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (12048) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (12058) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (12068) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (12078) MESH_SETUP: ----------------------------------------------------------------------
+I (12088) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (12088) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (12098) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (12108) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (12118) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (12128) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (12138) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (12148) MESH_SETUP:  (7 of 8 node(s) reported so far - verdict waits for the rest)
+I (12158) MESH_SETUP: ======================================================================
+I (13588) MESH_SETUP: ======================================================================
+I (13588) MESH_SETUP:  MESH TOPOLOGY
+I (13588) MESH_SETUP:  TYPE        : TREE
+I (13598) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (13598) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (13608) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (13608) MESH_SETUP:  STATUS      : OK
+I (13618) MESH_SETUP:  DETAIL      : 8 node(s), depth 3
+I (13618) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13628) MESH_SETUP: ----------------------------------------------------------------------
+I (13638) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (13648) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       6  not yet
+I (13658) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -75  0xFF UNSET       5  not yet
+I (13668) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -59  0xFF UNSET       1  not yet
+I (13668) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -81  0xFF UNSET       2  not yet
+I (13678) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0xFF UNSET       2  not yet
+I (13688) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET       0  not yet
+I (13698) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -69  0xFF UNSET       6  not yet
+I (13708) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       2  not yet
+I (13718) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13728) MESH_SETUP: ----------------------------------------------------------------------
+I (13738) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13738) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (13748) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (13758) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x02
+I (13768) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (13778) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (13778) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (13788) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (13798) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (13808) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (13818) MESH_SETUP: ----------------------------------------------------------------------
+I (13828) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13838) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (13838) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (13848) MESH_SETUP:  |   +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (13858) MESH_SETUP:  |   `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (13858) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (13868) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (13868) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (13888) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (13888) MESH_SETUP: ----------------------------------------------------------------------
+I (13898) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (13908) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (13918) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (13928) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (13938) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (13948) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (13958) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (13968) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (13978) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (13988) MESH_SETUP: ======================================================================
+I (27998) MESH_SETUP: ======================================================================
+I (27998) MESH_SETUP:  MESH TOPOLOGY
+I (27998) MESH_SETUP:  TYPE        : TREE
+I (28008) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (28008) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (28018) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (28018) MESH_SETUP:  STATUS      : OK
+I (28028) MESH_SETUP:  DETAIL      : 8 node(s), depth 3
+I (28028) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (28038) MESH_SETUP: ----------------------------------------------------------------------
+I (28048) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (28058) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (28068) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -82  0xFF UNSET       6  not yet
+I (28078) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0xFF UNSET       2  not yet
+I (28088) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -74  0xFF UNSET       3  not yet
+I (28098) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -59  0xFF UNSET       3  not yet
+I (28098) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET       0  not yet
+I (28108) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -69  0xFF UNSET       6  not yet
+I (28118) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -85  0xFF UNSET       3  not yet
+I (28128) MESH_SETUP:  n/a = no parent link to measure (root)
+I (28138) MESH_SETUP: ----------------------------------------------------------------------
+I (28148) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (28148) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (28158) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (28168) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x02
+I (28178) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (28188) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (28198) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (28198) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (28208) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (28218) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (28228) MESH_SETUP: ----------------------------------------------------------------------
+I (28238) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (28248) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (28248) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (28258) MESH_SETUP:  |   +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (28268) MESH_SETUP:  |   `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (28268) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (28278) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (28288) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (28298) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (28298) MESH_SETUP: ----------------------------------------------------------------------
+I (28308) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (28318) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (28328) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (28338) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (28348) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (28358) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (28368) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (28378) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (28388) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (28398) MESH_SETUP: ======================================================================
+W (41618) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 10 ms on average (slowest 137 ms) over the last 200 probes | Waiting-to-save line: longest 4 of 256, 0 lost so far | Mesh incoming buffer: longest 5 of 64 | Test phase: other
+I (42408) MESH_SETUP: ======================================================================
+I (42408) MESH_SETUP:  MESH TOPOLOGY
+I (42408) MESH_SETUP:  TYPE        : TREE
+I (42418) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (42418) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (42428) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (42428) MESH_SETUP:  STATUS      : OK
+I (42438) MESH_SETUP:  DETAIL      : 8 node(s), depth 3
+I (42438) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (42448) MESH_SETUP: ----------------------------------------------------------------------
+I (42458) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (42468) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (42478) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -80  0xFF UNSET       6  not yet
+I (42488) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -64  0xFF UNSET       2  not yet
+I (42498) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0xFF UNSET       3  not yet
+I (42508) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -58  0xFF UNSET       3  not yet
+I (42518) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD       -65  0xFF UNSET       0  not yet
+I (42518) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -69  0xFF UNSET       6  not yet
+I (42528) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       1  not yet
+I (42538) MESH_SETUP:  n/a = no parent link to measure (root)
+I (42548) MESH_SETUP: ----------------------------------------------------------------------
+I (42558) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (42568) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (42568) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (42578) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x02
+I (42588) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (42598) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (42608) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (42618) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (42618) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (42628) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (42638) MESH_SETUP: ----------------------------------------------------------------------
+I (42648) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (42658) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (42658) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (42668) MESH_SETUP:  |   +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (42678) MESH_SETUP:  |   `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (42678) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (42688) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (42698) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (42708) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (42718) MESH_SETUP: ----------------------------------------------------------------------
+I (42718) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (42728) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (42738) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (42748) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (42758) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (42768) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (42778) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (42788) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (42798) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (42808) MESH_SETUP: ======================================================================
+I (56818) MESH_SETUP: ======================================================================
+I (56818) MESH_SETUP:  MESH TOPOLOGY
+I (56818) MESH_SETUP:  TYPE        : TREE
+I (56828) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (56828) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (56838) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (56838) MESH_SETUP:  STATUS      : OK
+I (56848) MESH_SETUP:  DETAIL      : 8 node(s), depth 3
+I (56848) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (56858) MESH_SETUP: ----------------------------------------------------------------------
+I (56868) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (56878) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (56888) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -86  0xFF UNSET       6  not yet
+I (56898) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0xFF UNSET       2  not yet
+I (56908) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -74  0xFF UNSET       3  not yet
+I (56918) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -59  0xFF UNSET       3  not yet
+I (56928) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET       1  not yet
+I (56938) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -69  0xFF UNSET       6  not yet
+I (56938) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -86  0xFF UNSET       2  not yet
+I (56948) MESH_SETUP:  n/a = no parent link to measure (root)
+I (56958) MESH_SETUP: ----------------------------------------------------------------------
+I (56968) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (56978) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (56978) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (56988) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x02
+I (56998) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (57008) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (57018) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (57028) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (57028) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (57038) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (57048) MESH_SETUP: ----------------------------------------------------------------------
+I (57058) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (57068) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (57078) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (57078) MESH_SETUP:  |   +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (57088) MESH_SETUP:  |   `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (57098) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (57098) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (57108) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (57118) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (57128) MESH_SETUP: ----------------------------------------------------------------------
+I (57128) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (57138) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (57148) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (57158) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (57168) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (57178) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (57188) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (57198) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (57208) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (57218) MESH_SETUP: ======================================================================
+I (66738) ROOT_MAIN: ════════════════════ WAITING FOR ALL CHILDREN ════════════════════  @ 19:11:41 PHT
+I (71228) MESH_SETUP: ======================================================================
+I (71228) MESH_SETUP:  MESH TOPOLOGY
+I (71238) MESH_SETUP:  TYPE        : TREE
+I (71238) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (71238) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (71248) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (71248) MESH_SETUP:  STATUS      : OK
+I (71258) MESH_SETUP:  DETAIL      : 8 node(s), depth 3
+I (71268) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (71268) MESH_SETUP: ----------------------------------------------------------------------
+I (71278) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (71288) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (71298) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD       -84  0xFF UNSET       7  not yet
+I (71308) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       3  not yet
+I (71318) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -84  0xFF UNSET       4  not yet
+I (71328) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -64  0xFF UNSET       4  not yet
+I (71338) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET       1  not yet
+I (71348) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -68  0xFF UNSET       6  not yet
+I (71358) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -89  0xFF UNSET       2  not yet
+I (71358) MESH_SETUP:  n/a = no parent link to measure (root)
+I (71368) MESH_SETUP: ----------------------------------------------------------------------
+I (71378) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (71388) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (71388) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x04
+I (71398) MESH_SETUP:  H01   20:50:0D:E7:0C:80  CHILD      B0:CB:D8:F3:32:18  0x02
+I (71408) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (71418) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (71428) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (71438) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (71438) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (71448) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (71458) MESH_SETUP: ----------------------------------------------------------------------
+I (71468) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (71478) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (71488) MESH_SETUP:  +-- [H01] CHILD      20:50:0D:E7:0C:80
+I (71488) MESH_SETUP:  |   +-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (71498) MESH_SETUP:  |   `-- [H02] CHILD      28:05:A5:32:D7:B4
+I (71508) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (71508) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (71518) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (71528) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (71538) MESH_SETUP: ----------------------------------------------------------------------
+I (71548) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (71548) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (71558) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (71568) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (71578) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (71588) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (71598) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (71608) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (71618) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (71628) MESH_SETUP: ======================================================================
+I (82988) wifi:station: 20:50:0d:e7:0c:80 leave, AID = 3, reason = 8, bss_flags is 33721443, bss:0x3ffdf5c4
+I (82988) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (82998) MESH_SETUP: Child disconnected: aid=3 MAC=20:50:0d:e7:0c:80
+I (82998) MESH_SETUP: ==============================
+I (83008) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (83008) MESH_SETUP: ==============================
+W (83018) MESH_SETUP: Node OFFLINE (child-disconnected event) — 20:50:0d:e7:0c:80
+I (83028) MESH_SETUP: Routing table shrunk (node removed).
+I (83028) MESH_SETUP: ======================================================================
+I (83028) MESH_SETUP: ==============================
+I (83038) MESH_SETUP:  MESH TOPOLOGY
+I (83048) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (83048) MESH_SETUP:  TYPE        : TREE
+I (83058) MESH_SETUP: ==============================
+I (83058) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (83068) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (83078) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (83078) MESH_SETUP:  STATUS      : WARN
+I (83088) MESH_SETUP:  DETAIL      : 5 node(s), depth 3; 2 node(s) not attached to the root
+I (83098) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (83098) MESH_SETUP: ----------------------------------------------------------------------
+I (83108) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (83118) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       4  not yet
+I (83128) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       0  not yet
+I (83138) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -86  0xFF UNSET       0  not yet
+I (83148) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -64  0xFF UNSET       0  not yet
+I (83158) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       0  not yet
+I (83168) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET      13  not yet
+I (83178) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD       -68  0xFF UNSET      18  not yet
+I (83188) MESH_SETUP:  n/a = no parent link to measure (root)
+I (83188) MESH_SETUP: ----------------------------------------------------------------------
+I (83198) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (83208) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (83218) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (83218) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (83228) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (83238) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (83248) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (83258) MESH_SETUP: ----------------------------------------------------------------------
+I (83268) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (83278) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (83278) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (83288) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (83298) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (83308) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (83308) MESH_SETUP: ----------------------------------------------------------------------
+I (83318) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (83328) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (83338) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (83348) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (83358) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (83368) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (83378) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (83388) MESH_SETUP:  1 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (83398) MESH_SETUP: ======================================================================
+I (83408) MESH_SETUP: ======================================================================
+I (83418) MESH_SETUP:  MESH TOPOLOGY
+I (83418) MESH_SETUP:  TYPE        : TREE
+I (83418) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (83428) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (83428) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (83438) MESH_SETUP:  STATUS      : WARN
+I (83438) MESH_SETUP:  DETAIL      : 5 node(s), depth 3; 2 node(s) not attached to the root
+I (83448) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (83458) MESH_SETUP: ----------------------------------------------------------------------
+I (83468) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (83478) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       4  not yet
+I (83488) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       0  not yet
+I (83498) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -86  0xFF UNSET       0  not yet
+I (83508) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -64  0xFF UNSET       0  not yet
+I (83518) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       0  not yet
+I (83518) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET      13  not yet
+I (83528) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD       -68  0xFF UNSET      19  not yet
+I (83538) MESH_SETUP:  n/a = no parent link to measure (root)
+I (83548) MESH_SETUP: ----------------------------------------------------------------------
+I (83558) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (83568) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (83568) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (83578) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (83588) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x00
+I (83598) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (83608) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (83608) MESH_SETUP: ----------------------------------------------------------------------
+I (83618) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (83628) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (83638) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (83648) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (83648) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (83658) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (83668) MESH_SETUP: ----------------------------------------------------------------------
+I (83678) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (83688) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (83698) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (83708) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (83718) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (83728) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (83738) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (83738) MESH_SETUP:  1 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (83748) MESH_SETUP: ======================================================================
+I (83908) MESH_SETUP: Routing table updated (node added).
+I (83908) MESH_SETUP: ==============================
+I (83908) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (83918) MESH_SETUP: ==============================
+I (84598) MESH_SETUP: ======================================================================
+I (84608) MESH_SETUP:  MESH TOPOLOGY
+I (84608) MESH_SETUP:  TYPE        : TREE
+I (84608) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (84618) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (84618) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (84628) MESH_SETUP:  STATUS      : OK
+I (84628) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (84638) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (84648) MESH_SETUP: ----------------------------------------------------------------------
+I (84648) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (84658) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       5  not yet
+I (84668) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       1  not yet
+I (84678) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -86  0xFF UNSET       1  not yet
+I (84688) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -64  0xFF UNSET       1  not yet
+I (84698) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -72  0xFF UNSET       0  not yet
+I (84708) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -82  0xFF UNSET       0  not yet
+I (84718) MESH_SETUP:  H03*  28:05:A5:32:D7:B4  CHILD       -63  0xFF UNSET       0  not yet
+I (84728) MESH_SETUP:  H03*  B4:BF:E9:34:ED:80  CHILD       -68  0xFF UNSET      20  not yet
+I (84738) MESH_SETUP:  * node's own stack reports a different depth (re-parenting)
+I (84738) MESH_SETUP:  n/a = no parent link to measure (root)
+I (84748) MESH_SETUP: ----------------------------------------------------------------------
+I (84758) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (84768) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (84778) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (84778) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (84788) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x01
+I (84798) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (84808) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD      20:50:0D:E7:0C:80  0x00
+I (84818) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      20:50:0D:E7:0C:80  0x00
+I (84828) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (84828) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x00
+I (84838) MESH_SETUP: ----------------------------------------------------------------------
+I (84848) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (84858) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (84868) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (84868) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (84878) MESH_SETUP:  |   `-- [H02] CHILD      20:50:0D:E7:0C:80
+I (84888) MESH_SETUP:  |       +-- [H03] CHILD      B4:BF:E9:34:ED:80
+I (84888) MESH_SETUP:  |       `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (84898) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (84908) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (84918) MESH_SETUP: ----------------------------------------------------------------------
+I (84928) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (84938) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (84948) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (84958) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (84958) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (84968) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (84988) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (84988) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (84998) MESH_SETUP:  1 victim(s), 5 bystander(s). Only the victims can show the attack; report PDR per node.
+I (85008) MESH_SETUP: ======================================================================
+I (85708) MESH_SETUP: Routing table updated (node added).
+I (85718) MESH_SETUP: ==============================
+I (85718) MESH_SETUP:   MESH CONNECTED: 7 node(s)
+I (85718) MESH_SETUP: ==============================
+W (88018) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (10 s). Phase 0 will NOT start until all have joined.
+W (88018) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (88708) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 24 ms) over the last 200 probes | Waiting-to-save line: longest 2 of 256, 0 lost so far | Mesh incoming buffer: longest 2 of 64 | Test phase: other
+W (90918) MESH_SETUP: Node OFFLINE — no heartbeat for 26 s: b4:bf:e9:34:ed:80
+I (90918) MESH_SETUP: ======================================================================
+I (90928) MESH_SETUP:  MESH TOPOLOGY
+I (90928) MESH_SETUP:  TYPE        : TREE
+I (90938) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (90938) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (90948) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (90948) MESH_SETUP:  STATUS      : OK
+I (90958) MESH_SETUP:  DETAIL      : 7 node(s), depth 4
+I (90958) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (90968) MESH_SETUP: ----------------------------------------------------------------------
+I (90978) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (90988) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       5  not yet
+I (90998) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -70  0xFF UNSET       1  not yet
+I (91008) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -82  0xFF UNSET       1  not yet
+I (91008) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -63  0xFF UNSET       1  not yet
+I (91018) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -72  0xFF UNSET       6  not yet
+I (91028) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -85  0xFF UNSET       0  not yet
+I (91038) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0xFF UNSET       0  not yet
+I (91048) MESH_SETUP:  n/a = no parent link to measure (root)
+I (91058) MESH_SETUP: ----------------------------------------------------------------------
+I (91068) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (91068) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (91078) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (91088) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (91098) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x01
+I (91108) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (91118) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (91118) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (91128) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (91138) MESH_SETUP: ----------------------------------------------------------------------
+I (91148) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (91158) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (91158) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (91168) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (91178) MESH_SETUP:  |   `-- [H02] CHILD      20:50:0D:E7:0C:80
+I (91178) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (91198) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (91198) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (91208) MESH_SETUP: ----------------------------------------------------------------------
+I (91218) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (91228) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (91238) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (91248) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (91248) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (91258) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (91268) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (91278) MESH_SETUP:  2 victim(s), 3 bystander(s). Only the victims can show the attack; report PDR per node.
+I (91288) MESH_SETUP: ======================================================================
+W (98308) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (20 s). Phase 0 will NOT start until all have joined.
+W (98308) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (106648) MESH_SETUP: ======================================================================
+I (106648) MESH_SETUP:  MESH TOPOLOGY
+I (106648) MESH_SETUP:  TYPE        : TREE
+I (106648) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (106658) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (106658) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (106668) MESH_SETUP:  STATUS      : OK
+I (106668) MESH_SETUP:  DETAIL      : 7 node(s), depth 4
+I (106678) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (106688) MESH_SETUP: ----------------------------------------------------------------------
+I (106698) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (106708) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (106708) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       2  not yet
+I (106718) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -77  0xFF UNSET       2  not yet
+I (106728) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0xFF UNSET       2  not yet
+I (106738) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -72  0xFF UNSET       0  not yet
+I (106748) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -86  0xFF UNSET       1  not yet
+I (106758) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0xFF UNSET       0  not yet
+I (106768) MESH_SETUP:  n/a = no parent link to measure (root)
+I (106778) MESH_SETUP: ----------------------------------------------------------------------
+I (106788) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (106788) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (106798) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (106808) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (106818) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x01
+I (106828) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (106828) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (106838) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (106848) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (106858) MESH_SETUP: ----------------------------------------------------------------------
+I (106868) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (106868) MESH_SETUP: Routing table updated (node added).
+I (106878) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (106878) MESH_SETUP: ==============================
+I (106888) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (106898) MESH_SETUP:   MESH CONNECTED: 8 node(s)
+I (106898) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (106908) MESH_SETUP: ==============================
+I (106908) MESH_SETUP:  |   `-- [H02] CHILD      20:50:0D:E7:0C:80
+I (106928) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (106938) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (106948) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (106948) MESH_SETUP: ----------------------------------------------------------------------
+I (106958) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (106968) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (106978) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (106988) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (106998) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (107008) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (107018) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (107018) MESH_SETUP:  (7 of 8 node(s) reported so far - verdict waits for the rest)
+I (107028) MESH_SETUP: ======================================================================
+I (108318) MESH_SETUP: ======================================================================
+I (108318) MESH_SETUP:  MESH TOPOLOGY
+I (108328) MESH_SETUP:  TYPE        : TREE
+I (108328) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (108338) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (108338) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (108348) MESH_SETUP:  STATUS      : OK
+I (108348) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (108358) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (108368) MESH_SETUP: ----------------------------------------------------------------------
+I (108368) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (108378) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       1  not yet
+I (108388) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       4  not yet
+I (108398) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -77  0xFF UNSET       4  not yet
+I (108408) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0xFF UNSET       4  not yet
+I (108418) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -72  0xFF UNSET       2  not yet
+I (108428) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -72  0xFF UNSET       0  not yet
+I (108438) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -86  0xFF UNSET       3  not yet
+I (108448) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0xFF UNSET       2  not yet
+I (108458) MESH_SETUP:  n/a = no parent link to measure (root)
+I (108458) MESH_SETUP: ----------------------------------------------------------------------
+I (108468) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (108478) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (108488) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (108498) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (108508) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (108508) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (108518) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (108528) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (108538) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (108548) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (108558) MESH_SETUP: ----------------------------------------------------------------------
+I (108558) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (108568) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (108578) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (108588) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (108588) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (108598) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (108608) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (108618) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (108628) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (108628) MESH_SETUP: ----------------------------------------------------------------------
+I (108638) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (108648) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (108658) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (108668) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (108678) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (108688) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (108698) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (108708) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (108718) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (108728) MESH_SETUP: ======================================================================
+I (120788) ROOT_MAIN: [CTRL] All 7 children in the mesh after 42 s - starting the run.
+I (120788) ROOT_MAIN: ════════════════════ READY - TYPE  START  TO BEGIN PHASE 0 ════════════════════  @ 19:12:36 PHT
+W (120798) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+  you sent: START
+I (128048) MESH_SETUP: ======================================================================
+I (128048) MESH_SETUP:  MESH TOPOLOGY
+I (128048) MESH_SETUP:  TYPE        : TREE
+I (128048) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (128058) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (128058) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (128068) MESH_SETUP:  STATUS      : OK
+I (128068) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (128078) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (128088) MESH_SETUP: ----------------------------------------------------------------------
+I (128098) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE       AGE(s)  EXPORT
+I (128108) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0xFF UNSET       0  not yet
+I (128118) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0xFF UNSET       3  not yet
+I (128118) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -85  0xFF UNSET       3  not yet
+I (128128) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -61  0xFF UNSET       3  not yet
+I (128138) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -83  0xFF UNSET       1  not yet
+I (128148) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0xFF UNSET       5  not yet
+I (128158) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -84  0xFF UNSET       2  not yet
+I (128168) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0xFF UNSET       2  not yet
+I (128178) MESH_SETUP:  n/a = no parent link to measure (root)
+I (128188) MESH_SETUP: ----------------------------------------------------------------------
+I (128198) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (128198) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (128208) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (128218) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (128228) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (128238) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (128238) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (128248) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (128258) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (128268) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (128278) MESH_SETUP: ----------------------------------------------------------------------
+I (128288) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (128298) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (128298) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (128308) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (128318) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (128318) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (128328) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (128338) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (128348) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (128348) MESH_SETUP: ----------------------------------------------------------------------
+I (128358) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (128368) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (128378) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (128388) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (128398) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (128408) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (128418) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (128428) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (128438) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (128448) MESH_SETUP: ======================================================================
+W (132588) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 32 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: other
+[monitor] sent: START
+START:OK
+I (133868) ROOT_MAIN: [CTRL] START received after 13 s - starting the run.
+I (133868) ROOT_MAIN: [CTRL] Probe de-dup table cleared for the run.
+I (133868) ROOT_MAIN: ════════════════════ PHASE 0 — BASELINE ════════════════════  @ 19:12:49 PHT
+I (133888) ROOT_MAIN: [CTRL] Phase 0 start: 7/7 children in the mesh.
+I (133888) ROOT_MAIN: [CTRL] Starting PHASE 0 — Baseline (300 s)
+I (133898) PHASE_LISTENER: Phase update → phase_id=0  gt_label=0  seq=25  root_ts=133264593 us
+I (134478) PHASE_LISTENER: [ROOT] Broadcast phase_id=0  seq=25  label=0  (0 failed sends)
+Stabilise (phase 255) lasted 2:07 - from the root's first PREPARE to START (60 s fixed + the wait for you).
+I (142458) MESH_SETUP: =========================================================================
+I (142458) MESH_SETUP:  MESH TOPOLOGY
+I (142458) MESH_SETUP:  TYPE        : TREE
+I (142468) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (142468) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (142478) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (142478) MESH_SETUP:  STATUS      : OK
+I (142488) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (142488) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (142498) MESH_SETUP: -------------------------------------------------------------------------
+I (142508) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (142518) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (142528) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -70  0x00 BASELINE       3  not yet
+I (142538) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -78  0x00 BASELINE       3  not yet
+I (142548) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -65  0x00 BASELINE       3  not yet
+I (142558) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -79  0x00 BASELINE       1  not yet
+I (142568) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       6  not yet
+I (142578) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -85  0x00 BASELINE       1  not yet
+I (142588) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       1  not yet
+I (142598) MESH_SETUP:  n/a = no parent link to measure (root)
+I (142598) MESH_SETUP: -------------------------------------------------------------------------
+I (142608) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (142618) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (142628) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (142638) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (142638) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (142648) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (142658) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (142668) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (142678) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (142688) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (142688) MESH_SETUP: -------------------------------------------------------------------------
+I (142698) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (142708) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (142718) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (142728) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (142728) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (142738) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (142748) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (142758) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (142758) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (142768) MESH_SETUP: -------------------------------------------------------------------------
+I (142778) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (142788) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (142798) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (142808) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (142818) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (142828) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (142838) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (142838) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (142858) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (142868) MESH_SETUP: =========================================================================
+I (156878) MESH_SETUP: =========================================================================
+I (156878) MESH_SETUP:  MESH TOPOLOGY
+I (156878) MESH_SETUP:  TYPE        : TREE
+I (156888) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (156888) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (156898) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (156898) MESH_SETUP:  STATUS      : OK
+I (156908) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (156908) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (156918) MESH_SETUP: -------------------------------------------------------------------------
+I (156928) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (156938) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (156948) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       3  not yet
+I (156958) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -85  0x00 BASELINE       4  not yet
+I (156968) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       4  not yet
+I (156978) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -79  0x00 BASELINE       2  not yet
+I (156988) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -76  0x00 BASELINE       6  not yet
+I (156998) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -87  0x00 BASELINE       1  not yet
+I (156998) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       2  not yet
+I (157008) MESH_SETUP:  n/a = no parent link to measure (root)
+I (157018) MESH_SETUP: -------------------------------------------------------------------------
+I (157028) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (157038) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (157048) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (157048) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (157058) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (157068) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (157078) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (157088) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (157098) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (157098) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (157108) MESH_SETUP: -------------------------------------------------------------------------
+I (157118) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (157128) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (157138) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (157138) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (157148) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (157158) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (157158) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (157178) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (157178) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (157188) MESH_SETUP: -------------------------------------------------------------------------
+I (157198) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (157208) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (157218) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (157228) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (157228) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (157248) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (157258) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (157258) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (157268) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (157278) MESH_SETUP: =========================================================================
+����������������������������������������������������������������STALL] Saving one probe to storage took 8 ms on average (slowest 47 ms) over the last 200 probes | Waiting-to-save line: longest 2 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (171298) MESH_SETUP: =========================================================================
+I (171298) MESH_SETUP:  MESH TOPOLOGY
+I (171298) MESH_SETUP:  TYPE        : TREE
+I (171298) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (171308) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (171308) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (171318) MESH_SETUP:  STATUS      : OK
+I (171318) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (171328) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (171338) MESH_SETUP: -------------------------------------------------------------------------
+I (171348) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (171358) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (171368) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0x00 BASELINE       4  not yet
+I (171378) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -74  0x00 BASELINE       4  not yet
+I (171378) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       4  not yet
+I (171388) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -79  0x00 BASELINE       2  not yet
+I (171398) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -75  0x00 BASELINE       6  not yet
+I (171408) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -88  0x00 BASELINE       2  not yet
+I (171418) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       3  not yet
+I (171428) MESH_SETUP:  n/a = no parent link to measure (root)
+I (171438) MESH_SETUP: -------------------------------------------------------------------------
+I (171448) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (171458) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (171458) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (171468) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (171478) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (171488) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (171498) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (171498) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (171508) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (171518) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (171528) MESH_SETUP: -------------------------------------------------------------------------
+I (171538) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (171548) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (171558) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (171558) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (171568) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (171578) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (171578) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (171588) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (171598) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (171608) MESH_SETUP: -------------------------------------------------------------------------
+I (171618) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (171618) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (171638) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (171638) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (171648) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (171658) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (171668) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (171678) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (171688) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (171698) MESH_SETUP: =========================================================================
+I (185708) MESH_SETUP: =========================================================================
+I (185708) MESH_SETUP:  MESH TOPOLOGY
+I (185718) MESH_SETUP:  TYPE        : TREE
+I (185718) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (185728) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (185728) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (185738) MESH_SETUP:  STATUS      : OK
+I (185738) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (185748) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (185758) MESH_SETUP: -------------------------------------------------------------------------
+I (185768) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (185778) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (185778) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0x00 BASELINE       4  not yet
+I (185788) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -82  0x00 BASELINE       4  not yet
+I (185798) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -59  0x00 BASELINE       4  not yet
+I (185808) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -77  0x00 BASELINE       2  not yet
+I (185818) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -74  0x00 BASELINE       0  not yet
+I (185828) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -90  0x00 BASELINE       2  not yet
+I (185838) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       3  not yet
+I (185848) MESH_SETUP:  n/a = no parent link to measure (root)
+I (185858) MESH_SETUP: -------------------------------------------------------------------------
+I (185868) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (185868) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (185878) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (185888) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (185898) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (185908) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (185918) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (185918) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (185928) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (185938) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (185948) MESH_SETUP: -------------------------------------------------------------------------
+I (185958) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (185968) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (185968) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (185978) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (185988) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (185988) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (185998) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (186008) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (186018) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (186028) MESH_SETUP: -------------------------------------------------------------------------
+I (186038) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (186038) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (186048) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (186058) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (186068) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (186078) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (186088) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (186098) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (186108) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (186118) MESH_SETUP: =========================================================================
+I (200128) MESH_SETUP: =========================================================================
+I (200128) MESH_SETUP:  MESH TOPOLOGY
+I (200138) MESH_SETUP:  TYPE        : TREE
+I (200138) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (200148) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (200148) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (200158) MESH_SETUP:  STATUS      : OK
+I (200158) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (200168) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (200168) MESH_SETUP: -------------------------------------------------------------------------
+I (200178) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (200188) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (200198) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0x00 BASELINE       5  not yet
+I (200208) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -70  0x00 BASELINE       5  not yet
+I (200218) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       5  not yet
+I (200228) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       2  not yet
+I (200238) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       0  not yet
+I (200248) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -87  0x00 BASELINE       2  not yet
+I (200258) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       3  not yet
+I (200268) MESH_SETUP:  n/a = no parent link to measure (root)
+I (200278) MESH_SETUP: -------------------------------------------------------------------------
+I (200288) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (200288) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (200298) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (200308) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (200318) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (200328) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (200328) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (200338) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (200348) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (200358) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (200368) MESH_SETUP: -------------------------------------------------------------------------
+I (200378) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (200388) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (200388) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (200398) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (200408) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (200408) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (200418) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (200428) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (200438) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (200438) MESH_SETUP: -------------------------------------------------------------------------
+I (200448) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (200458) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (200468) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (200478) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (200488) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (200498) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (200508) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (200518) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (200528) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (200538) MESH_SETUP: =========================================================================
+W (201008) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 43 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (214548) MESH_SETUP: =========================================================================
+I (214548) MESH_SETUP:  MESH TOPOLOGY
+I (214548) MESH_SETUP:  TYPE        : TREE
+I (214558) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (214558) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (214568) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (214568) MESH_SETUP:  STATUS      : OK
+I (214578) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (214578) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (214588) MESH_SETUP: -------------------------------------------------------------------------
+I (214598) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (214608) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (214618) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -71  0x00 BASELINE       5  not yet
+I (214628) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -83  0x00 BASELINE       5  not yet
+I (214638) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0x00 BASELINE       5  not yet
+I (214648) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -78  0x00 BASELINE       2  not yet
+I (214658) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       1  not yet
+I (214668) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -87  0x00 BASELINE       1  not yet
+I (214678) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       3  not yet
+I (214688) MESH_SETUP:  n/a = no parent link to measure (root)
+I (214688) MESH_SETUP: -------------------------------------------------------------------------
+I (214698) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (214708) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (214718) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (214728) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (214728) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (214738) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (214748) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (214758) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (214768) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (214778) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (214778) MESH_SETUP: -------------------------------------------------------------------------
+I (214788) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (214798) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (214808) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (214818) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (214818) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (214828) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (214838) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (214848) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (214858) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (214858) MESH_SETUP: -------------------------------------------------------------------------
+I (214868) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (214878) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (214888) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (214898) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (214908) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (214918) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (214928) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (214938) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (214948) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (214958) MESH_SETUP: =========================================================================
+I (228968) MESH_SETUP: =========================================================================
+I (228968) MESH_SETUP:  MESH TOPOLOGY
+I (228968) MESH_SETUP:  TYPE        : TREE
+I (228978) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (228978) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (228988) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (228988) MESH_SETUP:  STATUS      : OK
+I (228998) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (228998) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (229008) MESH_SETUP: -------------------------------------------------------------------------
+I (229018) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (229028) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (229038) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -65  0x00 BASELINE       6  not yet
+I (229048) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       6  not yet
+I (229058) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       6  not yet
+I (229068) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       2  not yet
+I (229078) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       1  not yet
+I (229088) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -85  0x00 BASELINE       1  not yet
+I (229098) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0x00 BASELINE       3  not yet
+I (229098) MESH_SETUP:  n/a = no parent link to measure (root)
+I (229108) MESH_SETUP: -------------------------------------------------------------------------
+I (229118) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (229128) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (229138) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (229138) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (229148) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (229158) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (229168) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (229178) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (229188) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (229188) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (229198) MESH_SETUP: -------------------------------------------------------------------------
+I (229208) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (229218) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (229228) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (229228) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (229238) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (229248) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (229258) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (229268) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (229268) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (229278) MESH_SETUP: -------------------------------------------------------------------------
+I (229288) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (229298) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (229308) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (229318) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (229328) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (229338) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (229348) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (229348) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (229358) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (229368) MESH_SETUP: =========================================================================
+W (235188) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 38 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (243388) MESH_SETUP: =========================================================================
+I (243388) MESH_SETUP:  MESH TOPOLOGY
+I (243388) MESH_SETUP:  TYPE        : TREE
+I (243388) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (243398) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (243398) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (243408) MESH_SETUP:  STATUS      : OK
+I (243408) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (243418) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (243428) MESH_SETUP: -------------------------------------------------------------------------
+I (243438) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (243448) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (243458) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       6  not yet
+I (243468) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -77  0x00 BASELINE       6  not yet
+I (243468) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       6  not yet
+I (243478) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       3  not yet
+I (243488) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       1  not yet
+I (243498) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -86  0x00 BASELINE       2  not yet
+I (243508) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -77  0x00 BASELINE       4  not yet
+I (243518) MESH_SETUP:  n/a = no parent link to measure (root)
+I (243528) MESH_SETUP: -------------------------------------------------------------------------
+I (243538) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (243548) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (243548) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (243558) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (243568) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (243578) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (243588) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (243598) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (243598) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (243608) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (243618) MESH_SETUP: -------------------------------------------------------------------------
+I (243628) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (243638) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (243648) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (243648) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (243658) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (243668) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (243668) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (243678) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (243688) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (243698) MESH_SETUP: -------------------------------------------------------------------------
+I (243708) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (243708) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (243728) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (243728) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (243738) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (243748) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (243758) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (243768) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (243778) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (243788) MESH_SETUP: =========================================================================
+I (257798) MESH_SETUP: =========================================================================
+I (257798) MESH_SETUP:  MESH TOPOLOGY
+I (257808) MESH_SETUP:  TYPE        : TREE
+I (257808) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (257818) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (257818) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (257828) MESH_SETUP:  STATUS      : OK
+I (257828) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (257838) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (257848) MESH_SETUP: -------------------------------------------------------------------------
+I (257848) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (257858) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (257868) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0x00 BASELINE       6  not yet
+I (257878) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -82  0x00 BASELINE       6  not yet
+I (257888) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       6  not yet
+I (257898) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -80  0x00 BASELINE       3  not yet
+I (257908) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -72  0x00 BASELINE       2  not yet
+I (257918) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -86  0x00 BASELINE       1  not yet
+I (257928) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       4  not yet
+I (257938) MESH_SETUP:  n/a = no parent link to measure (root)
+I (257948) MESH_SETUP: -------------------------------------------------------------------------
+I (257958) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (257958) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (257968) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (257978) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (257988) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (257998) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (257998) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (258008) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (258018) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (258028) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (258038) MESH_SETUP: -------------------------------------------------------------------------
+I (258048) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (258058) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (258058) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (258068) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (258078) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (258078) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (258088) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (258098) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (258108) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (258118) MESH_SETUP: -------------------------------------------------------------------------
+I (258118) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (258128) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (258138) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (258148) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (258158) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (258168) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (258178) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (258188) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (258198) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (258208) MESH_SETUP: =========================================================================
+W (269548) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 33 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (272218) MESH_SETUP: =========================================================================
+I (272218) MESH_SETUP:  MESH TOPOLOGY
+I (272218) MESH_SETUP:  TYPE        : TREE
+I (272228) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (272228) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (272238) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (272238) MESH_SETUP:  STATUS      : OK
+I (272248) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (272258) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (272258) MESH_SETUP: -------------------------------------------------------------------------
+I (272268) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (272278) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (272288) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       0  not yet
+I (272298) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -81  0x00 BASELINE       0  not yet
+I (272308) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -61  0x00 BASELINE       0  not yet
+I (272318) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -82  0x00 BASELINE       4  not yet
+I (272328) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       2  not yet
+I (272338) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -87  0x00 BASELINE       1  not yet
+I (272348) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       5  not yet
+I (272358) MESH_SETUP:  n/a = no parent link to measure (root)
+I (272358) MESH_SETUP: -------------------------------------------------------------------------
+I (272368) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (272378) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (272388) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (272398) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (272408) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (272408) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (272418) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (272428) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (272438) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (272448) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (272458) MESH_SETUP: -------------------------------------------------------------------------
+I (272468) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (272478) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (272478) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (272488) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (272488) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (272498) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (272508) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (272518) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (272528) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (272528) MESH_SETUP: -------------------------------------------------------------------------
+I (272538) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (272548) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (272558) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (272568) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (272578) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (272588) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (272598) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (272608) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (272618) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (272628) MESH_SETUP: =========================================================================
+I (286638) MESH_SETUP: =========================================================================
+I (286638) MESH_SETUP:  MESH TOPOLOGY
+I (286638) MESH_SETUP:  TYPE        : TREE
+I (286648) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (286648) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (286658) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (286658) MESH_SETUP:  STATUS      : OK
+I (286668) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (286668) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (286678) MESH_SETUP: -------------------------------------------------------------------------
+I (286688) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (286698) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (286708) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       0  not yet
+I (286718) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       0  not yet
+I (286728) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       0  not yet
+I (286738) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -82  0x00 BASELINE       4  not yet
+I (286748) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -74  0x00 BASELINE       3  not yet
+I (286758) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -87  0x00 BASELINE       2  not yet
+I (286768) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       5  not yet
+I (286778) MESH_SETUP:  n/a = no parent link to measure (root)
+I (286778) MESH_SETUP: -------------------------------------------------------------------------
+I (286788) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (286798) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (286808) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (286818) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (286818) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (286828) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (286838) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (286848) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (286858) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (286868) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (286868) MESH_SETUP: -------------------------------------------------------------------------
+I (286878) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (286888) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (286898) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (286908) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (286908) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (286918) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (286928) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (286938) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (286938) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (286948) MESH_SETUP: -------------------------------------------------------------------------
+I (286958) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (286968) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (286978) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (286988) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (286998) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (287008) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (287018) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (287018) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (287028) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (287048) MESH_SETUP: =========================================================================
+I (301058) MESH_SETUP: =========================================================================
+I (301058) MESH_SETUP:  MESH TOPOLOGY
+I (301058) MESH_SETUP:  TYPE        : TREE
+I (301068) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (301068) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (301078) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (301078) MESH_SETUP:  STATUS      : OK
+I (301088) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (301088) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (301098) MESH_SETUP: -------------------------------------------------------------------------
+I (301108) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (301118) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (301128) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       1  not yet
+I (301138) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       1  not yet
+I (301148) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       1  not yet
+I (301158) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       4  not yet
+I (301168) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       3  not yet
+I (301168) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -88  0x00 BASELINE       2  not yet
+I (301178) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       5  not yet
+I (301188) MESH_SETUP:  n/a = no parent link to measure (root)
+I (301198) MESH_SETUP: -------------------------------------------------------------------------
+I (301208) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (301218) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (301218) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (301228) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (301238) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (301248) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (301258) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (301268) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (301268) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (301278) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (301288) MESH_SETUP: -------------------------------------------------------------------------
+I (301298) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (301308) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (301318) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (301318) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (301328) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (301338) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (301338) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (301358) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (301358) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (301368) MESH_SETUP: -------------------------------------------------------------------------
+I (301378) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (301388) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (301398) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (301408) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (301408) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (301418) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (301438) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (301438) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (301448) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (301458) MESH_SETUP: =========================================================================
+W (303998) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 47 ms) over the last 200 probes | Waiting-to-save line: longest 2 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (315468) MESH_SETUP: =========================================================================
+I (315478) MESH_SETUP:  MESH TOPOLOGY
+I (315478) MESH_SETUP:  TYPE        : TREE
+I (315478) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (315488) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (315488) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (315498) MESH_SETUP:  STATUS      : OK
+I (315498) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (315508) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (315518) MESH_SETUP: -------------------------------------------------------------------------
+I (315528) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (315538) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (315548) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0x00 BASELINE       1  not yet
+I (315548) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -82  0x00 BASELINE       1  not yet
+I (315558) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       1  not yet
+I (315568) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       5  not yet
+I (315578) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       3  not yet
+I (315588) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -88  0x00 BASELINE       2  not yet
+I (315598) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -75  0x00 BASELINE       6  not yet
+I (315608) MESH_SETUP:  n/a = no parent link to measure (root)
+I (315618) MESH_SETUP: -------------------------------------------------------------------------
+I (315628) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (315628) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (315638) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (315648) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (315658) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (315668) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (315678) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (315678) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (315688) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (315698) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (315708) MESH_SETUP: -------------------------------------------------------------------------
+I (315718) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (315728) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (315728) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (315738) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (315748) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (315748) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (315758) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (315768) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (315778) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (315788) MESH_SETUP: -------------------------------------------------------------------------
+I (315798) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (315798) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (315808) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (315818) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (315828) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (315838) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (315848) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (315858) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (315868) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (315878) MESH_SETUP: =========================================================================
+I (329888) MESH_SETUP: =========================================================================
+I (329888) MESH_SETUP:  MESH TOPOLOGY
+I (329898) MESH_SETUP:  TYPE        : TREE
+I (329898) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (329908) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (329908) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (329918) MESH_SETUP:  STATUS      : OK
+I (329918) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (329928) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (329928) MESH_SETUP: -------------------------------------------------------------------------
+I (329938) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (329948) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (329958) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       1  not yet
+I (329968) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       1  not yet
+I (329978) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       1  not yet
+I (329988) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -80  0x00 BASELINE       5  not yet
+I (329998) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       4  not yet
+I (330008) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -88  0x00 BASELINE       3  not yet
+I (330018) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       6  not yet
+I (330028) MESH_SETUP:  n/a = no parent link to measure (root)
+I (330038) MESH_SETUP: -------------------------------------------------------------------------
+I (330048) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (330048) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (330058) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (330068) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (330078) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (330088) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (330088) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (330098) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (330108) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (330118) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (330128) MESH_SETUP: -------------------------------------------------------------------------
+I (330138) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (330148) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (330148) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (330158) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (330168) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (330168) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (330178) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (330188) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (330198) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (330198) MESH_SETUP: -------------------------------------------------------------------------
+I (330208) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (330218) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (330228) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (330238) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (330248) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (330258) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (330268) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (330278) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (330288) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (330298) MESH_SETUP: =========================================================================
+I (334658) MESH_SETUP: Routing table shrunk (node removed).
+I (334668) MESH_SETUP: ==============================
+I (334668) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (334668) MESH_SETUP: ==============================
+I (334678) MESH_SETUP: =========================================================================
+I (334688) MESH_SETUP:  MESH TOPOLOGY
+I (334688) MESH_SETUP:  TYPE        : TREE
+I (334698) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (334698) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (334708) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (334708) MESH_SETUP:  STATUS      : OK
+I (334718) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (334718) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (334728) MESH_SETUP: -------------------------------------------------------------------------
+I (334738) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (334748) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       4  not yet
+I (334758) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       6  not yet
+I (334768) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       6  not yet
+I (334778) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       6  not yet
+I (334788) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       3  not yet
+I (334798) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       2  not yet
+I (334808) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD       -88  0x00 BASELINE       8  not yet
+I (334818) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       2  not yet
+I (334818) MESH_SETUP:  n/a = no parent link to measure (root)
+I (334828) MESH_SETUP: -------------------------------------------------------------------------
+I (334838) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (334848) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (334858) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (334858) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (334868) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (334878) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (334888) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (334898) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x01
+I (334908) MESH_SETUP:  H02   F4:2D:C9:73:E6:18  CHILD      20:50:0D:E7:1C:38  0x01
+I (334908) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (334918) MESH_SETUP: -------------------------------------------------------------------------
+I (334928) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (334938) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (334948) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (334948) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (334958) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (334968) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (334978) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (334988) MESH_SETUP:      `-- [H02] CHILD      F4:2D:C9:73:E6:18
+I (334988) MESH_SETUP:          `-- [H03] CHILD      28:05:A5:32:D7:B4
+I (334998) MESH_SETUP: -------------------------------------------------------------------------
+I (335008) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (335018) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (335028) MESH_SETUP:    28:05:A5:32:D7:B4  VICTIM - its traffic transits the attacker
+I (335038) MESH_SETUP:    F4:2D:C9:73:E6:18  VICTIM - its traffic transits the attacker
+I (335048) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (335058) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (335068) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (335068) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (335078) MESH_SETUP:  2 victim(s), 4 bystander(s). Only the victims can show the attack; report PDR per node.
+I (335088) MESH_SETUP: =========================================================================
+I (337088) MESH_SETUP: =========================================================================
+I (337088) MESH_SETUP:  MESH TOPOLOGY
+I (337088) MESH_SETUP:  TYPE        : TREE
+I (337088) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (337098) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (337098) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (337108) MESH_SETUP:  STATUS      : OK
+I (337108) MESH_SETUP:  DETAIL      : 8 node(s), depth 5
+I (337118) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (337128) MESH_SETUP: -------------------------------------------------------------------------
+I (337138) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (337148) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       7  not yet
+I (337158) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       1  not yet
+I (337168) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -81  0x00 BASELINE       1  not yet
+I (337178) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       1  not yet
+I (337188) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       5  not yet
+I (337188) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       4  not yet
+I (337198) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -68  0xFF UNSET          0  not yet
+I (337208) MESH_SETUP:  H04*  28:05:A5:32:D7:B4  CHILD       -76  0x00 BASELINE       4  not yet
+I (337218) MESH_SETUP:  * node's own stack reports a different depth (re-parenting)
+I (337228) MESH_SETUP:  n/a = no parent link to measure (root)
+I (337238) MESH_SETUP: -------------------------------------------------------------------------
+I (337248) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (337248) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (337258) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (337268) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (337278) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (337288) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (337298) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x01
+I (337298) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x01
+I (337308) MESH_SETUP:  H04   28:05:A5:32:D7:B4  CHILD      F4:2D:C9:73:E6:18  0x00
+I (337318) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (337328) MESH_SETUP: -------------------------------------------------------------------------
+I (337338) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (337348) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (337358) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (337358) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (337368) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (337368) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (337378) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (337388) MESH_SETUP:  |           `-- [H04] CHILD      28:05:A5:32:D7:B4
+I (337398) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (337408) MESH_SETUP: -------------------------------------------------------------------------
+I (337418) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (337418) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (337438) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (337448) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (337458) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (337468) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (337478) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (337478) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (337488) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (337508) MESH_SETUP: =========================================================================
+I (337668) MESH_SETUP: Routing table updated (node added).
+I (337668) MESH_SETUP: ==============================
+I (337668) MESH_SETUP:   MESH CONNECTED: 8 node(s)
+I (337668) MESH_SETUP: ==============================
+I (338318) MESH_SETUP: =========================================================================
+I (338318) MESH_SETUP:  MESH TOPOLOGY
+I (338318) MESH_SETUP:  TYPE        : TREE
+I (338328) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (338328) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (338338) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (338338) MESH_SETUP:  STATUS      : OK
+I (338348) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (338348) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (338358) MESH_SETUP: -------------------------------------------------------------------------
+I (338368) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (338378) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (338388) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       3  not yet
+I (338398) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -81  0x00 BASELINE       3  not yet
+I (338408) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       3  not yet
+I (338418) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       0  not yet
+I (338428) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       5  not yet
+I (338438) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -66  0x00 BASELINE       0  not yet
+I (338438) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -68  0xFF UNSET          1  not yet
+I (338448) MESH_SETUP:  n/a = no parent link to measure (root)
+I (338458) MESH_SETUP: -------------------------------------------------------------------------
+I (338468) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (338478) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (338488) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (338488) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (338498) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (338508) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (338518) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (338528) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (338538) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (338538) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (338548) MESH_SETUP: -------------------------------------------------------------------------
+I (338558) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (338568) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (338578) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (338578) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (338588) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (338598) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (338598) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (338608) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (338618) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (338628) MESH_SETUP: -------------------------------------------------------------------------
+I (338638) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (338648) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (338658) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (338668) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (338678) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (338688) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (338698) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (338708) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (338718) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (338728) MESH_SETUP: =========================================================================
+W (340208) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 35 ms) over the last 200 probes | Waiting-to-save line: longest 2 of 256, 0 lost so far | Mesh incoming buffer: longest 2 of 64 | Test phase: baseline
+I (358518) MESH_SETUP: =========================================================================
+I (358518) MESH_SETUP:  MESH TOPOLOGY
+I (358518) MESH_SETUP:  TYPE        : TREE
+I (358528) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (358528) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (358538) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (358538) MESH_SETUP:  STATUS      : OK
+I (358548) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (358558) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (358558) MESH_SETUP: -------------------------------------------------------------------------
+I (358568) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (358578) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (358588) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0x00 BASELINE       2  not yet
+I (358598) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -84  0x00 BASELINE       2  not yet
+I (358608) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       2  not yet
+I (358618) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -82  0x00 BASELINE       6  not yet
+I (358628) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       4  not yet
+I (358638) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x00 BASELINE       6  not yet
+I (358648) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -67  0x00 BASELINE       0  not yet
+I (358658) MESH_SETUP:  n/a = no parent link to measure (root)
+I (358658) MESH_SETUP: -------------------------------------------------------------------------
+I (358668) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (358678) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (358688) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (358698) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (358708) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (358708) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (358718) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (358728) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (358738) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (358748) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (358758) MESH_SETUP: -------------------------------------------------------------------------
+I (358768) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (358778) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (358778) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (358788) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (358788) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (358798) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (358808) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (358818) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (358818) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (358828) MESH_SETUP: -------------------------------------------------------------------------
+I (358838) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (358848) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (358858) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (358868) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (358878) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (358888) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (358898) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (358908) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (358918) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (358938) MESH_SETUP: =========================================================================
+I (372948) MESH_SETUP: =========================================================================
+I (372948) MESH_SETUP:  MESH TOPOLOGY
+I (372948) MESH_SETUP:  TYPE        : TREE
+I (372948) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (372958) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (372968) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (372968) MESH_SETUP:  STATUS      : OK
+I (372968) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (372978) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (372988) MESH_SETUP: -------------------------------------------------------------------------
+I (372998) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (373008) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (373018) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0x00 BASELINE       2  not yet
+I (373028) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -80  0x00 BASELINE       3  not yet
+I (373038) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -61  0x00 BASELINE       2  not yet
+I (373048) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -80  0x00 BASELINE       6  not yet
+I (373048) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -74  0x00 BASELINE       5  not yet
+I (373058) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x00 BASELINE       6  not yet
+I (373068) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -68  0x00 BASELINE       0  not yet
+I (373078) MESH_SETUP:  n/a = no parent link to measure (root)
+I (373088) MESH_SETUP: -------------------------------------------------------------------------
+I (373098) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (373108) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (373108) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (373118) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (373128) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (373138) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (373148) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (373158) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (373158) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (373168) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (373178) MESH_SETUP: -------------------------------------------------------------------------
+I (373188) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (373198) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (373208) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (373208) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (373218) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (373228) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (373228) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (373238) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (373248) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (373258) MESH_SETUP: -------------------------------------------------------------------------
+I (373268) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (373278) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (373288) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (373298) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (373308) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (373318) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (373328) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (373338) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (373348) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (373358) MESH_SETUP: =========================================================================
+W (381008) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 33 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: baseline
+I (387368) MESH_SETUP: =========================================================================
+I (387368) MESH_SETUP:  MESH TOPOLOGY
+I (387378) MESH_SETUP:  TYPE        : TREE
+I (387378) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (387388) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (387388) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (387398) MESH_SETUP:  STATUS      : OK
+I (387398) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (387408) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (387418) MESH_SETUP: -------------------------------------------------------------------------
+I (387418) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (387428) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (387438) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -66  0x00 BASELINE       3  not yet
+I (387448) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -78  0x00 BASELINE       3  not yet
+I (387458) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       3  not yet
+I (387468) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -82  0x00 BASELINE       6  not yet
+I (387478) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       5  not yet
+I (387488) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -68  0x00 BASELINE       6  not yet
+I (387498) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -67  0x00 BASELINE       1  not yet
+I (387508) MESH_SETUP:  n/a = no parent link to measure (root)
+I (387518) MESH_SETUP: -------------------------------------------------------------------------
+I (387528) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (387528) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (387538) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (387548) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (387558) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (387568) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (387568) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (387578) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (387588) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (387598) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (387608) MESH_SETUP: -------------------------------------------------------------------------
+I (387618) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (387628) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (387628) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (387638) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (387648) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (387648) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (387658) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (387668) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (387668) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (387688) MESH_SETUP: -------------------------------------------------------------------------
+I (387688) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (387698) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (387708) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (387718) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (387728) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (387738) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (387758) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (387758) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (387768) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (387788) MESH_SETUP: =========================================================================
+I (401798) MESH_SETUP: =========================================================================
+I (401798) MESH_SETUP:  MESH TOPOLOGY
+I (401798) MESH_SETUP:  TYPE        : TREE
+I (401808) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (401808) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (401818) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (401818) MESH_SETUP:  STATUS      : OK
+I (401828) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (401828) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (401838) MESH_SETUP: -------------------------------------------------------------------------
+I (401848) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (401858) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (401868) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -67  0x00 BASELINE       3  not yet
+I (401878) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -79  0x00 BASELINE       3  not yet
+I (401888) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -60  0x00 BASELINE       3  not yet
+I (401898) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       6  not yet
+I (401908) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       6  not yet
+I (401918) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x00 BASELINE       6  not yet
+I (401928) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -67  0x00 BASELINE       1  not yet
+I (401938) MESH_SETUP:  n/a = no parent link to measure (root)
+I (401938) MESH_SETUP: -------------------------------------------------------------------------
+I (401948) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (401958) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (401968) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (401968) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (401978) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (401988) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (401998) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (402008) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (402018) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (402018) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (402028) MESH_SETUP: -------------------------------------------------------------------------
+I (402038) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (402048) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (402058) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (402068) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (402068) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (402078) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (402088) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (402088) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (402098) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (402108) MESH_SETUP: -------------------------------------------------------------------------
+I (402118) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (402128) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (402138) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (402148) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (402158) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (402168) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (402178) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (402188) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (402198) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (402208) MESH_SETUP: =========================================================================
+I (416218) MESH_SETUP: =========================================================================
+I (416228) MESH_SETUP:  MESH TOPOLOGY
+I (416228) MESH_SETUP:  TYPE        : TREE
+I (416228) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (416238) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (416238) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (416248) MESH_SETUP:  STATUS      : OK
+I (416248) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (416258) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (416268) MESH_SETUP: -------------------------------------------------------------------------
+I (416278) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (416288) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (416298) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -68  0x00 BASELINE       4  not yet
+I (416298) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -78  0x00 BASELINE       4  not yet
+I (416308) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -61  0x00 BASELINE       4  not yet
+I (416318) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       0  not yet
+I (416328) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       6  not yet
+I (416338) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x00 BASELINE       0  not yet
+I (416348) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -66  0x00 BASELINE       2  not yet
+I (416358) MESH_SETUP:  n/a = no parent link to measure (root)
+I (416368) MESH_SETUP: -------------------------------------------------------------------------
+I (416378) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (416378) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (416388) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (416398) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (416408) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (416418) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (416428) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (416428) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (416438) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (416448) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (416458) MESH_SETUP: -------------------------------------------------------------------------
+I (416468) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (416478) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (416478) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (416488) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (416498) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (416498) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (416508) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (416518) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (416528) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (416538) MESH_SETUP: -------------------------------------------------------------------------
+I (416548) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (416548) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (416558) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (416578) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (416588) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (416598) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (416608) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (416608) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (416618) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (416638) MESH_SETUP: =========================================================================
+W (421258) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 41 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 2 of 64 | Test phase: baseline
+I (430648) MESH_SETUP: =========================================================================
+I (430648) MESH_SETUP:  MESH TOPOLOGY
+I (430648) MESH_SETUP:  TYPE        : TREE
+I (430658) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (430658) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (430668) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (430668) MESH_SETUP:  STATUS      : OK
+I (430678) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (430688) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (430688) MESH_SETUP: -------------------------------------------------------------------------
+I (430698) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE          AGE(s)  EXPORT
+I (430708) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x00 BASELINE       0  not yet
+I (430718) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -69  0x00 BASELINE       4  not yet
+I (430728) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -76  0x00 BASELINE       4  not yet
+I (430738) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -62  0x00 BASELINE       4  not yet
+I (430748) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x00 BASELINE       0  not yet
+I (430758) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x00 BASELINE       7  not yet
+I (430768) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x00 BASELINE       0  not yet
+I (430778) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -67  0x00 BASELINE       2  not yet
+I (430788) MESH_SETUP:  n/a = no parent link to measure (root)
+I (430788) MESH_SETUP: -------------------------------------------------------------------------
+I (430798) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (430808) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (430818) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (430828) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (430838) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (430838) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (430848) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (430858) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (430868) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (430878) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (430888) MESH_SETUP: -------------------------------------------------------------------------
+I (430898) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (430908) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (430908) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (430918) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (430918) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (430928) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (430938) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (430948) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (430948) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (430958) MESH_SETUP: -------------------------------------------------------------------------
+I (430968) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (430978) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (430988) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (430998) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (431008) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (431018) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (431028) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (431038) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (431048) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (431058) MESH_SETUP: =========================================================================
+I (434478) ROOT_MAIN: [CTRL] Phase 0 complete.
+I (434478) ROOT_MAIN: ════════════════════ PHASE — ATTACK ════════════════════  @ 19:17:49 PHT
+I (434488) ROOT_MAIN: [CTRL] Starting PHASE 1 — Attack (180 s)
+I (434488) ROOT_MAIN: [CTRL] Attack start: 7/7 children in the mesh.
+I (434498) PHASE_LISTENER: Phase update → phase_id=1  gt_label=1  seq=26  root_ts=433864373 us
+I (435108) PHASE_LISTENER: [ROOT] Broadcast phase_id=1  seq=26  label=1  (0 failed sends)
+I (445078) MESH_SETUP: ==========================================================================
+I (445078) MESH_SETUP:  MESH TOPOLOGY
+I (445078) MESH_SETUP:  TYPE        : TREE
+I (445088) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (445088) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (445098) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (445098) MESH_SETUP:  STATUS      : OK
+I (445108) MESH_SETUP:  DETAIL      : 8 node(s), depth 4
+I (445108) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (445118) MESH_SETUP: --------------------------------------------------------------------------
+I (445128) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       RSSI  PHASE           AGE(s)  EXPORT
+I (445138) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        n/a  0x01 BLACKHOLE       0  not yet
+I (445148) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE   -71  0x01 BLACKHOLE       4  not yet
+I (445158) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       -75  0x01 BLACKHOLE       5  not yet
+I (445168) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       -61  0x01 BLACKHOLE       5  not yet
+I (445178) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD       -81  0x01 BLACKHOLE       0  not yet
+I (445188) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       -73  0x01 BLACKHOLE       0  not yet
+I (445198) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       -67  0x01 BLACKHOLE       1  not yet
+I (445198) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       -67  0x01 BLACKHOLE       2  not yet
+I (445208) MESH_SETUP:  n/a = no parent link to measure (root)
+I (445218) MESH_SETUP: --------------------------------------------------------------------------
+I (445228) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (445238) MESH_SETUP:  HOP   MAC ADDRESS        ROLE       UPLINK             DN
+I (445248) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT       --:--:--:--:--:--  0x03
+I (445248) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD      B0:CB:D8:F3:32:18  0x00
+I (445258) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD      B0:CB:D8:F3:32:18  0x02
+I (445268) MESH_SETUP:  H02   20:50:0D:E7:0C:80  CHILD      B4:BF:E9:32:FE:90  0x00
+I (445278) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD      B4:BF:E9:32:FE:90  0x02
+I (445288) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD      B4:BF:E9:34:ED:80  0x00
+I (445298) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD      B4:BF:E9:34:ED:80  0x00
+I (445298) MESH_SETUP:  H01   20:50:0D:E7:1C:38  BLACKHOLE  B0:CB:D8:F3:32:18  0x00
+I (445308) MESH_SETUP: --------------------------------------------------------------------------
+I (445318) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (445328) MESH_SETUP:  [H00] ROOT       B0:CB:D8:F3:32:18
+I (445338) MESH_SETUP:  +-- [H01] CHILD      70:4B:CA:25:B7:68
+I (445338) MESH_SETUP:  +-- [H01] CHILD      B4:BF:E9:32:FE:90
+I (445348) MESH_SETUP:  |   +-- [H02] CHILD      20:50:0D:E7:0C:80
+I (445358) MESH_SETUP:  |   `-- [H02] CHILD      B4:BF:E9:34:ED:80
+I (445358) MESH_SETUP:  |       +-- [H03] CHILD      28:05:A5:32:D7:B4
+I (445368) MESH_SETUP:  |       `-- [H03] CHILD      F4:2D:C9:73:E6:18
+I (445378) MESH_SETUP:  `-- [H01] BLACKHOLE  20:50:0D:E7:1C:38  <== BLACKHOLE (DROPS EVERYTHING BRANCHING BELOW IT)
+I (445388) MESH_SETUP: --------------------------------------------------------------------------
+I (445398) MESH_SETUP:  EXPOSURE (who this run's attack can actually reach)
+I (445408) MESH_SETUP:    20:50:0D:E7:0C:80  not in the attack path - above the attacker, will be UNAFFECTED
+I (445418) MESH_SETUP:    28:05:A5:32:D7:B4  not in the attack path - above the attacker, will be UNAFFECTED
+I (445428) MESH_SETUP:    F4:2D:C9:73:E6:18  not in the attack path - above the attacker, will be UNAFFECTED
+I (445438) MESH_SETUP:    70:4B:CA:25:B7:68  not in the attack path - above the attacker, will be UNAFFECTED
+I (445448) MESH_SETUP:    B4:BF:E9:32:FE:90  not in the attack path - above the attacker, will be UNAFFECTED
+I (445458) MESH_SETUP:    20:50:0D:E7:1C:38  ATTACKER (BLACKHOLE)
+I (445468) MESH_SETUP:    B4:BF:E9:34:ED:80  not in the attack path - above the attacker, will be UNAFFECTED
+E (445478) MESH_SETUP:  !! NO NODE IS DOWNSTREAM OF THE ATTACKER - it will drop NOTHING and this run will look benign. Move a child below it, then re-run.
+I (445488) MESH_SETUP: ==========================================================================
+[monitor] closed
+Export skipped. Data is safe on the board (COM30) - import it from its SD card later, or export with the command below.
+To export later:  python tools\export_logs.py --port COM30 --role root --topology tree --attack blackhole --repeat 1 --scenario stationary --location G402 --label root
+  finished (exit 0)

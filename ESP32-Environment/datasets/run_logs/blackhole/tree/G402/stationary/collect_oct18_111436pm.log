@@ -1,0 +1,12 @@
+collect_run.py --ports COM11 --attack blackhole --topology tree --location G402 --scenario stationary --repeat 1 --since 2026-10-18 21:00 --skip-mac b0cbd8f33218 --roster presets/Cal/blackhole-tree-g402-stationary.json
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\stationary\collect_oct18_111436pm.log)
+
+-- COM11: reading the card ...
+   checked victim_NODE_704BCA25B768_r7_b18_telem.csv: baseline 0 s, attack 0 s, cooldown 0 s, stabilise 319 s -> NO_RUN
+   checked victim_NODE_704BCA25B768_r8_b19_telem.csv: baseline 300 s, attack 53 s, cooldown 0 s, stabilise 69 s -> PARTIAL
+   checked victim_NODE_704BCA25B768_r10_b114_telem.csv: baseline 300 s, attack 29 s, cooldown 0 s, stabilise 50 s -> PARTIAL
+   checked victim_NODE_704BCA25B768_r9_b113_telem.csv: baseline 0 s, attack 0 s, cooldown 0 s, stabilise 117 s -> NO_RUN
+COLLECT: COM11 704BCA25B768 OK PARTIAL - victim_NODE_704BCA25B768_r8_b19_telem.csv -> victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_1115PM_telem.csv: baseline 300 s, attack 53 s, cooldown 0 s, stabilise 69 s - the first piece did not hold the run - took victim_NODE_704BCA25B768_r8_b19_telem.csv instead; PARTIAL: the board was RESET during the run (ended by POWERON) - took its run piece (258,389 B, ran 2026-10-18 21:14:39; 4 piece(s) on the card). Its data stops at the reset - check the run summary
+
+COLLECT_SUMMARY: ok=1 skip=0 fail=0
+

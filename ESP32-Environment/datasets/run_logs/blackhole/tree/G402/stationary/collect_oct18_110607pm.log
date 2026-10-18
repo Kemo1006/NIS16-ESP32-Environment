@@ -1,0 +1,63 @@
+collect_run.py --ports COM3,COM9,COM10,COM11,COM30,COM32,COM33,COM34 --attack blackhole --topology tree --location G402 --scenario stationary --repeat 1 --since 2026-10-18 21:00 --skip-mac b0cbd8f33218 --roster presets/Cal/blackhole-tree-g402-stationary.json
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\stationary\collect_oct18_110607pm.log)
+
+-- COM3: reading the card ...
+   retry 2/3 of COM3 in 3 s (no_answer)
+   retry 3/3 of COM3 in 8 s (no_answer)
+COLLECT: COM3 - FAIL NO_ANSWER: the board did not answer in time (still booting, busy, or the ROOT / a board on old firmware) - nothing is wrong with its data. Unplug + replug it, then Retry failed
+
+-- COM9: reading the card ...
+COLLECT: COM9 B4BFE934ED80 SKIP already in the run folder as victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct18_1058PM_telem.csv
+
+-- COM10: reading the card ...
+COLLECT: COM10 20500DE71C38 SKIP already in the run folder as victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_1101PM_telem.csv
+
+-- COM11: reading the card ...
+     COPY  blackhole/tree/G402/victim_NODE_704BCA25B768_r7_b18_telem.csv  (? rows, run 7, manifest: 0 rows / 3s, ABORTED, ran 2026-10-18 21:14:39, built 2026-10-18 21:13:38)
+           -> blackhole\tree\G402\stationary\victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_1107PM_telem.csv
+           3190 rows (no manifest to compare against)
+   Imported 1 file(s) from COM11 (card in the board) into A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports (44 outside --files).
+   The card was not modified - erase it only after you have checked the imported rows.
+COLLECT: COM11 704BCA25B768 OK victim_NODE_704BCA25B768_r7_b18_telem.csv (? rows, ran 2026-10-18 21:14:39) - PARTIAL: the board was RESET during the run (ended by POWERON) - took its run piece (258,389 B, ran 2026-10-18 21:14:39; 4 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM30: reading the card ...
+     COPY  blackhole/tree/G402/victim_NODE_20500DE70C80_r10_b21_telem.csv  (17606 rows, run 10, manifest: 17606 rows / 1763s, clean, ran 2026-10-18 21:16:45, built 2026-10-18 21:13:38)
+           -> blackhole\tree\G402\stationary\victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_1108PM_telem.csv
+   Imported 1 file(s) from COM30 (card in the board) into A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports (38 outside --files).
+   The card was not modified - erase it only after you have checked the imported rows.
+COLLECT: COM30 20500DE70C80 OK victim_NODE_20500DE70C80_r10_b21_telem.csv (17606 rows, ran 2026-10-18 21:16:45)
+      retry 2/4 (best so far: 0 rows) ...
+      retry 3/4 (best so far: 0 rows) ...
+      retry 4/4 (best so far: 0 rows) ...
+   CRASHES: none on this card (no crash since the crash record firmware, oct. 18 2026)
+
+-- COM32: reading the card ...
+   retry 2/3 of COM32 in 3 s (no_card)
+   retry 3/3 of COM32 in 8 s (no_card)
+COLLECT: COM32 - FAIL NO_CARD: the board says its SD card is NOT MOUNTED right now (just reset, or the card is loose) - the data is still on the card. Press the card in, unplug + replug the board, then Retry failed
+
+-- COM33: reading the card ...
+     COPY  blackhole/tree/G402/victim_NODE_F42DC973E618_r16_b365_telem.csv  (6521 rows, run 16, manifest: 6521 rows / 654s, clean, ran 2026-10-18 21:17:46, built 2026-10-18 21:13:38)
+           -> blackhole\tree\G402\stationary\victim_NODE-F42DC973E618_tree_blackhole_r1_oct18_1110PM_telem.csv
+   Imported 1 file(s) from COM33 (card in the board) into A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports (58 outside --files).
+   The card was not modified - erase it only after you have checked the imported rows.
+COLLECT: COM33 F42DC973E618 OK victim_NODE_F42DC973E618_r16_b365_telem.csv (6521 rows, ran 2026-10-18 21:17:46)
+      retry 2/4 (best so far: 0 rows) ...
+      retry 3/4 (best so far: 0 rows) ...
+      retry 4/4 (best so far: 0 rows) ...
+   CRASHES: none on this card (no crash since the crash record firmware, oct. 18 2026)
+
+-- COM34: reading the card ...
+     COPY  blackhole/tree/G402/victim_NODE_2805A532D7B4_r12_b235_telem.csv  (6521 rows, run 12, manifest: 6521 rows / 654s, clean, ran 2026-10-18 21:10:58, built 2026-10-18 21:09:28)
+           -> blackhole\tree\G402\stationary\victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_1111PM_telem.csv
+   Imported 1 file(s) from COM34 (card in the board) into A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports (39 outside --files).
+   The card was not modified - erase it only after you have checked the imported rows.
+COLLECT: COM34 2805A532D7B4 OK victim_NODE_2805A532D7B4_r12_b235_telem.csv (6521 rows, ran 2026-10-18 21:10:58)
+      retry 2/4 (best so far: 0 rows) ...
+      retry 3/4 (best so far: 0 rows) ...
+      retry 4/4 (best so far: 0 rows) ...
+   CRASHES: none on this card (no crash since the crash record firmware, oct. 18 2026)
+
+COLLECT_SUMMARY: ok=4 skip=2 fail=2
+COLLECT_RETRY: COM3,COM32
+

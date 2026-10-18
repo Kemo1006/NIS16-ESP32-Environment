@@ -1,0 +1,9 @@
+[monitor] listening on COM32 at 115200 baud
+[0;33mW (62162) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62162) VICTIM_MAIN: Node ID: NODE_B4BFE932FE90   Run ID: RUN_001[0m
+[0;32mI (62162) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62172) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62172) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62182) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62192) SPIFFS: mount failed, -10025. formatting...[0m
+[monitor] closed
