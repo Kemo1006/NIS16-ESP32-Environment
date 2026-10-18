@@ -5345,6 +5345,26 @@ foreach ($cb in 'ImpAttack', 'ImpTopology', 'ImpLocation', 'ImpScenario') {
 $ui.ImpRepeat.Add_TextChanged({ Update-ImpDest; Update-ImpPorts; if ($script:ImpItems.Count) { Show-ImpList $script:ImpItems } })
 $script:ImpTable = $null; $script:ImpItems = @(); $script:ImpRosterWant = ''; $script:ImpLast = $null
 $script:ImportIdx = @{}   # export file -> @{ T; When; Mac; Cell; Rep }, re-read only when the file changes
+$script:StampMonths = @('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec')
+function Get-NameStampTime([string]$Name, [datetime]$Fallback) {
+    # The import time in the file name (tools\name_stamp.py: oct18_1108PM, or the old
+    # 20260918_142233). oct. 19 2026: a GitHub sync / git checkout rewrites every
+    # file's modified time, so "last imported" by modified time picked the wrong run
+    # (DLSU files synced at the same second as the G402 ones). The year comes from
+    # the modified time - the name has none - stepped back if that lands in the future.
+    $m = [regex]::Match($Name, '_(\d{8})_(\d{6})_')
+    if ($m.Success) { try { return [datetime]::ParseExact($m.Groups[1].Value + $m.Groups[2].Value, 'yyyyMMddHHmmss', $null) } catch { } }
+    $m = [regex]::Match($Name, '_(jan|feb|mar|apr|may|jun|jul|aug|sept|oct|nov|dec)(\d{2})_(\d{2})(\d{2})([AP]M)(?:-\d+)?_')
+    if ($m.Success) {
+        try {
+            $h = [int]$m.Groups[3].Value % 12 + $(if ($m.Groups[5].Value -eq 'PM') { 12 } else { 0 })
+            $t = New-Object DateTime $Fallback.Year, ([array]::IndexOf($script:StampMonths, $m.Groups[1].Value) + 1), ([int]$m.Groups[2].Value), $h, ([int]$m.Groups[4].Value), 0
+            if ($t -gt $Fallback.AddDays(1)) { $t = $t.AddYears(-1) }
+            return $t
+        } catch { }
+    }
+    return $Fallback
+}
 function Get-LastImports {
     # MAC -> its NEWEST telemetry file in datasets\exports: when it landed there
     # and which run (attack / topology / location / scenario, repeat). The MAC
@@ -5366,7 +5386,7 @@ function Get-LastImports {
             $parts = $f.Substring($root.Length).TrimStart('\') -split '\\'
             $cell = if ($parts.Count -ge 5) { $parts[0..3] -join ' / ' } else { $parts[0..($parts.Count - 2)] -join ' / ' }
             $rep = if ([IO.Path]::GetFileName($f) -match '_r(\d+)_') { [int]$Matches[1] } else { 0 }
-            $c = @{ T = $t.Ticks; When = $t; Mac = $mac; Cell = $cell; Rep = $rep }
+            $c = @{ T = $t.Ticks; When = (Get-NameStampTime ([IO.Path]::GetFileName($f)) $t); Mac = $mac; Cell = $cell; Rep = $rep }
             $script:ImportIdx[$f] = $c
         }
         if ($c.Mac -and (-not $out[$c.Mac] -or $out[$c.Mac].When -lt $c.When)) { $out[$c.Mac] = $c }
