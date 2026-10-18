@@ -195,11 +195,13 @@ function Start-CollectScan([switch]$RetryFailed) {
     Release-CollectPorts $ch.Ports
     $json = [IO.Path]::GetTempFileName()
     $a = (Get-CollectArgs $ch) + @('--dry-run', '--plan-json', $json)
+    $script:CollectScanning = $true
     $C.Status.Text = ('Scanning {0} board(s), one at a time - do not unplug them...' -f $ch.Ports.Count); $C.Status.Foreground = Get-Brush $Pal.Amber
     $C.Scan.IsEnabled = $false
     $C.Retry.IsEnabled = $false
     [void](Start-StreamJob -Exe $py -ToolArgs $a -Title ("Collect - scan {0} board(s)" -f $ch.Ports.Count) -NoStop -State @{ Json = $json; Ch = $ch; Merge = $merge } -OnDone {
         param($text, $code, $st)
+        $script:CollectScanning = $false
         $C = $script:Col; if (-not $C) { return }
         $plan = @(); try { $plan = @(Get-Content $st.Json -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ }) } catch { }
         Remove-Item $st.Json -ErrorAction SilentlyContinue
@@ -215,34 +217,111 @@ function Start-CollectScan([switch]$RetryFailed) {
     })
 }
 
+function Get-CollectRowLook([string]$State, [bool]$Partial) {
+    switch ($State) {
+        'OK'   { if ($Partial) { @{ Hex = $Pal.Amber; G = [string][char]0x26A0; Word = 'PARTIAL' } } else { @{ Hex = $Pal.Green; G = [string][char]0x2714; Word = 'READY' } } }
+        'SKIP' { @{ Hex = $Pal.Faint; G = '='; Word = 'ALREADY HAVE' } }
+        'BUSY' { @{ Hex = $Pal.Cyan; G = [string][char]0x2026; Word = 'READING NOW' } }
+        'DONE' { @{ Hex = $Pal.Green; G = [string][char]0x2714; Word = 'COLLECTED' } }
+        default { @{ Hex = $Pal.Red; G = [string][char]0x2716; Word = 'NOT READ' } }
+    }
+}
+
 function Show-CollectPlan($Plan, $Ch) {
-    $C = $script:Col; $C.Plan = @{ Rows = $Plan; Ch = $Ch }; $C.Checks = @{}; $C.Rows.Children.Clear()
+    # oct. 19 2026 (user: "make Collect more designful / interactive - no lag"): a summary
+    # strip + one card per board (status disc, MAC chip, size meter); the cards change
+    # live while collecting (Set-CollectRowState, fed by gui\Progress.ps1)
+    $C = $script:Col; $C.Plan = @{ Rows = $Plan; Ch = $Ch }; $C.Checks = @{}; $C.Rows.Children.Clear(); $C.RowMap = @{}
     $mem = @{}; try { $mem = Get-MemberInfo } catch { }
+    $sizes = @($Plan | Where-Object { $null -ne $_.rows -and [int]$_.rows -gt 0 } | ForEach-Object { [int]$_.rows } | Sort-Object)
+    $rowsMax = [Math]::Max(1, ($sizes | Measure-Object -Maximum).Maximum)
+    # "short" is judged against the MIDDLE file, not the biggest: a board that kept running
+    # across a root restart carries an earlier session too and would make the rest look short
+    $rowsMid = if ($sizes.Count) { [double]$sizes[[int][Math]::Floor(($sizes.Count - 1) / 2)] } else { 1.0 }
+    # ---- summary: count pills + one stacked bar ---------------------------------
+    $cnt = [ordered]@{ READY = 0; PARTIAL = 0; 'NOT READ' = 0; 'ALREADY HAVE' = 0 }
+    foreach ($r in $Plan) {
+        $pt = ([string]$r.state -eq 'OK') -and ([string]$r.why -match '^PARTIAL|CRASHED')
+        $cnt[(Get-CollectRowLook ([string]$r.state) $pt).Word]++
+    }
+    $sum = New-Object Windows.Controls.Border; $sum.CornerRadius = 12; $sum.Padding = '14,10'; $sum.Margin = '0,0,0,10'; $sum.Background = Get-Brush $Pal.Card
+    $ss = New-Object Windows.Controls.StackPanel
+    $pills = New-Object Windows.Controls.WrapPanel
+    $tone = @{ READY = $Pal.Green; PARTIAL = $Pal.Amber; 'NOT READ' = $Pal.Red; 'ALREADY HAVE' = $Pal.Faint }
+    foreach ($k in $cnt.Keys) {
+        if (-not $cnt[$k]) { continue }
+        $pb = New-Object Windows.Controls.Border; $pb.CornerRadius = 10; $pb.Padding = '10,4'; $pb.Margin = '0,0,8,6'; $pb.Background = Get-Brush '#232742'
+        $pp = New-Object Windows.Controls.StackPanel; $pp.Orientation = 'Horizontal'
+        [void]$pp.Children.Add((New-Text ([string]$cnt[$k]) 16 $tone[$k] 'Bold'))
+        $pl = New-Text $k.ToLower() 11.5 $Pal.Dim; $pl.Margin = '6,3,0,0'; [void]$pp.Children.Add($pl)
+        $pb.Child = $pp; [void]$pills.Children.Add($pb)
+    }
+    [void]$ss.Children.Add($pills)
+    $bar = New-Object Windows.Controls.Grid; $bar.Height = 8; $bar.Margin = '0,2,0,0'
+    foreach ($k in $cnt.Keys) {
+        if (-not $cnt[$k]) { continue }
+        $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = New-Object Windows.GridLength $cnt[$k], 'Star'; [void]$bar.ColumnDefinitions.Add($cd)
+        $seg = New-Object Windows.Controls.Border; $seg.Background = Get-Brush $tone[$k]; $seg.Margin = '0,0,2,0'; $seg.CornerRadius = 3
+        [Windows.Controls.Grid]::SetColumn($seg, $bar.ColumnDefinitions.Count - 1); [void]$bar.Children.Add($seg)
+    }
+    [void]$ss.Children.Add($bar)
+    $sum.Child = $ss; [void]$C.Rows.Children.Add($sum)
+    # ---- one card per board -------------------------------------------------------
     foreach ($r in $Plan) {
         $ok = [string]$r.state -eq 'OK'
         $partial = $ok -and ([string]$r.why -match '^PARTIAL|CRASHED')
-        $hex = switch ([string]$r.state) { 'OK' { $(if ($partial) { $Pal.Amber } else { $Pal.Green }) } 'SKIP' { $Pal.Faint } default { $Pal.Amber } }
-        $b = New-Object Windows.Controls.Border; $b.CornerRadius = 10; $b.Padding = '12,8'; $b.Margin = '0,0,0,6'
-        $b.Background = Get-Brush $Pal.Card; $b.BorderThickness = '3,0,0,0'; $b.BorderBrush = Get-Brush $hex
-        $dp = New-Object Windows.Controls.DockPanel
-        $cb = New-Object Windows.Controls.CheckBox; $cb.IsChecked = $ok; $cb.IsEnabled = $ok; $cb.VerticalAlignment = 'Top'; $cb.Margin = '0,2,10,0'
-        [Windows.Controls.DockPanel]::SetDock($cb, 'Left'); [void]$dp.Children.Add($cb)
-        $sp = New-Object Windows.Controls.StackPanel
-        $mac = [string]$r.mac; $short = if ($mac.Length -ge 12) { ($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToUpper() } else { $mac }
-        $nick = ''; if ($mac.Length -ge 12) { $k = $mem[($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToLower()]; if ($k) { $nick = '  ' + $k.Nick } }
-        $tag = if ($partial) { 'OK - PARTIAL (board reset mid-run)' } elseif ($r.kind) { 'NOT READ - ' + ([string]$r.kind -replace '_', ' ') } else { [string]$r.state }
-        [void]$sp.Children.Add((New-Text ('{0}   {1}{2}   -   {3}' -f $r.port, $short, $nick, $tag) 12.5 $hex 'SemiBold'))
+        $lk = Get-CollectRowLook ([string]$r.state) $partial
+        $b = New-Object Windows.Controls.Border; $b.CornerRadius = 12; $b.Padding = '10,8'; $b.Margin = '0,0,0,6'
+        $b.Background = Get-Brush $Pal.Card; $b.BorderThickness = 1; $b.BorderBrush = Get-Brush $Pal.Line
+        $g = New-Object Windows.Controls.Grid
+        foreach ($w in 28, 40, 1, 170) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = $(if ($w -eq 1) { New-Object Windows.GridLength 1, 'Star' } else { New-Object Windows.GridLength $w }); [void]$g.ColumnDefinitions.Add($cd) }
+        $cb = New-Object Windows.Controls.CheckBox; $cb.IsChecked = $ok; $cb.IsEnabled = $ok; $cb.VerticalAlignment = 'Center'
+        [Windows.Controls.Grid]::SetColumn($cb, 0); [void]$g.Children.Add($cb)
+        # status disc
+        $disc = New-Object Windows.Controls.Border; $disc.Width = 30; $disc.Height = 30; $disc.CornerRadius = 15; $disc.VerticalAlignment = 'Center'
+        $disc.Background = Get-Brush $lk.Hex
+        $dg = New-Text $lk.G 13 '#0B1020' 'Bold'; $dg.HorizontalAlignment = 'Center'; $dg.VerticalAlignment = 'Center'; $disc.Child = $dg
+        [Windows.Controls.Grid]::SetColumn($disc, 1); [void]$g.Children.Add($disc)
+        # text
+        $sp = New-Object Windows.Controls.StackPanel; $sp.Margin = '6,0,10,0'
+        $mac = [string]$r.mac; $short = if ($mac.Length -ge 12) { ($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToUpper() } else { '--:--' }
+        $nick = ''; if ($mac.Length -ge 12) { $k = $mem[($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToLower()]; if ($k) { $nick = $k.Nick } }
+        $hd = New-Object Windows.Controls.WrapPanel
+        $chip = New-Object Windows.Controls.Border; $chip.CornerRadius = 7; $chip.Padding = '7,1'; $chip.Margin = '0,0,8,0'; $chip.Background = Get-Brush '#2A2E48'
+        $chip.Child = (New-Text $short 12 '#93C5FD' 'Bold'); [void]$hd.Children.Add($chip)
+        if ($nick) { [void]$hd.Children.Add((New-Text ($nick + '   ') 12.5 $Pal.Text 'SemiBold')) }
+        [void]$hd.Children.Add((New-Text ([string]$r.port + '   ') 11.5 $Pal.Faint))
+        $word = New-Text $(if ($r.kind -and -not $ok) { 'NOT READ - ' + ([string]$r.kind -replace '_', ' ') } else { $lk.Word }) 11 $lk.Hex 'Bold'
+        [void]$hd.Children.Add($word)
+        [void]$sp.Children.Add($hd)
         if ($r.name) {
-            $t = New-Text ('{0}   .   ran {1}   .   {2} rows   .   card recorded {3}' -f $r.name, $(if ($r.started) { $r.started } else { '?' }), $(if ($null -ne $r.rows) { '{0:N0}' -f [int]$r.rows } else { '?' }), $r.cell) 11.5 $Pal.Text
-            $t.TextWrapping = 'Wrap'; [void]$sp.Children.Add($t)
+            $t = New-Text ('{0}   -   ran {1}   -   card recorded {2}' -f $r.name, $(if ($r.started) { $r.started } else { '?' }), $r.cell) 11 $Pal.Dim
+            $t.TextWrapping = 'Wrap'; $t.Margin = '0,3,0,0'; [void]$sp.Children.Add($t)
         }
+        $note = $null
         if ($r.why) {
             $why = ([string]$r.why -replace '^(BUSY|NO_CARD|NO_ANSWER|OTHER): ', '')
             if ([string]$r.kind -eq 'BUSY') { $hold = ''; try { $hold = Get-PortHolderText ([string]$r.port) } catch { }; if ($hold) { $why += "   ->  $hold" } }
-            $t = New-Text $why 11.5 $(if ($partial) { $Pal.Amber } elseif ($ok) { $Pal.Cyan } else { $Pal.Dim }); $t.TextWrapping = 'Wrap'; [void]$sp.Children.Add($t)
+            $note = New-Text $why 11.5 $(if ($partial) { $Pal.Amber } elseif ($ok) { $Pal.Cyan } else { $Pal.Dim }); $note.TextWrapping = 'Wrap'; $note.Margin = '0,3,0,0'; [void]$sp.Children.Add($note)
         }
-        [void]$dp.Children.Add($sp); $b.Child = $dp
+        [Windows.Controls.Grid]::SetColumn($sp, 2); [void]$g.Children.Add($sp)
+        # size meter: this file against the biggest one in the scan (a short file stands out)
+        $ms = New-Object Windows.Controls.StackPanel; $ms.VerticalAlignment = 'Center'
+        if ($null -ne $r.rows -and [int]$r.rows -gt 0) {
+            $f = [Math]::Min(1.0, [int]$r.rows / [double]$rowsMax)
+            $track = New-Object Windows.Controls.Border; $track.Height = 8; $track.CornerRadius = 4; $track.Background = Get-Brush '#2A2E48'; $track.Width = 160; $track.HorizontalAlignment = 'Left'
+            $fill = New-Object Windows.Controls.Border; $fill.Height = 8; $fill.CornerRadius = 4; $fill.HorizontalAlignment = 'Left'; $fill.Width = 160 * $f
+            $short = ([int]$r.rows / [Math]::Max(1.0, $rowsMid)) -lt 0.75
+            $fill.Background = Get-Brush $(if ($short) { $Pal.Amber } else { $Pal.Cyan }); $track.Child = $fill
+            [void]$ms.Children.Add($track)
+            $rl = New-Text ('{0:N0} rows{1}' -f [int]$r.rows, $(if ($short) { '  - shorter than the others' } else { '' })) 10.5 $(if ($short) { $Pal.Amber } else { $Pal.Faint }); $rl.Margin = '0,3,0,0'
+            [void]$ms.Children.Add($rl)
+            $ms.ToolTip = 'Bar = this file against the biggest one in the scan. "shorter than the others" = under 3/4 of the middle-sized file (a board that kept running across a root restart can be bigger without being longer)'
+        } elseif ($ok) { [void]$ms.Children.Add((New-Text 'size: read when collected' 10.5 $Pal.Faint)) }
+        [Windows.Controls.Grid]::SetColumn($ms, 3); [void]$g.Children.Add($ms)
+        $b.Child = $g
         [void]$C.Rows.Children.Add($b)
+        $C.RowMap[([string]$r.port).ToUpper()] = @{ Card = $b; Disc = $disc; Glyph = $dg; Word = $word; Note = $note; Sp = $sp }
         if ($ok) { $C.Checks[[string]$r.port] = @{ Box = $cb; Rel = [string]$r.rel } }
     }
     $n = @($Plan | Where-Object { $_.state -eq 'OK' }).Count
@@ -251,6 +330,21 @@ function Show-CollectPlan($Plan, $Ch) {
     $C.Retry.Visibility = $(if ($unread) { 'Visible' } else { 'Collapsed' }); $C.Retry.Content = ('Retry failed boards ({0})' -f $unread)
     $C.Status.Text = ('{0} board(s) ready to collect, {1} not - nothing copied yet.{2}' -f $n, (@($Plan).Count - $n), $(if ($unread) { " $unread could not be READ (not a data problem) - fix as shown, then Retry failed." } else { '' }))
     $C.Status.Foreground = Get-Brush $(if ($n) { $Pal.Green } else { $Pal.Amber })
+}
+
+function Set-CollectRowState([string]$Port, [string]$State, [string]$Text) {
+    # a board card changes as the collect goes: READING NOW -> COLLECTED / NOT READ
+    $C = $script:Col; if (-not $C -or -not $C.RowMap) { return }
+    $m = $C.RowMap[$Port.ToUpper()]; if (-not $m) { return }
+    $lk = Get-CollectRowLook $State ($State -eq 'OK' -and $Text -match '^PARTIAL')
+    if ($State -eq 'OK') { $lk = Get-CollectRowLook 'DONE' $false; if ($Text -match '^PARTIAL') { $lk = @{ Hex = $Pal.Amber; G = [string][char]0x26A0; Word = 'COLLECTED - PARTIAL' } } }
+    $m.Disc.Background = Get-Brush $lk.Hex; $m.Glyph.Text = $lk.G
+    $m.Word.Text = $lk.Word; $m.Word.Foreground = Get-Brush $lk.Hex
+    $m.Card.BorderBrush = Get-Brush $(if ($State -eq 'BUSY') { $Pal.Cyan } else { $Pal.Line }); $m.Card.BorderThickness = $(if ($State -eq 'BUSY') { 2 } else { 1 })
+    if ($Text -and $State -ne 'BUSY') {
+        if (-not $m.Note) { $m.Note = New-Text '' 11.5 $Pal.Dim; $m.Note.TextWrapping = 'Wrap'; $m.Note.Margin = '0,3,0,0'; [void]$m.Sp.Children.Add($m.Note) }
+        $m.Note.Text = ($Text -replace '^(BUSY|NO_CARD|NO_ANSWER|OTHER): ', ''); $m.Note.Foreground = Get-Brush $lk.Hex
+    }
 }
 
 function Start-CollectTicked {

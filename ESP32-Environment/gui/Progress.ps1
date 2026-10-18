@@ -64,7 +64,13 @@ function Update-TaskProgress([string]$Text) {
         }
         switch ($P.Kind) {
             'collect' {
-                foreach ($m in [regex]::Matches($Text, '(?m)^-- (\S+): reading the card')) { $P.K++; $P.Item = 0; $P.Stage = "board $($P.K) of $($P.N): $($m.Groups[1].Value)" }
+                foreach ($m in [regex]::Matches($Text, '(?m)^-- (\S+): reading the card')) {
+                    $P.K++; $P.Item = 0; $P.Stage = "board $($P.K) of $($P.N): $($m.Groups[1].Value)"
+                    try { Set-CollectRowState $m.Groups[1].Value 'BUSY' '' } catch { }       # gui\Collect.ps1 cards
+                }
+                foreach ($m in [regex]::Matches($Text, '(?m)^COLLECT: (\S+) \S+ (OK|SKIP|FAIL) (.*)$')) {
+                    if (-not $script:CollectScanning) { try { Set-CollectRowState $m.Groups[1].Value $m.Groups[2].Value $m.Groups[3].Value.Trim() } catch { } }
+                }
             }
             'import' {
                 foreach ($m in [regex]::Matches($Text, '(?m)^\s*COPY\s+(\S+)')) { $P.K++; $P.Item = 0; $P.Stage = "file $($P.K)$(if ($P.N) { " of $($P.N)" }): $([IO.Path]::GetFileName($m.Groups[1].Value))" }
