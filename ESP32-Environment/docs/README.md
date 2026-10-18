@@ -10,7 +10,7 @@ files was edited — only their location changed.
 |---|---|---|
 | `blackhole/` | How is the blackhole staged, and what must its signature show? | `2026-09-14_BLACKHOLE.md` |
 | `wormhole/` | How is the UART tunnel built, and why are duplicate arrivals the signature? | `2026-09-14_WORMHOLE.md` |
-| `attack-validation/` | "How do you know it is *really* a blackhole/wormhole?" | `ATTACK-VALIDATION.md` (conformance vs Karlof & Wagner 2003 and Hu-Perrig-Johnson 2003, **including the criteria we fail**), `2026-09-15_VERIFY.md` (the 3-sigma verifier runbook) |
+| `attack-validation/` | "How do you know it is *really* a blackhole/wormhole?" | `ATTACK-VALIDATION.md` (conformance vs Karlof & Wagner 2003 and Hu-Perrig-Johnson 2003, **including the criteria we fail**), `2026-09-15_VERIFY.md` (the 3-sigma verifier runbook), `REROUTE-VERDICT.md` (why a self-healing parent change can be tolerated, the fairness rules, the citations needed - D-23/D-24) |
 
 Wormhole **wiring** trouble is not here — it is in `issues-and-fixes/SD-CARD-AND-WORMHOLE-WIRING.md`,
 because the panel asks about it as a hardware struggle, not as an attack design.

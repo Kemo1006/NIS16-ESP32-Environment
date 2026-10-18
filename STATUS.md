@@ -26,7 +26,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 3. Work the redo list (wizard Campaign [5]). wormhole/linear/G402/stationary re-verified = OK (#40, D6 ticked). A Campaign CHECK 'newer capture exists' clears only with a logged verification block, not the Verify button.
 4. Optional: re-run `analyze.ps1 -All` so every table uses the `transition` segment (verdicts unchanged, dry-run proven).
 5. Decide star wormhole (checklist A24) before anyone runs it. First real GUI run: Run a capture -> Start -> Live run (compile, wipe+flash+run, START on the dashboard, Finish + export root); then Data > Import / export. Check the port pickers show MACs after the reflash (GET_ID).
-6. Paper edits week of oct. 19: A21-A23, A25, B-rules, B-force (stabilise = until START), B-lat, D-20..D-22.
+6. Paper edits week of oct. 19: A21-A23, A25-A28, B-rules, B-force (stabilise = until START), B-lat, D-20..D-24. Re-route rule write-up + draft paragraph + citations to check: `ESP32-Environment/docs/attack-validation/REROUTE-VERDICT.md`.
 
 ## Blockers / open questions
 - ⛔ **Victim crashes (PANIC / INT_WDT)** in blackhole/tree/G402/highload oct. 17 (verification #39 -> recapture D9). Cause unknown: recapture with the Live run's crash watch ON so the backtrace is recorded + decoded, then fix before more highload runs.
