@@ -16,6 +16,32 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #50 — Oct 19, 2026 · ~2:30 AM — honesty audit of the verdict (no bias, no fake, aligned to the studies) + why tree/G402/burst = CONFIRMED but REDO
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `133a7ac` + this change
+> **Request:** "check there is no bias or fake in the verdict, still aligned to the supporting papers. Why does my tree blackhole G402 burst say CONFIRMED and STRONG but need a redo?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 54 attack captures | every analysed attack cell + the oct. 18 tree/G402 archives |
+
+| Check | Result | Detail |
+|---|---|---|
+| Verdicts vs the verifier BEFORE all oct. 18-19 changes (`0e43f7e`) | ✅ 2 changed, both intended | tree/G402/stationary (10:11 PM) and its archived 7:21 PM run: SETUP INVALID -> CONFIRMED under D-23 (allowed self-healing moves; no-path seconds left out). Nothing else changed |
+| Forced / hard-coded results | ✅ none | no code sets a verdict; the only `= True/False` hits are start values before the checks |
+| Flat baseline (sd = 0 -> infinite sigma) | ✅ guarded | a primary also needs an absolute change >= 0.10 (MIN_EFFECT), so a tiny wobble on a flat baseline cannot pass |
+| Study tags | ✅ 9/9 | Z Zhukabayeva, A Airehrour, KW Karlof & Wagner, K Khan, R Ramirez Gomez, H Hu-Perrig-Johnson, E Espressif, BA MacCoun & Perlmutter, PR Simmons / Nosek - all in docs/references or ATTACK-VALIDATION.md |
+| **Grade bug found** | ❌ -> 🔧 | `_confidence()` dropped any WARN whose words were not on its footnote list -> tree/G402/burst (FE90 "NO labelled window") showed **STRONG**. Fixed: an unlisted warning becomes a footnote as it is; a missing run log (force-start not checkable) is a footnote too. Unit test now proves STRONG needs a normal START in the run log |
+| Grades after the fix | ✅ | 7 STRONG · 43 QUALIFIED · 2 not confirmed. 42 of the QUALIFIED carry "force-start could not be checked (no run log saved)" (captures before run logs were saved) and 11 "partial mesh still a plain tree" (B-pm) - honest, verdicts unchanged |
+| tree/G402/burst | ⚠️ explained | verdict CONFIRMED (2/2), now **QUALIFIED** (FE90 had no usable windows; no run log). The **REDO** comes from thesis checklist **D2** ("r1 lost FE90 - recapture with all 8 boards"): a COMPLETENESS decision (7 of 8 boards), not the attack verdict. Both are true at once |
+| Tests | ✅ 38/38 | |
+
+**Verdict: ✅ no fake or biased result found; one overstatement (STRONG) fixed. The verdict logic is unchanged
+except the two documented D-23 runs; every cited study is vetted.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #49 — Oct 19, 2026 · ~2:30 AM — verifier change: 7 more situations (S1-S7) + CONFIDENCE grade; sweep of every capture
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `32454e5` + this change

@@ -164,7 +164,15 @@ class Blackhole(unittest.TestCase):
         self.assertFalse(run(d, "blackhole")[0])
 
     def test_clean_run_is_strong_and_broken_run_says_why(self):
-        self.assertIn("CONFIDENCE: STRONG", run(self.df, "blackhole")[2])
+        # STRONG needs EVERY check to pass, the force-start check included (a normal
+        # START in the run log); without a run log the same run is QUALIFIED
+        real = ac.start_anyway_issues
+        try:
+            ac.start_anyway_issues = lambda df, **k: [ac.Issue("OK", "normal START - no START_ANYWAY in the root's run log")]
+            self.assertIn("CONFIDENCE: STRONG", run(self.df, "blackhole")[2])
+        finally:
+            ac.start_anyway_issues = real
+        self.assertIn("could not be checked (no run log saved)", run(self.df, "blackhole")[2])
         d = self.df.copy()
         m = attack_rows(d) & (d.node_id == self.atk_id)
         d.loc[m, "forward_count_delta"] = d.loc[m, "recv_count_delta"]

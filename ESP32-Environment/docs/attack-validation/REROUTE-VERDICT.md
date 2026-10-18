@@ -105,8 +105,11 @@ from the checks above by fixed rules:
 | **QUALIFIED** | confirmed, but with footnotes (re-test not possible, a board went silent, start overridden, evidence partly left out, ...) | "BLACKHOLE CONFIRMED (qualified: N footnotes)" - each footnote goes to the thesis checklist |
 | **-** | not confirmed | the failed check(s) are listed as the reason |
 
-Applied to all 54 analysed captures (oct. 19): **48 STRONG, 2 QUALIFIED** (the oct. 18 7:21 PM and 10:11 PM
-tree/G402 runs), **2 not confirmed**; **0 verdicts changed** by the new situations (verification #49).
+Applied to all 54 analysed captures (oct. 19, after the #50 fix): **7 STRONG, 43 QUALIFIED, 2 not confirmed**; 0 verdicts
+changed. Most QUALIFIED runs carry ONE footnote - "force-start could not be checked (no run log saved)" (42 runs
+captured before run logs were saved). A first version graded 48 STRONG because it silently dropped warnings that
+were not on its footnote list - fixed in #50: **any warning becomes a footnote**, so STRONG means every check
+passed, the force-start check included.
 
 Example (10:11 PM run):
 

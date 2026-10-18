@@ -613,6 +613,7 @@ _FOOTNOTE = [  # (words in a WARN, short footnote)
     ("no attack-window telemetry", "a board dropped out before the attack"),
     ("FORCE-STARTED", "the run was force-started (START_ANYWAY)"),
     ("overridden by the operator", "START was pressed over failed pre-START checks"),
+    ("NO labelled window", "a board has no usable windows (no phase seen) - the checks ran without it"),
 ]
 
 
@@ -638,6 +639,17 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
                 who = it.text.split(" ", 1)[0] if it.text[:4].isalnum() else ""
                 notes.append(f"{short}" + (f" ({who})" if who and not who.startswith(("the", "only", "this", "no", "START", "robustness")) else ""))
                 break
+        else:
+            # oct. 19 2026 (user: "make sure there is no bias"): a warning whose words fit
+            # no entry above is NEVER dropped - it becomes a footnote as it is. Before, an
+            # unlisted warning (a board with no usable windows) left a run graded STRONG.
+            notes.append(" ".join(it.text.split())[:110] + ("..." if len(it.text) > 110 else ""))
+    # a run whose force-start check could not be made (no run log saved) is not
+    # "nothing to footnote" - say it could not be checked
+    for it in issues:
+        if it.level == "SKIP" and it.text.startswith("START_ANYWAY"):
+            notes.append("whether the run was force-started could not be checked (no run log saved)")
+            break
     extra = [n for n in notes if not n.startswith("a board moved but stayed")]
     if not notes:
         return "STRONG", ["nothing moved, nothing was left out, nothing to footnote"]
