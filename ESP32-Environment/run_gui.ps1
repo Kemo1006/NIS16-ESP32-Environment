@@ -1187,8 +1187,9 @@ $StyleXaml
           <TabControl x:Name="CampTabs" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource SubTab}">
             <TabItem Header="  &#x25A6;  Checklist grid  ">
               <Grid Margin="0,10,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions>
-                <DockPanel Grid.Column="0" Margin="0,0,14,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*" MinWidth="320"/></Grid.ColumnDefinitions>
+                <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE" ToolTip="Drag to make the run panel wider or narrower"/>
+                <DockPanel Grid.Column="0" Margin="0,0,4,0">
                   <WrapPanel DockPanel.Dock="Top">
                     <TextBlock Text="SHOW" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,10,8"/>
                     <RadioButton x:Name="CfAll"     Style="{StaticResource Chip}" GroupName="cf" Content="Everything" IsChecked="True"/>
@@ -1208,7 +1209,7 @@ $StyleXaml
                     </ScrollViewer>
                   </Border>
                 </DockPanel>
-                <Border Grid.Column="1" Style="{StaticResource Card}">
+                <Border Grid.Column="2" Style="{StaticResource Card}">
                   <DockPanel>
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
                       <Button x:Name="CampCapture" Style="{StaticResource Primary}" Content="&#x25B6;  Capture this run" IsEnabled="False" Margin="0,0,0,8" Padding="16,11"/>
@@ -4831,6 +4832,8 @@ function Update-CampaignMatrix {
     $script:CampPulses.Clear()
     $g = $ui.CampMatrix
     $g.Children.Clear(); $g.RowDefinitions.Clear(); $g.ColumnDefinitions.Clear()
+    $script:CampSelPrev = $script:CampSel
+    $script:CampTileMap = @{}      # selection key -> @{ T = tile; Bd; Th } (gui\CampaignVisual.ps1: Set-CampSelection)
     $locSel = @($ui.ClG402, $ui.ClDlsu, $ui.ClYuch | Where-Object IsChecked | ForEach-Object { [string]$_.Tag })
     $locs = @($st.locations | Where-Object { -not $locSel.Count -or $locSel -contains $_ })
     $scns = @($st.scenarios); $topos = @($st.topologies)
@@ -4915,9 +4918,12 @@ function Update-CampaignMatrix {
                         $gl.BeginAnimation([Windows.UIElement]::OpacityProperty, $pulse)
                         [void]$script:CampPulses.Add($gl)
                     }
-                    if ($script:CampSel -and $script:CampSel -eq (Get-CellKey $s.attack $s.topology $s.location $s.scenario) + $s.kind) {
+                    $selKey = (Get-CellKey $s.attack $s.topology $s.location $s.scenario) + $s.kind
+                    $script:CampTileMap[$selKey] = @{ T = $t; Bd = $t.BorderBrush; Th = $t.BorderThickness }
+                    if ($script:CampSel -and $script:CampSel -eq $selKey) {
                         $t.BorderBrush = & $brush '#FFFFFF'; $t.BorderThickness = 2.5
                     }
+                    $t.Add_ToolTipOpening({ param($x, $e) try { Set-CampTileTip $x } catch { } })   # grade, read once on hover
                     $t.Add_MouseEnter({ param($x) $x.RenderTransform.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Fade 1 1.12 120)); $x.RenderTransform.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Fade 1 1.12 120)) })
                     $t.Add_MouseLeave({ param($x) $x.RenderTransform.BeginAnimation([Windows.Media.ScaleTransform]::ScaleXProperty, (New-Fade 1.12 1 160)); $x.RenderTransform.BeginAnimation([Windows.Media.ScaleTransform]::ScaleYProperty, (New-Fade 1.12 1 160)) })
                     $t.Add_MouseLeftButtonUp({ param($x) Show-CampaignCell $x.Tag })
@@ -4937,6 +4943,7 @@ function Update-CampaignMatrix {
     $looks = @($all | ForEach-Object { Get-SlotLook $_ })
     $cnt = @{}; foreach ($k in $looks) { $cnt[$k] = 1 + [int]$cnt[$k] }
     $ui.CampStats.Children.Clear()
+    try { [void]$ui.CampStats.Children.Add((New-CampRing ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check) $all.Count)) } catch { }
     foreach ($chip in @(
         @{ T = 'planned'; N = $all.Count; C = $Pal.Text; Tip = 'Every run in the campaign plan (for the locations shown).' },
         @{ T = 'done'; N = ([int]$cnt.ok + [int]$cnt.done + [int]$cnt.check); C = $Pal.Green; Tip = 'Captured AND usable: OK, done, or only flagged CHECK. Runs marked REDO are NOT in here.' },
@@ -5017,7 +5024,9 @@ function Show-CampaignCell($S) {
     $ui.CampVerify.IsEnabled = $hasCell -and $a -ne 'baseline'
     $ui.CampAnalyse.IsEnabled = $look -ne 'todo'
     $ui.CampOpen.IsEnabled = $look -ne 'todo'
-    Update-CampaignMatrix
+    # oct. 19 2026: a click only moves the white selection border - the old code rebuilt
+    # the whole grid (hundreds of tiles) on every click
+    if (-not (Set-CampSelection)) { Update-CampaignMatrix }
 }
 $ui.CampCapture.Add_Click({ if ($script:CampSlot) { Start-CellCapture $script:CampSlot } })
 $ui.CampNext.Add_Click({ if ($script:Campaign -and $script:Campaign.next) { $ui.CfAll.IsChecked = $true; $ui.ClAll.IsChecked = $true; Show-CampaignCell $script:Campaign.next } })
