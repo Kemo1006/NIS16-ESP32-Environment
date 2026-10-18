@@ -4150,6 +4150,24 @@ function Get-AnaReport([string]$Key) {
     $f = Join-Path $script:AnaDir ('reports\' + ($Key -replace '/', '__') + '.txt')
     if (Test-Path $f) { return [IO.File]::ReadAllText($f) } else { return '' }
 }
+function Initialize-GuiReportTidy {
+    # oct. 19 2026 (user: "why do some runs not show the new verdict"): a saved report
+    # of a run whose export folder no longer exists (deleted / renamed run) is never
+    # re-verified, so it would show an old verdict forever. Park it in reports\_orphaned
+    # (nothing deleted). Runs once at start; a few file checks, no data read.
+    try {
+        $rd = Join-Path $script:AnaDir 'reports'; if (-not (Test-Path $rd)) { return }
+        $exp = Join-Path $base 'datasets\exports'
+        foreach ($f in Get-ChildItem $rd -Filter '*.txt' -File -ErrorAction SilentlyContinue) {
+            $parts = $f.BaseName -split '__'
+            if ($parts.Count -ne 4) { continue }
+            $parts[1] = $parts[1] -replace '^partial$', 'partial_mesh'
+            if (Test-Path (Join-Path $exp ($parts -join '\'))) { continue }
+            $od = Join-Path $rd '_orphaned'; New-Item -ItemType Directory -Force -Path $od | Out-Null
+            Move-Item -LiteralPath $f.FullName -Destination (Join-Path $od $f.Name) -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
+}
 $script:AnaBadge = @{
     todo    = @{ T = 'NOT ANALYSED';  Bg = '#3A2E14'; Fg = $Pal.Amber }
     stale   = @{ T = 'NEW DATA';      Bg = '#13343C'; Fg = $Pal.Cyan }
@@ -4285,6 +4303,14 @@ function Show-AnaReport([string]$Text) {
     $t = $Text -replace "\x1b\[[0-9;]*m", ''
     if (-not $t.Trim()) { [void]$ui.AnaResult.Children.Add($ui.AnaResultEmpty); return }
     $lines = $t -split "`r?`n"
+    # oct. 19 2026: an attack report without the CONFIDENCE grade was made by an older
+    # verifier (before oct. 19) - say so on top instead of passing it off as current
+    if ($t -match '(?m)^\s*VERDICT\s*:' -and $t -notmatch '(?m)^\s*CONFIDENCE\s*:') {
+        $nb = New-Object Windows.Controls.Border; $nb.CornerRadius = 10; $nb.Padding = '12,8'; $nb.Margin = '0,0,0,10'; $nb.Background = Get-Brush '#3A2E14'
+        $nt = New-Text ('This report was made by an OLDER version of the verifier (no CONFIDENCE grade, no "why moves were allowed"). ' +
+                        'Press Verify to update it - the data is not re-imported, only re-checked.') 12.5 $Pal.Amber 'SemiBold'
+        $nt.TextWrapping = 'Wrap'; $nb.Child = $nt; [void]$ui.AnaResult.Children.Add($nb)
+    }
     $mem = Get-MemberInfo
     # gates (analyze.ps1's validation summary)
     $gates = @($lines | Where-Object { $_ -match '^\s*(integrity|topology|attack)\s*:\s*(.+)$' })
