@@ -180,12 +180,17 @@ function Release-CollectPorts([string[]]$Ports) {
     foreach ($pt in $Ports) { try { Stop-CrashWatchOn $pt } catch { } }
 }
 
-function Start-CollectScan([switch]$RetryFailed) {
+function Start-CollectScan([switch]$RetryFailed, [string]$OnlyPort) {
     $C = $script:Col; $ch = Get-CollectChoice; if (-not $ch -or -not $ch.Ports.Count) { return }
     $py = Get-Py; if (-not $py) { return }
     if (Test-TaskBusy 'The scan') { return }
     $merge = $null
-    if ($RetryFailed) {
+    if ($OnlyPort) {
+        # one card's "Retry this board": re-read just that port, keep the others' rows
+        if (-not $C.Plan) { return }
+        if (-not $script:Live.Contains($OnlyPort)) { [void][Windows.MessageBox]::Show("$OnlyPort is not plugged in right now.", 'Collect'); return }
+        $ch = $ch.Clone(); $ch.Ports = @($OnlyPort); $merge = $C.Plan.Rows
+    } elseif ($RetryFailed) {
         if (-not $C.Plan) { return }
         $failed = @($C.Plan.Rows | Where-Object { $_.state -eq 'FAIL' -and $_.kind } | ForEach-Object { [string]$_.port })
         $failed = @($failed | Where-Object { $script:Live.Contains($_) })
@@ -304,6 +309,23 @@ function Show-CollectPlan($Plan, $Ch) {
             if ([string]$r.kind -eq 'BUSY') { $hold = ''; try { $hold = Get-PortHolderText ([string]$r.port) } catch { }; if ($hold) { $why += "   ->  $hold" } }
             $note = New-Text $why 11.5 $(if ($partial) { $Pal.Amber } elseif ($ok) { $Pal.Cyan } else { $Pal.Dim }); $note.TextWrapping = 'Wrap'; $note.Margin = '0,3,0,0'; [void]$sp.Children.Add($note)
         }
+        # one-click fixes for this board (oct. 19 2026)
+        $fx = New-Object Windows.Controls.WrapPanel; $fx.Margin = '0,6,0,0'
+        $mkBtn = { param($label, $tip, $act)
+            $bt = New-Object Windows.Controls.Button; $bt.Content = $label; $bt.Padding = '10,3'; $bt.Margin = '0,0,6,0'; $bt.FontSize = 11.5
+            $bt.ToolTip = $tip; $bt.Tag = [string]$r.port; $bt.Add_Click($act); [void]$fx.Children.Add($bt) }
+        if ([string]$r.state -eq 'FAIL') {
+            & $mkBtn ([string][char]0x21BB + '  Retry this board') 'Read this board''s card again (only this one - the others keep their result)' { param($x) Start-CollectScan -OnlyPort ([string]$x.Tag) }
+        }
+        if ([string]$r.kind -eq 'BUSY') {
+            & $mkBtn 'Free the port' 'Close THIS window''s own crash watch on this port, then read the board again. Another program holding it (serial monitor, a second GUI) must be closed by you.' {
+                param($x) $pt = [string]$x.Tag; try { Stop-CrashWatchOn $pt } catch { }; Start-CollectScan -OnlyPort $pt }
+        }
+        if ([string]$r.state -eq 'SKIP') {
+            & $mkBtn 'Open run folder' 'Show the run folder that already has this board''s file' {
+                param($x) $C = $script:Col; try { $ch = $C.Plan.Ch; $d = Get-RunDirs -Attack $(if ($ch.A -eq 'baseline') { 'none' } else { $ch.A }) -Topology ($ch.T -replace '^partial_mesh$', 'partial') -Location $ch.L -Scenario $ch.S; if (Test-Path $d.Export) { Start-Process explorer $d.Export } } catch { } }
+        }
+        if ($fx.Children.Count) { [void]$sp.Children.Add($fx) }
         [Windows.Controls.Grid]::SetColumn($sp, 2); [void]$g.Children.Add($sp)
         # size meter: this file against the biggest one in the scan (a short file stands out)
         $ms = New-Object Windows.Controls.StackPanel; $ms.VerticalAlignment = 'Center'

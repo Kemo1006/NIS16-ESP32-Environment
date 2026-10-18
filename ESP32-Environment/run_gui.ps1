@@ -433,7 +433,9 @@ $StyleXaml = @"
     <Style x:Key="H1" TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Text)"/><Setter Property="FontSize" Value="26"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Margin" Value="0,0,0,4"/></Style>
     <Style x:Key="Sub" TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Dim)"/><Setter Property="Margin" Value="0,0,0,16"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
     <Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="$($Pal.Faint)"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Margin" Value="0,0,0,4"/></Style>
-    <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="$($Pal.Card)"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="20"/><Setter Property="BorderBrush" Value="$($Pal.Line)"/><Setter Property="BorderThickness" Value="1"/></Style>
+    <!-- oct. 19 2026: cards lit from above - a lighter top edge fading to the old line colour -->
+    <LinearGradientBrush x:Key="CardEdge" StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#454B7A" Offset="0"/><GradientStop Color="$($Pal.Line)" Offset="0.35"/><GradientStop Color="#23263D" Offset="1"/></LinearGradientBrush>
+    <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="$($Pal.Card)"/><Setter Property="CornerRadius" Value="16"/><Setter Property="Padding" Value="20"/><Setter Property="BorderBrush" Value="{StaticResource CardEdge}"/><Setter Property="BorderThickness" Value="1"/></Style>
 "@
 
 # ── data helpers ──────────────────────────────────────────────────────────────
@@ -3004,6 +3006,7 @@ function Update-Home {
             $ui.HomeNextWhy.Text = "next slot in run order, at the location with the most done runs (session $($st.next.session))"
         } else { $ui.HomeNext.Text = 'Everything planned is captured!'; $ui.HomeNextWhy.Text = '' }
         Update-CampaignMatrix; Update-CaptureCampaign
+        try { Update-TodayStrip } catch { }   # gui\TodayStrip.ps1: last 24 hours on Home
         Set-Status 'Campaign loaded.' $Pal.Green
         Update-CampPanelFresh
     }

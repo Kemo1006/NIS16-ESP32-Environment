@@ -154,6 +154,9 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     if ($rep.Nodes.Count) { try { [void]$wrap.Children.Add((New-CampDeliveryChart $rep.Nodes)) } catch { } }
     [void]$Body.Children.Add($wrap)
 
+    # 2b. PHASE TIMELINE per board (cached; background read the first time)
+    try { Add-CampTimeline $Body $S } catch { }
+
     # 3. LAYOUT - built only when the expander opens
     if ($rep.Sketch.Count) {
         $ex = New-Object Windows.Controls.Expander; $ex.Margin = '0,0,0,10'; $ex.IsExpanded = $false
@@ -276,4 +279,98 @@ function New-CampDeliveryChart($Nodes) {
     $lg = New-Text 'red = behind the attacker (victim)   -   blue = not behind it' 10 $Pal.Faint; $lg.Margin = '0,8,0,0'; [void]$sp.Children.Add($lg)
     $card.Child = $sp
     return $card
+}
+
+# ---- phase timeline per board (oct. 19 2026, user) -----------------------------------
+# tools\phase_summary.py reads the run's CSVs (~1 s) - so it runs in the BACKGROUND the
+# first time a run is opened and its result is cached in %LOCALAPPDATA%\NIS16\phase_cache
+# with a signature of the run's files (names + sizes). Later opens draw from the cache
+# at once; a re-import / re-trim changes the signature and the timeline is re-read.
+$script:PhaseHex = @{ '255' = '#4B5075'; '254' = '#4B5075'; '0' = '#3DDC97'; '1' = '#FF5C9A'; '2' = '#FF5C9A'; '3' = '#3FD0FF'; '4' = '#A78BFA' }
+$script:PhaseWord = @{ '255' = 'stabilise'; '254' = 'prepare'; '0' = 'baseline'; '1' = 'attack'; '2' = 'attack'; '3' = 'cooldown'; '4' = 'terminate' }
+
+function Get-RunFilesSig([string]$Dir) {
+    $fs = @(Get-ChildItem $Dir -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue | Sort-Object Name)
+    return (@($fs | ForEach-Object { '{0}:{1}' -f $_.Name, $_.Length }) -join '|')
+}
+
+function Add-CampTimeline($Body, $S) {
+    $key = Get-SlotKeyPath $S
+    $exp = Join-Path $base ('datasets\exports\' + ($key -replace '/', '\'))
+    if (-not (Test-Path $exp)) { return }
+    $trim = Join-Path $exp 'trimmed'
+    $src = if (@(Get-ChildItem $trim -Filter '*_telem.csv' -File -ErrorAction SilentlyContinue).Count) { $trim } else { $exp }
+    $sig = Get-RunFilesSig $src
+    if (-not $sig) { return }
+    $card = New-Object Windows.Controls.Border; $card.CornerRadius = 12; $card.Padding = '14,10'; $card.Margin = '0,0,10,10'
+    $card.Background = Get-Brush $Pal.Card; $card.BorderBrush = Get-Brush $Pal.Line; $card.BorderThickness = 1
+    $sp = New-Object Windows.Controls.StackPanel
+    [void]$sp.Children.Add((New-Text ('PHASE TIMELINE PER BOARD   ({0} data)' -f $(if ($src -eq $trim) { 'trimmed' } else { 'raw' })) 10.5 $Pal.Faint 'SemiBold'))
+    $wait = New-Text 'reading the boards'' files in the background...' 11.5 $Pal.Dim; $wait.Margin = '0,6,0,0'; [void]$sp.Children.Add($wait)
+    $card.Child = $sp
+    [void]$Body.Children.Add($card)
+    $dir = Join-Path $script:AnaDir 'phase_cache'
+    $cf = Join-Path $dir (($key -replace '/', '__') + '.json')
+    if (Test-Path $cf) {
+        try { $c = Get-Content $cf -Raw -Encoding UTF8 | ConvertFrom-Json; if ($c.sig -eq $sig) { Show-CampTimeline $card @($c.items); return } } catch { }
+    }
+    if (-not $script:Py) { $wait.Text = 'Python not found - no timeline'; return }
+    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\phase_summary.py', $src) -State @{ Card = $card; Key = $key; Sig = $sig; Cf = $cf; Dir = $dir } -OnDone {
+        param($text, $code, $st)
+        $line = @($text -split "`r?`n" | Where-Object { $_.TrimStart().StartsWith('[') } | Select-Object -Last 1)
+        if (-not $line) { try { $st.Card.Child.Children[1].Text = 'could not read the files (see the activity pane)' } catch { }; return }
+        $items = @([string]$line | ConvertFrom-Json | ForEach-Object { $_ })
+        try { New-Item -ItemType Directory -Force -Path $st.Dir | Out-Null; (@{ sig = $st.Sig; items = $items } | ConvertTo-Json -Depth 6) | Set-Content -Path $st.Cf -Encoding UTF8 } catch { }
+        # draw only if the user is still looking at this run
+        if ($script:CampSlot -and (Get-SlotKeyPath $script:CampSlot) -eq $st.Key) { Show-CampTimeline $st.Card $items }
+    }
+}
+
+function Show-CampTimeline($Card, $Items) {
+    $sp = $Card.Child
+    while ($sp.Children.Count -gt 1) { $sp.Children.RemoveAt(1) }
+    $Items = @($Items | Sort-Object { if ($_.role -eq 'root') { 0 } else { 1 } }, { [string]$_.node })
+    $maxRows = [Math]::Max(1, ($Items | ForEach-Object { [int]$_.rows } | Measure-Object -Maximum).Maximum)
+    $W = 380.0
+    $mem = @{}; try { $mem = Get-MemberInfo } catch { }
+    foreach ($it in $Items) {
+        $mac = [string]$it.node -replace '^NODE_', ''
+        $short = if ($mac.Length -ge 12) { $mac.Substring(0, 2) + ':' + $mac.Substring(10, 2) } else { $mac }
+        $nick = ''; if ($mac.Length -ge 12) { $k = $mem[$short.ToLower()]; if ($k) { $nick = ' ' + $k.Nick } }
+        $row = New-Object Windows.Controls.Grid; $row.Margin = '0,6,0,0'
+        foreach ($w in 120, 1) { $cd = New-Object Windows.Controls.ColumnDefinition; $cd.Width = $(if ($w -eq 1) { New-Object Windows.GridLength 1, 'Star' } else { New-Object Windows.GridLength $w }); [void]$row.ColumnDefinitions.Add($cd) }
+        $role = [string]$it.role
+        $nm = New-Text ($short + $nick) 11.5 $(if ($role -eq 'root') { $Pal.Amber } elseif ($role -match 'blackhole|wormhole') { $Pal.Pink } else { $Pal.Text }) 'SemiBold'
+        $nm.ToolTip = "$($it.node)  -  $role  -  $($it.file)"; $nm.TextTrimming = 'CharacterEllipsis'
+        [Windows.Controls.Grid]::SetColumn($nm, 0); [void]$row.Children.Add($nm)
+        $right = New-Object Windows.Controls.StackPanel
+        $bar = New-Object Windows.Controls.StackPanel; $bar.Orientation = 'Horizontal'; $bar.Height = 12
+        $ph = @{}; foreach ($pp in $it.phases.PSObject.Properties) { $ph[$pp.Name] = [int]$pp.Value }
+        $seen = @{}
+        foreach ($id in @($it.seq)) {
+            $id = [string]$id; if ($seen[$id]) { continue }; $seen[$id] = $true
+            $n = [int]$ph[$id]; if ($n -le 0) { continue }
+            $seg = New-Object Windows.Controls.Border; $seg.Height = 12; $seg.Width = [Math]::Max(2, $W * $n / $maxRows); $seg.Margin = '0,0,1,0'
+            $seg.Background = Get-Brush $(if ($script:PhaseHex[$id]) { $script:PhaseHex[$id] } else { '#6B7393' })
+            $seg.ToolTip = '{0}: {1:N0} rows (~{2:N0} s)' -f $(if ($script:PhaseWord[$id]) { $script:PhaseWord[$id] } else { "phase $id" }), $n, ($n / 10)
+            [void]$bar.Children.Add($seg)
+        }
+        [void]$right.Children.Add($bar)
+        $miss = @(); if (-not $ph['0']) { $miss += 'no baseline' }; if (-not ($ph['1'] -or $ph['2'])) { $miss += 'no attack' }; if (-not $ph['3']) { $miss += 'no cooldown' }
+        $info = '{0:N0} s' -f [double]$it.seconds
+        # a board that kept running across a root restart holds two sessions in one file;
+        # the counts above are both added up - the analysis uses only the LAST one
+        $sessions = @($it.seq | Where-Object { [string]$_ -eq '0' }).Count
+        if ($sessions -gt 1) { $info += "   -   holds $sessions root sessions (the analysis uses the last)" }
+        $lt = New-Text ($info + $(if ($miss.Count) { '   -   ' + ($miss -join ', ') } else { '' })) 10 $(if ($miss.Count) { $Pal.Amber } elseif ($sessions -gt 1) { $Pal.Cyan } else { $Pal.Faint }); $lt.Margin = '0,2,0,0'
+        [void]$right.Children.Add($lt)
+        [Windows.Controls.Grid]::SetColumn($right, 1); [void]$row.Children.Add($right)
+        [void]$sp.Children.Add($row)
+    }
+    $lg = New-Object Windows.Controls.WrapPanel; $lg.Margin = '0,8,0,0'
+    foreach ($id in '255', '0', '1', '3') {
+        $d = New-Object Windows.Controls.Border; $d.Width = 10; $d.Height = 10; $d.CornerRadius = 2; $d.Margin = '0,2,4,0'; $d.Background = Get-Brush $script:PhaseHex[$id]
+        [void]$lg.Children.Add($d); $l = New-Text ($script:PhaseWord[$id] + '    ') 10.5 $Pal.Faint; [void]$lg.Children.Add($l)
+    }
+    [void]$sp.Children.Add($lg)
 }
