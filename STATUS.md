@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 18, 2026 ~4:15 PM (Angelo's laptop: location.txt auto-fix before every flash (GUI + both CLIs) + Data page re-file option, PUSHED; DLSU highload r1 filed + pushed, #42). Before that ~4 AM SESSION SUMMARY (GUI look/speed/lag), pushed. Local-only on purpose: attacker MAC in `mesh_config.h`, `sync_test/`, derived files in `archive/`. Kyle's #14-#32 on HIS laptop only. Facts + reasons: MEMORY.md top.
+**Updated:** oct. 18, 2026 ~5:30 PM (Angelo's laptop: GUI improvements 1-10 + review fixes + last-used preset + smart alerts + CLI parity, **PUSHED (GUI self-test still pending)** - see MEMORY top). Earlier today: location.txt auto-fix + DLSU highload r1 filed (#42), pushed. Local-only on purpose: attacker MAC in `mesh_config.h`, `sync_test/`, derived files in `archive/`. Kyle's #14-#32 on HIS laptop only.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
@@ -21,7 +21,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Next step
 1. **Re-wire the tunnel** (0C80 GPIO17 must NOT touch its own GPIO16: crossed TX->other RX both ways + GND), **reflash ROOT + both tunnel boards**, then check the dashboard: 1 A (shallower) + 1 B, `UART OK` on both -> READY -> type `START`.
-1b. **wormhole/linear/DLSU_Library/highload r1:** analyse + verify (files are in place, #42).
+1b. **GUI self-test still pending** for the oct. 18 GUI/CLI work (pushed; checklist `ESP32-Environment/docs/operations/2026-10-18_GUI-IMPROVEMENTS-CHECKLIST.md`): when NO capture is running, `powershell -File run_gui.ps1 -SelfTest` (foreground). Restart the GUI to load it. Analysis tables of blackhole/linear/G402/jitter + home/highload were re-run here and are NOT committed - send them with Smart sync.
 2. **First real use of the new pages:** GitHub sync (Check -> Smart sync on each laptop, after pulling `b6f8cc8`) and Data > 'Delete from card' (tested on a fake card only). `baseline/linear/home/highload` is NOT ANALYSED here or on GitHub - analyse it. Do NOT push `mesh_config.h` attacker-MAC lines.
 3. Work the redo list (wizard Campaign [5]). wormhole/linear/G402/stationary re-verified = OK (#40, D6 ticked). A Campaign CHECK 'newer capture exists' clears only with a logged verification block, not the Verify button.
 4. Optional: re-run `analyze.ps1 -All` so every table uses the `transition` segment (verdicts unchanged, dry-run proven).

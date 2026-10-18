@@ -73,6 +73,9 @@ datasets/analysis/**/eda_output/
 # This laptop's latest SD-import batch (tools/ImportBatch.ps1) - what push/pull
 # lists show green. Per-laptop state, never shared.
 .last_import_batch.json
+.last_import_batch.json.undone
+# the last preset this laptop ran (gui\LastPreset.ps1) - per laptop, never shared
+.last_used_preset.json
 
 # Python
 __pycache__/

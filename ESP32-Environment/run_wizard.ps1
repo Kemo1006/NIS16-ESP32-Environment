@@ -269,6 +269,9 @@ if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
 # Latest-import record behind the green/yellow push/pull lists (Invoke-ImportSdCard).
 $importBatchTool = Join-Path $base 'tools\ImportBatch.ps1'
 if (Test-Path $importBatchTool) { . $importBatchTool }
+# Collect a run / run summary / undo last import - same as the GUI (oct. 18 2026).
+$cliFeatures = Join-Path $base 'tools\CliFeatures.ps1'
+if (Test-Path $cliFeatures) { . $cliFeatures }
 
 # ---------------------------------------------------------------- helpers ----
 
@@ -648,6 +651,9 @@ function Show-CaptureWizardMenu {
         ) }
         @{ Name = 'DATA'; Items = @(
             @{ Idx = 4; Name = 'Export captured CSVs'; Hint = 'from a board over USB, or from a pulled SD card'; Text = 'Export captured CSVs - from the board over USB, or from a pulled SD card (file list either way)' }
+            @{ Idx = 31; Name = 'Collect a run from the children'; Hint = 'every plugged-in child SD card, one click'; Text = 'Collect ONE run from every plugged-in child board (reads each SD card over USB, files it under the run - also when a card recorded the wrong location)' }
+            @{ Idx = 32; Name = 'Run summary (health card)'; Hint = 'rows per phase per board, missing boards'; Text = 'Run summary - per board: rows per phase, roles, one schedule, missing boards (reads exports only)' }
+            @{ Idx = 33; Name = 'Undo last import'; Hint = 'moves its files to archive, never deletes'; Text = 'Undo the newest import / collect - its files are MOVED to archive\_undone_imports\ (nothing deleted)' }
             @{ Idx = 16; Name = 'Sync data with GitHub'; Hint = 'push / pull data, analysis, run logs, presets'; Text = 'Sync data with GitHub (push / pull / test) - captures, analysis + EDA, run logs, presets. Never code' }
             @{ Idx = 10; Name = 'Trim exported CSVs'; Hint = 'keep the real run session; writes trimmed/ copies'; Text = 'Trim exported CSVs only - SMART: keeps the session with the real phase progression, not just the longest (writes trimmed/ copies, raw export untouched)' }
             @{ Idx = 7; Name = 'Run analysis only'; Hint = 'M6 -> M8 on exported CSVs; no board needed'; Text = 'Run analysis only (M6->M8 on already-exported CSVs - no board/COM contact)' }
@@ -2574,6 +2580,33 @@ function Import-OneSdCard {
         if ($sel.Rel.Count -gt 0) { $pyArgs += @('--files', ($sel.Rel -join ',')) }
         if ($sel.IncludeAborted -and $pyArgs -notcontains '--include-aborted') { $pyArgs += '--include-aborted' }
 
+        # Same attack + topology as the run picked, only the LOCATION differs:
+        # the card's location.txt was still on the last site (oct. 18 2026: a
+        # DLSU_Library run recorded as G402). Offer to file them under the pick
+        # (import_sdcard.py --file-location) - same question as the GUI's Data page.
+        if ($ExpectPrefix) {
+            $want = $ExpectPrefix.Replace('\', '/').Split('/')
+            $picked = if ($sel.Rel.Count) { @($sel.Rel) } else { @($cardFiles | ForEach-Object { [string]$_.rel }) }
+            $mis = @(); $odd = 0
+            foreach ($rp in $picked) {
+                $q = $rp.Replace('\', '/').Split('/')
+                if ($q.Count -lt 3 -or $want.Count -lt 3) { continue }
+                $sameRun = ($q[0] -eq $want[0] -or $q[0] -eq 'baseline') -and $q[1] -eq $want[1]
+                if ($q[2] -ne $want[2]) { if ($sameRun) { $mis += $q[2] } else { $odd++ } }
+            }
+            if ($mis.Count -and -not $odd) {
+                $cardLoc = (@($mis | Select-Object -Unique)) -join ', '
+                Write-Host ""
+                Write-Host ("  {0} file(s) were recorded on the card as {1}, but the run you picked is {2}." -f $mis.Count, $cardLoc, $want[2]) -ForegroundColor Yellow
+                Write-Host "  A card files by its own location.txt, which may still hold the last site." -ForegroundColor DarkGray
+                $fl = Read-Line ("  File them under {0} (this run really was at {0})? [Y/n] > " -f $want[2])
+                if ($fl -ne 'n' -and $fl -ne 'N') { $pyArgs += @('--file-location', $want[2]) }
+            }
+            elseif ($mis.Count) {
+                Write-Host ("  NOTE: {0} file(s) are at another location and {1} from another attack/topology - pick them separately to re-file them under {2}." -f $mis.Count, $odd, $want[2]) -ForegroundColor Yellow
+            }
+        }
+
         # MUST be 'Continue' around every native call here. Under the script-wide
         # 'Stop', PS 5.1 turns a native command's FIRST 2>&1 stderr line into a
         # TERMINATING error. The dry run survived only because it prints no
@@ -2606,7 +2639,7 @@ function Import-OneSdCard {
         # that one leaf still gets imported (into ITS OWN correct folder, named
         # from what THAT file's path says), this just flags that the card is
         # carrying more than the single run the operator described.
-        if ($ExpectPrefix) {
+        if ($ExpectPrefix -and $pyArgs -notcontains '--file-location') {
             $wantPrefix = $ExpectPrefix.Replace('\', '/')
             # A wormhole control runs plain firmware, so its card says baseline/;
             # import_sdcard.py follows it with "FILED UNDER <attack>/" when it
@@ -7830,6 +7863,9 @@ if (-not $Preset) {
         if ($modeIdx -eq 3) { Invoke-FirmwareSelfTest; continue }
         if ($modeIdx -eq 29) { Invoke-UartTunnelTest; continue }
         if ($modeIdx -eq 4) { Invoke-ImportSdCard; continue }
+        if ($modeIdx -eq 31) { Invoke-CollectRunCli; continue }
+        if ($modeIdx -eq 32) { Invoke-RunSummaryCli; continue }
+        if ($modeIdx -eq 33) { Invoke-UndoImportCli; continue }
         if ($modeIdx -eq 5) { Invoke-VerifyRun; continue }
         if ($modeIdx -eq 6) { Invoke-IdentifyAllBoards; continue }
         if ($modeIdx -eq 7) { Invoke-RunAnalysisOnly; continue }

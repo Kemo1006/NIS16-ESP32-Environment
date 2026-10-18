@@ -63,6 +63,10 @@ foreach ($wizSt in $wizAst.EndBlock.Statements) {
 # runs above inside a [scriptblock]::Create, where $PSScriptRoot is empty.
 $base = $PSScriptRoot
 foreach ($wizTool in 'tools\Show-MemberBoards.ps1', 'tools\ImportBatch.ps1') { $t = Join-Path $base $wizTool; if (Test-Path $t) { . $t } }
+# GUI feature modules (oct. 18 2026): one file per feature in gui\, so two people
+# can work on the GUI without editing the same 8,000-line file. Each defines
+# functions only; Initialize-Gui* ones run once the window exists.
+foreach ($guiMod in @(Get-ChildItem (Join-Path $base 'gui') -Filter '*.ps1' -File -ErrorAction SilentlyContinue | Sort-Object Name)) { . $guiMod.FullName }
 $base = $PSScriptRoot
 # the wizard's build roots were computed from the empty $base too - redo them
 # (same formula as run.ps1 / run_wizard.ps1, so the GUI predicts the same dirs)
@@ -1611,22 +1615,154 @@ $StyleXaml
               </Grid>
             </TabItem>
             <TabItem Header="  Trim &amp; archive  ">
-              <StackPanel Margin="0,14,0,0">
-                <TextBlock Style="{StaticResource Label}" Text="TRIM  (keeps the session with the real phase progression - writes a trimmed\ copy, the raw export is untouched)"/>
-                <WrapPanel Margin="0,4,0,18">
-                  <ComboBox x:Name="TrimCell" Width="460"/>
-                  <Button x:Name="TrimGo" Style="{StaticResource Primary}" Content="Trim"/>
-                </WrapPanel>
-                <TextBlock Style="{StaticResource Label}" Text="ARCHIVE  (MOVES all live exports + analysis + PCAP + run logs into archive\&lt;date&gt;_&lt;label&gt;\)"/>
-                <WrapPanel Margin="0,4,0,0">
-                  <TextBlock Text="label" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,6,8"/>
-                  <TextBox x:Name="ArcLabel" Width="200" Margin="0,0,10,8" Padding="4,3"/>
-                  <TextBlock Text="reason" Foreground="$($Pal.Dim)" VerticalAlignment="Center" Margin="0,0,6,8"/>
-                  <TextBox x:Name="ArcReason" Width="340" Margin="0,0,10,8" Padding="4,3"/>
-                  <Button x:Name="ArcPreview" Content="Preview (moves nothing)"/>
-                  <Button x:Name="ArcGo" Content="Archive now"/>
-                </WrapPanel>
-              </StackPanel>
+              <!-- oct. 18 2026 redesign: a designed, virtualised run list for Trim (status per
+                   run, preview first) + Archive as a clearly-dangerous step card with the past
+                   archives listed. Folders are scanned only when the Data page opens. -->
+              <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="400"/></Grid.ColumnDefinitions>
+                <!-- TRIM -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="16" Margin="0,0,14,0" BorderThickness="0,3,0,0" BorderBrush="{StaticResource GradCool}">
+                  <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                      <Border DockPanel.Dock="Left" Width="40" Height="40" CornerRadius="20" Background="{StaticResource GradCool}" Margin="0,0,12,0" VerticalAlignment="Top">
+                        <TextBlock Text="&#xE8C6;" FontFamily="Segoe MDL2 Assets" FontSize="17" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <StackPanel>
+                        <TextBlock Text="Trim a captured run" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Foreground="$($Pal.Dim)" FontSize="12" TextWrapping="Wrap" Text="Keeps only the real experiment session of every board's file (drops the flash / export boots). Writes a trimmed\ copy - the raw export is never touched. Analyse trims by itself; use this to check or re-trim one run."/>
+                      </StackPanel>
+                    </DockPanel>
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                      <RadioButton x:Name="TrimFAll"   Style="{StaticResource Chip}" GroupName="trimf" Content="All" IsChecked="True"/>
+                      <RadioButton x:Name="TrimFTodo"  Style="{StaticResource Chip}" GroupName="trimf" Content="Not trimmed"/>
+                      <RadioButton x:Name="TrimFStale" Style="{StaticResource Chip}" GroupName="trimf" Content="Data newer than trim"/>
+                      <RadioButton x:Name="TrimFDone"  Style="{StaticResource Chip}" GroupName="trimf" Content="Trimmed"/>
+                      <Grid Width="220" Margin="6,0,8,8">
+                        <TextBox x:Name="TrimSearch" Margin="0" Padding="30,6,8,6" ToolTip="Type any part: worm tree dlsu, highload..."/>
+                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" Foreground="$($Pal.Faint)" VerticalAlignment="Center" Margin="11,0,0,0" IsHitTestVisible="False"/>
+                        <TextBlock x:Name="TrimSearchHint" Text="Search runs..." Foreground="$($Pal.Faint)" VerticalAlignment="Center" Margin="31,0,0,0" IsHitTestVisible="False"/>
+                      </Grid>
+                      <Button x:Name="TrimRefresh" Content="&#x21BB;  Refresh" Padding="12,5"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="TrimCount" DockPanel.Dock="Top" Foreground="$($Pal.Faint)" FontSize="11" Margin="2,0,0,8"/>
+                    <!-- the selected run + its actions -->
+                    <Border DockPanel.Dock="Bottom" CornerRadius="12" Padding="14,10" Margin="0,10,0,0" Background="$($Pal.Card2)">
+                      <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                          <Button x:Name="TrimPreview" Style="{StaticResource Cool}" Content="Preview" ToolTip="Shows what would be kept - writes nothing" IsEnabled="False" Margin="0,0,8,0"/>
+                          <Button x:Name="TrimGo" Style="{StaticResource Primary}" Content="&#x2702;  Trim it" IsEnabled="False" Margin="0,0,8,0"/>
+                          <Button x:Name="TrimOpen" Content="Open folder" IsEnabled="False" Margin="0"/>
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock x:Name="TrimSel" FontWeight="SemiBold" Text="Pick a run above" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock x:Name="TrimSelSub" Foreground="$($Pal.Dim)" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                    <ListBox x:Name="TrimList" Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel">
+                      <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                          <Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,6,6"/>
+                          <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="ToolTip" Value="{Binding Dir}"/>
+                          <Setter Property="Template">
+                            <Setter.Value>
+                              <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="b" Background="{Binding RowBg}" BorderBrush="$($Pal.Line)" BorderThickness="1.5" CornerRadius="12" Padding="12,7" Cursor="Hand">
+                                  <ContentPresenter/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                  <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="$($Pal.Accent)"/></Trigger>
+                                  <Trigger Property="IsSelected" Value="True"><Setter TargetName="b" Property="BorderBrush" Value="#FFFFFF"/><Setter TargetName="b" Property="BorderThickness" Value="2"/></Trigger>
+                                </ControlTemplate.Triggers>
+                              </ControlTemplate>
+                            </Setter.Value>
+                          </Setter>
+                        </Style>
+                      </ListBox.ItemContainerStyle>
+                      <ListBox.ItemTemplate>
+                        <DataTemplate>
+                          <DockPanel>
+                            <Image DockPanel.Dock="Left" Source="{Binding Art}" Width="56" Height="34" Margin="0,0,14,0" VerticalAlignment="Center"/>
+                            <Border DockPanel.Dock="Right" CornerRadius="8" Padding="8,2" Background="{Binding StatusBg}" VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="96">
+                              <TextBlock Text="{Binding Status}" Foreground="{Binding StatusFg}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            </Border>
+                            <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center" Width="120" Margin="10,0,0,0">
+                              <TextBlock Text="{Binding Day}" FontSize="12" FontWeight="SemiBold" Foreground="$($Pal.Text)"/>
+                              <TextBlock Text="{Binding Sub}" Foreground="$($Pal.Faint)" FontSize="10.5"/>
+                            </StackPanel>
+                            <StackPanel VerticalAlignment="Center">
+                              <TextBlock Text="{Binding AtkText}" Foreground="{Binding AtkFg}" FontSize="10" FontWeight="Bold"/>
+                              <WrapPanel Margin="0,1,0,0">
+                                <TextBlock Text="{Binding Topo}" FontSize="14" FontWeight="Bold" Foreground="$($Pal.Text)" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <Border CornerRadius="8" Padding="7,1" Background="{Binding LocBg}" Margin="0,0,5,0" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding LocText}" Foreground="{Binding LocFg}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border CornerRadius="8" Padding="7,1" Background="{Binding ScnBg}" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding ScnText}" Foreground="{Binding ScnFg}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                              </WrapPanel>
+                            </StackPanel>
+                          </DockPanel>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                  </DockPanel>
+                </Border>
+                <!-- ARCHIVE -->
+                <Border Grid.Column="1" Style="{StaticResource Card}" Padding="16" BorderThickness="0,3,0,0" BorderBrush="$($Pal.Red)">
+                  <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                      <Border DockPanel.Dock="Left" Width="40" Height="40" CornerRadius="20" Background="#3A1E2C" Margin="0,0,12,0" VerticalAlignment="Top">
+                        <TextBlock Text="&#xE7B8;" FontFamily="Segoe MDL2 Assets" FontSize="17" Foreground="$($Pal.Red)" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                      <StackPanel>
+                        <TextBlock Text="Archive the live data" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Foreground="$($Pal.Dim)" FontSize="12" TextWrapping="Wrap" Text="MOVES every live export, analysis, PCAP capture and run log into archive\&lt;date&gt;_&lt;label&gt;\ - the live checklist starts empty. Code, docs and presets stay. Nothing is deleted."/>
+                      </StackPanel>
+                    </DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                      <DockPanel Margin="0,4,0,4">
+                        <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource GradMain}" Margin="0,0,8,0"><TextBlock Text="1" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                        <TextBlock Text="A short label  (becomes the folder name)" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0"/>
+                      </DockPanel>
+                      <TextBox x:Name="ArcLabel" Margin="0,0,0,10" ToolTip="e.g. bad-attacker-mac - letters, digits, - and _"/>
+                      <DockPanel Margin="0,0,0,4">
+                        <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource GradMain}" Margin="0,0,8,0"><TextBlock Text="2" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                        <TextBlock Text="Why  (written into the archive's README)" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0"/>
+                      </DockPanel>
+                      <TextBox x:Name="ArcReason" Margin="0,0,0,10" Height="54" TextWrapping="Wrap" AcceptsReturn="False" VerticalContentAlignment="Top"/>
+                      <DockPanel Margin="0,0,0,6">
+                        <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource GradMain}" Margin="0,0,8,0"><TextBlock Text="3" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                        <TextBlock Text="Preview first, then archive" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0"/>
+                      </DockPanel>
+                      <UniformGrid Columns="2" Margin="0,0,0,12">
+                        <Button x:Name="ArcPreview" Style="{StaticResource Cool}" Content="Preview (moves nothing)" Margin="0,0,4,0"/>
+                        <Button x:Name="ArcGo" Style="{StaticResource Danger}" Content="Archive now" Margin="4,0,0,0"/>
+                      </UniformGrid>
+                      <TextBlock Text="PAST ARCHIVES" Style="{StaticResource Label}"/>
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                      <ItemsControl x:Name="ArcList">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Background="$($Pal.Card2)" CornerRadius="10" Padding="10,6" Margin="0,0,0,6" BorderThickness="3,0,0,0" BorderBrush="$($Pal.Line)" ToolTip="{Binding Path}">
+                              <StackPanel>
+                                <DockPanel>
+                                  <TextBlock DockPanel.Dock="Right" Text="{Binding Files}" Foreground="$($Pal.Faint)" FontSize="10.5"/>
+                                  <TextBlock><Run Text="{Binding Day, Mode=OneWay}" Foreground="$($Pal.Dim)" FontSize="11"/><Run Text="   "/><Run Text="{Binding Label, Mode=OneWay}" FontWeight="SemiBold"/></TextBlock>
+                                </DockPanel>
+                                <TextBlock Text="{Binding Reason}" Foreground="$($Pal.Faint)" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </DockPanel>
+                </Border>
+              </Grid>
             </TabItem>
             <TabItem Header="  Run logs  ">
               <Grid Margin="0,10,0,0">
@@ -3371,6 +3507,7 @@ function Update-Presets {
     Update-CaptureChips
     Update-PresetGrid
     Update-CaptureHero
+    Update-LastUsedCard
 }
 $ui.OwnerPick.Add_SelectionChanged({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } })
 $ui.AttackPick.Add_SelectionChanged({ if ($script:Presets -and -not $script:Building) { Update-PresetGrid } })
@@ -3950,6 +4087,7 @@ $StyleXaml
         $ed.Add_ContentRendered({ & $script:EditorHook })
     }
     & $showTarget
+    Initialize-PresetEditorNote $ed $f $(if ($AsCopy) { $null } else { $From })
     return [bool]$ed.ShowDialog()
 }
 
@@ -4043,6 +4181,7 @@ function Update-Cells {
             $c.Art = (Get-TopoImage $c.Topology $c.Attack).psobject.BaseObject
             $c.AtkFg = Get-Brush (Get-AtkHex $c.Attack); $c.Rest = '  /  {0}  /  {1}  /  {2}' -f $c.Topology, $c.Location, $c.Scenario
             $c.Sub = '{0} board(s)  -  data {1}{2}' -f $c.Boards, (Format-When $newest), $(if ($analysed) { "  -  analysed $(Format-When $atime)" } else { '' })
+            try { $c.Sub += '  -  next: ' + (Get-NextStep $rel[0] $rel[1] $rel[2] $rel[3]).Text } catch { }
             $cells += $c
         }
     }
@@ -4411,7 +4550,9 @@ function Start-NextAnalysis {
     if (-not $script:AnaQueue.Count) { return }
     $c = $script:AnaQueue.Dequeue()
     Set-Status ("Analysing {0} ({1} more queued)" -f $c.Text, $script:AnaQueue.Count) $Pal.Cyan
-    [void](Start-Analysis $(if ($c.Attack -eq 'baseline') { 'none' } else { $c.Attack }) $c.Topology $c.Location $c.Scenario $c.Text -Raw:([bool]$ui.AnaUseRaw.IsChecked))
+    # the whole queue uses the DATA picked in the popup (Analyse everything new)
+    $raw = if ($null -ne $script:AnaQueueRaw) { [bool]$script:AnaQueueRaw } else { [bool]$ui.AnaUseRaw.IsChecked }
+    [void](Start-Analysis $(if ($c.Attack -eq 'baseline') { 'none' } else { $c.Attack }) $c.Topology $c.Location $c.Scenario $c.Text -Raw:$raw)
 }
 $ui.DoAnalyze.Add_Click({
     $c = Get-Cell; if (-not $c) { return }
@@ -4421,8 +4562,12 @@ $ui.AnaAllNew.Add_Click({
     $todo = @($script:Cells | Where-Object { $_.Look -in @('todo', 'stale') })
     if (-not $todo.Count) { return }
     $list = (@($todo | ForEach-Object Text) | Select-Object -First 12) -join "`n    "
-    $msg = "Analyse + verify {0} run(s), one after the other?`n`n    {1}`n`nRaw exports are never changed; each run's analysis tables are rebuilt." -f $todo.Count, $list
-    if (-not (Confirm-Action $msg 'Analyse everything new')) { return }
+    # user, oct. 18 2026: ask which DATA the whole batch uses - trimmed or raw
+    $msg = "Analyse + verify {0} run(s), one after the other:`n`n    {1}`n`nWhich data?`n`n    Yes  =  TRIMMED  (recommended: each run is trimmed to the session with the real phase progression first)`n    No   =  RAW  (the export files exactly as imported, boot / idle sessions included)`n    Cancel = do nothing`n`nRaw exports are never changed; each run's analysis tables are rebuilt." -f $todo.Count, $list
+    $ans = if ($script:AutoConfirm) { 'Yes' } else { [string][Windows.MessageBox]::Show($msg, 'Analyse everything new - trimmed or raw?', 'YesNoCancel', 'Question') }
+    if ($ans -eq 'Cancel') { return }
+    $script:AnaQueueRaw = ($ans -eq 'No')
+    $ui.AnaUseTrim.IsChecked = -not $script:AnaQueueRaw; $ui.AnaUseRaw.IsChecked = $script:AnaQueueRaw
     $script:AnaQueue.Clear(); foreach ($c in $todo) { $script:AnaQueue.Enqueue($c) }
     Start-NextAnalysis
 })
@@ -4459,24 +4604,32 @@ function Get-CellKey($Attack, $Topology, $Location, $Scenario) {
     $a = if ($Attack -in @('none', 'benign')) { 'baseline' } else { [string]$Attack }
     ('{0}|{1}|{2}|{3}' -f $a, ($Topology -replace '^partial$', 'partial_mesh'), $Location, $Scenario).ToLower()
 }
-function Start-RedoList {
+function Start-RedoList([string[]]$Only = @()) {
+    # -Only attack/topology/location/scenario,...: re-check just those runs and
+    # merge them in (gui\Stamps.ps1 finds what changed) - seconds, not a minute
     if (-not $script:Py) { return }
     # already checking: run once more when it ends, so it sees the newest result
     if (-not $ui.LoadRedo.IsEnabled) { $script:RedoAgain = $true; return }
     $script:RedoAgain = $false
+    $script:RedoCells = Get-CellStamps
+    $part = [bool]($Only.Count -and $script:Redo.Count)
     $ui.LoadRedo.IsEnabled = $false
-    $ui.LoadRedo.Content = 'Checking every run...'
-    Set-Status 'Building the redo list - it re-checks every live cell (about a minute)...' $Pal.Amber
+    $ui.LoadRedo.Content = $(if ($part) { "Re-checking $($Only.Count) changed run(s)..." } else { 'Checking every run...' })
+    Set-Status $(if ($part) { "Re-checking the $($Only.Count) run(s) whose data changed..." } else { 'Building the redo list - it re-checks every live cell (about a minute)...' }) $Pal.Amber
     $json = [IO.Path]::GetTempFileName()
-    Start-ToolJob -Exe $script:Py -ToolArgs @('tools\redo_list.py', '--json', $json, '--no-color') -State $json -OnDone {
-        param($text, $code, $json)
+    $ta = @('tools\redo_list.py', '--json', $json, '--no-color'); if ($part) { $ta += @('--only', ($Only -join ',')) }
+    Start-ToolJob -Exe $script:Py -ToolArgs $ta -State @{ Json = $json; Part = $part; Only = $Only } -OnDone {
+        param($text, $code, $st)
+        $json = $st.Json
         $ui.LoadRedo.IsEnabled = $true
         $ui.LoadRedo.Content = [string][char]0x21BB + '  Re-check the redo list'
         try { $items = Get-Content $json -Raw -Encoding UTF8 | ConvertFrom-Json } catch { Set-Status 'Could not read the redo list.' $Pal.Red; return }
         Remove-Item $json -ErrorAction SilentlyContinue
         $rank = @{ REDO = 0; CHECK = 1; OK = 2 }
-        $script:Redo = @{}
-        foreach ($it in $items) { $script:Redo[(Get-CellKey $it.attack $it.topology $it.location $it.scenario)] = $it }
+        if (-not $st.Part) { $script:Redo = @{} }
+        else { foreach ($o in @($st.Only)) { $q = $o -split '/'; if ($q.Count -eq 4) { $script:Redo.Remove((Get-CellKey $q[0] $q[1] $q[2] $q[3])) } } }
+        foreach ($it in @($items)) { $script:Redo[(Get-CellKey $it.attack $it.topology $it.location $it.scenario)] = $it }
+        $items = @($script:Redo.Values)
         $script:RedoOffPlan = @($items | Where-Object { -not $_.planned -and $_.severity -ne 'OK' }).Count
         $rows = @($items | Where-Object { $_.planned } | Sort-Object @{ E = { $rank[[string]$_.severity] } }, location, attack, topology | ForEach-Object {
             $rs = @(@($_.reasons) | Sort-Object { $rank[[string]$_.severity] })
@@ -4488,8 +4641,9 @@ function Start-RedoList {
         $ui.CampaignGrid.ItemsSource = $rows
         $n = @{}; foreach ($r in $rows) { $n[$r.Status] = 1 + [int]$n[$r.Status] }
         Set-Status ("Redo list: {0} REDO  |  {1} CHECK  |  {2} OK" -f [int]$n.REDO, [int]$n.CHECK, [int]$n.OK) $(if ($n.REDO) { $Pal.Red } else { $Pal.Green })
-        if ($n.REDO) { Show-Toast "$([int]$n.REDO) run(s) need a redo" 'They are marked red on the Campaign grid.' ([string][char]0xE72C) '#BE123C' }
+        if ($n.REDO -and -not $st.Part) { Show-Toast "$([int]$n.REDO) run(s) need a redo" 'They are marked red on the Campaign grid.' ([string][char]0xE72C) '#BE123C' }
         Update-CampaignMatrix; Update-CaptureCampaign
+        if ($script:CampSlot) { try { Show-CampaignCell $script:CampSlot } catch { } }
         if ($script:RedoAgain) { Start-RedoList }
     }
 }
@@ -4497,7 +4651,7 @@ $ui.LoadRedo.Add_Click({ Start-RedoList })
 function Update-CampaignAfterJob {
     # user, oct. 17 2026: after Analyse / Verify the Campaign tiles must follow by
     # themselves - inventory_cells.py (analysed or not) + redo_list.py (REDO / CHECK)
-    Update-Home; Start-RedoList
+    Update-Home; if ($script:RedoCells) { Update-RedoIfChanged } else { Start-RedoList }
     Set-Status 'Updating the Campaign tiles (the redo re-check takes about a minute)...' $Pal.Cyan
 }
 $ui.CampRefresh.Add_Click({ Update-Home })
@@ -4723,6 +4877,7 @@ function Show-CampaignCell($S) {
         if ($x.evidence) { $ev = New-Text ("evidence: " + $x.evidence) 11 $Pal.Faint; $ev.TextWrapping = 'Wrap'; $ev.Margin = '0,3,0,0'; [void]$sp.Children.Add($ev) }
         $card.Child = $sp; [void]$body.Children.Add($card)
     }
+    Add-NextStepCard $body $a $S.topology $S.location $S.scenario
     $hasCell = [bool](Find-AnalysedCell $S)
     $ui.CampCapture.IsEnabled = $true
     $ui.CampCapture.Content = $(if ($look -in @('todo', 'partial')) { [string][char]0x25B6 + '  Capture this run' } else { [string][char]0x21BB + '  Capture it again' })
@@ -5140,6 +5295,7 @@ function Set-ImpPick([string]$Attack, [string]$Topology, [string]$Location) {
     $ui.ImpAttack.SelectedItem = $Attack; $ui.ImpTopology.SelectedItem = $Topology; $ui.ImpLocation.SelectedItem = $Location
 }
 function Update-ImpDest {
+    Update-ImpDestReal; return    # gui\DataPage.ps1: names where the ticked files REALLY go
     $pk = Get-ImpPick
     $ui.ImpDest.Text = if ($pk) { 'goes to  datasets\exports\{0}\{1}\   (repeat {2})' -f ($pk -replace ' / ', '\'), [string]$ui.ImpScenario.SelectedItem, $ui.ImpRepeat.Text } else { 'pick the run - or press List and it is filled in from the card' }
 }
@@ -5508,6 +5664,7 @@ function Update-ImpSummary {
     $ui.ImpGo.Content = $(if ($n) { "Import $n file(s)  ->" } else { 'Import' })
     $ui.ImpGo.IsEnabled = ($n -gt 0); $ui.ImpPreview.IsEnabled = ($n -gt 0)
     $ui.ImpDel.IsEnabled = ($n -gt 0); $ui.ImpDel.Content = $(if ($n) { "Delete $n from card" } else { 'Delete from card' })
+    Update-ImpDestReal
 }
 function Start-ImpList([switch]$Again) {
     $py = Get-Py; if (-not $py) { return }
@@ -5533,6 +5690,7 @@ function Start-ImpList([switch]$Again) {
             }
             $script:ImpRetried = $false
             $ui.ImpEmptyText.Text = $(if ($ui.SrcPort.IsChecked) { 'No file list came back - the board may still be running its capture, have no card, or run firmware older than LIST_SD (see the activity pane). Press List again in a few seconds.' } else { 'No file list came back - see the activity pane.' })
+            if ($ui.SrcPort.IsChecked -and $ui.CardPortPick.SelectedItem) { $hold = Get-PortHolderText ([string]$ui.CardPortPick.SelectedItem.Port); if ($hold) { $ui.ImpEmptyText.Text += "`n`n$($ui.CardPortPick.SelectedItem.Port) is $hold."; Write-Activity "  $($ui.CardPortPick.SelectedItem.Port) is $hold" $Pal.Amber } }
             return
         }
         $script:ImpRetried = $false
@@ -5605,6 +5763,8 @@ function Start-ImpCopy([switch]$Preview) {
             $c = ($st.Cell -split ' / ')
             $script:ImpAnalyse = @{ Attack = $(if ($c[0] -eq 'baseline') { 'none' } else { $c[0] }); Topology = $c[1]; Location = $c[2]; Scenario = [string]$ui.ImpScenario.SelectedItem; Text = $st.Cell }
             Show-Toast 'Imported' ("{0} file(s) -> {1}" -f $st.N, $st.Cell) ([string][char]0xE73E) 'GradGood' { $x = $script:ImpAnalyse; Start-Analysis $x.Attack $x.Topology $x.Location $x.Scenario ("{0} / {1}" -f $x.Text, $x.Scenario) } 'Analyse + verify this run'
+            $sd = Join-Path $base ('datasets\exports\{0}\{1}' -f ($st.Cell -replace ' / ', '\'), [string]$ui.ImpScenario.SelectedItem)
+            $c3 = $st.Cell -split ' / '; Show-RunSummary $sd (Get-ExpectedBoards $c3[0] $c3[1] $c3[2] ([string]$ui.ImpScenario.SelectedItem)) 'IMPORTED - RUN SUMMARY'
         } else { Show-Toast 'Import ended with an error' 'Read the activity pane.' ([string][char]0xE783) 'GradMain' }
         Update-TrimCells; Update-ImpPorts
         Start-ImpList -Again
@@ -5663,24 +5823,147 @@ function Start-ImpDelete {
 $ui.ImpDel.Add_Click({ Start-ImpDelete })
 
 function Get-ExportCells {
+    # every captured run folder (<attack>\<topology>\<location>\<scenario>) and
+    # whether its trimmed\ copy is there and up to date. .NET enumeration, top
+    # level of each folder only - fast enough to run whenever the page opens.
     $root = Join-Path $base 'datasets\exports'
-    $cells = @()
-    if (Test-Path $root) {
-        foreach ($d in Get-ChildItem $root -Directory -Recurse -Depth 3) {
-            $rel = $d.FullName.Substring($root.Length).Trim('\') -split '\\'
-            if ($rel.Count -eq 4 -and $rel[3] -ne 'trimmed' -and (Get-ChildItem $d.FullName -Filter *.csv -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
-                $cells += [pscustomobject]@{ Text = ($rel -join '  /  '); Dir = $d.FullName }
+    $cells = New-Object System.Collections.ArrayList
+    if (-not [IO.Directory]::Exists($root)) { return @() }
+    $newest = { param($dir) $n = [datetime]::MinValue; $c = 0
+                foreach ($f in [IO.Directory]::EnumerateFiles($dir, '*.csv')) { $c++; $t = [IO.File]::GetLastWriteTime($f); if ($t -gt $n) { $n = $t } }
+                @($c, $n) }
+    foreach ($a in [IO.Directory]::EnumerateDirectories($root)) {
+        foreach ($t in [IO.Directory]::EnumerateDirectories($a)) {
+            foreach ($l in [IO.Directory]::EnumerateDirectories($t)) {
+                foreach ($s in [IO.Directory]::EnumerateDirectories($l)) {
+                    if ([IO.Path]::GetFileName($s) -eq 'trimmed') { continue }
+                    $raw = & $newest $s
+                    if ($raw[0] -eq 0) { continue }
+                    $td = Join-Path $s 'trimmed'
+                    $trim = if ([IO.Directory]::Exists($td)) { & $newest $td } else { @(0, [datetime]::MinValue) }
+                    $look = if ($trim[0] -eq 0) { 'todo' } elseif ($trim[1] -lt $raw[1].AddSeconds(-5)) { 'stale' } else { 'done' }
+                    $rel = @([IO.Path]::GetFileName($a), [IO.Path]::GetFileName($t), [IO.Path]::GetFileName($l), [IO.Path]::GetFileName($s))
+                    [void]$cells.Add([pscustomobject]@{ Text = ($rel -join '  /  '); Dir = $s; Rel = $rel; Files = $raw[0]; When = $raw[1]; Look = $look; Trimmed = $trim[0] })
+                }
             }
         }
     }
-    return @($cells | Sort-Object Text)
+    return @($cells | Sort-Object @{ E = { Get-Rank $ATTACK_ORDER $_.Rel[0] } }, @{ E = { $_.When }; Descending = $true })
 }
-$script:TrimCells = @()
-function Update-TrimCells { $script:TrimCells = Get-ExportCells; $ui.TrimCell.ItemsSource = @($script:TrimCells | ForEach-Object Text); if ($script:TrimCells.Count) { $ui.TrimCell.SelectedIndex = 0 } }
+$script:TrimLook = @{
+    todo  = @{ T = 'NOT TRIMMED';           C = $Pal.Faint }
+    stale = @{ T = 'DATA NEWER THAN TRIM';  C = $Pal.Amber }
+    done  = @{ T = [string][char]0x2714 + ' TRIMMED'; C = $Pal.Green }
+}
+$script:TrimCells = @(); $script:TrimDirty = $true
+function Update-TrimCells {
+    # only when the Data page is on screen - otherwise on its next opening
+    if ($ui.Pages.SelectedIndex -ne 5) { $script:TrimDirty = $true; return }
+    $script:TrimDirty = $false
+    $keep = if ($ui.TrimList.SelectedItem) { $ui.TrimList.SelectedItem.Dir } else { '' }
+    $rows = foreach ($c in Get-ExportCells) {
+        $atk = $c.Rel[0]; $topo = $c.Rel[1]; $loc = $c.Rel[2]; $scn = $c.Rel[3]
+        $tone = if ($script:AtkTone[$atk]) { $script:AtkTone[$atk] } else { $Pal.Text }
+        $lt = if ($script:LocTone[$loc]) { $script:LocTone[$loc] } else { $Pal.Blue }
+        $sl = $script:ScnLook[$scn]; if (-not $sl) { $sl = @{ S = [string][char]0x25CF; C = $Pal.Dim } }
+        $lk = $script:TrimLook[$c.Look]
+        [pscustomobject]@{
+            Text = $c.Text; Dir = $c.Dir; Look = $c.Look; Files = $c.Files; When = $c.When; Trimmed = $c.Trimmed
+            Art = (Get-TopoImage $topo $(if ($atk -eq 'baseline') { 'baseline' } else { $atk }) 56 34).psobject.BaseObject
+            RowBg = (Get-FBrush ($tone -replace '#', '#22') $Pal.Card '1,0')
+            AtkText = $atk.ToUpper(); AtkFg = (Get-FBrush $tone); Topo = ($topo -replace '_', ' ')
+            LocText = ($loc -replace '_', ' '); LocFg = (Get-FBrush $lt); LocBg = (Get-FBrush ($lt -replace '#', '#2A'))
+            ScnText = "$($sl.S) $scn"; ScnFg = (Get-FBrush $sl.C); ScnBg = (Get-FBrush ($sl.C -replace '#', '#2A'))
+            Day = $c.When.ToString('MMM dd, yyyy', [Globalization.CultureInfo]::InvariantCulture)
+            Sub = ("{0} file(s)  ·  {1}" -f $c.Files, (Format-PresetDate $c.When -Ago))
+            Status = $lk.T; StatusFg = (Get-FBrush $lk.C); StatusBg = (Get-FBrush ($lk.C -replace '#', '#2A'))
+        }
+    }
+    $script:TrimCells = @($rows)
+    $ui.TrimList.ItemsSource = $script:TrimCells
+    $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.TrimList.ItemsSource)
+    if ($view) { $view.Filter = [Predicate[object]] { param($o) Test-TrimShown $o } }
+    if ($keep) { $hit = @($script:TrimCells | Where-Object { $_.Dir -eq $keep }); if ($hit.Count) { $ui.TrimList.SelectedItem = $hit[0] } }
+    Update-TrimFilter
+    Update-ArcList
+}
+function Test-TrimShown($O) {
+    if ($ui.TrimFTodo.IsChecked -and $O.Look -ne 'todo') { return $false }
+    if ($ui.TrimFStale.IsChecked -and $O.Look -ne 'stale') { return $false }
+    if ($ui.TrimFDone.IsChecked -and $O.Look -ne 'done') { return $false }
+    $q = ([string]$ui.TrimSearch.Text).Trim().ToLower()
+    if (-not $q) { return $true }
+    $hay = ("{0} {1}" -f $O.Text, $O.Status).ToLower() -replace 'partial_mesh', 'partial_mesh partial mesh'
+    foreach ($w in ($q -split '\s+')) { if (-not $hay.Contains($w)) { return $false } }
+    return $true
+}
+function Update-TrimFilter {
+    $ui.TrimSearchHint.Visibility = $(if ($ui.TrimSearch.Text) { 'Collapsed' } else { 'Visible' })
+    $view = [Windows.Data.CollectionViewSource]::GetDefaultView($ui.TrimList.ItemsSource); if ($view) { $view.Refresh() }
+    $all = @($script:TrimCells)
+    $n = @{}; foreach ($c in $all) { $n[$c.Look] = 1 + [int]$n[$c.Look] }
+    $shown = @($all | Where-Object { Test-TrimShown $_ }).Count
+    $ui.TrimCount.Text = ("{0} of {1} captured run(s) shown   ·   {2} trimmed  ·  {3} data newer than trim  ·  {4} not trimmed" -f $shown, $all.Count, [int]$n.done, [int]$n.stale, [int]$n.todo)
+}
+foreach ($n in 'TrimFAll', 'TrimFTodo', 'TrimFStale', 'TrimFDone') { $ui[$n].Add_Checked({ Update-TrimFilter }) }
+$ui.TrimSearch.Add_TextChanged({ Update-TrimFilter })
+$ui.TrimRefresh.Add_Click({ Update-TrimCells })
+$ui.TrimList.Add_SelectionChanged({
+    $c = $ui.TrimList.SelectedItem
+    foreach ($b in 'TrimPreview', 'TrimGo', 'TrimOpen') { $ui[$b].IsEnabled = [bool]$c }
+    if (-not $c) { $ui.TrimSel.Text = 'Pick a run above'; $ui.TrimSelSub.Text = ''; return }
+    $ui.TrimSel.Text = $c.Text
+    $ui.TrimSelSub.Text = switch ($c.Look) {
+        'todo'  { "$($c.Files) raw file(s), no trimmed\ copy yet - Preview shows what would be kept" }
+        'stale' { "$($c.Files) raw file(s) are NEWER than the trimmed\ copy ($($c.Trimmed) file(s)) - re-trim it" }
+        default { "trimmed\ copy is up to date ($($c.Trimmed) file(s) from $($c.Files) raw)" }
+    }
+    $ui.TrimGo.Content = $(if ($c.Look -eq 'done') { [string][char]0x2702 + '  Trim again' } else { [string][char]0x2702 + '  Trim it' })
+})
+$ui.TrimList.Add_MouseDoubleClick({ if ($ui.TrimList.SelectedItem) { $ui.TrimPreview.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent))) } })
+$ui.TrimPreview.Add_Click({
+    $py = Get-Py; $c = $ui.TrimList.SelectedItem; if (-not $py -or -not $c) { return }
+    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\trim_run.py', $c.Dir) -Title "Trim preview $($c.Text)  (writes nothing)")
+})
 $ui.TrimGo.Add_Click({
-    $py = Get-Py; if (-not $py -or $ui.TrimCell.SelectedIndex -lt 0) { return }
-    $c = $script:TrimCells[$ui.TrimCell.SelectedIndex]
-    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\trim_run.py', $c.Dir, '--apply') -Title "Trim $($c.Text)")
+    $py = Get-Py; $c = $ui.TrimList.SelectedItem; if (-not $py -or -not $c) { return }
+    if ($ui.DryRun.IsChecked) { Write-Activity 'DRY RUN - use Preview to see what would be kept.' $Pal.Amber; return }
+    [void](Start-StreamJob -Exe $py -ToolArgs @('tools\trim_run.py', $c.Dir, '--apply') -Title "Trim $($c.Text)" -OnDone {
+        param($text, $code, $state)
+        $script:TrimDirty = $true; Update-TrimCells
+        if ($code -eq 0) { Show-Toast 'Trimmed' 'The trimmed\ copy is written - the raw export is untouched.' ([string][char]0xE8C6) 'GradGood' }
+    })
+})
+$ui.TrimOpen.Add_Click({ $c = $ui.TrimList.SelectedItem; if ($c) { Start-Process explorer.exe $c.Dir } })
+function Update-ArcList {
+    # past archives: archive\<date>_<label>\ + the reason line of its README.md
+    $root = Join-Path $base 'archive'
+    $items = @()
+    if ([IO.Directory]::Exists($root)) {
+        foreach ($d in [IO.Directory]::EnumerateDirectories($root)) {
+            $name = [IO.Path]::GetFileName($d)
+            $day = ''; $label = $name
+            if ($name -match '^(\d{4}-\d{2}-\d{2})_(.+)$') { $day = $Matches[1]; $label = $Matches[2] }
+            elseif ($name -match '^(\d{4})(\d{2})(\d{2})_(.+)$') { $day = "$($Matches[1])-$($Matches[2])-$($Matches[3])"; $label = $Matches[4] }
+            $reason = '(no reason recorded)'; $files = ''
+            $rm = Join-Path $d 'README.md'
+            if ([IO.File]::Exists($rm)) {
+                try {
+                    $lines = [IO.File]::ReadAllLines($rm)
+                    $r = @($lines | Select-Object -Skip 1 | Where-Object { $_.Trim() } | Select-Object -First 1)
+                    if ($r.Count -and $r[0] -notmatch '^Moved here') { $reason = $r[0].Trim() }
+                    $fl = @($lines | Where-Object { $_ -match '^(\d+) file\(s\)' } | Select-Object -First 1)
+                    if ($fl.Count -and $fl[0] -match '^(\d+) file') { $files = "$($Matches[1]) file(s)" }
+                } catch { }
+            }
+            $items += [pscustomobject]@{ Day = $day; Label = ($label -replace '[-_]', ' '); Reason = $reason; Files = $files; Path = $d; Sort = $name }
+        }
+    }
+    $ui.ArcList.ItemsSource = @($items | Sort-Object Day, Sort -Descending)
+}
+$ui.Pages.Add_SelectionChanged({
+    param($s, $e)
+    if ($e.OriginalSource -eq $ui.Pages -and $ui.Pages.SelectedIndex -eq 5 -and $script:TrimDirty) { Update-TrimCells }
 })
 function Get-ArchiveArgs([switch]$Preview) {
     $label = ([string]$ui.ArcLabel.Text).Trim() -replace '[^A-Za-z0-9_-]', '-'
@@ -6009,7 +6292,7 @@ $ui.SyncGateSkip.Add_Click({ $script:SyncGateOk = $true; $ui.SyncGate.Visibility
 $ui.SyncGateAna.Add_Click({
     $cells = @(Get-SyncGateCells); if (-not $cells.Count) { return }
     if (-not (Confirm-Action ("Analyse + verify {0} run(s) one after the other, then continue the sync?`n`n    {1}" -f $cells.Count, ((@($cells | ForEach-Object { $_ -replace '/', ' / ' })) -join "`n    ")) 'Analyse first')) { return }
-    $script:AnaQueue.Clear()
+    $script:AnaQueue.Clear(); $script:AnaQueueRaw = $null   # the Analyse page's DATA choice, not the last popup's
     foreach ($c in $cells) { $p = $c -split '/'; $script:AnaQueue.Enqueue([pscustomobject]@{ Attack = $p[0]; Topology = $p[1]; Location = $p[2]; Scenario = $p[3]; Text = ($p -join ' / ') }) }
     $script:SyncResume = $true; $ui.SyncGate.Visibility = 'Collapsed'
     Set-SyncSteps @('done', 'run') @('', "analysing $($cells.Count) run(s)...")
@@ -6663,6 +6946,8 @@ function Read-BuildLine([string]$Line) {
 function Start-RunBoards {
     $R = $script:Run
     $s = $R.Settings
+    if (-not @($R.Steps | Where-Object { $_.Kind -eq 'board' -and $_.State -eq 'ok' }).Count) { Reset-PreStart }   # a fresh run, not a resume
+    Save-LastUsedPreset 'running'
     if ($ui.RunSaveLog.IsChecked -and -not $R.LogPath) {
         try {
             $dirs = Get-RunDirs -Attack $R.Plan.Attack -Topology $R.Plan.Topology -Location $R.Plan.Location -Scenario $R.Plan.Scenario
@@ -6844,17 +7129,20 @@ function Complete-Run {
     if ($notSafe.Count) { $extra += "`n`nNOT SAFE yet: {0} - their file is still open. Do NOT unplug them: Data > Import (through the board) > 'End its run now + close the file safely'." -f ($notSafe -join ', ') }
     if ($crashed.Count) { $extra += "`n`nCRASHES recorded: {0} - logs + decoded backtraces in {1}" -f ($crashed -join ', '), (Get-RunLogFolder) }
     if ($extra) { $ui.RunNowText.Text += $extra; $ui.RunNow.BorderBrush = & $brush $Pal.Amber }
-    Set-RunButtons -Next 'Verify this run  ->' -Cont 'Import SD cards' -Abort $false
+    $nKids = @(Get-CollectPorts).Count
+    Set-RunButtons -Next 'Verify this run  ->' -Cont $(if ($nKids) { "Collect all $nKids children  ->" } else { 'Import SD cards' }) -Abort $false
     $ui.RunAgain.Visibility = 'Visible'
     $ui.RunSetup.IsEnabled = $true
     Update-RunSteps
     Write-RunConsole ("All boards done in {0}. Exports -> {1}" -f $mins, $dirs.Export) $Pal.Green
+    Save-LastUsedPreset 'finished'
     Show-Toast 'Run finished' 'Import the SD cards, then verify it.' ([string][char]0xE73E) 'GradGood' { Show-Page 5 } 'Import now'
     Update-NavBadges
 }
 function Finish-RunStopped {
     $R = $script:Run
     Stop-CrashWatch
+    Save-LastUsedPreset 'stopped'
     foreach ($x in @($R.Steps | Where-Object { $_.State -in @('waiting', 'running', 'attention') })) { $x.State = 'skipped' }
     $R.Active = $false; $R.Phase = 'stopped'; $R.Wait = $null
     Set-RunState 'STOPPED' $Pal.Amber
@@ -6958,6 +7246,7 @@ function Reset-RootDash {
     $ui.RunKids.Text = '-'; $ui.RunGate.Text = 'The root waits for every child, checks the setup, then waits for you to press START.'
     $ui.RunTopoStatus.Text = '-'; $ui.RunTopoInfo.Text = 'appears once the root prints its first table'; $ui.RunTopoDetail.Text = ''
     $ui.RunNodes.ItemsSource = $null; $ui.RunAlerts.ItemsSource = $null; $ui.RunAlertsNone.Visibility = 'Visible'
+    Reset-SmartAlerts
     $ui.RunTunnelCard.Visibility = 'Collapsed'
     $ui.RunStart.IsEnabled = $false; $ui.RunStartAnyway.IsEnabled = $false
     Update-RootSegs
@@ -6996,6 +7285,7 @@ function Add-RunAlert([string]$Text, [string]$Hex) {
         if ($drop) { [void]$D.Alerts.Remove($drop) } else { $D.Alerts.RemoveAt($D.Alerts.Count - 1) }
     }
     $ui.RunAlerts.ItemsSource = $null; $ui.RunAlerts.ItemsSource = @($D.Alerts); $ui.RunAlertsNone.Visibility = 'Collapsed'
+    Add-RunAlertSmart $Text $Hex    # gui\Alerts.ps1
 }
 function Update-RootNodes {
     $D = $script:Dash
@@ -7096,6 +7386,7 @@ function Read-RootLine([string]$Line) {
 function Read-BoardLine([string]$Line) {
     # every board: alerts and "booted" - the root also feeds its dashboard
     $R = $script:Run; $b = $R.Current.Board
+    Read-PreStartLine $b $Line    # gui\PreStart.ps1
     if ($Line -match '^\[monitor\] listening') {
         $R.Phase = 'monitor'; $R.Current.Note = 'running'
         $ui.RunCmd.IsEnabled = $true; $ui.RunSend.IsEnabled = $true
@@ -7111,7 +7402,7 @@ function Read-BoardLine([string]$Line) {
         Update-RunSteps
         return
     }
-    if ($Line -match '\[monitor\] could not open') { Add-RunAlert ("{0}: {1}" -f $b.Label, $Line) $Pal.Red }
+    if ($Line -match '\[monitor\] could not open') { $hold = Get-PortHolderText ([string]$b.Port); Add-RunAlert ("{0}: {1}{2}" -f $b.Label, $Line, $(if ($hold) { " - $($b.Port) is $hold" } else { '' })) $Pal.Red }
     if (-not $R.Booted -and $Line -match '=== .*STARTING') {
         $R.Booted = $true
         if ($script:Dash) { Add-RunAlert ("{0} booted and is running" -f $b.Label) $Pal.Green }
@@ -7220,6 +7511,7 @@ $ui.RunNext.Add_Click({
 $ui.RunContinue.Add_Click({
     $R = $script:Run; if (-not $R) { return }
     if ($R.Phase -eq 'done') {
+        if (Start-CollectChildren) { return }    # gui\Collect.ps1 - $false = no child plugged in: open Import as before
         $ui.ImpScenario.SelectedItem = $R.Plan.Scenario; $ui.ImpRepeat.Text = [string]$R.Settings.Repeat
         Set-ImpPick $R.Plan.Attack $R.Plan.Topology $R.Plan.Location
         $script:ImpRosterWant = $R.Plan.Preset.Path
@@ -7296,7 +7588,7 @@ $ui.RunAgain.Add_Click({
     $ui.RunPostAnalyze.IsChecked = $post[0]; $ui.RunPostTrim.IsChecked = $post[1]; $ui.RunPostNone.IsChecked = $post[2]; $ui.RunChildExport.IsChecked = $child; $ui.RunChildSkip.IsChecked = -not $child
     Set-Status "Repeat $next loaded - compile, then wipe + flash + run." $Pal.Green
 })
-$ui.RunStart.Add_Click({ Send-RunCommand 'START' })
+$ui.RunStart.Add_Click({ if (Confirm-PreStart) { Send-RunCommand 'START' } })
 $ui.RunStartAnyway.Add_Click({
     if (Confirm-Action "START_ANYWAY overrides every safety gate (missing children, a broken wormhole setup).`n`nUse it only when a board is truly gone - the run is then short or not set up, and must be reported that way.`n`nSend START_ANYWAY?" 'Override the gates') { Send-RunCommand 'START_ANYWAY' }
 })
@@ -7308,6 +7600,7 @@ $runTimer = New-Object Windows.Threading.DispatcherTimer
 $runTimer.Interval = [TimeSpan]::FromMilliseconds(250)
 $runTimer.Add_Tick({
     $R = $script:Run; if (-not $R) { return }
+    Update-PreStartClock
     if ($R.Started -and $R.Active) { $e = (Get-Date) - $R.Started; $ui.RunClock.Text = '{0}:{1:00}' -f [int][Math]::Floor($e.TotalMinutes), $e.Seconds }
     $D = $script:Dash
     if ($D -and $D.Since -and $D.Len -gt 0) {
@@ -7590,7 +7883,7 @@ $win.Add_PreviewKeyDown({
     if ($ctrl -and $e.Key -eq 'F' -and $ui.Pages.SelectedIndex -eq 1) { [void]$ui.PresetSearch.Focus(); $e.Handled = $true; return }
     if ($e.Key -eq 'F5') {
         switch ($ui.Pages.SelectedIndex) {
-            0 { Update-Home; [void](Update-LivePorts -Force) } 1 { Update-Presets; Show-PresetDetail } 2 { Update-Cells } 3 { Update-Home }
+            0 { Update-Home; [void](Update-LivePorts -Force) } 1 { Update-Presets; Show-PresetDetail } 2 { if (Test-PageStale 'analyse') { Update-Cells } } 3 { Update-Home; Update-RedoIfChanged }
             4 { Update-Ports; Update-Members } 5 { Update-Cards; Update-TrimCells; Update-Logs } 6 { Update-Pcaps }
         }
         Set-Status 'Refreshed.' $Pal.Green; $e.Handled = $true
@@ -7603,9 +7896,12 @@ $ui.PresetGrid.Add_MouseDoubleClick({ if ($ui.PresetGrid.SelectedItem) { $ui.Sta
 Update-Presets
 Update-Cells
 Update-Ports
+foreach ($fn in @(Get-Command -Name 'Initialize-Gui*' -CommandType Function -ErrorAction SilentlyContinue)) {
+    try { & $fn.Name } catch { Write-Output ("GUI module {0} failed to start: {1}" -f $fn.Name, $_.Exception.Message) }
+}
 Update-Members
 Update-Cards
-Update-TrimCells
+Update-TrimCells   # marks itself dirty - scans when the Data page opens
 Update-Logs
 Update-Pcaps
 Update-ViewBoards
@@ -7965,6 +8261,14 @@ exit 0
     $ft = @($ui.BoardTabs.Items | Where-Object { [string]$_.Header -match 'Firmware' })[0]; if ($ft) { $ui.BoardTabs.SelectedItem = $ft; Update-PortPick $ui.TSelfPort; $ui.TSelfPort.SelectedIndex = 0; & $shot 'tests'; $ui.BoardTabs.SelectedIndex = 0 }
     Show-Page 6; $st = @($ui.WsTabs.Items | Where-Object { [string]$_.Header -match 'sniffer' })[0]; if ($st) { $ui.WsTabs.SelectedItem = $st; Update-PortPick $ui.SnPort; $ui.SnPort.SelectedIndex = 0; & $shot 'sniffer' }
     Show-Page 5; & $shot 'data'
+    # Trim & archive: scan speed, statuses, filter, screenshot
+    $tt = @($ui.DataTabs.Items | Where-Object { [string]$_.Header -match 'Trim' })[0]; if ($tt) { $ui.DataTabs.SelectedItem = $tt }
+    $ms = (Measure-Command { $script:TrimDirty = $true; Update-TrimCells }).TotalMilliseconds
+    $ui.TrimList.SelectedIndex = 0; & $pump 300
+    Write-Output ("trim page: {0} run(s) scanned in {1:N0} ms  |  {2}  |  {3} past archive(s)  |  selected: {4}" -f @($script:TrimCells).Count, $ms, $ui.TrimCount.Text, @($ui.ArcList.ItemsSource).Count, $ui.TrimSel.Text)
+    & $shot 'trim'
+    $ui.TrimFTodo.IsChecked = $true; & $pump 100; Write-Output ("trim filter 'Not trimmed': " + $ui.TrimCount.Text); $ui.TrimFAll.IsChecked = $true
+    $ui.DataTabs.SelectedIndex = 0
     # GitHub sync page: a REAL read-only check (status changes nothing), then the plan as shown
     $t0 = Get-Date; while ($script:Stream -and ((Get-Date) - $t0).TotalSeconds -lt 60) { & $pump 250 }
     Show-Page 8; & $pump 400

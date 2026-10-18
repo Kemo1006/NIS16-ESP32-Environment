@@ -302,7 +302,9 @@ def assess(cell, runs, planned, vlog, drows):
             "logged": cell in vlog}
 
 
-def collect():
+def collect(only=None):
+    """only: a set of (attack, topology, location, scenario) - assess just those
+    cells (the GUI re-checks only what changed since its last full list)."""
     sample = inv.DEFAULT_SAMPLE_INTERVAL_MS
     runs = inv.scan(EXPORTS, "live", sample)
     rows = []
@@ -331,7 +333,7 @@ def collect():
         cells.setdefault((r["attack"], r["topology"], r["location"],
                           inv.canon_scenario(r["scenario"])), []).append(r)
     out = []
-    keys = sorted(cells)
+    keys = sorted(c for c in cells if only is None or c in only)
     for i, cell in enumerate(keys, 1):
         print(f"\r  checking {i}/{len(keys)} cells ...", end="", file=sys.stderr, flush=True)
         out.append(assess(cell, cells[cell], cell in planned, vlog, drows))
@@ -520,11 +522,21 @@ def main():
     ap.add_argument("--all", action="store_true", help="Also list the cells that are OK.")
     ap.add_argument("--json", metavar="PATH", help="Also write the list as JSON.")
     ap.add_argument("--no-color", action="store_true")
+    ap.add_argument("--only", metavar="CELLS", default=None,
+                    help="attack/topology/location/scenario[,...] - assess only these cells "
+                         "(the rest of the list is not printed or written)")
     args = ap.parse_args()
     color = not args.no_color and sys.stdout.isatty() and not os.environ.get("NO_COLOR")
     if color and os.name == "nt":
         os.system("")
-    items = collect()
+    only = None
+    if args.only:
+        only = set()
+        for c in args.only.split(","):
+            p = [x.strip() for x in c.replace("\\", "/").split("/")]
+            if len(p) == 4:
+                only.add((p[0], p[1], p[2], inv.canon_scenario(p[3])))
+    items = collect(only)
     render(items, args.all, color)
     if args.json:
         with open(args.json, "w", encoding="utf-8") as fh:

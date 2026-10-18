@@ -214,6 +214,9 @@ if (Test-Path $memberBoardsTool) { . $memberBoardsTool }
 # Latest-import record behind the green/yellow push/pull lists (SD import below).
 $importBatchTool = Join-Path $base 'tools\ImportBatch.ps1'
 if (Test-Path $importBatchTool) { . $importBatchTool }
+# Collect a run / run summary / undo last import - same as the GUI (oct. 18 2026).
+$cliFeatures = Join-Path $base 'tools\CliFeatures.ps1'
+if (Test-Path $cliFeatures) { . $cliFeatures }
 
 function Invoke-Identify {
     # Reads the board's MAC via tools\board_check.py and names the node against
@@ -1808,6 +1811,9 @@ function Show-MainMenu {
         @{ Name = 'DATA'; Items = @(
             @{ Action = 3; Text = 'Export a board only  (it already ran; just pull CSVs)' }
             @{ Action = 8; Text = 'Import CSVs from a pulled SD card  (no board/COM contact)' }
+            @{ Action = 19; Text = 'Collect ONE run from every plugged-in child  (SD cards over USB, one board at a time)' }
+            @{ Action = 20; Text = 'Run summary  (per board: rows per phase, roles, missing boards)' }
+            @{ Action = 21; Text = 'Undo the newest import  (moves its files to archive\_undone_imports, never deletes)' }
             @{ Action = 15; Text = "Push capture data to GitHub  (raw CSVs only, never code; merges with teammates' pushes)" }
             @{ Action = 17; Text = "Pull capture data from GitHub  (teammates' CSVs only, never code; never overwrites your files)" }
             @{ Action = 16; Text = 'Test data sync  (3 dummy animal CSVs - proves two laptops never overwrite each other)' }
@@ -1883,6 +1889,9 @@ $action = Show-MainMenu
 
 if ($action -eq 9) { Write-Host ""; Write-Host "Bye." -ForegroundColor DarkGray; break menu }
 
+if ($action -eq 19) { Invoke-CollectRunCli; continue menu }
+if ($action -eq 20) { Invoke-RunSummaryCli; continue menu }
+if ($action -eq 21) { Invoke-UndoImportCli; continue menu }
 if ($action -eq 18) {
     :memberBoardsMenu while ($true) {
         $sub = Read-Choice -Title "Member board list:" -Options @(
@@ -3254,6 +3263,29 @@ if ($action -eq 8) {
     if ($sel.IncludeAborted) {
         $imArgs  += '--include-aborted'
         $cmdText += " --include-aborted"
+    }
+
+    # Same attack + topology as the run picked above, only the LOCATION differs:
+    # the card's location.txt was still on the last site (oct. 18 2026). Offer to
+    # file them under the pick - same question as the GUI Data page and
+    # run_wizard.ps1's Import-OneSdCard (keep the three in sync).
+    $wantAtk = $(if ($attack -eq 'none') { 'baseline' } else { $attack }); $wantTopo = ($topo -replace '^partial$', 'partial_mesh')
+    $pickedRel = if ($sel.Rel.Count) { @($sel.Rel) } else { @($cardFiles | ForEach-Object { [string]$_.rel }) }
+    $mis = @(); $odd = 0
+    foreach ($rp in $pickedRel) {
+        $q = $rp.Replace('\', '/').Split('/')
+        if ($q.Count -lt 3 -or -not $loc) { continue }
+        $sameRun = ($q[0] -eq $wantAtk -or $q[0] -eq 'baseline') -and $q[1] -eq $wantTopo
+        if ($q[2] -ne $loc) { if ($sameRun) { $mis += $q[2] } else { $odd++ } }
+    }
+    if ($mis.Count -and -not $odd) {
+        Write-Host ""
+        Write-Host ("   {0} file(s) were recorded on the card as {1}, but the run you picked is {2}." -f $mis.Count, ((@($mis | Select-Object -Unique)) -join ', '), $loc) -ForegroundColor Yellow
+        Write-Host "   A card files by its own location.txt, which may still hold the last site." -ForegroundColor DarkGray
+        if (Read-YesNo -Question ("File them under {0} (this run really was at {0})?" -f $loc) -Default $true) {
+            $imArgs  += @('--file-location', $loc)
+            $cmdText += " --file-location $loc"
+        }
     }
 
     # Preview before confirming, unlike the other actions here: with

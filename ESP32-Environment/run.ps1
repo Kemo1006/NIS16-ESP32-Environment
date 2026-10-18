@@ -399,11 +399,13 @@ if (-not $BuildOnly) {
     Write-Host "Setting $Port's clock from this laptop (so captures get real dates) ..." -ForegroundColor DarkGray
     $timeArgs = @('--port', $Port, '--set-time')
     if ($Location) { $timeArgs += @('--ensure-location', $Location) }
+    $script:LocState = ''
     Push-Location (Join-Path $base 'tools')
     try {
         python export_logs.py @timeArgs | ForEach-Object {
             $c = switch -Regex ($_) { '^LOCATION_CHECK: OK' { 'Green' } '^LOCATION_CHECK: FIXED' { 'Cyan' } '^LOCATION_CHECK:' { 'Yellow' } default { 'Gray' } }
             Write-Host $_ -ForegroundColor $c
+            if ($_ -match '^LOCATION_CHECK: (\w+)') { $script:LocState = $Matches[1] }
             if ($_ -match '^LOCATION_CHECK: (FIXED|UNKNOWN|FAILED)' -and -not $Flash) {
                 Write-Host "  No -Flash here, so nothing reboots this board: power-cycle it before the run or its card keeps the old location." -ForegroundColor Yellow
             }
@@ -798,6 +800,32 @@ Show-ScenarioChecklist -Scenario $Scenario -IsTarget $ScenarioTarget.IsPresent -
 # The monitor: idf.py monitor in a console, or (run_gui.ps1, -GuiMonitor) the
 # console-free tools\gui_monitor.py - same port, same "returns when the
 # operator is done with this board" contract.
+function Repair-LocationAfterFlash {
+    # Second chance for location.txt (oct. 18 2026), the CLI twin of the GUI's
+    # boot-report check: when the pre-flash check could not read the card (old
+    # firmware without GET_LOCATION, a board that was not running), the NEW
+    # firmware can answer. Only then - a normal flash pays nothing here. A fix
+    # applies at boot, so the board is reset once (it has only just started:
+    # no run is under way yet).
+    if (-not $Location -or $script:LocState -in @('OK', 'FIXED')) { return }
+    Write-Host "Checking location.txt again now that the new firmware runs (about 10 s) ..." -ForegroundColor DarkGray
+    Start-Sleep -Seconds 8
+    $state = ''
+    $tools = Join-Path $base 'tools'
+    python (Join-Path $tools 'export_logs.py') --port $Port --ensure-location $Location | ForEach-Object {
+        if ($_ -match '^LOCATION_CHECK: (\w+)') { $state = $Matches[1] }
+        Write-Host $_ -ForegroundColor $(if ($_ -match '^LOCATION_CHECK: OK') { 'Green' } elseif ($_ -match '^LOCATION_CHECK: FIXED') { 'Cyan' } else { 'Gray' })
+    }
+    if ($state -eq 'FIXED') {
+        Write-Host "Rebooting $Port once so it starts recording under $Location ..." -ForegroundColor Cyan
+        esptool.py --chip esp32 --port $Port --after hard_reset read_mac | Out-Null
+    }
+    elseif ($state -ne 'OK') {
+        Write-Host "WARNING: could not confirm location.txt on $Port. Its card may file this run under the wrong site -" -ForegroundColor Yellow
+        Write-Host "         check 'Recorded location:' in the boot report below, and fix it (wizard: set location) before the run." -ForegroundColor Yellow
+    }
+}
+
 function Invoke-BoardMonitor {
     if ($GuiMonitor) {
         python (Join-Path $base 'tools\gui_monitor.py') --port $Port --ctl $GuiMonitor
@@ -831,6 +859,7 @@ try {
             Write-Host "Check: board plugged DIRECTLY into the laptop (no dock/hub), a short data cable, then re-run." -ForegroundColor Red
             exit 1
         }
+        Repair-LocationAfterFlash
         Invoke-BoardMonitor
     } else {
         if ($Attack -ne 'none' -or $Topology -ne 'tree') {

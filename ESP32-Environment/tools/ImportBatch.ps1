@@ -66,3 +66,45 @@ function Save-ImportBatch {
         Write-Host ("  (Could not record this import batch: {0} - push/pull colours fall back to the last 30 min.)" -f $_.Exception.Message) -ForegroundColor DarkGray
     }
 }
+
+function Get-ImportBatch {
+    # the newest import's record, or $null (no import recorded on this laptop yet)
+    param([string]$Base)
+    $f = Join-Path $Base $script:ImportBatchFile
+    if (-not (Test-Path $f)) { return $null }
+    try { return (Get-Content $f -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
+}
+function Undo-ImportBatch {
+    # Undo the newest import (oct. 18 2026): its CSVs are MOVED - never deleted -
+    # to archive\_undone_imports\<stamp>\ with the same folder layout, so a file
+    # filed into the wrong run is one step to take back, and one move to restore.
+    # The record is renamed, so the same import cannot be undone twice.
+    # Returns @{ Moved; Missing; Dir } (Dir = where the files went).
+    param([string]$Base)
+    $rec = Get-ImportBatch -Base $Base
+    if (-not $rec -or -not @($rec.files).Count) { return @{ Moved = 0; Missing = 0; Dir = '' } }
+    $dir = Join-Path $Base ('archive\_undone_imports\' + (Get-Date).ToString('yyyyMMdd_HHmmss'))
+    $moved = 0; $missing = 0
+    foreach ($rel in @($rec.files)) {
+        $src = Join-Path $Base ($rel -replace '/', '\')
+        if (-not (Test-Path $src)) { $missing++; continue }
+        $dst = Join-Path $dir ($rel -replace '/', '\')
+        New-Item -ItemType Directory -Force -Path (Split-Path $dst -Parent) | Out-Null
+        Move-Item -LiteralPath $src -Destination $dst
+        $moved++
+    }
+    if ($moved) {
+        $note = [ordered]@{ undone = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'); computer = [string]$env:COMPUTERNAME
+                            restore = 'move the datasets\ folder in here back into the project folder (same paths)'; files = [object[]]@($rec.files) }
+        [System.IO.File]::WriteAllText((Join-Path $dir 'UNDONE_IMPORT.json'), (ConvertTo-Json -InputObject $note -Depth 3), [System.Text.UTF8Encoding]::new($false))
+    }
+    Move-Item -LiteralPath (Join-Path $Base $script:ImportBatchFile) -Destination (Join-Path $Base ($script:ImportBatchFile + '.undone')) -Force
+    return @{ Moved = $moved; Missing = $missing; Dir = $dir }
+}
+function Get-TrackedImportFiles {
+    # the batch files git already tracks (committed / pushed): undo moves only THIS
+    # laptop's copy - GitHub keeps them, and a later pull / sync brings them back
+    param([string]$Base, [string[]]$Files)
+    if (-not @($Files).Count -or -not (Get-Command git -ErrorAction SilentlyContinue)) { return @() }
+    try { return @(& git -C $Base ls-files -- @($Files) 2>$null | Where-Object { $_ }) } catch { return @() }
+}
