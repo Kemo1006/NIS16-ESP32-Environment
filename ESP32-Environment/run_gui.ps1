@@ -2938,11 +2938,15 @@ function New-TopoArt([string]$Topo, [string]$Attack, [double]$W = 64, [double]$H
     # a tiny drawing of the mesh: amber = root, red ring = the blackhole,
     # purple + dashed arc = the wormhole tunnel, blue = a plain child
     $cv = New-Object Windows.Controls.Canvas; $cv.Width = $W; $cv.Height = $H; $cv.IsHitTestVisible = $false
+    $alt = @()
     switch ($Topo -replace '^partial$', 'partial_mesh') {
         'linear' { $n = @(@(0, 0.5), @(0.33, 0.5), @(0.66, 0.5), @(1, 0.5)); $e = @(@(0, 1), @(1, 2), @(2, 3)); $bad = 1; $tun = @(1, 3) }
         'tree'   { $n = @(@(0.5, 0), @(0.22, 0.5), @(0.78, 0.5), @(0, 1), @(0.42, 1), @(1, 1)); $e = @(@(0, 1), @(0, 2), @(1, 3), @(1, 4), @(2, 5)); $bad = 1; $tun = @(1, 5) }
         'star'   { $n = @(@(0.5, 0.5), @(0.5, 0), @(0.95, 0.32), @(0.8, 1), @(0.2, 1), @(0.05, 0.32)); $e = @(@(0, 1), @(0, 2), @(0, 3), @(0, 4), @(0, 5)); $bad = 2; $tun = @(1, 3) }
-        default  { $n = @(@(0.5, 0), @(0.08, 0.45), @(0.92, 0.45), @(0.28, 1), @(0.72, 1)); $e = @(@(0, 1), @(0, 2), @(1, 2), @(1, 3), @(2, 4), @(3, 4), @(1, 4)); $bad = 1; $tun = @(1, 4) }
+        # partial mesh: still ONE parent per child (solid); the dashed lines are the
+        # other parent each child could switch to (user, oct. 18 2026: the old
+        # drawing looked like a child had 2 parents - ESP-WIFI-MESH never does that)
+        default  { $n = @(@(0.5, 0), @(0.08, 0.45), @(0.92, 0.45), @(0.28, 1), @(0.72, 1)); $e = @(@(0, 1), @(0, 2), @(1, 3), @(2, 4)); $alt = @(@(2, 3), @(1, 4)); $bad = 1; $tun = @(1, 4) }
     }
     $r = [math]::Max(3.5, $H / 9)
     $pt = { param($i) @(($r + $n[$i][0] * ($W - 2 * $r)), ($r + $n[$i][1] * ($H - 2 * $r))) }
@@ -2950,6 +2954,13 @@ function New-TopoArt([string]$Topo, [string]$Attack, [double]$W = 64, [double]$H
         $a = & $pt $ed[0]; $b = & $pt $ed[1]
         $l = New-Object Windows.Shapes.Line; $l.X1 = $a[0]; $l.Y1 = $a[1]; $l.X2 = $b[0]; $l.Y2 = $b[1]
         $l.Stroke = & $brush '#5A5F8A'; $l.StrokeThickness = [math]::Max(1.2, $r / 3.5)
+        [void]$cv.Children.Add($l)
+    }
+    foreach ($ed in $alt) {
+        $a = & $pt $ed[0]; $b = & $pt $ed[1]
+        $l = New-Object Windows.Shapes.Line; $l.X1 = $a[0]; $l.Y1 = $a[1]; $l.X2 = $b[0]; $l.Y2 = $b[1]
+        $l.Stroke = & $brush '#5A5F8A'; $l.StrokeThickness = [math]::Max(1, $r / 4); $l.Opacity = 0.8
+        $l.StrokeDashArray = New-Object Windows.Media.DoubleCollection (, [double[]]@(1.5, 1.5))
         [void]$cv.Children.Add($l)
     }
     if ($Attack -eq 'wormhole') {
