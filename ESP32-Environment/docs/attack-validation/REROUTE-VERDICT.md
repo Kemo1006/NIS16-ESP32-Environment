@@ -81,6 +81,47 @@ the layout only, then measures.
 A tolerated move is **always printed** in the report as a WARNING ("TOLERATED..."). It is footnoted,
 never hidden.
 
+### More situations (added oct. 19, 2026) - each can only ADD a warning or a failure
+
+| # | Situation | Limit | Decision |
+|---|---|---|---|
+| S1 | **Flapping link:** a key board's parent changed many times in one attack | ≥ 4 changes | WARNING "FLAPPED" (allowed only if it never left its role - R1 still applies) |
+| S2 | **A victim has no windows for the end of the attack** (crashed / reset / power, or too few samples) | ≥ 10 s before the end | WARNING: its attack is shorter; the other boards carry the rest |
+| S3 | **The attacker has no windows for the end of the attack** | ≥ 10 s before the end | WARNING only: the table cannot tell "went silent" from "windows dropped for too few samples" (1C38 on oct. 18 had data to +178 s but windows only to +117 s) - never a failure on that alone |
+| S4 | **A board's role changed during the BASELINE** | ≥ 3 s in each role | WARNING (no attack ran then; footnote its per-board features) |
+| S5 | **A board appears only in the attack**, not in the baseline | - | WARNING: no normal-phase reference of its own |
+| S6 | **Too little victim evidence left** after leaving out no-path seconds | < 60 traceable victim-seconds | **FAIL** |
+| S7 | **A large share of the victims' time had no path** | > 25 % | WARNING: the verdict rests on what is left |
+
+## The final verdict: CONFIDENCE grade (added oct. 19, 2026)
+
+Under the VERDICT line (which is unchanged) the report now prints a **CONFIDENCE** grade, worked out
+from the checks above by fixed rules:
+
+| Grade | When | How to report it |
+|---|---|---|
+| **STRONG** | confirmed; nothing moved, nothing left out, nothing to footnote | "BLACKHOLE CONFIRMED" |
+| **SOUND** | confirmed; boards moved but were allowed **and** the re-test on the part before the first move confirmed it again | "BLACKHOLE CONFIRMED (sound: moves allowed, re-test passed)" |
+| **QUALIFIED** | confirmed, but with footnotes (re-test not possible, a board went silent, start overridden, evidence partly left out, ...) | "BLACKHOLE CONFIRMED (qualified: N footnotes)" - each footnote goes to the thesis checklist |
+| **-** | not confirmed | the failed check(s) are listed as the reason |
+
+Applied to all 54 analysed captures (oct. 19): **48 STRONG, 2 QUALIFIED** (the oct. 18 7:21 PM and 10:11 PM
+tree/G402 runs), **2 not confirmed**; **0 verdicts changed** by the new situations (verification #49).
+
+Example (10:11 PM run):
+
+```
+ VERDICT: BLACKHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)
+ CONFIDENCE: QUALIFIED - confirmed - report it WITH these 4 footnote(s)
+     + signature: 2/2 primary signature(s) beyond 3-sigma
+     + setup: no check failed
+     ~ a board moved but stayed in the same role (allowed) (ED80)
+     ~ a board has no windows for the end of the attack (1C38)
+     ~ a board has no windows for the end of the attack (B768)
+     ~ the re-test on the part before the first move was not possible
+     = REPORT AS: "BLACKHOLE CONFIRMED (qualified: 4 footnote(s))"
+```
+
 ## 4. Why this is not cheating
 
 | # | Safeguard | What it prevents | Backed by |

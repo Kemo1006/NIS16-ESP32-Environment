@@ -108,6 +108,30 @@ class TreeReroute(unittest.TestCase):
         self.assertIn("NOT ROBUST", txt)
         self.assertFalse(c and not inv)
 
+    def test_flapping_victim_warns_not_fails(self):
+        # S1: many parent changes but always under the attacker -> WARN FLAPPED, not a failure
+        d = self.df.copy()
+        m = attack_rows(d) & (d.node_id == "NODE_2805A532D7B4")
+        idx = d[m].sort_values("t_anchor_s").index
+        for k, i in enumerate(range(0, 60, 10)):          # 6 switches between two victim parents
+            d.loc[idx[i:i + 10], "parent_mac"] = "20:50:0D:E7:1C:39" if k % 2 else "F4:2D:C9:73:E6:19"
+        txt = [i for i in ac.setup_issues(d, "blackhole") if "FLAPPED" in i.text]
+        self.assertTrue(txt and all(i.level == ac.WARN for i in txt))
+        self.assertFalse(any("D7B4" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
+
+    def test_baseline_role_change_is_a_footnote(self):
+        # S4: a victim sat under the root for 20 s of the BASELINE -> WARN only (no attack then)
+        d = self.df.copy()
+        m = (d.segment.astype(str) == "baseline") & (d.node_id == "NODE_F42DC973E618")
+        d.loc[d[m].sort_values("t_anchor_s").index[:20], "parent_mac"] = "B0:CB:D8:F3:32:19"
+        w = [i for i in ac.setup_issues(d, "blackhole") if "during the BASELINE" in i.text]
+        self.assertTrue(w and w[0].level == ac.WARN)
+
+    def test_confidence_grades(self):
+        c, inv, txt = run(self.df, "blackhole")
+        self.assertIn("CONFIDENCE: QUALIFIED", txt)          # moves allowed + footnotes
+        self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED (qualified', txt)
+
     def test_decision_ignores_delivery(self):
         # fairness rule 1: the tolerate / reject decision must not read PDR
         d = self.df.copy()
@@ -138,6 +162,14 @@ class Blackhole(unittest.TestCase):
         d.loc[m, "forward_count_delta"] = d.loc[m, "recv_count_delta"]
         self.assertTrue(any("still FORWARDED" in t for t in fails(d, "blackhole")))
         self.assertFalse(run(d, "blackhole")[0])
+
+    def test_clean_run_is_strong_and_broken_run_says_why(self):
+        self.assertIn("CONFIDENCE: STRONG", run(self.df, "blackhole")[2])
+        d = self.df.copy()
+        m = attack_rows(d) & (d.node_id == self.atk_id)
+        d.loc[m, "forward_count_delta"] = d.loc[m, "recv_count_delta"]
+        txt = run(d, "blackhole")[2]
+        self.assertIn("CONFIDENCE: - (not confirmed)", txt)
 
     def test_attacker_was_a_leaf(self):
         d = self.df.copy()

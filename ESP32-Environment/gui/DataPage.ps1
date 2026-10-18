@@ -51,6 +51,54 @@ function Initialize-GuiDataPage {
     $c.Add_Click({ Start-CollectFromDataPage })
     [void]$host_.Children.Add($c)
     $script:ImpCollectBtn = $c
+    Add-DataRefreshButton
+}
+
+function Add-DataRefreshButton {
+    # oct. 19 2026 (user): a Refresh button on the Data page "in case it lags or
+    # freezes". Top right of the page, next to the title - works on every Data tab.
+    $tabs = $ui.DataTabs; if (-not $tabs) { return }
+    $dock = $tabs.Parent; if (-not ($dock -is [Windows.Controls.Panel]) -or $dock.Children.Count -lt 1) { return }
+    $hdr = $dock.Children[0]; if (-not ($hdr -is [Windows.Controls.StackPanel]) -or $hdr.Children.Count -lt 1) { return }
+    $title = $hdr.Children[0]
+    $row = New-Object Windows.Controls.DockPanel; $row.LastChildFill = $true
+    $b = New-Object Windows.Controls.Button
+    $b.Content = ([string][char]0x21BB) + '  Refresh'; $b.Padding = '14,6'; $b.Margin = '12,0,0,0'; $b.VerticalAlignment = 'Center'
+    $b.ToolTip = "Re-reads this page: plugged-in boards, cards, the run folders and what is already imported, the trim/archive list, logs.`nIt never stops a card read or an import that is running - that can blue-screen the laptop - it redraws around it.`n(Same as F5.)"
+    try { $b.Style = $win.FindResource('Cool') } catch { }
+    $b.Add_Click({ Invoke-DataRefresh })
+    [Windows.Controls.DockPanel]::SetDock($b, 'Right')
+    $hdr.Children.RemoveAt(0)
+    [void]$row.Children.Add($b); [void]$row.Children.Add($title)
+    $hdr.Children.Insert(0, $row)
+    $script:DataRefreshBtn = $b
+}
+
+function Invoke-DataRefresh {
+    # Light and safe: caches cleared, every list rebuilt from disk / the port watcher.
+    # A running card read or import is NEVER stopped (CP210x blue-screen history) -
+    # the page is redrawn around it and the status says what is still running.
+    $b = $script:DataRefreshBtn
+    if ($b) { $b.IsEnabled = $false }
+    $sw = [Diagnostics.Stopwatch]::StartNew(); $done = @(); $bad = @()
+    $steps = [ordered]@{
+        'boards'         = { [void](Update-LivePorts -Force) }
+        'import list'    = { $script:ImportIdx = @{}; Update-ImpPorts; Update-ImpDest }
+        'card drives'    = { Update-Cards }
+        'files on screen' = { if ($script:ImpItems.Count -and -not $script:Stream) { Show-ImpList $script:ImpItems } }
+        'trim & archive' = { Update-TrimCells }
+        'run logs'       = { Update-Logs }
+    }
+    foreach ($k in $steps.Keys) {
+        try { & $steps[$k]; $done += $k } catch { $bad += "$k ($($_.Exception.Message))" }
+    }
+    $sw.Stop()
+    if ($b) { $b.IsEnabled = $true }
+    $msg = 'Data page refreshed in {0:0.0} s' -f $sw.Elapsed.TotalSeconds
+    if ($script:Stream) { $msg += " - '$($script:Stream.Title)' is still running (not stopped on purpose; its progress is in the activity pane)" }
+    if ($bad.Count) { $msg += ' - could not refresh: ' + ($bad -join '; ') }
+    Set-Status $msg $(if ($bad.Count) { $Pal.Amber } elseif ($script:Stream) { $Pal.Cyan } else { $Pal.Green })
+    try { Write-Activity ('  ' + $msg) $(if ($bad.Count) { $Pal.Amber } else { $Pal.Faint }) } catch { }
 }
 
 function Invoke-UndoLastImport {

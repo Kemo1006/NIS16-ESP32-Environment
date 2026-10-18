@@ -556,6 +556,21 @@ def _reroute_lines(issues, measured):
             out.append(f"{who}: NOT ALLOWED - the A end was not closer to the root than B for part of the "
                        f"attack: the shortcut changed")
             continue
+        if "FLAPPED" in t:
+            out.append(f"{who}: FLAPPED - its parent changed many times; allowed only because it never left its role, "
+                       f"but the link is unstable [E]")
+            continue
+        if "has NO attack windows after" in t:
+            m = re.search(r"after \+(\d+) s", t)
+            out.append(f"{who}: WARNING - no attack windows after +{m.group(1) if m else '?'} s (went silent, or too few "
+                       f"samples); the verdict uses the windows that exist")
+            continue
+        if "during the BASELINE" in t:
+            out.append(f"{who}: its role changed during the BASELINE (no attack then - footnote only)")
+            continue
+        if "traceable VICTIM-seconds" in t and it.level == "FAIL":
+            out.append("NOT ALLOWED - " + t)
+            continue
         if t.startswith("ROBUST:"):
             out.append("Re-test: CONFIRMED again on the seconds BEFORE the first move alone - the moved "
                        "part is not what makes the verdict [PR]")
@@ -573,6 +588,83 @@ def _reroute_lines(issues, measured):
                        f"they show 0 delivery for a reason that is not the attack, so leaving them out can only "
                        f"make the attack HARDER to confirm")
     return out
+
+
+# oct. 19 2026 (user: "enhance the final verdict"). The VERDICT line itself is unchanged
+# (the GUI, Campaign and redo list read it); this adds a CONFIDENCE grade and the
+# reasons, from the checks above only - fixed rules, no new judgement:
+#   STRONG     confirmed; nothing moved, nothing left out, nothing to footnote
+#   SOUND      confirmed; boards moved but were allowed AND the re-test on the part
+#              before the first move confirmed it again (ROBUST)
+#   QUALIFIED  confirmed; report it WITH its footnotes (re-test not possible, a board
+#              went silent, start overridden, evidence partly left out, ...)
+#   -          not confirmed: the main reason(s) instead
+_FOOTNOTE = [  # (words in a WARN, short footnote)
+    ("robustness re-test not possible", "the re-test on the part before the first move was not possible"),
+    ("robustness re-test inconclusive", "the re-test on the part before the first move was inconclusive"),
+    ("TOLERATED", "a board moved but stayed in the same role (allowed)"),
+    ("has NO attack windows after", "a board has no windows for the end of the attack"),
+    ("FLAPPED", "a board's link was unstable (many parent changes)"),
+    ("during the BASELINE", "the layout changed during the baseline"),
+    ("when START was pressed", "a board's role changed between the baseline and the attack"),
+    ("in the first", "a board's role changed between the attack and the cooldown"),
+    ("NOT in the baseline", "a board joined only in the attack"),
+    ("left out - over", "a large share of victim time had no path and was left out"),
+    ("no attack-window telemetry", "a board dropped out before the attack"),
+    ("FORCE-STARTED", "the run was force-started (START_ANYWAY)"),
+    ("overridden by the operator", "START was pressed over failed pre-START checks"),
+]
+
+
+def _confidence(confirmed, setup_invalid, conclusive, issues):
+    """(grade, [reasons]) - see the table above."""
+    issues = issues or []
+    if not confirmed or setup_invalid:
+        fails = [i.text for i in issues if i.level == "FAIL"]
+        if setup_invalid and fails:
+            return "-", ["the setup check that failed: " + f for f in fails[:3]]
+        return "-", (["no primary signature moved beyond the threshold"] if conclusive
+                     else ["no primary signature could be tested"])
+    notes, tolerated, robust = [], False, False
+    for it in issues:
+        if it.level == "OK" and it.text.startswith("ROBUST:"):
+            robust = True
+        if it.level != "WARN":
+            continue
+        if "TOLERATED" in it.text and not it.text.startswith("robustness"):
+            tolerated = True
+        for words, short in _FOOTNOTE:
+            if words in it.text:
+                who = it.text.split(" ", 1)[0] if it.text[:4].isalnum() else ""
+                notes.append(f"{short}" + (f" ({who})" if who and not who.startswith(("the", "only", "this", "no", "START", "robustness")) else ""))
+                break
+    extra = [n for n in notes if not n.startswith("a board moved but stayed")]
+    if not notes:
+        return "STRONG", ["nothing moved, nothing was left out, nothing to footnote"]
+    if tolerated and robust and not extra:
+        return "SOUND", notes + ["the re-test on the part BEFORE the first move confirmed it again"]
+    return "QUALIFIED", list(dict.fromkeys(notes))
+
+
+def _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count):
+    grade, why = _confidence(confirmed, setup_invalid, conclusive, issues)
+    if grade == "-":
+        print(f" CONFIDENCE: - (not confirmed)")
+        for w in why:
+            print(_wrap(w, "     x "))
+        return
+    say = {"STRONG": "nothing to footnote",
+           "SOUND": "boards moved, but the moves were allowed and the attack held on the part before them",
+           "QUALIFIED": f"confirmed - report it WITH these {len(why)} footnote(s)"}[grade]
+    print(f" CONFIDENCE: {grade} - {say}")
+    print(_wrap(f"signature: {count}", "     + "))
+    print(_wrap("setup: no check failed", "     + "))
+    for w in why:
+        print(_wrap(w, "     ~ " if grade == "QUALIFIED" else "     + "))
+    tag = {"STRONG": "", "SOUND": " (sound: moves allowed, re-test passed)",
+           "QUALIFIED": f" (qualified: {len(why)} footnote(s))"}[grade]
+    print(_wrap(f"REPORT AS: \"{attack.upper()} CONFIRMED{tag}\""
+                + (" - copy the footnotes to the thesis checklist" if grade == "QUALIFIED" else ""), "     = "))
 
 
 def _print_reroute_why(issues, measured, setup_invalid):
@@ -979,6 +1071,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
 
     print("-" * RULE_W)
     print(f" VERDICT: {verdict}")
+    _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count)
     print("-" * RULE_W)
     # oct. 19 2026 (user): the explanation of any allowed / refused board move, in
     # plain words with its sources, right below the verdict
@@ -1009,6 +1102,14 @@ def _line_colour(line):
         return "green" if "CONFIRMED" in t else "bold"
     if t.startswith(("[1]", "[2]", "[3]", "[4]", "[5]", "[6]")) and line.startswith(" ["):
         return "cyan"
+    if t.startswith("CONFIDENCE"):
+        return "red" if "not confirmed" in t else ("green" if ("STRONG" in t or "SOUND" in t) else "yellow")
+    if t.startswith(("+ ", "= ")):
+        return "green"
+    if t.startswith("~ "):
+        return "yellow"
+    if t.startswith("x ") and line.startswith("     x"):
+        return "red"
     if t.startswith(("WORMHOLE VERIFICATION", "BLACKHOLE VERIFICATION")):
         return "bold"
     first = t.split()[0]

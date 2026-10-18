@@ -135,6 +135,11 @@ PHASE_EDGE_S = 60.0           # the layout "at START" = the last 60 s of the bas
                               # "after the attack" = the first 60 s of the cooldown
 ROBUST_MIN_ATTACK_S = 60.0    # the robustness re-test needs >= 60 s of attack before
                               # the first re-route, or it is reported as untestable
+# oct. 19 2026 - more situations (each can only ADD a warning / failure):
+FLAP_MIN_CHANGES = 4          # >= 4 parent changes in one attack = an unstable link, not one re-route
+SILENT_TAIL_S = 10.0          # a board whose windows stop >= 10 s before the attack ends went silent
+MIN_VICTIM_EVIDENCE_S = 60    # < 60 traceable victim-seconds in the whole attack = too little to judge
+NOPATH_SHARE_WARN = 0.25      # > 25 % of the victims' attack time without a path = weakened evidence
 
 
 def _tcol(df):
@@ -289,6 +294,77 @@ def _delivery_note(atk, n):
     return f" [delivery in the attack {v.mean():.2f} - shown, not used to decide]" if len(v) else ""
 
 
+def _parent_changes(g, tc):
+    """How many times a board's (non-zero) parent changed, in time order."""
+    ps = [str(p) for p in g.sort_values(tc)["parent_mac"] if str(p) not in ("", "nan", _exposure.ZERO_MAC)]
+    return sum(1 for a, b in zip(ps, ps[1:]) if a != b)
+
+
+def _more_situations(df, attack, atk, roles, key_nodes, moved, timeline, scenario):
+    """S1-S7 (oct. 19 2026). Layout / presence only - never delivery."""
+    out = []
+    if atk.empty or scenario in MOVING_SCENARIOS:
+        return out
+    tc = _tcol(atk)
+    t0, t1 = float(atk[tc].min()), float(atk[tc].max())
+    span = max(t1 - t0, 1.0)
+    # S1 FLAPPING: many parent changes = an unstable link (its layout was never settled)
+    if "parent_mac" in atk.columns:
+        for n, g in atk.groupby("node_id"):
+            k = _parent_changes(g, tc)
+            if n in key_nodes and k >= FLAP_MIN_CHANGES:
+                out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) FLAPPED: its parent changed {k} times during "
+                                       f"the attack (>= {FLAP_MIN_CHANGES}) - an unstable link; move it closer before "
+                                       f"the next capture"))
+    # S2 / S3 WENT SILENT mid-attack (crash / reset / unplugged)
+    for n, g in atk.groupby("node_id"):
+        last = float(g[tc].max())
+        if t1 - last < SILENT_TAIL_S or roles.get(n) in _exposure.ROOT_ROLES:
+            continue
+        who = roles.get(n, "?")
+        gone_s = t1 - last
+        # windows can be missing for two reasons: the board stopped (crash / reset /
+        # power) OR preprocessing discarded them for too few samples (the attacker logs
+        # unevenly while dropping traffic - oct. 19: 1C38 had data to +178 s but
+        # windows only to +117 s). The table cannot tell which, so this is a WARNING,
+        # never a failure.
+        what = "the ATTACKER" if who in _exposure.ATTACK_ROLES else ("a victim" if n in key_nodes else "")
+        if what:
+            out.append(Issue(WARN, f"{_short(n)} ({who}) - {what} - has NO attack windows after +{last - t0:.0f} s "
+                                   f"({gone_s:.0f} s before the end): it went SILENT (crash / reset / power) or its "
+                                   f"windows had too few samples. The verdict uses the windows that exist; footnote it"))
+    if attack == "blackhole" and timeline:
+        # S4 LAYOUT CHANGED DURING THE BASELINE: the reference phase mixes two layouts
+        base = exposure_timeline(df, attack, "baseline")
+        for n, seq in sorted(base.items()):
+            if _flipped([c for _t, c in seq]):
+                out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) switched between VICTIM and BYSTANDER during "
+                                       f"the BASELINE - its normal-phase reference mixes two layouts (no attack ran "
+                                       f"then, so the verdict is not affected; footnote its per-board features)"))
+        # S5 NEW BOARD: in the attack but never in the baseline
+        bn = set(_seg(df, "baseline")["node_id"].dropna())
+        for n in sorted(set(atk["node_id"].dropna()) - bn):
+            if roles.get(n) not in _exposure.ROOT_ROLES:
+                out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) appears in the attack but NOT in the baseline "
+                                       f"- it has no normal-phase reference of its own"))
+        # S6 / S7 HOW MUCH VICTIM EVIDENCE IS LEFT after leaving out no-path seconds
+        had_victims = any(_majority([c for _t, c in seq]) == "victim" for seq in timeline.values())
+        vic = sum(c == "victim" for seq in timeline.values() for _t, c in seq)
+        nopath = sum(c in ("detached", "unknown") for seq in timeline.values()
+                     if _majority([c for _t, c in seq]) == "victim" for _t, c in seq)
+        if had_victims and vic < MIN_VICTIM_EVIDENCE_S:
+            out.append(Issue(FAIL, f"only {vic} traceable VICTIM-seconds in the whole attack (needs "
+                                   f"{MIN_VICTIM_EVIDENCE_S}) - too little evidence that the attack reached anyone"))
+        elif had_victims and vic + nopath and nopath / (vic + nopath) > NOPATH_SHARE_WARN:
+            out.append(Issue(WARN, f"{nopath} of {vic + nopath} victim-seconds ({nopath / (vic + nopath):.0%}) had no path "
+                                   f"to the root and were left out - over {NOPATH_SHARE_WARN:.0%}: the verdict rests on "
+                                   f"the remaining {vic} s"))
+        elif had_victims:
+            out.append(Issue("OK", f"victim evidence: {vic} traceable VICTIM-seconds"
+                                   + (f", {nopath} no-path seconds left out ({nopath / (vic + nopath):.0%})" if nopath else "")))
+    return out
+
+
 def topology_issues(df, attack, key_nodes=()):
     """Structure + stability during the attack windows.
 
@@ -440,6 +516,8 @@ def topology_issues(df, attack, key_nodes=()):
                 out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) was a {during.upper()} in the attack but a "
                                        f"{post.upper()} in the first {PHASE_EDGE_S:.0f} s of the cooldown - its recovery "
                                        f"is measured in another layout"))
+
+    out += _more_situations(df, attack, atk, roles, key_nodes, moved, timeline, scenario)
 
     # Presence: nodes seen in the baseline but absent from the attack.
     base_nodes = set(_seg(df, "baseline")["node_id"].dropna())

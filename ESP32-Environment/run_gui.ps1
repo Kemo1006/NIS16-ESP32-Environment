@@ -4392,6 +4392,30 @@ function Show-AnaReport([string]$Text) {
         $tb = New-Text ([string]$vl).Trim() 13 $Pal.Text 'Bold'; $tb.TextWrapping = 'Wrap'; $tb.Margin = '4,2,0,8'
         [void]$ui.AnaResult.Children.Add($tb)
     }
+    # oct. 19 2026: the CONFIDENCE grade + its reasons, right under the verdict
+    $ci = -1; for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match '^\s*CONFIDENCE\s*:') { $ci = $i; break } }
+    if ($ci -ge 0) {
+        $head = $lines[$ci].Trim() -replace '^CONFIDENCE\s*:\s*', ''
+        $grade = ($head -split '\s+')[0]
+        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'SOUND' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'QUALIFIED' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } default { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } }
+        $card = New-AnaCard ('CONFIDENCE  -  ' + $head) $lk.Fg
+        $items = New-Object System.Collections.ArrayList
+        for ($i = $ci + 1; $i -lt $lines.Count; $i++) {
+            $t = $lines[$i]
+            if ($t -match '^\s*-{20,}' -or -not $t.Trim()) { break }
+            if ($t -match '^\s{5}([+~=x])\s(.+)$') { [void]$items.Add(@($Matches[1], $Matches[2])) }
+            elseif ($items.Count -and $t -match '^\s{7,}\S') { $items[$items.Count - 1][1] += ' ' + $t.Trim() }
+        }
+        foreach ($it in $items) {
+            $hex = switch ($it[0]) { '+' { $Pal.Green } '~' { $Pal.Amber } '=' { $Pal.Cyan } default { $Pal.Red } }
+            $g = switch ($it[0]) { '+' { [string][char]0x2714 } '~' { [string][char]0x26A0 } '=' { [string][char]0x2192 } default { [string][char]0x2716 } }
+            $dp = New-Object Windows.Controls.DockPanel; $dp.Margin = '0,3,0,3'
+            $ic = New-Text $g 13 $hex 'Bold'; $ic.Width = 24; [Windows.Controls.DockPanel]::SetDock($ic, 'Left'); [void]$dp.Children.Add($ic)
+            $tx = New-Text $it[1] 12.5 $(if ($it[0] -eq '=') { $Pal.Text } else { $hex }) $(if ($it[0] -eq '=') { 'SemiBold' } else { 'Normal' }); $tx.TextWrapping = 'Wrap'; [void]$dp.Children.Add($tx)
+            [void]$card.Panel.Children.Add($dp)
+        }
+        [void]$ui.AnaResult.Children.Add($card.Border)
+    }
     if ($why.Count) {
         # below the verdict, like the CLI: why each board move was allowed or not + its sources
         $inv = @($why | Where-Object { $_ -match '^So: .*SETUP INVALID' }).Count
@@ -7954,7 +7978,7 @@ $win.Add_PreviewKeyDown({
     if ($e.Key -eq 'F5') {
         switch ($ui.Pages.SelectedIndex) {
             0 { Update-Home; [void](Update-LivePorts -Force) } 1 { Update-Presets; Show-PresetDetail } 2 { Update-Cells } 3 { Update-Home; Update-RedoIfChanged }
-            4 { Update-Ports; Update-Members } 5 { Update-Cards; Update-TrimCells; Update-Logs } 6 { Update-Pcaps }
+            4 { Update-Ports; Update-Members } 5 { Invoke-DataRefresh } 6 { Update-Pcaps }
         }
         Set-Status 'Refreshed.' $Pal.Green; $e.Handled = $true
     }

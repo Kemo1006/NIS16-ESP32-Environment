@@ -16,6 +16,27 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #49 — Oct 19, 2026 · ~2:30 AM — verifier change: 7 more situations (S1-S7) + CONFIDENCE grade; sweep of every capture
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `32454e5` + this change
+> **Request:** "add more possible situations and decisions and enhance the final verdict"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 54 attack captures | every `datasets/analysis/<attack>/<topology>/<location>/<scenario>/feature_table.csv` (baseline cells skipped) + the oct. 18 tree/G402 archives |
+
+| Check | Result | Detail |
+|---|---|---|
+| Old (`32454e5`) vs new, all 54 | ✅ 0 changed | the new situations only add footnotes |
+| CONFIDENCE grades | ✅ | 48 STRONG · 2 QUALIFIED (oct. 18 7:21 PM + 10:11 PM tree/G402) · 2 not confirmed (tree/G402/highload B768 flip; one INCONCLUSIVE) |
+| A first draft that was wrong | ⚠️ caught + fixed | "attacker went silent" as a FAIL turned the 10:11 PM run SETUP INVALID: 1C38's file has data to +178 s but the feature table has its windows only to +117 s (windows discarded for too few samples). The table cannot tell silence from dropped windows -> WARNING only (S3) |
+| Tests | ✅ 38/38 | new: flapping = WARN, baseline role change = WARN, confidence STRONG / QUALIFIED / not confirmed |
+
+**Verdict: ✅ the verdict logic is unchanged; reports now carry a CONFIDENCE grade and named footnotes.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #48 — Oct 19, 2026 · ~1:45 AM — blackhole · tree · G402 · stationary r1: duplicate files in the run folder (old run brought back by the GitHub sync)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `df48870` + this change
