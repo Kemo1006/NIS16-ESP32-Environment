@@ -44,6 +44,32 @@ def attack_rows(df):
     return df["segment"].astype(str) == "attack"
 
 
+TREE = os.path.join(ENV, "archive/2026-10-18_blackhole-tree-G402-stationary-r1-replaced-2/analysis/feature_table.csv")
+
+
+@unittest.skipUnless(os.path.exists(TREE), "tree re-route reference table not present")
+class TreeReroute(unittest.TestCase):
+    """oct. 18 2026: a parent change is judged by what it did to the attack's reach.
+    The 7:21 PM capture: F4:18 (under the attacker) crashed, its children D7B4 / ED80
+    re-joined - D7B4 straight under the attacker - so both stayed VICTIMS."""
+    @classmethod
+    def setUpClass(cls):
+        cls.df = pd.read_csv(TREE)
+
+    def test_victim_to_victim_reroute_is_tolerated(self):
+        self.assertEqual(fails(self.df, "blackhole"), [])
+        txt = [i.text for i in ac.setup_issues(self.df, "blackhole")]
+        self.assertTrue(any("D7B4" in t and "TOLERATED" in t for t in txt))
+
+    def test_victim_becoming_bystander_still_fails(self):
+        d = self.df.copy()
+        m = attack_rows(d) & (d.node_id == "NODE_F42DC973E618")
+        late = d[m].sort_values("t_anchor_s").index[len(d[m]) // 2:]
+        d.loc[late, "parent_mac"] = "B0:CB:D8:F3:32:19"     # straight under the root
+        d.loc[late, "PDR"] = 1.0
+        self.assertTrue(any("VICTIM" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
+
+
 @unittest.skipUnless(os.path.exists(BH), "blackhole reference table not present")
 class Blackhole(unittest.TestCase):
     @classmethod

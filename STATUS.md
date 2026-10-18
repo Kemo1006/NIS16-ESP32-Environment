@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 18, 2026 ~9 PM (Angelo's laptop): GUI items 1-29 + CLI parity + re-capture auto-archive + prevention items, **PUSHED**, GUI self-test exit 0. Local-only on purpose: attacker MAC in `mesh_config.h`, `sync_test/`, `archive/`. Facts + reasons: MEMORY.md top; GUI checklist `ESP32-Environment/docs/operations/2026-10-18_GUI-IMPROVEMENTS-CHECKLIST.md`.
+**Updated:** oct. 18, 2026 ~10:45 PM (Angelo's laptop): smart parent-change verdict (D-23) + GUI items 1-29 + CLI parity + re-capture auto-archive + prevention items, **PUSHED**, GUI self-test exit 0. Local-only on purpose: attacker MAC in `mesh_config.h`, `sync_test/`, `archive/`. Facts + reasons: MEMORY.md top; GUI checklist `ESP32-Environment/docs/operations/2026-10-18_GUI-IMPROVEMENTS-CHECKLIST.md`.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
@@ -21,7 +21,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Next step
 1. **Re-wire the tunnel** (0C80 GPIO17 must NOT touch its own GPIO16: crossed TX->other RX both ways + GND), **reflash ROOT + both tunnel boards**, then check the dashboard: 1 A (shallower) + 1 B, `UART OK` on both -> READY -> type `START`.
-1b. **blackhole/tree/G402/stationary r1: RECAPTURE** (#44, C12 🟨). Restart the GUI, Wipe + Flash EVERY board (new firmware: [HEALTH] + crash record on the SD card - children are on powerbanks, so the card is where a child's crash is recorded). If a victim crashes again: Collect fetches + decodes `crashes_<node>.csv` (datasets/run_logs/<cell>/crashes/) - send it. Same repeat -> the old capture archives itself.
+1b. **blackhole/tree/G402/stationary r1:** recaptured 10:11 PM (old one auto-archived). **Collect the children** (70:68, a victim under the attacker, went OFFLINE in the attack - Collect fetches its crash record if it ran the new firmware), then analyse + verify. Parent changes during the attack are now judged by D-23 (victim stays victim = TOLERATED); the archived 7:21 PM run passes under it (#45) as a fallback. Ask the adviser about D-23 (A26).
 2. **First real use of the new pages:** GitHub sync (Check -> Smart sync on each laptop, after pulling `b6f8cc8`) and Data > 'Delete from card' (tested on a fake card only). `baseline/linear/home/highload` is NOT ANALYSED here or on GitHub - analyse it. Do NOT push `mesh_config.h` attacker-MAC lines.
 3. Work the redo list (wizard Campaign [5]). wormhole/linear/G402/stationary re-verified = OK (#40, D6 ticked). A Campaign CHECK 'newer capture exists' clears only with a logged verification block, not the Verify button.
 4. Optional: re-run `analyze.ps1 -All` so every table uses the `transition` segment (verdicts unchanged, dry-run proven).

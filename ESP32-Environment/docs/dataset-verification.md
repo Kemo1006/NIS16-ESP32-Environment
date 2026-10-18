@@ -16,6 +16,32 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #45 — Oct 18, 2026 · ~10:45 PM — verifier change: exposure-aware parent-change rule (D-23), re-run on the 7:21 PM blackhole/tree capture
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `0e43f7e` + this change
+> **Request:** "lock the tree at START, or allow a changing parent? ... make it a smart decision - allow it if the change does not damage the dataset, check the topology differences"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18, root 7:21 PM (archived 22:11 by the recapture) | `archive/2026-10-18_blackhole-tree-G402-stationary-r1-replaced-2/analysis/feature_table.csv` |
+
+| Check | Result | Detail |
+|---|---|---|
+| [1] Attack signature (3-sigma) | ✅ 2/2 primaries | unchanged from #44 |
+| D7B4 parent change | ⚠️ TOLERATED | F4:18 → (3 s detached) → attacker 1C38; VICTIM every window, PDR 0.00 |
+| ED80 parent change | ⚠️ TOLERATED | F4:18 → (5 s detached) → D7B4; VICTIM every window, PDR 0.00 |
+| Bystanders 0C80 / B768 / FE90 | ✅ | never under the attacker, PDR 1.00 |
+| Negative test | ✅ FAIL fires | F4:18 moved under the root for the 2nd half of the attack → VICTIM↔BYSTANDER flip → FAIL (new unit test) |
+| Verifier suite | ✅ 28/28 | 2 new tests (TreeReroute) |
+
+**Verdict: ✅ BLACKHOLE CONFIRMED under the D-23 rule** (was NOT CONFIRMED - SETUP INVALID in #44). The re-routes were
+ESP-MESH self-healing after F4:18 crashed; every moved board stayed behind the attacker, so the attack windows are one
+experiment. This capture is already archived (replaced by the 10:11 PM recapture), so it is a fallback only. F4:18's
+shortened attack (152 s, crash) stays footnoted (C12). Adviser sign-off on D-23 pending (A26).
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #44 — Oct 18, 2026 · ~8:30 PM — blackhole · tree · G402 · stationary r1 (recapture): why "signature PASS" but "SETUP INVALID"
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `fa545e3` + uncommitted

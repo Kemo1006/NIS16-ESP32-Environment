@@ -412,3 +412,13 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Net effect** | No data change; runs that would have been invalid can no longer start. Procedure: "the operator confirmed the layout before the baseline". |
 | **Paper edit** | Methodology / run procedure: one paragraph on the pre-run gates. Checklist A23. |
 
+## D-23 · Parent changes during the attack: judged by exposure, not forbidden (oct. 18, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | ESP-WIFI-MESH is self-forming and self-healing; the topology is verified before the attack. |
+| **What we did before** | Any parent change of a board the attack depends on (attacker / victim) during the attack = **FAIL → SETUP INVALID**, even when the board only re-joined under the same attacker after a neighbour crashed (verification #44). |
+| **What we do now** | `tools/attack_checks.py` classes every board in every attack window by walking its parent chain at that moment: **victim** (path to the root runs through the attacker), **bystander** (it does not), **detached** (re-joining). A parent change is **TOLERATED (WARN)** when the board stays in ONE class for the whole attack and its delivery matches that class (victim PDR ≤ 0.2, bystander ≥ 0.8). It stays **FAIL** when any board spends ≥ 3 windows as a victim AND ≥ 3 as a bystander (moved itself or carried by a moving ancestor), when the delivery contradicts the class, or when the position cannot be resolved. Wormhole: a move is tolerated while the A end stays shallower than the B end in every attack second. A victim that dropped out is a WARN while other victims remain; losing the attacker or every victim stays FAIL. **No firmware lock** was added. |
+| **Why** | A lock (pinning parents at START) would contradict the self-healing behaviour the paper describes, could not help when the parent itself crashes (a pinned child of a dead parent just loses its data), and is a bigger method change than a verifier rule. What decides whether a run is ONE experiment is **who the attack reaches**, not which MAC a board's parent has. |
+| **Net effect** | 2026-10-18 7:21 PM blackhole/tree/G402/stationary r1 (archived): D7B4 + ED80 re-joined after F4:18 crashed, stayed victims (PDR 0.00) → SETUP INVALID becomes **CONFIRMED** with 2 TOLERATED warnings. Verdicts of runs with no parent change are unchanged (verifier tests 28/28, 2 new). |
+| **Paper edit** | Verification method: one paragraph - "parent changes during the attack were accepted when every board kept its exposure class (victim / bystander) and delivery; otherwise the run was rejected." Checklist A26. **Adviser check.** |

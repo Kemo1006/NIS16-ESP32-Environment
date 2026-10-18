@@ -103,6 +103,119 @@ def _short(n):
 # TOPOLOGY
 # ─────────────────────────────────────────────────────────────────────────
 
+# Exposure-aware re-route judgement (oct. 18 2026, user: "make a smart decision -
+# allow a parent change when it does not damage the dataset"). ESP-WIFI-MESH heals
+# itself: when a board drops out, its children re-join elsewhere. That is only a
+# different EXPERIMENT when it changes WHO THE ATTACK REACHES. Per attack window
+# every board is classed by walking its parent chain at that moment:
+#   victim    - the path to the root runs through the attacker
+#   bystander - it reaches the root without the attacker
+#   detached  - no parent right now (re-joining)
+# A move that keeps every board in its class (victim -> victim) and keeps its
+# delivery consistent with that class is TOLERATED (WARN). A board whose class
+# FLIPS victim <-> bystander for more than FLIP_MIN_WINDOWS windows - moved itself
+# or carried by a moving ancestor - mixes two experiments: FAIL, as before.
+FLIP_MIN_WINDOWS = 3          # fewer = alignment noise around a re-join, not a flip
+VICTIM_PDR_MAX = 0.2          # a victim behind a blackhole delivers ~0
+BYSTANDER_PDR_MIN = 0.8       # a bystander keeps delivering ~1
+
+
+def _tcol(df):
+    return "t_anchor_s" if "t_anchor_s" in df.columns else "window_start"
+
+
+def _parent_timeline(atk, sta):
+    """node -> sorted [(t, parent node_id or None)] over the attack windows."""
+    tc = _tcol(atk)
+    tl = {}
+    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+        g = g.sort_values(tc)
+        tl[n] = [(float(t), _exposure.resolve_parent(p, sta)) for t, p in zip(g[tc], g["parent_mac"])]
+    return tl
+
+
+def _parent_at(tl, n, t, tol=3.0):
+    seq = tl.get(n)
+    if not seq:
+        return "unknown"
+    t0, p = min(seq, key=lambda x: abs(x[0] - t))
+    return p if abs(t0 - t) <= tol else "unknown"
+
+
+def _path_class(tl, n, t, attackers, roots):
+    cur = n
+    for _ in range(16):
+        p = _parent_at(tl, cur, t)
+        if p == "unknown":
+            return "unknown"
+        if p is None:
+            return "detached"
+        if p in attackers:
+            return "victim"
+        if p in roots:
+            return "bystander"
+        cur = p
+    return "unknown"
+
+
+def exposure_timeline(df, attack):
+    """{node: [(t, class)]} for every non-root, non-attacker board in the attack windows."""
+    atk = _seg(df, "attack")
+    if atk.empty or not {"node_id", "parent_mac"} <= set(atk.columns):
+        return {}
+    roles = _roles(df)
+    nodes = sorted(atk["node_id"].dropna().unique())
+    sta = {v: n for n in nodes if (v := _exposure.node_id_to_sta_int(n)) is not None}
+    for n in set(df["node_id"].dropna()):                 # boards gone from the attack still resolve
+        v = _exposure.node_id_to_sta_int(n)
+        if v is not None:
+            sta.setdefault(v, n)
+    attackers = {n for n, r in roles.items() if r in _exposure.ATTACK_ROLES and r not in _exposure.WORMHOLE_ROLES}
+    roots = {n for n, r in roles.items() if r in _exposure.ROOT_ROLES}
+    tl = _parent_timeline(atk, sta)
+    tc = _tcol(atk)
+    out = {}
+    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+        if n in attackers or n in roots:
+            continue
+        out[n] = [(float(t), _path_class(tl, n, float(t), attackers, roots)) for t in sorted(g[tc])]
+    return out
+
+
+def _flipped(classes):
+    """True when a board spent >= FLIP_MIN_WINDOWS windows in BOTH victim and bystander."""
+    return classes.count("victim") >= FLIP_MIN_WINDOWS and classes.count("bystander") >= FLIP_MIN_WINDOWS
+
+
+def _pdr_consistent(g, cls):
+    """Delivery matches the class the board kept (None = cannot tell)."""
+    if "PDR" not in g.columns:
+        return None
+    v = pd.to_numeric(g["PDR"], errors="coerce").dropna()
+    if v.empty:
+        return None
+    m = float(v.mean())
+    return m <= VICTIM_PDR_MAX if cls == "victim" else m >= BYSTANDER_PDR_MIN
+
+
+def _wormhole_order_ok(df, roles):
+    """A (exit) stays shallower than B (entry) in every attack second where both hops are known."""
+    atk = _seg(df, "attack")
+    if "hop" not in atk.columns:
+        return None
+    a = [n for n, r in roles.items() if r == "wormhole_a"]
+    b = [n for n, r in roles.items() if r == "wormhole_b"]
+    if len(a) != 1 or len(b) != 1:
+        return None
+    tc = _tcol(atk)
+    ha = atk[atk["node_id"] == a[0]].dropna(subset=[tc, "hop"])[[tc, "hop"]].round({tc: 0}).groupby(tc)["hop"].first()
+    hb = atk[atk["node_id"] == b[0]].dropna(subset=[tc, "hop"])[[tc, "hop"]].round({tc: 0}).groupby(tc)["hop"].first()
+    both = pd.concat([ha.rename("a"), hb.rename("b")], axis=1).dropna()
+    if both.empty:
+        return None
+    return int((both["a"] >= both["b"]).sum()) < FLIP_MIN_WINDOWS
+
+
 def topology_issues(df, attack, key_nodes=()):
     """Structure + stability during the attack windows.
 
@@ -175,20 +288,67 @@ def topology_issues(df, attack, key_nodes=()):
         ps = {p for p in g["parent_mac"].astype(str) if p not in ("", "nan", _exposure.ZERO_MAC)}
         if len(ps) > 1:
             moved[n] = len(ps)
+    # Exposure per attack second (oct. 18 2026): a re-route is judged by what it
+    # did to the attack's reach, not by the mere fact that a parent changed.
+    timeline = exposure_timeline(df, attack) if attack == "blackhole" else {}
+    flipped = {n for n, seq in timeline.items() if _flipped([c for _t, c in seq])}
+    wh_ok = _wormhole_order_ok(df, roles) if attack == "wormhole" else None
     for n, k in sorted(moved.items()):
         who = roles.get(n, "?")
         msg = f"{_short(n)} ({who}) changed parent during the attack ({k} parents)"
-        if n in key_nodes and scenario not in MOVING_SCENARIOS:
-            out.append(Issue(FAIL, msg + " - the attack depends on its position, so the"
-                                         " attack windows mix two topologies"))
-        else:
-            out.append(Issue(WARN, msg + (f" (expected in a {scenario} run)"
-                                          if scenario in MOVING_SCENARIOS else "")))
+        if scenario in MOVING_SCENARIOS:
+            out.append(Issue(WARN, msg + f" (expected in a {scenario} run)"))
+            continue
+        if n not in key_nodes:
+            out.append(Issue(WARN, msg))
+            continue
+        if attack == "blackhole" and n in timeline:
+            cls = [c for _t, c in timeline[n]]
+            kept = [c for c in cls if c in ("victim", "bystander")]
+            det = cls.count("detached")
+            if n in flipped:
+                out.append(Issue(FAIL, msg + f" - it moved between VICTIM ({cls.count('victim')} s) and BYSTANDER "
+                                             f"({cls.count('bystander')} s) during the attack, so the attack windows "
+                                             f"mix two experiments"))
+                continue
+            main = max(set(kept), key=kept.count) if kept else None
+            ok = _pdr_consistent(atk[atk["node_id"] == n], main) if main else None
+            if main and ok is not False:
+                out.append(Issue(WARN, msg + f" - TOLERATED: it stayed a {main.upper()} the whole attack"
+                                             f"{f' ({det} s detached while re-joining)' if det else ''}"
+                                             f"{', and its delivery matches' if ok else ''}; the attack's reach "
+                                             f"did not change (ESP-MESH self-healing re-route)"))
+            else:
+                out.append(Issue(FAIL, msg + (f" - its delivery does not match a {main} (the re-route changed what"
+                                              f" it measured)" if main else " - its position during the attack"
+                                              " could not be resolved")))
+            continue
+        if attack == "wormhole" and wh_ok is not None:
+            if wh_ok:
+                out.append(Issue(WARN, msg + " - TOLERATED: the A end stayed shallower than the B end the whole"
+                                             " attack, so the tunnel still skipped hops"))
+            else:
+                out.append(Issue(FAIL, msg + " - the A end was NOT shallower than the B end for part of the"
+                                             " attack: the shortcut changed"))
+            continue
+        out.append(Issue(FAIL, msg + " - the attack depends on its position, so the"
+                                     " attack windows mix two topologies"))
+    # boards that did not move themselves but were carried across by an ancestor
+    for n in sorted(flipped - set(moved)):
+        seq = [c for _t, c in timeline[n]]
+        out.append(Issue(FAIL, f"{_short(n)} ({roles.get(n, '?')}) switched between VICTIM ({seq.count('victim')} s) "
+                               f"and BYSTANDER ({seq.count('bystander')} s) during the attack because a board above "
+                               f"it moved - the attack windows mix two experiments"))
     # Presence: nodes seen in the baseline but absent from the attack.
     base_nodes = set(_seg(df, "baseline")["node_id"].dropna())
     gone = sorted(base_nodes - set(nodes))
     if gone:
-        lvl = FAIL if any(n in key_nodes for n in gone) else WARN
+        # oct. 18 2026: a victim that dropped out (e.g. crashed) before the attack is
+        # lost data, not a broken experiment, while OTHER victims carry the attack.
+        # Losing the attacker itself - or every victim - still invalidates it.
+        att_gone = any(n in key_nodes and roles.get(n) in _exposure.ATTACK_ROLES for n in gone)
+        victims_left = [n for n in key_nodes if n in set(nodes) and roles.get(n) not in _exposure.ATTACK_ROLES]
+        lvl = FAIL if (att_gone or (any(n in key_nodes for n in gone) and not victims_left)) else WARN
         out.append(Issue(lvl, "no attack-window telemetry from "
                               + ", ".join(_short(n) for n in gone)
                               + " (board dropped out, its file is missing, or its attack"
