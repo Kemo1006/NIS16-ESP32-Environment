@@ -16,6 +16,29 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #51 — Oct 19, 2026 · ~2:50 AM — verdict, grade and REDO: in sync? hard-coded? decided by the data? backed by studies?
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5f0d326` + this change
+> **Request:** "double check how verdicts, grades and the REDO decision happen - synchronised, no hard-coding or bias, everything calculated properly on its basis and supported by studies"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 52 attack runs | every analysed attack cell (baseline cells have no attack verdict) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Verifier vs redo list, 5 rules (`tools/audit_verdict_sync.py`) | ✅ all hold | 7 STRONG = OK · 41 QUALIFIED = CHECK (same footnote count) · 2 not confirmed = REDO by the verifier · 2 CONFIRMED + REDO, each from a named NON-verifier source: tree/G402/burst (**D2**, 7 of 8 boards), wormhole/tree/DLSU/stationary (**D8** + incomplete capture). Every severity = the worst of its reasons |
+| Hard-coded results | ✅ none | no verdict/grade/severity is set by hand; all come from the checks |
+| Threshold basis | ✅ listed | from studies: 3-sigma (Zhukabayeva 2025), baseline PDR floor 0.90 (Khan 2022: > 0.97 on ESP-MESH), blackhole = drop of forwarded traffic (Airehrour 2018), position (Karlof & Wagner 2003), duplicates (Ramirez Gomez 2019), tunnel timing (Hu-Perrig-Johnson 2003), self-healing (Espressif); from our data: re-join budget (3-6 s re-joins), min effect 0.10 (one lost probe vs a real attack); project spec: 5-window blocks (Table 4.10), 95 % coverage (Milestone 5); engineering, deliberately loose: victim cut 0.50, bystander drop 0.30, attacker forward 0.50 |
+| Sensitivity (`tools/audit_threshold_sensitivity.py`) | ✅ 0 flips | 14 settings (sigma 2.5/3.5, min effect 0.05/0.20, victim cut 0.25/0.75, bystander 0.15/0.45, attacker 0.25/0.75, flip 2/5, baseline floor 0.80/0.95) x 52 runs = 728 re-judgements: **no verdict changes**. Controls (sigma 1000; victim cut 0.0) flip 31 and 14 -> the test does change the judgement |
+
+**Verdict: ✅ the verdict, the grade and the REDO decision agree on every run; nothing is hard-coded; the verdicts are
+decided by the data (they do not move when any threshold is moved by ~50 %); each threshold has a stated basis - a study,
+our own measurement, the project spec, or a deliberately loose engineering bound.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #50 — Oct 19, 2026 · ~2:30 AM — honesty audit of the verdict (no bias, no fake, aligned to the studies) + why tree/G402/burst = CONFIRMED but REDO
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `133a7ac` + this change

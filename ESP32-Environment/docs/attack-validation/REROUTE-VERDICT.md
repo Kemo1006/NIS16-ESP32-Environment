@@ -265,3 +265,20 @@ enough.**
   #45, #46, #47.
 - **"Can START be pressed with a bad setup?"** No. Red pre-START checks lock it (D-24). An override
   needs a typed reason, which the verifier reports.
+
+## 10. Verdict, grade and REDO - how they fit together (checked oct. 19, 2026, #51)
+
+Three answers come out of two programs, and they answer **different questions**:
+
+| Answer | Program | Question | Decided by |
+|---|---|---|---|
+| **VERDICT** | `verify_attack.py` | did the attack happen in this data? | the 3-sigma test on the attack's signature [Zhukabayeva 2025; Airehrour 2018] + the setup checks |
+| **CONFIDENCE** | `verify_attack.py` | how cleanly? | STRONG = every check passed · QUALIFIED = confirmed with footnotes (ANY warning is one) · - = not confirmed |
+| **REDO / CHECK / OK** | `redo_list.py` | is this run good enough to keep for the thesis? | the worst of: capture completeness (all boards, >= 95 % samples), structure on the raw files, analysis freshness, **the verifier above**, the verification log, thesis-checklist D-rows |
+
+So **CONFIRMED + REDO is not a contradiction**: the attack happened, but the dataset is incomplete (e.g. tree/G402/burst:
+7 of 8 boards, checklist D2). They line up everywhere else: STRONG = OK, QUALIFIED = CHECK, not confirmed = REDO.
+
+**Proof it is not tuned:** moving every threshold by about half up and down (728 re-judgements) changes **no** verdict;
+two absurd control settings do change many - so the verdicts sit far from every threshold and are decided by the data.
+Re-run any time: `python tools/audit_verdict_sync.py` and `python tools/audit_threshold_sensitivity.py`.
