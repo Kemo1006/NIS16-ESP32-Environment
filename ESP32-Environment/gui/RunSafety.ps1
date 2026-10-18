@@ -149,3 +149,24 @@ function Read-HealthLine([string]$Label, [string]$Line) {
     Add-RunAlert ("{0}: {1}" -f $Label, $what) $Pal.Amber
     Write-RunConsole ("  [HEALTH] {0}: {1}" -f $Label, $what) $Pal.Amber
 }
+
+# -- the root is not in this preset (oct. 18 2026) ------------------------------
+function Get-RootElsewhereNote($P, [string]$Attack, [string]$Topology, [string]$Location, [string]$Scenario, [int]$NKids) {
+    # The usual setup: children flashed from one preset, the ROOT from its own preset
+    # on THIS laptop, LAST. Name that preset when it exists; else the root's laptop.
+    $na = if ($Attack -in @('none', 'baseline')) { 'baseline' } else { $Attack }
+    $t = $Topology -replace '^partial$', 'partial_mesh'
+    $live = @{}; foreach ($l in @($script:Live.Values)) { if ($l.Mac) { $live[(([string]$l.Mac) -replace '[^0-9A-Fa-f]', '').ToLower()] = [string]$l.Port } }
+    $cands = @($script:Presets | Where-Object {
+            $_.Path -ne $P.Path -and ($(if ($_.Attack -in @('none', 'baseline')) { 'baseline' } else { $_.Attack })) -eq $na -and
+            ($_.Topology -replace '^partial$', 'partial_mesh') -eq $t -and $_.Location -eq $Location -and $_.Scenario -eq $Scenario -and
+            @($_.Cfg.boards | Where-Object { $_.Role -eq 'root' -or $_.Kind -eq 'root' }).Count } |
+        Sort-Object @{ E = { $_.Owner -ne $script:Me } }, @{ E = { $_.Saved }; Descending = $true })
+    foreach ($c in $cands) {
+        $rb = @($c.Cfg.boards | Where-Object { $_.Role -eq 'root' -or $_.Kind -eq 'root' }) | Select-Object -First 1
+        $port = $live[(([string]$rb.Mac) -replace '[^0-9A-Fa-f]', '').ToLower()]
+        $here = if ($port) { " - the root is plugged in here on $port" } else { '' }
+        return ("The ROOT is not in this preset: it is in {0} [{1}]{2}. Order: flash these {3} children FIRST, then run that root preset LAST - the root waits for every child, and START is pressed on the root's dashboard." -f $c.File, $c.Owner, $here, $NKids)
+    }
+    return ("The ROOT is not in this preset (no root preset for this run on this laptop). Flash these {0} children FIRST; the root goes LAST - from its own preset here, or on the root's laptop with your {0} children counted under 'children on other laptops'. START is pressed where the root runs." -f $NKids)
+}

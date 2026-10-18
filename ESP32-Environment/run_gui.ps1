@@ -6703,7 +6703,10 @@ function New-RunPlan($P) {
         if ($topology -eq 'star') { $notes += 'STAR + wormhole: every child is 1 hop from the root, so the root''s "A closer than B" gate can never pass - only START_ANYWAY starts it (open team decision, checklist A24).' }
     }
     if (-not @($local | Where-Object Role -eq 'root').Count -and $local.Count) {
-        $notes += 'The ROOT is on another laptop: this laptop flashes only its children. Ask the root laptop to start its root FIRST (it waits for every child) and to count your children under "children on other laptops". START is pressed THERE.'
+        # oct. 18 2026 (user): the usual setup keeps the root in its OWN preset on THIS
+        # laptop (children preset first, root preset last). The old note assumed another
+        # laptop and said to start the root FIRST - the opposite of the right order.
+        $notes += (Get-RootElsewhereNote $P $attack $topology $location $scenario @($local).Count)
     }
     $ports = @($local | ForEach-Object Port)
     if (@($ports | Group-Object | Where-Object Count -gt 1).Count) { $notes += 'Some boards share a port: the run pauses between them so you can swap the boards.' }
