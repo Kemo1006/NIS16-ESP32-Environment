@@ -702,6 +702,42 @@ def _print_reroute_why(issues, measured, setup_invalid):
         print(_wrap(STUDIES[tag], f"     [{tag}]{' ' * (3 - len(tag))}"))
 
 
+# oct. 19 2026: setup checks grouped so a reader sees WHERE a problem is. First match
+# wins - the order matters (e.g. "the ATTACKER has NO attack windows" is a BOARDS
+# matter, "1 node not behind the attacker" a VICTIMS one).
+CHECK_GROUPS = [
+    ("BOARDS", ("NO attack windows", "no attack-window telemetry", "NO labelled window", "appears in the attack")),
+    ("RE-TEST", ("ROBUST", "robustness")),
+    ("TOPOLOGY", ("changed parent", "switched between", "topology", "FLAPPED", "during the BASELINE",
+                  "when START was pressed", "in the first", "ATTACKER itself moved", "layout")),
+    ("TUNNEL", ("UART", "tunnel", "A end", "B end", "shallower", "duplicate", "REVERSED", "SAME DEPTH", "wormhole")),
+    ("VICTIMS", ("victim", "behind", "cut off", "kept delivering", "not specific")),
+    ("ATTACKER", ("attacker", "forward", "received")),
+    ("START", ("START", "force", "overridden")),
+]
+_LEVEL_RANK = {"FAIL": 3, "WARN": 2, "OK": 1, "SKIP": 0}
+
+
+def _group_of(text):
+    for name, words in CHECK_GROUPS:
+        if any(w.lower() in text.lower() for w in words):
+            return name
+    return "OTHER"
+
+
+def _grouped_checks(issues):
+    """[(group, worst level, [issues])] in CHECK_GROUPS order."""
+    groups = {}
+    for it in issues:
+        groups.setdefault(_group_of(it.text), []).append(it)
+    out = []
+    for name in [g for g, _ in CHECK_GROUPS] + ["OTHER"]:
+        if name in groups:
+            worst = max(groups[name], key=lambda i: _LEVEL_RANK.get(i.level, 0)).level
+            out.append((name, worst, groups[name]))
+    return out
+
+
 def _check_study(text):
     tags = []
     for word, tag in CHECK_STUDY:
@@ -1049,12 +1085,27 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     if issues is None:
         print("     ??   tools/attack_checks.py could not be imported - setup NOT checked")
     else:
+        groups = _grouped_checks(issues)
+        light = {"FAIL": "[FAIL]", "WARN": "[WARN]", "OK": "[ OK ]", "SKIP": "[ -- ]"}
+        print("     AT A GLANCE:  " + "   ".join(f"{g} {light.get(w, '[ ?? ]')}" for g, w, _ in groups))
+        print()
+        try:
+            sketch = _checks.layout_sketch(df_nodes, attack)
+        except Exception:
+            sketch = []
+        if sketch:
+            print("     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)")
+            for ln in sketch:
+                print("       " + ln)
+            print()
         order = {"FAIL": 0, "WARN": 1, "SKIP": 2, "OK": 3}
-        for it in sorted(issues, key=lambda i: order.get(i.level, 9)):
-            tags = _check_study(it.text)
-            used.update(tags)
-            text = it.text + ("  " + " ".join(f"[{t}]" for t in tags) if tags else "")
-            print(_wrap(text, f"     {CHECK_MARK.get(it.level, '    ')} "))
+        for g, w, its in groups:
+            print(f"     {g} {'.' * max(3, 40 - len(g))} {w if w != 'SKIP' else '--'}")
+            for it in sorted(its, key=lambda i: order.get(i.level, 9)):
+                tags = _check_study(it.text)
+                used.update(tags)
+                text = it.text + ("  " + " ".join(f"[{t}]" for t in tags) if tags else "")
+                print(_wrap(text, f"       {CHECK_MARK.get(it.level, '    ')} "))
     print()
 
     print(" [4] PER-NODE DELIVERY (PDR)")
@@ -1102,6 +1153,14 @@ def _line_colour(line):
         return "green" if "CONFIRMED" in t else "bold"
     if t.startswith(("[1]", "[2]", "[3]", "[4]", "[5]", "[6]")) and line.startswith(" ["):
         return "cyan"
+    if t.startswith("AT A GLANCE"):
+        return "red" if "[FAIL]" in t else ("yellow" if "[WARN]" in t else "green")
+    if t.startswith("LAYOUT AT THE START"):
+        return "cyan"
+    if " ..." in t and t.split()[-1] in ("FAIL", "WARN", "OK", "--") and t.split()[0].isupper():
+        return {"FAIL": "red", "WARN": "yellow", "OK": "green"}.get(t.split()[-1], "dim")
+    if "NOT ALLOWED" in t and ("+-- " in t or "`-- " in t):
+        return "red"
     if t.startswith("CONFIDENCE"):
         return "red" if "not confirmed" in t else ("green" if ("STRONG" in t or "SOUND" in t) else "yellow")
     if t.startswith(("+ ", "= ")):

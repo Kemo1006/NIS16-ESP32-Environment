@@ -4328,6 +4328,7 @@ function Show-AnaReport([string]$Text) {
         [void]$ui.AnaResult.Children.Add($wp)
     }
     $sec = ''; $feat = @(); $checks = @(); $nodes = @(); $measured = @(); $why = New-Object System.Collections.ArrayList
+    $glance = @(); $sketch = New-Object System.Collections.ArrayList; $inSketch = $false
     foreach ($ln in $lines) {
         if ($ln -match '^\s*\[(\d)\]\s') { $sec = $Matches[1]; continue }
         $tr = $ln.Trim()
@@ -4337,8 +4338,13 @@ function Show-AnaReport([string]$Text) {
         } elseif ($sec -eq '2') {
             if ($tr -match '^-\s+(.+)$') { $measured += $Matches[1] } elseif ($measured.Count -and $ln -match '^\s{6,}\S') { $measured[-1] += ' ' + $tr }
         } elseif ($sec -eq '3') {
+            # oct. 19 2026: AT A GLANCE row, the layout drawing, grouped checks
+            if ($inSketch) { if (-not $tr) { $inSketch = $false } else { [void]$sketch.Add($(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr })) }; continue }
+            if ($tr -match '^AT A GLANCE:\s+(.+)$') { $glance = @([regex]::Matches($Matches[1], '([A-Z][A-Z-]+) \[\s*(OK|WARN|FAIL|--)\s*\]') | ForEach-Object { , @($_.Groups[1].Value, $_.Groups[2].Value) }); continue }
+            if ($tr -match '^LAYOUT AT THE START') { $inSketch = $true; continue }
+            if ($tr -match '^([A-Z][A-Z-]+) \.{3,} (OK|WARN|FAIL|--)$') { $checks += , @('H', $Matches[1], $Matches[2]); continue }
             if ($tr -match '^(OK|WARN|FAIL|SKIP|INFO)\s+(.+)$') { $checks += , @($Matches[1], $Matches[2]) }
-            elseif ($checks.Count -and $ln -match '^\s{8,}\S') { $checks[-1][1] += ' ' + $tr }
+            elseif ($checks.Count -and $checks[-1][0] -ne 'H' -and $ln -match '^\s{8,}\S') { $checks[-1][1] += ' ' + $tr }
         } elseif ($sec -eq '4') {
             if ($tr -match '^(NODE_[0-9A-Fa-f]{12})\s+(\S+)\s+(.+?)\s{2,}(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s*$') { $nodes += , @($Matches[1], $Matches[2], $Matches[3], $Matches[4], $Matches[5], $Matches[6], $Matches[7]) }
         } elseif ($sec -eq '6') {
@@ -4373,7 +4379,37 @@ function Show-AnaReport([string]$Text) {
     if ($checks.Count) {
         $bad = @($checks | Where-Object { $_[0] -eq 'FAIL' }).Count
         $card = New-AnaCard ('SETUP CHECKS  -  did the attack run as designed?' + $(if ($bad) { "   ($bad failed)" } else { '' })) $(if ($bad) { $Pal.Red } else { '' })
+        if ($glance.Count) {
+            # one light per area: where a problem is, before any detail
+            $wp = New-Object Windows.Controls.WrapPanel; $wp.Margin = '0,0,0,8'
+            foreach ($gl in $glance) {
+                $lk = switch ($gl[1]) { 'FAIL' { @{ Fg = $Pal.Red; Bg = '#3A1E2C'; G = [char]0x2716 } } 'WARN' { @{ Fg = $Pal.Amber; Bg = '#3A2E14'; G = [char]0x26A0 } } 'OK' { @{ Fg = $Pal.Green; Bg = '#1F4D3E'; G = [char]0x2714 } } default { @{ Fg = $Pal.Dim; Bg = '#2A2E48'; G = [char]0x2026 } } }
+                $pb = New-Object Windows.Controls.Border; $pb.CornerRadius = 10; $pb.Padding = '10,5'; $pb.Margin = '0,0,8,6'; $pb.Background = Get-Brush $lk.Bg
+                $pt = New-Text ('{0}  {1}' -f [string]$lk.G, $gl[0]) 12 $lk.Fg 'Bold'; $pb.Child = $pt; [void]$wp.Children.Add($pb)
+            }
+            [void]$card.Panel.Children.Add($wp)
+        }
+        if ($sketch.Count) {
+            $sh = New-Text 'LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)' 10.5 $Pal.Faint 'SemiBold'; $sh.Margin = '0,2,0,4'
+            [void]$card.Panel.Children.Add($sh)
+            $sb = New-Object Windows.Controls.Border; $sb.CornerRadius = 8; $sb.Padding = '12,8'; $sb.Margin = '0,0,0,10'; $sb.Background = Get-Brush $Pal.Bg
+            $stb = New-Object Windows.Controls.TextBlock; $stb.FontFamily = 'Cascadia Mono, Consolas'; $stb.FontSize = 12.5
+            foreach ($sl in $sketch) {
+                $sl = [string]$sl
+                $hex = if ($sl -match 'NOT ALLOWED') { $Pal.Red } elseif ($sl -match 'ATTACKER|WORMHOLE') { $Pal.Pink } elseif ($sl -match 'VICTIM') { '#FCA5A5' } elseif ($sl -match 'ROOT') { $Pal.Amber } elseif ($sl -match '^[x?]') { $Pal.Faint } else { $Pal.Cyan }
+                $parts = $sl -split '   \* ', 2
+                $r1 = New-Object Windows.Documents.Run ($parts[0]); $r1.Foreground = Get-Brush $hex; [void]$stb.Inlines.Add($r1)
+                if ($parts.Count -gt 1) { $r2 = New-Object Windows.Documents.Run ('   * ' + $parts[1]); $r2.Foreground = Get-Brush $Pal.Amber; [void]$stb.Inlines.Add($r2) }
+                [void]$stb.Inlines.Add((New-Object Windows.Documents.LineBreak))
+            }
+            $sb.Child = $stb; [void]$card.Panel.Children.Add($sb)
+        }
         foreach ($c in $checks) {
+            if ($c[0] -eq 'H') {
+                $hx = switch ($c[2]) { 'FAIL' { $Pal.Red } 'WARN' { $Pal.Amber } 'OK' { $Pal.Green } default { $Pal.Dim } }
+                $hd = New-Text ('{0}   -   {1}' -f $c[1], $c[2]) 11 $hx 'Bold'; $hd.Margin = '0,8,0,2'
+                [void]$card.Panel.Children.Add($hd); continue
+            }
             $lk = Get-ResultLook $c[0]
             $dp = New-Object Windows.Controls.DockPanel; $dp.Margin = '0,3,0,3'
             $ic = New-Text ([string]$lk.G) 14 $lk.Fg 'Bold'; $ic.Width = 24; [Windows.Controls.DockPanel]::SetDock($ic, 'Left'); [void]$dp.Children.Add($ic)

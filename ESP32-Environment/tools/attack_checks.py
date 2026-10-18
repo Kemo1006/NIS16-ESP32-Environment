@@ -365,6 +365,85 @@ def _more_situations(df, attack, atk, roles, key_nodes, moved, timeline, scenari
     return out
 
 
+def layout_sketch(df, attack):
+    """ASCII drawing of who sat under whom at the START of the attack, each board
+    marked with its role / exposure, and what happened to it during the attack
+    (oct. 19 2026, user: "an illustration so the reader understands it easily").
+    ASCII only (Windows consoles). [] when the table has no layout columns."""
+    atk = _seg(df, "attack")
+    if atk.empty or not {"node_id", "parent_mac"} <= set(atk.columns):
+        return []
+    tc = _tcol(atk)
+    roles = _roles(df)
+    sta = _sta_map(df)
+    t0, t1 = float(atk[tc].min()), float(atk[tc].max())
+    timeline = exposure_timeline(df, attack) if attack == "blackhole" else {}
+    first_parent, events = {}, {}
+    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+        g = g.sort_values(tc)
+        seq = [(float(t), _exposure.resolve_parent(p, sta), str(p)) for t, p in zip(g[tc], g["parent_mac"])]
+        real = [(t, p) for t, p, raw in seq if raw not in ("", "nan", _exposure.ZERO_MAC) and p is not None]
+        first_parent[n] = real[0][1] if real else None
+        notes = []
+        if real:
+            cur = real[0][1]
+            for t, p in real[1:]:
+                if p != cur:
+                    notes.append(f"moved -> under {_short(p)} at +{t - t0:.0f} s")
+                    cur = p
+        last = float(g[tc].max())
+        if t1 - last >= SILENT_TAIL_S and roles.get(n) not in _exposure.ROOT_ROLES:
+            notes.append(f"no windows after +{last - t0:.0f} s")
+        events[n] = notes
+    roots = [n for n, r in roles.items() if r in _exposure.ROOT_ROLES and n in first_parent or r in _exposure.ROOT_ROLES]
+    root = roots[0] if roots else None
+
+    def label(n):
+        r = str(roles.get(n, "?"))
+        if r in _exposure.ROOT_ROLES:
+            return "ROOT"
+        if r == "blackhole":
+            return "ATTACKER"
+        if r == "wormhole_a":
+            return "WORMHOLE A (exit)"
+        if r == "wormhole_b":
+            return "WORMHOLE B (entry)"
+        seq = [c for _t, c in timeline.get(n, [])]
+        if _flipped(seq):
+            return "VICTIM <-> BYSTANDER  (NOT ALLOWED)"
+        m = _majority(seq)
+        return {"victim": "VICTIM", "bystander": "bystander"}.get(m, "child")
+
+    kids = {}
+    for n, p in first_parent.items():
+        if n == root:
+            continue
+        kids.setdefault(p if p in first_parent or p == root else None, []).append(n)
+    lines, seen = [], set()
+
+    def walk(n, prefix, last_child, depth):
+        if n in seen or depth > 12:
+            return
+        seen.add(n)
+        notes = events.get(n, [])
+        tag = f"{_short(n):<6} {label(n)}" + (f"   * {'; '.join(notes)}" if notes else "")
+        lines.append(f"{prefix}{'`-- ' if last_child else '+-- '}{tag}" if depth else f"{_short(n)}  ROOT")
+        ch = sorted(kids.get(n, []), key=lambda x: (label(x) != "ATTACKER", _short(x)))
+        for i, c in enumerate(ch):
+            walk(c, prefix + ("" if depth == 0 else ("    " if last_child else "|   ")), i == len(ch) - 1, depth + 1)
+
+    if root is not None:
+        walk(root, "", True, 0)
+    orphans = [n for n in first_parent if n not in seen and n != root]
+    for n in sorted(orphans, key=_short):
+        notes = events.get(n, [])
+        lines.append(f"?   {_short(n):<6} {label(n)}  (its parent could not be traced)" + (f"   * {'; '.join(notes)}" if notes else ""))
+    gone = sorted(set(_seg(df, "baseline")["node_id"].dropna()) - set(first_parent))
+    for n in gone:
+        lines.append(f"x   {_short(n):<6} {label(n)}  (in the baseline, NO attack windows)")
+    return lines
+
+
 def topology_issues(df, attack, key_nodes=()):
     """Structure + stability during the attack windows.
 
