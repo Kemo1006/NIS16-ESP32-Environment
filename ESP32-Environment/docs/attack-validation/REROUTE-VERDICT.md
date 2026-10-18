@@ -1,139 +1,223 @@
-# The re-route verdict ("smart decision") — what it is, why it is fair, how to defend it
+# Why a blackhole run can still be CONFIRMED when boards changed position
 
 > **Panel question this answers:** "ESP-WIFI-MESH re-parents by itself. Some of your boards
 > changed parent during the attack. Why do you still count some of those runs, and how do we know
 > you didn't just pick the rule that saves your data?"
 >
-> **Source of truth:** `tools/attack_checks.py` (`topology_issues`, `exposure_timeline`,
-> `reroute_onset`) and `tools/verify_attack.py` (`_robustness_issue`). Deviation **D-23** (rule) +
-> **D-24** (START lock), checklist **A26** (🟨 adviser) / **A27** / **A28**, verification **#45, #46**.
-> Written oct. 18, 2026.
+> **Code:** `tools/attack_checks.py` (`exposure_timeline`, `topology_issues`, `unresolved_windows`,
+> `reroute_onset`) and `tools/verify_attack.py` (`_robustness_issue`, the exclusion step).
+> **Paper tracking:** deviation **D-23** (rule) + **D-24** (START lock); checklist **A26** (🟨 adviser),
+> **A27**, **A28**, **C13**; verification **#45, #46, #47**. Written oct. 18, 2026; rewritten in plain
+> language with checked references on oct. 19, 2026.
 
 ---
 
-## 1. The problem in one paragraph
+## 1. In plain words (read this first)
 
-ESP-WIFI-MESH is **self-forming and self-healing**: when a parent node disappears, its children
-look for a new parent on their own. That is not a bug, it is the protocol, and our paper describes it.
-But the attack experiment assumes **one layout** during the attack. If a board moves mid-attack,
-are the attack windows still **one experiment**? Before oct. 18 the verifier said "any parent change
-of a victim or the attacker = SETUP INVALID". That rejected runs where nothing that matters changed.
-For example, on oct. 18 at 7:21 PM a victim crashed. Its two children re-joined, **still behind
-the attacker**, and still delivered 0 %.
+A blackhole attacker **drops every packet that passes through it**. So the only thing that makes a
+board a **victim** is that its traffic has to pass through the attacker on the way to the root.
 
-## 2. The decision: judge the change by what it did to the attack, not by the fact it happened
+ESP-WIFI-MESH is a **self-healing** network: if a board breaks down, the boards that were hanging
+under it look for a new parent **by themselves**. Espressif's own documentation says so (§7).
+That means a board can change parent in the middle of the attack, and that is **normal protocol
+behaviour**, not a mistake in our setup.
 
-We chose this over a **firmware lock** (pinning parents at START). The reasons:
+So the question we ask is **not** *"did any board change parent?"* It is:
 
-| Option | Why not / why |
-|---|---|
-| Lock the tree at START | Contradicts the self-healing behaviour the paper describes. It cannot help when the parent itself crashes, because a pinned child of a dead parent just loses its data. It is also a bigger method change than a verifier rule |
-| Reject every parent change (old rule) | Throws away runs whose attack reached exactly the same boards. That treats a harmless re-route the same as a broken experiment |
-| **Judge by exposure (chosen)** | What defines a blackhole experiment is **who the attack reaches**. If that set never changed, the attack windows are one experiment |
+> **"Did the move change WHO the attack reaches?"**
 
-**Exposure class**, per board, per 1-second window, found by walking its parent chain at that moment:
+- If a victim moves but is **still behind the attacker**, the attack still hits the same boards.
+  The experiment did not change. → **allowed** (and written in the report as *TOLERATED*).
+- If a victim moves to a place **not behind the attacker** (or the other way round), half of its
+  attack is a different experiment. → **not allowed** (*SETUP INVALID*).
+- While a board has **no working path at all** (its parent died, it is searching for a new one),
+  that time is neither proof of the attack nor proof against it. → those seconds are **left out**
+  of the test, not counted.
 
-- **victim**: its path to the root runs through the attacker
-- **bystander**: it reaches the root without the attacker
-- **detached**: it has no parent right now (re-joining)
-- **unknown**: the chain cannot be resolved
+**An everyday picture.** A road is blocked (the attacker). Cars that must use that road never
+arrive (victims). If a car's normal street closes and it takes a detour **that still uses the
+blocked road**, it still doesn't arrive, and it is still a fair example of "the blocked road
+stops cars". If its detour **avoids** the blocked road, it is no longer an example and we
+cannot use it. While the car is parked and looking at the map, it tells us nothing either way,
+so we don't count those minutes.
 
-## 3. The rules (all must hold for a re-route to be TOLERATED)
+## 2. How the checker decides, step by step
 
-| # | Rule | Threshold | Fails as |
+For **every board**, in **every 1-second window** of the attack, the checker does this:
+
+1. **Read the board's parent** at that second (from its own telemetry: `parent_mac`).
+2. **Follow the chain upward**: the parent's parent, and so on, until it reaches either the
+   attacker or the root.
+3. **Give the board a label for that second:**
+
+   | Label | Meaning |
+   |---|---|
+   | **VICTIM** | the chain passes through the attacker |
+   | **BYSTANDER** | the chain reaches the root without passing the attacker |
+   | **DETACHED** | the board has no parent right now (searching) |
+   | **UNKNOWN** | the chain breaks: a board above it has gone silent (crashed / reset) |
+
+4. **Look at each board's labels over the whole attack** and apply the rules in §3.
+5. **Remove DETACHED and UNKNOWN seconds** from the 3-sigma test.
+6. **Run the 3-sigma test** on what is left.
+7. **Robustness re-test:** run the 3-sigma test again on **only** the part of the attack *before*
+   the first move. The attack must be confirmed there too (if there are ≥ 60 s of it).
+
+The checker **never looks at the delivery numbers (PDR) to decide** steps 1–5. It decides from
+the layout only, then measures.
+
+## 3. The rules
+
+| # | Rule | Limit | If broken |
 |---|---|---|---|
-| R1 | The board stays in **one class** for the whole attack. A board carried across by a moving parent counts too | < 3 windows in the other class | FAIL "moved between VICTIM and BYSTANDER" |
-| R2 | **No-path windows are excluded**: windows where the board is detached or a board above it went down | ≤ 10 % = "brief re-join", more = "long outage" (both reported) | *oct. 19:* no longer a FAIL - the windows are **dropped from the 3-sigma test** (they show PDR 0 for a reason that is not the attack, so dropping them can only make the test harder; unit-tested) |
-| R3 | The **attacker** never moves. Its position *is* the experimental treatment | 0 | FAIL always |
-| R4 | **Robustness**: the 3-sigma test, re-run on the attack windows **before** the first re-route only, must still confirm | needs ≥ 60 s before the re-route | FAIL "NOT ROBUST"; < 60 s = WARN "rests on the layout rule alone" |
-| R5 | Wormhole: the A end stays **shallower** than the B end | < 3 seconds otherwise | FAIL "the shortcut changed" |
-| R6 | **Phase comparison**: the class at the end of the baseline (last 60 s) and the start of the cooldown (first 60 s) vs the attack | — | WARN only (a confound for per-board features, to footnote) |
-| R7 | A victim that **dropped out** (e.g. crashed) | other victims remain | WARN; losing the attacker or **every** victim = FAIL |
+| R1 | A board must stay in **one label** (VICTIM or BYSTANDER) for the whole attack. This also covers a board that did not move itself but was **carried** by a parent that moved | fewer than **3** seconds in the other label | **FAIL**: "moved between VICTIM and BYSTANDER" |
+| R2 | **No-path seconds** (DETACHED / UNKNOWN) are left out of the test | up to **10 %** of the attack = "brief re-join"; more = "long outage". Both are reported | not a FAIL. The seconds are removed, which can only make the test **harder** (see §4 rule 6) |
+| R3 | The **attacker itself** must never move. Its position *is* the experiment | 0 | **FAIL always** |
+| R4 | **Robustness:** the attack must also be confirmed on the seconds **before** the first move | needs ≥ **60 s** before the move | **FAIL** "NOT ROBUST". If under 60 s: a WARNING saying the verdict rests on the layout rule alone |
+| R5 | *(Wormhole only)* the A end must stay **closer to the root** than the B end | fewer than 3 seconds otherwise | **FAIL**: "the shortcut changed" |
+| R6 | **Phase comparison:** a board's label at the end of the baseline and the start of the cooldown is compared with the attack | — | WARNING only (footnote: its per-board features changed for a non-attack reason) |
+| R7 | A **victim drops out** completely (e.g. it crashed) | other victims still present | WARNING. Losing the **attacker**, or **every** victim = **FAIL** |
 
-A TOLERATED re-route is still **printed** as a WARN in the report. It is footnoted, never hidden.
+A tolerated move is **always printed** in the report as a WARNING ("TOLERATED..."). It is footnoted,
+never hidden.
 
-## 4. Why it is not cheating: the fairness rules
+## 4. Why this is not cheating
 
-These are deliberate. Each one maps to a known safeguard from research methodology (§6).
+| # | Safeguard | What it prevents | Backed by |
+|---|---|---|---|
+| 1 | **Blind to the result.** Allow/reject is decided from the layout only; PDR is printed with "*shown, not used to decide*". A test forces every attack PDR to 1.0 and checks the decision does not change (`test_decision_ignores_delivery`) | accepting a run *because* the attack looked successful (circular) | MacCoun & Perlmutter 2015 |
+| 2 | **Limits fixed in advance**, as constants in the code with their reasons; the same for every run, never tuned to one capture | moving the goalposts after seeing the data | Simmons et al. 2011; Nosek et al. 2018 |
+| 3 | **Symmetric:** victim → bystander and bystander → victim both fail | a rule that only ever helps | — |
+| 4 | **The attacker may never move** | changing the experiment itself | — |
+| 5 | **The result can only make it stricter.** The robustness re-test (R4) can turn CONFIRMED into INVALID, never the reverse | using the outcome to rescue a run | Nosek et al. 2018 (robustness of a planned analysis) |
+| 6 | **Removing no-path seconds only makes it harder.** Those seconds show PDR 0 (no path = nothing arrives), which would make the attack look *stronger*. They are dropped, not counted (`test_exclusion_never_makes_it_easier`) | counting a crash as attack evidence | — |
+| 7 | **Checked on every capture.** Old vs new checker on all analysed captures: **53 on oct. 18 and 54 on oct. 19, and each time only the run in question changed** (7:21 PM and 10:11 PM). tree/G402/highload is **still rejected** (a real victim ↔ bystander flip) | a rule that quietly passes many runs | verification #46, #47 |
+| 8 | **Negative tests:** the data broken on purpose: a forced flip, an attacker that moves, the signature only after the move, a long outage. Each is caught or handled as designed (`tools/test_verify_attack.py`, 34/34) | a rule that never fires | — |
 
-1. **Outcome-blind.** The accept/reject decision reads **only the layout** (`parent_mac`, `hop`).
-   The quantities the 3-sigma test scores (PDR, ForwardingRatio) are shown in the message, labelled
-   *"shown, not used to decide"*. Accepting a layout because the attack still looked successful
-   would be circular. A unit test forces every attack PDR to 1.0 and checks that the decision does
-   not change (`test_decision_ignores_delivery`). → *blind analysis*
-2. **Thresholds fixed in advance.** The thresholds are constants in the code, each with its reason,
-   and they are the same for every run. They are never tuned per capture. → *pre-registration;
-   limits "researcher degrees of freedom"*
-3. **Symmetric.** Victim → bystander and bystander → victim fail alike.
-4. **The treatment is fixed.** The attacker moving is never tolerated.
-5. **The result can only downgrade.** The one place the outcome is used, the robustness re-test (R4),
-   can turn CONFIRMED into SETUP INVALID, never the reverse. → *sensitivity / robustness analysis*
-6. **Checked against every capture.** The old verifier (commit `0e43f7e`) and the new one were run
-   on all **53** analysed attack captures. **Exactly 1 verdict changed**: the run the rule was
-   designed for. blackhole/tree/G402/highload is **still rejected** because it has a real
-   victim ↔ bystander flip. (Verification #46.)
-6. **Exclusion only makes it harder.** Dead-path windows (detached / dead parent) read PDR 0, which would *help* the attack verdict; they are dropped, never counted (`test_exclusion_never_makes_it_easier`).
-7. **Negative tests.** We broke the data on purpose four ways, and each was caught: a forced flip,
-   30 s detached, the signature moved to after the re-route, and the attacker moved
-   (`tools/test_verify_attack.py`, 33/33).
+## 5. Worked examples (real runs)
 
-## 5. Where the thresholds come from (our own data)
+### Example A — oct. 18, **10:11 PM** run (blackhole · tree · G402 · stationary r1) → CONFIRMED
 
-**Measured on oct. 18, 2026 over all 53 analysed captures (367 board-runs, phases 0–3):**
+**Layout when the attack started:**
+
+```
+ROOT (B0:18)
+ ├── 0C80                      BYSTANDER  (not behind the attacker)
+ └── 1C38  = ATTACKER
+      ├── D7B4                 VICTIM
+      ├── F4:18                VICTIM
+      └── 70:68                VICTIM
+           └── ED80            VICTIM  (behind 70:68, so also behind the attacker)
+```
+
+**What happened during the 180 s attack:**
+
+| Attack time | Event | ED80's label |
+|---|---|---|
+| +0 s | Attack starts. All 4 victims deliver 0 %, 0C80 delivers 100 % | VICTIM |
+| **+29 s** | **70:68 goes down** (its file ends here; root marks it OFFLINE at +59 s) | — |
+| +29 → +43 s | ED80 still lists 70:68 as its parent: it is **trying to reconnect to it**, exactly as Espressif describes | **UNKNOWN** (10 s) |
+| +43 → +53 s | ED80 gives up on 70:68, has no parent, **scans** for a new one | **DETACHED** (10 s) |
+| **+53 s** | ED80 joins **F4:18**, which is **still under the attacker** | **VICTIM** again |
+| +53 → +180 s | stays under F4:18 | VICTIM |
+
+**How each rule judged it:**
+
+- **R1:** ED80 was VICTIM in all 140 traceable seconds, never BYSTANDER → allowed.
+- **R2:** 20 no-path seconds (12 %) → **removed from the test** and reported as a long outage.
+- **R3:** the attacker never moved → OK.
+- **R4:** only **42 s** of attack happened before the first move (needs 60 s) → robustness could not be
+  tested; the report says so (WARNING).
+- **R7:** 70:68 dropped out at +29 s, but 3 other victims remained → WARNING.
+- **3-sigma test** on what is left: attacker forwarding 1.000 → 0.000, victims' PDR 1.0 → 0.0,
+  bystander 0C80 stayed 1.0 → **BLACKHOLE CONFIRMED**.
+
+**Footnotes this run must carry** (checklist C13): 70:68 has only 29 s of attack; ED80's 20 no-path
+seconds were excluded; the robustness re-test was not possible (42 s); FE90 not yet collected.
+
+### Example B — oct. 18, **7:21 PM** run (same cell, archived) → CONFIRMED, robust
+
+Victim **F4:18** (under the attacker) crashed **152 s** into the attack. Its two children **D7B4** and
+**ED80** re-joined, D7B4 directly under the attacker and ED80 under D7B4, so **both stayed VICTIMS**
+(3 s and 5–7 s without a path). The re-test on the **156 s before the first move** confirmed the
+attack on its own → **ROBUST**. (Verification #45.)
+
+### Example C — oct. 17, **highload** run (tree · G402) → still REJECTED
+
+Victim **B768** spent **94 s as a VICTIM and then moved to a place not behind the attacker** (BYSTANDER)
+for longer than 3 s. Half of its attack is a different experiment → **R1 FAIL → SETUP INVALID**. The
+smart rule did **not** rescue this run, and it should not.
+
+## 6. Where the limits come from (our own data)
+
+Measured on **oct. 18, 2026** over all 53 analysed captures (367 board-runs, phases 0–3):
 
 | What | Value |
 |---|---|
-| Re-join episodes (a board shows no parent, then a parent again) | **7** in 367 board-runs |
-| Duration of 6 of the 7 | **3–6 s** (median 4 s) |
-| The 7th | **54 s**: B768 in blackhole/tree/G402/highload, the crash run the verifier still rejects |
+| Re-joins seen (a board loses its parent and gets one again) | **7** in 367 board-runs |
+| How long 6 of the 7 took | **3–6 s** (median 4 s) |
+| The 7th | **54 s**: B768 in the highload run above (rejected) |
 
-- **10 % budget (18 s)** sits 3× above the longest normal re-join (6 s) and far below the abnormal one (54 s).
-- **3-window flip threshold**: windows are 1 s and boards are aligned to ±1–3 s, so 1–2 windows in
-  the other class can be alignment noise around a re-join. 3 or more in **each** class is a real flip.
-- **60 s phase edges / 60 s robustness minimum**: one third of the 180 s attack, enough points for the
-  3-sigma test's minimum sample rule.
+- **10 %** of a 180 s attack = **18 s**: three times the longest normal re-join (6 s), far below the
+  abnormal one (54 s). Under it = "brief re-join"; over it = "long outage". Either way, the no-path
+  seconds are left out of the test.
+- **3 seconds** for a real flip: windows are 1 s and boards' clocks are aligned to ±1–3 s, so 1–2
+  seconds in the other label can be timing noise around a re-join.
+- **60 s** for the robustness re-test: one third of the attack, enough points for the 3-sigma test.
 
-Re-run this measurement after the campaign and update the table. The numbers above are from oct. 18.
+Re-measure after the campaign and update this table.
 
-## 6. Do we need supporting studies? — Yes, three kinds
+## 7. Supporting studies (checked oct. 19, 2026)
 
-The rule itself is **our design**, not borrowed, so no paper "proves" it. Present it as an
-engineering decision. The thesis must support three things around it:
+**No paper proves this exact rule. It is our design.** What the thesis must support is the facts
+it stands on. Each source below was looked up on oct. 19, 2026 (title, year, volume checked).
 
-| Claim in the thesis | Support it with | Status |
-|---|---|---|
-| ESP-WIFI-MESH re-parents by itself (self-healing), so re-routes are protocol behaviour, not a setup error | **Espressif, *ESP-WIFI-MESH Programming Guide*, ESP-IDF docs** (self-organising / self-healing network, parent selection). Cite the version you build with (v5.3 / v5.5) | ⬜ find the exact section + cite |
-| Decision made blind to the outcome | **MacCoun & Perlmutter (2015), "Blind analysis: Hide results to seek the truth", *Nature* 526** · **Klein & Roodman (2005), "Blind analysis in nuclear and particle physics", *Annu. Rev. Nucl. Part. Sci.* 55** | ⬜ verify + add to references |
-| Rules + thresholds fixed in advance, not tuned to rescue data | **Simmons, Nelson & Simonsohn (2011), "False-positive psychology", *Psychological Science* 22(11)** (researcher degrees of freedom) · **Nosek et al. (2018), "The preregistration revolution", *PNAS* 115(11)** | ⬜ verify + add |
-| The verdict holds on the clean part alone | Robustness / sensitivity analysis: cite one methods text or the 2 above. Our own evidence is R4 + verification #45 | ⬜ |
-| What "victim" means | The blackhole definition already in the paper (**Karlof & Wagner 2003**, see `ATTACK-VALIDATION.md`): the attack affects traffic **routed through** the malicious node | ✅ already cited |
-| Threshold values | **Our own measurement** (§5). Say so; no outside source exists for ESP-MESH re-join time on our hardware | ✅ measured |
+| What we claim | Source | What it says, in short | Checked |
+|---|---|---|---|
+| Boards changing parent after a failure is **normal ESP-MESH behaviour** | **Espressif Systems. *ESP-WIFI-MESH* (API Guides), *ESP-IDF Programming Guide* v5.3, "Overview" and "Managing a Network → Intermediate Parent Node Failure".** https://docs.espressif.com/projects/esp-idf/en/v5.3/esp32/api-guides/esp-wifi-mesh.html | *"ESP-WIFI-MESH is self-organizing and self-healing meaning the network can be built and maintained autonomously."* If an intermediate parent breaks down, its children *"initially attempt to reconnect with the parent node"*, then scan and *"each child node will individually select a new preferred parent node"*; afterwards *"the network is healed, however the network routing has been affected"*. That is **exactly** ED80's +29 → +43 → +53 s sequence in Example A | ✅ quoted from the page. Cite the IDF version you build with (team uses v5.3 and v5.5) |
+| A blackhole only harms traffic that **passes through** it, so "who is behind the attacker" is what matters | **Karlof, C., & Wagner, D. (2003). Secure routing in wireless sensor networks: Attacks and countermeasures.** *Ad Hoc Networks*, 1(2–3), 293–315 (also in the IEEE SNPA 2003 workshop) | introduces sinkhole/selective-forwarding attacks; the damage depends on the malicious node sitting on the data flow's path | ✅ already cited in the paper (`ATTACK-VALIDATION.md`). Paper confirmed online; the journal volume/pages were not shown in the search results, so check them once in Google Scholar |
+| The decision is made **blind to the result** | **MacCoun, R., & Perlmutter, S. (2015). Blind analysis: Hide results to seek the truth.** *Nature*, 526(7572), 187–189. doi:10.1038/526187a | hide the result while the analysis is designed and finalised, to stop confirmation bias | ✅ |
+| The limits were **fixed in advance**, not tuned to save data | **Simmons, J. P., Nelson, L. D., & Simonsohn, U. (2011). False-positive psychology: Undisclosed flexibility in data collection and analysis allows presenting anything as significant.** *Psychological Science*, 22(11), 1359–1366. doi:10.1177/0956797611417632 | choosing rules *after* seeing the data ("researcher degrees of freedom") makes false findings easy | ✅ |
+| (same) | **Nosek, B. A., Ebersole, C. R., DeHaven, A. C., & Mellor, D. T. (2018). The preregistration revolution.** *PNAS*, 115(11), 2600–2606. doi:10.1073/pnas.1708274114 | fix the questions and the analysis plan **before** looking at the outcome | ✅ |
+| The limit values (10 %, 3 s, 60 s) | **Our own measurement** (§6) | — | ✅ measured; say so plainly |
 
-⚠️ **Look each reference up before citing it.** They are well-known papers, but check the title,
-year and volume against the real source; do not copy them from this file blind.
+**Searched for, not recommended:** a blackhole study on a network whose layout changes during the
+attack (MANET literature). The ones found are about MANET routing in general (e.g. Tseng, Chiang &
+Chao 2018, *JIPS* 14(1):56–78; Raj & Swadas 2009, *IJCSI*). Their pages did not state the point we
+need, so they add little. **The Espressif quote is direct evidence for our exact protocol and is
+enough.**
 
-## 7. What to write in the thesis (draft paragraph)
+## 8. What to write in the thesis (draft paragraph)
 
-> *ESP-WIFI-MESH is self-healing: when a parent node fails, its children select a new parent
-> automatically [Espressif]. A parent change during the attack therefore does not by itself
-> invalidate a run. Instead, each node was classified in every 1-s window as a victim (its route to
-> the root passes through the attacker), a bystander, or detached. A run with parent changes was kept only if (i) no node
-> changed class for ≥ 3 s, (ii) no affected node spent more than 10 % of the attack detached (the
-> longest normal re-join measured in our captures was 6 s), (iii) the attacker never moved, and (iv)
-> the 3-sigma test, repeated on the attack windows before the first parent change alone, still
-> confirmed the attack. The decision used the topology only and never the delivery being measured,
-> and the thresholds were fixed before being applied, following blind-analysis and pre-registration
-> practice [MacCoun & Perlmutter 2015; Nosek et al. 2018]. Applied to all 53 captures, the rule changed the verdict of one run; it is
-> reported with its tolerated re-routes.*
+> *ESP-WIFI-MESH is self-organizing and self-healing: when an intermediate parent node fails, its
+> child nodes first try to reconnect to it and then each selects a new preferred parent, after which
+> "the network is healed, however the network routing has been affected" [Espressif, ESP-IDF v5.3].
+> A parent change during the attack therefore does not by itself invalidate a run. Instead, every
+> node was labelled in each 1-s window as a victim (its route to the root passes through the attacker)
+> or a bystander, following the definition that a blackhole only affects traffic routed through it
+> [Karlof & Wagner 2003]. A run with parent changes was kept only if (i) no node switched between
+> victim and bystander for 3 s or more, (ii) the attacker never moved, and (iii) where at least 60 s
+> of attack preceded the first change, the 3-sigma test confirmed the attack on those seconds alone.
+> Seconds in which a node had no path to the root (searching for a parent, or its parent had failed)
+> were excluded from the test; because such seconds show no delivery, excluding them can only weaken
+> the attack evidence. The decision used the topology only and never the delivery being measured,
+> and all limits were fixed before being applied, following blind-analysis and pre-registration
+> practice [MacCoun & Perlmutter 2015; Simmons et al. 2011; Nosek et al. 2018]. The limits come from
+> our own captures (normal re-joins took 3–6 s). Applied to all analysed captures, the rule changed
+> the verdict only of the runs it was written for, each reported with its footnotes.*
 
-## 8. One-line answers for the panel
+## 9. One-line answers for the panel
 
-- **"Isn't that just rescuing bad data?"** The rule never looks at the attack result to accept a run.
-  It changed 1 of 53 verdicts, and the run it accepts also passes on the part before the re-route alone.
-- **"Why not lock the topology?"** That would switch off the self-healing the protocol is built on,
-  and a locked child of a crashed parent loses its data anyway.
-- **"Why 10 %?"** Normal re-joins in our captures took 3–6 s; 10 % is 18 s. Above it the windows are not thrown in as attack evidence - they are excluded.
-- **"A victim's parent crashed mid-attack - what happens to its windows?"** Until it re-joins, it has no path to the root: those windows are excluded, not counted as blackholed (oct. 18 10:11 PM run: 20 windows of ED80).
-- **"Which runs used it?"** The verifier prints "TOLERATED" for each one; see dataset-verification.md (#45, #46).
-- **"Can START be pressed with a bad setup?"** No. Red pre-START checks lock it (D-24). An override needs a typed
-  reason, which the verifier reports.
+- **"Isn't that just rescuing bad data?"** No. The rule decides from the layout only, never from the
+  result. It is strict both ways, and it still rejects the highload run where a victim really moved
+  out of the attacker's path.
+- **"Why not lock the topology?"** That would switch off the self-healing the protocol is built on
+  (Espressif), and a locked child of a crashed parent just loses its data anyway.
+- **"A victim's parent crashed mid-attack. What happens to its data?"** Until it re-joins it has no
+  path, so those seconds are left out. Once it re-joins under the attacker it counts again
+  (10:11 PM run: 20 seconds of ED80 left out).
+- **"Why 10 %?"** Normal re-joins in our captures took 3–6 s; 10 % of the attack is 18 s.
+- **"Which runs used it?"** The report prints "TOLERATED" for each one: dataset-verification.md
+  #45, #46, #47.
+- **"Can START be pressed with a bad setup?"** No. Red pre-START checks lock it (D-24). An override
+  needs a typed reason, which the verifier reports.
