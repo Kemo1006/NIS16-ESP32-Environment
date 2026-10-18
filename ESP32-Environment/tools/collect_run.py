@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.dirname(HERE)
@@ -60,6 +61,81 @@ def _list(src_args, repeat, scenario, roster):
     return json.loads(line)
 
 
+# oct. 18 2026 (user: "Collect says FAILED on some nodes, but each node has good
+# data"): a scan found 4 FAILs and none was the data - a port held by the GUI, a
+# card that had not mounted yet, a board that did not answer in time, and a board
+# whose only pieces were reset-ended. The transient ones are retried, and every
+# failure says WHAT it is and what to do.
+LIST_TRIES = (0, 3, 8)       # seconds to wait before attempt 1, 2, 3
+TRANSIENT = ("never finished LIST_SD", "did not answer LIST_SD", "SD_NO_CARD", "Access is denied",
+             "PermissionError", "could not open port", "timed out", "timeout", "no answer")
+
+
+def _explain(err):
+    """(kind, text) for a card-listing failure - kind: BUSY | NO_CARD | NO_ANSWER | OTHER."""
+    e = str(err)
+    if "Access is denied" in e or "PermissionError" in e or "could not open port" in e:
+        return "BUSY", ("the PORT IS IN USE by another program (the GUI's Live run monitor / crash watch, a serial "
+                        "monitor, a second GUI) - the card was never read. Close that, then Retry failed")
+    if "SD_NO_CARD" in e:
+        return "NO_CARD", ("the board says its SD card is NOT MOUNTED right now (just reset, or the card is loose) - "
+                           "the data is still on the card. Press the card in, unplug + replug the board, then Retry failed")
+    if "never finished LIST_SD" in e or "did not answer LIST_SD" in e or "no answer" in e or "timed out" in e.lower():
+        return "NO_ANSWER", ("the board did not answer in time (still booting, busy, or the ROOT / a board on old "
+                             "firmware) - nothing is wrong with its data. Unplug + replug it, then Retry failed")
+    return "OTHER", e
+
+
+def _list_retry(src_args, repeat, scenario, roster, label):
+    """_list with up to 3 tries for the transient failures (a board that was just
+    plugged in reboots and mounts its card a few seconds later)."""
+    last = None
+    for i, wait in enumerate(LIST_TRIES):
+        if wait:
+            print(f"   retry {i + 1}/{len(LIST_TRIES)} of {label} in {wait} s ({_explain(last)[0].lower()})", flush=True)
+            time.sleep(wait)
+        try:
+            return _list(src_args, repeat, scenario, roster)
+        except Exception as e:
+            last = e
+            if not any(t.lower() in str(e).lower() for t in TRANSIENT):
+                break
+    raise last
+
+
+class _Tee:
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, text):
+        for st in self.streams:
+            try:
+                st.write(text)
+            except Exception:
+                pass
+
+    def flush(self):
+        for st in self.streams:
+            try:
+                st.flush()
+            except Exception:
+                pass
+
+
+def _tee_log(folder, head):
+    """Everything this run prints also goes to <run_logs cell>/<head>_<stamp>.log -
+    a failed board can be looked at after the GUI window is closed."""
+    try:
+        os.makedirs(folder, exist_ok=True)
+        path = os.path.join(folder, f"{head}_{dt.datetime.now():%b%d_%I%M%S%p}.log".lower())
+        fh = open(path, "w", encoding="utf-8")
+        fh.write(f"collect_run.py {' '.join(sys.argv[1:])}\n")
+        sys.stdout = _Tee(sys.stdout, fh)
+        print(f"(log: {path})", flush=True)
+    except OSError:
+        pass
+
+
 def _when(text):
     try:
         return dt.datetime.strptime(str(text)[:19], "%Y-%m-%d %H:%M:%S")
@@ -68,6 +144,7 @@ def _when(text):
 
 
 CRASH_ENDS = ("PANIC", "INT_WDT", "TASK_WDT", "WDT")
+MIN_PIECE_B = 80_000         # ~1,000 rows = ~100 s: smaller is a boot fragment, not a run
 
 
 def _crashed_leaves(files, attack_dir, topology):
@@ -160,6 +237,25 @@ def pick(files, attack, topology, location, since, skip_macs, allow_other_locati
         best = max(crash, key=_size)
         return best, (f"the board CRASHED during the run ({best.get('ended_by')}) - took its biggest piece; "
                       f"its data stops at the crash ({len(cand)} piece(s) on the card)")
+    if not clean and aborted:
+        # oct. 18 2026 (B7:68, the victim that went OFFLINE mid-attack): a board
+        # that was RESET during the run (power dip on its powerbank, brownout, a
+        # crash older firmware could not name) never closes its file cleanly -
+        # but the file holds the run up to the reset. Take the LATEST piece among
+        # the big ones (>= half the biggest): an earlier, stopped attempt in the
+        # same window is older, and a tiny post-reset tail is smaller. Too small
+        # to be a run = still FAIL. run_summary.py then shows what it covers.
+        biggest = max(aborted, key=_size)
+        if _size(biggest) >= MIN_PIECE_B:
+            big = [f for f in aborted if _size(f) >= 0.5 * _size(biggest)]
+            best = max(big, key=lambda f: str(f.get("started") or ""))
+            ended = str(best.get("ended_by") or "").upper() or "an unknown reset (power cut / unplugged)"
+            note = (f"PARTIAL: the board was RESET during the run (ended by {ended}) - took its run piece "
+                    f"({_size(best):,} B, ran {best.get('started') or '?'}; {len(aborted)} piece(s) on the card). "
+                    f"Its data stops at the reset - check the run summary")
+            if best.get("location") != location:
+                note += f"; card recorded {best.get('location')}, filed under {location}"
+            return best, note
     if not clean:
         why = "no clean file of this run in the time window"
         if cand:
@@ -224,9 +320,12 @@ def main():
             k, v = part.split("=", 1)
             picks[k.strip().upper()] = v.strip()
     dest_dir = os.path.join(a.outdir, attack_dir, topology, a.location, a.scenario)
+    _tee_log(os.path.join(BASE, "datasets", "run_logs", attack_dir, topology, a.location, a.scenario),
+             "collect-scan" if a.dry_run else "collect")
     sources = ([("port", p.strip()) for p in a.ports.split(",") if p.strip()] if a.ports
                else [("card", c.strip()) for c in a.cards.split(";") if c.strip()])
     plan_rows = []
+    retry = []                 # ports worth a "Retry failed" (not a data problem)
     ok = skipn = fail = 0
     for kind, s in sources:
         src_args = ["--port", s] if kind == "port" else ["--card", s]
@@ -235,11 +334,13 @@ def main():
         row = {"port": label, "mac": "", "state": "", "why": "", "rel": "", "name": "", "started": "", "rows": None, "cell": ""}
         plan_rows.append(row)
         try:
-            files = _list(src_args, a.repeat, a.scenario, a.roster)
+            files = _list_retry(src_args, a.repeat, a.scenario, a.roster, label)
         except Exception as e:                       # one bad board never stops the rest
-            _say(label, "", "FAIL", f"could not list the card: {e}")
-            row.update(state="FAIL", why=f"could not list the card: {e}")
+            kind_, text = _explain(e)
+            _say(label, "", "FAIL", f"{kind_}: {text}")
+            row.update(state="FAIL", why=f"{kind_}: {text}", kind=kind_, detail=str(e))
             fail += 1
+            retry.append(label)
             continue
         mac = str((files[0] if files else {}).get("node", "")).replace("NODE_", "")
         row["mac"] = mac
@@ -310,6 +411,8 @@ def main():
             _fetch_crashes(kind, s, crashed, node,
                            os.path.join(BASE, "datasets", "run_logs", attack_dir, topology, a.location, a.scenario, "crashes"))
     print(f"\nCOLLECT_SUMMARY: ok={ok} skip={skipn} fail={fail}", flush=True)
+    if retry:
+        print(f"COLLECT_RETRY: {','.join(retry)}", flush=True)
     if a.plan_json:
         with open(a.plan_json, "w", encoding="utf-8") as fh:
             json.dump(plan_rows, fh, indent=1, default=str)

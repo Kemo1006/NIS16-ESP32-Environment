@@ -593,9 +593,14 @@ class _BoardCard:
                 if live.strip() == "1":
                     self._live.add(rel)
         else:
+            # oct. 18 2026: a board that never opened the frame did not answer at
+            # all (booting / busy / old firmware); one that stopped mid-list did.
+            if not started:
+                raise RuntimeError(
+                    f"board did not answer LIST_SD in {_BOARD_LIST_TIMEOUT_S} s (still booting, "
+                    "busy, old firmware, or idf.py monitor holding the port)")
             raise RuntimeError(
-                "board never finished LIST_SD (no SDLIST_END). Old firmware "
-                "without LIST_SD, or idf.py monitor still holding the port?")
+                "board never finished LIST_SD (no SDLIST_END) - it stopped mid-list")
         if not started:
             raise RuntimeError(
                 "board did not answer LIST_SD. Reflash it — this needs the "

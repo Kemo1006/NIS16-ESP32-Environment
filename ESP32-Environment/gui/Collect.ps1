@@ -106,7 +106,9 @@ function Show-CollectDialog {
     try { $bScan.Style = $win.FindResource('Cool') } catch { }
     $bGo = New-Object Windows.Controls.Button; $bGo.Content = '2   Collect the ticked boards'; $bGo.Padding = '16,8'; $bGo.Margin = '10,0,0,0'; $bGo.IsEnabled = $false
     try { $bGo.Style = $win.FindResource('Primary') } catch { }
-    [void]$btns.Children.Add($bScan); [void]$btns.Children.Add($bGo)
+    $bRetry = New-Object Windows.Controls.Button; $bRetry.Content = 'Retry failed boards'; $bRetry.Padding = '14,8'; $bRetry.Margin = '10,0,0,0'; $bRetry.Visibility = 'Collapsed'
+    $bRetry.ToolTip = 'Scan again ONLY the boards that failed to be read (port busy, card not mounted yet, no answer) - the others keep their result'
+    [void]$btns.Children.Add($bScan); [void]$btns.Children.Add($bGo); [void]$btns.Children.Add($bRetry)
     $status = New-Text 'Not scanned yet.' 12 $Pal.Faint; $status.Margin = '14,0,0,0'; $status.VerticalAlignment = 'Center'; [void]$btns.Children.Add($status)
     [void]$head.Children.Add($btns)
     [void]$root.Children.Add($head)
@@ -115,12 +117,13 @@ function Show-CollectDialog {
     [void]$root.Children.Add($sv)
     $w.Content = $root
     $script:CollectWin = $w
-    $script:Col = @{ A = $cA; T = $cT; L = $cL; S = $cS; R = $cR; W = $cW; Other = $other; Rows = $rows; Scan = $bScan; Go = $bGo; Status = $status
+    $script:Col = @{ A = $cA; T = $cT; L = $cL; S = $cS; R = $cR; W = $cW; Other = $other; Rows = $rows; Scan = $bScan; Go = $bGo; Retry = $bRetry; Status = $status
                      PortLine = $portLine; FixedPorts = @($Ports); RunStart = $RunStart; Plan = $null; Checks = @{} }
     foreach ($c in @($cA, $cT, $cL, $cS, $cW)) { $c.Add_SelectionChanged({ Clear-CollectScan }) }
     $cR.Add_TextChanged({ Clear-CollectScan }); $other.Add_Click({ Clear-CollectScan })
     $bScan.Add_Click({ Start-CollectScan })
     $bGo.Add_Click({ Start-CollectTicked })
+    $bRetry.Add_Click({ Start-CollectScan -RetryFailed })
     Clear-CollectScan
     $w.Show()
 }
@@ -164,21 +167,44 @@ function Get-CollectArgs($Ch) {
     return $a
 }
 
-function Start-CollectScan {
+function Release-CollectPorts([string[]]$Ports) {
+    # a board plugged back in to be collected is done with its run: this window's
+    # own crash watch on its port would make the read fail 'Access is denied'
+    foreach ($pt in $Ports) { try { Stop-CrashWatchOn $pt } catch { } }
+}
+
+function Start-CollectScan([switch]$RetryFailed) {
     $C = $script:Col; $ch = Get-CollectChoice; if (-not $ch -or -not $ch.Ports.Count) { return }
     $py = Get-Py; if (-not $py) { return }
     if (Test-TaskBusy 'The scan') { return }
+    $merge = $null
+    if ($RetryFailed) {
+        if (-not $C.Plan) { return }
+        $failed = @($C.Plan.Rows | Where-Object { $_.state -eq 'FAIL' -and $_.kind } | ForEach-Object { [string]$_.port })
+        $failed = @($failed | Where-Object { $script:Live.Contains($_) })
+        if (-not $failed.Count) { [void][Windows.MessageBox]::Show('None of the failed boards is plugged in right now.', 'Collect'); return }
+        $ch = $ch.Clone(); $ch.Ports = $failed; $merge = $C.Plan.Rows
+    }
+    Release-CollectPorts $ch.Ports
     $json = [IO.Path]::GetTempFileName()
     $a = (Get-CollectArgs $ch) + @('--dry-run', '--plan-json', $json)
     $C.Status.Text = ('Scanning {0} board(s), one at a time - do not unplug them...' -f $ch.Ports.Count); $C.Status.Foreground = Get-Brush $Pal.Amber
     $C.Scan.IsEnabled = $false
-    [void](Start-StreamJob -Exe $py -ToolArgs $a -Title ("Collect - scan {0} board(s)" -f $ch.Ports.Count) -NoStop -State @{ Json = $json; Ch = $ch } -OnDone {
+    $C.Retry.IsEnabled = $false
+    [void](Start-StreamJob -Exe $py -ToolArgs $a -Title ("Collect - scan {0} board(s)" -f $ch.Ports.Count) -NoStop -State @{ Json = $json; Ch = $ch; Merge = $merge } -OnDone {
         param($text, $code, $st)
         $C = $script:Col; if (-not $C) { return }
         $plan = @(); try { $plan = @(Get-Content $st.Json -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ }) } catch { }
         Remove-Item $st.Json -ErrorAction SilentlyContinue
-        $C.Scan.IsEnabled = $true
-        Show-CollectPlan $plan $st.Ch
+        $C.Scan.IsEnabled = $true; $C.Retry.IsEnabled = $true
+        $ch = $st.Ch
+        if ($st.Merge) {
+            # a retry: the re-read boards replace their old rows, the rest keep theirs
+            $new = @{}; foreach ($x in $plan) { $new[[string]$x.port] = $x }
+            $plan = @($st.Merge | ForEach-Object { if ($new.ContainsKey([string]$_.port)) { $new[[string]$_.port] } else { $_ } })
+            $ch = $C.Plan.Ch
+        }
+        Show-CollectPlan $plan $ch
     })
 }
 
@@ -187,7 +213,8 @@ function Show-CollectPlan($Plan, $Ch) {
     $mem = @{}; try { $mem = Get-MemberInfo } catch { }
     foreach ($r in $Plan) {
         $ok = [string]$r.state -eq 'OK'
-        $hex = switch ([string]$r.state) { 'OK' { $Pal.Green } 'SKIP' { $Pal.Faint } default { $Pal.Amber } }
+        $partial = $ok -and ([string]$r.why -match '^PARTIAL|CRASHED')
+        $hex = switch ([string]$r.state) { 'OK' { $(if ($partial) { $Pal.Amber } else { $Pal.Green }) } 'SKIP' { $Pal.Faint } default { $Pal.Amber } }
         $b = New-Object Windows.Controls.Border; $b.CornerRadius = 10; $b.Padding = '12,8'; $b.Margin = '0,0,0,6'
         $b.Background = Get-Brush $Pal.Card; $b.BorderThickness = '3,0,0,0'; $b.BorderBrush = Get-Brush $hex
         $dp = New-Object Windows.Controls.DockPanel
@@ -196,19 +223,27 @@ function Show-CollectPlan($Plan, $Ch) {
         $sp = New-Object Windows.Controls.StackPanel
         $mac = [string]$r.mac; $short = if ($mac.Length -ge 12) { ($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToUpper() } else { $mac }
         $nick = ''; if ($mac.Length -ge 12) { $k = $mem[($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToLower()]; if ($k) { $nick = '  ' + $k.Nick } }
-        [void]$sp.Children.Add((New-Text ('{0}   {1}{2}   -   {3}' -f $r.port, $short, $nick, [string]$r.state) 12.5 $hex 'SemiBold'))
+        $tag = if ($partial) { 'OK - PARTIAL (board reset mid-run)' } elseif ($r.kind) { 'NOT READ - ' + ([string]$r.kind -replace '_', ' ') } else { [string]$r.state }
+        [void]$sp.Children.Add((New-Text ('{0}   {1}{2}   -   {3}' -f $r.port, $short, $nick, $tag) 12.5 $hex 'SemiBold'))
         if ($r.name) {
             $t = New-Text ('{0}   .   ran {1}   .   {2} rows   .   card recorded {3}' -f $r.name, $(if ($r.started) { $r.started } else { '?' }), $(if ($null -ne $r.rows) { '{0:N0}' -f [int]$r.rows } else { '?' }), $r.cell) 11.5 $Pal.Text
             $t.TextWrapping = 'Wrap'; [void]$sp.Children.Add($t)
         }
-        if ($r.why) { $t = New-Text ([string]$r.why) 11.5 $(if ($ok) { $Pal.Cyan } else { $Pal.Dim }); $t.TextWrapping = 'Wrap'; [void]$sp.Children.Add($t) }
+        if ($r.why) {
+            $why = ([string]$r.why -replace '^(BUSY|NO_CARD|NO_ANSWER|OTHER): ', '')
+            if ([string]$r.kind -eq 'BUSY') { $hold = ''; try { $hold = Get-PortHolderText ([string]$r.port) } catch { }; if ($hold) { $why += "   ->  $hold" } }
+            $t = New-Text $why 11.5 $(if ($partial) { $Pal.Amber } elseif ($ok) { $Pal.Cyan } else { $Pal.Dim }); $t.TextWrapping = 'Wrap'; [void]$sp.Children.Add($t)
+        }
         [void]$dp.Children.Add($sp); $b.Child = $dp
         [void]$C.Rows.Children.Add($b)
         if ($ok) { $C.Checks[[string]$r.port] = @{ Box = $cb; Rel = [string]$r.rel } }
     }
     $n = @($Plan | Where-Object { $_.state -eq 'OK' }).Count
+    $unread = @($Plan | Where-Object { $_.state -eq 'FAIL' -and $_.kind }).Count
     $C.Go.IsEnabled = [bool]$n
-    $C.Status.Text = ('{0} board(s) ready to collect, {1} not - nothing copied yet.' -f $n, (@($Plan).Count - $n)); $C.Status.Foreground = Get-Brush $(if ($n) { $Pal.Green } else { $Pal.Amber })
+    $C.Retry.Visibility = $(if ($unread) { 'Visible' } else { 'Collapsed' }); $C.Retry.Content = ('Retry failed boards ({0})' -f $unread)
+    $C.Status.Text = ('{0} board(s) ready to collect, {1} not - nothing copied yet.{2}' -f $n, (@($Plan).Count - $n), $(if ($unread) { " $unread could not be READ (not a data problem) - fix as shown, then Retry failed." } else { '' }))
+    $C.Status.Foreground = Get-Brush $(if ($n) { $Pal.Green } else { $Pal.Amber })
 }
 
 function Start-CollectTicked {
@@ -223,6 +258,7 @@ function Start-CollectTicked {
     $msg = "Copy {0} file(s) - exactly the ticked ones - into`n    {1}`n`nfrom: {2}`n`nDo NOT unplug a board until it says done." -f $ticked.Count, $dirs.Export, ($ticked -join ', ')
     if (-not (Confirm-Action $msg 'Collect')) { return }
     $ch2 = $ch.Clone(); $ch2.Ports = @($ticked)
+    Release-CollectPorts $ch2.Ports
     $a = (Get-CollectArgs $ch2) + @('--pick', $pick)
     $st = @{ Before = @(Get-ExportCsvSet -Base $base); Started = (Get-UnixNow); Export = $dirs.Export; Expect = $ch.Pre.Boards
              Then = @{ A = $ch.A; T = $ch.T; L = $ch.L; S = $ch.S; Text = ('{0} / {1} / {2} / {3}' -f $ch.A, $ch.T, $ch.L, $ch.S) } }
