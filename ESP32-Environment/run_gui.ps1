@@ -4301,7 +4301,7 @@ function Show-AnaReport([string]$Text) {
         }
         [void]$ui.AnaResult.Children.Add($wp)
     }
-    $sec = ''; $feat = @(); $checks = @(); $nodes = @(); $measured = @()
+    $sec = ''; $feat = @(); $checks = @(); $nodes = @(); $measured = @(); $why = New-Object System.Collections.ArrayList
     foreach ($ln in $lines) {
         if ($ln -match '^\s*\[(\d)\]\s') { $sec = $Matches[1]; continue }
         $tr = $ln.Trim()
@@ -4315,6 +4315,12 @@ function Show-AnaReport([string]$Text) {
             elseif ($checks.Count -and $ln -match '^\s{8,}\S') { $checks[-1][1] += ' ' + $tr }
         } elseif ($sec -eq '4') {
             if ($tr -match '^(NODE_[0-9A-Fa-f]{12})\s+(\S+)\s+(.+?)\s{2,}(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s*$') { $nodes += , @($Matches[1], $Matches[2], $Matches[3], $Matches[4], $Matches[5], $Matches[6], $Matches[7]) }
+        } elseif ($sec -eq '6') {
+            # [6] why board moves were allowed (verify_attack.py, oct. 19 2026): one item per
+            # paragraph / bullet / source; wrapped lines join the item above
+            if (-not $tr -or $tr -match '^-{20,}') { continue }
+            if ($tr -match '^(The question|How:|Rules:|Fairness:|This run:|So:|Sources for|- |\[[A-Z]{1,2}\])') { [void]$why.Add($tr) }
+            elseif ($why.Count) { $why[$why.Count - 1] = [string]$why[$why.Count - 1] + ' ' + $tr }
         }
     }
     if ($feat.Count) {
@@ -4385,6 +4391,26 @@ function Show-AnaReport([string]$Text) {
     if ($vl) {
         $tb = New-Text ([string]$vl).Trim() 13 $Pal.Text 'Bold'; $tb.TextWrapping = 'Wrap'; $tb.Margin = '4,2,0,8'
         [void]$ui.AnaResult.Children.Add($tb)
+    }
+    if ($why.Count) {
+        # below the verdict, like the CLI: why each board move was allowed or not + its sources
+        $inv = @($why | Where-Object { $_ -match '^So: .*SETUP INVALID' }).Count
+        $card = New-AnaCard 'WHY THE BOARD MOVES WERE ALLOWED - OR NOT   (D-23)' $(if ($inv) { $Pal.Red } else { '' })
+        foreach ($w in $why) {
+            $w = [string]$w
+            if ($w -eq 'This run:') { [void]$card.Panel.Children.Add((New-Text 'THIS RUN' 10.5 $Pal.Faint 'SemiBold')); continue }
+            if ($w -eq 'Sources for [6]:') { $h = New-Text 'SOURCES' 10.5 $Pal.Faint 'SemiBold'; $h.Margin = '0,8,0,0'; [void]$card.Panel.Children.Add($h); continue }
+            $hex = $Pal.Dim; $size = 12; $weight = 'Normal'; $txt = $w
+            if ($w -match '^- (.+)$') {
+                $txt = [string][char]0x2022 + ' ' + $Matches[1]
+                $hex = if ($w -match 'NOT ALLOWED|NOT confirmed') { $Pal.Red } elseif ($w -match ': ALLOWED|CONFIRMED again') { $Pal.Green } elseif ($w -match 'not possible') { $Pal.Amber } else { $Pal.Text }
+                $size = 12.5
+            } elseif ($w -match '^So: ') { $hex = $(if ($inv) { $Pal.Red } else { $Pal.Green }); $weight = 'SemiBold'; $size = 12.5 }
+            elseif ($w -match '^\[[A-Z]{1,2}\]') { $hex = $Pal.Faint; $size = 11 }
+            $tb = New-Text $txt $size $hex $weight; $tb.TextWrapping = 'Wrap'; $tb.Margin = '0,3,0,3'
+            [void]$card.Panel.Children.Add($tb)
+        }
+        [void]$ui.AnaResult.Children.Add($card.Border)
     }
     if ($ui.AnaResult.Children.Count -eq 0) {
         $tb = New-Text 'The report has no attack sections (baseline run, or only a topology check) - see Full report.' 12 $Pal.Dim; $tb.TextWrapping = 'Wrap'

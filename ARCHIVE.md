@@ -2664,3 +2664,8 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
   cell + repeat" and the 23:39 capture silently read the **02:05 run's** export - it looked right ONLY because every run uses the same
   300/180/120 s phases. Fix: an export must be stamped after ITS OWN run's log started and BEFORE the next log of the same cell + repeat.
   Same class as the G402 "6 runs under r1" audit. **Any tool joining runs to files needs this bound.**
+- sep. 28, 2026 — **A RUN LOG CAN LOSE THE MIDDLE OF THE RUN; the run's own exported CSVs are the better source.** The sept 28 00:13 r3 log
+  jumps from the flash straight to a snapshot 12 min in: no `Starting PHASE` lines, and its topology table lists 3 of the 6 boards with NO
+  BLACKHOLE. `pcap_retry.phases_and_roles_from_exports()` reads phases from the root export's `phase_id` (10 Hz) and roles from each
+  `*_telem.csv`'s own `role`, archives included. Validated where both sources exist: **phase gaps agree to within 40 ms** (constant ~600 ms
+  offset cancels). MacRetryRate 2/7 -> **5/7 captures**; out: 23:39 (own export not under `datasets/`), 21:11 (no attack step). **Board DATA > console TEXT.**

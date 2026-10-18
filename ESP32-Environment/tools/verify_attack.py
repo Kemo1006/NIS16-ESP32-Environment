@@ -81,6 +81,7 @@ import contextlib
 import io
 import argparse
 import math
+import re
 import sys
 import textwrap
 
@@ -495,6 +496,16 @@ STUDIES = {
           "wormhole signature = duplicate packets (same data unit twice)",
     "H":  "Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with "
           "timing the claimed path cannot explain (packet leashes)",
+    # D-23 (oct. 19 2026): the sources behind allowing board moves - checked online and
+    # added to docs/references/2026-09-14_REFERENCES.md ("Added oct. 19, 2026")
+    "E":  "Espressif Systems, ESP-WIFI-MESH API Guide (ESP-IDF v5.3), 'Intermediate Parent Node "
+          "Failure' - official protocol documentation: children first retry the broken parent, then "
+          "each selects a new parent; 'the network is healed, however the network routing has been "
+          "affected'",
+    "BA": "MacCoun & Perlmutter (2015), Nature 526:187-189 - blind analysis: the analysis is decided "
+          "without looking at the result, to stop confirmation bias",
+    "PR": "Simmons, Nelson & Simonsohn (2011), Psychol. Sci. 22(11):1359-1366; Nosek et al. (2018), "
+          "PNAS 115(11):2600-2606 - rules fixed BEFORE the outcome is seen, not tuned afterwards",
 }
 FEATURE_STUDY = {
     "ForwardingRatio": "A", "PDR": "A", "ConsistencyScore": "A",
@@ -507,7 +518,96 @@ CHECK_STUDY = [
     ("victim", "KW"), ("behind the attacker", "KW"), ("not behind", "KW"),
     ("forwarded", "A"), ("duplicate", "R"), ("UART", "Z"), ("shallower", "H"),
     ("REVERSED", "H"), ("SAME DEPTH", "H"),
+    ("TOLERATED", "E"), ("ROBUST", "PR"),
 ]
+
+
+def _reroute_lines(issues, measured):
+    """Plain-words lines for [6]: one per board move + the robustness result."""
+    out = []
+    for it in issues or []:
+        t = it.text
+        who = t.split(" ", 1)[0]
+        m = re.search(r"TOLERATED WITH EXCLUSION: it stayed a (\w+).*?but (\d+) of (\d+) windows", t)
+        if m:
+            out.append(f"{who}: ALLOWED - it stayed a {m.group(1)} in every second its path could be traced; "
+                       f"the {m.group(2)} s it had NO path (its parent went down / it was searching) are LEFT OUT "
+                       f"of the test [E]")
+            continue
+        m = re.search(r"TOLERATED: it stayed a (\w+) in every attack window \((\d+) s detached", t)
+        if m:
+            out.append(f"{who}: ALLOWED - it changed parent but stayed a {m.group(1)} the whole attack "
+                       f"({m.group(2)} s re-joining, left out of the test) [E]")
+            continue
+        if "TOLERATED: the A end stayed shallower" in t:
+            out.append(f"{who}: ALLOWED - it moved, but the A end stayed closer to the root than the B end, "
+                       f"so the tunnel still skipped hops [E]")
+            continue
+        m = re.search(r"between VICTIM \((\d+) s\) and BYSTANDER \((\d+) s\)", t)
+        if m and it.level == "FAIL":
+            out.append(f"{who}: NOT ALLOWED - it was a VICTIM for {m.group(1)} s and a BYSTANDER for "
+                       f"{m.group(2)} s: the attack reached it only part of the time, so its attack is two "
+                       f"experiments mixed")
+            continue
+        if "ATTACKER itself moved" in t:
+            out.append(f"{who}: NOT ALLOWED - the attacker moved; its position IS the experiment")
+            continue
+        if "the A end was NOT shallower" in t:
+            out.append(f"{who}: NOT ALLOWED - the A end was not closer to the root than B for part of the "
+                       f"attack: the shortcut changed")
+            continue
+        if t.startswith("ROBUST:"):
+            out.append("Re-test: CONFIRMED again on the seconds BEFORE the first move alone - the moved "
+                       "part is not what makes the verdict [PR]")
+        elif t.startswith("NOT ROBUST"):
+            out.append("Re-test: NOT confirmed on the seconds before the first move alone - the verdict "
+                       "depends on the moved part, so the moves cannot be allowed [PR]")
+        elif t.startswith("robustness re-test not possible"):
+            m = re.search(r"only (\d+) s", t)
+            out.append(f"Re-test: not possible - only {m.group(1) if m else '?'} s of attack came before the "
+                       f"first move (needs 60 s); the verdict rests on the layout rule alone - footnote it")
+    for line in measured or []:
+        m = re.match(r"EXCLUDED from the test: (\d+) attack window", line)
+        if m:
+            out.append(f"Left out of the test: {m.group(1)} attack second(s) in total with no path to the root - "
+                       f"they show 0 delivery for a reason that is not the attack, so leaving them out can only "
+                       f"make the attack HARDER to confirm")
+    return out
+
+
+def _print_reroute_why(issues, measured, setup_invalid):
+    lines = _reroute_lines(issues, measured)
+    if not lines:
+        return
+    print()
+    print(" [6] WHY THE BOARD MOVES WERE ALLOWED - OR NOT   (D-23; full note: docs/attack-validation/"
+          "REROUTE-VERDICT.md)")
+    for para in (
+        "The question is not 'did a board change parent?' but 'did the move change WHO the attack "
+        "reaches?' A blackhole only harms traffic that passes through it [KW], and ESP-WIFI-MESH heals "
+        "itself: when a parent breaks down, its children first retry it, then each picks a new parent [E].",
+        "How: for every board, every second, its parents are followed up to the root -> VICTIM (passes the "
+        "attacker), BYSTANDER (does not), or NO PATH (detached / a board above it went down).",
+        "Rules: a board must stay VICTIM or BYSTANDER the whole attack (3 s+ of each = NOT ALLOWED); the "
+        "attacker may never move; NO-PATH seconds are left out of the test; where 60 s+ came before the "
+        "first move, the attack must also be confirmed on those seconds alone.",
+        "Fairness: decided from the layout only - delivery is never used to allow a move [BA]; the limits "
+        "were fixed in advance and are the same for every run [PR].",
+    ):
+        print(_wrap(para, "     "))
+    print()
+    print("     This run:")
+    for line in lines:
+        print(_wrap(line, "       - "))
+    print()
+    print(_wrap("So: " + ("a move changed who the attack reached (or the re-test failed) - SETUP INVALID."
+                          if setup_invalid else
+                          "the moves did not change who the attack reached - the VERDICT above stands, "
+                          "with the footnotes listed here."), "     "))
+    print()
+    print("     Sources for [6]:")
+    for tag in ("E", "KW", "BA", "PR"):
+        print(_wrap(STUDIES[tag], f"     [{tag}]{' ' * (3 - len(tag))}"))
 
 
 def _check_study(text):
@@ -880,6 +980,9 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     print("-" * RULE_W)
     print(f" VERDICT: {verdict}")
     print("-" * RULE_W)
+    # oct. 19 2026 (user): the explanation of any allowed / refused board move, in
+    # plain words with its sources, right below the verdict
+    _print_reroute_why(issues, measured, setup_invalid)
     # A passing signature with a FAILED setup check is not a confirmation.
     return confirmed and not setup_invalid, conclusive
 
@@ -904,7 +1007,7 @@ def _line_colour(line):
         if "INCONCLUSIVE" in t:
             return "yellow"
         return "green" if "CONFIRMED" in t else "bold"
-    if t.startswith(("[1]", "[2]", "[3]", "[4]", "[5]")) and line.startswith(" ["):
+    if t.startswith(("[1]", "[2]", "[3]", "[4]", "[5]", "[6]")) and line.startswith(" ["):
         return "cyan"
     if t.startswith(("WORMHOLE VERIFICATION", "BLACKHOLE VERIFICATION")):
         return "bold"

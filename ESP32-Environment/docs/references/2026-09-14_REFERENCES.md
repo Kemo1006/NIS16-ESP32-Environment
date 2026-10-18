@@ -111,4 +111,23 @@ platform (Khan), scenario/placement (Khan + Voronoi), blackhole (Airehrour), wor
 + Ramirez), verification (Zhukabayeva 3-sigma), dataset/EDA/clustering (REAL-IoT + your existing
 bib). **We deliberately stop here** - piling on unvetted papers weakens rather than strengthens.
 If a specific gap appears while editing a chapter, tell me the claim and I'll find a proven source
-for exactly that.
+for exactly that.
+
+---
+
+## Added oct. 19, 2026 - support for allowing board moves (D-23), checked online
+Used by `tools/verify_attack.py` section [6] (tags [E], [BA], [PR]); the full argument, quotes and
+draft paragraph are in `docs/attack-validation/REROUTE-VERDICT.md` §7-8. Checklist A29.
+- **[E] Espressif Systems - *ESP-WIFI-MESH* API Guide, ESP-IDF Programming Guide v5.3**, sections
+  "Overview" and "Managing a Network -> Intermediate Parent Node Failure".
+  https://docs.espressif.com/projects/esp-idf/en/v5.3/esp32/api-guides/esp-wifi-mesh.html -
+  *"self-organizing and self-healing"*; children of a broken parent retry it, then select a new
+  preferred parent; *"the network is healed, however the network routing has been affected"*.
+  Official protocol documentation (not peer-reviewed) - cite the IDF version you build with.
+- **[BA] MacCoun, R., & Perlmutter, S. (2015).** Blind analysis: Hide results to seek the truth.
+  *Nature*, 526(7572), 187-189. doi:10.1038/526187a
+- **[PR] Simmons, J. P., Nelson, L. D., & Simonsohn, U. (2011).** False-positive psychology:
+  Undisclosed flexibility in data collection and analysis allows presenting anything as significant.
+  *Psychological Science*, 22(11), 1359-1366. doi:10.1177/0956797611417632
+- **[PR] Nosek, B. A., Ebersole, C. R., DeHaven, A. C., & Mellor, D. T. (2018).** The preregistration
+  revolution. *PNAS*, 115(11), 2600-2606. doi:10.1073/pnas.1708274114
