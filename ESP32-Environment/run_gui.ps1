@@ -7230,6 +7230,7 @@ function Read-CrashWatch {
                 Add-RunAlert ("{0} ({1}) is back up after the crash" -f $w.Label, $w.Port) $Pal.Green
                 continue
             }
+            if ($ln -match '\[HEALTH\] LOW') { Read-HealthLine $w.Label $ln; continue }    # gui\RunSafety.ps1
             if ($ln -notmatch $script:CrashRx) { continue }
             if ($ln -match '^Backtrace:') {
                 $pcs = @([regex]::Matches($ln, '0x[0-9a-fA-F]{8}(?=:)') | ForEach-Object Value)

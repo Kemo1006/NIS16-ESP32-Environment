@@ -5,6 +5,7 @@
  * NIS16 — CTTHES2 Milestone 1
  */
 
+#include "health_log.h"
 #include "mesh_setup.h"
 #include "mesh_config.h"
 #include "mesh_messages.h"
@@ -798,6 +799,9 @@ static void heartbeat_task(void *arg)
 
 esp_err_t heartbeat_start(void)
 {
+    /* every board calls this once - the [HEALTH] serial line rides along (oct. 18
+     * 2026, crash diagnosis C12 / D9; not fatal if it cannot start) */
+    (void)health_log_start();
     BaseType_t rc = xTaskCreate(heartbeat_task, "heartbeat",
                                 STACK_HEARTBEAT, NULL,
                                 TASK_PRIO_HEARTBEAT, &s_heartbeat_task);

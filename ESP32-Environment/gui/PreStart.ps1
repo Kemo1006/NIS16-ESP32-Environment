@@ -37,6 +37,7 @@ function Read-PreStartLine($Board, [string]$Line) {
     elseif ($Line -match 'SD_STATUS: clock: .*(build-stamp|BUILD-TIME|ESTIMATE)') { $pb = Get-PreBoard $lab; if ($pb.Clock -ne 'host') { $pb.Clock = 'build' }; $changed = $true }
     elseif ($Line -match 'Firmware built: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)') { try { (Get-PreBoard $lab).Built = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null) } catch { }; $changed = $true }
     elseif ($Line -match 'Attacker MAC from (?:NVS|compiled default): ([0-9A-Fa-f:]{17})') { (Get-PreBoard $lab).AttMac = $Matches[1].ToLower(); $changed = $true }
+    if ($Line -match '\[HEALTH\] LOW') { try { Read-HealthLine ([string]$Board.Label) $Line } catch { } }
     if ($Line -match '^ARCHIVED: (.+)$') {
         # run.ps1 archived the OLD capture of this run (same repeat) after the root's new export
         Add-RunAlert ('Re-capture: the older capture of this run was archived ({0}) - this run replaces it' -f $Matches[1]) $Pal.Cyan

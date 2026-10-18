@@ -17,6 +17,7 @@
 
 $script:Dot = '  ' + [string][char]0x00B7 + '  '
 $script:AlertKinds = @(
+    @{ K = 'health';   Rx = '(?i)LOW HEAP|LOW STACK';                                   G = 0xE9D9; T = 'HEALTH' }
     @{ K = 'crash';    Rx = '(?i)crash|panic|watchdog|\bWDT\b|guru|abort';                 G = 0xE7BA; T = 'CRASH' }
     @{ K = 'power';    Rx = '(?i)brownout|power cut|POWERON|unplugged';                    G = 0xE945; T = 'POWER' }
     @{ K = 'port';     Rx = '(?i)could not open|held by|port .*busy|LOST|disappeared';                      G = 0xE88E; T = 'PORT' }
@@ -29,6 +30,7 @@ $script:AlertKinds = @(
     @{ K = 'boot';     Rx = '(?i)booted|back up|running';                                  G = 0xE7E8; T = 'BOARD' }
 )
 $script:AlertDo = @{
+    health   = 'Memory or a task stack is running low on this board. If it crashes next, this is the likely cause - keep its crash-watch log (tools/health_report.py shows the trend).'
     crash    = 'Its backtrace is decoded into the run-log folder. The same board crashing twice = note it for this run (D9).'
     power    = 'Weak powerbank or a long / thin cable: give it a stronger supply, plug it straight in, then watch it rejoin.'
     port     = 'Close whatever holds the port (named above), then retry that step.'

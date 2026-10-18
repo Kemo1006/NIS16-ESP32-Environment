@@ -132,3 +132,15 @@ function Initialize-GuiRunSafety {
         $chk.Parent.Children.Insert($chk.Parent.Children.IndexOf($chk) + 1, $b)
     }
 }
+
+# -- [HEALTH] LOW lines (components/mesh_common/src/health_log.c) -> one alert per board per 5 min
+function Read-HealthLine([string]$Label, [string]$Line) {
+    if ($Line -notmatch '\[HEALTH\] (LOW (?:HEAP|STACK).+)$') { return }
+    $what = $Matches[1].Trim()
+    if (-not $script:HealthSaid) { $script:HealthSaid = @{} }
+    $last = $script:HealthSaid[$Label]
+    if ($last -and ((Get-Date) - $last).TotalMinutes -lt 5) { return }
+    $script:HealthSaid[$Label] = Get-Date
+    Add-RunAlert ("{0}: {1}" -f $Label, $what) $Pal.Amber
+    Write-RunConsole ("  [HEALTH] {0}: {1}" -f $Label, $what) $Pal.Amber
+}
