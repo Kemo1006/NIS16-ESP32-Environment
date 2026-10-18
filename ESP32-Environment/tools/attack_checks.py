@@ -103,32 +103,57 @@ def _short(n):
 # TOPOLOGY
 # ─────────────────────────────────────────────────────────────────────────
 
-# Exposure-aware re-route judgement (oct. 18 2026, user: "make a smart decision -
-# allow a parent change when it does not damage the dataset"). ESP-WIFI-MESH heals
-# itself: when a board drops out, its children re-join elsewhere. That is only a
-# different EXPERIMENT when it changes WHO THE ATTACK REACHES. Per attack window
-# every board is classed by walking its parent chain at that moment:
+# Exposure-aware re-route judgement (oct. 18 2026, D-23; user: "allow a parent
+# change when it does not damage the dataset - smart, but not cheating or biased").
+# ESP-WIFI-MESH heals itself: when a board drops out, its children re-join
+# elsewhere. That is only a different EXPERIMENT when it changes WHO THE ATTACK
+# REACHES. Every board is classed per window by walking its parent chain at that
+# moment:
 #   victim    - the path to the root runs through the attacker
 #   bystander - it reaches the root without the attacker
 #   detached  - no parent right now (re-joining)
-# A move that keeps every board in its class (victim -> victim) and keeps its
-# delivery consistent with that class is TOLERATED (WARN). A board whose class
-# FLIPS victim <-> bystander for more than FLIP_MIN_WINDOWS windows - moved itself
-# or carried by a moving ancestor - mixes two experiments: FAIL, as before.
-FLIP_MIN_WINDOWS = 3          # fewer = alignment noise around a re-join, not a flip
-VICTIM_PDR_MAX = 0.2          # a victim behind a blackhole delivers ~0
-BYSTANDER_PDR_MIN = 0.8       # a bystander keeps delivering ~1
+#   unknown   - the chain cannot be resolved (a board above has no window there)
+# FAIRNESS RULES (why this cannot be used to rescue a run):
+#   1. Outcome-blind: the tolerate / reject decision reads ONLY the structure
+#      (parent_mac, hop). PDR / ForwardingRatio - the quantities the 3-sigma test
+#      scores - are never used to accept a re-route. Accepting a layout because
+#      "the attack still looked like it worked" would be circular.
+#   2. Fixed in advance: the thresholds below are constants with a reason each,
+#      set before they were run on any capture, and the same for every run.
+#   3. Symmetric: a victim that becomes a bystander and a bystander that becomes
+#      a victim fail alike; boards carried across by a moving parent count too.
+#   4. The treatment is fixed: the ATTACKER moving is never tolerated.
+#   5. The outcome may only DOWNGRADE: verify_attack.py re-runs the 3-sigma test
+#      on the attack windows BEFORE the first re-route (robustness check); if the
+#      verdict does not hold there, the run fails. It can never upgrade one.
+FLIP_MIN_WINDOWS = 3          # >= 3 windows in each class = a real flip; fewer = window
+                              # alignment noise (+-1 s) around a re-join
+REROUTE_BUDGET = 0.10         # a key board may spend <= 10 % of the attack detached or
+                              # unresolved (18 s of 180 s - an ESP-MESH re-join takes ~2-8 s)
+PHASE_EDGE_S = 60.0           # the layout "at START" = the last 60 s of the baseline;
+                              # "after the attack" = the first 60 s of the cooldown
+ROBUST_MIN_ATTACK_S = 60.0    # the robustness re-test needs >= 60 s of attack before
+                              # the first re-route, or it is reported as untestable
 
 
 def _tcol(df):
     return "t_anchor_s" if "t_anchor_s" in df.columns else "window_start"
 
 
-def _parent_timeline(atk, sta):
-    """node -> sorted [(t, parent node_id or None)] over the attack windows."""
-    tc = _tcol(atk)
+def _sta_map(df):
+    sta = {}
+    for n in set(df["node_id"].dropna()):
+        v = _exposure.node_id_to_sta_int(n)
+        if v is not None:
+            sta.setdefault(v, n)
+    return sta
+
+
+def _parent_timeline(seg, sta):
+    """node -> sorted [(t, parent node_id or None)] over one segment's windows."""
+    tc = _tcol(seg)
     tl = {}
-    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+    for n, g in seg.dropna(subset=[tc]).groupby("node_id"):
         g = g.sort_values(tc)
         tl[n] = [(float(t), _exposure.resolve_parent(p, sta)) for t, p in zip(g[tc], g["parent_mac"])]
     return tl
@@ -158,24 +183,18 @@ def _path_class(tl, n, t, attackers, roots):
     return "unknown"
 
 
-def exposure_timeline(df, attack):
-    """{node: [(t, class)]} for every non-root, non-attacker board in the attack windows."""
-    atk = _seg(df, "attack")
-    if atk.empty or not {"node_id", "parent_mac"} <= set(atk.columns):
+def exposure_timeline(df, attack, segment="attack"):
+    """{node: [(t, class)]} for every non-root, non-attacker board in one segment."""
+    seg = _seg(df, segment)
+    if seg.empty or not {"node_id", "parent_mac"} <= set(seg.columns):
         return {}
     roles = _roles(df)
-    nodes = sorted(atk["node_id"].dropna().unique())
-    sta = {v: n for n in nodes if (v := _exposure.node_id_to_sta_int(n)) is not None}
-    for n in set(df["node_id"].dropna()):                 # boards gone from the attack still resolve
-        v = _exposure.node_id_to_sta_int(n)
-        if v is not None:
-            sta.setdefault(v, n)
     attackers = {n for n, r in roles.items() if r in _exposure.ATTACK_ROLES and r not in _exposure.WORMHOLE_ROLES}
     roots = {n for n, r in roles.items() if r in _exposure.ROOT_ROLES}
-    tl = _parent_timeline(atk, sta)
-    tc = _tcol(atk)
+    tl = _parent_timeline(seg, _sta_map(df))
+    tc = _tcol(seg)
     out = {}
-    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+    for n, g in seg.dropna(subset=[tc]).groupby("node_id"):
         if n in attackers or n in roots:
             continue
         out[n] = [(float(t), _path_class(tl, n, float(t), attackers, roots)) for t in sorted(g[tc])]
@@ -187,33 +206,70 @@ def _flipped(classes):
     return classes.count("victim") >= FLIP_MIN_WINDOWS and classes.count("bystander") >= FLIP_MIN_WINDOWS
 
 
-def _pdr_consistent(g, cls):
-    """Delivery matches the class the board kept (None = cannot tell)."""
-    if "PDR" not in g.columns:
-        return None
-    v = pd.to_numeric(g["PDR"], errors="coerce").dropna()
-    if v.empty:
-        return None
-    m = float(v.mean())
-    return m <= VICTIM_PDR_MAX if cls == "victim" else m >= BYSTANDER_PDR_MIN
+def _majority(classes):
+    kept = [c for c in classes if c in ("victim", "bystander")]
+    return max(sorted(set(kept)), key=kept.count) if kept else None
 
 
-def _wormhole_order_ok(df, roles):
-    """A (exit) stays shallower than B (entry) in every attack second where both hops are known."""
+def _edge(seq, which):
+    """Classes in the last (baseline) / first (cooldown) PHASE_EDGE_S of a segment."""
+    if not seq:
+        return []
+    if which == "last":
+        t1 = seq[-1][0]
+        return [c for t, c in seq if t >= t1 - PHASE_EDGE_S]
+    t0 = seq[0][0]
+    return [c for t, c in seq if t <= t0 + PHASE_EDGE_S]
+
+
+def reroute_onset(df, attack, key_nodes=()):
+    """Earliest attack time (t column) at which a key board's parent differs from its
+    parent at the start of the attack (None = no re-route). Structure only."""
+    atk = _seg(df, "attack")
+    if atk.empty or "parent_mac" not in atk.columns:
+        return None
+    tc = _tcol(atk)
+    onset = None
+    for n, g in atk.dropna(subset=[tc]).groupby("node_id"):
+        if key_nodes and n not in key_nodes:
+            continue
+        ps = [str(p) for p in g.sort_values(tc)["parent_mac"]]
+        ts = list(g.sort_values(tc)[tc])
+        first = next((p for p in ps if p not in ("", "nan", _exposure.ZERO_MAC)), None)
+        if first is None:
+            continue
+        for t, p in zip(ts, ps):
+            if p != first:
+                onset = float(t) if onset is None else min(onset, float(t))
+                break
+    return onset
+
+
+def _wormhole_order(df, roles):
+    """(ok, bad seconds, seconds compared): A (exit) shallower than B (entry)?"""
     atk = _seg(df, "attack")
     if "hop" not in atk.columns:
-        return None
+        return None, 0, 0
     a = [n for n, r in roles.items() if r == "wormhole_a"]
     b = [n for n, r in roles.items() if r == "wormhole_b"]
     if len(a) != 1 or len(b) != 1:
-        return None
+        return None, 0, 0
     tc = _tcol(atk)
     ha = atk[atk["node_id"] == a[0]].dropna(subset=[tc, "hop"])[[tc, "hop"]].round({tc: 0}).groupby(tc)["hop"].first()
     hb = atk[atk["node_id"] == b[0]].dropna(subset=[tc, "hop"])[[tc, "hop"]].round({tc: 0}).groupby(tc)["hop"].first()
     both = pd.concat([ha.rename("a"), hb.rename("b")], axis=1).dropna()
     if both.empty:
-        return None
-    return int((both["a"] >= both["b"]).sum()) < FLIP_MIN_WINDOWS
+        return None, 0, 0
+    bad = int((both["a"] >= both["b"]).sum())
+    return bad < FLIP_MIN_WINDOWS, bad, len(both)
+
+
+def _delivery_note(atk, n):
+    """Information only - never used to decide (fairness rule 1)."""
+    if "PDR" not in atk.columns:
+        return ""
+    v = pd.to_numeric(atk.loc[atk["node_id"] == n, "PDR"], errors="coerce").dropna()
+    return f" [delivery in the attack {v.mean():.2f} - shown, not used to decide]" if len(v) else ""
 
 
 def topology_issues(df, attack, key_nodes=()):
@@ -288,11 +344,11 @@ def topology_issues(df, attack, key_nodes=()):
         ps = {p for p in g["parent_mac"].astype(str) if p not in ("", "nan", _exposure.ZERO_MAC)}
         if len(ps) > 1:
             moved[n] = len(ps)
-    # Exposure per attack second (oct. 18 2026): a re-route is judged by what it
-    # did to the attack's reach, not by the mere fact that a parent changed.
+    # Re-routes are judged by what they did to the attack's reach (D-23), with
+    # the fairness rules above: structure only, fixed thresholds, symmetric.
     timeline = exposure_timeline(df, attack) if attack == "blackhole" else {}
     flipped = {n for n, seq in timeline.items() if _flipped([c for _t, c in seq])}
-    wh_ok = _wormhole_order_ok(df, roles) if attack == "wormhole" else None
+    wh_ok, wh_bad, wh_n = _wormhole_order(df, roles) if attack == "wormhole" else (None, 0, 0)
     for n, k in sorted(moved.items()):
         who = roles.get(n, "?")
         msg = f"{_short(n)} ({who}) changed parent during the attack ({k} parents)"
@@ -302,34 +358,38 @@ def topology_issues(df, attack, key_nodes=()):
         if n not in key_nodes:
             out.append(Issue(WARN, msg))
             continue
+        if who in _exposure.ATTACK_ROLES and attack == "blackhole":
+            out.append(Issue(FAIL, msg + " - the ATTACKER itself moved: its position IS the experiment, so a"
+                                         " moved attacker is never tolerated"))
+            continue
         if attack == "blackhole" and n in timeline:
             cls = [c for _t, c in timeline[n]]
-            kept = [c for c in cls if c in ("victim", "bystander")]
-            det = cls.count("detached")
+            off = cls.count("detached") + cls.count("unknown")
             if n in flipped:
                 out.append(Issue(FAIL, msg + f" - it moved between VICTIM ({cls.count('victim')} s) and BYSTANDER "
                                              f"({cls.count('bystander')} s) during the attack, so the attack windows "
                                              f"mix two experiments"))
-                continue
-            main = max(set(kept), key=kept.count) if kept else None
-            ok = _pdr_consistent(atk[atk["node_id"] == n], main) if main else None
-            if main and ok is not False:
-                out.append(Issue(WARN, msg + f" - TOLERATED: it stayed a {main.upper()} the whole attack"
-                                             f"{f' ({det} s detached while re-joining)' if det else ''}"
-                                             f"{', and its delivery matches' if ok else ''}; the attack's reach "
-                                             f"did not change (ESP-MESH self-healing re-route)"))
+            elif off > REROUTE_BUDGET * len(cls):
+                out.append(Issue(FAIL, msg + f" - it spent {off} of {len(cls)} attack windows ({off / len(cls):.0%}) "
+                                             f"detached or unresolvable; the limit is {REROUTE_BUDGET:.0%}, so too much "
+                                             f"of its attack is a re-join, not the attack"))
+            elif _majority(cls) is None:
+                out.append(Issue(FAIL, msg + " - its position during the attack could not be resolved"))
             else:
-                out.append(Issue(FAIL, msg + (f" - its delivery does not match a {main} (the re-route changed what"
-                                              f" it measured)" if main else " - its position during the attack"
-                                              " could not be resolved")))
+                out.append(Issue(WARN, msg + f" - TOLERATED: it stayed a {_majority(cls).upper()} in every attack window "
+                                             f"({off} s detached while re-joining, limit "
+                                             f"{int(REROUTE_BUDGET * len(cls))} s); the attack reached the same boards "
+                                             f"(ESP-MESH self-healing re-route). Decided from the layout only"
+                                             + _delivery_note(atk, n)))
             continue
         if attack == "wormhole" and wh_ok is not None:
             if wh_ok:
-                out.append(Issue(WARN, msg + " - TOLERATED: the A end stayed shallower than the B end the whole"
-                                             " attack, so the tunnel still skipped hops"))
+                out.append(Issue(WARN, msg + f" - TOLERATED: the A end stayed shallower than the B end in all {wh_n} "
+                                             f"compared seconds, so the tunnel still skipped hops. Decided from the "
+                                             f"layout only"))
             else:
-                out.append(Issue(FAIL, msg + " - the A end was NOT shallower than the B end for part of the"
-                                             " attack: the shortcut changed"))
+                out.append(Issue(FAIL, msg + f" - the A end was NOT shallower than the B end for {wh_bad} of {wh_n} "
+                                             f"seconds of the attack: the shortcut changed"))
             continue
         out.append(Issue(FAIL, msg + " - the attack depends on its position, so the"
                                      " attack windows mix two topologies"))
@@ -339,6 +399,28 @@ def topology_issues(df, attack, key_nodes=()):
         out.append(Issue(FAIL, f"{_short(n)} ({roles.get(n, '?')}) switched between VICTIM ({seq.count('victim')} s) "
                                f"and BYSTANDER ({seq.count('bystander')} s) during the attack because a board above "
                                f"it moved - the attack windows mix two experiments"))
+    # Phase-to-phase comparison: the layout when START was pressed (end of the
+    # baseline) vs the attack vs the start of the cooldown. A board in a different
+    # class between phases did not mix the attack windows (the checks above), but
+    # its per-board features (hop, RSSI, latency) changed for a reason that is not
+    # the attack: a confound to footnote - WARN, never a silent pass.
+    if attack == "blackhole" and timeline and scenario not in MOVING_SCENARIOS:
+        before = exposure_timeline(df, attack, "baseline")
+        after = exposure_timeline(df, attack, "cooldown")
+        for n in sorted(timeline):
+            during = _majority([c for _t, c in timeline[n]])
+            pre = _majority(_edge(before.get(n), "last"))
+            post = _majority(_edge(after.get(n), "first"))
+            if during and pre and pre != during:
+                out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) was a {pre.upper()} when START was pressed "
+                                       f"(last {PHASE_EDGE_S:.0f} s of the baseline) but a {during.upper()} in the attack - "
+                                       f"the layout changed between the phases; its per-board baseline vs attack "
+                                       f"comparison mixes the move with the attack"))
+            if during and post and post != during:
+                out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) was a {during.upper()} in the attack but a "
+                                       f"{post.upper()} in the first {PHASE_EDGE_S:.0f} s of the cooldown - its recovery "
+                                       f"is measured in another layout"))
+
     # Presence: nodes seen in the baseline but absent from the attack.
     base_nodes = set(_seg(df, "baseline")["node_id"].dropna())
     gone = sorted(base_nodes - set(nodes))
@@ -529,6 +611,9 @@ RUN_LOGS = os.path.join(os.path.dirname(_HERE), "datasets", "run_logs")
 RUN_LOG_WINDOW_H = 4          # a run log must start at most this long before the export
 _FORCED = re.compile(r"\[CTRL\] START_ANYWAY (?:after|-)|START_ANYWAY:OK")
 _ROOT_SAW = re.compile(r"\[CTRL\]")
+# written by the GUI (gui/PreStart.ps1) when the operator overrides a FAILED
+# pre-START check with a typed reason (oct. 18 2026)
+_PRESTART_OVR = re.compile(r"PRESTART_OVERRIDE: (.+)")
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 _MON = {m: i for i, m in enumerate(
     ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
@@ -592,13 +677,17 @@ def start_anyway_issues(df, logs_root=RUN_LOGS):
             if _ROOT_SAW.search(text) and (best is None or st > best[0]):
                 best = (st, name, text)
         if best:
+            out = []
+            for m in _PRESTART_OVR.finditer(best[2]):
+                out.append(Issue(WARN, "START was pressed with FAILED pre-START checks, overridden by the operator - "
+                                       f"footnote it: {m.group(1).strip()[:200]} ({best[1]})"))
             hit = _FORCED.search(best[2])
             if hit:
                 text = best[2]
                 line = text[text.rfind("\n", 0, hit.start()) + 1:text.find("\n", hit.end())].strip()
-                return [Issue(WARN, "this run was FORCE-STARTED with START_ANYWAY (the root's safety gate was "
-                                    f"overridden) - footnote it or recapture (checklist B-force). {best[1]}: {line[:140]}")]
-            return [Issue("OK", f"normal START - no START_ANYWAY in the root's run log ({best[1]})")]
+                return out + [Issue(WARN, "this run was FORCE-STARTED with START_ANYWAY (the root's safety gate was "
+                                          f"overridden) - footnote it or recapture (checklist B-force). {best[1]}: {line[:140]}")]
+            return out + [Issue("OK", f"normal START - no START_ANYWAY in the root's run log ({best[1]})")]
         return [Issue(SKIP, f"START_ANYWAY: no root run log from the {RUN_LOG_WINDOW_H} h before this capture "
                             f"({export:%b %d %I:%M %p}) - cannot tell whether the gate was overridden")]
     except Exception as e:                      # this check must never break the others

@@ -10,9 +10,16 @@
 #   time in stabilise      from "[CTRL] Waiting N s for mesh to stabilise" until Phase 0 -
 #                          the stabilise phase lasts until START, so its length
 #                          differs per run (thesis checklist A25); logged to the run log.
-# START asks before sending when a check FAILED (not when it is just unknown -
-# a board flashed on another laptop is never seen here). The root's own gates
-# still apply. Dot-sourced by run_gui.ps1. ASCII only.
+# START LOCK (oct. 18 2026, user: "START can be pressed even when the requirements
+# are not done"): a RED check that would put a known fault into the data (children
+# missing, wrong location, attacker without a child, victims aiming at the wrong
+# attacker, wormhole not set up) LOCKS the START button - it unlocks by itself the
+# moment the check turns green. Overriding needs a typed reason + the word
+# OVERRIDE; the override goes into the run log as a PRESTART_OVERRIDE line, which
+# tools/attack_checks.py prints under SETUP CHECKS (so it is footnoted, never
+# hidden). AMBER checks (clock estimate, weak link) only ask, as before. A check
+# that is just unknown (a board flashed on another laptop is never seen here)
+# never locks. The root's own gates still apply. Dot-sourced by run_gui.ps1. ASCII only.
 
 function Reset-PreStart {
     $script:Pre = @{ Boards = @{}; Kids = ''; KidsOk = $null; Wh = $null; WhText = ''; StabAt = $null; Phase0At = $null; ClockText = '' }
@@ -113,18 +120,43 @@ function Get-PreStartChecks {
     return $out
 }
 
+# the checks whose failure puts a known fault into the data - these lock START
+$script:PreBlockRx = '^(Children in|Location = |Attacker has a child|Attacker MAC on victims|Wormhole set up)'
+function Test-BlockingCheck($c) { return ($c.State -eq 'bad' -and [string]$c.Name -match $script:PreBlockRx) }
+
+function Update-StartLock([object[]]$Checks) {
+    # the START button's look follows the red checks; changed only when the set changes
+    $b = $ui.RunStart; if (-not $b) { return }
+    if (-not $script:StartLook) { $script:StartLook = @{ Content = $b.Content; Background = $b.Background; Foreground = $b.Foreground; Tip = $b.ToolTip } }
+    $red = @(); if ($script:Pre -and -not $script:Pre.Phase0At) { $red = @($Checks | Where-Object { Test-BlockingCheck $_ }) }
+    $key = (@($red | ForEach-Object { $_.Name }) -join '|')
+    if ($key -eq [string]$script:StartLockKey) { return }
+    $was = [string]$script:StartLockKey; $script:StartLockKey = $key
+    if ($red.Count) {
+        $b.Content = ('{0}  START LOCKED - {1} red check{2}' -f [string][char]0x2716, $red.Count, $(if ($red.Count -gt 1) { 's' } else { '' }))
+        $b.Background = Get-Brush $Pal.Red; $b.Foreground = Get-Brush '#FFFFFF'
+        $b.ToolTip = "Locked by the pre-START checks:`n" + (@($red | ForEach-Object { '  x  ' + $_.Name + ': ' + $_.Text }) -join "`n") + "`n`nIt unlocks by itself when they turn green. Click to override (needs a reason; it is logged and the verifier reports it)."
+    } else {
+        $L = $script:StartLook; $b.Content = $L.Content; $b.Background = $L.Background; $b.Foreground = $L.Foreground; $b.ToolTip = $L.Tip
+        if ($was -and $script:Pre -and -not $script:Pre.Phase0At) { try { Add-RunAlert 'Pre-START checks are green - START is unlocked' $Pal.Green } catch { } }
+    }
+}
+
 function Update-PreStartPanel {
     $sp = $script:PreRows; if (-not $sp) { return }
     $sp.Children.Clear()
-    foreach ($c in @(Get-PreStartChecks)) {
-        $hex = switch ($c.State) { 'ok' { $Pal.Green } 'bad' { $Pal.Red } default { $Pal.Faint } }
-        $g = switch ($c.State) { 'ok' { [string][char]0x2714 } 'bad' { [string][char]0x2716 } default { [string][char]0x2026 } }
+    $checks = @(Get-PreStartChecks)
+    foreach ($c in $checks) {
+        $block = Test-BlockingCheck $c
+        $hex = switch ($c.State) { 'ok' { $Pal.Green } 'bad' { $(if ($block) { $Pal.Red } else { $Pal.Amber }) } default { $Pal.Faint } }
+        $g = switch ($c.State) { 'ok' { [string][char]0x2714 } 'bad' { $(if ($block) { [string][char]0x2716 } else { [string][char]0x26A0 }) } default { [string][char]0x2026 } }
         $tb = New-Object Windows.Controls.TextBlock; $tb.TextWrapping = 'Wrap'; $tb.Margin = '0,1,0,1'; $tb.FontSize = 12
         $r1 = New-Object Windows.Documents.Run ($g + '  '); $r1.Foreground = Get-Brush $hex; $r1.FontWeight = 'Bold'; [void]$tb.Inlines.Add($r1)
         $r2 = New-Object Windows.Documents.Run ($c.Name + '   '); $r2.Foreground = Get-Brush $Pal.Text; [void]$tb.Inlines.Add($r2)
-        $r3 = New-Object Windows.Documents.Run ([string]$c.Text); $r3.Foreground = Get-Brush $(if ($c.State -eq 'bad') { $Pal.Red } else { $Pal.Dim }); [void]$tb.Inlines.Add($r3)
+        $r3 = New-Object Windows.Documents.Run ([string]$c.Text); $r3.Foreground = Get-Brush $(if ($c.State -eq 'bad') { $hex } else { $Pal.Dim }); [void]$tb.Inlines.Add($r3)
         [void]$sp.Children.Add($tb)
     }
+    Update-StartLock $checks
 }
 
 function Update-PreStartClock {
@@ -136,12 +168,58 @@ function Update-PreStartClock {
     if ($t.Text -ne $txt) { $t.Text = $txt }
 }
 
+function Show-StartOverride([object[]]$Red) {
+    # the typed override: a reason (>= 15 characters) + the word OVERRIDE. Returns the reason, or $null.
+    if ($script:AutoConfirm) { return 'self-test' }
+    $w = New-Object Windows.Window
+    $w.Title = 'START is locked'; $w.Width = 600; $w.SizeToContent = 'Height'; $w.ResizeMode = 'NoResize'; $w.WindowStartupLocation = 'CenterOwner'
+    $w.Background = Get-Brush $Pal.Bg; $w.Foreground = Get-Brush $Pal.Text
+    try { $w.Owner = $win } catch { }
+    try { if ($win) { [void]$w.Resources.MergedDictionaries.Add($win.Resources) } } catch { }
+    $sp = New-Object Windows.Controls.StackPanel; $sp.Margin = '22,18'
+    [void]$sp.Children.Add((New-Text 'START IS LOCKED' 11 $Pal.Red 'Bold'))
+    $t = New-Text 'These checks are RED. A run started like this carries the fault in its data:' 12.5 $Pal.Text; $t.TextWrapping = 'Wrap'; $t.Margin = '0,6,0,8'; [void]$sp.Children.Add($t)
+    foreach ($c in $Red) { $l = New-Text ('{0}  {1}:  {2}' -f [string][char]0x2716, $c.Name, $c.Text) 12 $Pal.Red; $l.TextWrapping = 'Wrap'; $l.Margin = '8,1,0,1'; [void]$sp.Children.Add($l) }
+    $h = New-Text 'Best: fix them - START unlocks by itself the moment they turn green. Override only when a check itself is wrong (e.g. the board was fixed but has not rebooted, so it still shows the old value). The override and your reason are written to the run log, and the verifier prints them under SETUP CHECKS - the run is footnoted, not hidden.' 12 $Pal.Dim
+    $h.TextWrapping = 'Wrap'; $h.Margin = '0,10,0,10'; [void]$sp.Children.Add($h)
+    [void]$sp.Children.Add((New-Text 'REASON  (at least 15 characters - it goes into the run log)' 10.5 $Pal.Faint 'SemiBold'))
+    $why = New-Object Windows.Controls.TextBox; $why.Padding = '6,4'; $why.Margin = '0,3,0,8'; [void]$sp.Children.Add($why)
+    [void]$sp.Children.Add((New-Text 'Type OVERRIDE to unlock' 10.5 $Pal.Faint 'SemiBold'))
+    $word = New-Object Windows.Controls.TextBox; $word.Padding = '6,4'; $word.Margin = '0,3,0,12'; $word.Width = 160; $word.HorizontalAlignment = 'Left'; [void]$sp.Children.Add($word)
+    $row = New-Object Windows.Controls.StackPanel; $row.Orientation = 'Horizontal'; $row.HorizontalAlignment = 'Right'
+    $no = New-Object Windows.Controls.Button; $no.Content = 'Keep it locked'; $no.Padding = '16,8'; $no.IsCancel = $true
+    $go = New-Object Windows.Controls.Button; $go.Content = 'Send START anyway'; $go.Padding = '16,8'; $go.Margin = '10,0,0,0'; $go.IsEnabled = $false
+    try { $go.Style = $win.FindResource('Danger') } catch { }
+    [void]$row.Children.Add($no); [void]$row.Children.Add($go); [void]$sp.Children.Add($row)
+    $w.Content = $sp
+    $check = { $go.IsEnabled = ($why.Text.Trim().Length -ge 15 -and $word.Text.Trim() -ceq 'OVERRIDE') }.GetNewClosure()
+    $why.Add_TextChanged($check); $word.Add_TextChanged($check)
+    $go.Add_Click({ $w.Tag = (($why.Text -replace '[\r\n|]+', ' ' -replace '\s+', ' ').Trim()); $w.DialogResult = $true }.GetNewClosure())
+    [void]$why.Focus()
+    if ($w.ShowDialog()) { return [string]$w.Tag }
+    return $null
+}
+
 function Confirm-PreStart {
-    # $true = send START. Asks only when a check FAILED.
+    # $true = send START. RED (blocking) checks need the typed override; AMBER ones only ask.
     $bad = @(Get-PreStartChecks | Where-Object { $_.State -eq 'bad' })
     if (-not $bad.Count) { return $true }
-    $list = ($bad | ForEach-Object { '    x  ' + $_.Name + ':  ' + $_.Text }) -join "`n"
-    return (Confirm-Action ("These pre-START checks did NOT pass:`n`n$list`n`nFix them first (the data of this run would carry it), or send START anyway?") 'Start with a failed check?')
+    $red = @($bad | Where-Object { Test-BlockingCheck $_ })
+    $amber = @($bad | Where-Object { -not (Test-BlockingCheck $_) })
+    if ($red.Count) {
+        $reason = Show-StartOverride $red
+        if (-not $reason) { Write-RunConsole '  START not sent - the pre-START check(s) are still red (fix them; START unlocks by itself)' $Pal.Amber; return $false }
+        $names = (@($red | ForEach-Object { '{0} ({1})' -f $_.Name, ($_.Text -replace '[\r\n|]+', ' ') }) -join '; ')
+        # one line, read back by tools/attack_checks.py (_PRESTART_OVR)
+        Write-RunConsole ('PRESTART_OVERRIDE: {0} | reason: {1}' -f $names, $reason) $Pal.Red
+        try { Add-RunAlert ('START sent over {0} red pre-START check(s) - logged, the verifier will footnote it' -f $red.Count) $Pal.Red } catch { }
+        if (-not ($script:Run -and $script:Run.LogPath)) { Write-RunConsole '  (the run log is OFF for this run - note the override yourself)' $Pal.Amber }
+    }
+    if ($amber.Count) {
+        $list = ($amber | ForEach-Object { '    !  ' + $_.Name + ':  ' + $_.Text }) -join "`n"
+        return (Confirm-Action ("These pre-START checks are only a caution:`n`n$list`n`nSend START?") 'Start with a caution?')
+    }
+    return $true
 }
 
 function Initialize-GuiPreStart {

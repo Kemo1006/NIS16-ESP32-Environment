@@ -558,7 +558,51 @@ def _measured_line(name, feat, r, sigma):
             f"{_num(r['attack_mean'])} (z {_fmt_z(r['z']).strip()})")
 
 
-def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
+def _robustness_issue(df_in, attack, sigma, block, issues):
+    """D-23 fairness rule 5: a TOLERATED re-route may only stand if the verdict also
+    holds on the attack windows BEFORE the first re-route. Uses the outcome only to
+    DOWNGRADE: it can turn CONFIRMED into SETUP INVALID, never the other way."""
+    if not any("TOLERATED" in it.text for it in issues):
+        return None
+    key = set()
+    for it in issues:
+        if "TOLERATED" in it.text:
+            key.add(it.text.split(" ", 1)[0])
+    onset = _checks.reroute_onset(df_in, attack)
+    if onset is None:
+        return None
+    tc = _checks._tcol(df_in)
+    lab = pd.to_numeric(df_in["Label"], errors="coerce")
+    is_atk = lab == ATTACK_LABEL[attack]
+    t = pd.to_numeric(df_in[tc], errors="coerce")
+    pre = df_in.copy()
+    pre.loc[is_atk & (t >= onset), "Label"] = float("nan")
+    secs = t[is_atk & (t < onset)]
+    span = float(secs.max() - t[is_atk].min()) if len(secs) else 0.0
+    if span < _checks.ROBUST_MIN_ATTACK_S:
+        return _checks.Issue(_checks.WARN, f"robustness re-test not possible: only {span:.0f} s of attack before the "
+                                           f"first re-route (needs {_checks.ROBUST_MIN_ATTACK_S:.0f} s) - the TOLERATED "
+                                           f"verdict rests on the layout rule alone")
+    saved = _LAST_SETUP_INVALID[0]
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            ok, conclusive = verify(pre, attack, sigma, block, checks=False)
+    finally:
+        _LAST_SETUP_INVALID[0] = saved
+    if not conclusive:
+        return _checks.Issue(_checks.WARN, f"robustness re-test inconclusive on the {span:.0f} s of attack before the "
+                                           f"first re-route - the TOLERATED verdict rests on the layout rule alone")
+    if ok:
+        return _checks.Issue("OK", f"ROBUST: the {span:.0f} s of attack BEFORE the first re-route confirm the attack on "
+                                   f"their own (same {sigma:g}-sigma test) - the re-routed windows are not what makes "
+                                   f"the verdict")
+    return _checks.Issue(_checks.FAIL, f"NOT ROBUST: the {span:.0f} s of attack before the first re-route do NOT confirm "
+                                       f"the attack on their own - the verdict depends on the windows after the "
+                                       f"re-route, so the TOLERATED re-route cannot stand")
+
+
+def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     """Run the 3-sigma test + setup checks for one attack and print the report.
 
     Output is built first and printed in one go so the RESULT can sit at the
@@ -567,6 +611,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     Returns (confirmed, conclusive).
     """
     label = ATTACK_LABEL[attack]
+    df_in = df
     raw_lab = pd.to_numeric(df["Label"], errors="coerce")
     n_base_w = int((raw_lab == LABEL_BASELINE).sum())
     n_atk_w = int((raw_lab == label).sum())
@@ -682,13 +727,20 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS):
     # table says the features MOVED; these say whether the attack we claim is
     # what moved them. Any FAIL -> SETUP INVALID; WARN / SKIP never change it.
     setup_invalid = False
-    if _checks is None:
+    if _checks is None or not checks:
         issues = None
     else:
         try:
             issues = _checks.setup_issues(df_nodes, attack)
         except Exception as e:                      # never block the verdict
             issues = [_checks.Issue(_checks.SKIP, f"setup checks could not run: {e}")]
+        if confirmed:
+            try:
+                rob = _robustness_issue(df_in, attack, sigma, block, issues)
+            except Exception as e:                  # never block the verdict
+                rob = _checks.Issue(_checks.WARN, f"robustness re-test could not run: {e}")
+            if rob is not None:
+                issues.append(rob)
         setup_invalid = any(it.level == _checks.FAIL for it in issues)
     # exit 3 means 'the signature passed, but the setup was invalid' - only then.
     _LAST_SETUP_INVALID[0] = setup_invalid and confirmed

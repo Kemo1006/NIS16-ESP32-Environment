@@ -69,6 +69,36 @@ class TreeReroute(unittest.TestCase):
         d.loc[late, "PDR"] = 1.0
         self.assertTrue(any("VICTIM" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
 
+    def test_too_long_detached_fails_the_budget(self):
+        # 30 s detached > REROUTE_BUDGET (10 % of 180 s): a re-join, not the attack
+        d = self.df.copy()
+        m = attack_rows(d) & (d.node_id == "NODE_2805A532D7B4")
+        d.loc[d[m].sort_values("t_anchor_s").index[:30], "parent_mac"] = "00:00:00:00:00:00"
+        self.assertTrue(any("detached or unresolvable" in t for t in fails(d, "blackhole")))
+
+    def test_good_reroute_is_robust(self):
+        c, inv, txt = run(self.df, "blackhole")
+        self.assertTrue(c and not inv)
+        self.assertIn("ROBUST: the", txt)
+
+    def test_signature_only_after_the_reroute_is_not_robust(self):
+        # fairness rule 5: the attack windows BEFORE the re-route must confirm on their own
+        d = self.df.copy()
+        pre = attack_rows(d) & (d.t_anchor_s < ac.reroute_onset(d, "blackhole"))
+        d.loc[pre, "forward_count_delta"] = d.loc[pre, "recv_count_delta"]
+        d.loc[pre, ["ForwardingRatio", "NeighbourForwardingRatio", "PDR"]] = 1.0
+        c, inv, txt = run(d, "blackhole")
+        self.assertIn("NOT ROBUST", txt)
+        self.assertFalse(c and not inv)
+
+    def test_decision_ignores_delivery(self):
+        # fairness rule 1: the tolerate / reject decision must not read PDR
+        d = self.df.copy()
+        d.loc[attack_rows(d), "PDR"] = 1.0
+        lv = {i.text.split(" ", 1)[0]: i.level for i in ac.topology_issues(d, "blackhole", {"NODE_2805A532D7B4", "NODE_B4BFE934ED80"})
+              if "TOLERATED" in i.text}
+        self.assertEqual(lv, {"D7B4": ac.WARN, "ED80": ac.WARN})
+
 
 @unittest.skipUnless(os.path.exists(BH), "blackhole reference table not present")
 class Blackhole(unittest.TestCase):
@@ -265,6 +295,15 @@ class StartAnyway(unittest.TestCase):
     def test_normal_start_with_help_text_is_ok(self):
         self.log("blackhole-tree-g402-highload_r1_oct17_0524PM.log", self.ROOT_OK)
         self.assertEqual(self.level(), "OK")
+
+    def test_gui_prestart_override_is_reported(self):
+        # gui/PreStart.ps1 writes this line when a RED pre-START check is overridden
+        self.log("blackhole-tree-g402-highload_r1_oct17_0524PM.log", self.ROOT_OK
+                 + "PRESTART_OVERRIDE: Location = G402 (WRONG on c2 (DLSU_Library)) | reason: c2 fixed, not rebooted\n")
+        txt = ac.start_anyway_issues(self.df, logs_root=self.tmp)
+        self.assertTrue(any(i.level == ac.WARN and "overridden by the operator" in i.text and "c2 fixed" in i.text
+                            for i in txt))
+        self.assertTrue(any(i.level == "OK" for i in txt))     # still a normal START at the root
 
     def test_older_forced_attempt_is_not_this_run(self):
         self.log("blackhole-tree-g402-highload_r1_oct17_0458PM.log", self.ROOT_FORCED)

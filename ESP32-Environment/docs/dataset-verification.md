@@ -16,6 +16,31 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #46 — Oct 18, 2026 · ~11:30 PM — verifier change: D-23 made outcome-blind + budget + robustness; regression sweep over every analysed capture
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `7f50858` + this change
+> **Request:** "make the smart decision very clever as well and not cheating or biased"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 53 attack captures | every `datasets/analysis/<attack>/<topology>/<location>/<scenario>/feature_table.csv` (baseline cells skipped) + the 2 oct. 18 blackhole/tree/G402 archives |
+
+| Check | Result | Detail |
+|---|---|---|
+| Old (`0e43f7e`, pre-D-23) vs new verifier, all 53 | ✅ 1 change | only the archived 7:21 PM blackhole/tree/G402/stationary r1: SETUP INVALID → CONFIRMED (2 TOLERATED, ROBUST) |
+| Strictness kept | ✅ | blackhole/tree/G402/highload stays SETUP INVALID: B768 is a real VICTIM ↔ BYSTANDER flip |
+| Outcome-blind | ✅ | the tolerate decision is identical with every attack PDR forced to 1.0 (unit test) |
+| Re-join budget | ✅ FAIL fires | D7B4 forced detached 30 s (> 18 s) → FAIL |
+| Robustness | ✅ both ways | real run: 156 s before the re-route confirm alone = ROBUST; signature moved to after the re-route = NOT ROBUST → FAIL |
+| Phase comparison (new WARN) | ⚠️ 2 captures | blackhole/linear/home/highload and blackhole/tree/G402/highload: a board's class at the start of the cooldown differs from the attack (recovery measured in another layout) - information, verdicts unchanged |
+| Verifier suite | ✅ 33/33 | 5 new (budget, robust, not robust, outcome-blind, GUI override line) |
+
+**Verdict: ✅ the rule only changed the one run it was designed for, and it can only accept a re-route on layout
+evidence fixed in advance.** The outcome is used once, to downgrade (robustness). Adviser sign-off: A26.
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #45 — Oct 18, 2026 · ~10:45 PM — verifier change: exposure-aware parent-change rule (D-23), re-run on the 7:21 PM blackhole/tree capture
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `0e43f7e` + this change
