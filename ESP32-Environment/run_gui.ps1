@@ -4454,6 +4454,9 @@ function Show-AnaReport([string]$Text) {
         $tb = New-Text ([string]$vl).Trim() 13 $Pal.Text 'Bold'; $tb.TextWrapping = 'Wrap'; $tb.Margin = '4,2,0,8'
         [void]$ui.AnaResult.Children.Add($tb)
     }
+    # gui\VerdictDesign.ps1: headline tiles on top + grade / lights inside the banner
+    try { Add-ResultHeadline $lines $checks $nodes } catch { }
+    try { Set-VerdictExtras $lines } catch { }
     # oct. 19 2026: the CONFIDENCE grade + its reasons, right under the verdict
     $ci = -1; for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match '^\s*CONFIDENCE\s*:') { $ci = $i; break } }
     if ($ci -ge 0) {
@@ -4970,6 +4973,7 @@ function Show-CampaignCell($S) {
     $ui.CampDetState.Text = $lk.T; $ui.CampDetState.Foreground = & $brush $lk.Bd
     $ui.CampDetBadge.Background = & $brush $lk.Bg
     $body = $ui.CampDetBody; $body.Children.Clear()
+    try { Add-CampVisual $body $S $look } catch { }    # gui\CampaignVisual.ps1: journey, verdict tile, layout
     $r = $script:Redo[(Get-CellKey $S.attack $S.topology $S.location $S.scenario)]
     $sevRank = @{ REDO = 0; CHECK = 1; OK = 2 }
     $reasons = if ($r) { @(@($r.reasons) | Sort-Object { $sevRank[[string]$_.severity] }) } else { @() }

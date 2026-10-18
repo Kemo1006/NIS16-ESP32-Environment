@@ -169,8 +169,17 @@ def _parent_at(tl, n, t, tol=3.0):
     seq = tl.get(n)
     if not seq:
         return "unknown"
-    t0, p = min(seq, key=lambda x: abs(x[0] - t))
+    import bisect
+    ts = _TIMES.get(id(seq))
+    if ts is None or len(ts) != len(seq):
+        ts = _TIMES[id(seq)] = [x[0] for x in seq]
+    i = bisect.bisect_left(ts, t)
+    best = min((j for j in (i - 1, i) if 0 <= j < len(seq)), key=lambda j: abs(ts[j] - t))
+    t0, p = seq[best]
     return p if abs(t0 - t) <= tol else "unknown"
+
+
+_TIMES = {}      # id(timeline list) -> its times, for bisect (lists are rebuilt per call)
 
 
 def _path_class(tl, n, t, attackers, roots):
@@ -198,6 +207,7 @@ def exposure_timeline(df, attack, segment="attack"):
     attackers = {n for n, r in roles.items() if r in _exposure.ATTACK_ROLES and r not in _exposure.WORMHOLE_ROLES}
     roots = {n for n, r in roles.items() if r in _exposure.ROOT_ROLES}
     tl = _parent_timeline(seg, _sta_map(df))
+    _TIMES.clear()
     tc = _tcol(seg)
     out = {}
     for n, g in seg.dropna(subset=[tc]).groupby("node_id"):

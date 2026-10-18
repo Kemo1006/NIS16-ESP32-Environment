@@ -750,6 +750,7 @@ CHECK_MARK = {"OK": "OK  ", "FAIL": "FAIL", "WARN": "WARN", "SKIP": "--  "}
 # Set by verify(): True when the last wormhole check found a setup problem
 # (main() turns it into exit code 3).
 _LAST_SETUP_INVALID = [False]
+_LAST_ISSUES = [[]]
 
 
 def _num(x, nd=3):
@@ -993,6 +994,8 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
         setup_invalid = any(it.level == _checks.FAIL for it in issues)
     # exit 3 means 'the signature passed, but the setup was invalid' - only then.
     _LAST_SETUP_INVALID[0] = setup_invalid and confirmed
+    if checks:
+        _LAST_ISSUES[0] = list(issues or [])     # redo_list.py reads the SAME issues (incl. the re-test)
 
     # ── verdict text ─────────────────────────────────────────────────────────
     count = f"{primary_pass}/{primary_total} primary signature(s) beyond {sigma:g}-sigma"

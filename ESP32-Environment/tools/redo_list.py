@@ -160,7 +160,8 @@ def run_verifier(ft, attack):
         df = pd.read_csv(ft, low_memory=False)
         with contextlib.redirect_stdout(io.StringIO()):
             confirmed, conclusive = va.verify(df, attack, 3.0)
-        issues = ac.setup_issues(df, attack)
+        # the verifier's own issues (incl. its re-test) - the same footnotes as the report
+        issues = list(getattr(va, "_LAST_ISSUES", [[]])[0]) or ac.setup_issues(df, attack)
     except Exception as e:          # never let one broken table stop the list
         return ("ERROR", f"verifier could not run: {e}", [])
     fails = [i.text for i in issues if i.level == ac.FAIL]
@@ -168,7 +169,13 @@ def run_verifier(ft, attack):
     if va._LAST_SETUP_INVALID[0]:
         return ("SETUP INVALID", fails[0] if fails else "", gaps)
     if confirmed:
-        return ("CONFIRMED", "", gaps)
+        # oct. 19 2026: the grade + its short footnotes (verify_attack._confidence) -
+        # the notes panel shows ONE line per run, not every raw warning
+        try:
+            grade, notes = va._confidence(True, False, True, issues)
+        except Exception:
+            grade, notes = "", []
+        return ("CONFIRMED " + grade if grade else "CONFIRMED", "", notes if grade else gaps)
     return ("INCONCLUSIVE" if not conclusive else "NOT CONFIRMED", fails[0] if fails else "", gaps)
 
 
@@ -259,6 +266,14 @@ def assess(cell, runs, planned, vlog, drows):
                 "check the attacker build / placement, then recapture")
         elif word == "ERROR":
             add(CHECK, fail, "verifier", "re-run analyze.ps1, then the verifier")
+        if word.startswith("CONFIRMED "):
+            grade = word.split(" ", 1)[1]
+            if grade == "QUALIFIED":
+                add(CHECK, f"CONFIRMED (qualified) - report it with {len(gaps)} footnote(s): " + "; ".join(gaps),
+                    "verifier", "keep it: copy the footnotes to the thesis checklist (or recapture for a STRONG run)")
+            elif grade == "SOUND":
+                add(OK, "CONFIRMED (sound) - boards moved, the moves were allowed and the re-test passed", "verifier")
+            gaps = []
         for g in gaps:
             text = _short_board(g)
             if "no attack-window telemetry" in g:
@@ -288,9 +303,17 @@ def assess(cell, runs, planned, vlog, drows):
         elif meh and not newer:
             add(CHECK, short, f"verification #{no}", "usable with a footnote - or redo")
 
+    logged_ok = False
+    if cell in vlog:
+        _no, _date, _verdict = vlog[cell]
+        logged_ok = bool(_date and when and _date >= when.replace(hour=0, minute=0, second=0, microsecond=0)
+                         and _verdict.lstrip().startswith("✅"))
     for did, what, why, sdate in drows.get(cell, []):
         newer = bool(when and sdate and when > sdate)
-        if newer:
+        if newer and logged_ok:
+            add(CHECK, f"{did} (an old recapture request) is DONE - the newer capture was verified ✅ "
+                       f"(verification #{vlog[cell][0]}). Tick {did} in THESIS-UPDATE-CHECKLIST.md", did)
+        elif newer:
             add(CHECK, f"{did} asks for a recapture, but a newer capture exists ({when:%b %d %H:%M}) - "
                        f"re-verify, then tick {did} in THESIS-UPDATE-CHECKLIST.md (the Verify button does not tick it)", did)
         else:
@@ -310,6 +333,10 @@ def collect(only=None):
     rows = []
     for key in sorted(runs):
         source, attack, topo, loc, scn, rep = key
+        # oct. 19 2026: judge ONLY the asked cells - judge() + analysis_status() read every
+        # file of a run, which for all 57 cells was ~11 s of a one-cell re-check
+        if only is not None and (attack, topo, loc or "-", inv.canon_scenario(scn or "-")) not in only:
+            continue
         verdict, reasons, stats = inv.judge(runs[key], sample)
         rows.append({"attack": attack, "topology": topo, "location": loc or "-",
                      "scenario": scn or "-", "repeat": rep, "verdict": verdict,

@@ -91,7 +91,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 
 | # | Status | What | Why | Source |
 |---|---|---|---|---|
-| D1 | ⬜ | Recapture blackhole/tree/G402/stationary **r2** | r1 DEGRADED: 2 boards dropped out mid-run | Verification #2 |
+| D1 | ✅ (oct. 19, 2026) | Recapture blackhole/tree/G402/stationary **r2** | r1 DEGRADED: 2 boards dropped out mid-run - **done: superseded by the oct. 18 10:11 PM recapture (r1, all 8 boards), CONFIRMED (qualified, C13)** | Verification #2, #47, #48 |
 | D2 | ⬜ | Recapture blackhole/tree/G402/burst **r2** with all 8 boards | r1 lost FE90 (stale firmware) — reflash FE90 first | Verification #5 |
 | D3 | ⬜ | Recapture wormhole/tree/G402/stationary with the auto-switch firmware | r1 had no shortcut (C4) and was star-shaped - **deleted oct. 17, the cell is EMPTY now** | Verification #6 |
 | D5 | ⬜ | Fix the root's arrival writer (**fix `643adf8` works on hardware - verification #9; partial_mesh/DLSU highload r1 redone**), then recapture every **highload** cell | first hardware run of `cb22106` (arrival queue) shows the writer itself is too slow at highload; read the `[RXSTALL] Saving one probe to storage took …` lines of that run to see whether SPIFFS or the SD mirror is the slow one | MEMORY oct. 7 |
