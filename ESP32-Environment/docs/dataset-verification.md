@@ -16,6 +16,32 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #48 — Oct 19, 2026 · ~1:45 AM — blackhole · tree · G402 · stationary r1: duplicate files in the run folder (old run brought back by the GitHub sync)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `df48870` + this change
+> **Request:** "check the G402 stationary tree blackhole - why there are duplicate files; put a safety net so it never happens, also no duplicate / double analysis"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18, 10:11 PM run (root session 9:55 PM) | `exports/blackhole/tree/G402/stationary/` - was 17 telem/arrivals files (2 runs), now 8 (root telem + arrivals, 6 children) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Duplicates found | ❌ → 🔧 | the **7:21 PM run's 9 files** (root 0738PM x2, children 0756-0808PM) were back in the run folder, all rewritten at **23:36** |
+| Cause | 🔧 | the GUI **GitHub sync** at 23:36 (commit `8e070b7`): the files were archived at 22:11 into `ESP32-Environment/archive/` (tools/archive_replaced.py), but smart_sync.py only knew `datasets/archive/` as "archived locally" -> it saw them on GitHub, missing locally, and pulled them back as "a teammate's file you don't have" |
+| Effect on the analysis | ❌ → 🔧 | trim kept the newest file per board, but **FE90** had only its OLD (7:21 PM) file - it was analysed as part of the 10:11 PM run (23:37 report). Verdicts #47 used that mixed table |
+| Copies vs archive | ✅ | all 9 byte-identical to `archive/2026-10-18_...-replaced-2/exports/` -> moved to `.../resurrected-by-sync-2026-10-18_2336/` (nothing deleted) and their deletion committed so no laptop's sync brings them back |
+| Re-analysis (clean folder) | ✅ | 8 files of ONE run (FE90 not yet collected); **BLACKHOLE CONFIRMED 2/2**, 4 victims cut off (PDR 0.000), ED80 ALLOWED (20 no-path s left out); the old FE90 time-series plot parked in `eda_output/_archive/` |
+
+**Safety nets added:** (1) smart_sync.py treats `ESP32-Environment/archive/` as archived and never pulls a SECOND file
+of the same board + repeat into a run folder; (2) trim_run.py analyses ONE file per board per run (the newest) and
+LEAVES OUT a capture exported before the root's run began (an earlier run), naming each; stale copies in `trimmed/`
+are parked in `trimmed/_archive/`; (3) eda.py parks plots of files no longer in the feature table.
+**Verdict: ✅ folder = one run; the verdict stands (CONFIRMED). FE90 still to be collected (C13).**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #47 — Oct 19, 2026 · ~12:30 AM — blackhole · tree · G402 · stationary r1 (10:11 PM recapture): collected, 70:68 fixed, verdict under D-23 exclusion rule
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `9ca5929` + this change

@@ -574,6 +574,24 @@ def judge_analysis(ctx, items, pending_exports):
 
 # ------------------------------------------------------------- pull plan ---
 
+_CAPTURE_KEY = re.compile(r"^(root|child|victim)_(.+?)_[a-z_]+?_[a-z]+_r(\d+)_.*_(telem|arrivals)\.csv$")
+
+
+def _same_board_capture(dst):
+    """Name of a local file in dst's folder that is the SAME board + repeat + kind
+    (another capture of it), or None."""
+    m = _CAPTURE_KEY.match(dst.name)
+    if not m or not dst.parent.is_dir():
+        return None
+    key = (m.group(1), m.group(2), m.group(3), m.group(4))
+    for f in dst.parent.iterdir():
+        if f.is_file() and f.name != dst.name:
+            k = _CAPTURE_KEY.match(f.name)
+            if k and (k.group(1), k.group(2), k.group(3), k.group(4)) == key:
+                return f.name
+    return None
+
+
 def pull_plan(ctx, area, rhash, local_hash, local_archived, rdeleted_mine):
     items = []
     l_by_sha = {}
@@ -603,8 +621,16 @@ def pull_plan(ctx, area, rhash, local_hash, local_archived, rdeleted_mine):
                             if f.is_file() and f.suffix == ".csv" and same_capture(fp, fingerprint(f)):
                                 twin = f.name
                                 break
+                same_board = _same_board_capture(dst) if area == ps.EXPORTS else None
                 if twin:
                     items.append(dict(it, kind="duplicate", act="skip", why="you have the same capture as " + twin))
+                elif same_board:
+                    # oct. 19 2026: never put a SECOND file of one board + repeat into a
+                    # run folder - the analysis would read both (two runs mixed)
+                    items.append(dict(it, kind="duplicate", act="skip",
+                                      why="you already have this board's capture for this run ({}) - pulling it "
+                                          "would put two runs in one folder; archive yours first if GitHub's is the "
+                                          "right one".format(same_board)))
                 else:
                     items.append(dict(it, kind="new", act="pull", why="a teammate's file you don't have"))
             continue
@@ -677,6 +703,13 @@ def build_status(ctx):
             local_archived.update(files)
     if (BASE / ps.LOGS / "_archive").is_dir():
         for _, _, files in os.walk(BASE / ps.LOGS / "_archive"):
+            local_archived.update(files)
+    # oct. 19 2026: tools/archive_replaced.py (re-capture auto-archive) and Collect's
+    # wrong-piece moves go to ESP32-Environment/archive/, NOT datasets/archive/. This
+    # folder was not looked at, so a sync pulled the archived 7:21 PM capture back into
+    # the run folder next to its 10:11 PM replacement (and the analysis read both).
+    if (BASE / "archive").is_dir():
+        for _, _, files in os.walk(BASE / "archive"):
             local_archived.update(files)
     for key, area in AREAS.items():
         pull += pull_plan(ctx, area, rh[area], lh[area], local_archived, None)

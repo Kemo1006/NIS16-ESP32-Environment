@@ -1642,8 +1642,15 @@ def main():
               f"feature table (archived or re-exported run):")
         for name in orphans:
             print(f"        {name}")
-        print("      Aggregate outputs are current; delete these so the folder "
-              "matches the dataset.")
+        # oct. 19 2026: park them (never leave an old run's plot next to this run's)
+        import shutil
+        park = os.path.join(args.output_dir, "_archive")   # skipped by sync + tools
+        os.makedirs(park, exist_ok=True)
+        for name in orphans:
+            src = os.path.join(args.output_dir, name)
+            if os.path.isfile(src):
+                shutil.move(src, os.path.join(park, name))
+        print(f"      -> moved to {park} so the folder matches the dataset.")
     print(f"  All outputs in:          {args.output_dir}/")
     print("───────────────────────────────────────────────────────")
 

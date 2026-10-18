@@ -100,6 +100,7 @@ the filename says the file is (arrivals = has src_mac; telem = has not).
 from __future__ import annotations
 
 import argparse
+import csv
 import glob
 import math
 import os
@@ -484,6 +485,16 @@ def main():
     out_dir = args.out or (os.path.join(args.directory, "trimmed")
                            if args.directory else "trimmed")
 
+    # oct. 19 2026 safety net: the analysis input holds ONE file per board per run.
+    paths, left_out = _one_run_only(paths)
+    if left_out:
+        print(f"  [!] {len(left_out)} file(s) LEFT OUT of the analysis (still in the folder, untouched):")
+        for name, why in left_out:
+            print(f"        {name}  - {why}")
+        print("      Archive them (or delete them) so the folder holds one run.\n")
+        if args.apply and not args.in_place:
+            _park_stale(out_dir, [n for n, _ in left_out])
+
     print(f"{'APPLYING' if args.apply else 'DRY RUN'} — {len(paths)} file(s)\n")
     results = [r for r in (process(q, args.apply, args.in_place, out_dir)
                            for q in paths) if r]
@@ -509,7 +520,15 @@ def main():
             print("        untouched copies of anything that needed no trimming).")
     _warn_on_duplicate_captures(paths)
     if not args.in_place:
-        _warn_on_stale_outputs(all_paths, out_dir)
+        _warn_on_stale_outputs(paths, out_dir)
+        if args.apply:
+            # oct. 19 2026: a stale copy in trimmed/ (its raw file was archived, or it
+            # was left out above) IS read by the analysis - park it, never leave it
+            present = {os.path.basename(q) for q in glob.glob(os.path.join(out_dir, "*.csv"))}
+            stale = sorted(present - {os.path.basename(q) for q in paths})
+            if stale:
+                _park_stale(out_dir, stale)
+                print(f"      -> moved to {os.path.join(out_dir, '_archive')} (never read by the analysis)")
     if not args.apply:
         print("  (dry run — nothing written. Re-run with --apply)")
     return 0
@@ -528,6 +547,87 @@ _CAPTURE_RE = re.compile(
     r"(?P<attack>[^_]+)_r(?P<repeat>\d+)_(?P<stamp>" + name_stamp.STAMP + r")_"
     r"(?P<kind>telem|arrivals)\.csv$"
 )
+
+
+def _stamp_of(path):
+    m = _CAPTURE_RE.match(os.path.basename(path))
+    if not m:
+        return None
+    try:
+        return name_stamp.parse(m.group("stamp"), path)     # (datetime, seq) - sortable
+    except Exception:
+        return None
+
+
+def _root_span_s(path):
+    """Seconds the root's telemetry covers (first to last timestamp_us), or None."""
+    try:
+        with open(path, newline="", encoding="utf-8", errors="replace") as fh:
+            rd = csv.DictReader(fh)
+            first = last = None
+            for r in rd:
+                try:
+                    t = int(r.get("timestamp_us") or 0)
+                except ValueError:
+                    continue
+                first = t if first is None else first
+                last = t
+        return (last - first) / 1e6 if first is not None and last is not None else None
+    except OSError:
+        return None
+
+
+EARLIER_RUN_MARGIN_S = 15 * 60   # a child's export stamped this long BEFORE the root's run began
+
+
+def _one_run_only(paths):
+    """(kept paths, [(name, why)] left out) - oct. 19 2026.
+
+    1. Two captures of the SAME board + repeat + kind (a re-export, a re-capture, a
+       file a sync brought back): only the NEWEST export is analysed.
+    2. A capture exported before the ROOT's run even began (root export time minus the
+       root file's length, minus 15 min) belongs to an EARLIER run - a board that was
+       not re-collected after a re-capture (oct. 18: FE90's 7:21 PM file analysed with
+       the 10:11 PM run). Left out, never mixed in.
+    Files the name does not parse are kept (nothing is guessed)."""
+    groups, keep, out = {}, [], []
+    for p in paths:
+        m = _CAPTURE_RE.match(os.path.basename(p))
+        if not m:
+            keep.append(p)
+            continue
+        g = m.groupdict()
+        groups.setdefault((g["role"], g["label"], g["repeat"], g["kind"]), []).append(p)
+    for key, ps_ in groups.items():
+        ps_ = sorted(ps_, key=lambda q: (_stamp_of(q) is not None, _stamp_of(q) or (0, 0)))
+        keep.append(ps_[-1])
+        for q in ps_[:-1]:
+            out.append((os.path.basename(q), f"an OLDER capture of the same board (r{key[2]} {key[3]}); "
+                                             f"the newest, {os.path.basename(ps_[-1])}, is analysed"))
+    roots = [q for q in keep if os.path.basename(q).startswith("root_") and q.endswith("_telem.csv")]
+    rstamp = _stamp_of(roots[0])[0] if len(roots) == 1 and _stamp_of(roots[0]) else None
+    span = _root_span_s(roots[0]) if rstamp else None
+    if rstamp and span:
+        from datetime import timedelta
+        start = rstamp - timedelta(seconds=span + EARLIER_RUN_MARGIN_S)
+        for q in list(keep):
+            st = (_stamp_of(q) or (None,))[0]
+            if q not in roots and st is not None and st < start and not os.path.basename(q).startswith("root_"):
+                keep.remove(q)
+                out.append((os.path.basename(q), f"exported {st:%b %d %I:%M %p}, BEFORE the root's run began "
+                                                 f"(~{rstamp - timedelta(seconds=span):%I:%M %p}) - it is from an "
+                                                 f"EARLIER run of this cell; collect this board's file of THIS run"))
+    return sorted(keep), out
+
+
+def _park_stale(out_dir, names):
+    """Move trimmed copies of left-out files into <out_dir>/_archive (never read)."""
+    import shutil
+    for n in names:
+        src = os.path.join(out_dir, n)
+        if os.path.isfile(src):
+            os.makedirs(os.path.join(out_dir, "_archive"), exist_ok=True)
+            shutil.move(src, os.path.join(out_dir, "_archive", n))
 
 
 def _warn_on_duplicate_captures(source_paths):
