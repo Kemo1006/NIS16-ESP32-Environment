@@ -4536,8 +4536,14 @@ function New-Text([string]$T, [double]$Size = 12, [string]$Hex = $Pal.Text, [str
 }
 $script:ScnShort = @{ stationary = 'STAT'; highload = 'HIGH'; burst = 'BURST'; jitter = 'JITTER'; mobility = 'MOB'; powercycle = 'PWR' }
 $script:AtkTone = @{ blackhole = $Pal.Red; wormhole = $Pal.Purple; baseline = $Pal.Green }
+$script:CampPulses = New-Object System.Collections.ArrayList
 function Update-CampaignMatrix {
     $st = $script:Campaign; if (-not $st) { return }
+    # Stop the old 'next' pulse first. A Forever animation keeps running (and
+    # keeps its tile alive) after the tile is thrown away - every redraw leaked
+    # one, so a GUI left open for hours redrew non-stop and lagged (oct. 18 2026).
+    foreach ($x in $script:CampPulses) { $x.BeginAnimation([Windows.UIElement]::OpacityProperty, $null) }
+    $script:CampPulses.Clear()
     $g = $ui.CampMatrix
     $g.Children.Clear(); $g.RowDefinitions.Clear(); $g.ColumnDefinitions.Clear()
     $locSel = @($ui.ClG402, $ui.ClDlsu, $ui.ClYuch | Where-Object IsChecked | ForEach-Object { [string]$_.Tag })
@@ -4622,6 +4628,7 @@ function Update-CampaignMatrix {
                         $pulse = New-Fade 1 0.45 900; $pulse.AutoReverse = $true; $pulse.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
                         $gl.Text = [string][char]0xE768; $gl.Foreground = & $brush $Pal.Pink
                         $gl.BeginAnimation([Windows.UIElement]::OpacityProperty, $pulse)
+                        [void]$script:CampPulses.Add($gl)
                     }
                     if ($script:CampSel -and $script:CampSel -eq (Get-CellKey $s.attack $s.topology $s.location $s.scenario) + $s.kind) {
                         $t.BorderBrush = & $brush '#FFFFFF'; $t.BorderThickness = 2.5
@@ -6283,8 +6290,10 @@ function Write-RunConsole([string]$Text, [string]$Hex) {
         $script:RunLines++
     }
     # an 11-minute root monitor prints thousands of lines: keep the pane light
-    # (everything still goes to the run log)
-    while ($script:RunLines -gt 1500) { $ui.RunConsole.Document.Blocks.Remove($ui.RunConsole.Document.Blocks.FirstBlock); $script:RunLines-- }
+    # (everything still goes to the run log). 400, not 1500 (oct. 18 2026): a
+    # RichTextBox re-lays out the whole pane per line - 12 ms a line at 1500
+    # vs ~3 ms at 400 - and that starved the phase countdown (it stuttered).
+    while ($script:RunLines -gt 400) { $ui.RunConsole.Document.Blocks.Remove($ui.RunConsole.Document.Blocks.FirstBlock); $script:RunLines-- }
     if ($ui.RunFollow.IsChecked) { $ui.RunConsole.ScrollToEnd() }
     if ($script:Run -and $script:Run.LogPath) { try { [IO.File]::AppendAllText($script:Run.LogPath, $Text + "`r`n") } catch { } }
 }
@@ -6860,7 +6869,7 @@ function Start-CrashWatch($St) {
             -WorkingDirectory (Join-Path $base 'tools') -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError ($log + '.err')
     } catch { Write-RunConsole ("  could not start the crash watch on {0}: {1}" -f $b.Port, $_.Exception.Message) $Pal.Amber; return }
     $elf = Join-Path (Get-RunBuildKey $St.Plan) $(if ($b.Role -eq 'root') { 'root_node.elf' } else { 'child_node.elf' })
-    [void]$R.Bg.Add([pscustomobject]@{ Label = $b.Label; Port = $b.Port; Proc = $p; Log = $log; Pos = [long]0; Buf = ''; Ctl = $ctl; Elf = $elf; Crashes = 0; Last = '' })
+    [void]$R.Bg.Add([pscustomobject]@{ Label = $b.Label; Port = $b.Port; Proc = $p; Log = $log; Pos = [long]0; Buf = ''; Ctl = $ctl; Elf = $elf; Crashes = 0; Recovered = 0; Last = '' })
     Write-RunConsole ("  crash watch on {0} ({1}) -> {2}" -f $b.Label, $b.Port, $log) $Pal.Faint
 }
 function Stop-CrashWatch {
@@ -6886,6 +6895,11 @@ function Read-CrashWatch {
         $parts = ($w.Buf + $t) -split "`n"; $w.Buf = $parts[-1]
         foreach ($ln in $parts[0..($parts.Count - 2)]) {
             $ln = ($ln -replace "\x1b\[[0-9;]*m", '').TrimEnd("`r")
+            if ($w.Crashes -gt $w.Recovered -and $ln -match '=== .*STARTING') {
+                $w.Recovered = $w.Crashes
+                Add-RunAlert ("{0} ({1}) is back up after the crash" -f $w.Label, $w.Port) $Pal.Green
+                continue
+            }
             if ($ln -notmatch $script:CrashRx) { continue }
             if ($ln -match '^Backtrace:') {
                 $pcs = @([regex]::Matches($ln, '0x[0-9a-fA-F]{8}(?=:)') | ForEach-Object Value)
@@ -6947,9 +6961,17 @@ function Add-RunAlert([string]$Text, [string]$Hex) {
     $D = $script:Dash; if (-not $D) { return }
     $old = @($D.Alerts | Where-Object { $_.Text -eq $Text })
     foreach ($o in $old) { [void]$D.Alerts.Remove($o) }
-    [void]$D.Alerts.Insert(0, [pscustomobject]@{ Text = $Text; When = (Get-Date).ToString('h:mm:ss tt') + $(if ($old.Count) { '  (again)' } else { '' })
-                                                 Edge = (& $brush $Hex); Bg = (& $brush $(if ($Hex -eq $Pal.Red) { '#3A1E2C' } else { '#3A2E14' })) })
-    while ($D.Alerts.Count -gt 8) { $D.Alerts.RemoveAt(8) }
+    # user, oct. 18 2026: good news too (green = fixed / working), not only problems
+    $good = $Hex -in @($Pal.Green, $Pal.Cyan)
+    [void]$D.Alerts.Insert(0, [pscustomobject]@{ Text = $(if ($Hex -eq $Pal.Green) { [string][char]0x2714 + '  ' + $Text } else { $Text })
+                                                 When = (Get-Date).ToString('h:mm:ss tt') + $(if ($old.Count) { '  (again)' } else { '' })
+                                                 Edge = (& $brush $Hex); Good = $good
+                                                 Bg = (& $brush $(switch ($Hex) { $Pal.Red { '#3A1E2C' } $Pal.Green { '#123B33' } $Pal.Cyan { '#0F3644' } default { '#3A2E14' } })) })
+    # full: the oldest GOOD alert goes first, so a problem is never pushed out by good news
+    while ($D.Alerts.Count -gt 12) {
+        $drop = @($D.Alerts | Where-Object { $_.Good }) | Select-Object -Last 1
+        if ($drop) { [void]$D.Alerts.Remove($drop) } else { $D.Alerts.RemoveAt($D.Alerts.Count - 1) }
+    }
     $ui.RunAlerts.ItemsSource = $null; $ui.RunAlerts.ItemsSource = @($D.Alerts); $ui.RunAlertsNone.Visibility = 'Collapsed'
 }
 function Update-RootNodes {
@@ -6978,13 +7000,13 @@ function Read-RootLine([string]$Line) {
         $n = $Matches.n
         switch -Regex ($n) {
             'WAITING FOR ALL CHILDREN' { Set-RootPhase 'Waiting for every child' -1; $ui.RunGate.Text = 'Waiting for every child to join the mesh...' ; break }
-            '^READY'                   { Set-RootPhase 'READY - press START' -1; $D.Ready = $true; $ui.RunGate.Text = 'READY. Check the mesh table on the right - move a board NOW if it is wrong - then press START.'; $ui.RunGate.Foreground = & $brush $Pal.Green
+            '^READY'                   { Set-RootPhase 'READY - press START' -1; $D.Ready = $true; Add-RunAlert 'Root is READY - every child is in and the setup checks passed. Press START.' $Pal.Green; $ui.RunGate.Text = 'READY. Check the mesh table on the right - move a board NOW if it is wrong - then press START.'; $ui.RunGate.Foreground = & $brush $Pal.Green
                                          Show-Toast 'Root is READY' 'Check the mesh, then press START.' ([string][char]0xE768) 'GradGood' { Show-Page 7 } 'Open the run'; break }
             'PHASE 0b'                 { Set-RootPhase 'Baseline window (burst)' 2 ; break }
             'PHASE 0'                  { Set-RootPhase 'Phase 0 - Baseline' 1; $ui.RunStart.IsEnabled = $false; $ui.RunStartAnyway.IsEnabled = $false; $ui.RunGate.Text = 'Started. Leave every board where it is until the end.'; $ui.RunGate.Foreground = & $brush $Pal.Green; Set-RunAlarm; break }
-            'ATTACK'                   { Set-RootPhase 'Attack' 2 ; break }
-            'COOLDOWN'                 { Set-RootPhase 'Cooldown' 3 ; break }
-            'TERMINATE'                { Set-RootPhase 'Finished - TERMINATE sent' 4; $D.Ended = $true
+            'ATTACK'                   { Set-RootPhase 'Attack' 2; Add-RunAlert 'Attack phase started' $Pal.Cyan; break }
+            'COOLDOWN'                 { Set-RootPhase 'Cooldown' 3; Add-RunAlert 'Cooldown started - the attack phase is over' $Pal.Cyan; break }
+            'TERMINATE'                { Set-RootPhase 'Finished - TERMINATE sent' 4; $D.Ended = $true; Add-RunAlert 'Run finished - TERMINATE sent to every board' $Pal.Green
                                          Set-RunNow 'The run has finished' 'Wait for EXPORT: ALL BOARDS DONE (or about 20 s), then press "Finish + export root".' $Pal.Green ([string][char]0xE73E)
                                          Show-Toast 'Run finished' 'Export the root when the table says SAFE.' ([string][char]0xE73E) 'GradGood' { Show-Page 7 } 'Open the run'; break }
         }
@@ -6996,7 +7018,11 @@ function Read-RootLine([string]$Line) {
     if ($t -match '\[CTRL\] Starting PHASE 3 .*\((\d+) s\)') { $D.Len = [int]$Matches[1]; return }
     if ($t -match '\[CTRL\] WAITING: (\d+)/(\d+) children') { $ui.RunKids.Text = "$($Matches[1])/$($Matches[2])"; $ui.RunGate.Text = "Waiting for children: $($Matches[1]) of $($Matches[2]) in the mesh. A missing child is unpowered, brownout-looping or out of range."; $ui.RunGate.Foreground = & $brush $Pal.Amber; $ui.RunStartAnyway.IsEnabled = $true; return }
     if ($t -match '\[CTRL\] All (\d+) children are in, but (.+)$') { $ui.RunKids.Text = "$($Matches[1])/$($Matches[1])"; $ui.RunGate.Text = "All children are in, but $($Matches[2])"; $ui.RunGate.Foreground = & $brush $Pal.Amber; $ui.RunStartAnyway.IsEnabled = $true; return }
-    if ($t -match '\[CTRL\] All (\d+) children in the mesh') { $ui.RunKids.Text = "$($Matches[1])/$($Matches[1])"; return }
+    if ($t -match '\[CTRL\] All (\d+) children in the mesh') {
+        $ui.RunKids.Text = "$($Matches[1])/$($Matches[1])"
+        if ($D.KidsOk -ne $Matches[1]) { $D.KidsOk = $Matches[1]; Add-RunAlert "All $($Matches[1]) children joined the mesh" $Pal.Green }
+        return
+    }
     if ($t -match '\[CTRL\] (?:\w+: )?(\d+)/(\d+) children in the mesh') { $ui.RunKids.Text = "$($Matches[1])/$($Matches[2])" }
     if ($t -match '\[CTRL\] READY') {
         $ui.RunStart.IsEnabled = $true; $ui.RunStartAnyway.IsEnabled = $true
@@ -7005,7 +7031,7 @@ function Read-RootLine([string]$Line) {
         return
     }
     if ($t -match '\[CTRL\] START refused: (.+?)\. Fix') { $ui.RunGate.Text = "START refused (kept - it fires as soon as this is fixed): $($Matches[1])"; $ui.RunGate.Foreground = & $brush $Pal.Amber; Add-RunAlert "START refused: $($Matches[1])" $Pal.Amber; return }
-    if ($t -match '\[CTRL\] START received') { $ui.RunGate.Text = 'START received - the run is starting.'; $ui.RunGate.Foreground = & $brush $Pal.Green; return }
+    if ($t -match '\[CTRL\] START received') { Add-RunAlert 'START received - Phase 0 (baseline) is starting' $Pal.Green; $ui.RunGate.Text = 'START received - the run is starting.'; $ui.RunGate.Foreground = & $brush $Pal.Green; return }
     if ($t -match '\[CTRL\] START_ANYWAY') { Add-RunAlert $t $Pal.Red; return }
     # the topology table
     if ($t -eq 'MESH TOPOLOGY') { $D.Collect = $true; $D.Rows.Clear(); $D.InTunnel = $false; return }
@@ -7015,6 +7041,9 @@ function Read-RootLine([string]$Line) {
     if ($t -match '^REACHABLE\s+:.*\((\d+)\)') { $D.Topo.Reach = $Matches[1]; return }
     if ($t -match '^STATUS\s+:\s+(.+)$') {
         $s = $Matches[1]; $ui.RunTopoStatus.Text = $s
+        if ($lvl -in @('E', 'W')) { $D.TopoBad = $true }
+        elseif ($D.TopoBad) { $D.TopoBad = $false; Add-RunAlert "Mesh topology OK again ($s)" $Pal.Green }
+        elseif (-not $D.TopoOkSaid) { $D.TopoOkSaid = $true; Add-RunAlert "Mesh topology OK ($s)" $Pal.Green }
         $ui.RunTopoBadge.Background = & $brush $(if ($lvl -eq 'E') { $Pal.Red } elseif ($lvl -eq 'W') { $Pal.Amber } else { $Pal.Green })
         $ui.RunTopoStatus.Foreground = & $brush '#0B1020'
         $ui.RunTopoInfo.Text = "{0}  -  {1} node(s), {2} hop(s) deep, {3} reachable" -f $D.Topo.Type, $D.Topo.Count, $D.Topo.Depth, $D.Topo.Reach
@@ -7023,7 +7052,7 @@ function Read-RootLine([string]$Line) {
     if ($t -match '^DETAIL\s+:\s+(.+)$') { $ui.RunTopoDetail.Text = $Matches[1]; return }
     if ($t -match '^EXPORT\s+:\s+(.+)$') {
         $ui.RunTopoDetail.Text = ($ui.RunTopoDetail.Text + "`nexport: " + $Matches[1]).Trim()
-        if ($Matches[1] -match 'ALL \d+ BOARDS DONE') { $script:Dash.Ended = $true; Set-RunNow 'Every board says SAFE TO EXPORT' 'Press "Finish + export root".' $Pal.Green ([string][char]0xE73E) }
+        if ($Matches[1] -match 'ALL \d+ BOARDS DONE') { if (-not $script:Dash.ExportSaid) { $script:Dash.ExportSaid = $true; Add-RunAlert 'Every board is SAFE TO EXPORT' $Pal.Green }; $script:Dash.Ended = $true; Set-RunNow 'Every board says SAFE TO EXPORT' 'Press "Finish + export root".' $Pal.Green ([string][char]0xE73E) }
         return
     }
     if ($D.Collect -and $t -match '^(?<hop>H[0-9A-F-]+)\*?\s+(?<mac>(?:[0-9A-F]{2}:){5}[0-9A-F]{2})\s+(?<role>\S+)\s+(?<rssi>-?\d+|n/a)\s+0x[0-9A-F]{2}\s+(?<ph>\S+)\s+(?<age>\d+)\s+(?<exp>SAFE|not yet)') {
@@ -7038,6 +7067,8 @@ function Read-RootLine([string]$Line) {
         if ($t -match '^EXPOSURE') { $D.InTunnel = $false }
     }
     if ($t -match '^!!\s*(.+)$') { Add-RunAlert $Matches[1] $(if ($lvl -eq 'W') { $Pal.Amber } else { $Pal.Red }) }
+    if ($t -match '^!!.*UART') { $D.RootUartBad = $true }
+    elseif ($D.RootUartBad -and $t -match 'UART OK') { $D.RootUartBad = $false; Add-RunAlert 'Wormhole UART tunnel fixed - the root sees UART OK' $Pal.Green }
 }
 function Read-BoardLine([string]$Line) {
     # every board: alerts and "booted" - the root also feeds its dashboard
@@ -7060,6 +7091,7 @@ function Read-BoardLine([string]$Line) {
     if ($Line -match '\[monitor\] could not open') { Add-RunAlert ("{0}: {1}" -f $b.Label, $Line) $Pal.Red }
     if (-not $R.Booted -and $Line -match '=== .*STARTING') {
         $R.Booted = $true
+        if ($script:Dash) { Add-RunAlert ("{0} booted and is running" -f $b.Label) $Pal.Green }
         if ($b.Role -ne 'root') {
             $R.Current.Note = 'booted'
             Set-RunNow ("{0} booted" -f $b.Label) 'Press "Done with this board" to flash the next one.' $Pal.Green ([string][char]0xE73E)
@@ -7070,7 +7102,11 @@ function Read-BoardLine([string]$Line) {
     if ($Line -match 'Writing at 0x[0-9a-f]+\.\.\. \((\d+) ?%\)') { $R.Current.Note = "flashing $($Matches[1])%"; Update-RunSteps }
     elseif ($Line -match '(?i)Erasing flash \(this may take a while\)') { $R.Current.Note = 'full erase...'; Update-RunSteps }
     if ($b.Role -eq 'root') { Read-RootLine $Line }
-    elseif ($Line -match '!! (UART TUNNEL [^:]+)') { if ($script:Dash) { Add-RunAlert ("{0}: {1}" -f $b.Label, $Matches[1]) $Pal.Red } }
+    elseif ($Line -match '!! (UART TUNNEL [^:]+)') { if ($script:Dash) { $script:Dash["Uart$($b.Label)"] = 'bad'; Add-RunAlert ("{0}: {1}" -f $b.Label, $Matches[1]) $Pal.Red } }
+    elseif ($script:Dash -and $Line -match 'UART OK' -and $script:Dash["Uart$($b.Label)"] -ne 'ok') {
+        $was = $script:Dash["Uart$($b.Label)"]; $script:Dash["Uart$($b.Label)"] = 'ok'
+        Add-RunAlert ("{0}: UART tunnel {1}" -f $b.Label, $(if ($was -eq 'bad') { 'FIXED - it works both ways now' } else { 'OK - it works both ways' })) $Pal.Green
+    }
 }
 function Set-RunAlarm {
     # mobility / powercycle: the human step, timed from the Phase 0 banner
@@ -7915,4 +7951,20 @@ exit 0
     Write-Output ("status: " + $ui.Status.Text)
     $win.Close()
 }
+# Stop EVERY timer when the window is gone (oct. 18 2026). Only $timer was
+# stopped before: the board watcher, run clock, stream, SD watcher... stayed
+# alive in the ESP-IDF console and woke up again the next time .\run_gui.ps1
+# ran in that console - one extra set per relaunch (lag, 2 GB after a day, and
+# an old board watcher could talk to boards behind the new window's back).
+foreach ($v in @(Get-Variable -Scope Script)) {
+    if ($v.Value -is [Windows.Threading.DispatcherTimer]) { try { $v.Value.Stop() } catch { } }
+}
 $timer.Stop()
+if ($SelfTest) {
+    # our timers only (WPF keeps a harmless one-shot TextBox timer of its own)
+    $dsp = [Windows.Threading.Dispatcher]::CurrentDispatcher
+    $tl = $dsp.GetType().GetField('_timers', [Reflection.BindingFlags]'NonPublic,Instance')
+    $tf = [Windows.Threading.DispatcherTimer].GetField('Tick', [Reflection.BindingFlags]'NonPublic,Instance')
+    $ours = @(if ($tl -and $tf) { @($tl.GetValue($dsp)) | Where-Object { $h = $tf.GetValue($_); -not $h -or @($h.GetInvocationList() | Where-Object { $_.Method.DeclaringType.FullName -notlike 'System.Windows.*' }).Count } })
+    Write-Output ("GUI timers still running after the window closed: {0} (must be 0 - else a relaunch from the same console stacks them)" -f $ours.Count)
+}

@@ -2635,3 +2635,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 ## Rolled from STATUS.md (oct. 18, 2026)
 - oct. 17 (Angelo) — GUI: redesign + speed-ups, then FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID no-reset board ID); wormhole audit (star blocked, A24).
+- oct. 17 (Angelo) — first push of everything (`be5115c`): FULL GUI (Live run + root dashboard, import page, in-window tools, GET_ID), wormhole audit (star blocked, A24).  (rolled from STATUS oct. 18)
+- **Preprocess:** `transition` segment for windows spanning 2 phases; anchor fallback keeps a stalled board's baseline (D-21).  (rolled from STATUS oct. 18)
+- **Wizard:** 'b' works on every menu (back one question, or back out of the tool); question chains step back; main menu = short aligned names + hints; Campaign -> [2] checklist redesigned; every tool opens under the same framed title, status lines + prompts aligned. Test `tools/test_wizard_nav.ps1` 15/15.  (rolled from STATUS oct. 18)
