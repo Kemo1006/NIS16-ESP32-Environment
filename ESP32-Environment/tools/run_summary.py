@@ -155,6 +155,26 @@ def summarise(folder, expect=None):
                               f"(Data > Import, the run that started with the root's) or footnote it")
         if not roots:
             notes.append("no root arrivals in this folder yet - children could not be matched to the root's run")
+        else:
+            # oct. 19 2026 (user: "a file is missing although the root showed every board
+            # connected"): the root's arrivals name EVERY board that sent probes in the run, so
+            # a board with no file here is named - "COMPLETE - all 4 boards" hid 4 not imported
+            # yet (they ran from another laptop). A wormhole A sends no probes of its own, so it
+            # is only caught by --expect.
+            import pandas as pd
+            have = {re.sub(r"[^0-9A-F]", "", str(b["node"]).upper())[-12:] for b in boards}
+            heard = set()
+            for r in roots:
+                a = pd.read_csv(r, usecols=["src_mac", "phase_id"], dtype=str, on_bad_lines="skip")
+                a = a[pd.to_numeric(a["phase_id"], errors="coerce").isin([0, 1, 2, 3])]
+                cnt = a["src_mac"].str.upper().str.replace(":", "", regex=False).value_counts()
+                heard |= set(cnt[cnt >= 100].index)
+            gone = sorted(m for m in heard if m not in have)
+            if gone:
+                issues.append(f"{len(gone)} board(s) the ROOT heard during the run have NO file here: "
+                              + ", ".join(_short(m) for m in gone)
+                              + " - not imported yet (their data is on their own SD cards / the laptop that ran"
+                                " them: Collect or Data > Import, or GitHub sync if a teammate has them)")
     except Exception as e:                          # a health card never fails on its own check
         notes.append(f"root match check could not run: {e}")
 
