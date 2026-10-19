@@ -512,8 +512,16 @@ function Get-Presets {
 function Find-PandasPython {
     foreach ($cand in @('python', 'py', 'python3')) {
         if (-not (Get-Command $cand -ErrorAction SilentlyContinue)) { continue }
-        & $cand -c "import pandas" 2>$null
-        if ($LASTEXITCODE -eq 0) { return $cand }
+        # oct. 19 2026 (teammate's laptop): this file runs with ErrorActionPreference = Stop,
+        # and in PowerShell 5.1 a native program's stderr is then a TERMINATING error even
+        # with 2>$null - a Python WITHOUT pandas printed a traceback and killed the GUI at
+        # start-up instead of being skipped. Probe with Continue; any failure = next one.
+        $ok = $false
+        $eap = $ErrorActionPreference
+        try { $ErrorActionPreference = 'Continue'; $null = & $cand -c "import pandas" 2>&1; $ok = ($LASTEXITCODE -eq 0) }
+        catch { $ok = $false }
+        finally { $ErrorActionPreference = $eap }
+        if ($ok) { return $cand }
     }
     return $null
 }
@@ -2990,7 +2998,7 @@ function Get-SlotText($s) { '{0}  /  {1}  /  {2}  /  {3}' -f $(if ($s.kind -eq '
 function Update-Home {
     $h = (Get-Date).Hour
     $ui.HomeHello.Text = $(if ($h -lt 12) { 'Good morning, team' } elseif ($h -lt 18) { 'Good afternoon, team' } else { 'Good evening, team' })
-    if (-not $script:Py) { $ui.HomeSub.Text = 'Python with pandas not found - campaign data needs it.'; return }
+    if (-not $script:Py) { $ui.HomeSub.Text = 'Python with pandas not found - campaign data, analysis and verify need it. Install once in a terminal:  python -m pip install -r analysisequirements.txt   then restart the GUI.'; return }
     $ui.HomeSub.Text = 'Loading the campaign plan...'
     $json = [IO.Path]::GetTempFileName()
     Start-ToolJob -Exe $script:Py -ToolArgs @('tools\inventory_cells.py', '--json', $json, '--no-color') -State $json -OnDone {
