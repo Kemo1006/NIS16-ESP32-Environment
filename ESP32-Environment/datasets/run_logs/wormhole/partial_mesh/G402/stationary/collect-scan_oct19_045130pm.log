@@ -1,0 +1,15 @@
+collect_run.py --ports COM3,COM6 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-19 04:51 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp994E.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect-scan_oct19_045130pm.log)
+
+-- COM3: reading the card ...
+   retry 2/3 of COM3 in 3 s (no_answer)
+   retry 3/3 of COM3 in 8 s (no_answer)
+COLLECT: COM3 - FAIL BUSY: the PORT IS IN USE by another program (the GUI's Live run monitor / crash watch, a serial monitor, a second GUI) - the card was never read. Close that, then Retry failed
+
+-- COM6: reading the card ...
+   retry 2/3 of COM6 in 3 s (no_card)
+   retry 3/3 of COM6 in 8 s (no_card)
+COLLECT: COM6 - FAIL NO_CARD: the board says its SD card is NOT MOUNTED right now (just reset, or the card is loose) - the data is still on the card. Press the card in, unplug + replug the board, then Retry failed
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=2
+COLLECT_RETRY: COM3,COM6

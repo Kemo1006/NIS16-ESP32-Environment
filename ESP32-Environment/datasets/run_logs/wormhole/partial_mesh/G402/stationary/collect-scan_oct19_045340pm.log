@@ -1,0 +1,13 @@
+collect_run.py --ports COM6,COM26 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-19 04:53 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp94AD.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect-scan_oct19_045340pm.log)
+
+-- COM6: reading the card ...
+   retry 2/3 of COM6 in 3 s (no_card)
+   retry 3/3 of COM6 in 8 s (no_card)
+COLLECT: COM6 - FAIL NO_CARD: the board says its SD card is NOT MOUNTED right now (just reset, or the card is loose) - the data is still on the card. Press the card in, unplug + replug the board, then Retry failed
+
+-- COM26: reading the card ...
+COLLECT: COM26 B4BFE934ED80 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:22:43; G402 ran 2026-10-19 16:22:10) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=2
+COLLECT_RETRY: COM6
