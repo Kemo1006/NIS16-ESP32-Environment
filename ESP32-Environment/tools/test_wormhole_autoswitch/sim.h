@@ -23,6 +23,7 @@
 /* ── shared simulated world (defined in test.c) ──────────────────────────── */
 extern int64_t g_now_us;        /* esp_timer_get_time()                      */
 extern uint8_t g_phase;         /* what the root has announced               */
+extern uint32_t g_session;      /* the root session (changes = root restarted) */
 extern bool    g_terminated;
 extern bool    g_verbose;       /* print the firmware's log lines            */
 
@@ -133,6 +134,7 @@ static inline esp_err_t heartbeat_start(void) { return ESP_OK; }
 static inline esp_err_t phase_listener_start(void) { return ESP_OK; }
 static inline void phase_listener_set_data_cb(void *cb) { (void)cb; }
 static inline uint8_t phase_listener_get_phase_id(void) { return g_phase; }
+static inline uint32_t phase_listener_session_id(void) { return g_session; }
 static inline uint8_t phase_listener_get_label(void) { return 0; }
 static inline bool phase_listener_is_terminated(void) { return g_terminated; }
 static inline void phase_listener_wait_for_terminate(void) { }

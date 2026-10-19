@@ -69,6 +69,7 @@ static bool              s_keep_running = false;
  * set up, so csv_logger may start logging - see LOG_ONLY_DURING_RUN. */
 static volatile bool     s_prepare_heard = false;
 bool phase_listener_prepare_heard(void) { return s_prepare_heard; }
+uint32_t phase_listener_session_id(void) { return s_session_id; }
 
 /* Set by the START_ANYWAY serial command - see the root's roster gate. */
 static volatile bool     s_start_anyway = false;

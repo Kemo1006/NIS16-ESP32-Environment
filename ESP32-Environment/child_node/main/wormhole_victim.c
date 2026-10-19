@@ -449,6 +449,7 @@ static void send_hello(int my_layer)
  * driven directly by the host-side test (tools/test_wormhole_autoswitch/). */
 static int64_t  s_rt_started_us      = 0;
 static int64_t  s_rt_next_hello_us   = 0;
+static uint32_t s_rt_lock_session    = 0; /* root session the role was locked in */
 static int64_t  s_rt_conflict_switch_us = 0; /* last switch on a conflict      */
 static uint8_t  s_rt_conflict_switches  = 0; /* how many times this board did */
 static bool     s_rt_lost_warned     = false;
@@ -490,6 +491,27 @@ static void role_step(void)
         uint8_t phase = phase_listener_get_phase_id();
         bool real_phase = (phase != PHASE_ID_UNSET && phase != PHASE_ID_PREPARE);
 
+        /* NEW RUN (oct. 19 2026): the lock is per RUN, not per boot. When the root restarts
+         * (new session - the phase listener drops back to UNSET), a lock from the earlier
+         * attempt must not survive into the new one: a teammate's linear run kept A at H06
+         * and B at H04 ("ENDS REVERSED", UART OK both ways) because both ends had locked
+         * in an earlier attempt and were never power-cycled. Release it and decide by depth
+         * again; the new run's Phase 0 locks it afresh. A real mid-run root restart ends
+         * that run anyway, so nothing valid is lost. */
+        if (s_role_locked && !real_phase) {
+            uint32_t sess = phase_listener_session_id();
+            if (sess != 0 && s_rt_lock_session != 0 && sess != s_rt_lock_session) {
+                s_role_locked     = false;
+                s_locked_fallback = false;
+                s_role_conflict   = false;
+                s_shortcut_lost   = false;
+                s_rt_conflict_switches = 0;
+                ESP_LOGW(TAG, "NEW RUN (root restarted, session %08lx): role lock released - "
+                              "deciding the end by depth again before Phase 0.", (unsigned long)sess);
+                send_hello(my_layer);           /* tell the peer we are unlocked */
+            }
+        }
+
         if (!s_role_locked) {
             apply_role(decide_role(my_layer), peer_fresh() ? "depth vs peer" : "no peer - build fallback");
             /* Lock at the first real phase. A board that boots straight into
@@ -497,6 +519,7 @@ static void role_step(void)
             if (real_phase && (peer_fresh()
                                || now - started_us > LOCK_WAIT_FOR_PEER_MS * 1000LL)) {
                 s_role_locked = true;
+                s_rt_lock_session = phase_listener_session_id();
                 if (peer_fresh()) {
                     ESP_LOGW(TAG, "LOCKED as NODE %s (exit/entry by depth: mine L%d, peer L%d)"
                                   " - fixed for the rest of the run.",

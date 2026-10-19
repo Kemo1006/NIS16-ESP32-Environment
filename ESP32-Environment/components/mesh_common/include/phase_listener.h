@@ -163,6 +163,12 @@ void phase_listener_broadcast_prepare(void);
 bool phase_listener_prepare_heard(void);
 
 /**
+ * @brief The root session this node follows (0 = none heard yet). It changes when the
+ *        ROOT restarts - i.e. a new run - see the "Root RESTARTED" log line.
+ */
+uint32_t phase_listener_session_id(void);
+
+/**
  * @brief Root only: start re-sending the current phase every 10 s, same
  *        seq_num, so a node that rebooted mid-phase re-syncs (others dedupe it).
  *        Stops once TERMINATE has been broadcast.

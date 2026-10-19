@@ -20,6 +20,7 @@
 
 int64_t g_now_us = 0;
 uint8_t g_phase  = PHASE_ID_UNSET;
+uint32_t g_session = 1;
 bool    g_terminated = false;
 bool    g_verbose = false;
 
@@ -74,7 +75,7 @@ static void run(int ms)
 static void fresh(int l1, int l2)
 {
     g_now_us += 60 * 1000000LL;          /* far from any earlier scenario */
-    g_phase = PHASE_ID_UNSET; g_terminated = false;
+    g_phase = PHASE_ID_UNSET; g_terminated = false; g_session++;
     link_12 = link_21 = true; noise = 0; echo_1 = false;
     b1_boot(MAC1, l1); b2_boot(MAC2, l2);
 }
@@ -266,6 +267,23 @@ int main(int argc, char **argv)
     g_phase = PHASE_ID_BASELINE; run(500);
     CHECK(b1_locked() && b2_locked() && !b1_fallback() && !b2_fallback(), "locks cleanly at Phase 0");
     opposite_and_consistent("[10]");
+
+    printf("\n[11] Oct. 19 teammate's linear run: ends locked in an EARLIER attempt, root restarted,"
+           " boards NOT power-cycled, mesh now the other way round\n");
+    fresh(2, 6);
+    g_phase = PHASE_ID_BASELINE; run(1000);
+    CHECK(b1_locked() && b2_locked() && b1_end() == 'A' && b2_end() == 'B', "attempt 1 locked: b1 A (H2), b2 B (H6)");
+    g_phase = PHASE_ID_UNSET; g_session++;          /* the ROOT restarts: a new run */
+    b1_set_layer(6); b2_set_layer(4);               /* the chain formed differently */
+    run(4000);
+    CHECK(!b1_locked() && !b2_locked(), "new root session -> both locks released before the new Phase 0");
+    CHECK(b1_end() == 'B' && b2_end() == 'A', "re-decided by depth: deep b1 (H6) = B, shallow b2 (H4) = A");
+    g_phase = PHASE_ID_BASELINE; run(500);
+    CHECK(b1_locked() && b2_locked() && !b1_fallback() && !b2_fallback(), "the new run locks cleanly at Phase 0");
+    opposite_and_consistent("[11]");
+    /* the SAME session must never release a lock (a mid-run swap corrupts the capture) */
+    b1_set_layer(2); b2_set_layer(7); run(3000);
+    CHECK(b1_end() == 'B' && b2_end() == 'A', "same session, mesh moves -> roles stay locked");
 
     printf("\n%d check(s), %d failure(s)\n", checks, fails);
     return fails ? 1 : 0;
