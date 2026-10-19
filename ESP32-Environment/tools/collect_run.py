@@ -38,6 +38,11 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+try:
+    import root_match              # verification #60: is a child's file from the root's run?
+except Exception:                  # pandas missing etc. - collect still works, unchecked
+    root_match = None
 BASE = os.path.dirname(HERE)
 EXPORTS = os.path.join(BASE, "datasets", "exports")
 TOPO_DIR = {"partial": "partial_mesh"}
@@ -174,6 +179,12 @@ HZ = 10                      # telemetry rows per second
 FULL = {0: 270 * HZ, "attack": 120 * HZ, 3: 90 * HZ}   # >= 90 % baseline, 2/3 attack, 3/4 cooldown
 MIN_BASELINE_ROWS = 60 * HZ  # under 60 s of baseline the 3-sigma test has nothing to compare with
 MAX_TRIES = 4                # pieces copied per board at most
+# oct. 19 2026 (verification #60): FE90's newest run left only stabilise pieces, so
+# "newest piece that holds a baseline" walked back to a COMPLETE file of the attempt an
+# hour earlier and filed it next to the new root. Pieces of one run start within minutes
+# of each other (a reboot keeps the run's start); a piece this much older than the newest
+# one is ANOTHER run and is never a fallback.
+RUN_GAP_MIN = 15
 
 
 def _coverage(path):
@@ -377,6 +388,17 @@ def pick(files, attack, topology, location, since, skip_macs, allow_other_locati
         return None, (f"{len(clean)} runs of this attack + topology in the time window ({when}) - the card cannot "
                       f"say which scenario each was. Narrow the time window, or pick the file in Data > Import")
     best = clean[0]
+    # oct. 19 2026 (verification #60, FE90): a NEWER run on the card that left only
+    # reset-ended pieces makes the one clean file look unique - but it is the older run.
+    st_best = _when(best.get("started"))
+    newer = [x for x in aborted if st_best and _when(x.get("started"))
+             and _when(x.get("started")) > st_best + dt.timedelta(minutes=RUN_GAP_MIN)]
+    if newer:
+        last = max(newer, key=lambda x: str(x.get("started") or ""))
+        return None, (f"the only complete file ran {best.get('started')}, but a NEWER run is on the card (ran "
+                      f"{last.get('started')}, {len(newer)} piece(s), none complete) - the complete file is "
+                      f"probably an EARLIER attempt. Narrow the time window to the newer run, or pick the file "
+                      f"in Data > Import")
     # oct. 18 2026 (F4:18): a board that CRASHED mid-run and rebooted closes only its
     # post-crash TAIL cleanly (cooldown, no baseline); the run itself is in the bigger,
     # crash-ended piece. A clean file under half the size of a crash-ended piece of the
@@ -500,6 +522,17 @@ def main():
             alts = _alternatives(files, f, want_atk, topology, a.location, since, a.allow_other_location)
             # newest boot first; the picked file leads only when nothing newer is on the card
             order = sorted([f] + alts, key=_boot, reverse=True)
+            starts = [_when(x.get("started")) for x in order if _when(x.get("started"))]
+            newest = max(starts) if starts else None
+            older = [x for x in order if newest and _when(x.get("started"))
+                     and _when(x.get("started")) < newest - dt.timedelta(minutes=RUN_GAP_MIN)]
+            for x in older:
+                tried.append(f"{x.get('name')} (ran {x.get('started')}): NOT tried - an earlier run than the "
+                             f"newest one on this card (ran {newest:%H:%M})")
+            order = [x for x in order if x not in older]
+            # the root of this run already exported? then every piece must match it
+            roots = root_match.find_arrivals(dest_dir) if root_match else []
+            mismatch = None                  # a piece that holds a baseline but does NOT match the root
             for cand in order[:MAX_TRIES]:
                 sub = os.path.join(tmp, str(len(tried)))
                 path, out = _import_one(src_args, cand, a, sub)
@@ -510,11 +543,27 @@ def main():
                 g = _grade(c)
                 tried.append(f"{cand.get('name')} ({'clean' if cand.get('clean') else 'ended by ' + str(cand.get('ended_by') or 'a reset')}): {_cov_text(c)} -> {g}")
                 print(f"   checked {cand.get('name')}: {_cov_text(c)} -> {g}", flush=True)
+                if g != "NO_RUN" and roots:
+                    rm = root_match.check(path, dest_dir)
+                    if rm["verdict"] == "MISMATCH":
+                        tried[-1] += f" - does NOT match the root ({100 * rm['pct']:.1f} % of probes in another phase)"
+                        print(f"   {cand.get('name')} does NOT match the root's run: {rm['why']}", flush=True)
+                        mismatch = mismatch or (cand, c, path, g, rm)
+                        continue
                 if g != "NO_RUN":
                     best = (cand, c, path, g)        # the newest session that holds a baseline
                     break
                 if best is None:
                     best = (cand, c, path, g)
+            if (best is None or best[3] == "NO_RUN") and mismatch:
+                # nothing that matches the root: never file it silently - report it, file nothing
+                why = ("the only piece(s) with a baseline do NOT match the root's run - nothing filed (another "
+                       "run, or the board's phase labels were out of sync). Pieces checked: " + "; ".join(tried)
+                       + ". If you are sure, pick the file in Data > Import and footnote it")
+                _say(label, mac, "FAIL", why)
+                row.update(state="FAIL", why=why)
+                fail += 1
+                continue
             if best is None or best[3] == "NO_RUN":
                 why = "no piece on the card holds this run's baseline - nothing filed. Pieces checked: " + "; ".join(tried)
                 _say(label, mac, "FAIL", why)

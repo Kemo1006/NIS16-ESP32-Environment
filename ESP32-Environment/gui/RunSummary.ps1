@@ -40,6 +40,7 @@ function Get-RunSummaryRows($S) {
             Board = $(if ($mac.Length -ge 12) { ($mac.Substring(0, 2) + ':' + $mac.Substring(10, 2)).ToUpper() } else { $b.node })
             Role = [string]$role; Rows = [int]$b.rows; Stab = [int]$ph.'255'; Base = [int]$ph.'0'; Attack = $attack; Cool = [int]$ph.'3'
             Secs = [int]$b.seconds; Missing = @($b.missing) -join ', '
+            NotRoot = ([string]$b.root_match -eq 'MISMATCH')   # root_match.py: another run / out of sync
         }
     }
 }
@@ -76,8 +77,8 @@ function Show-RunSummaryWindow($S, [string]$Title = '') {
                 $x = $rows[$i - 1]
                 $flag = @($S.issues | Where-Object { ([string]$_).StartsWith($x.Board + ':') }).Count
                 $v = switch ($j) { 0 { $x.Board } 1 { $x.Role } 2 { '{0:N0}' -f $x.Rows } 3 { '{0:N0}' -f $x.Stab } 4 { '{0:N0}' -f $x.Base }
-                                   5 { '{0:N0}' -f $x.Attack } 6 { '{0:N0}' -f $x.Cool } 7 { $x.Secs } 8 { if ($x.Missing) { 'missing ' + $x.Missing } elseif ($flag) { 'look (see below)' } else { 'OK' } } }
-                $hex = if ($j -eq 8) { if ($x.Missing -or $flag) { $Pal.Amber } else { $Pal.Green } } elseif ($j -eq 0) { $Pal.Blue } else { $Pal.Text }
+                                   5 { '{0:N0}' -f $x.Attack } 6 { '{0:N0}' -f $x.Cool } 7 { $x.Secs } 8 { if ($x.Missing) { 'missing ' + $x.Missing } elseif ($x.NotRoot) { 'NOT the root''s run? (below)' } elseif ($flag) { 'look (see below)' } else { 'OK' } } }
+                $hex = if ($j -eq 8) { if ($x.NotRoot) { $Pal.Red } elseif ($x.Missing -or $flag) { $Pal.Amber } else { $Pal.Green } } elseif ($j -eq 0) { $Pal.Blue } else { $Pal.Text }
                 $t = New-Text ([string]$v) 12 $hex $(if ($j -eq 0) { 'Bold' } else { 'Normal' })
             }
             $t.Margin = '0,3,8,3'; $t.TextWrapping = 'Wrap'

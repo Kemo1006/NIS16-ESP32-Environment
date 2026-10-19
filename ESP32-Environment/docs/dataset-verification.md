@@ -15,6 +15,28 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #61 — Oct 19, 2026 · ~7:30 PM — Collect / import audit: nothing checked a child's file against the ROOT's run
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `e198378` + this change
+> **Request:** "check the collect all plugins, check if there is issue in there"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole / blackhole | partial_mesh / tree | G402 | stationary / highload | r1 | oct. 17 + oct. 19 | the two cells with today's collect problems |
+
+| Check | Result | Detail |
+|---|---|---|
+| Wrong-run guard | ❌ -> 🔧 | collect / Data > Import judged a file by the CARD only (attack, topology, location, start, complete). New `tools/root_match.py`: probe by probe, the child's phase at send vs the root's phase at arrival (reboots split at every seq restart). Right files 0.0 % (tree: <= 1.1 %); partial FE90 9.6 %, 2805 18.9 % -> MISMATCH (> 3 %) |
+| Collect fell back to an OLDER run | ❌ -> 🔧 | newest-boot-first took the first piece with a baseline, even an attempt an hour earlier (FE90). Now: pieces > 15 min older than the newest run on the card are never tried; the scan refuses 'one complete file + a newer run in pieces'; a piece that does not match the exported root is not filed |
+| RUN SUMMARY | ❌ -> 🔧 | flags 'does NOT match the root' per board (GUI status 'NOT the root's run?', red) and **two ROOT runs in one folder** |
+| blackhole/tree/G402/highload folder | ⚠️ | holds TWO runs: oct. 17 (root + child_node*, pulled from GitHub 5:18 PM) and oct. 19 (root + victim_NODE-*). trimmed/ has only oct. 19 so far, but a re-analysis would mix them - team decides which stays live (oct. 17 = D9 recapture) |
+| 2805 in the oct. 19 tree run | ⚠️ | MISMATCH 33.6 % but SAME run (seq continuous): its phase labels ran ahead of the root's after two brownouts (baseline 199 s, attack ~100 s early) - labels unusable as they are |
+| Tests | ✅ | verifier 46/46, segments OK, GUI self-test exit 0, pick(): FE90 case refused / same-run reboot pieces still taken |
+
+**Verdict: 🔧 the collect + import path now checks every child against the root's run and never falls back to an earlier attempt; open: the mixed tree/G402/highload folder (team decision) and re-importing partial_mesh FE90 + 2805 (#60).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #60 — Oct 19, 2026 · ~6:50 PM — wormhole/partial_mesh/G402/stationary: FE90 + 2805 files are from the WRONG RUN
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `2f6e0bb`

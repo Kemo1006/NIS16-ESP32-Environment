@@ -16,6 +16,9 @@ Per board: rows, phase counts (255 stabilise, 0 baseline, 1/2 attack,
   * attack / cooldown row counts agree across boards (one schedule, one run)
   * one file per board (a second file = another run or a reboot piece)
   * --expect N boards present (root + children, e.g. from the preset)
+  * ROOT MATCH (oct. 19 2026, tools/root_match.py): each child's phase labels agree
+    with the root's arrivals, probe by probe - catches a file of ANOTHER run (or a
+    board out of sync) that looks complete; and only ONE root run in the folder
 Exit 0 = complete, 1 = something to look at, 2 = nothing readable.
 """
 import argparse
@@ -136,6 +139,25 @@ def summarise(folder, expect=None):
                 issues.append(f"no board logged as {need} in baseline/attack - tunnel end missing")
             elif len(ends[need]) > 1:
                 issues.append(f"{len(ends[need])} boards logged as {need}: " + ", ".join(_short(n) for n in sorted(ends[need])))
+    # ROOT MATCH (verification #60): one root per folder, and every child from its run
+    try:
+        import root_match
+        roots = root_match.find_arrivals(folder)
+        if len(roots) > 1:
+            issues.append(f"{len(roots)} ROOT runs in this folder ({', '.join(os.path.basename(r) for r in roots)}) - "
+                          f"two runs are mixed here (e.g. a teammate's older run pulled from GitHub next to a new "
+                          f"capture); the analysis would mix them. Move the run that is not current to archive/")
+        for b in boards:
+            r = root_match.check(os.path.join(folder, b["file"]), folder) if roots else {"verdict": "UNKNOWN"}
+            b["root_match"] = r["verdict"]
+            if r["verdict"] == "MISMATCH":
+                issues.append(f"{_short(b['node'])}: does NOT match the root - {r['why']}. Re-import the right file "
+                              f"(Data > Import, the run that started with the root's) or footnote it")
+        if not roots:
+            notes.append("no root arrivals in this folder yet - children could not be matched to the root's run")
+    except Exception as e:                          # a health card never fails on its own check
+        notes.append(f"root match check could not run: {e}")
+
     if expect and len(by_node) < expect:
         issues.append(f"{len(by_node)} of {expect} expected boards are here - {expect - len(by_node)} not imported yet")
     return {"folder": folder, "attack": attack, "boards": boards, "issues": issues, "notes": notes,
@@ -156,6 +178,8 @@ def render(s):
         role = (b["roles"].get(0) or b["roles"].get(ap or 1) or b["roles"].get(255) or ["?"])[0]
         att = b["phases"].get(ap, 0) if ap else b["phases"].get(1, 0) + b["phases"].get(2, 0)
         st = "OK" if not b["missing"] else "missing " + ", ".join(b["missing"])
+        if b.get("root_match") == "MISMATCH":
+            st = "NOT THE ROOT'S RUN?" if st == "OK" else st + ", NOT THE ROOT'S RUN?"
         out.append(f"  {_short(b['node']):<8} {role:<12} {b['rows']:>7,}  {b['phases'].get(255, 0):>5,} {b['phases'].get(0, 0):>6,} "
                    f"{att:>6,} {b['phases'].get(3, 0):>5,}  {b['seconds']:>5}  {st}")
     out.append("")
