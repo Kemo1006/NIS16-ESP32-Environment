@@ -199,6 +199,12 @@ class TreeReroute(unittest.TestCase):
                                                          "0C80": "wormhole_a", "1C38": "wormhole_b"})
             self.assertEqual(va._gap(unlab)[:2], ("minor", "FE90"))
             self.assertEqual(va._gap(gone)[:2], ("minor", "FE90, B768"))
+            # the real message (its explanation contains ': ' too - the board list must still be read)
+            new = ac.Issue(ac.WARN, "1 node(s) have NO labelled window (no_phase_seen), so the checks above run without"
+                                    " them: FE90 - their raw files may be COMPLETE: preprocessing unlabels a board whose"
+                                    " phase labels are out of sync with the root's ([UNLABELLED] in the preprocessing"
+                                    " report), or one that never left phase 0. A data/preprocessing gap, not evidence")
+            self.assertEqual(va._gap(new)[:2], ("minor", "FE90"))
             # a tunnel end, or a board whose role is unknown, stays MAJOR
             end = ac.Issue(ac.WARN, "1 node(s) have NO labelled window (x), so the checks above run without them: 1C38 - x")
             self.assertEqual(va._gap(end)[0], "major")

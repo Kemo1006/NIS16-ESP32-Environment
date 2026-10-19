@@ -682,8 +682,10 @@ def topology_issues(df, attack, key_nodes=()):
             out.append(Issue(WARN, f"{len(unlab)} node(s) have NO labelled window ("
                                    + ", ".join(segs) + "), so the checks above run without"
                                    " them: " + ", ".join(_short(n) for n in unlab)
-                                   + " - a data/preprocessing gap, not evidence about the"
-                                   " attack; check those boards' raw exports"))
+                                   + " - their raw files may be COMPLETE: preprocessing unlabels a"
+                                   " board whose phase labels are out of sync with the root's"
+                                   " ([UNLABELLED] in the preprocessing report), or one that never"
+                                   " left phase 0. A data/preprocessing gap, not evidence about the attack"))
     return out
 
 

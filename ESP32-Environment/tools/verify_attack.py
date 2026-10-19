@@ -670,10 +670,14 @@ def _gap(it):
                               f"(the verdict compares baseline and attack only)")
     if "no attack-window telemetry" in t or "NO labelled window" in t:
         dropped = "no attack-window telemetry" in t
-        names = (t.split("telemetry from ", 1)[-1].split(" (")[0] if dropped
-                 else t.rsplit(": ", 1)[-1].split(" - ")[0])
+        if dropped:
+            names = t.split("telemetry from ", 1)[-1].split(" (")[0]
+        else:   # the board list follows "without them: " (the explanation after it has ': ' too)
+            m = re.search(r"without them: (.*?) - ", t)
+            names = m.group(1) if m else t.rsplit(": ", 1)[-1].split(" - ")[0]
         what = ("dropped out before the attack, so it was never measured" if dropped
-                else "no usable windows (no phase was seen), so the checks ran without it")
+                else "its phase labels could not be used (out of sync with the root, or it never left "
+                     "phase 0 - its file itself may be complete), so the checks ran without it")
         # oct. 19 2026 (verification #58, team decision): in a WORMHOLE run the evidence is
         # carried by the tunnel ends (B's TunnelIntensity) and the root (DuplicateRate) - a
         # plain child is neither. So a missing plain child is judged like any other per-board
