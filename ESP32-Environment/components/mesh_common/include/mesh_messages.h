@@ -86,7 +86,7 @@ typedef enum {
  * beat is still accepted by a new root (heartbeat_ingest reads wh_link only
  * when the frame is long enough), and an old root ignores the extra byte.
  *
- * 53 bytes — comfortably inside phase_listener.c's 128-byte rx_buf.
+ * 54 bytes (sd_log appended oct. 19 2026) — comfortably inside phase_listener.c's 128-byte rx_buf.
  */
 typedef struct __attribute__((packed)) {
     uint32_t magic;                        /**< HEARTBEAT_MSG_MAGIC — must be first */
@@ -102,6 +102,9 @@ typedef struct __attribute__((packed)) {
     uint8_t  export_status;                /**< export_status_t — Phase 2           */
     uint8_t  export_percent;               /**< 0-100 — Phase 2                     */
     uint8_t  wh_link;                      /**< wh_link_t — wormhole ends only      */
+    uint8_t  sd_log;                       /**< sd_log_state_t (oct. 19 2026), appended
+                                                like wh_link: a 53-byte beat (older
+                                                boards) is still read, without it */
 } node_heartbeat_pkt_t;
 
 /** Wormhole A<->B UART link as each END sees it (heartbeat wh_link). Lets the

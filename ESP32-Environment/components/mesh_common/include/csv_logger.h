@@ -208,6 +208,20 @@ esp_err_t csv_logger_append_probe_arrival(
 /** Force an immediate flush of both open files. */
 esp_err_t csv_logger_flush(void);
 
+/** SD copy of this board's telemetry, as the heartbeat reports it (sd_log). */
+typedef enum {
+    SD_LOG_NA      = 0,   /**< not reported (older firmware)                         */
+    SD_LOG_OK      = 1,   /**< the card took a row within SD_LOG_STALL_S             */
+    SD_LOG_NO_CARD = 2,   /**< no card mounted at boot - internal flash only         */
+    SD_LOG_FAILED  = 3,   /**< a card write failed - card copy stopped for this run  */
+    SD_LOG_WAITING = 4,   /**< logger not started / no row yet                       */
+    SD_LOG_STALLED = 5    /**< card copy open but no row for SD_LOG_STALL_S          */
+} sd_log_state_t;
+#define SD_LOG_STALL_S 30
+
+/** What the SD copy of the telemetry is doing now (sd_log_state_t). */
+uint8_t csv_logger_sd_state(void);
+
 /** Flush and close all open files, and unmount the SD card if it was mirroring.
  *  The card is safe to remove once this returns. csv_logger_init() must be
  *  called again to log. */

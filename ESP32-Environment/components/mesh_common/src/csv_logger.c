@@ -87,6 +87,7 @@ static FILE *s_sd_arrivals_fp   = NULL;
 static char  s_sd_log_path[192]      = {0};
 static char  s_sd_arrivals_path[192] = {0};
 static bool  s_sd_log_failed      = false;  /* latched: don't retry every row */
+static int64_t s_sd_log_last_ok_us = 0;     /* last telemetry row the CARD took */
 static bool  s_sd_arrivals_failed = false;
 
 /* HIGHLOAD ROOT ONLY — see csv_logger_set_arrivals_sd_only(). Off in every
@@ -1123,14 +1124,17 @@ static void sd_mirror_ensure(FILE **fp, const char *path, const char *header,
 
 /* Drop the mirror after a failed write rather than retrying every row — a card
  * that has gone away will not come back mid-run, and the log spam would itself
- * disturb the capture. */
-static void sd_mirror_drop(FILE **fp, const char *what)
+ * disturb the capture. oct. 19 2026: *failed is latched here too - without it the
+ * NEXT row's sd_mirror_ensure() re-opened the same path with fopen("w"), which
+ * truncated the card file: one failed write erased the run's card copy so far. */
+static void sd_mirror_drop(FILE **fp, bool *failed, const char *what)
 {
     if (*fp) {
         ESP_LOGW(TAG, "SD %s write failed — mirror disabled for the rest of this run.", what);
         fclose(*fp);
         *fp = NULL;
     }
+    *failed = true;
 }
 
 /* Owner-side half of a live DELETE_SD_FILE (see s_sd_log_del). Called from the
@@ -1467,7 +1471,9 @@ esp_err_t csv_logger_append_telemetry(
     sd_mirror_ensure(&s_sd_log_fp, s_sd_log_path, TELEMETRY_HEADER,
                      &s_sd_log_failed, s_node_id, s_role_str, s_run_number, true);
     if (s_sd_log_fp && fputs(row, s_sd_log_fp) < 0) {
-        sd_mirror_drop(&s_sd_log_fp, "telemetry");
+        sd_mirror_drop(&s_sd_log_fp, &s_sd_log_failed, "telemetry");
+    } else if (s_sd_log_fp) {
+        s_sd_log_last_ok_us = esp_timer_get_time();
     }
 
     s_row_count++;
@@ -1566,7 +1572,7 @@ esp_err_t csv_logger_append_probe_arrival(
         bool on_sd = false;
         if (s_sd_arrivals_fp) {
             if (fputs(row, s_sd_arrivals_fp) < 0) {
-                sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
+                sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_failed, "arrivals");
             } else {
                 on_sd = true;
             }
@@ -1595,7 +1601,7 @@ esp_err_t csv_logger_append_probe_arrival(
         sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
                          &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
         if (s_sd_arrivals_fp && fputs(row, s_sd_arrivals_fp) < 0) {
-            sd_mirror_drop(&s_sd_arrivals_fp, "arrivals");
+            sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_failed, "arrivals");
         }
     }
 
@@ -2395,4 +2401,30 @@ static void serial_export_task(void *arg)
             cmd_overflow = true;
         }
     }
+}
+
+/* oct. 19 2026 (2805: the root got every probe of a highload run, but the
+ * board's card never got a row): what this board's SD copy of the telemetry is
+ * doing right now, sent in every heartbeat so the root's dashboard shows it. */
+uint8_t csv_logger_sd_state(void)
+{
+    if (s_sd_log_failed) {
+        return SD_LOG_FAILED;
+    }
+    if (s_log_fp == NULL && !csv_logger_is_closed()) {
+        return SD_LOG_WAITING;               /* logger not started yet */
+    }
+    if (s_sd_log_path[0] == '\0') {
+        return SD_LOG_NO_CARD;
+    }
+    if (csv_logger_is_closed()) {
+        return s_sd_log_last_ok_us ? SD_LOG_OK : SD_LOG_NO_CARD;
+    }
+    if (s_sd_log_last_ok_us == 0) {
+        return SD_LOG_WAITING;
+    }
+    if (esp_timer_get_time() - s_sd_log_last_ok_us > (int64_t)SD_LOG_STALL_S * 1000000LL) {
+        return SD_LOG_STALLED;
+    }
+    return SD_LOG_OK;
 }

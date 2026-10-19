@@ -15,6 +15,28 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #64 — Oct 19, 2026 · ~7:15 PM — root_match CORRECTED (false alarms) + SD-logging indicator
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a7588c5` + this change
+> **Request:** "check 28:B4" / Kyle's new highload files / "add an indicator in the root dashboard if all nodes are writing to their own SD card"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole / blackhole | partial_mesh / tree | G402 | highload, stationary / highload | r1 | oct. 17 + 19 | every child file of the three cells |
+
+| Check | Result | Detail |
+|---|---|---|
+| **root_match was wrong for boards with failed sends** | ❌ -> 🔧 | `victim_main.c`: seq_num goes up on EVERY attempt, probes_count only on success (failures in retry_count). Board seq = probes_count + retry_count (wormhole ends: probes_count). Re-checked: partial highload B768 17.8 -> **0.1 %**, FE90 16.6 -> **0.0 %**; partial stationary **2805 18.9 -> 0.0 %**; tree oct. 17 child_node7 -> 0.0 % |
+| **Corrections** | ⚠️ | #60 / #62: 2805's partial STATIONARY file is the right run AND in sync (the 18.9 % was this counting artefact, not drift). Only **FE90 stationary** is a real wrong-run file (9.6 % with either formula, 700 vs 672). Tree 2805 (33 %) stays a real mismatch (two brownouts) |
+| partial highload now | ✅ | root + 0C80 + 1C38 + E618 + B768 (Kyle) + FE90 + ED80 (Kyle) all MATCH; 2805 has no telemetry (#63) |
+| SD logger bug | ❌ -> 🔧 | `csv_logger.c::sd_mirror_drop` did not latch the failure: the NEXT row re-opened the card file with fopen("w") = **truncated the run's card copy** after a single failed write. Now latched (copy stops, nothing erased) |
+| SD indicator | 🔧 | heartbeat +1 byte `sd_log` (OK / NO CARD / WRITE FAILED / STALLED >30 s / waiting; old 53-byte beats still read); root prints ` SD LOGGING  : N/N board(s) writing to their SD card` or `NOT WRITING on ...`; GUI pre-START check 'SD cards writing' (locks START) + alert |
+| Tests | ✅ | all firmware variants -fsyntax-only clean (-Werror), A/B sim 79/79, GUI self-test exit 0 |
+
+**Verdict: 🔧 the wrong-run check no longer raises false alarms (its own bug); only FE90 stationary is a wrong-run import. SD writing is now visible on the root's dashboard during the run, and a single SD hiccup can no longer erase a card copy. NOT hardware-tested - reflash all boards.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #63 — Oct 19, 2026 · ~6:45 PM — 2805's SD card read directly (card reader, E:)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `b6aaa06`

@@ -986,6 +986,7 @@ static void heartbeat_task(void *arg)
             pkt.export_status = log_closed ? EXPORT_STATUS_LOG_CLOSED
                                            : EXPORT_STATUS_IDLE;
             pkt.wh_link       = node_identity_wh_link();
+            pkt.sd_log        = csv_logger_sd_state();
 
             /* Mirrors phase_listener_broadcast()'s root self-loopback (FROMDS) vs
              * a non-root node's upward send (TODS) — see the routerless-mesh
@@ -1058,6 +1059,7 @@ typedef struct {
     uint8_t  current_phase;
     uint8_t  export_status;   /* EXPORT_STATUS_LOG_CLOSED = safe to export     */
     uint8_t  wh_link;         /* wh_link_t: wormhole end's UART link state     */
+    uint8_t  sd_log;          /* sd_log_state_t: is its SD card taking rows    */
     int64_t  last_seen_us;
     uint8_t *seen_parents;    /* PARTIAL only: every distinct parent observed  */
     size_t   seen_count;
@@ -1455,6 +1457,37 @@ static void heartbeat_table_print(void)
                       "are still writing", (unsigned)done, (unsigned)n);
     } else {
         ESP_LOGI(TAG, " EXPORT      : not yet - run in progress, do not export");
+    }
+    /* SD LOGGING (oct. 19 2026): a board whose card is not taking rows still sends
+     * probes - the root sees it as healthy - but its telemetry exists only in its
+     * internal flash (wiped by the next flash). Say so while it can still be fixed. */
+    {
+        char bad[200] = "";
+        size_t ok = 0, old = 0, nbad = 0;
+        for (size_t i = 0; i < n; i++) {
+            const heartbeat_entry_t *e = &s_nodes[i];
+            if (e->sd_log == SD_LOG_OK || e->sd_log == SD_LOG_WAITING) {
+                ok++;
+            } else if (e->sd_log == SD_LOG_NA) {
+                old++;
+            } else {
+                char one[40];
+                snprintf(one, sizeof(one), "%s%02X:%02X %s", nbad ? ", " : "", e->mac[0], e->mac[5],
+                         e->sd_log == SD_LOG_NO_CARD ? "NO CARD" :
+                         e->sd_log == SD_LOG_FAILED  ? "WRITE FAILED" : "STALLED");
+                strlcat(bad, one, sizeof(bad));
+                nbad++;
+            }
+        }
+        if (nbad) {
+            ESP_LOGE(TAG, " SD LOGGING  : NOT WRITING on %u board(s): %s - their telemetry is ONLY in "
+                          "internal flash: fix the card (reseat / replace, then reset that board) "
+                          "BEFORE START, or export it over USB before it is re-flashed",
+                     (unsigned)nbad, bad);
+        } else if (n > 0) {
+            ESP_LOGI(TAG, " SD LOGGING  : %u/%u board(s) writing to their SD card%s", (unsigned)ok, (unsigned)n,
+                     old ? " (the rest run older firmware - not reported)" : "");
+        }
     }
     log_rule('-', rule_w);
 
@@ -2069,7 +2102,8 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
         return magic == HEARTBEAT_MSG_MAGIC;
     }
     const node_heartbeat_pkt_t *pkt = (const node_heartbeat_pkt_t *)data;
-    uint8_t wh_link = (len >= sizeof(node_heartbeat_pkt_t)) ? pkt->wh_link : WH_LINK_NA;
+    uint8_t wh_link = (len > offsetof(node_heartbeat_pkt_t, wh_link)) ? pkt->wh_link : WH_LINK_NA;
+    uint8_t sd_log  = (len > offsetof(node_heartbeat_pkt_t, sd_log)) ? pkt->sd_log : SD_LOG_NA;
 
     table_lock();
 
@@ -2098,6 +2132,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
                 || hit->role  != pkt->assigned_role
                 || hit->export_status != pkt->export_status
                 || hit->wh_link != wh_link
+                || hit->sd_log != sd_log
                 || strncmp(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN) != 0;
 
     strlcpy(hit->nickname, pkt->nickname, NODE_NICKNAME_LEN);
@@ -2109,6 +2144,7 @@ bool heartbeat_ingest(const uint8_t *data, size_t len)
     hit->current_phase = pkt->current_phase;
     hit->export_status = pkt->export_status;
     hit->wh_link       = wh_link;
+    hit->sd_log        = sd_log;
     hit->last_seen_us  = esp_timer_get_time();
 #if (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
     entry_note_parent(hit);

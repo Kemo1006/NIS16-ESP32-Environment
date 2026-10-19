@@ -77,16 +77,27 @@ def check(telem_csv, arrivals):
 
 def _check_one(telem_csv, arrivals):
     try:
-        t = pd.read_csv(telem_csv, usecols=["node_id", "role", "probes_count", "phase_id"], dtype=str,
-                        on_bad_lines="skip")
+        t = pd.read_csv(telem_csv, usecols=lambda c: c in ("node_id", "role", "probes_count", "retry_count",
+                                                            "phase_id"), dtype=str, on_bad_lines="skip")
     except (ValueError, OSError) as e:
         return {"verdict": "UNKNOWN", "compared": 0, "different": 0, "pct": 0.0, "why": f"unreadable: {e}"}
-    if t.empty or str(t["role"].mode().iloc[0]).lower() == "root":
+    role = str(t["role"].mode().iloc[0]).lower() if not t.empty else ""
+    if t.empty or role == "root":
         return {"verdict": "UNKNOWN", "compared": 0, "different": 0, "pct": 0.0, "why": "the root itself"}
     mac = _mac_of(t["node_id"].iloc[0])
-    t["probes_count"] = pd.to_numeric(t["probes_count"], errors="coerce")
-    t["phase_id"] = pd.to_numeric(t["phase_id"], errors="coerce")
-    sent_in = t.dropna().drop_duplicates("probes_count").set_index("probes_count")["phase_id"]
+    for c in ("probes_count", "retry_count", "phase_id"):
+        if c in t.columns:
+            t[c] = pd.to_numeric(t[c], errors="coerce")
+    # The probe's seq_num goes up on EVERY attempt, probes_count only on a successful
+    # send; a failed send is counted in retry_count (victim_main.c). So for a plain child
+    # seq = probes_count + retry_count - a board with failed sends before it joined the
+    # mesh otherwise looks ~17 % out of step (oct. 19: B768 / FE90 / 2805 - false alarms).
+    # A wormhole end's retry column counts something else; its probes_count IS the seq.
+    if role.startswith("wormhole") or "retry_count" not in t.columns:
+        t["_seq"] = t["probes_count"]
+    else:
+        t["_seq"] = t["probes_count"] + t["retry_count"]
+    sent_in = t.dropna(subset=["_seq", "phase_id"]).drop_duplicates("_seq").set_index("_seq")["phase_id"]
     a = _arrivals(arrivals)
     g = a[(a["src_mac"] == mac) & a["phase_id"].isin(REAL_PHASES)]
     # A board that REBOOTED restarts its probe numbers at 1, so the root's arrivals hold
