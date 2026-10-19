@@ -16,6 +16,31 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #54 — Oct 19, 2026 · afternoon — every run re-analysed with D-25, then re-verified
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5c0ba40` + this change
+> **Request:** "re-analyse everything then verify; push after the analysis"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 53 runs (52 attack + 1 benign) | `analyze.ps1 -All -Verify` (paused at 31, resumed for the other 22) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Re-analysis | ✅ 53/53 | every run trimmed -> preprocess (D-25) -> features -> EDA -> verify, exit 0. baseline/partial_mesh/DLSU_Library/stationary is an EMPTY folder (no capture) - not a second benign run |
+| Verdicts vs the committed (pre-D-25) tables | ✅ 52/52 attack verdicts identical | |
+| Grades that changed | ✅ 3, all explained | blackhole/linear/G402/stationary MINOR -> GOOD (gaps were the D-25 artifact); blackhole/tree/G402/stationary MAJOR -> MINOR (only B768's crash left); blackhole/linear/Yuchengco/stationary MINOR -> STRONG - **a different capture**: it was recaptured oct. 19 1:37 AM (the oct. 9 files are archived locally) |
+| Benign run (baseline/linear/home/highload) | ❌ | first analysis ever: BENIGN NOT CONFIRMED (cooldown PDR 0.72, no attacker) - C15 |
+| Topology "Gate 2" warnings (linear DLSU+G402 highload, linear G402 stationary) | ✅ not from D-25 | verify_topology.py reads the RAW exports, not the windows - unchanged by the tick fix |
+| Audits on the final tables | ✅ | tests 44/44 · audit_verdict_sync 5/5 rules · placebo 0 false positives / 104 · threshold sensitivity 0 flips |
+| GUI bug found | ❌ -> 🔧 | Analyse on a benign run passed `-Attack none`; analyze.ps1 only accepts `baseline` -> it always failed. Fixed in Start-Analysis. New button: Verify page **Re-analyse everything** |
+| Push | ⚠️ partial by design | analysis tables pushed with git (smart_sync would keep GitHub's pre-D-25 copies as "equivalent"). **blackhole/linear/Yuchengco/stationary held back**: the recapture would sit next to the oct. 9 files still on GitHub - needs the team's OK to replace them |
+
+**Verdict: ✅ D-25 applied to every run; no verdict changed; grades are now measured on complete windows.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #53 — Oct 19, 2026 · ~5:30 AM — thresholds, signature formulas, missing windows, benign runs: honest re-assessment
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `8ac4515` + this change (pushed)

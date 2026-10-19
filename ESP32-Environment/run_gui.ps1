@@ -1023,6 +1023,7 @@ $StyleXaml
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
               <Button x:Name="AnaVerifyAll" Content="Check all verdicts" ToolTip="Runs the (read-only) 3-sigma verifier on every analysed attack run, a few seconds each, so every run in the list shows CONFIRMED / SETUP INVALID / NOT CONFIRMED"/>
               <Button x:Name="AnaAllNew" Style="{StaticResource Cool}" Content="Analyse everything new" ToolTip="Trim + analyse + verify every run whose data is newer than its analysis (or never analysed), one after the other"/>
+              <Button x:Name="AnaAllRe" Content="Re-analyse everything" ToolTip="Trim + analyse + verify EVERY captured run again, one after the other - use it after the analysis code changes (e.g. D-25, oct. 19 2026). Long: every run's tables and plots are rebuilt"/>
               <Button x:Name="AnaRefresh" Content="Refresh"/>
             </StackPanel>
             <StackPanel>
@@ -4696,7 +4697,7 @@ function Start-Analysis([string]$Attack, [string]$Topology, [string]$Location, [
     # warning on stderr cannot stop it - MEMORY oct. 7) - no console window
     $key = '{0}/{1}/{2}/{3}' -f $(if ($Attack -in @('none', 'baseline')) { 'baseline' } else { $Attack }), ($Topology -replace '^partial$', 'partial_mesh'), $Location, $Scenario
     $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $base 'analyze.ps1'),
-        '-Attack', $Attack, '-Topology', $Topology, '-Location', $Location, '-Scenario', $Scenario, '-Verify')
+        '-Attack', $(if ($Attack -in @('none', 'baseline')) { 'baseline' } else { $Attack }), '-Topology', $Topology, '-Location', $Location, '-Scenario', $Scenario, '-Verify')   # analyze.ps1 knows 'baseline', not 'none' (fixed oct. 19 2026)
     if ($Raw) { $a += '-SkipTrim' }   # raw export as imported - no trim_run.py
     $data = if ($Raw) { 'raw (no trim)' } else { 'trimmed' }
     $ok = Start-StreamJob -Exe 'powershell' -ToolArgs $a -Title ("Analyse + verify {0}  [{1} data]" -f $Text, $data) -State @{ Text = $Text; Key = $key; Data = $data } -OnDone {
@@ -4739,6 +4740,22 @@ $ui.AnaAllNew.Add_Click({
     $ui.AnaUseTrim.IsChecked = -not $script:AnaQueueRaw; $ui.AnaUseRaw.IsChecked = $script:AnaQueueRaw
     $script:AnaQueue.Clear(); foreach ($c in $todo) { $script:AnaQueue.Enqueue($c) }
     $script:AnaQueueTotal = $todo.Count
+    Start-NextAnalysis
+})
+$ui.AnaAllRe.Add_Click({
+    # oct. 19 2026 (user): rebuild EVERY run's analysis + verdict - after the analysis code
+    # changed, "everything new" finds nothing because the data itself did not change
+    $all = @($script:Cells)
+    if (-not $all.Count) { return }
+    if ($script:AnaQueue.Count) { [void][Windows.MessageBox]::Show('An analysis queue is still running - wait for it to finish.', 'Re-analyse everything', 'OK', 'Information'); return }
+    $msg = ("Re-analyse + verify ALL {0} captured run(s), one after the other?`n`nEvery run is trimmed again, its tables and plots are rebuilt and its verdict is checked again. " +
+            "This takes a long time (minutes per run). Raw exports are never changed.`n`n    Yes  =  TRIMMED data (recommended)`n    No   =  RAW data`n    Cancel = do nothing") -f $all.Count
+    $ans = if ($script:AutoConfirm) { 'Cancel' } else { [string][Windows.MessageBox]::Show($msg, 'Re-analyse everything', 'YesNoCancel', 'Warning') }
+    if ($ans -eq 'Cancel') { return }
+    $script:AnaQueueRaw = ($ans -eq 'No')
+    $ui.AnaUseTrim.IsChecked = -not $script:AnaQueueRaw; $ui.AnaUseRaw.IsChecked = $script:AnaQueueRaw
+    $script:AnaQueue.Clear(); foreach ($c in $all) { $script:AnaQueue.Enqueue($c) }
+    $script:AnaQueueTotal = $all.Count
     Start-NextAnalysis
 })
 $ui.AnaRefresh.Add_Click({ Update-Cells; Set-Status 'Run list refreshed.' })
