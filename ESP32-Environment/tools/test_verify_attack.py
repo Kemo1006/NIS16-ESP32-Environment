@@ -261,7 +261,7 @@ class Blackhole(unittest.TestCase):
         m = attack_rows(d) & (d.node_id == self.atk_id)
         d.loc[m, "forward_count_delta"] = d.loc[m, "recv_count_delta"]
         txt = run(d, "blackhole")[2]
-        self.assertIn("CONFIDENCE: NOT CONFIRMED", txt)
+        self.assertIn("CONFIDENCE: FAILED - the attack cannot be confirmed", txt)
 
     def test_attacker_was_a_leaf(self):
         d = self.df.copy()

@@ -48,7 +48,7 @@ function ConvertFrom-ReportText([string]$Text) {
         }
         if ($sk) { if (-not $tr) { $sk = $false } else { $o.Sketch += $(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr }) }; continue }
         if ($tr -match '^VERDICT\s*:\s*(.+)$') { $o.Verdict = $Matches[1]; continue }
-        if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $inConf = $true; continue }
+        if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $(if ($Matches[1] -eq 'NOT CONFIRMED') { 'FAILED' } else { $Matches[1] }); $o.Say = $Matches[2]; $inConf = $true; continue }
         # a report from before the final grades (oct. 19 2026) - shown as an OLD report
         if ($tr -match '^CONFIDENCE\s*:\s*(SOUND|WITH NOTES|QUALIFIED|-)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $o.Old = $true; $inConf = $true; continue }
         if ($inConf) {
@@ -239,7 +239,9 @@ function New-PlainExplain($Rep) {
         }
     }
     elseif ($v -match 'NOT CONFIRMED|INCONCLUSIVE|SETUP INVALID') {
-        & $add $bad $Pal.Red 'The attack could not be confirmed in this data.' 'Fix the reason below, then capture the run again:'
+        $pp = @($Rep.Sig | Where-Object { $_.Role -match 'primary' -and $_.Res -eq 'PASS' }).Count
+        $why = if ($pp -and $v -match 'SETUP INVALID') { "The attack signature DID move ($pp primary feature(s) passed), but it cannot be counted: the run did not go as designed, so the numbers may not show the attack you planned. Fix the reason below, then capture the run again:" } else { 'Fix the reason below, then capture the run again:' }
+        & $add $bad $Pal.Red 'The attack could not be confirmed in this data.' $why
         foreach ($f in $(if ($Rep.Fails.Count) { @($Rep.Fails) } else { @('no attack signature moved far enough') })) { & $bullet ($f.Substring(0, 1).ToUpper() + $f.Substring(1)) }
     }
     elseif ($v -match 'WORMHOLE') {
@@ -353,12 +355,12 @@ function Add-CampVisual($Body, $S, [string]$Look) {
         $ver = if ($Look -in @('todo', 'partial')) { @('todo', '') }
                elseif (-not $rep -and -not $v) { @('todo', $(if ($hasAna) { 'press Verify' } else { '' })) }
                elseif ($rep -and $rep.Verdict -match 'SETUP INVALID') { @('bad', 'setup invalid') }
-               elseif ($rep -and $rep.Verdict -match 'NOT CONFIRMED|INCONCLUSIVE') { @('bad', 'not confirmed') }
+               elseif ($rep -and $rep.Verdict -match 'NOT CONFIRMED|INCONCLUSIVE') { @('bad', 'failed') }
                elseif ($rep -and $rep.Verdict -match 'CONFIRMED') { @('ok', 'confirmed') }
-               elseif ($v -and $v.Code -eq 0) { @('ok', 'confirmed') } elseif ($v) { @('bad', 'not confirmed') } else { @('todo', '') }
+               elseif ($v -and $v.Code -eq 0) { @('ok', 'confirmed') } elseif ($v) { @('bad', 'failed') } else { @('todo', '') }
         $grd = if (-not $rep) { @('todo', '') }
                elseif ($rep.Old) { @('warn', 'old report - press Verify') }
-               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } 'NOT CONFIRMED' { @('bad', 'not confirmed') } default { @('todo', '') } } }
+               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } 'FAILED' { @('bad', 'failed') } default { @('todo', '') } } }
     }
     Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]))
     if (-not $rep) { return }
@@ -484,7 +486,7 @@ function Set-CampTileTip($Tile) {
     if (-not $c -or $c.T -ne $stamp) {
         $b = Get-CampReportBits $key
         $line = if (-not $b) { '' } elseif ($b.Old) { 'old report - press Verify' }
-                elseif ($b.Grade -eq 'NOT CONFIRMED') { 'NOT CONFIRMED' }
+                elseif ($b.Grade -eq 'FAILED') { 'FAILED' }
                 elseif ($b.Grade) { 'CONFIRMED - ' + $b.Grade } else { '' }
         $c = @{ T = $stamp; Line = $line }; $script:CampTipCache[$key] = $c
     }

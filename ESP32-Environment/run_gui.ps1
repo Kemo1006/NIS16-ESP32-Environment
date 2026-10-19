@@ -4192,7 +4192,7 @@ $script:AnaBadge = @{
     ok      = @{ T = 'CONFIRMED';     Bg = '#1F4D3E'; Fg = $Pal.Green }
     invalid = @{ T = 'SETUP INVALID'; Bg = '#3A2E14'; Fg = $Pal.Amber }
     incon   = @{ T = 'INCONCLUSIVE';  Bg = '#3A2E14'; Fg = $Pal.Amber }
-    notok   = @{ T = 'NOT CONFIRMED'; Bg = '#3A1E2C'; Fg = $Pal.Red }
+    notok   = @{ T = 'FAILED'; Bg = '#3A1E2C'; Fg = $Pal.Red }
     done    = @{ T = 'ANALYSED';      Bg = '#2A2E48'; Fg = $Pal.Dim }
 }
 function Get-RunStatus([string]$A, [string]$T, [string]$L, [string]$S, [string]$Look) {
@@ -4520,8 +4520,8 @@ function Show-AnaReport([string]$Text) {
     $ci = -1; for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match '^\s*CONFIDENCE\s*:') { $ci = $i; break } }
     if ($ci -ge 0) {
         $head = $lines[$ci].Trim() -replace '^CONFIDENCE\s*:\s*', ''
-        $grade = if ($head -match '^(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $Matches[1] } else { ($head -split '\s+')[0] }
-        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F' } } 'NOT CONFIRMED' { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } default { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } }
+        $grade = if ($head -match '^(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $Matches[1] } else { ($head -split '\s+')[0] }
+        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F' } } { $_ -in 'FAILED', 'NOT CONFIRMED' } { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } default { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } }
         $card = New-AnaCard ('CONFIDENCE  -  ' + $head) $lk.Fg
         $items = New-Object System.Collections.ArrayList
         for ($i = $ci + 1; $i -lt $lines.Count; $i++) {
@@ -4872,7 +4872,7 @@ $script:TileLook = @{
     #   yellow DONE - RECAPTURE ADVISED      MINOR GAPS (result not affected), or another CHECK
     #   orange RECAPTURE REQUIRED            MAJOR GAPS (data the result relies on is missing),
     #                                        or another source demands a recapture
-    #   red    REDO                    NOT CONFIRMED / setup invalid / a checklist recapture
+    #   red    REDO                    FAILED (attack cannot be confirmed) / setup invalid / a checklist recapture
     ok         = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'DONE' }
     done       = @{ Bg = '#123B33'; Bd = $Pal.Green; G = [char]0xE73E; T = 'DONE' }
     check      = @{ Bg = '#42330F'; Bd = $Pal.Amber; G = [char]0xE7BA; T = 'DONE - RECAPTURE ADVISED / CHECK NOTES' }

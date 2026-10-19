@@ -607,13 +607,15 @@ def _reroute_lines(issues, measured):
 #                    a board never measured in the attack (dropped out before it / no
 #                    labelled window), a large share of victim time with no path - or
 #                    minor gaps that FAILED the impact check
-#   NOT CONFIRMED    no attack signature, too little to test, or the setup was invalid
+#   FAILED           the attack cannot be confirmed: no attack signature, too little data to test,
+#                    the attacker's data missing, or the setup did not run as designed (was
+#                    "NOT CONFIRMED" before oct. 19 2026; the VERDICT line keeps that wording)
 #
 # Every warning lands somewhere (verification #50). The Campaign / Verify status scale
 # (user, oct. 19): green DONE = STRONG / GOOD (redo list OK) . yellow DONE - RECAPTURE ADVISED =
 # MINOR GAPS (CHECK) . orange RECAPTURE REQUIRED = MAJOR GAPS (REDO,
-# evidence 'verifier-data'), or another source demands a recapture . red REDO = NOT CONFIRMED
-GRADES = ("STRONG", "GOOD", "MINOR GAPS", "MAJOR GAPS", "NOT CONFIRMED")
+# evidence 'verifier-data'), or another source demands a recapture . red REDO = FAILED
+GRADES = ("STRONG", "GOOD", "MINOR GAPS", "MAJOR GAPS", "FAILED")
 _FOOTNOTE = [  # (words in a WARN, short footnote)
     ("robustness re-test not possible", "the re-test on the seconds before the first move was not possible (too short)"),
     ("robustness re-test inconclusive", "the re-test on the seconds before the first move was inconclusive"),
@@ -692,9 +694,12 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
     if not confirmed or setup_invalid:
         fails = [i.text for i in issues if i.level == "FAIL"]
         if setup_invalid and fails:
-            return "NOT CONFIRMED", [], [], [], ["setup invalid: " + f for f in fails[:3]]
-        return "NOT CONFIRMED", [], [], [], (["no primary signature moved beyond the threshold"] if conclusive
-                                             else ["no primary signature could be tested (too little data)"])
+            return "FAILED", [], [], [], ["the setup did not run as designed: " + f for f in fails[:3]]
+        if fails:
+            return "FAILED", [], [], [], fails[:3]
+        return "FAILED", [], [], [], (["no attack signature moved past 3-sigma: the attacker kept forwarding and / or "
+                                       "the victims kept delivering"] if conclusive
+                                      else ["no attack signature could be tested - too little usable data"])
     major, minor, notes, good = [], [], [], []
     for it in issues:
         if it.level == "OK" and it.text.startswith(("ROBUST:", "IMPACT CHECK:")):
@@ -772,13 +777,28 @@ def _n(k, word):
     return f"{k} {word}" + ("" if k == 1 else "s")
 
 
-def _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count):
+def _failed_reason(setup_invalid, conclusive, issues, detail=""):
+    """The one-line reason a FAILED run cannot be confirmed - the most specific cause first."""
+    text = " ".join(i.text for i in (issues or []) if i.level == "FAIL") + " " + detail
+    if re.search(r"attacker telemetry missing|no '(blackhole|wormhole\w*)' node", text):
+        return "the attacker's data is missing"
+    if setup_invalid:
+        return "the setup did not run as designed"
+    if not conclusive:
+        return "too little usable data to test the attack signature"
+    return "no attack signature moved past 3-sigma"
+
+
+def _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count, detail=""):
     grade, major, minor, notes, why_not = _confidence(confirmed, setup_invalid, conclusive, issues)
-    if grade == "NOT CONFIRMED":
-        print(" CONFIDENCE: NOT CONFIRMED - " + ("the setup was invalid" if setup_invalid else
-                                                ("no attack signature" if conclusive else "too little data to test")))
+    if grade == "FAILED":
+        print(" CONFIDENCE: FAILED - the attack cannot be confirmed: "
+              + _failed_reason(setup_invalid, conclusive, issues, detail))
         for w in why_not:
             print(_wrap(w, "     x "))
+        if detail:
+            print(_wrap(detail, "     x "))
+        print(_wrap("WHAT TO DO: fix the cause above, then capture the run again", "     = "))
         return
     good = [n for n in notes if n.startswith(("the re-test on the part BEFORE", "impact check:"))]
     real = [n for n in notes if n not in good]
@@ -1269,7 +1289,7 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
 
     print("-" * RULE_W)
     print(f" VERDICT: {verdict}")
-    _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count)
+    _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count, "; ".join(extra))
     print("-" * RULE_W)
     # oct. 19 2026 (user): the explanation of any allowed / refused board move, in
     # plain words with its sources, right below the verdict
@@ -1293,7 +1313,7 @@ def _line_colour(line):
     if set(t) <= set("=-"):
         return "dim"
     if t.startswith(("RESULT", "VERDICT")):
-        if "NOT CONFIRMED" in t:
+        if "NOT CONFIRMED" in t or "FAILED" in t:
             return "red"
         if "INCONCLUSIVE" in t:
             return "yellow"
@@ -1309,7 +1329,7 @@ def _line_colour(line):
     if "NOT ALLOWED" in t and ("+-- " in t or "`-- " in t):
         return "red"
     if t.startswith("CONFIDENCE"):
-        return ("red" if "NOT CONFIRMED" in t.upper() else "green" if t.startswith(("CONFIDENCE: STRONG", "CONFIDENCE: GOOD"))
+        return ("red" if ("NOT CONFIRMED" in t.upper() or "CONFIDENCE: FAILED" in t.upper()) else "green" if t.startswith(("CONFIDENCE: STRONG", "CONFIDENCE: GOOD"))
                 else "yellow")
     if t.startswith(("+ ", "= ")):
         return "green"
@@ -1666,9 +1686,9 @@ def verify_benign(df):
         P(" VERDICT: BENIGN NOT CONFIRMED - " + "; ".join(why[:2]))
     boards = sorted({b for b, _ in gaps})
     if word != "BENIGN CONFIRMED":
-        grade = "NOT CONFIRMED"
-        P(" CONFIDENCE: NOT CONFIRMED - " + ("too little data to test" if word == "INCONCLUSIVE"
-                                            else "this is not a clean normal reference"))
+        grade = "FAILED"
+        P(" CONFIDENCE: FAILED - " + ("too little data to test" if word == "INCONCLUSIVE"
+                                      else "this run cannot be used as the clean normal reference"))
         for w in (why or ["too little data"]):
             P(_wrap(w, "     x "))
     else:

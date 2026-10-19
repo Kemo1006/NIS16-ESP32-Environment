@@ -25,7 +25,7 @@ They combine into **one status** (the colours you already know):
 | CONFIRMED | STRONG / GOOD | 🟢 DONE |
 | CONFIRMED | MINOR GAPS | 🟡 DONE - RECAPTURE ADVISED |
 | CONFIRMED | MAJOR GAPS | 🟠 RECAPTURE REQUIRED |
-| NOT CONFIRMED / INCONCLUSIVE / SETUP INVALID | NOT CONFIRMED | 🔴 REDO |
+| NOT CONFIRMED / INCONCLUSIVE / SETUP INVALID | **FAILED** — "the attack cannot be confirmed: <reason>" | 🔴 REDO |
 
 So **"attack confirmed + incomplete dataset" is a normal, honest outcome**: the attack is
 evident in the data that exists, and the dataset is graded separately. One never overrides the
@@ -34,6 +34,7 @@ NOT CONFIRMED), and a gap never "un-sees" an attack that the remaining data show
 
 **PASS / FAIL / INCONCLUSIVE** are already three-way: *CONFIRMED* = a primary signature passed
 and the setup held; *NOT CONFIRMED* = tested, no primary passed (or the setup was invalid);
+(since oct. 19 the grade is called FAILED and names the reason: "the attacker's data is missing", "the setup did not run as designed", "too little usable data", or "no attack signature moved past 3-sigma" — the formal VERDICT line keeps the words NOT CONFIRMED)
 *INCONCLUSIVE* = too little data to test (fewer than `MIN_ATTACK_POINTS` points, or a broken
 baseline) — it is never turned into a pass or a fail.
 
@@ -258,7 +259,7 @@ gap is MINOR. The **attacker** (the blackhole, or either wormhole end) is differ
 and its forwarding count is the only evidence that separates a blackhole from congestion. A gap in the
 attacker's baseline or attack data is therefore **always MAJOR** (its cooldown is not used by the verdict
 and stays minor). Tested on the real run by cutting the attacker to 28 s and 10 s: both are now MAJOR;
-removing it entirely gives NOT CONFIRMED.
+removing it entirely gives FAILED ("the attacker's data is missing").
 
 **Caveat to state:** B768 crashed during the attack, the same pattern as other boards under the
 attacker (checklist D9). A victim cannot sense a blackhole, so the attack should not cause a crash;
