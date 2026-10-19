@@ -15,6 +15,26 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #63 — Oct 19, 2026 · ~6:45 PM — 2805's SD card read directly (card reader, E:)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `b6aaa06`
+> **Request:** "the SD card is in the reader now, check it"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | partial_mesh | G402 | highload | r1 | oct. 19 ~5:46-6:07 PM | 2805's card (read-only) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Files on the card | ✅ read | 41 files, ~10 MB; nothing copied, moved or deleted |
+| Session log `wormhole/partial_mesh/G402/runs.csv` | ❌ | boot 20 (16:20, stationary run, clean 6932 rows) -> next is boot 25 at **18:12:37** - the FIRST session of the highload firmware (built 17:29:19) on the card; no session of that firmware anywhere on the card before 18:12 |
+| r17 / r18 / r19 (18:12 -> 18:29) | ⚠️ | phase 255 only (waiting for a root, after the run); r17 starts at probe #362 = the board had run ~90 s before the card recorded |
+| Root side of 2805 | ✅ | complete: PDR 1.000 baseline 300 s / attack 180 s / cooldown 120 s, normal latency |
+
+**Verdict: ❌ 2805's own telemetry of wormhole/partial_mesh/G402/highload was never written to its card (the session ran - the root got every probe - but SD logging did not happen at that boot; it resumed after the 18:12 restart). Usable: root-side delivery only. Footnote ('telemetry not recorded - SD not written during the run; root-side PDR only') or recapture. Replace 2805's SD card + check its power.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #62 — Oct 19, 2026 · ~6:30 PM — board 28:B4 (2805): highload file missing + CORRECTION to #60
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `c67b6e2`
