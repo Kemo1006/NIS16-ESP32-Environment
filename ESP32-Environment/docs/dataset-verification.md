@@ -16,6 +16,30 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #56 — Oct 19, 2026 · night — "what if the ATTACKER is the one with missing data?"
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `421076a` + this change
+> **Request:** "are you sure the 4th witness is okay to have incomplete data? what if the attacker itself has missing windows - what will the verdict be?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | stationary | r1 | oct. 18 10:11 PM | simulated cuts of the real table + all 52 attack runs re-graded |
+
+| Check | Result | Detail |
+|---|---|---|
+| Victim B768 short (real) | ✅ MINOR | with / without B768: ForwardingRatio z = -42.02 both, pooled victim PDR 0.389 vs 0.402 - the verdict does not rely on it |
+| Attacker missing entirely (simulated) | ✅ NOT CONFIRMED | no attacker data = no attack evidence (ATTACKER check FAIL) |
+| **Attacker cut to 28 s / 10 s (simulated)** | ❌ -> 🔧 | was CONFIRMED + **MINOR** (at 10 s on PDR alone - the attacker's own test had NO DATA). Too lenient: the attacker IS the attack, and its forwarding is the only evidence that separates a blackhole from congestion (placebo, #53). **Rule added:** a gap in the attacker's (blackhole / wormhole end) baseline or attack data is always MAJOR; its cooldown stays minor (never used by the verdict). Both cuts now MAJOR |
+| Real runs re-graded | ✅ 0 grade changes | only wormhole/tree/DLSU_Library/stationary gains an attacker-gap reason (already MAJOR) |
+| Tests / audit | ✅ 45/45 · 5/5 rules | new test: attacker gap MAJOR, the same victim gap MINOR, attacker cooldown MINOR |
+| GUI | ✅ | "WHAT THIS MEANS - in plain words" card on the Campaign run panel and the Verify page: the attack, the victims, the control boards, each gap as a bullet with why it does / does not matter, + a postcard analogy; self-test exit 0 |
+
+**Verdict: ✅ a victim with incomplete data is one witness fewer (MINOR, proven by the impact check); an attacker with
+incomplete data is incomplete evidence of the attack itself (MAJOR, recapture required).**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #55 — Oct 19, 2026 · evening — why tree boards change parent / disappear
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `426989a` + this change

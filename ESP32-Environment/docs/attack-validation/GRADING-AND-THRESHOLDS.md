@@ -252,6 +252,14 @@ victims; the bystanders' unchanged delivery shows the loss is the attacker's, no
 advised". The rule: a gap is MINOR when the verdict holds without the affected boards (impact
 check) and at most half the boards are affected; otherwise MAJOR (§1-2).
 
+**Who can have a MINOR gap — and who cannot (verification #56).** A victim or a bystander with missing
+windows is *one witness fewer*: the impact check re-runs the test without it, and if the verdict stands the
+gap is MINOR. The **attacker** (the blackhole, or either wormhole end) is different: it *is* the attack,
+and its forwarding count is the only evidence that separates a blackhole from congestion. A gap in the
+attacker's baseline or attack data is therefore **always MAJOR** (its cooldown is not used by the verdict
+and stays minor). Tested on the real run by cutting the attacker to 28 s and 10 s: both are now MAJOR;
+removing it entirely gives NOT CONFIRMED.
+
 **Caveat to state:** B768 crashed during the attack, the same pattern as other boards under the
 attacker (checklist D9). A victim cannot sense a blackhole, so the attack should not cause a crash;
 the cause is being traced (crash watch / SD crash record). The crash is not counted as attack

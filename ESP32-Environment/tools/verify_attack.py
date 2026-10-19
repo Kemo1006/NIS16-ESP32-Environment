@@ -634,7 +634,17 @@ def _gap(it):
     who = t.split(" ", 1)[0] if t[:4].isalnum() else ""
     role = (" (attacker)" if "the ATTACKER" in t or re.match(r"\S+ \((blackhole|wormhole)", t) else
             " (victim)" if "a victim" in t else "")
+    # oct. 19 2026 (user: "what if the ATTACKER is the one with missing data?"): the attacker
+    # (blackhole, or a wormhole end) IS the attack - its forwarding is the only evidence that
+    # tells a blackhole from congestion (placebo, verification #53). The impact check cannot
+    # set it aside without removing the attack itself, so a gap in its baseline or attack data
+    # is always MAJOR. (Its cooldown stays minor: the verdict never uses the cooldown.)
+    atk_gap = role == " (attacker)"
     m = re.search(r"has NO attack windows after \+(\d+) s \((\d+) s before the end\)", t)
+    if m and atk_gap:
+        kept, gone = int(m.group(1)), int(m.group(2))
+        return "major", who, (f"{who}{role}: only {kept} of {kept + gone} s of its attack were recorded "
+                              f"- the attacker IS the attack, so its own data must be complete")
     if m:
         # measured, but only part of the attack: the impact check decides (no fixed cut).
         # "X of Y s" is drawn as a recorded / missing bar by the GUI.
@@ -642,6 +652,9 @@ def _gap(it):
         return "minor", who, (f"{who}{role}: only {kept} of {kept + gone} s of its attack were recorded "
                               f"- the last {gone} s are missing (it went silent, or too few samples)")
     m = re.search(r"has (baseline|attack) windows for only (\d+) of (\d+) s \((\d+)%", t)
+    if m and atk_gap:
+        return "major", who, (f"{who}{role}: windows for only {m.group(2)} of {m.group(3)} s of its {m.group(1)} "
+                              f"({m.group(4)}%) - the attacker IS the attack, so its own data must be complete")
     if m:
         # gaps INSIDE a phase (S9): the impact check decides, like any other per-board gap
         role = role or (" (bystander)" if "a bystander" in t else "")

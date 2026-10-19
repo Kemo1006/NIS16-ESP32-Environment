@@ -128,14 +128,16 @@ class TreeReroute(unittest.TestCase):
         self.assertTrue(w and w[0].level == ac.WARN)
 
     def test_confidence_grades(self):
-        # 7:21 PM run: E618 kept 151 s of its attack and lost its cooldown -> MINOR gaps,
-        # and the impact check (the test re-run without E618) still confirms
+        # 7:21 PM run: E618 (a victim) kept 151 s of its attack -> a MINOR gap, cleared by the
+        # impact check; but the ATTACKER 1C38 has windows for only 106 of 178 s of its attack ->
+        # MAJOR (the attacker IS the attack, oct. 19 2026), and it is never "set aside"
         c, inv, txt = run(self.df, "blackhole")
-        self.assertIn("CONFIDENCE: MINOR GAPS", txt)
+        self.assertIn("CONFIDENCE: MAJOR GAPS", txt)
+        self.assertIn("MAJOR GAP (affects the result): 1C38 (attacker): windows for only 106 of 178 s", txt)
         self.assertIn("MINOR GAP (result not affected): E618 (victim): only 151 of", txt)
         self.assertIn("MINOR GAP (result not affected): E618: only 0 of", txt)
-        self.assertIn("impact check: without 1C38, E618, FE90", txt)
-        self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED - minor gaps"', txt)
+        self.assertIn("impact check: without E618, FE90", txt)
+        self.assertIn('REPORT AS: "BLACKHOLE CONFIRMED - major gaps"', txt)
 
     def test_short_attack_is_judged_by_the_impact_check(self):
         # cut E618's attack to its first 28 s: no fixed "< 60 s = major" rule - the attack
@@ -150,7 +152,7 @@ class TreeReroute(unittest.TestCase):
         # grade itself is not asserted; the 28 s board alone must be MINOR)
         self.assertIn("MINOR GAP (result not affected): E618 (victim): only 28 of", txt)
         self.assertNotIn("MAJOR GAP (affects the result): E618", txt)
-        self.assertIn("impact check: without 1C38, E618, FE90", txt)
+        self.assertIn("impact check: without E618, FE90", txt)
 
     def test_failed_impact_check_makes_it_major(self):
         # the same gaps, but the attack is NOT confirmed without the board: MAJOR
@@ -172,6 +174,18 @@ class TreeReroute(unittest.TestCase):
         g = va._confidence(True, False, True, iss)
         self.assertEqual(g[0], "MAJOR GAPS")
         self.assertTrue(g[1][0].startswith("5 of 7 boards have gaps"))
+
+    def test_attacker_gap_is_always_major(self):
+        # the attacker IS the attack: its data cannot be set aside by the impact check
+        cut = ac.Issue(ac.WARN, "1C38 (blackhole) - the ATTACKER - has NO attack windows after +28 s (152 s before the end): x")
+        self.assertEqual(va._gap(cut)[0], "major")
+        inside = ac.Issue(ac.WARN, "1C38 (blackhole) - the ATTACKER - has attack windows for only 64 of 115 s (55%, floor 95%): x")
+        self.assertEqual(va._gap(inside)[0], "major")
+        # ... a victim's identical gap stays minor, and the attacker's cooldown stays minor
+        vic = ac.Issue(ac.WARN, "B768 (child) - a victim - has NO attack windows after +28 s (152 s before the end): x")
+        self.assertEqual(va._gap(vic)[0], "minor")
+        cool = ac.Issue(ac.WARN, "1C38 (blackhole) has NO COOLDOWN (the others: 120 s) - x")
+        self.assertEqual(va._gap(cool)[0], "minor")
 
     def test_gap_inside_a_phase_is_a_gap(self):
         # S9: windows missing in the MIDDLE of a phase, under the 95 % coverage floor

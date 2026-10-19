@@ -4362,6 +4362,7 @@ function Show-AnaReport([string]$Text) {
     # oct. 19 2026: the four validity questions on top + the shared signature card
     $bits = $null; try { $bits = ConvertFrom-ReportText $t } catch { }
     if ($bits -and ($bits.Verdict -or $bits.Sig.Count)) { try { [void]$ui.AnaResult.Children.Add((New-ValidityStrip $bits 4)) } catch { } }
+    if ($bits -and $bits.Verdict -and -not $bits.Old) { try { [void]$ui.AnaResult.Children.Add((New-PlainExplain $bits)) } catch { } }
     # gates (analyze.ps1's validation summary)
     $gates = @($lines | Where-Object { $_ -match '^\s*(integrity|topology|attack)\s*:\s*(.+)$' })
     if ($gates.Count) {

@@ -21,7 +21,7 @@ function ConvertFrom-ReportText([string]$Text) {
     # one parser for a verify report (attack or benign) - the Campaign panel and the Verify page
     $t = $Text -replace "\x1b\[[0-9;]*m", ''
     $lines = $t -split "`r?`n"
-    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @(); Proof = ''; Sig = @(); Benign = $false }
+    $o = @{ Grade = ''; Say = ''; Notes = @(); ReportAs = ''; Glance = @(); Sketch = @(); Verdict = ''; Old = $false; Fails = @(); Nodes = @(); Proof = ''; Sig = @(); Benign = $false; Facts = @{} }
     $sk = $false; $inConf = $false; $lastKind = ''; $sec = ''   # which item a wrapped line continues
     foreach ($ln in $lines) {
         $tr = $ln.Trim()
@@ -35,6 +35,16 @@ function ConvertFrom-ReportText([string]$Text) {
                 $o.Sig += , @{ Res = $parts[0]; Feat = $parts[1]; Norm = $parts[2]; Atk = $parts[3]; Z = $parts[4]; Role = $parts[5]; Tag = $(if ($parts.Count -ge 7) { $parts[6] } else { '' }); For = $an }
             }
             continue
+        }
+        if ($sec -eq '3' -and $tr -match '^(OK|WARN|FAIL)\s+(.+)$') {
+            # the numbers the plain-words card quotes
+            $ft = $Matches[2]
+            if ($ft -match 'attacker (\w{4}) received (\d+), forwarded (\d+) \((\d+)%\)') { $o.Facts.AtkId = $Matches[1]; $o.Facts.AtkRecv = $Matches[2]; $o.Facts.AtkFwd = $Matches[3]; $o.Facts.AtkPct = $Matches[4] }
+            elseif ($ft -match '(\d+) victim\(s\) alive but cut off: attack PDR ([\d.]+) \(baseline ([\d.]+)\)') { $o.Facts.VicN = $Matches[1]; $o.Facts.VicPdr = $Matches[2]; $o.Facts.VicBase = $Matches[3] }
+            elseif ($ft -match '(\d+) node\(s\) not behind the attacker kept delivering') { $o.Facts.ByN = $Matches[1] }
+            elseif ($ft -match 'B sent ~(\d+) tunnel frames, A received ~(\d+)') { $o.Facts.TunSent = $Matches[1]; $o.Facts.TunGot = $Matches[2] }
+            elseif ($ft -match 'duplicate arrivals in (\d+) attack window') { $o.Facts.DupWin = $Matches[1] }
+            elseif ($ft -match '^ROBUST:') { $o.Facts.Robust = $true }
         }
         if ($sk) { if (-not $tr) { $sk = $false } else { $o.Sketch += $(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr }) }; continue }
         if ($tr -match '^VERDICT\s*:\s*(.+)$') { $o.Verdict = $Matches[1]; continue }
@@ -178,6 +188,103 @@ function New-ValidityStrip($Rep, [int]$Columns = 2) {
     return $ug
 }
 
+function Get-PlainGap([string]$Note) {
+    # one MINOR / MAJOR gap line -> a sentence a non-specialist can read
+    $n = $Note -replace '^(MAJOR|MINOR) GAP \([^)]*\):\s*', ''
+    if ($n -match '^(\w{4}) \(attacker\): ') { return "$($Matches[1]) is the attacker and its own record is incomplete. The attacker IS the attack, so this part cannot be left out - the run should be captured again." }
+    if ($n -match '^(\w{4}) \(victim\): only (\d+) of (\d+) s of its attack') { return "$($Matches[1]) (a victim) stopped recording after $($Matches[2]) s of the $($Matches[3])-s attack. That is one witness fewer, not missing proof: the attacker's own record and the other victims cover the whole attack." }
+    if ($n -match '^(\w{4})(?: \(\w+\))?: only \d+ of \d+ s of cooldown') { return "$($Matches[1]) did not record the cooldown, so only its recovery after the attack is unknown. The verdict compares 'before' with 'during' - it never uses the cooldown." }
+    if ($n -match '^(\w{4}) \(bystander\): windows for only (\d+) of (\d+) s') { return "$($Matches[1]) is a control board (not behind the attacker) with a few gaps ($($Matches[2]) of $($Matches[3]) s recorded). It shows the network stayed healthy; the attack result does not depend on it." }
+    if ($n -match '^(\w{4}) \((\w+)\): windows for only (\d+) of (\d+) s of its (\w+)') { return "$($Matches[1]) ($($Matches[2])) recorded $($Matches[3]) of $($Matches[4]) s of the $($Matches[5]) - some seconds are missing." }
+    if ($n -match 'boards have gaps') { return "Too many boards have gaps ($($n -replace '^(\d+ of \d+).*', '$1')) to prove the gaps are harmless - the run should be captured again." }
+    if ($n -match 'victim-seconds could be tested') { return "Most of the victims' attack time could not be used (their path to the root was broken), so the result rests on a small part of the attack - capture it again." }
+    if ($n -match 'dropped out before the attack') { return ($n -replace ':.*', '') + " switched off before the attack started, so it was never measured during it - capture it again." }
+    return $n
+}
+
+function New-PlainExplain($Rep) {
+    # WHAT THIS MEANS - the report's numbers as plain sentences (Campaign + Verify)
+    $F = $Rep.Facts
+    $card = New-Object Windows.Controls.Border; $card.CornerRadius = 12; $card.Padding = '14,10'; $card.Margin = '0,0,0,10'
+    $card.Background = Get-Brush '#1B2033'; $card.BorderBrush = Get-Brush $Pal.Cyan; $card.BorderThickness = '3,0,0,0'
+    $sp = New-Object Windows.Controls.StackPanel
+    [void]$sp.Children.Add((New-Text 'WHAT THIS MEANS   in plain words' 10.5 $Pal.Cyan 'SemiBold'))
+    $add = {
+        param([string]$Glyph, [string]$Hex, [string]$Head, [string]$Body)
+        $g = New-Object Windows.Controls.Grid; $g.Margin = '0,7,0,0'
+        $c0 = New-Object Windows.Controls.ColumnDefinition; $c0.Width = '24'; [void]$g.ColumnDefinitions.Add($c0)
+        [void]$g.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition))
+        $ic = New-Text $Glyph 13 $Hex 'Bold'; $ic.VerticalAlignment = 'Top'; [void]$g.Children.Add($ic)
+        $tb = New-Object Windows.Controls.TextBlock; $tb.TextWrapping = 'Wrap'; $tb.FontSize = 12.5; $tb.LineHeight = 18; $tb.FontFamily = 'Segoe UI'
+        $r1 = New-Object Windows.Documents.Run ($Head + '  '); $r1.FontWeight = 'Bold'; $r1.Foreground = Get-Brush $Pal.Text; [void]$tb.Inlines.Add($r1)
+        $r2 = New-Object Windows.Documents.Run $Body; $r2.Foreground = Get-Brush $Pal.Dim; [void]$tb.Inlines.Add($r2)
+        [Windows.Controls.Grid]::SetColumn($tb, 1); [void]$g.Children.Add($tb)
+        [void]$sp.Children.Add($g)
+    }
+    $bullet = {
+        # one point under the heading above it - indented, one sentence each
+        param([string]$Text)
+        $tb = New-Object Windows.Controls.TextBlock; $tb.TextWrapping = 'Wrap'; $tb.FontSize = 12; $tb.LineHeight = 17; $tb.Margin = '24,4,0,0'
+        $tb.Foreground = Get-Brush $Pal.Dim; $tb.Text = [string][char]0x2022 + '  ' + $Text
+        [void]$sp.Children.Add($tb)
+    }
+    $ok = [string][char]0x2714; $warn = [string][char]0x26A0; $bad = [string][char]0x2716; $info = [string][char]0x2139
+    $v = [string]$Rep.Verdict
+    if ($Rep.Benign) {
+        if ($v -match 'BENIGN CONFIRMED') {
+            & $add $ok $Pal.Green 'This is clean, normal traffic.' 'Nothing in it behaves like an attack: every board passed on what it received and the root got the messages. It can be used as the "normal" reference the attack runs are compared with.'
+        } else {
+            & $add $bad $Pal.Red 'This is NOT a clean normal reference.' 'Even with no attacker, part of this run looks like an attack. Usually congestion or a weak link - capture it again before using it as the normal reference. What went wrong:'
+            foreach ($f in @($Rep.Fails)) { & $bullet ($f.Substring(0, 1).ToUpper() + $f.Substring(1)) }
+        }
+    }
+    elseif ($v -match 'NOT CONFIRMED|INCONCLUSIVE|SETUP INVALID') {
+        & $add $bad $Pal.Red 'The attack could not be confirmed in this data.' 'Fix the reason below, then capture the run again:'
+        foreach ($f in $(if ($Rep.Fails.Count) { @($Rep.Fails) } else { @('no attack signature moved far enough') })) { & $bullet ($f.Substring(0, 1).ToUpper() + $f.Substring(1)) }
+    }
+    elseif ($v -match 'WORMHOLE') {
+        $t = if ($F.TunSent) { "Board B sent about $($F.TunSent) messages through the cable to board A, and A received about $($F.TunGot) - the shortcut worked." } else { 'The two wormhole boards passed messages through their cable - the shortcut worked.' }
+        & $add $ok $Pal.Green 'The attack happened: the tunnel carried traffic.' $t
+        if ($F.DupWin) { & $add $ok $Pal.Green 'The root saw its fingerprint.' "In $($F.DupWin) attack seconds the root received the SAME message twice - one copy came the normal way, one through the tunnel. That duplicate is the wormhole's signature, and the root counts it on its own, independently of the attacking boards." }
+    }
+    else {
+        if ($F.AtkId) { & $add $ok $Pal.Green 'The attack happened.' "Board $($F.AtkId) was the blackhole: it received $($F.AtkRecv) messages from the boards behind it and passed on $($F.AtkFwd) ($($F.AtkPct)%). An honest board passes on about 100%." }
+        if ($F.VicN) { & $add $ok $Pal.Green "Its victims' messages never arrived." ("$($F.VicN) victim board(s) kept sending as normal, but the root received {0:0}% of their messages during the attack (before it: {1:0}%). The victims could not tell - a blackhole accepts each message and silently throws it away." -f (100 * [double]$F.VicPdr), (100 * [double]$F.VicBase)) }
+        if ($F.ByN) { & $add $ok $Pal.Green 'The rest of the network was fine.' "$($F.ByN) board(s) whose messages do not pass the attacker kept delivering normally - so the loss is the attacker's doing, not a broken network or a bad signal." }
+        if ($F.Robust) { & $add $ok $Pal.Green 'Checked a second way.' 'The test was repeated on only the part of the attack before any board moved, and it gave the same answer.' }
+    }
+    # the data - what is missing and why it does (not) matter
+    $gaps = @($Rep.Notes | Where-Object { $_ -match '^(MAJOR|MINOR) GAP' })
+    $maj = @($gaps | Where-Object { $_ -match '^MAJOR' }); $min = @($gaps | Where-Object { $_ -match '^MINOR' })
+    if ($Rep.Grade -in @('STRONG', 'GOOD')) {
+        & $add $ok $Pal.Green 'The data is complete.' 'Every board recorded the whole run, so the dataset can be used as it is.'
+    } elseif ($min.Count -and -not $maj.Count) {
+        & $add $warn $Pal.Amber 'Some data is missing - but it does not change the result.' 'The test was repeated WITHOUT the boards below and gave the same answer, so the verdict can be trusted. Recapturing would only make the dataset more complete.'
+        foreach ($m in $min) { & $bullet (Get-PlainGap $m) }
+    } elseif ($maj.Count) {
+        & $add $warn $Pal.Orange 'Important data is missing.' 'The attack is still visible, but the run should be captured again before its numbers are used:'
+        foreach ($m in $maj) { & $bullet (Get-PlainGap $m) }
+        if ($min.Count) { & $bullet ('Smaller gaps that do not change the result: ' + (@($min | ForEach-Object { ((Get-PlainGap $_) -split '\.')[0] }) -join '; ') + '.') }
+    }
+    if (-not $Rep.Benign) {
+        & $add $info $Pal.Faint 'Missing data never makes an attack look stronger.' 'A missing second is left out - it is never counted as "0 delivered" - and a board that was switched off or disconnected produces no delivery figure at all.'
+    }
+    # how to read it - the postcard analogy, folded away
+    $ex = New-Object Windows.Controls.Expander; $ex.Margin = '0,8,0,0'; $ex.IsExpanded = $false
+    $ex.Header = (New-Text 'How to read this (a 1-minute analogy)' 11.5 $Pal.Cyan 'SemiBold')
+    $at = New-Object Windows.Controls.TextBlock; $at.TextWrapping = 'Wrap'; $at.FontSize = 12; $at.LineHeight = 18; $at.Margin = '0,6,0,0'; $at.Foreground = Get-Brush $Pal.Dim
+    $at.Text = ("Think of each board as a house and the root as the post office. Every second each house sends a numbered postcard (a probe). " +
+                "Houses far away hand their cards to a closer neighbour (their parent), who passes them on.`n`n" +
+                "A blackhole is a neighbour who takes your cards and throws them away. You handed them over fine, so you never find out - " +
+                "only the post office notices the missing card numbers. Delivery (PDR) = cards that arrived / cards sent: 1.00 = all, 0.00 = none.`n`n" +
+                "Each 1-second slice is a window. A board with missing windows is a witness who left early: the case still stands if " +
+                "the culprit's own record and the other witnesses are complete - that is what the 'repeated without' check proves.")
+    $ex.Content = $at
+    [void]$sp.Children.Add($ex)
+    $card.Child = $sp
+    return $card
+}
+
 function New-SignatureCard($Rep) {
     # the attack signature, one row per feature: did it move, from what to what, how far
     # (z), is it a primary, which study it comes from. Shared by Campaign and Verify.
@@ -318,6 +425,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
     if ($rep.Nodes.Count) { try { [void]$wrap.Children.Add((New-CampDeliveryChart $rep.Nodes)) } catch { } }
     Set-CampRespLayout $wrap ($ui.CampDetBody.ActualWidth -ge 700)
     [void]$Body.Children.Add($wrap)
+    if (-not $rep.Old) { try { [void]$Body.Children.Add((New-PlainExplain $rep)) } catch { } }
     if ($rep.Sig.Count) { try { [void]$Body.Children.Add((New-SignatureCard $rep)) } catch { } }
 
     # 2b. PHASE TIMELINE per board (cached; background read the first time)
