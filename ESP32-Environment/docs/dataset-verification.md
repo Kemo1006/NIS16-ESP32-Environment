@@ -15,6 +15,26 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #60 — Oct 19, 2026 · ~6:50 PM — wormhole/partial_mesh/G402/stationary: FE90 + 2805 files are from the WRONG RUN
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `2f6e0bb`
+> **Request:** "check the FE90, maybe I accidentally imported a wrong file"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | partial_mesh | G402 | stationary | r1 | oct. 19: run 1 ~3:20 PM (START_ANYWAY 3:30) and run 2 ~4:20 PM (root exported 4:50) | 8 boards + root arrivals |
+
+| Check | Result | Detail |
+|---|---|---|
+| Last probe in the board's file vs last seq the root received from it | ❌ FE90, D7B4 | 1C38 601=601, E618 778=778, B768 667=667, ED80 671=671; **FE90 700 vs 672**, **D7B4 (2805) 639 vs 691** |
+| Root's phase at arrival vs the phase the board's file says it was in when sending (every probe) | ❌ FE90, D7B4 | 1C38 / E618 / B768 / ED80: **0.0 %** different; **FE90 9.6 %**, **D7B4 18.9 %** |
+| How they were picked | ⚠️ | collect 5:01 PM (`--since 05:00` = 5 AM): 6 cards held BOTH runs -> refused; FE90's card had only ONE complete file (`r6_b9`, started 15:21:35 = **run 1**) -> auto-copied; its run-2 pieces were not complete ('NO_RUN' r9/r10). 2805 was imported by hand at 5:06 PM - the run-1 file. |
+| Preprocessing | ⚠️ | phase_sync flagged FE90 (unlabelled) but **not** 2805 - 2805's run-1 data is IN the current analysis (plain child; the wormhole primaries do not use it) |
+
+**Verdict: ❌ FE90 and 2805 (D7B4) are files from run 1 (3:20 PM) next to the root of run 2 (4:20 PM). The wormhole verdict (B + root) is unaffected, but both boards' per-node numbers are from the wrong run. Fix: re-import both from their cards picking the run-2 files (started ~16:20), then re-analyse. Cards were not readable now (COM3 busy).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #59 — Oct 19, 2026 · ~6:15 PM — grading rule: a missing PLAIN CHILD in a wormhole run goes to the impact check
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `e31563c` + this change
