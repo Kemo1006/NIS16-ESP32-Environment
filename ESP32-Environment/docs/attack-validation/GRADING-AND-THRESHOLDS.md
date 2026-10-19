@@ -192,3 +192,72 @@ reference:** its cooldown delivered only 72 % and two relays forwarded 83-85 % w
 attacker** (high-load congestion) — the blackhole PDR signature "moved" on normal traffic. It
 should be recaptured (and D-18's planned benign runs per location × topology captured) before the
 benign class is used in the thesis.
+
+---
+
+## 8. Where a blackhole shows up — the victim does not know it is attacked
+
+*(for the thesis: methodology / verification, and the discussion of results)*
+
+A blackhole victim's packet travels: victim → its parent (the attacker) → … → root. The
+attacker **accepts** the packet (the radio hand-off succeeds, so the victim's send counts as
+"sent OK") and then **silently discards** it instead of forwarding it [Airehrour et al. 2018].
+The victim receives no error and keeps sending normally. Its own counters, RSSI and parent all
+look healthy — **the victim cannot see the attack from its own data**.
+
+The attack is therefore measured where it is visible:
+
+| Evidence | Measured by | What it shows |
+|---|---|---|
+| ForwardingRatio (attacker) — PRIMARY | the attacker's own counters (forward / recv) | it received packets and forwarded 0 % |
+| NeighbourForwardingRatio — support | the attacker's **neighbours** (what its children handed it vs what the root got from below it) | the same, without trusting the attacker's self-report |
+| PDR — PRIMARY | the **root**, by each probe's sequence number | the victims' probes stop arriving (1.00 → 0.00) |
+| Bystanders' PDR — control | the root | boards NOT behind the attacker keep delivering (1.00) → the loss is specific to the attacker's path [Karlof & Wagner 2003] |
+
+**Suggested paper text:** *"A blackhole is invisible to its victims: the attacking relay accepts
+each packet at the link layer and discards it, so the sender receives no failure indication.
+The attack was therefore measured at the attacker (its forwarding ratio, confirmed independently
+by its neighbours' counts) and at the root (per-victim packet delivery reconstructed from probe
+sequence numbers), with nodes outside the attacker's path serving as a control group."*
+
+---
+
+## 9. Worked example — a victim with only 28 of 180 s of attack data (MINOR, not MAJOR)
+
+*(blackhole/tree/G402/stationary, oct. 18 10:11 PM capture, after D-25 — a model footnote for
+the results chapter)*
+
+| Board | Role | Attack windows (of ~180) | What it shows |
+|---|---|---|---|
+| 1C38 | attacker | 175 | forwarded **0 %** |
+| D7B4, ED80, E618 | victims | 180 each | delivery 1.00 → **0.00** |
+| **B768** | victim | **29** | delivery 1.00 → **0.00**, then silent (crashed at +28 s) |
+| 0C80, FE90 | bystanders | 180 each | delivery stays **1.00** |
+
+**Why the missing 152 s do not change the result:** B768's windows only supply one victim's
+delivery figure; the signature lives in the attacker's counters and the root's arrivals, which are
+complete. The impact check (the identical 3-sigma test re-run without B768) gives the same verdict:
+
+| | ForwardingRatio (attacker) | PDR (all victims pooled) | Verdict |
+|---|---|---|---|
+| with B768 | 1.000 → 0.000, z = −42.02 | 1.000 → 0.389 | CONFIRMED |
+| without B768 | 1.000 → 0.000, z = −42.02 | 1.000 → 0.402 | CONFIRMED |
+
+**Why the gap cannot fake or bias it:** missing windows are never filled with zeros (no window =
+no PDR value, never "0 delivered"); B768's 29 recorded windows are genuine and agree with the other
+victims; the bystanders' unchanged delivery shows the loss is the attacker's, not a network failure.
+
+**What it does cost — hence MINOR GAPS, not GOOD:** the dataset holds 3 complete victims instead of
+4, so per-board analysis of B768 has almost no attack data in this run → 🟡 "DONE – recapture
+advised". The rule: a gap is MINOR when the verdict holds without the affected boards (impact
+check) and at most half the boards are affected; otherwise MAJOR (§1-2).
+
+**Caveat to state:** B768 crashed during the attack, the same pattern as other boards under the
+attacker (checklist D9). A victim cannot sense a blackhole, so the attack should not cause a crash;
+the cause is being traced (crash watch / SD crash record). The crash is not counted as attack
+evidence.
+
+**Suggested footnote:** *"In run blackhole/tree/G402/stationary one of four victims (B768)
+stopped logging 28 s into the 180 s attack phase (device reset). Its 29 recorded windows were
+retained; the verdict was re-computed without the device and was unchanged (attacker forwarding
+ratio z = −42.0; pooled victim PDR 1.00 → 0.40)."*

@@ -95,6 +95,9 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 
 | B-sticky | ⬜ | Methodology: tree topology | D-26: tree children keep their parent unless the link is really bad (ESP-MESH switch / RSSI thresholds 6 dB weaker, watch x3). Mark which tree runs used it (captured after the reflash) - earlier ones used stock thresholds | D-26, verification #55 |
 
+| B-victim | ⬜ | Methodology (attack model) + verification | A blackhole is invisible to its victims (the attacker accepts at the link layer and discards; the sender gets no error), so the attack is measured at the ATTACKER (forwarding ratio + neighbours' witness) and at the ROOT (per-victim PDR by sequence number), with bystanders as the control. Paper-ready text: docs/attack-validation/GRADING-AND-THRESHOLDS.md §8 | user oct. 19, verification #55 |
+| C16 | ⬜ | Results: blackhole/tree/G402/stationary footnote (worked example of a MINOR gap) | B768 (1 of 4 victims) has 29 of 180 s of attack (reset at +28 s); verdict re-computed without it is unchanged (FR z = -42.0, pooled victim PDR 1.00 -> 0.40). Missing windows are never zero-filled; 3 complete victims instead of 4 -> MINOR, recapture advised. Footnote text + table: GRADING-AND-THRESHOLDS.md §9 | user oct. 19, verification #53 |
+
 ## D. Captures to redo / still missing (before the numbers are final)
 
 | # | Status | What | Why | Source |
