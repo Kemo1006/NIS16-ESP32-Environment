@@ -43,8 +43,9 @@ drop_count_first,Windowed (preprocess),Running total drop_count at the START edg
 drop_count_last,Windowed (preprocess),Running total drop_count at the last row of the window,count,
 window_label,Windowed (preprocess),Ground-truth label for the window,0 normal | 1 blackhole | 2 wormhole | empty = unlabelled,"Empty outside the three real phases (e.g. pre_baseline), so those windows never enter a normal or attack group."
 window_phase_id,Windowed (preprocess),Most common phase_id among the window's raw rows,0 baseline | 1 blackhole | 2 wormhole | 3 cooldown | 4 terminate | 255 not heard yet,
+window_phase_mixed,Windowed (preprocess),True when the window's raw rows carry two real phases (the phase changed inside it),True | False,Such a window gets segment 'transition' and no label: its counters mix two phases.
 t_anchor_s,Windowed (preprocess),Time relative to the moment THIS node first left phase 0 (attack start as seen by this node),seconds (negative = before the attack started),Lets windows from different boards be lined up without shared clocks.
-segment,Windowed (preprocess),Which part of the experiment the window belongs to,pre_baseline | baseline | attack | cooldown | baseline_rebroadcast | no_phase_seen,"pre_baseline = node was up before the experiment's baseline started; unlabelled and excluded from analysis, but kept."
+segment,Windowed (preprocess),Which part of the experiment the window belongs to,pre_baseline | baseline | attack | cooldown | transition | baseline_rebroadcast | no_phase_seen,"pre_baseline = node was up before the experiment's baseline started; unlabelled and excluded from analysis, but kept."
 ForwardingRatio,Feature (features.py),Share of relay packets the node actually passed on,0-1 (1 = forwarded everything),Only defined on a node that relays (the blackhole attacker); empty elsewhere.
 IngressEgressDelta,Feature (features.py),Relay packets received minus forwarded,packets per window,Only defined on a relaying node.
 ConsistencyScore,Feature (features.py),How far ForwardingRatio is from 1,"0-1, = |ForwardingRatio - 1|",Only defined on a relaying node.
