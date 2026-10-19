@@ -15,6 +15,27 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #62 — Oct 19, 2026 · ~6:30 PM — board 28:B4 (2805): highload file missing + CORRECTION to #60
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `c67b6e2`
+> **Request:** "check 28:B4" (after "a file is missing although the root showed everything connected")
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | partial_mesh | G402 | highload (+ stationary, correction) | r1 | oct. 19 ~5:50-6:07 PM (root on this laptop, 7 children on other laptops) | root + 3 children imported; 4 not yet |
+
+| Check | Result | Detail |
+|---|---|---|
+| Run itself | ✅ | 8/8 boards in the mesh, SAFE TO EXPORT, no disconnects, tunnel test 8/8 before Phase 0 |
+| 'Missing files' | ✅ explained | 2805, 704B, FE90, ED80 ran from another laptop and were never imported; run_summary now lists them (root heard them) instead of 'COMPLETE - all 4 boards' |
+| 2805 on the ROOT | ✅ | 2,719 arrivals, seq 964-3682 at ~4/s (highload firmware), baseline/attack/cooldown all present |
+| 2805's SD card (COM38) | ❌ | NO file from the highload run under any folder: partial_mesh/G402 files at 16:20 (the stationary run) then 18:12 / 18:16 / 18:17 (power-on reboot pieces, board restarting repeatedly now); internal flash (SPIFFS) empty; a later card read did not answer |
+| **Correction to #60** | ⚠️ | the 2805 file of partial_mesh/G402/**stationary** is `r16_b20`, started **16:20:26**, 547,469 B = run 2 = the ROOT's run. Its 18.9 % mismatch is **phase labels out of sync**, NOT a wrong run (FE90 stays: run-1 file). Same pattern as 2805 in the tree run (#61) |
+
+**Verdict: ❌ 2805's highload telemetry is not on its card or flash - only the root's arrivals of its probes exist. 2805 is unstable (brownout reboots today in tree + partial runs; phase labels drift after reboots): replace its cable / power, or swap the board, before more captures. #60 corrected: only FE90 is a wrong-run import; 2805 (stationary) is the right run with drifted labels.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #61 — Oct 19, 2026 · ~7:30 PM — Collect / import audit: nothing checked a child's file against the ROOT's run
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `e198378` + this change
