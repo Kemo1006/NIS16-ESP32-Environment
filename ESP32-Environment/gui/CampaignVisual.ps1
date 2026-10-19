@@ -271,6 +271,18 @@ function New-PlainExplain($Rep) {
         $tb.Foreground = Get-Brush $Pal.Dim; $tb.Text = [string][char]0x2022 + '  ' + $Text
         [void]$sp.Children.Add($tb)
     }
+    $hint = {
+        # a one-line analogy under the point above - only for a situation this run's checks reported
+        param([string]$Text)
+        $tb = New-Object Windows.Controls.TextBlock; $tb.TextWrapping = 'Wrap'; $tb.FontSize = 11.5; $tb.LineHeight = 16; $tb.Margin = '24,3,0,0'
+        $tb.FontStyle = 'Italic'; $tb.Foreground = Get-Brush $Pal.Cyan; $tb.Text = 'In other words: ' + $Text
+        [void]$sp.Children.Add($tb)
+    }
+    $said = (@($Rep.Notes) + @($Rep.Fails)) -join ' || '
+    $moved   = $said -match 'moved to a new parent but kept the same role'
+    $override = $said -match 'START was pressed over failed pre-START checks|force-started \(START_ANYWAY\)'
+    $reversed = $said -match 'REVERSED|AT THE SAME DEPTH|NOT shallower than the B end'
+    $badBase = @($Rep.Sig | Where-Object { $_.Res -match '^(EXCLUDED|INVALID)' }).Count
     $ok = [string][char]0x2714; $warn = [string][char]0x26A0; $bad = [string][char]0x2716; $info = [string][char]0x2139
     $v = [string]$Rep.Verdict
     if ($Rep.Benign) {
@@ -286,6 +298,7 @@ function New-PlainExplain($Rep) {
         $why = if ($pp -and $v -match 'SETUP INVALID') { "The attack signature DID move ($pp primary feature(s) passed), but it cannot be counted: the run did not go as designed, so the numbers may not show the attack you planned. Fix the reason below, then capture the run again:" } else { 'Fix the reason below, then capture the run again:' }
         & $add $bad $Pal.Red 'The attack could not be confirmed in this data.' $why
         foreach ($f in $(if ($Rep.Fails.Count) { @($Rep.Fails) } else { @('no attack signature moved far enough') })) { & $bullet ($f.Substring(0, 1).ToUpper() + $f.Substring(1)) }
+        if ($reversed) { & $hint "the secret tunnel points the wrong way: it carries the copy FARTHER from the post office, so it is not a shortcut and proves nothing. The board closer to the root must be A (exit)." }
     }
     elseif ($v -match 'WORMHOLE') {
         $t = if ($F.TunSent) { "Board B sent about $($F.TunSent) messages through the cable to board A, and A received about $($F.TunGot) - the shortcut worked." } else { 'The two wormhole boards passed messages through their cable - the shortcut worked.' }
@@ -295,8 +308,23 @@ function New-PlainExplain($Rep) {
     else {
         if ($F.AtkId) { & $add $ok $Pal.Green 'The attack happened.' "Board $($F.AtkId) was the blackhole: it received $($F.AtkRecv) messages from the boards behind it and passed on $($F.AtkFwd) ($($F.AtkPct)%). An honest board passes on about 100%." }
         if ($F.VicN) { & $add $ok $Pal.Green "Its victims' messages never arrived." ("$($F.VicN) victim board(s) kept sending as normal, but the root received {0:0}% of their messages during the attack (before it: {1:0}%). The victims could not tell - a blackhole accepts each message and silently throws it away." -f (100 * [double]$F.VicPdr), (100 * [double]$F.VicBase)) }
-        if ($F.ByN) { & $add $ok $Pal.Green 'The rest of the network was fine.' "$($F.ByN) board(s) whose messages do not pass the attacker kept delivering normally - so the loss is the attacker's doing, not a broken network or a bad signal." }
+        if ($F.ByN) {
+            & $add $ok $Pal.Green 'The rest of the network was fine.' "$($F.ByN) board(s) whose messages do not pass the attacker kept delivering normally - so the loss is the attacker's doing, not a broken network or a bad signal."
+            & $hint "these are houses on another street whose mail never passes the thief. Their cards all arrive - proof that the post office itself was working."
+        }
         if ($F.Robust) { & $add $ok $Pal.Green 'Checked a second way.' 'The test was repeated on only the part of the attack before any board moved, and it gave the same answer.' }
+    }
+    if (-not $Rep.Benign -and $moved) {
+        & $add $info $Pal.Faint 'Some boards changed parent - allowed.' 'The mesh re-arranged itself (it heals on its own), but each moved board kept the same role the whole attack, so the result is not affected (D-23).'
+        & $hint "a house moved to a different street, but its mail still went through the thief - it is still a victim, so its cards still count."
+    }
+    if (-not $Rep.Benign -and $badBase) {
+        & $add $info $Pal.Amber "$badBase feature(s) were left out of the test." 'Their normal-phase values were unstable or broken, so they could not serve as a reference - the verdict rests on the features that could be tested.'
+        & $hint "there was no reliable 'normal day' for that measurement: if mail already went missing before the thief arrived, you cannot tell what the thief took."
+    }
+    if (-not $Rep.Benign -and $override) {
+        & $add $info $Pal.Amber 'START was forced.' 'The run was started even though a pre-START check was not satisfied (or with START_ANYWAY). The result may be fine, but it carries a footnote.'
+        & $hint "the referee started the match with a rule waived: the score can still stand, but it gets an asterisk."
     }
     # the data - what is missing and why it does (not) matter
     $gaps = @($Rep.Notes | Where-Object { $_ -match '^(MAJOR|MINOR) GAP' })
@@ -310,6 +338,9 @@ function New-PlainExplain($Rep) {
         & $add $warn $Pal.Orange 'Important data is missing.' 'The attack is still visible, but the run should be captured again before its numbers are used:'
         foreach ($m in $maj) { & $bullet (Get-PlainGap $m) }
         if ($min.Count) { & $bullet ('Smaller gaps that do not change the result: ' + (@($min | ForEach-Object { ((Get-PlainGap $_) -split '\.')[0] }) -join '; ') + '.') }
+    }
+    if (@($gaps | Where-Object { $_ -match 'cooldown' }).Count) {
+        & $hint "the follow-up visit was skipped: we know the theft happened, we just did not check how the house recovered afterwards."
     }
     if (-not $Rep.Benign -and ($maj.Count -or $min.Count)) {
         # only where something IS missing - on a complete run it read like a hidden problem
