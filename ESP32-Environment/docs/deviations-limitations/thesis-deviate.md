@@ -444,3 +444,14 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Why** | The old rule measured our resampling, not the board. A missing window should mean a missing sample. |
 | **Net effect** | See verification #53: clean boards unchanged; boards with bunched timestamps recover their windows (FE90 10 % -> 0 % discarded, ED80 15 % -> 0 %). Verdicts unchanged; grades become truer (e.g. blackhole/linear/G402/stationary MINOR -> GOOD, blackhole/tree/G402/stationary MAJOR -> MINOR). Requires re-running analyze.ps1 on every run. |
 | **Paper edit** | Preprocessing: one sentence - "samples were aligned to the tick they were scheduled for (FreeRTOS fixed-period sampling delivers late samples, never early ones), tolerating up to 300 ms of lateness". Checklist B-tick. |
+
+## D-26 · Tree children keep their parent unless the link is really bad ("sticky parents", oct. 19, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | ESP-WIFI-MESH is self-forming and self-healing; tree topology uses its native parent selection (D-23). |
+| **What we did before** | Stock ESP-MESH thresholds: a tree child starts looking for a better parent once its parent's RSSI falls into the -78 / -82 / -85 dBm bands. Our links sit at a median of -71 to -78 dBm with many boards below -78 (verification #55), so children re-parented mid-run on a healthy-but-weak link. |
+| **What we do now** | `components/mesh_common/src/mesh_setup.c`, tree builds, non-root boards only: ESP-MESH's OWN defaults are read at boot (`esp_mesh_get_switch_parent_paras`, `esp_mesh_get_rssi_threshold`) and shifted `STICKY_PARENT_DB` = 6 dB weaker; the weak-link watch lasts `STICKY_PARENT_DURATION_X` = 3x longer. Old -> new values are printed on every board's serial log. `TREE_STICKY_PARENTS 0` restores stock behaviour. A crashed / vanished parent still makes its children move (self-healing, D-23). |
+| **Why** | The experiment needs the topology it was set up with; a re-parent on a link that still works changes who is a victim mid-run without any fault. |
+| **Net effect** | Fewer RSSI-driven parent changes in tree runs; crash-driven ones unchanged. Trade-off: a child may stay on a weak link (some packet loss) - the GUI's pre-START check now warns below -78 dBm so placement is fixed first. Tree runs captured BEFORE this firmware used the stock thresholds - say so per run. **Compiles (0 warnings); not yet tested on hardware.** |
+| **Paper edit** | Methodology (topology): one sentence - "for tree runs, ESP-MESH's parent-switch thresholds were lowered by 6 dB so children kept their parent unless the link degraded substantially; parent loss still triggered re-parenting." Checklist B-sticky. |

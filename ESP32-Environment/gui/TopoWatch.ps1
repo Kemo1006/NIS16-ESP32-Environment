@@ -82,10 +82,14 @@ function Complete-TopoTree {
     }
 }
 
+# ESP-MESH's own 'high' RSSI band (esp_mesh_internal.h: -78 dBm by default): below it a
+# tree child starts looking for a better parent. Boards with the D-26 sticky-parent
+# firmware hold on to about -84, but a link that weak still loses packets - so warn here.
+$script:WeakLinkDbm = -78
 function Get-WeakLinks {
-    # children whose link to their parent is weak right now (root's table, RSSI < -80 dBm)
+    # children whose link to their parent is weak right now (root's table, RSSI below $script:WeakLinkDbm)
     $D = $script:Dash; if (-not $D -or -not $D.Rows) { return @() }
-    return @($D.Rows | Where-Object { $_.Rssi -match '^-?\d+$' -and [int]$_.Rssi -lt -80 -and [string]$_.Role -notmatch 'ROOT' } |
+    return @($D.Rows | Where-Object { $_.Rssi -match '^-?\d+$' -and [int]$_.Rssi -lt $script:WeakLinkDbm -and [string]$_.Role -notmatch 'ROOT' } |
              ForEach-Object { '{0} ({1} dBm)' -f (Get-TopoName ([string]$_.Mac)), $_.Rssi })
 }
 

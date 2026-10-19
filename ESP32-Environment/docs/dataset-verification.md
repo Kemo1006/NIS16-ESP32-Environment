@@ -16,6 +16,32 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #55 — Oct 19, 2026 · evening — why tree boards change parent / disappear
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `426989a` + this change
+> **Request:** "children suddenly disconnect and change parent, sometimes a node is gone totally even powered on - did you do something in the tree topology?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | live | 53 captures + 1 live root log (teammate, ~10:48 PM PHT) | raw exports (parent_mac, rssi_dbm) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Firmware changes since oct. 10 | ✅ none to parent selection | tree gate / wormhole gate = root-side observers; [HEALTH] = 1 line / 30 s at priority 1; crash record = written once after a crash; sdkconfig 5.3.5 -> 5.5.4 regen: 0 values changed (14 renames, 121 new defaults) |
+| Parent switches + resets in all captures | ✅ rare | 13 switches + 1 reset in 53 runs; star 0. Clustered on board B768 (70:68 = the D9 crash board) and on G402 |
+| Link strength | ⚠️ marginal everywhere | median parent RSSI -71 to -78 dBm per topology/room; ~70 board-runs below -78 dBm = inside ESP-MESH's default re-parent bands (-78 / -82 / -85) |
+| Why TREE | ✅ explained | tree is the only self-organised topology (linear / star / partial pin parents), so only tree children re-parent on a weak link or a crashed parent |
+| Teammate's live log | ❌ attacker subtree dropped at START | the attacker's 2 children stopped reporting ~128 s, the attacker itself ~134 s (START at 135.6 s); 0C80 re-joined under the root, E618 went OFFLINE; attacker link -58 dBm (strong) -> the attacker board most likely crashed / rebooted. Needs its serial log or crashes_<node>.csv |
+| Fix 1 (GUI) | ✅ | pre-START 'Links strong enough' warns below -78 dBm (ESP-MESH's own band; was -80) with the reason |
+| Fix 2 (firmware, D-26) | ✅ compiles, ❌ not on hardware | tree non-root boards: ESP-MESH's own switch / RSSI thresholds read at boot and shifted 6 dB weaker, weak-link watch x3 (`TREE_STICKY_PARENTS`); 4 variants build with 0 warnings; tree builds link it, linear does not |
+
+**Verdict: nothing we changed broke the tree. Causes: marginal links + tree being the only self-organising topology +
+a crashing board (B768 earlier, the attacker in tonight's log). D-26 + the -78 dBm warning reduce the first two; the
+crash needs the attacker's serial log / crash record.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #54 — Oct 19, 2026 · afternoon — every run re-analysed with D-25, then re-verified
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `5c0ba40` + this change

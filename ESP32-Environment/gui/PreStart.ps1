@@ -101,7 +101,7 @@ function Get-PreStartChecks {
     $weak = @(); try { $weak = @(Get-WeakLinks) } catch { }
     $hasTable = $script:Dash -and $script:Dash.Rows -and $script:Dash.Rows.Count
     $out += @{ Name = 'Links strong enough'; State = $(if (-not $hasTable) { 'wait' } elseif ($weak.Count) { 'bad' } else { 'ok' })
-               Text = $(if ($weak.Count) { 'weak: ' + ($weak -join ', ') + ' - may change parent mid-run: move it closer BEFORE START' } elseif ($hasTable) { 'every child above -80 dBm to its parent' } else { 'waiting for the root''s table' }) }
+               Text = $(if ($weak.Count) { 'weak: ' + ($weak -join ', ') + " - below $($script:WeakLinkDbm) dBm ESP-MESH looks for another parent: move it closer to its parent BEFORE START (aim for -70 or better)" } elseif ($hasTable) { "every child at $($script:WeakLinkDbm) dBm or better to its parent" } else { 'waiting for the root''s table' }) }
     if ($R.Plan.Attack -eq 'blackhole' -and ($R.Plan.Topology -in @('tree', 'partial', 'partial_mesh'))) {
         $ac = $null; try { $ac = Get-AttackerChildState } catch { }
         $out += @{ Name = 'Attacker has a child'; State = $(if (-not $ac) { 'wait' } elseif ($ac.Kids) { 'ok' } else { 'bad' })

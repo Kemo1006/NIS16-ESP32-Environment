@@ -93,6 +93,8 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | B-grade | ⬜ | Verification method: validity + grades | Describe the four questions (attack / signature / setup / dataset), the grade scale + impact check, the placebo test (0 FP in 104) and the threshold basis table; engineering bounds stated as such with the sensitivity analysis (docs/attack-validation/GRADING-AND-THRESHOLDS.md) | verification #53 |
 | C15 | ❌ | baseline/linear/home/highload (sept 30) — the only benign capture | BENIGN NOT CONFIRMED: cooldown PDR 0.72, relays 1C38 / B768 forwarded 83-85 % with no attacker (high-load congestion); the blackhole PDR signature moved on normal traffic. Not a clean normal reference - recapture benign runs (D-18 plan) before using the benign class | verification #53 |
 
+| B-sticky | ⬜ | Methodology: tree topology | D-26: tree children keep their parent unless the link is really bad (ESP-MESH switch / RSSI thresholds 6 dB weaker, watch x3). Mark which tree runs used it (captured after the reflash) - earlier ones used stock thresholds | D-26, verification #55 |
+
 ## D. Captures to redo / still missing (before the numbers are final)
 
 | # | Status | What | Why | Source |

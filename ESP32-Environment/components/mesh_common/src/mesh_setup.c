@@ -29,9 +29,32 @@
 #include "esp_mac.h"
 #include "esp_event.h"
 #include "esp_mesh.h"
+#include "esp_mesh_internal.h"   /* parent-switch / RSSI thresholds (D-26) */
 #include "esp_netif.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
+
+/* ── D-26 STICKY PARENTS (tree only, oct. 19 2026) ───────────────────────── *
+ * TREE is the only topology where ESP-MESH picks and changes parents by itself
+ * (linear / star / partial pin them). With the stock thresholds a child starts
+ * hunting for a "better" parent once its parent's RSSI drops into the -78 /
+ * -82 / -85 dBm bands - and the campaign's links sit at a median of -71 to
+ * -76 dBm with many boards below -78, so tree children changed parent mid-run
+ * (verification #55). These shift ESP-MESH's OWN defaults (read at boot, never
+ * hard-coded absolutes) by STICKY_PARENT_DB dB weaker and make the weak-link
+ * watch STICKY_PARENT_DURATION_X times longer: a child keeps its parent unless
+ * the link is really bad for a long time. A parent that crashes / leaves still
+ * makes its children move (that is the mesh healing itself, D-23).
+ * Override any of these in mesh_config.h; TREE_STICKY_PARENTS 0 = stock ESP-MESH. */
+#ifndef TREE_STICKY_PARENTS
+#define TREE_STICKY_PARENTS        1
+#endif
+#ifndef STICKY_PARENT_DB
+#define STICKY_PARENT_DB           6     /* dB the switch / weak thresholds move down */
+#endif
+#ifndef STICKY_PARENT_DURATION_X
+#define STICKY_PARENT_DURATION_X   3     /* weak-link watch window multiplier          */
+#endif
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
@@ -253,6 +276,36 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 #endif
 
     ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
+
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE) && TREE_STICKY_PARENTS
+    if (role != MESH_ROLE_ROOT) {
+        /* D-26: shift ESP-MESH's own defaults - never fatal, every value logged */
+        mesh_switch_parent_t sp;
+        if (esp_mesh_get_switch_parent_paras(&sp) == ESP_OK) {
+            const mesh_switch_parent_t was = sp;
+            sp.duration_ms *= STICKY_PARENT_DURATION_X;
+            sp.cnx_rssi    -= STICKY_PARENT_DB;
+            sp.select_rssi -= STICKY_PARENT_DB;
+            sp.switch_rssi -= STICKY_PARENT_DB;
+            esp_err_t e = esp_mesh_set_switch_parent_paras(&sp);
+            ESP_LOGW(TAG, "STICKY PARENTS (D-26): switch %s - watch %d->%d ms, keep %d->%d, select %d->%d, "
+                     "switch %d->%d dBm", e == ESP_OK ? "set" : esp_err_to_name(e),
+                     was.duration_ms, sp.duration_ms, was.cnx_rssi, sp.cnx_rssi,
+                     was.select_rssi, sp.select_rssi, was.switch_rssi, sp.switch_rssi);
+        }
+        mesh_rssi_threshold_t th;
+        if (esp_mesh_get_rssi_threshold(&th) == ESP_OK) {
+            const mesh_rssi_threshold_t was = th;
+            th.high   -= STICKY_PARENT_DB;
+            th.medium -= STICKY_PARENT_DB;
+            th.low    -= STICKY_PARENT_DB;
+            esp_err_t e = esp_mesh_set_rssi_threshold(&th);
+            ESP_LOGW(TAG, "STICKY PARENTS (D-26): rssi bands %s - high %d->%d, medium %d->%d, low %d->%d dBm",
+                     e == ESP_OK ? "set" : esp_err_to_name(e),
+                     was.high, th.high, was.medium, th.medium, was.low, th.low);
+        }
+    }
+#endif
 
 #if STAR_HUB_BLACKHOLE
     if (role == MESH_ROLE_VICTIM) {
