@@ -144,9 +144,17 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
  * only renames the ends by depth). So the board FLASHED as B (preset's B row,
  * -DWORMHOLE_END=1 -> mesh_setup_init(MESH_ROLE_ATCK_WB)) does not
  * self-organise: it scans and pins the strongest mesh AP that is NOT the root
- * (layer >= 2), so it lands at H02 or deeper while A, which self-organises,
- * normally stays at H01. Every other board - A included - forms the tree as
- * usual. */
+ * (layer >= 2), so it lands at H02 or deeper. Every other board forms the
+ * tree as usual.
+ *
+ * Same depth was still possible (oct. 19 audit): A sits next to B, so A could
+ * also end up under a child (A H02 + B H02), and in partial the root takes only
+ * 2 children, so A may find it full. Hence two more rules, both before Phase 0:
+ *   - the board FLASHED as A pins the SHALLOWEST open parent it hears well
+ *     enough (WH_PIN_MIN_RSSI) - the root whenever it has room;
+ *   - B's parent must be at least as deep as A (A's layer comes from its UART
+ *     HELLO, mesh_setup_wormhole_peer_layer), so B is always >= 1 hop deeper,
+ *     and B re-picks by itself if A moves and the depths meet (rate-limited). */
 #define WH_B_NO_ROOT \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && \
      (MESH_TOPOLOGY == NIS_TOPO_TREE || MESH_TOPOLOGY == NIS_TOPO_PARTIAL))
@@ -155,6 +163,12 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
 #if MANUAL_PARENT
 static bool     s_pin_to_hub  = false;  /* star: join ONLY s_hub_bssid                 */
 static bool     s_pin_no_root = false;  /* wormhole B: strongest parent that is not root */
+static bool     s_pin_shallow = false;  /* wormhole A: shallowest open parent (root first) */
+static volatile int s_wh_peer_layer = 0;/* B: A's mesh layer from its HELLO (0 = unknown) */
+static volatile bool s_repick = false;  /* B: switch to a deeper parent on the next scan */
+static int64_t  s_last_repick_us __attribute__((unused)) = 0;
+#define WH_PIN_MIN_RSSI   (-85)         /* A: weaker parents only if nothing better       */
+#define WH_REPICK_GAP_US  (15LL * 1000000LL)
 static bool     s_have_parent = false;  /* own uplink (CONNECTED_BIT also covers children) */
 static uint32_t s_parent_drops = 0;     /* drops since the last good join              */
 static uint8_t  s_hub_bssid[6];
@@ -384,9 +398,13 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 #if WH_B_NO_ROOT
     if (role == MESH_ROLE_ATCK_WB) {
         s_pin_no_root = true;
-        ESP_LOGW(TAG, "WORMHOLE B (D-30): this board never takes the ROOT as parent - it "
-                 "joins the strongest other node, so it sits at H02 or deeper and the "
-                 "tunnel to A skips at least one hop.");
+        ESP_LOGW(TAG, "WORMHOLE B (D-30): this board never takes the ROOT as parent and "
+                 "always sits deeper than A - it joins the strongest node at least as deep "
+                 "as A, so the tunnel to A skips at least one hop.");
+    } else if (role == MESH_ROLE_ATCK_WA) {
+        s_pin_shallow = true;
+        ESP_LOGW(TAG, "WORMHOLE A (D-30): this board joins the SHALLOWEST parent it hears "
+                 "(the root whenever it has room), so it stays above B.");
     }
 #endif
 
@@ -547,7 +565,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         ESP_LOGI(TAG, "Mesh stack started.");
         s_is_root = false;
 #if MANUAL_PARENT
-        if (s_pin_to_hub || s_pin_no_root) {
+        if (s_pin_to_hub || s_pin_no_root || s_pin_shallow) {
             ESP_ERROR_CHECK(esp_mesh_set_self_organized(false, false));
             star_hub_scan();
         }
@@ -556,7 +574,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
 
 #if MANUAL_PARENT
     case MESH_EVENT_SCAN_DONE:
-        if (s_pin_to_hub || s_pin_no_root) {
+        if (s_pin_to_hub || s_pin_no_root || s_pin_shallow) {
             star_hub_scan_done(((mesh_event_scan_done_t *)data)->number);
         }
         break;
@@ -601,9 +619,10 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         }
         /* Wormhole B has no single fixed parent: a full AP, or a parent that
          * keeps failing (rebooted / moved away), means pick another one. */
-        if (s_pin_no_root && (ed->reason == WIFI_REASON_ASSOC_TOOMANY || ++s_parent_drops >= 3)) {
-            ESP_LOGW(TAG, "WORMHOLE B (D-30): parent lost (reason %d) - looking for another "
-                     "non-root parent.", (int)ed->reason);
+        if ((s_pin_no_root || s_pin_shallow) &&
+            (ed->reason == WIFI_REASON_ASSOC_TOOMANY || ++s_parent_drops >= 3)) {
+            ESP_LOGW(TAG, "WORMHOLE %s (D-30): parent lost (reason %d) - looking for another "
+                     "parent.", s_pin_no_root ? "B" : "A", (int)ed->reason);
             s_parent_drops = 0;
             star_hub_scan();
         }
@@ -691,9 +710,11 @@ static void star_hub_scan(void)
 static void star_hub_scan_done(int num)
 {
     static const uint8_t our_mesh[6] = MESH_ID;
-    mesh_assoc_t assoc, hub_assoc = {0};
-    wifi_ap_record_t rec, hub_rec = {0};
-    bool seen = false, joinable = false, root_only = false;
+    mesh_assoc_t assoc, hub_assoc = {0}, any_assoc = {0};
+    wifi_ap_record_t rec, hub_rec = {0}, any_rec = {0};
+    bool seen = false, joinable = false, root_only = false, too_shallow = false, any = false;
+    /* B's parent must sit at least as deep as A (layer units: root = 1). */
+    const int min_layer = (s_wh_peer_layer > 2) ? s_wh_peer_layer : 2;
 
     /* Every record must be read out before the flush, match or not. */
     for (int i = 0; i < num; i++) {
@@ -706,19 +727,38 @@ static void star_hub_scan_done(int num)
         /* An AP only takes children once it has joined the mesh, and while it has room. */
         bool open = assoc.mesh_type != MESH_IDLE && assoc.layer_cap && assoc.assoc < assoc.assoc_cap;
         if (s_pin_no_root) {
-            /* Wormhole B: our mesh only, never the root (layer 1), strongest wins. */
+            /* Wormhole B: our mesh only, never the root, never shallower than A;
+             * strongest wins. */
             if (memcmp(assoc.mesh_id, our_mesh, 6) != 0) {
                 continue;
             }
             seen = true;
-            if (assoc.layer < 2) {
-                root_only = true;
+            if (assoc.layer < min_layer) {
+                if (assoc.layer < 2) root_only = true;
+                else                 too_shallow = true;
                 continue;
             }
             if (open && (!joinable || rec.rssi > hub_rec.rssi)) {
                 joinable  = true;
                 hub_rec   = rec;
                 hub_assoc = assoc;
+            }
+            continue;
+        }
+        if (s_pin_shallow) {
+            /* Wormhole A: shallowest open parent heard well enough, then the
+             * strongest at that depth; if none is good enough, the strongest. */
+            if (memcmp(assoc.mesh_id, our_mesh, 6) != 0 || !open) {
+                continue;
+            }
+            seen = true;
+            if (!any || rec.rssi > any_rec.rssi) {
+                any = true; any_rec = rec; any_assoc = assoc;
+            }
+            if (rec.rssi >= WH_PIN_MIN_RSSI &&
+                (!joinable || assoc.layer < hub_assoc.layer ||
+                 (assoc.layer == hub_assoc.layer && rec.rssi > hub_rec.rssi))) {
+                joinable = true; hub_rec = rec; hub_assoc = assoc;
             }
             continue;
         }
@@ -733,20 +773,40 @@ static void star_hub_scan_done(int num)
         }
     }
     esp_mesh_flush_scan_result();
+    if (s_pin_shallow && !joinable && any) {
+        joinable = true; hub_rec = any_rec; hub_assoc = any_assoc;   /* weak, but in the mesh */
+    }
     /* A rescan that lands after the join already succeeded: never re-pin.
-     * Own uplink only - MESH_CONNECTED_BIT is also set by a child joining us. */
-    if (s_have_parent) {
+     * Own uplink only - MESH_CONNECTED_BIT is also set by a child joining us.
+     * Exception: B asked to move deeper than A (mesh_setup_wormhole_peer_layer). */
+    bool repick = s_repick;
+    s_repick = false;
+    if (s_have_parent && !repick) {
         return;
+    }
+    if (s_have_parent) {
+        uint8_t cur[6] = {0};
+        mesh_setup_get_parent_mac(cur);
+        if (!joinable || memcmp(cur, hub_rec.bssid, 6) == 0) {
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): no deeper parent than A in reach yet - staying. "
+                     "Move B away from A's parent (or a child next to B).");
+            return;
+        }
     }
     s_hub_scans++;
 
-    if (!joinable && s_pin_no_root) {
+    if (!joinable && (s_pin_no_root || s_pin_shallow)) {
         if (s_hub_scans == 1 || s_hub_scans % 10 == 0) {
-            ESP_LOGW(TAG, "WORMHOLE B (D-30): scan %lu - no non-root parent to join yet (%s). "
-                     "Waiting: another board must be in the mesh within reach of this one "
-                     "(move a child or A closer to B).", (unsigned long)s_hub_scans,
-                     !seen ? "no mesh node heard" : root_only ? "only the root is in reach"
-                                                              : "the ones in reach are full");
+            if (s_pin_no_root) {
+                ESP_LOGW(TAG, "WORMHOLE B (D-30): scan %lu - no parent deeper than A yet (%s). "
+                         "Waiting: another board must be in the mesh within reach of B "
+                         "(move a child, not A, closer to B).", (unsigned long)s_hub_scans,
+                         !seen ? "no mesh node heard" : root_only && !too_shallow ? "only the root is in reach"
+                         : too_shallow ? "only nodes as shallow as A are in reach" : "the ones in reach are full");
+            } else {
+                ESP_LOGW(TAG, "WORMHOLE A (D-30): scan %lu - no open parent heard yet (%s).",
+                         (unsigned long)s_hub_scans, seen ? "all full" : "no mesh node heard");
+            }
         }
         star_hub_scan();
         return;
@@ -778,8 +838,10 @@ static void star_hub_scan_done(int num)
     mesh_type_t my_type = (hub_assoc.layer_cap != 1) ? MESH_NODE : MESH_LEAF;
     int my_layer = hub_assoc.layer + 1;
     ESP_LOGW(TAG, "%s " MACSTR " (layer %d, rssi %d, ch %u) as layer %d.",
-             s_pin_no_root ? "WORMHOLE B (D-30): joining non-root parent"
-                           : "STAR HUB: joining " STAR_HUB_WHO,
+             s_pin_no_root ? (repick ? "WORMHOLE B (D-30): moving deeper than A, to"
+                                     : "WORMHOLE B (D-30): joining non-root parent")
+             : s_pin_shallow ? "WORMHOLE A (D-30): joining shallowest parent"
+                             : "STAR HUB: joining " STAR_HUB_WHO,
              MAC2STR(hub_rec.bssid), hub_assoc.layer, hub_rec.rssi,
              (unsigned)hub_rec.primary, my_layer);
     /* Not ESP_ERROR_CHECK: a refused parent is a retry, not a reboot. */
@@ -787,7 +849,8 @@ static void star_hub_scan_done(int num)
                                         my_type, my_layer);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "%s: esp_mesh_set_parent failed (%s) - rescanning.",
-                 s_pin_no_root ? "WORMHOLE B" : "STAR HUB", esp_err_to_name(err));
+                 s_pin_no_root ? "WORMHOLE B" : s_pin_shallow ? "WORMHOLE A" : "STAR HUB",
+                 esp_err_to_name(err));
         star_hub_scan();
     }
 }
@@ -1850,6 +1913,28 @@ bool heartbeat_wormhole_gate_active(void)
  * problems already (EXPOSURE box) but still started Phase 0, where the ends
  * LOCK - so a wrong setup could only be fixed by restarting the run. Checked
  * on fresh heartbeats only, in the order an operator should fix them. */
+void mesh_setup_wormhole_peer_layer(int peer_layer, bool may_repick)
+{
+#if WH_B_NO_ROOT
+    s_wh_peer_layer = peer_layer;
+    if (!s_pin_no_root || !may_repick || peer_layer <= 0 || !s_have_parent) {
+        return;
+    }
+    int me = mesh_setup_get_layer();
+    int64_t now = esp_timer_get_time();
+    if (me > 0 && me <= peer_layer && now - s_last_repick_us > WH_REPICK_GAP_US) {
+        s_last_repick_us = now;
+        s_repick = true;
+        ESP_LOGW(TAG, "WORMHOLE B (D-30): B is at layer %d, A at layer %d - not deeper than A. "
+                 "Looking for a deeper parent.", me, peer_layer);
+        star_hub_scan();
+    }
+#else
+    (void)peer_layer;
+    (void)may_repick;
+#endif
+}
+
 uint32_t mesh_setup_note_tunnel_test(const uint8_t src_mac[6])
 {
     (void)src_mac;
