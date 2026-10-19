@@ -1,0 +1,17 @@
+collect_run.py --ports COM3,COM4,COM11,COM12 --attack blackhole --topology tree --location G402 --scenario highload --repeat 1 --since 2026-10-19 03:16 --roster D:\NIS16-ESP32-Environment\ESP32-Environment\presets\Kyle\blackhole-tree-g402-highload.json --dry-run --plan-json C:\Users\ongky\AppData\Local\Temp\tmp6E2D.tmp
+(log: D:\NIS16-ESP32-Environment\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\highload\collect-scan_oct19_031651pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 - FAIL OTHER: ERROR: could not read the card: module 'serial' has no attribute 'Serial'
+
+-- COM4: reading the card ...
+COLLECT: COM4 - FAIL OTHER: ERROR: could not read the card: module 'serial' has no attribute 'Serial'
+
+-- COM11: reading the card ...
+COLLECT: COM11 - FAIL OTHER: ERROR: could not read the card: module 'serial' has no attribute 'Serial'
+
+-- COM12: reading the card ...
+COLLECT: COM12 - FAIL OTHER: ERROR: could not read the card: module 'serial' has no attribute 'Serial'
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=4
+COLLECT_RETRY: COM3,COM4,COM11,COM12
