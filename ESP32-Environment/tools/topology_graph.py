@@ -152,7 +152,7 @@ def validate(topology, graph, union_edges=None):
 
     status = OK
     if topology == "star":
-        # HUB STAR (star + blackhole, thesis-deviate D-16): the center is the
+        # HUB STAR (star + blackhole D-16, star + wormhole D-28): the center is the
         # root's only child and everyone else hangs off it - root -> hub ->
         # direct nodes. Same rule as topology_graph.c.
         top = graph.children[graph.root]

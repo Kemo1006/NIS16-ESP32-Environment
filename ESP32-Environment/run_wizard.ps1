@@ -5846,7 +5846,9 @@ function New-RunParams {
     # The run's attacker, built into this board's firmware ahead of the laptop's
     # own mesh_config.h (run.ps1 -AttackerMac). Load-bearing for star+blackhole:
     # victims join ONLY that board (D-16).
-    if ($h.Attack -eq 'blackhole' -and $AttackerMac) { $h.AttackerMac = $AttackerMac }
+    # Star + wormhole (D-28): the same value is the HUB = wormhole end A, which B
+    # and every control join ONLY.
+    if ($AttackerMac -and ($h.Attack -eq 'blackhole' -or ($h.Attack -eq 'wormhole' -and $Topology -eq 'star'))) { $h.AttackerMac = $AttackerMac }
     $h.Export = $true
     # Children only (the root returned above): what Ctrl+] does to the export -
     # asked once per run ($script:childExportMode).
@@ -9916,6 +9918,23 @@ if ($attack -eq 'blackhole') {
         Write-Host "  WARNING: the attacker's MAC is unknown on this laptop, so victims fall back to" -ForegroundColor Red
         Write-Host ("  mesh_config.h ({0}). In STAR + blackhole victims join ONLY that board -" -f (Get-ConfiguredAttackerMac)) -ForegroundColor Red
         Write-Host "  if it is not this run's attacker, no victim joins. Abort at the plan and fix the MAC." -ForegroundColor Red
+    }
+}
+elseif ($attack -eq 'wormhole' -and $topology -eq 'star') {
+    # D-28: star + wormhole is built one hop down - root -> wormhole end A (hub)
+    # -> every other board - so B is deeper than A and the tunnel is a shortcut.
+    $hubBoard = $fullRoster | Where-Object { $_.Kind -eq 'A' } | Select-Object -First 1
+    if ($hubBoard -and "$($hubBoard.Mac)".Trim() -match '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$') {
+        $script:runAttackerMac = "$($hubBoard.Mac)".Trim().ToLower()
+    }
+    Write-Host ""
+    if ($script:runAttackerMac) {
+        Write-Host ("Star hub for this run: wormhole end A {0} ({1}) - B and every control join ONLY it (D-28)." -f $script:runAttackerMac, $hubBoard.Label) -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "  WARNING: wormhole end A has no MAC in this preset, so B and the controls fall back to" -ForegroundColor Red
+        Write-Host ("  mesh_config.h ({0}) as the star hub. If that is not end A, nobody joins." -f (Get-ConfiguredAttackerMac)) -ForegroundColor Red
+        Write-Host "  Abort at the plan, read the MACs first and try again." -ForegroundColor Red
     }
 }
 

@@ -22,7 +22,7 @@
 # never locks. The root's own gates still apply. Dot-sourced by run_gui.ps1. ASCII only.
 
 function Reset-PreStart {
-    $script:Pre = @{ Boards = @{}; Kids = ''; KidsOk = $null; Wh = $null; WhText = ''; StabAt = $null; Phase0At = $null; ClockText = '' }
+    $script:Pre = @{ Boards = @{}; Kids = ''; KidsOk = $null; Wh = $null; WhText = ''; TunTest = 0; TunAt = $null; StabAt = $null; Phase0At = $null; ClockText = '' }
     try { Reset-TopoWatch } catch { }     # gui\TopoWatch.ps1
     if ($script:PrePanel) { $script:PrePanel.Visibility = 'Visible'; Update-PreStartPanel }
 }
@@ -59,6 +59,12 @@ function Read-PreStartLine($Board, [string]$Line) {
         try { Read-TopoWatchLine $Line } catch { }     # layout watch during baseline / attack
         try { Read-PlacementLine $Line } catch { }     # tree + blackhole: who to move under the attacker
         if ($Line -match 'TOPOLOGY TREE|n/a = no parent') { $changed = $true }   # the root's table just ended: weak links may have changed
+        # all in, but another gate (wormhole / attacker child) still holds Phase 0: the root stops
+        # printing WAITING x/y, so without this the panel kept the last 6/7 (and locked START).
+        # Its own 'if': the same line also carries the wormhole reason parsed below.
+        if ($Line -match '\[CTRL\] All (\d+) children (?:are in|in the mesh)') { $P.Kids = "$($Matches[1])/$($Matches[1])"; $P.KidsOk = $true; $changed = $true }
+        # wormhole tunnel test (stabilise only): B -> UART -> A -> mesh -> root arrived
+        if ($Line -match '\[TUNTEST\] OK #\d+.*\((\d+) test') { $P.TunTest = [int]$Matches[1]; $P.TunAt = Get-Date; $changed = $true }
         if ($Line -match '\[CTRL\] Waiting \d+ s for mesh to stabilise') { $P.StabAt = Get-Date; $P.Phase0At = $null; $changed = $true }
         elseif ($Line -match '\[CTRL\] (?:READY|WAITING): (\d+)/(\d+) children') { $P.Kids = "$($Matches[1])/$($Matches[2])"; $P.KidsOk = ([int]$Matches[1] -ge [int]$Matches[2]); $changed = $true }
         elseif ($Line -match 'OK: A \(exit\) at (H\d+), B \(entry\) at (H\d+)') { $P.Wh = $true; $P.WhText = "A at $($Matches[1]), B at $($Matches[2])"; $changed = $true }
@@ -114,14 +120,28 @@ function Get-PreStartChecks {
         $out += @{ Name = 'Attacker MAC on victims'; State = $(if (-not $vs.Count -or -not $am) { 'wait' } elseif ($wrong.Count) { 'bad' } else { 'ok' })
                    Text = $(if ($wrong.Count) { 'other target on ' + ($wrong -join ', ') + " (want $am)" } elseif ($vs.Count) { "$($vs.Count) victim(s) target $am" } else { 'no victim boot seen yet' }) }
     }
+    if ($R.Plan.Attack -eq 'wormhole' -and $R.Plan.Topology -eq 'star') {
+        # D-28: B + every control join ONLY end A (the hub), by the MAC built into them
+        $am = ([string]$R.Plan.AttackerMac).ToLower()
+        $vs = @($P.Boards.Keys | Where-Object { $P.Boards[$_].AttMac })
+        $wrong = @($vs | Where-Object { $am -and $P.Boards[$_].AttMac -ne $am })
+        $out += @{ Name = 'Hub MAC on boards'; State = $(if (-not $vs.Count -or -not $am) { 'wait' } elseif ($wrong.Count) { 'bad' } else { 'ok' })
+                   Text = $(if ($wrong.Count) { 'other hub on ' + ($wrong -join ', ') + " (want end A $am)" } elseif ($vs.Count) { "$($vs.Count) board(s) built for hub $am (end A)" } else { 'no board boot seen yet' }) }
+    }
     if ($R.Plan.Attack -eq 'wormhole') {
+        # not a START lock: older firmware never sends tests, and UART OK is already gated
+        $age = if ($P.TunAt) { [int]((Get-Date) - $P.TunAt).TotalSeconds } else { -1 }
+        $out += @{ Name = 'Tunnel test (B -> A -> root)'; State = $(if ($P.TunTest -and $age -le 30) { 'ok' } else { 'wait' })
+                   Text = $(if ($P.TunTest -and $age -le 30) { "$($P.TunTest) test(s) came through the tunnel, last $age s ago - wire + A + mesh path work" }
+                            elseif ($P.TunTest) { "last test $age s ago - B sends one every 10 s while UART is OK" }
+                            else { 'none yet - B sends one every 10 s once UART is OK (needs the oct. 19 firmware on A, B and the root)' }) }
         $out += @{ Name = 'Wormhole set up'; State = $(if ($null -eq $P.Wh) { 'wait' } elseif ($P.Wh) { 'ok' } else { 'bad' }); Text = $(if ($P.WhText) { $P.WhText } else { 'waiting for the root' }) }
     }
     return $out
 }
 
 # the checks whose failure puts a known fault into the data - these lock START
-$script:PreBlockRx = '^(Children in|Location = |Attacker has a child|Attacker MAC on victims|Wormhole set up)'
+$script:PreBlockRx = '^(Children in|Location = |Attacker has a child|Attacker MAC on victims|Hub MAC on boards|Wormhole set up)'
 function Test-BlockingCheck($c) { return ($c.State -eq 'bad' -and [string]$c.Name -match $script:PreBlockRx) }
 
 function Update-StartLock([object[]]$Checks) {

@@ -88,6 +88,10 @@ static void apply_rf_width(const char *when, bool only_if_ht40);
  * MESH_EVENT_CHILD_DISCONNECTED / MESH_EVENT_ROUTING_TABLE_REMOVE cases. */
 static void heartbeat_table_print(void);
 static void heartbeat_request_print(void);
+
+/* Root: wormhole tunnel tests that arrived (mesh_setup_note_tunnel_test). */
+static volatile uint32_t s_tuntest_count   = 0;
+static volatile int64_t  s_tuntest_last_us = 0;
 static void heartbeat_mark_offline(const uint8_t mac[6]);
 
 /* ── STAR + BLACKHOLE: the attacker is the star's HUB (thesis-deviate D-16) ──
@@ -110,8 +114,49 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
 #define STAR_HUB_BLACKHOLE \
     (MESH_TOPOLOGY == NIS_TOPO_STAR && ACTIVE_ATTACK == PHASE_ID_BLACKHOLE)
 
+/* ── STAR + WORMHOLE: wormhole end A is the star's HUB (thesis-deviate D-28) ──
+ * A plain star puts every child 1 hop from the root, so both wormhole ends sit
+ * at the same depth and the tunnel skips nothing (root: "SAME DEPTH", checklist
+ * A24). Same fix as D-16, one hop down:
+ *
+ *     root (sink/referee) -> NODE A (hub, layer 2) -> every other board (layer 3)
+ *
+ * so B's normal copy takes 2 hops (B -> A -> root) and the tunnelled copy 1
+ * (B =UART=> A -> root). The hub MAC comes from the same source as the
+ * blackhole attacker (blackhole_target_get: run.ps1 -AttackerMac = the preset's
+ * A board). Every non-root board that is NOT the hub pins it - B and the
+ * controls alike; the hub itself self-organises and can only reach the root.
+ * Auto-switch (wormhole_victim.c) then makes the hub A by itself: it is the
+ * shallower end. */
+#define STAR_HUB_WORMHOLE \
+    (MESH_TOPOLOGY == NIS_TOPO_STAR && ACTIVE_ATTACK == PHASE_ID_WORMHOLE)
+#define STAR_HUB (STAR_HUB_BLACKHOLE || STAR_HUB_WORMHOLE)
 #if STAR_HUB_BLACKHOLE
-static bool     s_pin_to_hub = false;
+#define STAR_HUB_WHO "attacker"
+#else
+#define STAR_HUB_WHO "wormhole A"
+#endif
+
+/* ── TREE / PARTIAL + WORMHOLE: end B never joins the root (thesis-deviate D-30) ──
+ * Both tunnel ends hang off one UART cable, so they usually sit side by side
+ * and ESP-MESH puts BOTH at H01 (it takes the shallowest parent it can still
+ * hear): same depth, the tunnel skips nothing, and auto-switch cannot help (it
+ * only renames the ends by depth). So the board FLASHED as B (preset's B row,
+ * -DWORMHOLE_END=1 -> mesh_setup_init(MESH_ROLE_ATCK_WB)) does not
+ * self-organise: it scans and pins the strongest mesh AP that is NOT the root
+ * (layer >= 2), so it lands at H02 or deeper while A, which self-organises,
+ * normally stays at H01. Every other board - A included - forms the tree as
+ * usual. */
+#define WH_B_NO_ROOT \
+    (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && \
+     (MESH_TOPOLOGY == NIS_TOPO_TREE || MESH_TOPOLOGY == NIS_TOPO_PARTIAL))
+#define MANUAL_PARENT (STAR_HUB || WH_B_NO_ROOT)
+
+#if MANUAL_PARENT
+static bool     s_pin_to_hub  = false;  /* star: join ONLY s_hub_bssid                 */
+static bool     s_pin_no_root = false;  /* wormhole B: strongest parent that is not root */
+static bool     s_have_parent = false;  /* own uplink (CONNECTED_BIT also covers children) */
+static uint32_t s_parent_drops = 0;     /* drops since the last good join              */
 static uint8_t  s_hub_bssid[6];
 static uint32_t s_hub_scans  = 0;
 static void star_hub_scan(void);
@@ -193,9 +238,9 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     int max_layer    = MESH_STACK_MAX_LAYER_TREE;
     int max_children = MESH_MAX_CHILDREN;
     const char *topo_name = topo_kind_str((topo_kind_t)MESH_TOPOLOGY);
-#if STAR_HUB_BLACKHOLE
-    max_layer = 3;                           /* root(L1) -> attacker hub(L2) -> victims(L3) */
-    topo_name = "STAR (attacker hub)";
+#if STAR_HUB
+    max_layer = 3;                           /* root(L1) -> hub(L2) -> every other board(L3) */
+    topo_name = STAR_HUB_BLACKHOLE ? "STAR (attacker hub)" : "STAR (wormhole A hub)";
 #elif (MESH_TOPOLOGY == NIS_TOPO_STAR)
     max_layer = 2;                           /* structural: center(L1) + direct nodes(L2) */
 #elif (MESH_TOPOLOGY == NIS_TOPO_LINEAR)
@@ -307,18 +352,41 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     }
 #endif
 
-#if STAR_HUB_BLACKHOLE
-    if (role == MESH_ROLE_VICTIM) {
+#if STAR_HUB
+    /* Blackhole: only victims pin (the attacker is the hub). Wormhole: every
+     * non-root board but the hub. */
+    if (STAR_HUB_BLACKHOLE ? role == MESH_ROLE_VICTIM : role != MESH_ROLE_ROOT) {
         uint8_t atk[6];
         bh_target_source_t src = blackhole_target_get(atk);
-        /* Mesh SoftAP BSSID = STA MAC + 1 (with carry), as in parent_mac. */
-        memcpy(s_hub_bssid, atk, 6);
-        for (int i = 5; i >= 0 && ++s_hub_bssid[i] == 0; i--) {
+        bool pin = true;
+#if STAR_HUB_WORMHOLE
+        /* Wormhole: both ends run one image, so the hub is told apart by MAC. */
+        uint8_t me[6];
+        esp_read_mac(me, ESP_MAC_WIFI_STA);
+        pin = memcmp(me, atk, 6) != 0;
+        if (!pin) {
+            ESP_LOGW(TAG, "STAR HUB: this board IS the hub (wormhole A, %s) - it joins "
+                     "the root; every other board joins it.", blackhole_target_source_str(src));
         }
-        s_pin_to_hub = true;
-        ESP_LOGW(TAG, "STAR HUB: this victim joins ONLY the attacker " MACSTR
-                 " (%s; its mesh AP " MACSTR "), never the root directly.",
-                 MAC2STR(atk), blackhole_target_source_str(src), MAC2STR(s_hub_bssid));
+#endif
+        if (pin) {
+            /* Mesh SoftAP BSSID = STA MAC + 1 (with carry), as in parent_mac. */
+            memcpy(s_hub_bssid, atk, 6);
+            for (int i = 5; i >= 0 && ++s_hub_bssid[i] == 0; i--) {
+            }
+            s_pin_to_hub = true;
+            ESP_LOGW(TAG, "STAR HUB: this board joins ONLY the " STAR_HUB_WHO " hub " MACSTR
+                     " (%s; its mesh AP " MACSTR "), never the root directly.",
+                     MAC2STR(atk), blackhole_target_source_str(src), MAC2STR(s_hub_bssid));
+        }
+    }
+#endif
+#if WH_B_NO_ROOT
+    if (role == MESH_ROLE_ATCK_WB) {
+        s_pin_no_root = true;
+        ESP_LOGW(TAG, "WORMHOLE B (D-30): this board never takes the ROOT as parent - it "
+                 "joins the strongest other node, so it sits at H02 or deeper and the "
+                 "tunnel to A skips at least one hop.");
     }
 #endif
 
@@ -478,17 +546,17 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
     case MESH_EVENT_STARTED:
         ESP_LOGI(TAG, "Mesh stack started.");
         s_is_root = false;
-#if STAR_HUB_BLACKHOLE
-        if (s_pin_to_hub) {
+#if MANUAL_PARENT
+        if (s_pin_to_hub || s_pin_no_root) {
             ESP_ERROR_CHECK(esp_mesh_set_self_organized(false, false));
             star_hub_scan();
         }
 #endif
         break;
 
-#if STAR_HUB_BLACKHOLE
+#if MANUAL_PARENT
     case MESH_EVENT_SCAN_DONE:
-        if (s_pin_to_hub) {
+        if (s_pin_to_hub || s_pin_no_root) {
             star_hub_scan_done(((mesh_event_scan_done_t *)data)->number);
         }
         break;
@@ -508,6 +576,10 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         memcpy(pmac, ec->connected.bssid, 6);
         ESP_LOGI(TAG, "Parent connected. Layer=%d  ParentMAC=" MACSTR "  IsRoot=%s",
                  layer, MAC2STR(pmac), s_is_root ? "YES" : "NO");
+#if MANUAL_PARENT
+        s_have_parent  = true;
+        s_parent_drops = 0;
+#endif
         xEventGroupSetBits(s_mesh_event_group, MESH_CONNECTED_BIT);
         log_mesh_status();
         apply_rf_width("connected", true);
@@ -519,11 +591,20 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
         ESP_LOGW(TAG, "Parent disconnected — reason %d.", (int)ed->reason);
         s_is_root = false;
         xEventGroupClearBits(s_mesh_event_group, MESH_CONNECTED_BIT);
-#if STAR_HUB_BLACKHOLE
+#if MANUAL_PARENT
+        s_have_parent = false;
         /* The stack keeps retrying a pinned parent by itself; only a full AP
          * needs a fresh scan (as in IDF's manual_networking example). */
         if (s_pin_to_hub && ed->reason == WIFI_REASON_ASSOC_TOOMANY) {
-            ESP_LOGW(TAG, "STAR HUB: attacker's AP is full (max_connection) - rescanning.");
+            ESP_LOGW(TAG, "STAR HUB: the " STAR_HUB_WHO " hub's AP is full (max_connection) - rescanning.");
+            star_hub_scan();
+        }
+        /* Wormhole B has no single fixed parent: a full AP, or a parent that
+         * keeps failing (rebooted / moved away), means pick another one. */
+        if (s_pin_no_root && (ed->reason == WIFI_REASON_ASSOC_TOOMANY || ++s_parent_drops >= 3)) {
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): parent lost (reason %d) - looking for another "
+                     "non-root parent.", (int)ed->reason);
+            s_parent_drops = 0;
             star_hub_scan();
         }
 #endif
@@ -594,7 +675,7 @@ static void mesh_event_handler(void *arg, esp_event_base_t base,
     }
 }
 
-#if STAR_HUB_BLACKHOLE
+#if MANUAL_PARENT
 static void star_hub_scan(void)
 {
     wifi_scan_config_t sc = {0};
@@ -609,41 +690,74 @@ static void star_hub_scan(void)
 
 static void star_hub_scan_done(int num)
 {
+    static const uint8_t our_mesh[6] = MESH_ID;
     mesh_assoc_t assoc, hub_assoc = {0};
     wifi_ap_record_t rec, hub_rec = {0};
-    bool seen = false, joinable = false;
+    bool seen = false, joinable = false, root_only = false;
 
     /* Every record must be read out before the flush, match or not. */
     for (int i = 0; i < num; i++) {
         int ie_len = 0;
         esp_mesh_scan_get_ap_ie_len(&ie_len);
         esp_mesh_scan_get_ap_record(&rec, &assoc);
-        if (ie_len != sizeof(assoc) || memcmp(rec.bssid, s_hub_bssid, 6) != 0) {
+        if (ie_len != sizeof(assoc)) {
+            continue;
+        }
+        /* An AP only takes children once it has joined the mesh, and while it has room. */
+        bool open = assoc.mesh_type != MESH_IDLE && assoc.layer_cap && assoc.assoc < assoc.assoc_cap;
+        if (s_pin_no_root) {
+            /* Wormhole B: our mesh only, never the root (layer 1), strongest wins. */
+            if (memcmp(assoc.mesh_id, our_mesh, 6) != 0) {
+                continue;
+            }
+            seen = true;
+            if (assoc.layer < 2) {
+                root_only = true;
+                continue;
+            }
+            if (open && (!joinable || rec.rssi > hub_rec.rssi)) {
+                joinable  = true;
+                hub_rec   = rec;
+                hub_assoc = assoc;
+            }
+            continue;
+        }
+        if (memcmp(rec.bssid, s_hub_bssid, 6) != 0) {
             continue;
         }
         seen = true;
-        /* The attacker's AP only takes children once it has joined the root. */
-        if (assoc.mesh_type != MESH_IDLE && assoc.layer_cap && assoc.assoc < assoc.assoc_cap) {
-            joinable = true;
-            hub_rec = rec;
+        if (open) {
+            joinable  = true;
+            hub_rec   = rec;
             hub_assoc = assoc;
         }
     }
     esp_mesh_flush_scan_result();
-    /* A rescan that lands after the join already succeeded: never re-pin a
-     * connected victim (victims are leaves, so this bit is only its parent). */
-    if (xEventGroupGetBits(s_mesh_event_group) & MESH_CONNECTED_BIT) {
+    /* A rescan that lands after the join already succeeded: never re-pin.
+     * Own uplink only - MESH_CONNECTED_BIT is also set by a child joining us. */
+    if (s_have_parent) {
         return;
     }
     s_hub_scans++;
 
+    if (!joinable && s_pin_no_root) {
+        if (s_hub_scans == 1 || s_hub_scans % 10 == 0) {
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): scan %lu - no non-root parent to join yet (%s). "
+                     "Waiting: another board must be in the mesh within reach of this one "
+                     "(move a child or A closer to B).", (unsigned long)s_hub_scans,
+                     !seen ? "no mesh node heard" : root_only ? "only the root is in reach"
+                                                              : "the ones in reach are full");
+        }
+        star_hub_scan();
+        return;
+    }
     if (!joinable) {
         /* Once, then every 10th scan - a missing attacker must be loud but
          * not flood the monitor. */
         if (s_hub_scans == 1 || s_hub_scans % 10 == 0) {
-            ESP_LOGW(TAG, "STAR HUB: scan %lu - attacker AP " MACSTR " %s. Waiting "
-                     "(check the attacker is powered + in the mesh, and "
-                     "BLACKHOLE_ATTACKER_MAC / SET_ATTACKER_MAC names it).",
+            ESP_LOGW(TAG, "STAR HUB: scan %lu - " STAR_HUB_WHO " hub AP " MACSTR " %s. Waiting "
+                     "(check the " STAR_HUB_WHO " board is powered + in the mesh, and the "
+                     "run's -AttackerMac / SET_ATTACKER_MAC names it).",
                      (unsigned long)s_hub_scans, MAC2STR(s_hub_bssid),
                      seen ? "seen but not joinable yet (not in the mesh / full)"
                           : "not seen");
@@ -663,15 +777,17 @@ static void star_hub_scan_done(int num)
     }
     mesh_type_t my_type = (hub_assoc.layer_cap != 1) ? MESH_NODE : MESH_LEAF;
     int my_layer = hub_assoc.layer + 1;
-    ESP_LOGW(TAG, "STAR HUB: joining attacker " MACSTR " (layer %d, rssi %d, ch %u) "
-             "as layer %d.", MAC2STR(hub_rec.bssid), hub_assoc.layer, hub_rec.rssi,
+    ESP_LOGW(TAG, "%s " MACSTR " (layer %d, rssi %d, ch %u) as layer %d.",
+             s_pin_no_root ? "WORMHOLE B (D-30): joining non-root parent"
+                           : "STAR HUB: joining " STAR_HUB_WHO,
+             MAC2STR(hub_rec.bssid), hub_assoc.layer, hub_rec.rssi,
              (unsigned)hub_rec.primary, my_layer);
     /* Not ESP_ERROR_CHECK: a refused parent is a retry, not a reboot. */
     esp_err_t err = esp_mesh_set_parent(&parent, (mesh_addr_t *)&hub_assoc.mesh_id,
                                         my_type, my_layer);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "STAR HUB: esp_mesh_set_parent failed (%s) - rescanning.",
-                 esp_err_to_name(err));
+        ESP_LOGW(TAG, "%s: esp_mesh_set_parent failed (%s) - rescanning.",
+                 s_pin_no_root ? "WORMHOLE B" : "STAR HUB", esp_err_to_name(err));
         star_hub_scan();
     }
 }
@@ -1461,6 +1577,17 @@ static void heartbeat_table_print(void)
                                   " B's normal copy %d", hop_a, hop_b);
                 }
             }
+            /* TUNNEL TEST (before Phase 0): UART OK only proves the wire; this
+             * proves wire + A's re-injection + the mesh path up to here. */
+            if (s_tuntest_count > 0) {
+                ESP_LOGI(TAG, "   Tunnel test : OK - %lu test(s) came B -> UART -> A -> root,"
+                              " last %lld s ago", (unsigned long)s_tuntest_count,
+                         (long long)((esp_timer_get_time() - s_tuntest_last_us) / 1000000LL));
+            } else {
+                ESP_LOGW(TAG, "   Tunnel test : none arrived yet (B sends one every 10 s before"
+                              " Phase 0 once UART is OK; none = A's re-injection or the mesh"
+                              " path is broken, or older firmware)");
+            }
 
             log_rule('-', rule_w);
             ESP_LOGI(TAG, " EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)");
@@ -1539,10 +1666,21 @@ static void heartbeat_table_print(void)
                               " H%02d. The tunnelled copy would NOT be a shortcut -"
                               " it arrives no faster than B's normal copy.",
                          hop_a > hop_b ? "REVERSED" : "AT THE SAME DEPTH", hop_a, hop_b);
-                ESP_LOGE(TAG, "    A must be CLOSER to the root than B. Auto-switch boards"
-                              " fix this themselves before Phase 0 when they hear each other"
-                              " over UART - if it persists, check the cable. Same depth:"
-                              " move one board. Pre-auto-switch firmware: reflash both.");
+                if (hop_a > hop_b) {
+                    ESP_LOGE(TAG, "    A must be CLOSER to the root than B. Auto-switch boards"
+                                  " swap the names themselves before Phase 0 when they hear each"
+                                  " other over UART - if it persists, check the cable."
+                                  " Pre-auto-switch firmware: reflash both.");
+                } else {
+                    /* Auto-switch only renames the ends by depth; equal depth has no
+                     * deeper end to call B, so only a different layout fixes it. */
+                    ESP_LOGE(TAG, "    Auto-switch CANNOT fix this - it only swaps the names A/B,"
+                                  " and both ends are at the same depth. Move ONE end (B) farther"
+                                  " from the root, where the root is weak (about -80 dBm or worse)"
+                                  " but another child is strong, then press that board's EN/RST"
+                                  " button so it picks a new parent. Moving it without a reset does"
+                                  " nothing: ESP-MESH keeps a working parent.");
+                }
                 /* oct. 14 2026: a run that reached the attack like this was
                  * analysed, pushed and only then found invalid. */
                 ESP_LOGE(TAG, "    >> If this shows AFTER Phase 0 started: STOP and restart the run."
@@ -1712,6 +1850,13 @@ bool heartbeat_wormhole_gate_active(void)
  * problems already (EXPOSURE box) but still started Phase 0, where the ends
  * LOCK - so a wrong setup could only be fixed by restarting the run. Checked
  * on fresh heartbeats only, in the order an operator should fix them. */
+uint32_t mesh_setup_note_tunnel_test(const uint8_t src_mac[6])
+{
+    (void)src_mac;
+    s_tuntest_last_us = esp_timer_get_time();
+    return ++s_tuntest_count;
+}
+
 bool heartbeat_wormhole_ready(char *why, size_t len)
 {
     if (len) {

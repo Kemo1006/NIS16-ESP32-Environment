@@ -52,6 +52,9 @@ static const char *TAG = "ROOT_MAIN";
  * same (src_mac, seq_num) shows up twice with a latency mismatch — the wormhole
  * signature. Must match wormhole_victim.c. ("PROW") */
 #define PROBE_MAGIC_WORMHOLE 0x50524F57U
+/* Wormhole TUNNEL TEST ("PROT", stabilise only) - never an arrival row. Must
+ * match probe_relay.h. */
+#define PROBE_MAGIC_TUNTEST  0x50524F54U
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
@@ -685,6 +688,17 @@ static void probe_data_cb(const uint8_t *data, size_t len,
     if (len < sizeof(probe_pkt_t)) return;
 
     const probe_pkt_t *pkt = (const probe_pkt_t *)data;
+    if (pkt->magic == PROBE_MAGIC_TUNTEST) {
+        /* Tunnel test: proves B -> UART -> A -> mesh -> root works before the
+         * run. Printed + shown in the WORMHOLE TUNNEL block; never logged. */
+        int64_t lat = esp_timer_get_time() - pkt->send_ts_us;
+        uint32_t n = mesh_setup_note_tunnel_test(pkt->src_mac);
+        ESP_LOGI(TAG, "[TUNTEST] OK #%lu: B " MACSTR " -> UART -> A -> mesh -> root works "
+                 "(%lu test(s) received; not data, not logged)",
+                 (unsigned long)pkt->seq_num, MAC2STR(pkt->src_mac), (unsigned long)n);
+        (void)lat;   /* B and root clocks differ before the run - no latency claim */
+        return;
+    }
     bool is_wormhole_copy = (pkt->magic == PROBE_MAGIC_WORMHOLE);
     if (pkt->magic != PROBE_MAGIC && !is_wormhole_copy) return;
 

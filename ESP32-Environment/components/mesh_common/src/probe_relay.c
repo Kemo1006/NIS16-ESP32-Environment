@@ -95,6 +95,14 @@ void probe_relay_ingest(const uint8_t *data, size_t len)
      * an intermediate node refused to carry it the duplicate arrivals that ARE
      * the wormhole signature would never reach the root — the attack would
      * silently look like it never happened. See probe_relay.h. */
+    if (pkt->magic == PROBE_MAGIC_TUNTEST) {
+        /* Tunnel test (stabilise only): carried, never counted - see probe_relay.h. */
+        probe_pkt_t t = *pkt;
+        if (s_queue) {
+            (void)xQueueSend(s_queue, &t, 0);
+        }
+        return;
+    }
     if (pkt->magic != PROBE_MAGIC && pkt->magic != PROBE_MAGIC_WORMHOLE) {
         return;                              /* not a probe — not ours */
     }
@@ -126,6 +134,12 @@ static void relay_task(void *arg)
 
     while (true) {
         if (xQueueReceive(s_queue, &pkt, portMAX_DELAY) != pdTRUE) {
+            continue;
+        }
+
+        if (pkt.magic == PROBE_MAGIC_TUNTEST) {
+            /* Not a probe: no forward decision, no counters (probe_relay.h). */
+            (void)send_to_parent(&pkt);
             continue;
         }
 

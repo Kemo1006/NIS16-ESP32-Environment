@@ -83,6 +83,15 @@ extern "C" {
  *  never happened. */
 #define PROBE_MAGIC_WORMHOLE 0x50524F57U
 
+/** "PROT" — wormhole TUNNEL TEST (oct. 19 2026). Before Phase 0 (stabilise
+ *  only) Node B sends one of these over the UART every TUNTEST_PERIOD_MS, A
+ *  re-injects it, every relay carries it and the root prints it - proof that
+ *  the WHOLE tunnel path (wire + A's re-injection + the mesh up to the root)
+ *  works before the run starts. It is NOT a probe: relays never count it
+ *  (recv/forward/drop stay probe-only, so ForwardingRatio is untouched) and the
+ *  root never writes it to the arrivals log. */
+#define PROBE_MAGIC_TUNTEST  0x50524F54U
+
 typedef struct __attribute__((packed)) {
     uint32_t magic;
     uint32_t seq_num;

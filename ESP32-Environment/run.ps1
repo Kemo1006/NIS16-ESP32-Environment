@@ -150,6 +150,8 @@ param(
     # BLACKHOLE_ATTACKER_MAC, so a stale per-laptop mesh_config.h cannot point
     # victims at the wrong board - load-bearing for star+blackhole (D-16), where
     # victims join ONLY the attacker. Empty = fall back to mesh_config.h.
+    # star + wormhole (D-28): the HUB's MAC = the preset's wormhole end A; every
+    # other child (B + controls) joins ONLY that board.
     [string]$AttackerMac = '',
     # Export FOLDER override for a control victim in an attack run. The board is
     # flashed -Attack none (it's a plain victim) but its CSV belongs with the
@@ -523,13 +525,14 @@ elseif ($ExpectedChildren -gt 0) {
 
 # Attacker MAC (see -AttackerMac). ALWAYS passed, 0 = none, for the same
 # CMake-cache reason as EXPECTED_CHILDREN above. Only blackhole child builds
-# read it (blackhole_target.c); every other build gets 0.
+# and star + wormhole child builds read it (blackhole_target.c; for star +
+# wormhole it is the HUB = wormhole end A, D-28); every other build gets 0.
 $macHex = '0'
 if ($AttackerMac) {
     if ($AttackerMac.Trim() -notmatch '^[0-9a-fA-F]{2}([:-]?[0-9a-fA-F]{2}){5}$') {
         throw "-AttackerMac '$AttackerMac' is not a MAC (expected aa:bb:cc:dd:ee:ff)."
     }
-    if ($Attack -eq 'blackhole' -and $Role -ne 'root') {
+    if ($Role -ne 'root' -and ($Attack -eq 'blackhole' -or ($Attack -eq 'wormhole' -and $Topology -eq 'star'))) {
         $macHex = '0x' + (($AttackerMac.Trim() -replace '[:-]', '').ToUpper()) + 'ULL'
         Write-Host ("  Attacker MAC for this build: {0} (from the wizard, overrides mesh_config.h)" -f $AttackerMac.Trim().ToLower()) -ForegroundColor DarkGray
     }

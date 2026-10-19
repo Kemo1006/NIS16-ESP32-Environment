@@ -145,6 +145,14 @@ bool heartbeat_wormhole_gate_active(void);
  */
 bool heartbeat_wormhole_ready(char *why, size_t len);
 
+/**
+ * @brief Root-only: record one wormhole TUNNEL TEST that arrived (sent by B over
+ *        the UART before Phase 0, re-injected by A). Shown as the "Tunnel test"
+ *        line of the WORMHOLE TUNNEL block.
+ * @return how many tests have arrived so far
+ */
+uint32_t mesh_setup_note_tunnel_test(const uint8_t src_mac[6]);
+
 #ifdef __cplusplus
 }
 #endif

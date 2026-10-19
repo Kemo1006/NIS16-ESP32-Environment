@@ -139,6 +139,7 @@ _Static_assert(sizeof(hello_pkt_t) == sizeof(tunnel_pkt_t),
                "HELLO and tunnel frames must be the same size (see above)");
 
 #define HELLO_PERIOD_MS        1000
+#define TUNTEST_PERIOD_MS      10000  /* B: one tunnel test per 10 s, stabilise only */
 #define PEER_FRESH_MS          5000   /* a HELLO older than this is "no peer"  */
 #define LOCK_WAIT_FOR_PEER_MS  3000   /* booted into a running run: wait this
                                        * long for a HELLO before falling back  */
@@ -198,6 +199,11 @@ static void role_task(void *arg);
 static void probe_gen_task(void *arg);
 static void tunnel_forwarder_task(void *arg);
 static void uart_tunnel_rx_task(void *arg);
+static void send_tunnel_test(void);
+
+static uint32_t s_tuntest_sent = 0;       /* B: tunnel tests written to the wire */
+static uint32_t s_tuntest_relayed = 0;    /* A: tunnel tests re-injected         */
+static int64_t  s_rt_next_tuntest_us = 0;
 static void reinject_task(void *arg);
 
 /* C7 Option 1: both wormhole ends are ALSO ordinary relays for everyone else's
@@ -475,6 +481,23 @@ static uint8_t link_state(int64_t now)
     return (now - s_rt_started_us < PEER_FRESH_MS * 1000LL) ? WH_LINK_WAITING : WH_LINK_NONE;
 }
 
+/* B: one tunnel-test frame to A over the UART (same frame as a real tunnel
+ * copy, inner magic PROBE_MAGIC_TUNTEST). A re-injects it, the root prints
+ * "[TUNTEST]". Counts nothing that ends up in telemetry. */
+static void send_tunnel_test(void)
+{
+    tunnel_pkt_t tp = { .magic = WORMHOLE_TUNNEL_MAGIC };
+    tp.probe.magic      = PROBE_MAGIC_TUNTEST;
+    tp.probe.seq_num    = ++s_tuntest_sent;
+    tp.probe.send_ts_us = esp_timer_get_time();
+    memcpy(tp.probe.src_mac, s_self_mac, 6);
+    tp.crc = esp_rom_crc32_le(0, (const uint8_t *)&tp, offsetof(tunnel_pkt_t, crc));
+    int written = uart_write_bytes(WORMHOLE_UART_PORT, (const char *)&tp, sizeof(tp));
+    ESP_LOGI(TAG, "TUNNEL TEST #%lu sent to A over the UART (%s) - the root prints "
+             "'[TUNTEST]' when it arrives through A.", (unsigned long)tp.probe.seq_num,
+             written == (int)sizeof(tp) ? "ok" : "WRITE FAILED");
+}
+
 /* One decision round: HELLO when due, provisional role / lock, conflict and
  * shortcut checks. role_task runs it every 100 ms. */
 static void role_step(void)
@@ -490,6 +513,15 @@ static void role_step(void)
 
         uint8_t phase = phase_listener_get_phase_id();
         bool real_phase = (phase != PHASE_ID_UNSET && phase != PHASE_ID_PREPARE);
+
+        /* TUNNEL TEST: before Phase 0 only, B proves the whole tunnel path
+         * (wire -> A -> mesh -> root). Never in a real phase, so no test packet
+         * can land in the data; once the run starts only real tunnel copies flow. */
+        if (!real_phase && !s_role_locked && is_b() && peer_fresh() && my_layer > 0 &&
+            now >= s_rt_next_tuntest_us) {
+            send_tunnel_test();
+            s_rt_next_tuntest_us = now + TUNTEST_PERIOD_MS * 1000LL;
+        }
 
         /* NEW RUN (oct. 19 2026): the lock is per RUN, not per boot. When the root restarts
          * (new session - the phase listener drops back to UNSET), a lock from the earlier
@@ -773,8 +805,9 @@ typedef union {
 static bool rx_handle_window(const wh_frame_t *f)
 {
     uint32_t crc = esp_rom_crc32_le(0, f->raw, offsetof(tunnel_pkt_t, crc));
+    bool is_test   = (f->t.probe.magic == PROBE_MAGIC_TUNTEST);
     bool tunnel_ok = (f->t.magic == WORMHOLE_TUNNEL_MAGIC) &&
-                     (f->t.probe.magic == PROBE_MAGIC) && (crc == f->t.crc);
+                     (f->t.probe.magic == PROBE_MAGIC || is_test) && (crc == f->t.crc);
     bool hello_ok  = (f->h.magic == WORMHOLE_HELLO_MAGIC) && (crc == f->h.crc);
 
     if (hello_ok && memcmp(f->h.mac, s_self_mac, 6) == 0) {
@@ -814,7 +847,9 @@ static bool rx_handle_window(const wh_frame_t *f)
              * wrong place. */
             ESP_LOGW(TAG, "Tunnel frame received while acting as Node B - ignored");
         } else {
-            s_tunnel_received++;
+            if (!is_test) {
+                s_tunnel_received++;           /* tests never reach telemetry */
+            }
             probe_pkt_t inner = f->t.probe;
             if (xQueueSend(s_reinject_queue, &inner, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "Re-inject queue full - dropping tunnelled seq=%lu",
@@ -877,6 +912,16 @@ static void reinject_task(void *arg)
 
     while (true) {
         if (xQueueReceive(s_reinject_queue, &pkt, portMAX_DELAY) != pdTRUE) {
+            continue;
+        }
+        if (pkt.magic == PROBE_MAGIC_TUNTEST) {
+            /* Tunnel test: forward as-is (keeps its own magic), count nothing
+             * that reaches telemetry. */
+            esp_err_t terr = probe_relay_send_own(&pkt);
+            s_tuntest_relayed++;
+            ESP_LOGI(TAG, "TUNNEL TEST #%lu from B received over the UART, re-injected toward "
+                     "the root (%s).", (unsigned long)pkt.seq_num,
+                     terr == ESP_OK ? "ok" : esp_err_to_name(terr));
             continue;
         }
         /* Tag this as the tunnel ("fast") copy: root recognises PROBE_MAGIC_WORMHOLE

@@ -2688,7 +2688,9 @@ function Test-HandsOff {
     # WHICH window to look for.
     try {
         $busy = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe' OR Name='python.exe' OR Name='py.exe'" -ErrorAction Stop |
-            Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '(?i)run_wizard|(?<![\w-])run\.ps1|menu\.ps1|idf\.py|idf_monitor|gui_monitor|export_logs|import_sdcard|esptool' -and $_.CommandLine -notmatch '(?i)Get-EspMac|sniff\.py' })
+            # idf.py / esptool only count when they name a COM port: a plain 'idf.py build'
+            # touches no board (oct. 19 2026: a background compile blocked 'Identify all')
+            Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '(?i)run_wizard|(?<![\w-])run\.ps1|menu\.ps1|idf\.py|idf_monitor|gui_monitor|export_logs|import_sdcard|esptool' -and -not ($_.CommandLine -match '(?i)idf\.py|esptool' -and $_.CommandLine -notmatch '(?i)idf_monitor|COM\d+') -and $_.CommandLine -notmatch '(?i)Get-EspMac|sniff\.py' })
         if ($busy.Count) {
             $c = [string]$busy[0].CommandLine
             $what = switch -Regex ($c) {
@@ -6967,7 +6969,16 @@ function New-RunPlan($P) {
         $ends = @($local | Where-Object { $_.Kind -in @('A', 'B') })
         if ($ends.Count -eq 2) { $notes += 'Wormhole: the two tunnel boards pick A/B themselves. If the jumpers were touched, run Boards > UART cable test first. The root holds Phase 0 until the UART works both ways.' }
         elseif ($ends.Count -eq 1) { $notes += "Only ONE tunnel end ($($ends[0].Label)) is on this laptop - its cable partner must be wired to it." }
-        if ($topology -eq 'star') { $notes += 'STAR + wormhole: every child is 1 hop from the root, so the root''s "A closer than B" gate can never pass - only START_ANYWAY starts it (open team decision, checklist A24).' }
+        if ($topology -eq 'star') {
+            # D-28: built one hop down - root -> end A (hub) -> every other board - so B is deeper than A
+            $hub = $full | Where-Object { $_.Kind -eq 'A' } | Select-Object -First 1
+            if ($hub) {
+                $liveMac = if ($hub.Port -and $script:Live.Contains([string]$hub.Port)) { [string]$script:Live[[string]$hub.Port].Mac } else { '' }
+                $attMac = @($liveMac, [string]$hub.Mac) | Where-Object { $_ -match '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$' } | Select-Object -First 1
+            }
+            if ($attMac) { $notes += "STAR + wormhole: end A ($($hub.Label), $attMac) is the star's HUB - B and every control join ONLY it, so B sits one hop deeper and the tunnel skips that hop (D-28). Power A before the others." }
+            else { $stop += 'STAR + wormhole: end A has no known MAC, so B and the controls cannot be told which board is the hub (D-28). Read the MACs first, or set end A''s MAC in the preset.' }
+        }
     }
     if (-not @($local | Where-Object Role -eq 'root').Count -and $local.Count) {
         # oct. 18 2026 (user): the usual setup keeps the root in its OWN preset on THIS

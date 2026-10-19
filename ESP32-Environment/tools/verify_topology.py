@@ -793,22 +793,31 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         status, reason = topology_graph.validate(expect, graph, union_edges)
         print(f"  {status} {expect}: {reason}")
         structure_ok = status != topology_graph.FAIL
-        # HUB STAR (star + blackhole, D-16): the shape alone passes whoever sits
-        # in the middle, but the run only means something if the hub IS the
-        # blackhole - otherwise every victim is upstream of nothing.
+        # HUB STAR (star + blackhole D-16, star + wormhole D-28): the shape alone
+        # passes whoever sits in the middle, but the run only means something if
+        # the hub IS the blackhole (else every victim is upstream of nothing) or
+        # wormhole end A (else B is not deeper than A and the tunnel skips nothing).
         top = graph.children.get(graph.root, []) if graph.root is not None else []
         if expect == "star" and graph.max_layer == 3 and len(top) == 1:
             hub = top[0]
             hub_role = canonical_role(getattr(nodes.get(hub), "role", ""))
+            roles = {canonical_role(getattr(n, "role", "")) for n in nodes.values()}
+            wormhole = bool(roles & {"wormhole_a", "wormhole_b"})
+            want = "wormhole_a" if wormhole else "blackhole"
+            what = "wormhole end A" if wormhole else "blackhole attacker"
             atk = sorted(nid for nid, n in nodes.items()
-                         if canonical_role(getattr(n, "role", "")) == "blackhole")
-            if hub_role == "blackhole":
-                print(f"  {topology_graph.OK} hub {hub} is the blackhole attacker - every "
+                         if canonical_role(getattr(n, "role", "")) == want)
+            if hub_role == want:
+                print(f"  {topology_graph.OK} hub {hub} is the {what} - every "
                       f"other child sits behind it")
-            elif atk:
+            elif atk or wormhole:
                 print(f"  {topology_graph.FAIL} hub {hub} is a {hub_role or '?'}, not the "
-                      f"attacker ({', '.join(atk)}) - victims are not behind the attacker. "
-                      f"Check BLACKHOLE_ATTACKER_MAC / SET_ATTACKER_MAC on the victims")
+                      f"{what} ({', '.join(atk) or '?'}) - "
+                      + ("B is not one hop deeper than A, so the tunnel is no shortcut. "
+                         "Check the run's -AttackerMac (= end A) on every child"
+                         if wormhole else
+                         "victims are not behind the attacker. "
+                         "Check BLACKHOLE_ATTACKER_MAC / SET_ATTACKER_MAC on the victims"))
                 structure_ok = False
             else:
                 print(f"  {topology_graph.WARN} hub {hub} ({hub_role or '?'}) - no blackhole "

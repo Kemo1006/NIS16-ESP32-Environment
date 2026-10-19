@@ -568,6 +568,14 @@ python tools\run_matrix.py --record --topology star --attack blackhole --repeat 
 
 # ▶️ RUN C — WORMHOLE (star)
 
+> ⚠️ **Since oct. 19, 2026 (D-28) star + wormhole is a HUB star:** root → **Node A (hub)** →
+> every other board (B + controls). A flat star cannot work (both ends 1 hop from the root =
+> no shortcut). Every child build needs **`-AttackerMac <Node A's MAC>`** (B and the controls
+> join ONLY that board), and the controls need `-Attack wormhole -WormholeRole victim`. The GUI
+> and wizard do both for you from the preset's A row - prefer them over the manual commands
+> below. Check: each non-hub board logs `STAR HUB: this board joins ONLY the wormhole A hub`,
+> the root's WORMHOLE TUNNEL block shows **A H01, B H02**, a 1-hop shortcut.
+
 COM26 = Node A, COM27 = Node B (wired), COM25/COM22/COM21 = controls. Only run needing the cable.
 
 ### Phase 1 — Wire + TEST A↔B

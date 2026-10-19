@@ -343,7 +343,7 @@ topo_status_t topo_validate(const topo_graph_t *g, const topo_node_t *nodes,
 
     switch (kind) {
     case TOPO_KIND_STAR:
-        /* HUB STAR (star + blackhole build, thesis-deviate D-16): the center is
+        /* HUB STAR (star + blackhole D-16 / star + wormhole D-28): the center is
          * the root's ONLY child and every other node hangs off it, so the
          * shape is one hop deeper - root -> hub -> direct nodes. Judged by
          * structure alone, like every rule here. */
