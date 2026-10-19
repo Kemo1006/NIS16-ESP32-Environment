@@ -21,6 +21,10 @@ sync_conflicts/**/*.log -text
 datasets/exports/**/run_ledger.csv merge=union
 sync_test/test_ledger.csv merge=union
 
+# Shell scripts run on Linux (GitHub Actions, tools/ci_build_variants.sh): a CRLF
+# checkout breaks bash ($'\r': command not found), so keep them LF everywhere.
+*.sh text eol=lf
+
 # Analysis outputs are regenerated, not evidence — normal text handling is fine
 # for the CSVs, but the plots must never be touched.
 *.png binary

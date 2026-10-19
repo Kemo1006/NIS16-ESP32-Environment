@@ -1,0 +1,98 @@
+# Compiles every ESP32 firmware variant on GitHub's servers, so nobody needs
+# ESP-IDF installed to know whether the firmware builds. Runs Espressif's official
+# Docker image for BOTH IDF versions the team uses (v5.3.5 and v5.5.4).
+# Variant list + flags: ESP32-Environment/tools/ci_build_variants.sh
+# Proves the code COMPILES (with -Werror on our code). It does not prove mesh
+# behaviour - that still needs boards.
+name: Firmware build
+
+on:
+  push:
+    paths:
+      - 'ESP32-Environment/root_node/**'
+      - 'ESP32-Environment/child_node/**'
+      - 'ESP32-Environment/components/**'
+      - 'ESP32-Environment/sniffer_node/**'
+      - 'ESP32-Environment/uart_link_test/**'
+      - 'ESP32-Environment/sd_card_test/**'
+      - 'ESP32-Environment/partitions.csv'
+      - 'ESP32-Environment/tools/ci_build_variants.sh'
+      - '.github/workflows/firmware-build.yml'
+  pull_request:
+    paths:
+      - 'ESP32-Environment/root_node/**'
+      - 'ESP32-Environment/child_node/**'
+      - 'ESP32-Environment/components/**'
+      - 'ESP32-Environment/sniffer_node/**'
+      - 'ESP32-Environment/uart_link_test/**'
+      - 'ESP32-Environment/sd_card_test/**'
+      - 'ESP32-Environment/partitions.csv'
+      - 'ESP32-Environment/tools/ci_build_variants.sh'
+      - '.github/workflows/firmware-build.yml'
+  workflow_dispatch:   # "Run workflow" button on the Actions tab
+
+concurrency:
+  group: firmware-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Pure-logic firmware tests on plain gcc (no ESP-IDF): topology layer derivation
+  # and the wormhole A/B auto-switch (runs the real wormhole_victim.c on stubs).
+  host-tests:
+    name: Host tests (gcc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ESP32-Environment
+    steps:
+      - uses: actions/checkout@v4
+      - name: topology_graph host test
+        run: |
+          gcc -std=c11 -Wall -Wextra -Werror -I components/mesh_common/include \
+              components/mesh_common/src/topology_graph.c tools/topology_graph_host_test.c \
+              -o /tmp/topo_test
+          /tmp/topo_test
+      - name: wormhole auto-switch host test
+        run: bash tools/test_wormhole_autoswitch/run_test.sh
+
+  build:
+    name: IDF ${{ matrix.idf }} - ${{ matrix.group }}
+    runs-on: ubuntu-latest
+    container: espressif/idf:${{ matrix.idf }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        idf: [v5.3.5, v5.5.4]
+        group: [root, child, blackhole, wormhole, tools]
+    env:
+      IDF_CCACHE_ENABLE: 1
+      CCACHE_DIR: /tmp/ccache
+      CI_LOG_DIR: /tmp/ci_logs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/ccache
+          key: ccache-${{ matrix.idf }}-${{ matrix.group }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.idf }}-${{ matrix.group }}-
+
+      - name: Build variants
+        shell: bash
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          bash ESP32-Environment/tools/ci_build_variants.sh "${{ matrix.group }}"
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ matrix.idf }}-${{ matrix.group }}
+          path: /tmp/ci_logs
+          retention-days: 14
