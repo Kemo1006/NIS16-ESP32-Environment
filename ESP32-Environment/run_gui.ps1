@@ -7956,11 +7956,11 @@ $runTimer.Start()
 # Per-laptop conveniences only (who you are, last page) - %LOCALAPPDATA%, never
 # the repo, so teammates' laptops are not affected.
 $script:SettingsPath = Join-Path $env:LOCALAPPDATA 'NIS16\gui.json'
-$script:Settings = @{ Me = ''; Page = 0 }
+$script:Settings = @{ Me = ''; Page = 0; Zoom = 0 }
 try {
     if (Test-Path $script:SettingsPath) {
         $j = Get-Content $script:SettingsPath -Raw | ConvertFrom-Json
-        foreach ($k in 'Me', 'Page') { if ($j.PSObject.Properties[$k]) { $script:Settings[$k] = $j.$k } }
+        foreach ($k in 'Me', 'Page', 'Zoom') { if ($j.PSObject.Properties[$k]) { $script:Settings[$k] = $j.$k } }
     }
 } catch { }
 $script:Me = [string]$script:Settings.Me
