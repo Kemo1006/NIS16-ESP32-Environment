@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 19, 2026 ~3 PM (Angelo's laptop) — wormhole same-depth fixes for every topology (D-28 star hub, D-30 tree/partial), tunnel test, GUI stop buttons; code + data PUSHED (1c0f69a, 5d10f55, data commits). Reflash every board of a wormhole set before the next capture.
+**Updated:** oct. 19, 2026 ~5:30 PM (Angelo's laptop) — tree fix: D-26 narrowed (parent SELECTION stock again; it had flattened trees), pyserial-shadow error message; earlier today: wormhole same-depth fixes (D-28/D-30), tunnel test, GUI stop buttons, pushes. **Reflash tree sets before the next tree capture.**
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).

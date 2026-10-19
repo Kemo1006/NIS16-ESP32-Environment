@@ -668,10 +668,25 @@ def _gap(it):
         return "minor", who, (f"{who}{role}: only {got.group(1) if got else 0} of {full.group(1) if full else '?'} s of "
                               f"cooldown were recorded - its recovery after the attack is not measured "
                               f"(the verdict compares baseline and attack only)")
-    if "no attack-window telemetry" in t:
-        return "major", "", t.split("telemetry from ", 1)[-1].split(" (")[0] + ": dropped out before the attack, so it was never measured"
-    if "NO labelled window" in t:
-        return "major", "", t.rsplit(": ", 1)[-1].split(" - ")[0] + ": no usable windows (no phase was seen), so the checks ran without it"
+    if "no attack-window telemetry" in t or "NO labelled window" in t:
+        dropped = "no attack-window telemetry" in t
+        names = (t.split("telemetry from ", 1)[-1].split(" (")[0] if dropped
+                 else t.rsplit(": ", 1)[-1].split(" - ")[0])
+        what = ("dropped out before the attack, so it was never measured" if dropped
+                else "no usable windows (no phase was seen), so the checks ran without it")
+        # oct. 19 2026 (verification #58, team decision): in a WORMHOLE run the evidence is
+        # carried by the tunnel ends (B's TunnelIntensity) and the root (DuplicateRate) - a
+        # plain child is neither. So a missing plain child is judged like any other per-board
+        # gap: MINOR, and the IMPACT CHECK re-tests the attack without it (only ever stricter).
+        # A missing tunnel end stays MAJOR. Blackhole runs are unchanged: every board there
+        # is either a victim (the evidence) or a bystander (the control group, #53).
+        boards = [b.strip() for b in names.split(",") if b.strip()]
+        roles = _GAP_CTX["roles"]
+        if (_GAP_CTX["attack"] == "wormhole" and boards
+                and all(roles.get(b.upper()) not in WORMHOLE_ENDS + ("", None) for b in boards)):
+            return "minor", ", ".join(boards), (f"{names}: {what} - a plain child, not part of the tunnel; "
+                                                f"the impact check decides whether the result needs it")
+        return "major", "", f"{names}: {what}"
     if "left out - over" in t:
         m = re.search(r"(\d+) of (\d+) victim-seconds \((\d+)%\)", t)
         if m:
@@ -746,7 +761,8 @@ def _impact_issue(df_in, attack, sigma, block, issues):
     """IMPACT CHECK (oct. 19 2026): re-run the 3-sigma test WITHOUT the boards that have
     only minor gaps. Still confirmed -> the gaps do not change the result (OK). Not
     confirmed -> they DO (the grade becomes MAJOR GAPS). Only ever makes it stricter."""
-    boards = sorted({g[1] for g in (_gap(i) for i in issues if i.level == "WARN") if g and g[0] == "minor" and g[1]})
+    boards = sorted({b.strip() for g in (_gap(i) for i in issues if i.level == "WARN") if g and g[0] == "minor" and g[1]
+                     for b in g[1].split(",") if b.strip()})
     if not boards:
         return None
     # the check removes the boards with gaps; if that is MOST of the network, what is left is a
@@ -909,6 +925,11 @@ CHECK_MARK = {"OK": "OK  ", "FAIL": "FAIL", "WARN": "WARN", "SKIP": "--  "}
 # (main() turns it into exit code 3).
 _LAST_SETUP_INVALID = [False]
 _LAST_ISSUES = [[]]
+# The run being graded (set by verify(checks=True)): its attack and each board's
+# built role by short id ("FE90" -> "child"). _gap() reads it to tell a wormhole's
+# plain children from its tunnel ends.
+_GAP_CTX = {"attack": "", "roles": {}}
+WORMHOLE_ENDS = ("wormhole_a", "wormhole_b")
 
 
 def _num(x, nd=3):
@@ -1028,6 +1049,12 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     # drops node_role/hop. Per-node PDR is a descriptive breakdown, not an input to
     # the sigma test, so it wants the unpooled rows anyway.
     df_nodes = df
+    if checks:
+        roles = {}
+        if "node_role" in df_nodes.columns:
+            for n, r in df_nodes.groupby("node_id")["node_role"].first().items():
+                roles[str(n).replace("NODE_", "")[-4:].upper()] = str(r).lower()
+        _GAP_CTX["attack"], _GAP_CTX["roles"] = attack, roles
     df, agg_note = block_aggregate(df, feats, block)
     lab = pd.to_numeric(df["Label"], errors="coerce")
     base_mask = lab == LABEL_BASELINE

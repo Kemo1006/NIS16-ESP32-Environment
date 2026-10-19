@@ -187,6 +187,30 @@ class TreeReroute(unittest.TestCase):
         cool = ac.Issue(ac.WARN, "1C38 (blackhole) has NO COOLDOWN (the others: 120 s) - x")
         self.assertEqual(va._gap(cool)[0], "minor")
 
+    def test_missing_board_wormhole_plain_child_is_minor(self):
+        # verification #58: in a WORMHOLE run a plain child carries no evidence (B + root do),
+        # so a board with no labelled window / no attack telemetry goes to the impact check
+        unlab = ac.Issue(ac.WARN, "1 node(s) have NO labelled window (no_phase_seen), so the checks above run "
+                                  "without them: FE90 - a data/preprocessing gap, not evidence about the attack; x")
+        gone = ac.Issue(ac.WARN, "no attack-window telemetry from FE90, B768 (board dropped out, x)")
+        saved = dict(va._GAP_CTX)
+        try:
+            va._GAP_CTX.update(attack="wormhole", roles={"FE90": "child", "B768": "child",
+                                                         "0C80": "wormhole_a", "1C38": "wormhole_b"})
+            self.assertEqual(va._gap(unlab)[:2], ("minor", "FE90"))
+            self.assertEqual(va._gap(gone)[:2], ("minor", "FE90, B768"))
+            # a tunnel end, or a board whose role is unknown, stays MAJOR
+            end = ac.Issue(ac.WARN, "1 node(s) have NO labelled window (x), so the checks above run without them: 1C38 - x")
+            self.assertEqual(va._gap(end)[0], "major")
+            unk = ac.Issue(ac.WARN, "1 node(s) have NO labelled window (x), so the checks above run without them: AAAA - x")
+            self.assertEqual(va._gap(unk)[0], "major")
+            # blackhole: every board is a victim or the control group - unchanged, MAJOR
+            va._GAP_CTX.update(attack="blackhole", roles={"FE90": "child"})
+            self.assertEqual(va._gap(unlab)[0], "major")
+            self.assertEqual(va._gap(gone)[0], "major")
+        finally:
+            va._GAP_CTX.clear(); va._GAP_CTX.update(saved)
+
     def test_gap_inside_a_phase_is_a_gap(self):
         # S9: windows missing in the MIDDLE of a phase, under the 95 % coverage floor
         it = ac.Issue(ac.WARN, "FE90 (child) - a bystander - has attack windows for only 73 of 179 s (40%, floor 95%): "

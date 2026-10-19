@@ -13,6 +13,50 @@ the verdict. ✅ = OK · ⚠️ = OK with a caveat / fixed · ❌ = not usable.
 `tools/verify_attack.py` (3-sigma attack test) · analysis tables vs exports ·
 EDA plots (time series + PCA/t-SNE).
 
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #59 — Oct 19, 2026 · ~6:15 PM — grading rule: a missing PLAIN CHILD in a wormhole run goes to the impact check
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `e31563c` + this change
+> **Request:** "go with option 3" (from verification #58: change the grading rule, not just this run)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | all analysed cells (11) | all | all | r1 | sept.-oct. 19 | every wormhole feature_table on Angelo's laptop |
+
+| Check | Result | Detail |
+|---|---|---|
+| Rule | 🔧 | `verify_attack.py::_gap`: 'NO labelled window' / 'no attack-window telemetry' was always MAJOR. Now, in a WORMHOLE run, when EVERY board named is a plain child (built role not wormhole_a / wormhole_b, role known), it is a MINOR gap with those boards, so the existing IMPACT CHECK re-runs the 3-sigma test without them (still confirmed -> minor; not -> MAJOR). A tunnel end or an unknown role stays MAJOR; a missing attacker stays FAIL. Blackhole runs unchanged (every board is a victim = evidence or a bystander = control group, #53). |
+| Why it is fair | ✅ | same as the existing minor-gap rule: the impact check must confirm (never assumed), fixed in advance, applied to every wormhole run; the wormhole primaries are B's TunnelIntensity and the root's DuplicateRate - a plain child feeds neither |
+| Tests | ✅ | test_verify_attack.py 46/46 (new: plain child minor, tunnel end / unknown role major, blackhole major) |
+| Re-grade of all 11 wormhole cells | ✅ | only **wormhole/partial_mesh/G402/stationary** changes: MAJOR GAPS -> **MINOR GAPS** (FE90, impact check: still confirmed). wormhole/tree/DLSU_Library/stationary stays MAJOR GAPS; 9 others unchanged (STRONG / GOOD). Saved GUI report refreshed (backup `.bak_oct19_grade`). |
+
+**Verdict: ✅ rule changed for every wormhole run; one grade moves (partial_mesh/G402/stationary: recapture REQUIRED -> ADVISED, footnote FE90). Thesis: state the rule with the other verifier rules (checklist B-plain).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #58 — Oct 19, 2026 · ~5:45 PM — why wormhole/partial_mesh/G402/stationary says "RECAPTURE REQUIRED"
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `e31563c`
+> **Request:** "why our wormhole partial mesh g402 stationary need recapture required?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | partial_mesh | G402 | stationary | r1 | oct. 19 ~4:50 PM (teammate's laptop, pulled from GitHub) | 8 boards + root arrivals |
+
+| Check | Result | Detail |
+|---|---|---|
+| Attack signature | ✅ | WORMHOLE CONFIRMED - TunnelIntensity 0 -> 1.000, DuplicateRate 0 -> 0.995 (2/2 primaries) |
+| Tunnel setup | ✅ | one A + one B, roles stable, A shallower than B, UART 180/180 frames, duplicates in 179 attack windows, normal START |
+| Victim delivery | ✅ | the 4 traced plain children PDR 1.000 in baseline and attack |
+| FE90 raw file | ✅ | complete: baseline 3006 rows, attack 1806, cooldown 1206 (same as every board) |
+| **FE90 in the analysis** | ❌ | preprocessing marked it **UNLABELLED**: 122/510 probes (24 %) were sent in a different phase than the root was in - 61 'node baseline while root wormhole' + 61 'node wormhole while root cooldown' = a steady ~1-minute offset at BOTH transitions. Excluded from every statistic. |
+| Grade | ⚠️ | 'a board never measured in the attack' is always a MAJOR gap -> MAJOR GAPS = RECAPTURE REQUIRED, although FE90 is a plain child that is not part of the tunnel and neither primary uses it |
+
+**Cause of the offset - not settled:** either FE90 switched phase ~1 min late (it sat at hop 3 on a ~-81 dBm link; the root re-sends the phase every 10 s, so ~6 missed re-sends in a row) or its probes reached the root late. A seq-vs-probe-counter cross-check was inconclusive (the counter does not map 1:1 onto seq_num on every board).
+
+**Verdict: ⚠️ the wormhole attack is confirmed and the setup ran as designed; the RECAPTURE flag comes from one plain child (FE90) whose phase labels are ~1 min off the root's and was excluded. Team decision (not taken here): keep it as 'WORMHOLE CONFIRMED - major gaps' with an FE90 footnote, recapture, or change the grading rule so a missing plain child in a wormhole run is judged by the impact check (minor) - a rule change applies to every run and must be logged.**
+
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 

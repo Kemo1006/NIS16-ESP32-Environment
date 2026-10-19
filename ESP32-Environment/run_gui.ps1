@@ -6977,7 +6977,11 @@ function New-RunPlan($P) {
                 $attMac = @($liveMac, [string]$hub.Mac) | Where-Object { $_ -match '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$' } | Select-Object -First 1
             }
             if ($attMac) { $notes += "STAR + wormhole: end A ($($hub.Label), $attMac) is the star's HUB - B and every control join ONLY it, so B sits one hop deeper and the tunnel skips that hop (D-28). Power A before the others." }
-            else { $stop += 'STAR + wormhole: end A has no known MAC, so B and the controls cannot be told which board is the hub (D-28). Read the MACs first, or set end A''s MAC in the preset.' }
+            # end A on ANOTHER laptop has no MAC in this preset (oct. 19 2026, a teammate flashing
+            # only the controls): ask for it instead of blocking - gui\StarHub.ps1
+            if (-not $attMac) { $attMac = Read-StarHubMac ([string]$P.File) $(if ($hub) { [string]$hub.Label } else { 'end A' }) }
+            if ($attMac) { $notes += "STAR + wormhole: the star's HUB is end A $attMac (typed in - it is on another laptop). Every board flashed here joins ONLY it (D-28)." }
+            else { $stop += 'STAR + wormhole: end A has no known MAC, so B and the controls cannot be told which board is the hub (D-28). Load the preset again and type end A''s MAC (ask the laptop that flashes A), or set it in the preset.' }
         }
     }
     if (-not @($local | Where-Object Role -eq 'root').Count -and $local.Count) {

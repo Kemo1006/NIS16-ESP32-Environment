@@ -82,6 +82,21 @@ except ImportError:
         "  Run this from the 'ESP-IDF 5.3 PowerShell' window, or:\n"
         "    pip install pyserial"
     )
+if getattr(serial, "__file__", None) and not hasattr(serial, "Serial"):
+    # (import_sdcard.py's in-memory stand-in has no __file__ - a card-reader
+    # import needs no port, so that one is fine)
+    # oct. 19 2026 (a teammate's laptop): "module 'serial' has no attribute
+    # 'Serial'" - another package / file named serial shadows pyserial
+    # (usually `pip install serial`, an unrelated package, or a stray serial.py).
+    sys.exit(
+        "ERROR: the 'serial' module this Python loads is NOT pyserial:\n"
+        "    {}\n"
+        "  Fix (same Python as the tools: {}):\n"
+        "    \"{}\" -m pip uninstall -y serial\n"
+        "    \"{}\" -m pip install --force-reinstall pyserial\n"
+        "  If the path above is a serial.py / serial folder of your own, rename it."
+        .format(getattr(serial, "__file__", "?"), sys.executable, sys.executable, sys.executable)
+    )
 
 BAUD = 115200          # MUST match the firmware console baud
                        # (CONFIG_ESP_CONSOLE_UART_BAUDRATE in each project's
