@@ -137,6 +137,11 @@ class NodeSummary:
         self.baseline_parent_switches = 0
         self.baseline_layer_changes = 0
         self.converge_ts = None     # first ts at final (layer, parent)
+        # oct. 19 2026: the experiment starts at Phase 0 (manual START since D-22), so
+        # "converged" = the board had a parent when Phase 0 began. Formation time
+        # before that is reported, never failed: setup lasts until the operator starts.
+        self.phase0_ts = None
+        self.layer_at_phase0 = None
         self.final_layer = None
         self.final_parent = None
 
@@ -156,8 +161,13 @@ class NodeSummary:
                                              + self.baseline_layer_changes)
                 self.baseline_parent_switches = 0
                 self.baseline_layer_changes = 0
+                self.phase0_ts = None          # the new session's Phase 0 counts
+                self.layer_at_phase0 = None
             elif phase_id != PHASE_UNSET:
                 self.seen_real_phase = True
+            if phase_id == PHASE_BASELINE and self.phase0_ts is None:
+                self.phase0_ts = ts
+                self.layer_at_phase0 = layer
 
         # Seconds since THIS node started logging. Each board's esp_timer
         # starts at its own boot, so a node-relative clock is the only one
@@ -723,7 +733,16 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         n = nodes[nid]
         secs = n.converge_seconds()
         conv_str = f"{secs:5.1f}s" if secs is not None else "  n/a"
-        ok = secs is not None and secs <= converge_limit
+        if n.phase0_ts is not None and not n.logs_from_phase:
+            # settled = attached (layer > 0) when Phase 0 began; how long formation took
+            # before that is information (setup lasts until START, D-22)
+            ok = (n.layer_at_phase0 or 0) > 0
+            if secs is not None and n.converge_ts is not None:
+                before = (n.phase0_ts - n.converge_ts) / 1e6
+                conv_str = (f"{secs:5.1f}s, settled {before:.0f}s before Phase 0" if before >= 0
+                            else f"{secs:5.1f}s (last change {-before:.0f}s AFTER Phase 0 - see the verifier's D-23 check)")
+        else:
+            ok = secs is not None and secs <= converge_limit
         is_root = n.final_layer == ROOT_LAYER
         if n.logs_from_phase:
             # Neither a pass nor a fail: the data does not contain formation.
@@ -808,7 +827,8 @@ def analyze_and_print(paths, expect, converge_limit, stabilise_s, structure=Fals
         if not_measured:
             conv_verdict += (f" ({not_measured} node(s) NOT MEASURED — "
                              "log starts inside a phase)")
-    print(f"  Converged within {converge_limit:.0f}s : {conv_verdict}")
+    print(f"  Settled before Phase 0 : {conv_verdict}   (formation time before START is shown, not judged;"
+          f" logs without phases: {converge_limit:.0f}s rule)")
     print(f"  Baseline re-routing free            : "
           f"{'YES' if baseline_stable else 'NO — parent/layer changed during baseline'}")
     if expect:

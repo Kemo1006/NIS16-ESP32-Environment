@@ -16,6 +16,31 @@ EDA plots (time series + PCA/t-SNE).
 <!-- ═══════════════════════════════════════════════════════════════════════════
 <!-- ═══════════════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #57 — Oct 19, 2026 · night — why wormhole/linear/Yuchengco/burst showed "topology FAIL" + logic review
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a780c29` + this change
+> **Request:** "check wormhole linear Yuchengco burst - why failed topology? verify how the verdict and logic work, I think you have flaws"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | linear | Yuchengco | burst | r1 | oct. 19 ~11:57 AM (new, not on GitHub yet) | 8 boards + root arrivals |
+
+| Check | Result | Detail |
+|---|---|---|
+| The run itself | ✅ | verifier: WORMHOLE CONFIRMED, **STRONG** - tunnel 180/180 frames, duplicates in 180 attack s, perfect linear chain of 8, A (H04) shallower than B (H06), no board moved in baseline / attack / cooldown |
+| **Flaw 1 — Gate 2 (analyze.ps1 / verify_topology.py)** | ❌ -> 🔧 | failed it on "Converged within 60 s: NO": B768 settled 122.8 s and FE90 156.4 s after their FIRST LOG ROW - all during SETUP, 117-156 s BEFORE Phase 0. The 60-s Milestone-3 rule predates the manual START gate (D-22, setup lasts until START). It failed **31 of 54** captures. New rule (D-27): a board must be attached when Phase 0 begins + no re-routing in the baseline; formation time is reported, not judged; moves after Phase 0 stay the verifier's D-23 job. Old vs new on every capture: 29 now pass (nothing moved in their experiments); 2 still fail, both genuine (home/highload benign is not a linear chain; tree/G402/highload re-routed in the baseline = the verifier's FAILED) |
+| Flaw 2 — benign Gate 3 | ❌ -> 🔧 | analyze.ps1 skipped the attack gate for benign runs ("no attack to verify"); it now runs the benign verifier (--attack none) |
+| Flaw 3 — plain-words card | ❌ -> 🔧 | "Missing data never makes an attack look stronger" showed on COMPLETE runs too (read like a hidden problem); now only when something is missing |
+| Saved GUI reports | ✅ refreshed | the Verify page showed the 12:10 PM output (old Gate 2). That run re-analysed; Gate 2 re-run for every saved report that carries it (backups kept). Only home/highload still shows topology FAIL - genuine |
+| Analogies | ✅ added | one premade analogy per verdict (blackhole complete / witness left early / key record missing / suspect's logbook has holes; wormhole tunnel variants; FAILED: no suspect / experiment changed halfway / camera battery / neighbour passed every card; benign normal day / not-normal day) |
+| Tests | ✅ | verifier 45/45, GUI self-test exit 0 |
+
+**Verdict: ✅ the run is a clean, STRONG wormhole capture; the red topology pill was a stale result of a rule that no longer
+fit the procedure. Fixed at the rule, the two tools now agree.**
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #56 — Oct 19, 2026 · night — "what if the ATTACKER is the one with missing data?"
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `421076a` + this change

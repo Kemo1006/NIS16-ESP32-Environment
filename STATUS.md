@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run - analyze.ps1 re-trims, don't point tools there by hand.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 19 late night (Angelo) — #57: false 'topology FAIL' fixed (D-27, 31/54 were false), benign Gate 3, per-verdict analogies, plain-words card only warns on real gaps. wormhole/linear/Yuchengco/burst = STRONG (new capture, not on GitHub yet - send it with the GitHub sync page).
 - oct. 19 night (Angelo) — #55 tree re-parenting explained (weak links + tree self-organises + crashes; no code regression) + D-26 sticky parents; #56 attacker gaps always MAJOR; FAILED grade with reason; wormhole unlock on root restart; plain-words card; thesis §8-9. Pushed (`2ab7518`).
-- oct. 19 day (Angelo) — #52-#54: MINOR/MAJOR GAPS scale, D-25 preprocessing fix, benign verifier, placebo audit, validity strip + signature card, all runs re-analysed (52/52 verdicts same), groupmates' GUI start-up crash fixed. Pushed.

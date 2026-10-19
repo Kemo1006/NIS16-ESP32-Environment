@@ -455,3 +455,14 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Why** | The experiment needs the topology it was set up with; a re-parent on a link that still works changes who is a victim mid-run without any fault. |
 | **Net effect** | Fewer RSSI-driven parent changes in tree runs; crash-driven ones unchanged. Trade-off: a child may stay on a weak link (some packet loss) - the GUI's pre-START check now warns below -78 dBm so placement is fixed first. Tree runs captured BEFORE this firmware used the stock thresholds - say so per run. **Compiles (0 warnings); not yet tested on hardware.** |
 | **Paper edit** | Methodology (topology): one sentence - "for tree runs, ESP-MESH's parent-switch thresholds were lowered by 6 dB so children kept their parent unless the link degraded substantially; parent loss still triggered re-parenting." Checklist B-sticky. |
+
+## D-27 · Topology gate: "settled before Phase 0" instead of "converged within 60 s" (oct. 19, 2026)
+
+| | |
+|---|---|
+| **Thesis says** | Milestone 3: each topology converges to its intended structure within 60 s. |
+| **What we did before** | `tools/verify_topology.py` timed convergence from each board's FIRST log row and failed any board slower than 60 s - even when it settled minutes before the experiment. It failed 31 of 54 captures (verification #57). |
+| **What we do now** | A board passes when it is attached (has a parent) at the moment Phase 0 begins; re-routing during the baseline still fails; formation time is printed ("settled N s before Phase 0") but not judged. Logs without phase information keep the 60-s rule. Moves after Phase 0 are judged by the verifier (D-23), so the two tools cannot contradict each other. |
+| **Why** | Since D-22 the operator presses START only after the mesh has settled, so the stabilise phase lasts as long as setup needs (checklist A25). What matters for the data is the layout during the experiment, not how fast the boards found each other before it. |
+| **Net effect** | 29 captures change from topology FAIL to PASS (nothing moved during their experiments); 2 stay FAIL for genuine reasons. No verdict or grade changes (the verifier never used the 60-s rule). |
+| **Paper edit** | Methodology / M3: replace "converges within 60 s" with "had settled into the intended structure before the baseline began (operator-confirmed START, D-22) and did not re-route during the baseline". Checklist B-conv. |

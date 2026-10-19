@@ -202,6 +202,49 @@ function Get-PlainGap([string]$Note) {
     return $n
 }
 
+function Get-VerdictAnalogy($Rep) {
+    # @(short title, text) - one premade analogy per kind of verdict, so the picture matches
+    # what this run actually shows. Houses = boards, post office = root, postcards = probes.
+    $base = 'Think of each board as a house and the root as the post office. Every second each house mails a numbered postcard (a probe); houses far away hand their cards to a closer neighbour (their parent), who passes them on.'
+    $v = [string]$Rep.Verdict; $g = [string]$Rep.Grade
+    $fails = (@($Rep.Fails) -join ' ')
+    if ($Rep.Benign) {
+        if ($v -match 'BENIGN CONFIRMED') {
+            return @('a normal day at the post office', "$base`n`nThis run is a normal day: no thief, every neighbour passes every card on, and the post office receives them all. It is the 'control' day the attack days are compared with - you can only spot a thief if you know what a normal day looks like.")
+        }
+        return @('a "normal" day that was not normal', "$base`n`nThis was meant to be a normal day with no thief - but cards still went missing (a traffic jam: too much mail, weak roads). You cannot use a day like that as the 'normal' reference, because it already looks a bit like a theft. Record a calmer normal day again.")
+    }
+    if ($g -eq 'FAILED' -or $v -match 'NOT CONFIRMED|INCONCLUSIVE') {
+        if ($fails -match "attacker's data is missing|attacker telemetry missing|no '(blackhole|wormhole)") {
+            return @('no suspect to examine', "$base`n`nTo prove a neighbour is throwing cards away you need that neighbour's own logbook (cards received vs cards passed on). In this run the suspect's logbook is missing, so there is nothing to check - the case cannot be made, whatever else you see. Record the run again with the attacker's data.")
+        }
+        if ($v -match 'SETUP INVALID' -or $fails -match 'did not run as designed') {
+            return @('the experiment changed halfway', "$base`n`nPicture a science test where someone moved the houses around in the middle of it: some houses were behind the thief for part of the time and not for the rest. Even if cards went missing, you cannot say how many the thief took, because the test was not the one you planned. The numbers may look right, but they do not answer the question - so it is FAILED and must be recorded again.")
+        }
+        if ($v -match 'INCONCLUSIVE' -or $fails -match 'too little') {
+            return @('the camera ran out of battery', "$base`n`nThe recording stopped too early (or too much of it is unusable) to tell whether cards went missing - like a security camera whose battery died. 'Not proven' is not the same as 'innocent': there is simply not enough footage. Record the run again.")
+        }
+        return @('the neighbour passed every card on', "$base`n`nIn this run the suspected neighbour passed the cards on as normal and the post office received them - nothing went missing beyond the everyday noise. So no theft is visible: the attack did not happen as intended (check the attacker build and placement).")
+    }
+    if ($v -match 'WORMHOLE') {
+        $w = "$base`n`nA wormhole is a secret tunnel: two neighbours far apart are joined by a hidden pipe (the UART cable). One of them drops a copy of its card into the pipe, and it pops out near the post office. The post office then receives the SAME card number twice - once by the normal road, once through the tunnel. Those duplicates, and the tunnel's own traffic count, are the fingerprints."
+        if ($g -eq 'MAJOR GAPS') { return @('the secret tunnel - but its logbook has holes', "$w`n`nHere part of the tunnel ends' own records is missing, and the tunnel IS the attack - so the run should be recorded again before its numbers are used.") }
+        if ($g -eq 'MINOR GAPS') { return @('the secret tunnel - a witness left early', "$w`n`nA board that is not part of the tunnel stopped recording early. The tunnel and the post office's duplicate count are complete, so the proof stands; recapturing only completes the dataset.") }
+        return @('the secret tunnel', $w)
+    }
+    $bh = "$base`n`nA blackhole is a neighbour who takes your cards with a smile and throws them in the bin. You handed them over fine, so you never find out - only the post office notices the missing card numbers. Delivery (PDR) = cards that arrived / cards sent: 1.00 = all, 0.00 = none."
+    if ($g -eq 'MAJOR GAPS') {
+        if (@($Rep.Notes | Where-Object { $_ -match '\(attacker\)' }).Count) {
+            return @("the suspect's logbook has holes", "$bh`n`nHere part of the thief's OWN logbook is missing. The thief is the evidence - like CCTV of the suspect that is blank for part of the night. The hints are strong, but the case needs to be recorded again before it is used.")
+        }
+        return @('a key part of the record is missing', "$bh`n`nHere data the result relies on is missing - a house that never recorded during the attack, too many houses with gaps, or most of the victims' time unusable. Like a trial where a key witness never testified: the case looks clear, but it cannot be closed on this record - record the run again before using it.")
+    }
+    if ($g -eq 'MINOR GAPS') {
+        return @('a witness left early', "$bh`n`nHere one or more houses stopped recording early - a witness who left the courtroom early. The thief's own logbook and the other witnesses are complete, and the case was re-checked WITHOUT the early leavers with the same result. The verdict stands; recapturing only makes the record more complete.")
+    }
+    return @('the neighbour who bins your mail', "$bh`n`nIn this run everything is on record: the thief's logbook (received, passed on 0), every victim's cards missing at the post office, and the houses not behind the thief still receiving theirs. A complete, clean case.")
+}
+
 function New-PlainExplain($Rep) {
     # WHAT THIS MEANS - the report's numbers as plain sentences (Campaign + Verify)
     $F = $Rep.Facts
@@ -268,19 +311,16 @@ function New-PlainExplain($Rep) {
         foreach ($m in $maj) { & $bullet (Get-PlainGap $m) }
         if ($min.Count) { & $bullet ('Smaller gaps that do not change the result: ' + (@($min | ForEach-Object { ((Get-PlainGap $_) -split '\.')[0] }) -join '; ') + '.') }
     }
-    if (-not $Rep.Benign) {
+    if (-not $Rep.Benign -and ($maj.Count -or $min.Count)) {
+        # only where something IS missing - on a complete run it read like a hidden problem
         & $add $info $Pal.Faint 'Missing data never makes an attack look stronger.' 'A missing second is left out - it is never counted as "0 delivered" - and a board that was switched off or disconnected produces no delivery figure at all.'
     }
     # how to read it - the postcard analogy, folded away
     $ex = New-Object Windows.Controls.Expander; $ex.Margin = '0,8,0,0'; $ex.IsExpanded = $false
-    $ex.Header = (New-Text 'How to read this (a 1-minute analogy)' 11.5 $Pal.Cyan 'SemiBold')
+    $an = Get-VerdictAnalogy $Rep
+    $ex.Header = (New-Text ("How to read this - analogy: " + $an[0]) 11.5 $Pal.Cyan 'SemiBold')
     $at = New-Object Windows.Controls.TextBlock; $at.TextWrapping = 'Wrap'; $at.FontSize = 12; $at.LineHeight = 18; $at.Margin = '0,6,0,0'; $at.Foreground = Get-Brush $Pal.Dim
-    $at.Text = ("Think of each board as a house and the root as the post office. Every second each house sends a numbered postcard (a probe). " +
-                "Houses far away hand their cards to a closer neighbour (their parent), who passes them on.`n`n" +
-                "A blackhole is a neighbour who takes your cards and throws them away. You handed them over fine, so you never find out - " +
-                "only the post office notices the missing card numbers. Delivery (PDR) = cards that arrived / cards sent: 1.00 = all, 0.00 = none.`n`n" +
-                "Each 1-second slice is a window. A board with missing windows is a witness who left early: the case still stands if " +
-                "the culprit's own record and the other witnesses are complete - that is what the 'repeated without' check proves.")
+    $at.Text = [string]$an[1]
     $ex.Content = $at
     [void]$sp.Children.Add($ex)
     $card.Child = $sp

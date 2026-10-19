@@ -91,7 +91,7 @@ function Write-VerifyReport {
         if ($t -eq '') { }
         elseif ($t -match '^[=-]+$') { $c = 'DarkGray' }
         elseif ($t -match '^(RESULT|VERDICT)') {
-            if ($t -match 'NOT CONFIRMED') { $c = 'Red' }
+            if ($t -match 'NOT CONFIRMED|CONFIDENCE: FAILED') { $c = 'Red' }
             elseif ($t -match 'INCONCLUSIVE') { $c = 'Yellow' }
             elseif ($t -match 'CONFIRMED') { $c = 'Green' }
         }
@@ -383,8 +383,18 @@ function Invoke-Validate {
     # ---- Gate 3: paper-backed attack verification (3-sigma) ----------------
     Write-Host ""
     Write-Host ("--- Gate 3/3: attack signature -- {0}" -f $label) -ForegroundColor Cyan
-    if ($Target.Attack -eq 'baseline') {
-        Write-Host "Baseline runs have no attack to verify (that's the point) -- skipping." -ForegroundColor DarkGray
+    if ($Target.Attack -eq 'baseline' -and (Test-Path $features)) {
+        # oct. 19 2026: a benign run is the NORMAL reference - show it is normal with the
+        # same tests pointed the other way (verify_attack.py --attack none)
+        python (Join-Path $root 'toolserify_attack.py') $features --attack none | Write-VerifyReport
+        $status.Attack = switch ($LASTEXITCODE) {
+            0       { 'BENIGN CONFIRMED' }
+            1       { 'BENIGN NOT CONFIRMED (not a clean normal reference)' }
+            default { 'BENIGN INCONCLUSIVE' }
+        }
+    }
+    elseif ($Target.Attack -eq 'baseline') {
+        Write-Host "No feature_table.csv yet -- analyze it first." -ForegroundColor Yellow
         $status.Attack = 'n/a'
     }
     elseif (-not (Test-Path $features)) {
