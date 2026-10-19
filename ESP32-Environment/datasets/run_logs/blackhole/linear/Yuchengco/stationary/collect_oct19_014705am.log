@@ -1,0 +1,33 @@
+collect_run.py --ports COM32,COM30,COM9,COM34,COM10,COM33,COM11 --attack blackhole --topology linear --location Yuchengco --scenario stationary --repeat 1 --since 2026-10-18 13:45 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\blackhole-linear-yuchengco-stationary.json --pick COM32=blackhole/linear/Yuchengco/victim_NODE_20500DE70C80_r1_b3_telem.csv;COM30=blackhole/linear/Yuchengco/victim_NODE_B4BFE934ED80_r1_b2_telem.csv;COM9=blackhole/linear/Yuchengco/victim_NODE_F42DC973E618_r1_b2_telem.csv;COM34=blackhole/linear/Yuchengco/victim_NODE_2805A532D7B4_r1_b2_telem.csv;COM10=blackhole/linear/Yuchengco/victim_NODE_B4BFE932FE90_r1_b2_telem.csv;COM33=blackhole/linear/Yuchengco/victim_NODE_20500DE71C38_r1_b2_telem.csv;COM11=blackhole/linear/Yuchengco/victim_NODE_704BCA25B768_r1_b2_telem.csv
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\linear\Yuchengco\stationary\collect_oct19_014705am.log)
+
+-- COM32: reading the card ...
+   checked victim_NODE_20500DE70C80_r1_b3_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s -> FULL
+COLLECT: COM32 20500DE70C80 OK victim_NODE_20500DE70C80_r1_b3_telem.csv -> victim_NODE-20500DE70C80_linear_blackhole_r1_oct19_0147AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s
+
+-- COM30: reading the card ...
+   checked victim_NODE_B4BFE934ED80_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s -> FULL
+COLLECT: COM30 B4BFE934ED80 OK victim_NODE_B4BFE934ED80_r1_b2_telem.csv -> victim_NODE-B4BFE934ED80_linear_blackhole_r1_oct19_0148AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s
+
+-- COM9: reading the card ...
+   checked victim_NODE_F42DC973E618_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 221 s -> FULL
+COLLECT: COM9 F42DC973E618 OK victim_NODE_F42DC973E618_r1_b2_telem.csv -> victim_NODE-F42DC973E618_linear_blackhole_r1_oct19_0149AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 221 s
+
+-- COM34: reading the card ...
+   checked victim_NODE_2805A532D7B4_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s -> FULL
+COLLECT: COM34 2805A532D7B4 OK victim_NODE_2805A532D7B4_r1_b2_telem.csv -> victim_NODE-2805A532D7B4_linear_blackhole_r1_oct19_0150AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s
+
+-- COM10: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s -> FULL
+COLLECT: COM10 B4BFE932FE90 OK victim_NODE_B4BFE932FE90_r1_b2_telem.csv -> victim_NODE-B4BFE932FE90_linear_blackhole_r1_oct19_0151AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s
+
+-- COM33: reading the card ...
+   checked victim_NODE_20500DE71C38_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s -> FULL
+COLLECT: COM33 20500DE71C38 OK victim_NODE_20500DE71C38_r1_b2_telem.csv -> victim_NODE-20500DE71C38_linear_blackhole_r1_oct19_0152AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 237 s
+
+-- COM11: reading the card ...
+   checked victim_NODE_704BCA25B768_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s -> FULL
+COLLECT: COM11 704BCA25B768 OK victim_NODE_704BCA25B768_r1_b2_telem.csv -> victim_NODE-704BCA25B768_linear_blackhole_r1_oct19_0153AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 222 s
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0
+

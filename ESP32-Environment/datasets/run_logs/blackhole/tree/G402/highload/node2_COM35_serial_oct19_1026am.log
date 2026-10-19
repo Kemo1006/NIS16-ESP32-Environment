@@ -1,0 +1,27 @@
+[monitor] listening on COM35 at 115200 baud
+[0;33mW (62150) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62150) BLACKHOLE: Node ID: NODE_20500DE71C38   Run ID: RUN_001[0m
+[0;32mI (62150) BLACKHOLE: This is the blackhole ATTACKER. My STA MAC: 20:50:0d:e7:1c:38[0m
+[0;33mW (62160) BLACKHOLE: POSITIONAL ATTACK: I drop only what my DESCENDANTS route through me. As a leaf, or with every victim closer to the root than me, I drop nothing and the run looks benign. Check the root's PARENT/CHILD STRUCTURE before trusting it.[0m
+[0;32mI (62180) BH_TARGET: Attacker MAC from compiled default: 20:50:0d:e7:1c:38[0m
+[0;32mI (62190) BLACKHOLE: Attacker MAC (compiled) matches this board.[0m
+[0;32mI (62190) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62200) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62210) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62210) PROBE_RELAY: Probe relay started (WITH a forward-decision hook (attacker)).[0m
+[0;33mW (62220) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (63570) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (63570) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (63770) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (63780) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (63780) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+[0;32mI (63790) CSV_LOGGER: CSV export task started on init (debug).[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (63830) BLACKHOLE: Logging to: /spiffs/telem.csv[0m
+[0;32mI (63830) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (63840) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;32mI (63850) BLACKHOLE: Telemetry task running at 100 ms interval.[0m
+[0;32mI (93840) HEALTH: [HEALTH] up=93s heap=95888 min=95616 big=94208 | stack free(B): telemetry=2180 probe_relay=2196 phase_listener=4276 heartbeat=4236 csv_export=3764[0m
+[monitor] closed

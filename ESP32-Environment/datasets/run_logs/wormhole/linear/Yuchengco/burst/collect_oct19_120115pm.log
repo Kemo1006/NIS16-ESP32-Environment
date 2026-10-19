@@ -1,0 +1,33 @@
+collect_run.py --ports COM12,COM37,COM36,COM35,COM3,COM15,COM8 --attack wormhole --topology linear --location Yuchengco --scenario burst --repeat 1 --since 2026-10-19 00:00 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-linear-yuchengco-burst.json --pick COM12=wormhole/linear/Yuchengco/victim_NODE_B4BFE934ED80_r8_b27_telem.csv;COM37=wormhole/linear/Yuchengco/victim_NODE_2805A532D7B4_r9_b31_telem.csv;COM36=wormhole/linear/Yuchengco/victim_NODE_20500DE70C80_r9_b29_telem.csv;COM35=wormhole/linear/Yuchengco/victim_NODE_20500DE71C38_r14_b38_telem.csv;COM3=wormhole/linear/Yuchengco/victim_NODE_B4BFE932FE90_r12_b32_telem.csv;COM15=wormhole/linear/Yuchengco/victim_NODE_704BCA25B768_r15_b35_telem.csv;COM8=wormhole/linear/Yuchengco/victim_NODE_F42DC973E618_r23_b48_telem.csv
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\linear\Yuchengco\burst\collect_oct19_120115pm.log)
+
+-- COM12: reading the card ...
+   checked victim_NODE_B4BFE934ED80_r8_b27_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s -> FULL
+COLLECT: COM12 B4BFE934ED80 OK victim_NODE_B4BFE934ED80_r8_b27_telem.csv -> victim_NODE-B4BFE934ED80_linear_wormhole_r1_oct19_1201PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s
+
+-- COM37: reading the card ...
+   checked victim_NODE_2805A532D7B4_r9_b31_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s -> FULL
+COLLECT: COM37 2805A532D7B4 OK victim_NODE_2805A532D7B4_r9_b31_telem.csv -> victim_NODE-2805A532D7B4_linear_wormhole_r1_oct19_1202PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s
+
+-- COM36: reading the card ...
+   checked victim_NODE_20500DE70C80_r9_b29_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 140 s -> FULL
+COLLECT: COM36 20500DE70C80 OK victim_NODE_20500DE70C80_r9_b29_telem.csv -> victim_NODE-20500DE70C80_linear_wormhole_r1_oct19_1203PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 140 s
+
+-- COM35: reading the card ...
+   checked victim_NODE_20500DE71C38_r14_b38_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 166 s -> FULL
+COLLECT: COM35 20500DE71C38 OK victim_NODE_20500DE71C38_r14_b38_telem.csv -> victim_NODE-20500DE71C38_linear_wormhole_r1_oct19_1204PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 166 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r12_b32_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 273 s -> FULL
+COLLECT: COM3 B4BFE932FE90 OK victim_NODE_B4BFE932FE90_r12_b32_telem.csv -> victim_NODE-B4BFE932FE90_linear_wormhole_r1_oct19_1205PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 273 s
+
+-- COM15: reading the card ...
+   checked victim_NODE_704BCA25B768_r15_b35_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s -> FULL
+COLLECT: COM15 704BCA25B768 OK victim_NODE_704BCA25B768_r15_b35_telem.csv -> victim_NODE-704BCA25B768_linear_wormhole_r1_oct19_1206PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 278 s
+
+-- COM8: reading the card ...
+   checked victim_NODE_F42DC973E618_r23_b48_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 140 s -> FULL
+COLLECT: COM8 F42DC973E618 OK victim_NODE_F42DC973E618_r23_b48_telem.csv -> victim_NODE-F42DC973E618_linear_wormhole_r1_oct19_1208PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 140 s
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0
+

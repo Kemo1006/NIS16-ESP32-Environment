@@ -1,0 +1,26 @@
+collect_run.py --ports COM9,COM10,COM11,COM30,COM32,COM33,COM34 --attack blackhole --topology linear --location Yuchengco --scenario stationary --repeat 1 --since 2026-10-18 13:45 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\blackhole-linear-yuchengco-stationary.json --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmpD320.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\linear\Yuchengco\stationary\collect-scan_oct19_014559am.log)
+
+-- COM9: reading the card ...
+COLLECT: COM9 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r1_b2_telem.csv (8228 rows, ran 2026-10-19 00:43:09)
+
+-- COM10: reading the card ...
+COLLECT: COM10 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r1_b2_telem.csv (8393 rows, ran 2026-10-19 00:39:52)
+
+-- COM11: reading the card ...
+COLLECT: COM11 704BCA25B768 OK would copy victim_NODE_704BCA25B768_r1_b2_telem.csv (8244 rows, ran 2026-10-19 00:40:45)
+
+-- COM30: reading the card ...
+COLLECT: COM30 B4BFE934ED80 OK would copy victim_NODE_B4BFE934ED80_r1_b2_telem.csv (8393 rows, ran 2026-10-19 00:40:52)
+
+-- COM32: reading the card ...
+   retry 2/3 of COM32 in 3 s (no_answer)
+COLLECT: COM32 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r1_b3_telem.csv (8243 rows, ran 2026-10-19 00:42:20)
+
+-- COM33: reading the card ...
+COLLECT: COM33 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r1_b2_telem.csv (8393 rows, ran 2026-10-19 00:43:36)
+
+-- COM34: reading the card ...
+COLLECT: COM34 2805A532D7B4 OK would copy victim_NODE_2805A532D7B4_r1_b2_telem.csv (8243 rows, ran 2026-10-19 00:37:34)
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0

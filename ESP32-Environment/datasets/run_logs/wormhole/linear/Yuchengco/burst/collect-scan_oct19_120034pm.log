@@ -1,0 +1,25 @@
+collect_run.py --ports COM3,COM8,COM12,COM15,COM35,COM36,COM37 --attack wormhole --topology linear --location Yuchengco --scenario burst --repeat 1 --since 2026-10-19 00:00 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-linear-yuchengco-burst.json --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmp6A04.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\linear\Yuchengco\burst\collect-scan_oct19_120034pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r12_b32_telem.csv (8756 rows, ran 2026-10-19 11:35:57)
+
+-- COM8: reading the card ...
+COLLECT: COM8 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r23_b48_telem.csv (7420 rows, ran 2026-10-19 11:19:44)
+
+-- COM12: reading the card ...
+COLLECT: COM12 B4BFE934ED80 OK would copy victim_NODE_B4BFE934ED80_r8_b27_telem.csv (8804 rows, ran 2026-10-19 11:34:36)
+
+-- COM15: reading the card ...
+COLLECT: COM15 704BCA25B768 OK would copy victim_NODE_704BCA25B768_r15_b35_telem.csv (8805 rows, ran 2026-10-19 11:34:20)
+
+-- COM35: reading the card ...
+COLLECT: COM35 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r14_b38_telem.csv (7683 rows, ran 2026-10-19 11:27:45)
+
+-- COM36: reading the card ...
+COLLECT: COM36 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r9_b29_telem.csv (7419 rows, ran 2026-10-19 11:27:02)
+
+-- COM37: reading the card ...
+COLLECT: COM37 2805A532D7B4 OK would copy victim_NODE_2805A532D7B4_r9_b31_telem.csv (8805 rows, ran 2026-10-19 11:37:03)
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0

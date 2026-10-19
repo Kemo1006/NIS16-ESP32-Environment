@@ -1,0 +1,46 @@
+[monitor] listening on COM8 at 115200 baud
+[0;33mW (62096) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62096) VICTIM_MAIN: Node ID: NODE_F42DC973E618   Run ID: RUN_001[0m
+[0;32mI (62096) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62106) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62106) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62116) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62126) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (65146) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (65146) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (65336) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (65346) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (65346) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (65386) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (65396) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (65396) VICTIM_MAIN: Probe generator task running at 1000 ms interval.[0m
+[0;33mW (65406) VICTIM_MAIN: Probe send failed seq=1: ESP_ERR_INVALID_STATE[0m
+[0;32mI (65416) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+[0;32mI (65416) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (65426) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (66416) VICTIM_MAIN: Probe send failed seq=2: ESP_ERR_INVALID_STATE[0m
+[0;33mW (67416) VICTIM_MAIN: Probe send failed seq=3: ESP_ERR_INVALID_STATE[0m
+[0;33mW (68416) VICTIM_MAIN: Probe send failed seq=4: ESP_ERR_INVALID_STATE[0m
+[0;33mW (69416) VICTIM_MAIN: Probe send failed seq=5: ESP_ERR_INVALID_STATE[0m
+[0;33mW (70416) VICTIM_MAIN: Probe send failed seq=6: ESP_ERR_INVALID_STATE[0m
+[0;33mW (71416) VICTIM_MAIN: Probe send failed seq=7: ESP_ERR_INVALID_STATE[0m
+[0;33mW (72416) VICTIM_MAIN: Probe send failed seq=8: ESP_ERR_INVALID_STATE[0m
+[0;33mW (73416) VICTIM_MAIN: Probe send failed seq=9: ESP_ERR_INVALID_STATE[0m
+[0;33mW (74416) VICTIM_MAIN: Probe send failed seq=10: ESP_ERR_INVALID_STATE[0m
+[0;33mW (75416) VICTIM_MAIN: Probe send failed seq=11: ESP_ERR_INVALID_STATE[0m
+[0;33mW (76416) VICTIM_MAIN: Probe send failed seq=12: ESP_ERR_INVALID_STATE[0m
+[0;33mW (77416) VICTIM_MAIN: Probe send failed seq=13: ESP_ERR_INVALID_STATE[0m
+[0;33mW (78416) VICTIM_MAIN: Probe send failed seq=14: ESP_ERR_INVALID_STATE[0m
+[0;33mW (79416) VICTIM_MAIN: Probe send failed seq=15: ESP_ERR_INVALID_STATE[0m
+[0;33mW (80416) VICTIM_MAIN: Probe send failed seq=16: ESP_ERR_INVALID_STATE[0m
+[0;33mW (81416) VICTIM_MAIN: Probe send failed seq=17: ESP_ERR_INVALID_STATE[0m
+[0;33mW (82416) VICTIM_MAIN: Probe send failed seq=18: ESP_ERR_INVALID_STATE[0m
+[0;33mW (83416) VICTIM_MAIN: Probe send failed seq=19: ESP_ERR_INVALID_STATE[0m
+[0;33mW (84416) VICTIM_MAIN: Probe send failed seq=20: ESP_ERR_INVALID_STATE[0m
+[0;33mW (85416) VICTIM_MAIN: Probe send failed seq=21: ESP_ERR_INVALID_STATE[0m
+[0;33mW (86416) VICTIM_MAIN: Probe send failed seq=22: ESP_ERR_INVALID_STATE[0m
+[0;33mW (87416) VICTIM_MAIN: Probe send failed seq=23: ESP_ERR_INVALID_STATE[0m
+[monitor] closed
