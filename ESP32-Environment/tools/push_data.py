@@ -867,8 +867,16 @@ def sync_push(ctx, area):
                 print("\n  A teammate pushed the same files - GitHub already has them.")
                 return True
 
+        # oct. 19 2026: a conflict copy under sync_conflicts/<computer>/datasets/analysis/
+        # .../eda_output/<long name>.png passed Windows' 260-char path limit and the push
+        # died half-way through writing. \\?\ lifts the limit for Python, core.longpaths
+        # for git.
+        if os.name == "nt":
+            git(["config", "core.longpaths", "true"], ctx.sync)
         for _, _, repo_path, data in writes:
             dst = ctx.sync / repo_path
+            if os.name == "nt":
+                dst = Path("\\\\?\\" + str(dst.resolve()))
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(data)
         git(["add", "-f", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
