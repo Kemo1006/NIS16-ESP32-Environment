@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run - analyze.ps1 re-trims, don't point tools there by hand.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 19 ~6 PM (Basti) — paper files pushed: `Plan/Paper-Editing/` (working copy in `1-Working-Copy/`, Thesis 2 PDF moved there, guides, verification report + whole paper with fixes in GREEN). Members: re-read the green copy, carry accepted fixes into the working copy.
 - oct. 19 late night (Angelo) — D-28: star + wormhole rebuilt as a hub star (end A = hub, B one hop deeper); firmware + run.ps1 + wizard + GUI + verify_topology + D-28 + checklist A30 + STAR-RUNBOOK. Not on hardware, not committed.
-- oct. 19 late night (Angelo) — #57: false 'topology FAIL' fixed (D-27, 31/54 were false), benign Gate 3, per-verdict analogies, plain-words card only warns on real gaps. wormhole/linear/Yuchengco/burst = STRONG (new capture, not on GitHub yet - send it with the GitHub sync page).
