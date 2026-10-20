@@ -1652,7 +1652,7 @@ $StyleXaml
                     <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
                       <RadioButton x:Name="TrimFAll"   Style="{StaticResource Chip}" GroupName="trimf" Content="All" IsChecked="True"/>
                       <RadioButton x:Name="TrimFTodo"  Style="{StaticResource Chip}" GroupName="trimf" Content="Not trimmed"/>
-                      <RadioButton x:Name="TrimFStale" Style="{StaticResource Chip}" GroupName="trimf" Content="Data newer than trim"/>
+                      <RadioButton x:Name="TrimFStale" Style="{StaticResource Chip}" GroupName="trimf" Content="Needs re-trim"/>
                       <RadioButton x:Name="TrimFDone"  Style="{StaticResource Chip}" GroupName="trimf" Content="Trimmed"/>
                       <Grid Width="220" Margin="6,0,8,8">
                         <TextBox x:Name="TrimSearch" Margin="0" Padding="30,6,8,6" ToolTip="Type any part: worm tree dlsu, highload..."/>
@@ -3000,7 +3000,8 @@ function Get-SlotText($s) { '{0}  /  {1}  /  {2}  /  {3}' -f $(if ($s.kind -eq '
 function Update-Home {
     $h = (Get-Date).Hour
     $ui.HomeHello.Text = $(if ($h -lt 12) { 'Good morning, team' } elseif ($h -lt 18) { 'Good afternoon, team' } else { 'Good evening, team' })
-    if (-not $script:Py) { $ui.HomeSub.Text = 'Python with pandas not found - campaign data, analysis and verify need it. Install once in a terminal:  python -m pip install -r analysisequirements.txt   then restart the GUI.'; return }
+    if (-not $script:Py) { $ui.HomeSub.Text = 'Python with pandas not found - campaign data, analysis and verify need it. Install once in a terminal:  python -m pip install -r analysis
+equirements.txt   then restart the GUI.'; return }
     $ui.HomeSub.Text = 'Loading the campaign plan...'
     $json = [IO.Path]::GetTempFileName()
     Start-ToolJob -Exe $script:Py -ToolArgs @('tools\inventory_cells.py', '--json', $json, '--no-color') -State $json -OnDone {
@@ -6112,9 +6113,16 @@ function Get-ExportCells {
     $root = Join-Path $base 'datasets\exports'
     $cells = New-Object System.Collections.ArrayList
     if (-not [IO.Directory]::Exists($root)) { return @() }
-    $newest = { param($dir) $n = [datetime]::MinValue; $c = 0
-                foreach ($f in [IO.Directory]::EnumerateFiles($dir, '*.csv')) { $c++; $t = [IO.File]::GetLastWriteTime($f); if ($t -gt $n) { $n = $t } }
-                @($c, $n) }
+    # oct. 20 2026 (user: "the trim page did not show the new files"): judged by NAME as
+    # well as time - a raw file with no trimmed copy (imported / collected / pulled with an
+    # older timestamp) used to read as TRIMMED. Header-only raw files are left out: trim
+    # skips them on purpose, so they would flag a run forever.
+    $newest = { param($dir) $n = [datetime]::MinValue; $c = 0; $names = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+                foreach ($f in [IO.Directory]::EnumerateFiles($dir, '*.csv')) {
+                    $c++; $t = [IO.File]::GetLastWriteTime($f); if ($t -gt $n) { $n = $t }
+                    if ((New-Object IO.FileInfo $f).Length -ge 300) { [void]$names.Add([IO.Path]::GetFileName($f)) }
+                }
+                @($c, $n, $names) }
     foreach ($a in [IO.Directory]::EnumerateDirectories($root)) {
         foreach ($t in [IO.Directory]::EnumerateDirectories($a)) {
             foreach ($l in [IO.Directory]::EnumerateDirectories($t)) {
@@ -6123,10 +6131,16 @@ function Get-ExportCells {
                     $raw = & $newest $s
                     if ($raw[0] -eq 0) { continue }
                     $td = Join-Path $s 'trimmed'
-                    $trim = if ([IO.Directory]::Exists($td)) { & $newest $td } else { @(0, [datetime]::MinValue) }
-                    $look = if ($trim[0] -eq 0) { 'todo' } elseif ($trim[1] -lt $raw[1].AddSeconds(-5)) { 'stale' } else { 'done' }
+                    $trim = if ([IO.Directory]::Exists($td)) { & $newest $td } else { @(0, [datetime]::MinValue, $null) }
+                    $missing = @(); $extra = @()
+                    if ($trim[0] -gt 0) {
+                        $missing = @($raw[2] | Where-Object { -not $trim[2].Contains($_) })
+                        $extra = @($trim[2] | Where-Object { -not $raw[2].Contains($_) })
+                    }
+                    $look = if ($trim[0] -eq 0) { 'todo' } elseif ($missing.Count -or $extra.Count -or $trim[1] -lt $raw[1].AddSeconds(-5)) { 'stale' } else { 'done' }
                     $rel = @([IO.Path]::GetFileName($a), [IO.Path]::GetFileName($t), [IO.Path]::GetFileName($l), [IO.Path]::GetFileName($s))
-                    [void]$cells.Add([pscustomobject]@{ Text = ($rel -join '  /  '); Dir = $s; Rel = $rel; Files = $raw[0]; When = $raw[1]; Look = $look; Trimmed = $trim[0] })
+                    [void]$cells.Add([pscustomobject]@{ Text = ($rel -join '  /  '); Dir = $s; Rel = $rel; Files = $raw[0]; When = $raw[1]; Look = $look; Trimmed = $trim[0]
+                                                         Missing = $missing.Count; Extra = $extra.Count })
                 }
             }
         }
@@ -6135,7 +6149,7 @@ function Get-ExportCells {
 }
 $script:TrimLook = @{
     todo  = @{ T = 'NOT TRIMMED';           C = $Pal.Faint }
-    stale = @{ T = 'DATA NEWER THAN TRIM';  C = $Pal.Amber }
+    stale = @{ T = 'NEEDS RE-TRIM';         C = $Pal.Amber }
     done  = @{ T = [string][char]0x2714 + ' TRIMMED'; C = $Pal.Green }
 }
 $script:TrimCells = @(); $script:TrimDirty = $true
@@ -6152,13 +6166,15 @@ function Update-TrimCells {
         $lk = $script:TrimLook[$c.Look]
         [pscustomobject]@{
             Text = $c.Text; Dir = $c.Dir; Look = $c.Look; Files = $c.Files; When = $c.When; Trimmed = $c.Trimmed
+            Missing = $c.Missing; Extra = $c.Extra
             Art = (Get-TopoImage $topo $(if ($atk -eq 'baseline') { 'baseline' } else { $atk }) 56 34).psobject.BaseObject
             RowBg = (Get-FBrush ($tone -replace '#', '#22') $Pal.Card '1,0')
             AtkText = $atk.ToUpper(); AtkFg = (Get-FBrush $tone); Topo = ($topo -replace '_', ' ')
             LocText = ($loc -replace '_', ' '); LocFg = (Get-FBrush $lt); LocBg = (Get-FBrush ($lt -replace '#', '#2A'))
             ScnText = "$($sl.S) $scn"; ScnFg = (Get-FBrush $sl.C); ScnBg = (Get-FBrush ($sl.C -replace '#', '#2A'))
             Day = $c.When.ToString('MMM dd, yyyy', [Globalization.CultureInfo]::InvariantCulture)
-            Sub = ("{0} file(s)  ·  {1}" -f $c.Files, (Format-PresetDate $c.When -Ago))
+            Sub = ("{0} file(s)  ·  {1}{2}" -f $c.Files, (Format-PresetDate $c.When -Ago),
+                   $(if ($c.Missing) { "  ·  $($c.Missing) new file(s) NOT trimmed yet" } elseif ($c.Extra) { "  ·  $($c.Extra) old file(s) in trimmed\" } else { '' }))
             Status = $lk.T; StatusFg = (Get-FBrush $lk.C); StatusBg = (Get-FBrush ($lk.C -replace '#', '#2A'))
         }
     }
@@ -6186,7 +6202,8 @@ function Update-TrimFilter {
     $all = @($script:TrimCells)
     $n = @{}; foreach ($c in $all) { $n[$c.Look] = 1 + [int]$n[$c.Look] }
     $shown = @($all | Where-Object { Test-TrimShown $_ }).Count
-    $ui.TrimCount.Text = ("{0} of {1} captured run(s) shown   ·   {2} trimmed  ·  {3} data newer than trim  ·  {4} not trimmed" -f $shown, $all.Count, [int]$n.done, [int]$n.stale, [int]$n.todo)
+    $ui.TrimCount.Text = ("{0} of {1} captured run(s) shown   ·   {2} trimmed  ·  {3} need a re-trim  ·  {4} not trimmed" -f $shown, $all.Count, [int]$n.done, [int]$n.stale, [int]$n.todo)
+    $script:TrimTodoCount = [int]$n.stale + [int]$n.todo
 }
 foreach ($n in 'TrimFAll', 'TrimFTodo', 'TrimFStale', 'TrimFDone') { $ui[$n].Add_Checked({ Update-TrimFilter }) }
 $ui.TrimSearch.Add_TextChanged({ Update-TrimFilter })
@@ -6198,7 +6215,9 @@ $ui.TrimList.Add_SelectionChanged({
     $ui.TrimSel.Text = $c.Text
     $ui.TrimSelSub.Text = switch ($c.Look) {
         'todo'  { "$($c.Files) raw file(s), no trimmed\ copy yet - Preview shows what would be kept" }
-        'stale' { "$($c.Files) raw file(s) are NEWER than the trimmed\ copy ($($c.Trimmed) file(s)) - re-trim it" }
+        'stale' { if ($c.Missing) { "$($c.Missing) raw file(s) have NO trimmed copy yet (new import) - re-trim it" }
+                  elseif ($c.Extra) { "trimmed\ holds $($c.Extra) file(s) that are no longer in the raw export - re-trim it" }
+                  else { "$($c.Files) raw file(s) are NEWER than the trimmed\ copy ($($c.Trimmed) file(s)) - re-trim it" } }
         default { "trimmed\ copy is up to date ($($c.Trimmed) file(s) from $($c.Files) raw)" }
     }
     $ui.TrimGo.Content = $(if ($c.Look -eq 'done') { [string][char]0x2702 + '  Trim again' } else { [string][char]0x2702 + '  Trim it' })
@@ -6246,7 +6265,9 @@ function Update-ArcList {
 }
 $ui.Pages.Add_SelectionChanged({
     param($s, $e)
-    if ($e.OriginalSource -eq $ui.Pages -and $ui.Pages.SelectedIndex -eq 5 -and $script:TrimDirty) { Update-TrimCells }
+    # always rescan when the Data page opens (top-level listing only - fast): a Collect, a
+    # Live run export or a GitHub pull never marked the list dirty, so new files did not show
+    if ($e.OriginalSource -eq $ui.Pages -and $ui.Pages.SelectedIndex -eq 5) { Update-TrimCells }
 })
 function Get-ArchiveArgs([switch]$Preview) {
     $label = ([string]$ui.ArcLabel.Text).Trim() -replace '[^A-Za-z0-9_-]', '-'
@@ -8042,10 +8063,18 @@ function Update-NavBadges {
     $boards = @($script:Live.Values | Where-Object { $_.Kind -ne 'BLOCKED' }).Count
     $runs = @($script:Captures | Where-Object { -not $_.Proc.HasExited }).Count
     $live = if ($script:Run -and $script:Run.Active) { 'LIVE' } elseif ($script:Run -and $script:Run.Phase -eq 'done') { 'done' } else { '' }
-    $key = "$redo|$boards|$runs|$live"
+    # trim reminder (oct. 20 2026): runs whose trimmed\ copy is missing or out of date -
+    # recounted at most once a minute (a top-level folder listing)
+    if (-not $script:TrimCountAt -or ((Get-Date) - $script:TrimCountAt).TotalSeconds -ge 60) {
+        $script:TrimCountAt = Get-Date
+        try { $script:TrimTodoCount = @(Get-ExportCells | Where-Object { $_.Look -ne 'done' }).Count } catch { }
+    }
+    $trimTodo = [int]$script:TrimTodoCount
+    $key = "$redo|$boards|$runs|$live|$trimTodo"
     if ($key -eq $script:BadgeKey) { return }
     $script:BadgeKey = $key
     Set-NavBadge 'NavCampaign' $(if ($redo) { "$redo redo" } else { '' }) $Pal.Red
+    Set-NavBadge 'NavData' $(if ($trimTodo) { "$trimTodo to trim" } else { '' }) $Pal.Amber
     Set-NavBadge 'NavBoards' $(if ($boards) { [string]$boards } else { '' }) $Pal.Green
     Set-NavBadge 'NavCapture' $(if ($runs) { "$runs running" } else { '' }) $Pal.Pink
     Set-NavBadge 'NavRun' $live $(if ($live -eq 'LIVE') { $Pal.Pink } else { $Pal.Green })

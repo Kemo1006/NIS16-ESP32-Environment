@@ -410,6 +410,7 @@ function Start-CollectTicked {
         }
         if ($C) { $C.Scan.IsEnabled = $true }
         Show-RunSummary $st.Export $st.Expect 'COLLECTED - RUN SUMMARY' $(if ($m.Success -and [int]$m.Groups[1].Value -gt 0) { $st.Then } else { $null })
+        try { Show-TrimReminder $st.Export } catch { }     # gui\TrimReminder.ps1: new files are not trimmed yet
         try { Update-Cells } catch { }
         try { if ($script:ImpItems.Count) { Start-ImpList -Again } } catch { }
     })
