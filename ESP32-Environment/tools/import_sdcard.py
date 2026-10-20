@@ -590,7 +590,14 @@ class _BoardCard:
                 break
             if not started:
                 continue  # boot chatter before the frame opened
-            deadline = time.time() + _BOARD_LIST_TIMEOUT_S  # progress — extend
+            # oct. 20 2026: a board that REBOOTS mid-list never sends SDLIST_END, and
+            # its log chatter used to extend the deadline forever (1C38 hung the
+            # import 10+ min). Only frame lines are progress; a boot banner aborts.
+            if "rst:0x" in line or line.startswith("ets "):
+                raise RuntimeError("board REBOOTED in the middle of LIST_SD - it is crash/power "
+                                   "looping; read its card in a card reader instead (--card)")
+            if line.startswith(("SDLEAF:", "SDMAN:", "SDFILE:")):
+                deadline = time.time() + _BOARD_LIST_TIMEOUT_S  # progress — extend
             if line.startswith("SDLEAF:"):
                 leaf = line[len("SDLEAF:"):].strip()
                 man_lines.setdefault(leaf, [])

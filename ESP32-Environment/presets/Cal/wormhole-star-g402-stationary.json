@@ -10,7 +10,7 @@
     "boards":  [
                    {
                        "Label":  "node5",
-                       "Port":  "COM11",
+                       "Port":  "COM10",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
@@ -19,7 +19,7 @@
                    },
                    {
                        "Label":  "node6",
-                       "Port":  "COM31",
+                       "Port":  "COM9",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
@@ -28,7 +28,7 @@
                    },
                    {
                        "Label":  "node7",
-                       "Port":  "COM10",
+                       "Port":  "COM31",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
@@ -46,7 +46,7 @@
                    },
                    {
                        "Label":  "node4",
-                       "Port":  "COM9",
+                       "Port":  "COM11",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
@@ -55,7 +55,7 @@
                    },
                    {
                        "Label":  "node2",
-                       "Port":  "COM39",
+                       "Port":  "COM40",
                        "Role":  "child",
                        "Kind":  "A",
                        "Display":  "wormhole tunnel board 1 (entry/exit chosen automatically)",
@@ -64,7 +64,7 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM40",
+                       "Port":  "COM39",
                        "Role":  "child",
                        "Kind":  "B",
                        "Display":  "wormhole tunnel board 2 (entry/exit chosen automatically)",

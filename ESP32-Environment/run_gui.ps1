@@ -2035,17 +2035,17 @@ $StyleXaml
                   </WrapPanel>
                   <WrapPanel Margin="0,2,0,0">
                     <CheckBox x:Name="RunSaveLog" Content="save a run log" IsChecked="True" Margin="0,0,18,8"/>
-                    <CheckBox x:Name="RunClean" Content="clean rebuild first (rarely needed)" Margin="0,0,18,8"
-                              ToolTip="NOT needed when you change attack / topology / scenario: every combination has its own build folder and all settings are passed on every build. Tick it only if (1) a compile was interrupted (window closed, laptop slept) and builds now fail oddly, (2) right after updating / switching ESP-IDF, or (3) the project folder was moved or re-cloned. It deletes ALL compiled firmware and compiles every board from scratch (~2-4 min per firmware type), once for this run. A failed compile also offers 'Clean + recompile' for just that board."/>
+                    <CheckBox x:Name="RunClean" Content="clean rebuild first (on by default)" IsChecked="True" Margin="0,0,18,8"
+                              ToolTip="ON by default (user, oct. 20 2026): every run compiles every board from scratch, so no stale build can reach a board. Untick it to save time - it is NOT needed when you change attack / topology / scenario (each combination has its own build folder). It matters when (1) a compile was interrupted (window closed, laptop slept) and builds now fail oddly, (2) right after updating / switching ESP-IDF, or (3) the project folder was moved or re-cloned. It deletes ALL compiled firmware and compiles every board from scratch (~2-4 min per firmware type), once for this run. A failed compile also offers 'Clean + recompile' for just that board."/>
                     <CheckBox x:Name="RunAutoNext" Content="move on by itself once a child has booted" IsChecked="True" Margin="0,0,18,8"/>
                     <CheckBox x:Name="RunWatchKids" Content="keep listening to every child until the run ends (records crashes)" IsChecked="True" Margin="0,0,18,8"
                               ToolTip="After a child is flashed, its serial port keeps being read in the background (no reset, nothing sent). A crash (Guru Meditation / watchdog / brownout) shows up at once on the dashboard and its backtrace is saved and decoded."/>
                   </WrapPanel>
-                  <!-- why clean rebuild is off (user, oct. 17 2026: tell other users, give peace of mind) -->
+                  <!-- clean rebuild is ON by default (user, oct. 20 2026; was off since oct. 17) -->
                   <Border CornerRadius="8" Background="$($Pal.Card2)" BorderBrush="$($Pal.Line)" BorderThickness="1" Padding="10,6" Margin="0,0,0,8">
                     <DockPanel>
                       <TextBlock DockPanel.Dock="Left" Text="&#xE946;" FontFamily="Segoe MDL2 Assets" Foreground="$($Pal.Cyan)" FontSize="13" VerticalAlignment="Top" Margin="0,1,8,0"/>
-                      <TextBlock TextWrapping="Wrap" FontSize="11.5" Foreground="$($Pal.Dim)"><Run Text="Clean rebuild is OFF on purpose - " FontWeight="SemiBold" Foreground="$($Pal.Text)"/><Run Text="it is safe to switch attack, topology or scenario without it: each has its own build folder and only changed code recompiles. Tick it only after an interrupted compile, an ESP-IDF update, or moving the project folder. If a compile ever fails, the error card offers 'Clean + recompile' for just that board."/></TextBlock>
+                      <TextBlock TextWrapping="Wrap" FontSize="11.5" Foreground="$($Pal.Dim)"><Run Text="Clean rebuild is ON by default - " FontWeight="SemiBold" Foreground="$($Pal.Text)"/><Run Text="the first compile of every run deletes the old builds and compiles every board from scratch (~2-4 min per firmware type), so a stale build never reaches a board. Untick it to save time: switching attack, topology or scenario is safe without it (each has its own build folder). If a compile ever fails, the error card offers 'Clean + recompile' for just that board."/></TextBlock>
                     </DockPanel>
                   </Border>
                   <TextBlock x:Name="RunNotes" Foreground="$($Pal.Amber)" TextWrapping="Wrap" FontSize="12" Margin="0,2,0,8"/>
@@ -7374,6 +7374,9 @@ function Start-RunStep($St) {
     # gui\RootStep.ps1 (oct. 20 2026): one laptop + root by hand -> the operator compiles + flashes it
     $byHand = $false; try { $byHand = Test-RootByHand } catch { }
     if ($b.Role -eq 'root' -and $byHand -and -not ($R.PSObject.Properties['RootGo'] -and $R.RootGo)) { Show-RootGate; return }
+    # gui\SnifferGate.ps1 (oct. 20 2026): no sniffer recording -> the root waits (asked once per run)
+    $needSn = $false; try { $needSn = $b.Role -eq 'root' -and (Test-SnifferGateNeeded) } catch { }
+    if ($needSn) { Show-SnifferGate $St; return }
     if ($b.Role -eq 'root' -and $R.Parked) {
         Stop-CrashWatchOn ([string]$b.Port)
         $St.State = 'running'; $St.Note = 'waking the root...'
@@ -7492,6 +7495,7 @@ function Complete-RunStep([int]$Code) {
 }
 function Complete-Run {
     try { Hide-RootStepBar } catch { }     # gui\RootStep.ps1
+    try { Hide-SnifferGateBar } catch { }  # gui\SnifferGate.ps1
     $R = $script:Run
     Stop-CrashWatch
     $sum = $R.Steps | Where-Object Kind -eq 'summary' | Select-Object -First 1
@@ -7522,6 +7526,7 @@ function Complete-Run {
 }
 function Finish-RunStopped {
     try { Hide-RootStepBar } catch { }     # gui\RootStep.ps1
+    try { Hide-SnifferGateBar } catch { }  # gui\SnifferGate.ps1
     $R = $script:Run
     # the flashed children KEEP RUNNING after a stop - keep listening to them
     # (oct. 18 2026: a victim crashed unwatched after a stop + root-only re-run)
@@ -7789,7 +7794,18 @@ function Read-BoardLine([string]$Line) {
     }
     if ($Line -match '^\[monitor\] LOST') { Add-RunAlert ("{0}: {1}" -f $b.Label, ($Line -replace '^\[monitor\] ', '')) $Pal.Red }
     if ($Line -match '\[monitor\] could not open') { $hold = Get-PortHolderText ([string]$b.Port); Add-RunAlert ("{0}: {1}{2}" -f $b.Label, $Line, $(if ($hold) { " - $($b.Port) is $hold" } else { '' })) $Pal.Red }
-    if (-not $R.Booted -and $Line -match '=== .*STARTING') {
+    # oct. 20 2026: the banner prints right after the flash, often BEFORE the monitor opens
+    # (run.ps1's location/scenario check runs first, ~10 s, and may restart the board), so
+    # the GUI never saw it and never moved on. A firmware log line from >= 5 s of uptime
+    # (not the bootloader) also proves the child's firmware is running.
+    $lateBoot = $false
+    if (-not $R.Booted -and $b.Role -ne 'root' -and $R.Phase -eq 'monitor' -and
+        $Line -match '(?:^|[\sm])[IWE] \((\d+)\) ([\w-]+):' -and [int64]$Matches[1] -ge 5000 -and
+        $Matches[2] -notmatch '^(boot|esp_image|cpu_start|heap_init|spi_flash|app_init)$') {
+        $lateBoot = $true
+        Write-RunConsole ("  {0}: its STARTING banner came before the monitor opened - its firmware is running (log at {1} s uptime)" -f $b.Label, [int]([int64]$Matches[1] / 1000)) $Pal.Faint
+    }
+    if (-not $R.Booted -and ($lateBoot -or $Line -match '=== .*STARTING')) {
         $R.Booted = $true
         if ($script:Dash) { Add-RunAlert ("{0} booted and is running" -f $b.Label) $Pal.Green }
         if ($b.Role -ne 'root') {
@@ -8017,7 +8033,8 @@ $runTimer.Add_Tick({
         return
     }
     Read-CrashWatch
-    if ($R.AutoAt -and (Get-Date) -ge $R.AutoAt) { $R.AutoAt = $null; if ($R.Phase -eq 'monitor' -and $R.Current.Board.Role -ne 'root') { Stop-RunMonitor } }
+    # a banner seen while the monitor was still opening keeps its move-on pending (oct. 20 2026)
+    if ($R.AutoAt -and (Get-Date) -ge $R.AutoAt -and $R.Phase -ne 'flash') { $R.AutoAt = $null; if ($R.Phase -eq 'monitor' -and $R.Current.Board.Role -ne 'root') { Stop-RunMonitor } }
     if (-not $R.Proc) { return }
     $lines = Read-RunOutput
     if ($lines.Count) {

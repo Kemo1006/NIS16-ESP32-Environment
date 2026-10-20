@@ -164,6 +164,9 @@ def _open_port(port: str) -> serial.Serial:
     ser.port = port
     ser.baudrate = BAUD
     ser.timeout = READ_TIMEOUT_S
+    # oct. 20 2026: a wedged USB bridge (1C38) blocked a command write forever, no CPU,
+    # no error; with this it raises SerialTimeoutException instead of hanging.
+    ser.write_timeout = 10
     ser.dtr = False
     ser.rts = False
     ser.open()
@@ -410,7 +413,10 @@ def _capture_stream(ser: serial.Serial, command: str):
                 return rows, None
             continue
         last_data_ts = time.time()
-        deadline = time.time() + OVERALL_TIMEOUT_S  # got data — extend
+        # oct. 20 2026: only FILE bytes extend it. Before READY_TO_SEND, a board's log
+        # chatter (or a reboot loop) used to keep an unanswered export waiting forever.
+        if started:
+            deadline = time.time() + OVERALL_TIMEOUT_S  # got data — extend
         buf.extend(chunk)
 
         # Pull out every complete line; keep any partial tail buffered.

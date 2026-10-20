@@ -14,7 +14,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Missing boards (#67, D-32):** graded by ROLE (missing_boards.py): attacker → recapture; victim → footnote if other victims carry the evidence; bystander → footnote while another control remains; last control / unplaceable → INVESTIGATE (new grade UNDETERMINED). Found 2 overlooked: B768 (tree/G402/highload, no file, bystander) + 2805 (partial/G402/highload) → YELLOW footnotes C19/C20.
 - **Sync / import / Collect (#68):** sync never resurrects locally deleted runs (DELETE ON GITHUB offered unticked); import reports only files verified on disk ('NOTHING was imported' otherwise); Collect: board picker before scan, swapped-card + later-run + other-scenario refusals; cards record the SCENARIO (reflash); Boards page 'Stop + halt board' / 'Stop + halt ALL boards' (ends idle runs too) / 'Start board again'; Data page 'Erase this board's storage'. ROOT B0:18 erased oct. 20 ~5 PM (user's order, no backup).
 - **Builds:** all 16 variants BUILD OK, 0 warnings (incremental, IDF 5.5.4). Tests: verifier 48/48, placebo 0/110 false positives, sensitivity 0 flips, verdict-sync 5/5, GUI self-test OK.
-- **GUI** (`run_gui.ps1`): full capture in-window; NEW one-laptop ROOT STEP (preset with root + all children here: children first, then R1 Compile / Clean rebuild / R2 Flash the root - gui/RootStep.ps1); Verify card can tick a satisfied checklist row (tools/tick_checklist.py); red pre-START checks lock START (incl. 'SD cards writing'). Restart the GUI on every laptop after pulling.
+- **GUI** (`run_gui.ps1`): full capture in-window; NEW one-laptop ROOT STEP (preset with root + all children here: children first, then R1 Compile / Clean rebuild / R2 Flash the root - gui/RootStep.ps1); Verify card can tick a satisfied checklist row (tools/tick_checklist.py); red pre-START checks lock START (incl. 'SD cards writing'). Restart the GUI on every laptop after pulling. NEW (oct. 20 ~5 PM): the root flash waits until a sniffer records on this laptop, or the operator presses 'Flash WITHOUT the sniffer' (gui/SnifferGate.ps1); children auto-move on even when their STARTING banner came before the monitor opened; 'clean rebuild first' is ticked by default.
 - **Wormhole:** D-28 star hub + D-30 tree/partial depth rules + UART self-echo fix — compile-checked, NOT on hardware.
 
 ## Next step
@@ -27,7 +27,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 7. Paper: checklist A32, A33, B-outcome, B-sd, C19, C20 (new) + A21-A31, B-rules, B-force, C14-C16.
 
 ## Blockers / open questions
-- ⚠️ 1C38 (COM40) stopped answering on serial this afternoon (no GET_ID / no esptool data) until reset - watch it; if the GUI cannot read it again: reset it (EN button) when nothing is reading it, then retry.
+- ⚠️ **1C38 (COM40) = star r1 node2 ATTACKER file NOT imported** (still on its card: `wormhole/star/G402/victim_NODE_20500DE71C38_r11_b18_telem.csv`, 7759 rows). USB reads hang (reboot loop + wedged USB bridge) -> take the card out, import with a card reader (`--card E:\`), then reflash 1C38 on a new cable/port. Import/export now time out instead of hanging (oct. 20 ~4:30 PM).
 - ⛔ Crash root cause not proven (ELF of the crashing build was not kept) — needs one crash on the #66 firmware.
 - ⛔⛔ BSOD 0xB8: NEVER Ctrl+C an export or SD read; never reset/unplug a board while it is read; boards DIRECT into the laptop.
 - ⚠️ Moving boards after Phase 0: tree runs corrupt the baseline; wormhole roles are locked. Use the READY window, then START.
