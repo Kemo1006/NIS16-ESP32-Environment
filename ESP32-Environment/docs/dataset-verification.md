@@ -15,6 +15,27 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #65 — Oct 20, 2026 · ~10:00 AM — tree/G402 burst + highload (last night): burst used two HIGHLOAD files
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4a8488d`
+> **Request:** "check the run we did last night in tree blackhole G402, check the verdict, I'm confused"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | burst + highload | r1 | oct. 19 ~7:45 PM (burst, root exported 8:02) and ~8:37 PM (highload, root 8:53) | 8 + 7 boards |
+
+| Check | Result | Detail |
+|---|---|---|
+| Why both verdicts showed the SAME attacker numbers | ❌ | the burst folder held byte-identical copies of HIGHLOAD's 0C80 (`..._0902PM`) and 1C38 (`..._0859PM`) next to burst's own files; the analysis takes one file per board and used them |
+| burst before | ❌ | NOT CONFIRMED - SETUP INVALID: 'bystander 0C80 lost 63 %' = highload data against the burst root (root_match 79 % mismatch); attacker 'received 710' = highload's |
+| Fix | 🔧 | the two copies moved to `archive/2026-10-20_tree-G402-burst-wrong-import/` (identical copies stay in highload); trim also moved their stale copies out of `trimmed/`; burst re-analysed |
+| **burst now** | ✅ | **CONFIRMED - STRONG**: ForwardingRatio 1.000 -> 0.000, PDR 1.000 -> 0.833 (z -18.8), victim ED80 0.998 -> 0.000, 5 bystanders 1.000 -> 1.000, attacker received 180 / forwarded 0, all 8 boards one file each + MATCH the root |
+| **highload** | ✅ | **CONFIRMED - STRONG** (unchanged); 70:68 not imported yet (root heard it) |
+
+**Verdict: ✅ both tree/G402 runs of last night are good - burst was mis-graded only because two highload files had been imported into its folder. Saved GUI report refreshed (backup .bak_oct20_wrongimport). Note: root_match cannot catch an ATTACKER file from another run (it sends no probes) - the duplicate-file warning in the RUN SUMMARY is what flagged it.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #64 — Oct 19, 2026 · ~7:15 PM — root_match CORRECTED (false alarms) + SD-logging indicator
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a7588c5` + this change
