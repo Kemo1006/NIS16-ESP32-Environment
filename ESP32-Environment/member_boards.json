@@ -8,7 +8,12 @@
                                            "nickname":  "ROOT",
                                            "mac":  "B0:18",
                                            "role":  "root"
-                                       },
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Sniffer",
+                        "boards":  [
                                        {
                                            "nickname":  "Sniffer",
                                            "mac":  "70:B0",
