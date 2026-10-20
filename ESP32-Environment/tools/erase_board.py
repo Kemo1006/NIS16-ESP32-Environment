@@ -51,6 +51,11 @@ def main():
                     help="end the board's own current run if its folder is in use (only when no capture runs)")
     ap.add_argument("--no-flash", action="store_true", help="leave the internal flash (SPIFFS) alone")
     a = ap.parse_args()
+    # oct. 20 2026: an operator hold - %TEMP%\HOLD_ERASE present = refuse (used to pause a batch erase)
+    if os.path.exists(os.path.join(os.environ.get("TEMP", ""), "HOLD_ERASE")):
+        print("ERASE: REFUSED - erase is on hold (%TEMP%/HOLD_ERASE exists)")
+        print("ERASE_RESULT: ok=0 files=0 failed=1 flash=SKIPPED")
+        return 1
 
     ser = el._open_port(a.port)
     files = failed = 0
@@ -70,7 +75,9 @@ def main():
             for topo in TOPOLOGIES:
                 for loc in LOCATIONS:
                     rel = f"{atk}/{topo}/{loc}"
-                    for attempt in (1, 2):
+                    # oct. 20 2026: a wormhole board needs several seconds after END_RUN to stop its
+                    # UART tunnel and close its files - retry the folder for up to ~20 s, not once
+                    for attempt in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
                         r = ask(ser, f"DELETE_SD_PATH={rel}",
                                 lambda l: l.startswith(("SD_PATH_DELETED:", "ERROR:")), 60)
                         if r and r.startswith("SD_PATH_DELETED:"):
@@ -85,6 +92,9 @@ def main():
                             ended = True
                             print(f"ERASE: {rel} is in use - ended the board's own run first ({e})", flush=True)
                             time.sleep(2)
+                            continue
+                        elif r == "ERROR:SD_PATH_IN_USE" and ended and attempt < 10:
+                            time.sleep(2)    # still closing its files - ask again
                             continue
                         elif r == "ERROR:SD_PATH_IN_USE":
                             busy.append(rel)

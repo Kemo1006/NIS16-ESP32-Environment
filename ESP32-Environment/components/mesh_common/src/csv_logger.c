@@ -1870,15 +1870,22 @@ esp_err_t csv_logger_close(void)
      * sd_mirror_ensure() on a card that is about to be unmounted. Writers that
      * queue behind this lock find their handle NULL and return. */
     io_lock();
-    if (!s_log_fp) {
+    /* oct. 20 2026: the SPIFFS handle can already be gone (DELETE_LOGS formats the
+     * internal flash and NULLs it - the erase tool sent it right after END_RUN, before
+     * this close ran). Returning here left the SD MIRROR open for the rest of the boot:
+     * no "clean" row, the folder "in use", the card file ABORTED. Only a second close
+     * returns early now; the card is always closed. */
+    if (s_closed || (!s_log_fp && !s_sd_log_fp && !s_sd_arrivals_fp)) {
         io_unlock();
         return ESP_ERR_INVALID_STATE;
     }
 
-    fflush(s_log_fp);
-    fclose(s_log_fp);
-    s_log_fp = NULL;
-    ESP_LOGI(TAG, "Telemetry file closed: %s", s_filepath);
+    if (s_log_fp) {
+        fflush(s_log_fp);
+        fclose(s_log_fp);
+        s_log_fp = NULL;
+        ESP_LOGI(TAG, "Telemetry file closed: %s", s_filepath);
+    }
 
     if (s_arrivals_fp) {
         fflush(s_arrivals_fp);

@@ -728,6 +728,8 @@ $StyleXaml
               </Border>
               <TextBlock Text="PLUGGED IN NOW" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0"/>
             </DockPanel>
+            <!-- dot legend (user, oct. 20 2026: "what does the red dot mean") -->
+            <WrapPanel Margin="8,0,4,6"><StackPanel Orientation="Horizontal" Margin="0,0,10,2" ToolTip="The GUI knows this board (its MAC was read)."><Ellipse Width="7" Height="7" Fill="$($Pal.Green)" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBlock Text="identified" Foreground="$($Pal.Faint)" FontSize="10"/></StackPanel><StackPanel Orientation="Horizontal" Margin="0,0,10,2" ToolTip="Asking its ID / reading its MAC right now - wait a few seconds."><Ellipse Width="7" Height="7" Fill="$($Pal.Cyan)" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBlock Text="identifying" Foreground="$($Pal.Faint)" FontSize="10"/></StackPanel><StackPanel Orientation="Horizontal" Margin="0,0,10,2" ToolTip="Not identified yet, or paused because a capture / export is running. Home > Read all MACs when nothing runs."><Ellipse Width="7" Height="7" Fill="$($Pal.Amber)" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBlock Text="not yet / paused" Foreground="$($Pal.Faint)" FontSize="10"/></StackPanel><StackPanel Orientation="Horizontal" Margin="0,0,10,2" ToolTip="The board did not answer (MAC read failed): stuck, unplugged mid-read, or a sniffer (it never replies). Re-plug it, or ignore a sniffer."><Ellipse Width="7" Height="7" Fill="$($Pal.Red)" VerticalAlignment="Center" Margin="0,0,4,0"/><TextBlock Text="no answer" Foreground="$($Pal.Faint)" FontSize="10"/></StackPanel></WrapPanel>
             <TextBlock x:Name="SideEmpty" Text="No board plugged in - plug one in and it appears here." Foreground="$($Pal.Faint)" FontSize="11" TextWrapping="Wrap" Margin="8,0,0,0"/>
           </StackPanel>
           <!-- takes whatever height is left, scrolls when the boards do not fit -->
@@ -2918,12 +2920,12 @@ $script:StateText = @{ new = 'waiting to read'; reading = 'reading MAC...'; aski
 function Update-LiveViews {
     $script:LiveVer++   # Run a capture rows re-check their boards
     $boards = @($script:Live.Values | Where-Object { $_.Kind -ne 'BLOCKED' })
-    $dot = { param($r) if ($r.State -eq 'ok') { $Pal.Green } elseif ($r.State -in @('reading', 'new')) { $Pal.Cyan } elseif ($r.State -eq 'failed') { $Pal.Red } else { $Pal.Amber } }
+    $dot = { param($r) if ($r.State -eq 'ok') { $Pal.Green } elseif ($r.State -in @('reading', 'new', 'asking')) { $Pal.Cyan } elseif ($r.State -eq 'failed') { $Pal.Red } else { $Pal.Amber } }
     # sidebar
     $ui.SideBoards.ItemsSource = @($boards | ForEach-Object {
         [pscustomobject]@{ Port = $_.Port; ShortMac = $(if ($_.Mac) { Get-ShortMac $_.Mac } else { '' })
                            Who = $(if ($_.Who) { $_.Who } else { $script:StateText[$_.State] })
-                           Dot = (& $brush (& $dot $_)); Tip = ("{0}  {1}`n{2}" -f $_.Port, $_.Mac, $_.Description) } })
+                           Dot = (& $brush (& $dot $_)); Tip = ("{0}  {1}`n{2}`n{3}" -f $_.Port, $_.Mac, $_.Description, $(switch ($_.State) { 'ok' { 'green = identified' } 'failed' { 'red = did not answer (MAC read failed) - re-plug it, or a sniffer' } { $_ -in @('reading', 'new', 'asking') } { 'cyan = being identified now' } default { 'amber = ' + $script:StateText[$_] } })) } })
     $ui.SideCount.Text = [string]$boards.Count
     $ui.SideEmpty.Visibility = $(if ($boards.Count) { 'Collapsed' } else { 'Visible' })
     # home tiles
