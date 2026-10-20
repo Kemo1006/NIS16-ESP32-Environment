@@ -1,0 +1,11 @@
+collect_run.py --ports COM15 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-19 05:00 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --pick COM15=wormhole/partial_mesh/G402/victim_NODE_B4BFE932FE90_r6_b9_telem.csv
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect_oct19_050149pm.log)
+
+-- COM15: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r10_b16_telem.csv: baseline 0 s, attack 0 s, cooldown 0 s, stabilise 139 s -> NO_RUN
+   checked victim_NODE_B4BFE932FE90_r9_b15_telem.csv: baseline 0 s, attack 0 s, cooldown 0 s, stabilise 109 s -> NO_RUN
+   checked victim_NODE_B4BFE932FE90_r6_b9_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 98 s -> FULL
+COLLECT: COM15 B4BFE932FE90 OK victim_NODE_B4BFE932FE90_r6_b9_telem.csv -> victim_NODE-B4BFE932FE90_partial_wormhole_r1_oct19_0502PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 98 s
+
+COLLECT_SUMMARY: ok=1 skip=0 fail=0
+

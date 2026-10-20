@@ -1,0 +1,40 @@
+collect_run.py --ports COM41,COM42,COM3,COM30,COM9,COM10,COM11 --attack wormhole --topology star --location G402 --scenario burst --repeat 1 --since 2026-10-20 11:37 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-star-g402-burst.json --expect-mac COM41=20500DE70C80;COM42=F42DC973E618;COM3=20500DE71C38;COM30=B4BFE934ED80;COM9=B4BFE932FE90;COM10=704BCA25B768;COM11=2805A532D7B4 --pick COM41=wormhole/star/G402/victim_NODE_20500DE70C80_r5_b5_telem.csv;COM42=wormhole/star/G402/victim_NODE_F42DC973E618_r4_b222_telem.csv;COM3=wormhole/star/G402/victim_NODE_20500DE71C38_r5_b5_telem.csv;COM30=wormhole/star/G402/victim_NODE_B4BFE934ED80_r6_b6_telem.csv;COM9=wormhole/star/G402/victim_NODE_B4BFE932FE90_r6_b6_telem.csv;COM10=wormhole/star/G402/victim_NODE_704BCA25B768_r5_b5_telem.csv;COM11=wormhole/star/G402/victim_NODE_2805A532D7B4_r7_b7_telem.csv
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\star\G402\burst\collect_oct20_113841pm.log)
+
+-- COM41: reading the card ...
+   checked victim_NODE_20500DE70C80_r5_b5_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 37 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node3_star_wormhole_r1_oct20_1138PM_telem.csv|6391
+COLLECT: COM41 20500DE70C80 OK victim_NODE_20500DE70C80_r5_b5_telem.csv -> child_node3_star_wormhole_r1_oct20_1138PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 37 s
+
+-- COM42: reading the card ...
+   checked victim_NODE_F42DC973E618_r4_b222_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 238 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node4_star_wormhole_r1_oct20_1139PM_telem.csv|8409
+COLLECT: COM42 F42DC973E618 OK victim_NODE_F42DC973E618_r4_b222_telem.csv -> child_node4_star_wormhole_r1_oct20_1139PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 238 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE71C38_r5_b5_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node2_star_wormhole_r1_oct20_1140PM_telem.csv|8310
+COLLECT: COM3 20500DE71C38 OK victim_NODE_20500DE71C38_r5_b5_telem.csv -> child_node2_star_wormhole_r1_oct20_1140PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s
+
+-- COM30: reading the card ...
+   checked victim_NODE_B4BFE934ED80_r6_b6_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node8_star_wormhole_r1_oct20_1141PM_telem.csv|8310
+COLLECT: COM30 B4BFE934ED80 OK victim_NODE_B4BFE934ED80_r6_b6_telem.csv -> child_node8_star_wormhole_r1_oct20_1141PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s
+
+-- COM9: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r6_b6_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node7_star_wormhole_r1_oct20_1142PM_telem.csv|8310
+COLLECT: COM9 B4BFE932FE90 OK victim_NODE_B4BFE932FE90_r6_b6_telem.csv -> child_node7_star_wormhole_r1_oct20_1142PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s
+
+-- COM10: reading the card ...
+   checked victim_NODE_704BCA25B768_r5_b5_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node5_star_wormhole_r1_oct20_1143PM_telem.csv|8310
+COLLECT: COM10 704BCA25B768 OK victim_NODE_704BCA25B768_r5_b5_telem.csv -> child_node5_star_wormhole_r1_oct20_1143PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 229 s
+
+-- COM11: reading the card ...
+   checked victim_NODE_2805A532D7B4_r7_b7_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 234 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\G402\burst\child_node6_star_wormhole_r1_oct20_1144PM_telem.csv|8360
+COLLECT: COM11 2805A532D7B4 OK victim_NODE_2805A532D7B4_r7_b7_telem.csv -> child_node6_star_wormhole_r1_oct20_1144PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 234 s
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0
+

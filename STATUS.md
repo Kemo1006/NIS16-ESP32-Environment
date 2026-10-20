@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 20, 2026 ~5:30 PM (Angelo's laptop) — SD-card reliability + crash diagnosis + verdict/Campaign/Verify consistency (verification #66, write-up `ESP32-Environment/docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md`). **Committed + pushed; NOT on hardware - reflash EVERY board (children + root) before the next capture.**
+**Updated:** oct. 20, 2026 ~11:30 PM (Basti's laptop) — paper session #71 (verification, green edits, v2, status doc, defense deck, Validation Basis check; jitter OUT). Before that ~5:30 PM (Angelo's laptop) — SD reliability + crash diagnosis + verdict consistency (#66, `ESP32-Environment/docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md`), committed + pushed, NOT on hardware - reflash EVERY board before the next capture.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
@@ -25,7 +25,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 4. 2805: swap its SD card + powerbank, check card supply (VIN/5 V) — brownouts + inconsistent card reads (#62/#63).
 5. Hardware tests still pending from oct. 19: D-26 sticky parents, D-28 star wormhole, D-30, wormhole unlock.
 6. Recapture: benign run (home/highload not clean, C15); wormhole/tree/DLSU stationary (D8, OUTCOME INCONCLUSIVE); tree/G402/stationary advised (C16).
-7. Paper: checklist A32, A33, B-outcome, B-sd, C19, C20 (new) + A21-A31, B-rules, B-force, C14-C16.
+7. Paper (oct. 20 ~11 PM, Basti, #71): NEWEST = `1-Working-Copy/…_8boards v2 (code and data recheck, oct. 20, 2026).docx` (all edits green; D-23…D-32, verifier rules, SD recovery, Ch. 4 headings renumbered, Table C.2). Status: `4-Verification/THESIS3-Paper-Status oct. 20, 2026.docx`. Validation Basis guide checked: 6 wrong / 13 outdated (`Validation-Basis-Check oct. 20, 2026.docx`). **Jitter is OUT (decided oct. 20).** ⚠️ B-mrr: re-run analyze.ps1 WITH the sniffer PCAPs. Deck: `Paper/THESIS3-Defense oct. 20, 2026.pptx`. ⚠️ Session #71 files are NOT committed: paper .docx/.pptx (untracked), STATUS, MEMORY, ARCHIVE, checklist (B-mrr/B-figs/B-status20/B-v2/B-jitter), dataset-verification #71, Plan/INDEX + Paper-Editing/README, 0_Resources/archive_tech.md - stage these by name, never `git add -A`. ⛔ This laptop's checkout is MID-MERGE (found oct. 20 ~11:30 PM, not caused by #71): unresolved `child_node/sdkconfig`, `root_node/sdkconfig`, `presets/Cal/blackhole-tree-g402-highload.json` - resolve (sdkconfig: take the repo's IDF 5.5.4 side) before any commit.
 
 ## Blockers / open questions
 - ⚠️ **1C38 (COM40) = star r1 node2 ATTACKER file NOT imported** (still on its card: `wormhole/star/G402/victim_NODE_20500DE71C38_r11_b18_telem.csv`, 7759 rows). USB reads hang (reboot loop + wedged USB bridge) -> take the card out, import with a card reader (`--card E:\`), then reflash 1C38 on a new cable/port. Import/export now time out instead of hanging (oct. 20 ~4:30 PM).
@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 20 ~11:45 AM (Angelo) — #66: SD reliability + crash diagnosis + verdict/Campaign/Verify consistency (above). Not committed.
+- oct. 20 ~11 PM (Basti) — #71: verified the 8-board paper (43 green edits), made paper v2 (code + data recheck, 64 green ops), status doc, Validation Basis check (6 wrong / 13 outdated), 33-slide defense deck; found MacRetryRate lost in 20 runs (B-mrr); jitter OUT.
 - oct. 20 ~4 PM (Angelo) — #68: sync deletions, import verification, Collect picker/identity, scenario on card, Halt board; everything committed + pushed.

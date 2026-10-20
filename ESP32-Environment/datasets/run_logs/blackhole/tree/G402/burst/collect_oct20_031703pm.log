@@ -1,0 +1,8 @@
+collect_run.py --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-01 00:00 --outdir C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/out2 --cards C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/cardB
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect_oct20_031703pm.log)
+
+-- cardB: reading the card ...
+COLLECT: cardB B4BFE932FE90 SKIP already in the run folder as victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct20_0317PM_telem.csv
+
+COLLECT_SUMMARY: ok=0 skip=1 fail=0
+

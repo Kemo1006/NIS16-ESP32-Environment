@@ -1,0 +1,167 @@
+[monitor] listening on COM31 at 115200 baud
+=== SD CARD ENVIRONMENT REPORT (NODE_B4BFE932FE90) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-20 20:22:48 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-20 20:19:37
+  Run started: 2026-10-20 20:22:48 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_B4BFE932FE90 (MAC B4:BF:E9:32:FE:90)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 19
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+
+[0;32mI (1573) VICTIM_MAIN: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_B4BFE932FE90.txt[0m
+[0;32mI (1583) NODE_ID: Identity: "Board-B4:90" role=CHILD mac=b4:bf:e9:32:fe:90 (via MAC (no node_config.txt nickname))[0m
+I (1623) wifi:wifi driver task: 3ffcc5dc, prio:23, stack:6656, core=0
+I (1623) wifi:wifi firmware version: 0947e8b
+I (1623) wifi:wifi certification version: v7.0
+I (1623) wifi:config NVS flash: enabled
+I (1623) wifi:config nano formatting: disabled
+I (1633) wifi:Init data frame dynamic rx buffer num: 32
+I (1633) wifi:Init static rx mgmt buffer num: 5
+I (1643) wifi:Init management short buffer num: 32
+I (1643) wifi:Init dynamic tx buffer num: 32
+I (1643) wifi:Init static rx buffer size: 1600
+I (1653) wifi:Init static rx buffer num: 10
+I (1653) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1663) wifi_init: rx ba win: 6[0m
+[0;32mI (1663) wifi_init: accept mbox: 6[0m
+[0;32mI (1663) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1673) wifi_init: udp mbox: 6[0m
+[0;32mI (1673) wifi_init: tcp mbox: 6[0m
+[0;32mI (1683) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1683) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1683) wifi_init: tcp mss: 1440[0m
+[0;32mI (1693) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1693) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1703) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1713) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1713) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1723) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1803) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (1823) wifi:mode : sta (b4:bf:e9:32:fe:90) + softAP (b4:bf:e9:32:fe:91)
+I (1823) wifi:enable tsf
+I (1823) wifi:Total power save buffer number: 16
+I (1823) wifi:Init max length of beacon: 752/752
+I (1823) wifi:Init max length of beacon: 752/752
+I (1833) mesh: <nvs>read layer:0, err:0x1102
+I (1833) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (1843) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (1843) wifi:Set ps type: 0, coexist: 0
+
+I (1873) wifi:Total power save buffer number: 16
+[0;32mI (2123) BH_TARGET: Attacker MAC from compiled default: 20:50:0d:e7:1c:38[0m
+[0;33mW (2123) MESH_SETUP: STAR HUB: this board joins ONLY the wormhole A hub 20:50:0d:e7:1c:38 (compiled; its mesh AP 20:50:0d:e7:1c:39), never the root directly.[0m
+I (2143) wifi:mode : sta (b4:bf:e9:32:fe:90)
+I (2153) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2153) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (2153) MESH_SETUP: Mesh started. Node ID: NODE_B4BFE932FE90  Role: 1[0m
+I (2153) mesh: [IO]disable self-organizing<stop reconnect>
+I (2173) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+[0;32mI (2173) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (7223) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP 20:50:0d:e7:1c:39 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (52683) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP 20:50:0d:e7:1c:39 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (62183) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62183) VICTIM_MAIN: Node ID: NODE_B4BFE932FE90   Run ID: RUN_001[0m
+[0;32mI (62183) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62193) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62193) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62203) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62213) SPIFFS: mount failed, -10025. formatting...[0m
+[monitor] LOST COM31: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed

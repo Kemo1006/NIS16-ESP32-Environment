@@ -1,0 +1,9 @@
+collect_run.py --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-19 08:57 --outdir C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/out4 --cards C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/cardC
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect_oct20_031718pm.log)
+
+-- cardC: reading the card ...
+   victim_NODE_20500DE71C38_r21_b39_telem.csv: started 20:29, after the root of this run was exported (20:03) - a LATER run, refused
+COLLECT: cardC 20500DE71C38 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_20500DE71C38_r21_b39_telem.csv (ran 2026-10-19 20:29:07): started AFTER this run's root was exported (20:03) - a later run, not this one. If you are sure, pick the file in Data > Import and footnote it
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=1
+

@@ -1,0 +1,745 @@
+[monitor] listening on COM41 at 115200 baud
+I (486) esp_image: segment 4: paddr=00123c10 vaddr=40088f0c size=126fch ( 75516) load
+I (516) esp_image: segment 5: paddr=00136314 vaddr=5000005c size=00020h (    32) load
+I (529) boot: Loaded app from partition at offset 0x10000
+I (530) boot: Set actual ota_seq=1 in otadata[0]
+I (530) boot: Disabling RNG early entropy source...
+[0;32mI (544) cpu_start: Multicore app[0m
+[0;32mI (552) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (553) cpu_start: Pro cpu start user code[0m
+[0;32mI (553) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (557) app_init: Application information:[0m
+[0;32mI (562) app_init: Project name:     child_node[0m
+[0;32mI (567) app_init: App version:      backup/angelo-2026-10-01-284-gf[0m
+[0;32mI (574) app_init: Compile time:     Oct 20 2026 22:06:40[0m
+[0;32mI (580) app_init: ELF file SHA256:  d04a6da1d...[0m
+[0;32mI (586) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (591) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (596) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (601) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (606) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (613) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (619) heap_init: At 3FFBC910 len 000236F0 (141 KiB): DRAM[0m
+[0;32mI (625) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (631) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (638) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;33mW (645) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig[0m
+[0;32mI (658) spi_flash: detected chip: generic[0m
+[0;32mI (662) spi_flash: flash io: dio[0m
+[0;32mI (667) main_task: Started on CPU0[0m
+[0;32mI (677) main_task: Calling app_main()[0m
+[0;32mI (677) WORMHOLE: === WORMHOLE NODE STARTING (auto-switch; fallback end B) ===[0m
+[0;32mI (677) SD_STATUS: clock seeded from build stamp 2026-10-20 22:06:40 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (687) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (697) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (747) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (777) SD_STATUS: clock: set from the card's host anchor -> 2026-10-20 22:09:28 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE70C80) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-20 22:09:28 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    tree                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    linear                   EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    partial_mesh             EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    tree                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    linear                   EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    partial_mesh             EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    tree                     EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    linear                   EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+    partial_mesh             EXISTS
+      home                     CREATED
+      G402                     CREATED
+      DLSU_Library             CREATED
+      Yuchengco                CREATED
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-20 22:06:40
+  Run started: 2026-10-20 22:09:33 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE70C80 (MAC 20:50:0D:E7:0C:80)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 1
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+
+[0;32mI (6947) WORMHOLE: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_20500DE70C80.txt[0m
+I (6987) wifi:wifi driver task: 3ffcc674, prio:23, stack:6656, core=0
+I (6987) wifi:wifi firmware version: 0947e8b
+I (6987) wifi:wifi certification version: v7.0
+I (6987) wifi:config NVS flash: enabled
+I (6987) wifi:config nano formatting: disabled
+I (6997) wifi:Init data frame dynamic rx buffer num: 32
+I (6997) wifi:Init static rx mgmt buffer num: 5
+I (7007) wifi:Init management short buffer num: 32
+I (7007) wifi:Init dynamic tx buffer num: 32
+I (7007) wifi:Init static rx buffer size: 1600
+I (7017) wifi:Init static rx buffer num: 10
+I (7017) wifi:Init dynamic rx buffer num: 32
+[0;32mI (7027) wifi_init: rx ba win: 6[0m
+[0;32mI (7027) wifi_init: accept mbox: 6[0m
+[0;32mI (7027) wifi_init: tcpip mbox: 32[0m
+[0;32mI (7037) wifi_init: udp mbox: 6[0m
+[0;32mI (7037) wifi_init: tcp mbox: 6[0m
+[0;32mI (7047) wifi_init: tcp tx win: 5760[0m
+[0;32mI (7047) wifi_init: tcp rx win: 5760[0m
+[0;32mI (7047) wifi_init: tcp mss: 1440[0m
+[0;32mI (7057) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (7057) wifi_init: WiFi RX IRAM OP enabled[0m
+I (7067) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (7077) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (7077) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (7087) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (7167) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (7187) wifi:mode : sta (20:50:0d:e7:0c:80) + softAP (20:50:0d:e7:0c:81)
+I (7187) wifi:enable tsf
+I (7187) wifi:Total power save buffer number: 16
+I (7187) wifi:Init max length of beacon: 752/752
+I (7187) wifi:Init max length of beacon: 752/752
+I (7197) mesh: <nvs>read layer:0, err:0x1102
+I (7197) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (7207) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (7207) wifi:Set ps type: 0, coexist: 0
+
+I (7237) wifi:Total power save buffer number: 16
+[0;32mI (7497) BH_TARGET: Attacker MAC from compiled default: f4:2d:c9:73:e6:18[0m
+[0;33mW (7497) MESH_SETUP: STAR HUB: this board joins ONLY the wormhole A hub f4:2d:c9:73:e6:18 (compiled; its mesh AP f4:2d:c9:73:e6:19), never the root directly.[0m
+I (7517) wifi:mode : sta (20:50:0d:e7:0c:80)
+I (7527) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (7527) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (7527) MESH_SETUP: Mesh started. Node ID: NODE_20500DE70C80  Role: 4[0m
+I (7527) mesh: [IO]disable self-organizing<stop reconnect>
+I (7537) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+[0;32mI (7547) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (12587) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (58047) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (67557) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (67557) WORMHOLE: Node ID: NODE_20500DE70C80   Run ID: RUN_001[0m
+[0;32mI (67557) WORMHOLE: Wormhole UART tunnel ready: UART1  TX=GPIO17  RX=GPIO16  115200 baud[0m
+[0;32mI (67567) NODE_ID: Identity: "Board-20:80" role=WORMHOLE_B mac=20:50:0d:e7:0c:80 (via MAC (no node_config.txt nickname))[0m
+[0;32mI (67577) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (67587) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (67587) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (67597) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (67607) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (68897) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (68897) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (69087) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (69097) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (69097) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (69137) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (69147) WORMHOLE: Logging to: /spiffs/telem.csv[0m
+[0;32mI (69157) WORMHOLE: UART tunnel receiver running.[0m
+[0;32mI (69157) WORMHOLE: Peer heard over UART: f4:2d:c9:73:e6:18  layer -1  end A[0m
+[0;33mW (69167) WORMHOLE: Wormhole end B -> A (depth vs peer)[0m
+[0;32mI (69177) NODE_ID: Role WORMHOLE_B -> WORMHOLE_A (decided at run time)[0m
+[0;32mI (69177) WORMHOLE: Probe generator ready at 250 ms interval (runs only as locked Node B).[0m
+[0;32mI (69187) WORMHOLE: Tunnel forwarder running.[0m
+[0;32mI (69197) WORMHOLE: Re-inject task running.[0m
+[0;32mI (69197) WORMHOLE: Telemetry task running at 100 ms interval.[0m
+[0;32mI (69207) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (69217) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;32mI (99217) HEALTH: [HEALTH] up=98s heap=62664 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (108567) MESH_SETUP: STAR HUB: scan 20 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (129227) HEALTH: [HEALTH] up=128s heap=62664 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (159097) MESH_SETUP: STAR HUB: scan 30 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (159237) HEALTH: [HEALTH] up=158s heap=62764 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (189247) HEALTH: [HEALTH] up=188s heap=62164 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (209617) MESH_SETUP: STAR HUB: scan 40 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (219257) HEALTH: [HEALTH] up=218s heap=62164 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (249267) HEALTH: [HEALTH] up=248s heap=62164 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (260137) MESH_SETUP: STAR HUB: scan 50 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (279277) HEALTH: [HEALTH] up=278s heap=61964 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+����������������������������������������������������������������H] up=308s heap=62164 min=61728 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (310667) MESH_SETUP: STAR HUB: scan 60 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (339297) HEALTH: [HEALTH] up=338s heap=62564 min=61528 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (361187) MESH_SETUP: STAR HUB: scan 70 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (369307) HEALTH: [HEALTH] up=368s heap=62464 min=61528 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (399317) HEALTH: [HEALTH] up=398s heap=62464 min=61528 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;33mW (411717) MESH_SETUP: STAR HUB: scan 80 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (415197) WORMHOLE: TUNNEL TEST #1 from B received over the UART, re-injected toward the root (ESP_ERR_INVALID_STATE).[0m
+[0;33mW (421827) MESH_SETUP: STAR HUB: joining wormhole A f4:2d:c9:73:e6:19 (layer 2, rssi -34, ch 11) as layer 3.[0m
+[0;33mW (421997) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (422007) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (422007) wifi:state: init -> auth (0xb0)
+I (422017) wifi:state: auth -> assoc (0x0)
+I (422037) wifi:state: assoc -> run (0x10)
+I (422037) wifi:connected with ESPM_73E618, aid = 1, channel 11, BW20, bssid = f4:2d:c9:73:e6:19
+I (422037) wifi:security: Open Auth, phy: bgn, rssi: -34, cipher(pairwise:0x0, group:0x0), pmf:0
+I (422057) wifi:pm start, type: 0
+
+[0;32mI (422057) MESH_SETUP: Parent connected. Layer=3  ParentMAC=f4:2d:c9:73:e6:19  IsRoot=NO[0m
+[0;32mI (422057) MESH_SETUP: ==============================[0m
+[0;32mI (422067) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (422067) MESH_SETUP: ==============================[0m
+[0;33mW (422077) WORMHOLE: Wormhole end A -> B (depth vs peer)[0m
+[0;32mI (422077) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (422087) NODE_ID: Role WORMHOLE_A -> WORMHOLE_B (decided at run time)[0m
+[0;32mI (422087) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (422107) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (422197) WORMHOLE: TUNNEL TEST #1 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+I (422317) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (429327) HEALTH: [HEALTH] up=428s heap=62440 min=60424 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (432297) WORMHOLE: TUNNEL TEST #2 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+[0;33mW (436497) WORMHOLE: Wormhole end B -> A (depth vs peer)[0m
+[0;32mI (436497) NODE_ID: Role WORMHOLE_B -> WORMHOLE_A (decided at run time)[0m
+W (443817) wifi:5531<free>rootless
+[0;33mW (456397) WORMHOLE: Wormhole end A -> B (depth vs peer)[0m
+[0;32mI (456397) NODE_ID: Role WORMHOLE_A -> WORMHOLE_B (decided at run time)[0m
+[0;32mI (456497) WORMHOLE: TUNNEL TEST #3 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+[0;32mI (456737) WORMHOLE: TUNNEL TEST #2 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (459337) HEALTH: [HEALTH] up=458s heap=62440 min=60304 big=61440 | stack free(B): telemetry=2176 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (459837) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (459907) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (459917) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_20500DE70C80_r1_b1_telem.csv[0m
+[0;32mI (466497) WORMHOLE: TUNNEL TEST #4 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+[0;31mE (468797) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+W (471947) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:0
+W (473147) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:1
+I (474257) wifi:bcn_timeout,ap_probe_send_start
+W (474347) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:2
+W (475547) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:3
+W (476747) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:4
+I (476757) wifi:ap_probe_send over, reset wifi status to disassoc
+I (476757) wifi:state: run -> init (0xc800)
+I (476767) wifi:pm stop, total sleep time: 0 us / 54706707 us
+
+I (476767) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (476777) MESH_SETUP: Parent disconnected — reason 200.[0m
+[0;33mW (476897) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477017) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477147) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477267) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477387) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477517) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477637) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477767) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (477887) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (477947) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:5, no_wnd_count:0, timeout_count:5
+[0;33mW (478007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478257) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478377) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478627) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478747) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (478807) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (478877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (478997) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479117) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479247) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479367) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479487) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479617) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479737) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (479987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480107) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480227) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480477) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480597) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480847) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (480967) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481217) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481337) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481587) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481707) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (481957) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482077) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482327) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482447) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482697) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482817) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (482947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483067) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483187) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483807) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (483927) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484057) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484177) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484297) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484427) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484547) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484677) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484797) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (484917) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485037) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485167) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485287) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485407) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485537) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485657) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485777) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (485907) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486027) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486147) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486277) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486397) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486517) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486647) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486767) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (486887) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487257) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487387) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487627) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487757) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (487997) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488127) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488247) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488367) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488497) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488617) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488737) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (488817) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (488867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (488987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489107) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489237) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;32mI (489347) HEALTH: [HEALTH] up=488s heap=62220 min=60204 big=61440 | stack free(B): telemetry=464 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+[0;33mW (489357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489357) HEALTH: [HEALTH] LOW STACK: task 'telemetry' has had only 464 B of stack left[0m
+[0;33mW (489477) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489607) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489847) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (489977) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490217) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490347) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490587) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490717) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (490957) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491077) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491327) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491447) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491697) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491817) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (491947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492067) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492187) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492807) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (492937) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493057) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493177) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493307) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493427) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493557) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493677) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493797) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (493927) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494047) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494167) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494297) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494417) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494537) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494667) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494787) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (494907) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495037) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495157) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495277) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495407) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495527) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495647) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495777) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (495897) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496017) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496267) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496387) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496637) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496757) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (496877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497127) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497257) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497377) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497497) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497627) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497747) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (497987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498117) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498237) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498487) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498607) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (498827) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (498857) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (498977) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499227) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499347) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499597) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499717) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (499967) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500087) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500337) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500457) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500707) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500827) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (500947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501077) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501197) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501447) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501817) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (501947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502067) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502187) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502557) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502807) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (502927) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503047) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503177) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503297) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503417) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503547) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503667) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503787) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (503917) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504037) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504157) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504287) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504407) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504527) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504657) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504777) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (504897) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505027) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505147) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505267) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505397) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505517) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505637) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505767) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (505887) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506257) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506377) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506627) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506747) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (506997) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507117) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507247) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507367) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507487) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507617) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507737) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (507987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508107) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508237) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508477) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508597) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (508837) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (508847) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (508977) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509217) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509347) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509587) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509717) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (509957) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510087) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510327) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510457) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510697) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510827) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (510947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511067) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511197) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511807) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (511937) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512057) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512177) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512307) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512427) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512557) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512677) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512797) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (512927) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513047) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513167) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513297) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513417) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513537) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513667) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513787) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (513907) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514037) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514157) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514277) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514397) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514527) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514647) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514777) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (514897) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515017) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515267) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515387) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515637) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515757) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (515877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516127) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516257) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516377) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516497) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516627) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516747) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (516987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517117) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517237) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517487) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517607) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517857) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (517977) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518227) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518347) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518597) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518717) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (518837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (518847) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (518967) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519087) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519337) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;32mI (519377) HEALTH: [HEALTH] up=518s heap=62220 min=60204 big=61440 | stack free(B): telemetry=464 probe_gen=2216 probe_relay=2224 phase_listener=4280 heartbeat=4224 csv_export=3804 wh_uart_rx=2152 wh_role=2112 wh_fwd=2192 wh_reinject=2232 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+[0;33mW (519387) HEALTH: [HEALTH] LOW STACK: task 'telemetry' has had only 464 B of stack left[0m
+[0;33mW (519457) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519707) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519827) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (519947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520077) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520197) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520817) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (520937) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521057) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521187) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521307) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521427) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521557) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521677) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521797) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (521927) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522047) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522167) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522297) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522417) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522537) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522667) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522787) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (522907) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523037) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523157) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523277) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523397) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523527) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523647) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523767) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (523897) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524017) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524137) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524267) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524387) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524507) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524637) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524757) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (524877) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525007) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525127) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525247) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525377) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525497) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525617) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525747) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525867) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (525987) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526117) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526237) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526357) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526477) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526607) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526727) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526847) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (526977) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527097) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527217) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527347) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527467) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527587) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527717) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527837) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (527957) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528087) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528207) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528327) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528457) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528577) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528697) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (528827) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;31mE (528857) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is B only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (528947) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529067) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529197) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529317) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529437) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529567) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529687) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529807) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (529937) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530057) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530177) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530307) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530427) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530547) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530677) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530797) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (530917) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (531047) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (531167) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (531287) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (531417) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (531537) MESH_SETUP: Parent disconnected — reason 201.[0m
+[monitor] LOST COM41: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed

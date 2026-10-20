@@ -1,0 +1,7 @@
+collect_run.py --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-01 00:00 --outdir C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/out3 --cards C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/cardA --expect-mac CARDA=70:4B:CA:25:B7:68
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect_oct20_031705pm.log)
+
+-- cardA: reading the card ...
+COLLECT: cardA 20500DE70C80 FAIL this card's files belong to board 0C80, but the board on cardA is B768 - was the SD card swapped? Nothing filed (it would land under the wrong board)
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=1
