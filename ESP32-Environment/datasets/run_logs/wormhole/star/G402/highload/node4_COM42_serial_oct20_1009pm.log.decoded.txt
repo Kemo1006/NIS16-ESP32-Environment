@@ -1,0 +1,467 @@
+20/10/2026 10:17:45 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+
+20/10/2026 10:17:46 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:47 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:49 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:49 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:51 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:52 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:54 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:55 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:57 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:57 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:17:58 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:00 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:01 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:03 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:03 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:05 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:06 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:08 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:09 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:10 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:12 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:13 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:14 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:15 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:16 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:17 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:19 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:20 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:21 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:23 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:25 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:25 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:27 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:28 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:29 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:30 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:32 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:34 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:36 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:37 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:38 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:40 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:41 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:43 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:44 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:46 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:47 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:49 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:51 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:52 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+
+20/10/2026 10:18:53 pm  node4 (COM42) crash backtrace:
+0x4008b2bd: panic_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/panic.c:477
+0x4008b285: esp_system_abort at C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system/port/esp_system_chip.c:87
+0x4008c362: vApplicationStackOverflowHook at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:563
+0x4008d73b: vTaskSwitchContext at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/tasks.c:3698 (discriminator 7)
+0x4008c46c: _frxt_dispatch at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:451
+0x4008c41e: _frxt_int_exit at C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S:246
+0x3ffbe62d: ?? ??:0
+

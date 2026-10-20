@@ -5,45 +5,9 @@
     "scenario":  "highload",
     "owner":  "Cal",
     "repeat":  1,
-    "expectedChildren":  6,
-    "savedAt":  "2026-10-20 21:39",
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-21 01:25",
     "boards":  [
-                   {
-                       "Label":  "node5",
-                       "Port":  "COM10",
-                       "Role":  "child",
-                       "Kind":  "control",
-                       "Display":  "control (plain firmware)",
-                       "Mac":  "70:4b:ca:25:b7:68",
-                       "ScenarioTarget":  false
-                   },
-                   {
-                       "Label":  "node6",
-                       "Port":  "COM3",
-                       "Role":  "child",
-                       "Kind":  "control",
-                       "Display":  "control (plain firmware)",
-                       "Mac":  "28:05:a5:32:d7:b4",
-                       "ScenarioTarget":  false
-                   },
-                   {
-                       "Label":  "node7",
-                       "Port":  "COM9",
-                       "Role":  "child",
-                       "Kind":  "control",
-                       "Display":  "control (plain firmware)",
-                       "Mac":  "b4:bf:e9:32:fe:90",
-                       "ScenarioTarget":  false
-                   },
-                   {
-                       "Label":  "node8",
-                       "Port":  "COM30",
-                       "Role":  "child",
-                       "Kind":  "control",
-                       "Display":  "control (plain firmware)",
-                       "Mac":  "b4:bf:e9:34:ed:80",
-                       "ScenarioTarget":  false
-                   },
                    {
                        "Label":  "node4",
                        "Port":  "COM42",
@@ -69,6 +33,42 @@
                        "Kind":  "B",
                        "Display":  "wormhole tunnel board 2 (entry/exit chosen automatically)",
                        "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node8",
+                       "Port":  "COM30",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node5",
+                       "Port":  "COM10",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node6",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM9",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "b4:bf:e9:32:fe:90",
                        "ScenarioTarget":  false
                    },
                    {
