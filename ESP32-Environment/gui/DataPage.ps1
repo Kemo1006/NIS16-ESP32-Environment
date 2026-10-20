@@ -51,7 +51,45 @@ function Initialize-GuiDataPage {
     $c.Add_Click({ Start-CollectFromDataPage })
     [void]$host_.Children.Add($c)
     $script:ImpCollectBtn = $c
+    # oct. 20 2026 (user): erase ALL of the selected board's storage (tools\erase_board.py)
+    $e = New-Object Windows.Controls.Button
+    $e.Content = "Erase this board's storage"; $e.Margin = '8,0,0,0'; $e.Padding = '12,7'
+    try { $e.Style = $win.FindResource('Danger') } catch { }
+    $e.ToolTip = 'PERMANENTLY deletes every run file on the board picked above: all run folders on its SD card and its internal flash. Its settings (location.txt, scenario.txt, node name) are kept. You type the board''s MAC ending to confirm.'
+    $e.Add_Click({ Start-EraseBoardStorage })
+    [void]$host_.Children.Add($e)
+    $script:ImpEraseBtn = $e
     Add-DataRefreshButton
+}
+
+function Start-EraseBoardStorage {
+    if (-not $ui.SrcPort.IsChecked) { [void][Windows.MessageBox]::Show('Pick "board over USB" as the source and choose the board first (a card in a reader is erased in Explorer).', 'Erase board storage'); return }
+    $p = $ui.CardPortPick.SelectedItem
+    if (-not $p) { [void][Windows.MessageBox]::Show('Pick the board in the list first.', 'Erase board storage'); return }
+    $mac = ([string]$p.MacTxt).ToUpper()
+    if ($mac -notmatch '^[0-9A-F]{2}(:[0-9A-F]{2}){5}$') { [void][Windows.MessageBox]::Show("The MAC of the board on $($p.Port) is not known yet - press Read all MACs on the Boards page first, so the right board is erased.", 'Erase board storage'); return }
+    if (Test-TaskBusy 'Erasing') { return }
+    $tail = ($mac -replace ':', '').Substring(8)
+    $msg = ("PERMANENTLY erase EVERYTHING the board {0} on {1} has recorded?`n`n  - every run folder on its SD card (all attacks / topologies / sites, _archive too)`n  - its internal flash`n`nKept: location.txt, scenario.txt, the node name.`nFiles already in datasets\exports are not touched. Nothing can bring the erased files back.`n`nType the last 4 characters of its MAC ({2}) to confirm:" -f $mac, $p.Port, ($mac.Substring(12)))
+    $typed = ''
+    if ($script:AutoConfirm) { $typed = $tail } else {
+        try { Add-Type -AssemblyName Microsoft.VisualBasic -ErrorAction Stop } catch { }
+        $typed = [Microsoft.VisualBasic.Interaction]::InputBox($msg, 'Erase board storage', '')
+    }
+    if (($typed -replace '[^0-9A-Fa-f]', '').ToUpper() -ne $tail) { if ($typed) { [void][Windows.MessageBox]::Show('That is not this board''s MAC ending - nothing was erased.', 'Erase board storage') }; return }
+    $end = $script:AutoConfirm -or ([Windows.MessageBox]::Show("If the board is logging an IDLE run right now (powered, no capture running), end that run first so its folder can be erased too?`n`nYes = end it (choose this unless a real capture is running)`nNo = leave it - that folder is skipped", 'Erase board storage', 'YesNo', 'Question') -eq 'Yes')
+    $py = Get-Py; if (-not $py) { return }
+    $a = @('tools\erase_board.py', '--port', [string]$p.Port, '--expect-mac', $mac); if ($end) { $a += '--end-run' }
+    [void](Start-StreamJob -Exe $py -ToolArgs $a -Title ("Erase the storage of {0} on {1}" -f $mac, $p.Port) -NoStop -State @{ Mac = $mac; Port = [string]$p.Port } -OnDone {
+        param($text, $code, $st)
+        $m = [regex]::Match($text, 'ERASE_RESULT: ok=(\d) files=(\d+) failed=(\d+) flash=(\S+)')
+        if ($m.Success -and $m.Groups[1].Value -eq '1') {
+            Show-Toast ("{0} erased" -f $st.Port) ("{0} file(s) deleted from its SD card, internal flash {1}." -f $m.Groups[2].Value, $(if ($m.Groups[4].Value -eq 'OK') { 'formatted' } else { $m.Groups[4].Value.ToLower() })) ([string][char]0xE74D) 'GradGood'
+        } else {
+            Show-Toast ("{0}: NOT fully erased" -f $st.Port) $(if ($m.Success) { "$($m.Groups[3].Value) part(s) failed - read the activity pane." } else { 'The board did not answer - read the activity pane.' }) ([string][char]0xE783) 'GradMain'
+        }
+        try { Start-ImpList -Again } catch { }
+    })
 }
 
 function Add-DataRefreshButton {

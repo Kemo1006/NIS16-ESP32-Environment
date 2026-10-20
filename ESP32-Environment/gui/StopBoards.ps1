@@ -172,13 +172,18 @@ function Initialize-GuiStopBoards {
     $one.Add_Click({ $r = Get-SelectedPort; if ($r) { Stop-BoardPorts @([string]$r.Port) } })
     $all.Add_Click({ Stop-BoardPorts @($script:PortRows | ForEach-Object { [string]$_.Port }) })
     # oct. 20 2026: stop the BOARD itself (its firmware), not only the laptop's programs
-    $halt = New-Object Windows.Controls.Button; $halt.Content = 'Halt board (stop its firmware)'; $halt.Margin = '6,0,0,0'
-    $halt.ToolTip = 'Closes the board''s run file cleanly (END_RUN), then holds the chip in its bootloader: no mesh, no probes, no SD writes - until it is flashed, power-cycled or started again. Firmware is not erased.'
+    $halt = New-Object Windows.Controls.Button; $halt.Content = 'Stop + halt board (ends idle runs too)'; $halt.Margin = '6,0,0,0'
+    $halt.ToolTip = 'Ends whatever run the board has open - also an IDLE one (powered, logging while waiting for a root / START) - closes its files cleanly (END_RUN), then holds the chip in its bootloader: no mesh, no probes, no SD writes - until it is flashed, power-cycled or started again. Firmware is not erased.'
+    $haltAll = New-Object Windows.Controls.Button; $haltAll.Content = 'Stop + halt ALL boards'; $haltAll.Margin = '6,0,0,0'
+    $haltAll.ToolTip = 'The same for every plugged-in board, one after the other (a board in the Live run''s current step is left to the Live run).'
+    try { $haltAll.Style = $win.FindResource('Danger') } catch { }
     try { $halt.Style = $win.FindResource('Danger') } catch { }
     $wake = New-Object Windows.Controls.Button; $wake.Content = 'Start board again'; $wake.Margin = '6,0,0,0'
     $wake.ToolTip = 'Hard-resets the selected board: its firmware boots as after a plug-in.'
     $j = $bar.Children.IndexOf($all) + 1
-    $bar.Children.Insert($j, $wake); $bar.Children.Insert($j, $halt)
+    $bar.Children.Insert($j, $wake); $bar.Children.Insert($j, $haltAll); $bar.Children.Insert($j, $halt)
+    $haltAll.Add_Click({ $sn = @{}; try { $sn = Get-SnifferPorts } catch { }
+        $ps = @($script:PortRows | Where-Object { $script:Live.Contains([string]$_.Port) -and $script:Live[[string]$_.Port].Kind -eq 'BRIDGE' -and -not $sn.ContainsKey(([string]$_.Port).ToUpper()) } | ForEach-Object { [string]$_.Port }); if ($ps.Count) { Start-HaltBoards $ps } else { [void][Windows.MessageBox]::Show('No ESP32 board is plugged in.', 'Stop + halt') } })
     $halt.Add_Click({ $r = Get-SelectedPort; if ($r) { Start-HaltBoards @([string]$r.Port) } else { [void][Windows.MessageBox]::Show('Pick a board in the list first.', 'Halt board') } })
     $wake.Add_Click({ $r = Get-SelectedPort; if ($r) { Start-ResumeBoard ([string]$r.Port) } })
 }
