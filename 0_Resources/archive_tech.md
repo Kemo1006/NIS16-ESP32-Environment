@@ -29,3 +29,5 @@ Read only when the user asks for install history; otherwise this file is write-o
 | Date | Package | Version | Type | Action Type | Status | Purpose |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Sep. 26, 2026 | scapy | 2.7.0 | Python / Pip | New Install | Downloaded & Installed | Throwaway venv in the Claude session scratchpad only (not the IDF env, not the repo): independent radiotap decoder to test tools/sniff.py output. |
+| Oct. 20, 2026 | docx | 9.13.0 | Node / npm | New Install | Downloaded & Installed | Local install in the Claude session scratchpad only (not global, not the repo): build the paper-status report .docx in Plan/Paper-Editing/4-Verification. |
+| Oct. 20, 2026 | pptxgenjs | 4.0.1 | Node / npm | New Install | Downloaded & Installed | Local install in the Claude session scratchpad only (not global, not the repo): build the Thesis 3 defense slide deck .pptx. |

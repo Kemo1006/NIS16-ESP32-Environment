@@ -15,6 +15,31 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #71 — Oct 20, 2026 · ~10 PM — paper check of the 8-board working copy: run counts, G402 numbers, sniffer column lost in the oct. 19 re-analysis
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `76659dc2`
+> **Request:** "verify it again (…_no_jitter_8boards.docx) … highlight green … update the status of the paper"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole + wormhole | all 4 | G402, DLSU_Library, Yuchengco | stationary, burst, highload (no jitter) | r1 | sep. 30 – oct. 20 | 46 analysed feature tables (36 blackhole, 10 wormhole) + 435 campus export CSVs |
+
+| Check | Result | Detail |
+|---|---|---|
+| Board count in the paper (8) | ✅ | inventory: 7 children + root in every campus run; verifier shows an 8-node chain for linear/G402/stationary |
+| G402 linear stationary numbers | ✅ | ForwardingRatio 1.000 → 0.001 (1 of 1,077 forwarded), all 6 victims PDR 1.000 → 0.000 - matches the 8-board copy's Table 4.4 / §4.1.3.1; Table 4.23 still said 76 % (fixed in the paper) |
+| Run status in the paper (43 runs) | ⚠️ stale | tree/G402/burst was recaptured oct. 19 and re-analysed in `6fb00803` (verifier PASS) -> **44 processed (35 + 9)**. Held out: tree/G402/highload (OUTCOME INCONCLUSIVE, B768 no data), wormhole tree/DLSU/stationary (REDO), partial/G402 st + hl and star/G402/st wormhole (not analysed) |
+| verify_attack.py on all 46 campus runs | ✅ | 35 blackhole + 9 wormhole OUTCOME PASS; tree/G402/highload + wormhole tree/DLSU INCONCLUSIVE |
+| Partial mesh, second parent | ✅ | all 9 blackhole partial runs: "8 nodes, each seen under only one parent" during the attack |
+| Healthy baseline PDR (paper: 0.997) | ⚠️ | not reproducible; victims' baseline PDR averages **0.998** over 123 victim baselines in 36 campus blackhole runs (lowest run partial/Yuchengco/stationary 0.81) - paper now says 0.998 |
+| Zero-row capture files | ✅ | 0 of 435 campus export CSVs (no jitter) has 0 rows |
+| Wormhole roles (D-17) | ✅ | all 9 linear wormhole runs: one A + one B, roles stable, A shallower than B |
+| **MacRetryRate in the analysis tables** | ❌ | **23 campus runs had it before `6ecbe3e1` (oct. 19 D-25 re-analysis); only 3 have it now** - the re-analysis ran without the PCAPs (datasets/PCAP on this laptop holds 2 files). The paper's sniffer figures (22 runs / 8 rose; 26 full-length captures) cannot be reproduced from the current tables |
+
+**Verdict: ⚠️ data usable; the paper's counts and two numbers were corrected in green (status doc `Plan/Paper-Editing/4-Verification/THESIS3-Paper-Status oct. 20, 2026.docx`). Action: whoever holds the sniffer PCAPs puts them in `datasets/PCAP` and re-runs `analyze.ps1` so MacRetryRate comes back before §4.1.3.4 / D-14 are finalised (checklist B-mrr).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #70 — Oct 20, 2026 · ~9:05 PM — "still ABORTED in highload - double check the boards": the hub board 1C38 browns out
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `c461711`
