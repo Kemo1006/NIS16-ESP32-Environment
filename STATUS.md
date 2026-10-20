@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 20, 2026 ~4:15 PM (Angelo's laptop) — SD-card reliability + crash diagnosis + verdict/Campaign/Verify consistency (verification #66, write-up `ESP32-Environment/docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md`). **Committed + pushed; NOT on hardware - reflash EVERY board (children + root) before the next capture.**
+**Updated:** oct. 20, 2026 ~5:30 PM (Angelo's laptop) — SD-card reliability + crash diagnosis + verdict/Campaign/Verify consistency (verification #66, write-up `ESP32-Environment/docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md`). **Committed + pushed; NOT on hardware - reflash EVERY board (children + root) before the next capture.**
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
@@ -27,6 +27,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 7. Paper: checklist A32, A33, B-outcome, B-sd, C19, C20 (new) + A21-A31, B-rules, B-force, C14-C16.
 
 ## Blockers / open questions
+- ⚠️ 1C38 (COM40) stopped answering on serial this afternoon (no GET_ID / no esptool data) until reset - watch it; if the GUI cannot read it again: reset it (EN button) when nothing is reading it, then retry.
 - ⛔ Crash root cause not proven (ELF of the crashing build was not kept) — needs one crash on the #66 firmware.
 - ⛔⛔ BSOD 0xB8: NEVER Ctrl+C an export or SD read; never reset/unplug a board while it is read; boards DIRECT into the laptop.
 - ⚠️ Moving boards after Phase 0: tree runs corrupt the baseline; wormhole roles are locked. Use the READY window, then START.
