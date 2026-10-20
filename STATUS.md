@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 20, 2026 ~11:30 PM (Basti's laptop) — paper session #71 (verification, green edits, v2, status doc, defense deck, Validation Basis check; jitter OUT). Before that ~5:30 PM (Angelo's laptop) — SD reliability + crash diagnosis + verdict consistency (#66, `ESP32-Environment/docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md`), committed + pushed, NOT on hardware - reflash EVERY board before the next capture.
+**Updated:** oct. 21, 2026 ~2:10 AM (Angelo's laptop) — 01:29 AM star highload was LIBRARY, run as G402: root + logs moved to DLSU_Library/highload, the real G402 highload (oct. 20 10:31 PM) restored from archive; children collected (COMPLETE, 8/8), verified: WORMHOLE CONFIRMED; gate-2 false FAIL fixed in verify_topology.py (#72, uncommitted). Verdict now carries '| scenario x: applied/NOT APPLIED' + Campaign 'Scenario' step (#74; C22 = G402 linear blackhole burst not applied). Next: Verify only per cell, then commit + GitHub sync.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).

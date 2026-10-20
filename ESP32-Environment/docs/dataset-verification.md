@@ -15,6 +15,76 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #74 — Oct 21, 2026 · ~3:15 AM — new SCENARIO check in the attack verdict: was each run's scenario really applied?
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `dadccb3` + uncommitted `tools/attack_checks.py`, `tools/verify_attack.py`, `gui/CampaignVisual.ps1`
+> **Request:** "can you also include the scenario in the verdicts if the scenario was applied" + "in campaign also add the scenario verdict"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | stationary / burst / highload / jitter | r1 | every analysed cell (61 feature tables) | `datasets/analysis/**/feature_table.csv` |
+
+| Check | Result | Detail |
+|---|---|---|
+| highload = children probe ~4/s (250 ms) | ✅ 19/19 | baseline median 4.0/s in every highload cell, 1.0/s in every other |
+| burst = one child +~300 probes in 10 s inside the attack | ⚠️ 15/17 | 296-297 extra probes at +62..64 s in 15 cells; non-burst cells <= 45 |
+| jitter = attack longer than 180 s | ✅ 5/5 | 191-206 s (standard cells 180-181 s) |
+| stationary = 1/s, no burst | ✅ 19/19 | |
+| Verdict change | ✅ none | old vs new verifier: same exit code on all 61 cells; scenario not applied = WARN + tag, never SETUP INVALID (the attack evidence still stands) |
+
+**Findings:**
+- `blackhole/linear/G402/burst` (oct. 14): **the burst is NOT in this run's attack.** 0C80's file starts with 108 rows left from an EARLIER run (phase 2, before this run's stabilisation, unlabelled) that hold the burst (~297 probes); in the labelled attack 0C80 sent its normal 181. The attack verdict (BLACKHOLE CONFIRMED) is unaffected.
+- `blackhole/linear/home/burst`: no child sent a burst at all (home test cell, not thesis data).
+- The VERDICT line now ends `| scenario <x>: applied / NOT APPLIED / check (see [3])`; [3] SETUP CHECKS has a SCENARIO group; the Campaign journey has a 5th step "Scenario" (green applied / red NOT applied / amber check) and the tile tooltip a "scenario:" line. Needs "Verify only" again per cell to show (old reports say "press Verify").
+
+**Verdict: ⚠️ scenarios applied in 58 of 60 attack cells; recapture blackhole/linear/G402/burst for the burst scenario (checklist C22) - the home cell is test data.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #73 — Oct 21, 2026 · ~2:40 AM — wormhole/star/G402/burst: "check if there is burst"
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `dadccb3`
+> **Request:** "can you also check the burst in g402 wormhole star if there is burst"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | star | G402 | burst | r1 | oct. 20 11:11 PM run, root exported 11:34 PM | root telem + arrivals, 7 children (node2-node8), run logs |
+
+| Check | Result | Detail |
+|---|---|---|
+| Boards set to burst | ✅ | wizard SCENARIO_CHECK highload -> burst on every child; each child log "Recorded scenario: burst" |
+| Burst sender | ✅ | node8 = B4:BF:E9:34:ED:80: "TRAFFIC_PROFILE=burst: will fire 300 probes, 60 s into the attack-length window" |
+| Did it fire | ✅ | "BURST: window opened (phase=2); firing in 60 s" -> "BURST: done - 300/300 sent ok in 3350 ms (seq 657..956)" |
+| Reached the root | ✅ | root arrivals (raw and trimmed): 300 of 300 burst seqs, all phase 2 (attack); 56/89/86/70 arrivals per second over 4 s vs ~1/s normal |
+| Attack verdict (saved, oct. 20 11:48 PM) | ✅ | WORMHOLE CONFIRMED 2/2, CONFIDENCE STRONG, TOPOLOGY OK, TUNNEL OK |
+| Gate 2 after the #72 fix | ✅ | hub F4:2D:C9:73:E6:18 = wormhole end A, Structure matches star YES |
+
+**Verdict: ✅ the burst is in the data - fired once, complete, inside the attack phase - and the run is a confirmed wormhole capture.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #72 — Oct 21, 2026 · ~2:30 AM — wormhole/star/DLSU_Library/highload: "console says topology FAIL but Verify says PASS"
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `dadccb3` + uncommitted `tools/verify_topology.py` fix
+> **Request:** "in this console it says [Gate 2 FAILED, hub is a wormhole_b] but in the side panel or verify page it says it passed?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | star | DLSU_Library | highload | r1 | oct. 21 1:29 AM (ran with the G402 preset by mistake; re-filed, see MEMORY oct. 21) | root telem + arrivals, 7 children (collected 2:05-2:10 AM) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Integrity (gate 1) | ✅ | 9 files, 9 PASS |
+| Topology (gate 2) as run | ❌ → ✅ false alarm | "hub NODE_F42DC973E618 is a wormhole_b" - but E618 is `wormhole_a` in every row from Phase 0 on |
+| Why | ⚠️ verifier bug | E618's role column flips b/a/b/a in its first 405 rows (stabilisation, phase 255, star hub being settled); `verify_topology.load_files` took a node's role from its FIRST row only. `verify_attack` reads roles in the experiment -> its TUNNEL check said OK |
+| Fix | ✅ | `verify_topology.py`: the role a node holds in phase != 255 rows overrides the first-row role |
+| Re-run gate 2 (`--expect star`) | ✅ | DLSU_Library highload + stationary, G402 highload + stationary + burst: all "hub is the wormhole end A", Structure matches star YES, exit 0 |
+| Attack (gate 3) | ✅ | WORMHOLE CONFIRMED 2/2 (TunnelIntensity 0 -> 4, DuplicateRate 0 -> 1), UART 716/720 frames, PDR 1.0 every plain child, all 8 boards full run |
+
+**Verdict: ✅ usable. The topology FAIL was the verifier reading a stabilisation-time role; the run is a proper star with E618 as the hub / wormhole end A. Re-run "Analyse + verify" (or Verify only) so the console and saved status agree.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #71 — Oct 20, 2026 · ~10 PM — paper check of the 8-board working copy: run counts, G402 numbers, sniffer column lost in the oct. 19 re-analysis
 
 > **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `76659dc2`

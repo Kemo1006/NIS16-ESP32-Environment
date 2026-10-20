@@ -152,12 +152,14 @@ def load_drows(vdates):
 
 
 LAST_OUTCOME = [None]   # verify_attack._LAST_OUTCOME of the cell run_verifier() just checked
+LAST_SCENARIO = [[]]    # oct. 21 2026: the cell's "scenario check: ... NOT APPLIED" texts
 
 
 def run_verifier(ft, attack):
     """(verdict_word, first FAIL text, [data-gap WARN texts]) or None. The verifier's
     OUTCOME (PASS / FAIL / INCONCLUSIVE + its dimensions) is left in LAST_OUTCOME[0]."""
     LAST_OUTCOME[0] = None
+    LAST_SCENARIO[0] = []
     try:
         import pandas as pd
         import verify_attack as va
@@ -178,6 +180,8 @@ def run_verifier(ft, attack):
         # the verifier's own issues (incl. its re-test) - the same footnotes as the report
         issues = list(getattr(va, "_LAST_ISSUES", [[]])[0]) or ac.setup_issues(df, attack)
         LAST_OUTCOME[0] = getattr(va, "_LAST_OUTCOME", [None])[0]
+        LAST_SCENARIO[0] = [i.text for i in issues
+                            if i.text.startswith(getattr(ac, "SCEN_TEXT", "scenario check:")) and "NOT APPLIED" in i.text]
     except Exception as e:          # never let one broken table stop the list
         return ("ERROR", f"verifier could not run: {e}", [])
     fails = [i.text for i in issues if i.level == ac.FAIL]
@@ -321,6 +325,12 @@ def assess(cell, runs, planned, vlog, drows):
                 add(OK, f"CONFIRMED - GOOD ({len(dnote)} note{'' if len(dnote) == 1 else 's'} for the report): "
                     + "; ".join(dnote), "verifier")
             gaps = []
+            # oct. 21 2026 (user: "why did the G402 linear burst blackhole get a green tag?"):
+            # the attack stands, but the run is not a capture of its scenario - yellow
+            # DONE - RECAPTURE ADVISED, never green
+            for t in LAST_SCENARIO[0]:
+                add(CHECK, t.split(":", 1)[1].strip(), "verifier",
+                    "recapture this run for its scenario - the attack verdict itself stands")
         for g in gaps:
             text = _short_board(g)
             if "no attack-window telemetry" in g:

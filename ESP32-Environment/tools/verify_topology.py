@@ -247,6 +247,12 @@ def load_files(paths, stabilise_s=STABILISE_S):
                     phase = int(row["phase_id"])
                 except (ValueError, KeyError):
                     continue
+                # oct. 21 2026: a wormhole end can flip A/B while the star hub is
+                # chosen in stabilisation - the role that counts is the one it
+                # holds in the experiment (as the attack verifier reads it),
+                # not its first row's.
+                if phase != 255 and row.get("role"):
+                    nodes[nid].role = row["role"]
                 nodes[nid].add(ts, layer, row["parent_mac"], phase)
     for n in nodes.values():
         n.finalize()

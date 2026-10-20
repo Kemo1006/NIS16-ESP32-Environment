@@ -79,6 +79,16 @@ function New-CampPill([string]$Text, [string]$Fg, [string]$Bg, [double]$Size = 1
     return $b
 }
 
+function Get-CampScenarioStep($Rep) {
+    # oct. 21 2026: verify_attack ends the VERDICT line with "| scenario <x>: applied |
+    # NOT APPLIED | check (see [3])" - @(state, detail) for the journey's Scenario step
+    if (-not $Rep -or $Rep.Benign) { return @('na', '') }
+    if ([string]$Rep.Verdict -match 'scenario (\w+):\s*(NOT APPLIED|applied|check)') {
+        switch ($Matches[2]) { 'applied' { return @('ok', "$($Matches[1]) applied") } 'NOT APPLIED' { return @('bad', "$($Matches[1]) NOT applied") } default { return @('warn', "$($Matches[1]) - check") } }
+    }
+    return @('todo', 'press Verify')
+}
+
 function Add-CampJourney($Body, $Steps) {
     # $Steps: @( @(label, state, detail) ) - state ok | warn | major | bad | todo | na
     # one column per step; each column draws the left / right half of the line that
@@ -445,7 +455,8 @@ function Add-CampVisual($Body, $S, [string]$Look) {
                elseif ($rep.Old) { @('warn', 'old report - press Verify') }
                else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'UNDETERMINED' { @('warn', 'investigate') } 'MAJOR GAPS' { @('major', 'major gaps') } 'FAILED' { @('bad', 'failed') } default { @('todo', '') } } }
     }
-    Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]))
+    $scn = if ($Look -in @('todo', 'partial') -or $isBase) { @('todo', '') } else { Get-CampScenarioStep $rep }
+    Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]), @('Scenario', $scn[0], $scn[1]))
     if (-not $rep) { return }
 
     # 2. VERDICT tile
@@ -571,6 +582,8 @@ function Set-CampTileTip($Tile) {
         $line = if (-not $b) { '' } elseif ($b.Old) { 'old report - press Verify' }
                 elseif ($b.Grade -eq 'FAILED') { 'FAILED' }
                 elseif ($b.Grade) { 'CONFIRMED - ' + $b.Grade } else { '' }
+        $sc = Get-CampScenarioStep $b
+        if ($line -and $sc[1] -and $sc[0] -ne 'todo') { $line += "`nscenario: " + $sc[1] }
         $c = @{ T = $stamp; Line = $line }; $script:CampTipCache[$key] = $c
     }
     if ($c.Line) { $Tile.ToolTip = [string]$Tile.ToolTip + "`nverdict: " + $c.Line }

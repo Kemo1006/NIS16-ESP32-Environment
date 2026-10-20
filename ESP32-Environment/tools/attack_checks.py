@@ -1005,6 +1005,107 @@ def start_anyway_issues(df, logs_root=RUN_LOGS):
         return [Issue(SKIP, f"START_ANYWAY check could not run: {e}")]
 
 
+# oct. 21 2026 (user): "include the scenario in the verdicts if the scenario was
+# applied". Each traffic profile leaves its own trace in the children's probe counts
+# (mesh_config.h TRAFFIC_PROFILE): highload = a probe every 250 ms (~4/s, else 1/s);
+# burst = ONE child fires BURST_COUNT (300) probes in ~3 s, BURST_OFFSET_S (60 s)
+# into the attack; jitter = the root stretches baseline (+0..45 s) and attack
+# (+0..30 s). Checked on every analysed cell that day: burst runs 296-297 extra
+# probes at +62..64 s (non-burst runs <= 45), highload 4.0/s vs 1.0/s, jitter
+# attack 191-206 s vs 180-181 s.
+# A scenario that did not happen is a WARN, never a FAIL: the ATTACK evidence still
+# stands - it is the cell's scenario label that is wrong (the VERDICT line says
+# "scenario <x>: NOT APPLIED" and the run needs a recapture for that scenario).
+SCEN_TEXT = "scenario check:"
+SCEN_BURST_MIN = 240         # extra probes in 10 s from one child = the burst (of 300)
+SCEN_HIGHLOAD_MIN = 3.0      # children's median probes/s in the baseline
+SCEN_NORMAL_MAX = 1.5
+SCEN_ATTACK_S = 180          # PHASE_ATTACK_S
+
+
+def scenario_issues(df):
+    """One Issue saying whether the run's scenario really shaped the traffic."""
+    sc = _first(df, "scenario")
+    if sc not in ("stationary", "burst", "highload", "jitter"):
+        return [Issue(SKIP, f"{SCEN_TEXT} scenario {sc or '?'!r} has no traffic check")]
+    need = {"node_id", "node_role", "window_phase_id", "tx_count_delta"}
+    if not need <= set(df.columns):
+        return [Issue(SKIP, f"{SCEN_TEXT} {sc} - columns missing ({', '.join(sorted(need - set(df.columns)))})")]
+    tc = _tcol(df)
+    d = df[df["node_role"].astype(str).str.lower() != "root"].copy()
+    d["_ph"] = pd.to_numeric(d["window_phase_id"], errors="coerce")
+    d["_tx"] = pd.to_numeric(d["tx_count_delta"], errors="coerce")
+    d["_t"] = pd.to_numeric(d[tc], errors="coerce")
+    base = d[d["_ph"] == 0]
+    if base.empty:
+        return [Issue(SKIP, f"{SCEN_TEXT} {sc} - no baseline windows from the children")]
+    rate = float(base.groupby("node_id")["_tx"].median().median())
+    atk_ph = 1 if (d["_ph"] == 1).any() else 2
+    # the biggest 10 s excess over each child's own baseline rate, per phase
+    spike = {}
+    for nid, g in d.sort_values("_t").groupby("node_id"):
+        r = g.loc[g["_ph"] == 0, "_tx"].median()
+        r = 1.0 if r != r else float(r)
+        for ph, gp in g.groupby("_ph"):
+            ex = (gp["_tx"] - r).clip(lower=0).rolling(10, min_periods=1).sum()
+            if not ex.empty and ex.max() > spike.get(ph, (0,))[0]:
+                spike[ph] = (float(ex.max()), nid, float(gp.loc[ex.idxmax(), "_t"] - gp["_t"].min()))
+    burst = spike.get(atk_ph, (0, None, 0))
+    elsewhere = [(ph, s) for ph, s in spike.items() if ph != atk_ph and s[0] >= SCEN_BURST_MIN]
+    atk_s = float(d[d["_ph"] == atk_ph].groupby("node_id").size().median()) if (d["_ph"] == atk_ph).any() else float("nan")
+    base_s = float(base.groupby("node_id").size().median())
+    rate_txt = f"children probed {rate:.1f}/s in the baseline"
+    out = []
+    if sc == "highload":
+        if rate >= SCEN_HIGHLOAD_MIN:
+            out.append(Issue("OK", f"{SCEN_TEXT} highload APPLIED - {rate_txt} (highload = every 250 ms, ~4/s; normal 1/s)"))
+        elif rate <= SCEN_NORMAL_MAX:
+            out.append(Issue(WARN, f"{SCEN_TEXT} highload NOT APPLIED - {rate_txt}, the normal rate: the children were "
+                                   "not built as highload - this is not a highload capture"))
+        else:
+            out.append(Issue(WARN, f"{SCEN_TEXT} highload unclear - {rate_txt} (highload ~4/s, normal 1/s)"))
+    elif rate >= SCEN_HIGHLOAD_MIN:
+        out.append(Issue(WARN, f"{SCEN_TEXT} {sc} NOT APPLIED as filed - {rate_txt}, the HIGHLOAD rate (normal 1/s): "
+                               "the children ran highload firmware"))
+    if sc == "burst":
+        if burst[0] >= SCEN_BURST_MIN:
+            out.append(Issue("OK", f"{SCEN_TEXT} burst APPLIED - {_short(burst[1])} sent {burst[0]:.0f} extra probes within "
+                                   f"10 s, {burst[2]:.0f} s into the attack (design: 300 probes, 60 s in)"))
+        elif elsewhere:
+            ph, s = elsewhere[0]
+            out.append(Issue(WARN, f"{SCEN_TEXT} burst NOT APPLIED in the attack - {_short(s[1])} fired ~{s[0]:.0f} probes "
+                                   f"in phase {ph:.0f}, outside the attack window"))
+        else:
+            out.append(Issue(WARN, f"{SCEN_TEXT} burst NOT APPLIED - no child sent a burst (largest 10 s excess "
+                                   f"in the attack: {burst[0]:.0f} probes; the burst is 300) - no board was built as the burst target"))
+    elif burst[0] >= SCEN_BURST_MIN:
+        out.append(Issue(WARN, f"{SCEN_TEXT} {sc} - but a burst-sized spike ({burst[0]:.0f} probes in 10 s from "
+                               f"{_short(burst[1])}) in the attack - was a board built as the burst target?"))
+    if sc == "jitter":
+        extra = atk_s - SCEN_ATTACK_S
+        if extra >= 3:
+            out.append(Issue("OK", f"{SCEN_TEXT} jitter APPLIED - attack lasted {atk_s:.0f} s (standard {SCEN_ATTACK_S} s, "
+                                   f"jitter adds 0-30 s); baseline {base_s:.0f} s"))
+        else:
+            out.append(Issue(WARN, f"{SCEN_TEXT} jitter not visible - attack lasted {atk_s:.0f} s, the standard length "
+                                   "(the draw can be ~0 s; check the root log for 'TIMING JITTER ACTIVE')"))
+    if sc == "stationary" and not out:
+        out.append(Issue("OK", f"{SCEN_TEXT} stationary APPLIED - {rate_txt}, no burst, plain schedule"))
+    return out
+
+
+def scenario_tag(issues):
+    """'scenario burst: applied' for the VERDICT line ('' when not checked). Never
+    uses NOT CONFIRMED / INCONCLUSIVE / SETUP INVALID - the GUI matches on those."""
+    its = [i for i in (issues or []) if i.text.startswith(SCEN_TEXT) and i.level != SKIP]
+    if not its:
+        return ""
+    sc = its[0].text[len(SCEN_TEXT):].split()[0]           # every text starts with the scenario
+    if any("NOT APPLIED" in i.text for i in its):
+        return f"scenario {sc}: NOT APPLIED"
+    return f"scenario {sc}: " + ("check (see [3])" if any(i.level == WARN for i in its) else "applied")
+
+
 def setup_issues(df, attack):
     """All checks for one attack: attack-specific first, then topology, then
     whether the run was force-started."""
@@ -1019,4 +1120,8 @@ def setup_issues(df, attack):
         missing = missing_boards.assess(df, attack)
     except Exception as e:                      # this check must never break the others
         missing = [Issue(SKIP, f"missing-board check could not run: {e}")]
-    return issues + topology_issues(df, attack, key) + missing + start_anyway_issues(df)
+    try:
+        scen = scenario_issues(df)
+    except Exception as e:                      # this check must never break the others
+        scen = [Issue(SKIP, f"{SCEN_TEXT} could not run: {e}")]
+    return issues + topology_issues(df, attack, key) + missing + start_anyway_issues(df) + scen

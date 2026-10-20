@@ -969,6 +969,7 @@ def _print_reroute_why(issues, measured, setup_invalid):
 # wins - the order matters (e.g. "the ATTACKER has NO attack windows" is a BOARDS
 # matter, "1 node not behind the attacker" a VICTIMS one).
 CHECK_GROUPS = [
+    ("SCENARIO", ("scenario check:",)),         # oct. 21 2026 - attack_checks.scenario_issues
     ("BOARDS", ("NO attack windows", "no attack-window telemetry", "NO labelled window", "appears in the attack")),
     ("RE-TEST", ("ROBUST", "robustness")),
     ("TOPOLOGY", ("changed parent", "switched between", "topology", "FLAPPED", "during the BASELINE",
@@ -1314,6 +1315,10 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
         verdict = f"NOT CONFIRMED - no primary signature exceeded {sigma:g}-sigma"
     if extra:
         verdict += ". " + "; ".join(extra)
+    # oct. 21 2026 (user): say whether the run's scenario was really applied
+    stag = _checks.scenario_tag(issues) if issues and hasattr(_checks, "scenario_tag") else ""
+    if stag:
+        verdict += f"  |  {stag}"
 
     # ── print ────────────────────────────────────────────────────────────────
     cell = " / ".join(str(_first_val(df_nodes, c)) for c in
