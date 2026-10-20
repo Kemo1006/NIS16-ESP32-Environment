@@ -15,6 +15,28 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #70 — Oct 20, 2026 · ~9:05 PM — "still ABORTED in highload - double check the boards": the hub board 1C38 browns out
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `c461711`
+> **Request:** "still aborted in highload please double check the boards why this happened"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | star | G402 | highload | r1 (3rd attempt) | oct. 20 8:22 PM | root run log (new NODESTAT lines), 7 child crash-watch logs, the 2:44 PM stationary logs |
+
+| Check | Result | Detail |
+|---|---|---|
+| When did the hub drop? | ❌ | 1C38 (hub = end A) left the mesh at 61 s, 74 s and 151 s after the root booted - **before Phase 0** (no attack, no load yet); every child went OFFLINE with it each time |
+| Did it restart? | ❌ yes | root NODESTAT: 1C38 uptime 180 -> 0 -> 7 -> 0 -> 7 -> 0 ... (several restarts in 3 min) |
+| Its own record (status file) | ❌ | **Boot count 1,792 · crash resets 1,564 · brownout resets 207**. Every other board: 0 crashes; plain children 0 brownouts; 0C80 (end B) 16 brownouts |
+| What the "crashes" are | ⚠️ brownouts | 2:44 PM log (1C38 on the laptop's USB, COM39): every boot shows `E BOD: Brownout detector was triggered` then `rst:0x3 (SW_RESET)` - the brownout handler restarts the chip, filed as a crash. It happens as the Wi-Fi radio starts (current burst) |
+| UART pair | ❌ | 1C38: `UART link noisy: 308-326 bad frame windows`, `UART TUNNEL ONE-WAY` (its TX -> 0C80's RX not heard) |
+| Code / scenario | ✅ not the cause | same firmware on 5 plain children: 0 resets; SD 8/8 writing; NODESTAT + safety net working |
+
+**Verdict: ❌ hardware - 1C38's supply sags below the ESP32's brownout limit even on laptop USB (bad cable / board regulator / a jumper loading its 3V3), so the star hub keeps resetting and takes every child with it. Replace it as wormhole end A with a board that has 0 brownouts, re-do the A<->B jumpers (TX->RX, RX->TX, GND->GND only - no 3V3/5V link), then recapture (C21).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #69 — Oct 20, 2026 · ~8:30 PM — wormhole/star/G402/highload: every child ABORTED / EXTRA PIECE (two runs)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `aeaf1a2` + this change

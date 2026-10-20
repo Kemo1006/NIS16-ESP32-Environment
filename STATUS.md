@@ -18,7 +18,7 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - **Wormhole:** D-28 star hub + D-30 tree/partial depth rules + UART self-echo fix — compile-checked, NOT on hardware.
 
 ## Next step
-0. **oct. 20 ~8:30 PM (#69): star/G402/highload failed twice - the star hub 1C38 dropped in the attack, all children cut off. REFLASH ALL boards (root_lost safety net + NODESTAT for the BOARD HEALTH card), read 1C38's card, give the wormhole pair solid power + common GND, then recapture (C21).**
+0. **oct. 20 ~9 PM (#70): 1C38 = BROWNOUT board (207 brownouts, 1,564 brownout-restarts) - replace it as wormhole end A. (#69): star/G402/highload failed twice - the star hub 1C38 dropped in the attack, all children cut off. REFLASH ALL boards (root_lost safety net + NODESTAT for the BOARD HEALTH card), read 1C38's card, give the wormhole pair solid power + common GND, then recapture (C21).**
 1. **#66-#68 are committed + pushed (oct. 20).** Every teammate: `git pull`, restart the GUI, REFLASH every board (SD recovery, IPC stack, scenario.txt). `mesh_config.h` (local attacker MAC) and `archive/` were left out on purpose.
 2. **Hardware test #66** (10-min test run): root shows `SD LOGGING : N/N`; pull one card 10 s mid-run → `SD ... DOWN` → `SD RECOVERY: card re-initialised` → `RESUMED (append)`; [HEALTH] lines show `ipc0=`/`ipc1=` well above 0; no PANIC at 0x40081d4d.
 3. Any new crash: `python tools/fetch_crashes.py --card E:\` (decodes against the archived build).
