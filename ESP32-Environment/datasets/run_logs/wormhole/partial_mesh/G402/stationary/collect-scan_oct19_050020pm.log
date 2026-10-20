@@ -1,0 +1,26 @@
+collect_run.py --ports COM3,COM4,COM8,COM15,COM35,COM36,COM38 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-19 05:00 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmpDDE3.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect-scan_oct19_050020pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 B4BFE934ED80 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:22:43; G402 ran 2026-10-19 16:22:10) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM4: reading the card ...
+   retry 2/3 of COM4 in 3 s (no_answer)
+COLLECT: COM4 704BCA25B768 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:19:44; G402 ran 2026-10-19 16:19:50) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM8: reading the card ...
+COLLECT: COM8 2805A532D7B4 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:21:22; G402 ran 2026-10-19 16:20:26) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM15: reading the card ...
+COLLECT: COM15 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r6_b9_telem.csv (7003 rows, ran 2026-10-19 15:21:35)
+
+-- COM35: reading the card ...
+COLLECT: COM35 20500DE71C38 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:21:30; G402 ran 2026-10-19 16:25:34) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM36: reading the card ...
+COLLECT: COM36 20500DE70C80 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:20:23; G402 ran 2026-10-19 16:24:55) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM38: reading the card ...
+COLLECT: COM38 F42DC973E618 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:20:09; G402 ran 2026-10-19 16:24:11) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+COLLECT_SUMMARY: ok=1 skip=0 fail=6

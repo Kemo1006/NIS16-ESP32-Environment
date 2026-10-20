@@ -1,0 +1,75 @@
+[monitor] listening on COM35 at 115200 baud
+[0;32mI (6290) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (6330) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (6400) CSV_LOGGER: SD mirror: /sdcard/blackhole/tree/G402/victim_NODE_20500DE70C80_r23_b43_telem.csv[0m
+W (12760) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:27, no_wnd_count:0, timeout_count:0
+W (17220) wifi:inactive timer: now=eb8ef7 last_rx_time=4582da diff=2a82, aid[1]20:50:0d:e7:1c:38 leave
+I (17230) wifi:station: 20:50:0d:e7:1c:38 leave, AID = 1, reason = 4, bss_flags is 33721443, bss:0x3ffe3254
+I (17230) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;32mI (17250) MESH_SETUP: Child disconnected: aid=1 MAC=20:50:0d:e7:1c:38[0m
+[0;32mI (17250) MESH_SETUP: ==============================[0m
+[0;32mI (17260) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (17260) MESH_SETUP: ==============================[0m
+[0;32mI (17270) MESH_SETUP: Routing table shrunk (node removed).[0m
+[0;32mI (17270) MESH_SETUP: ==============================[0m
+[0;32mI (17280) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (17280) MESH_SETUP: ==============================[0m
+[0;32mI (34930) HEALTH: [HEALTH] up=34s heap=87728 min=84144 big=86016 | stack free(B): telemetry=1200 probe_gen=2228 probe_relay=2228 phase_listener=4280 heartbeat=4224 csv_export=3796[0m
+W (44160) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:127, no_wnd_count:0, timeout_count:0
+W (45360) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:127, no_wnd_count:0, timeout_count:1
+W (55840) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:130, no_wnd_count:13, timeout_count:0
+W (57040) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:130, no_wnd_count:13, timeout_count:1
+I (57040) wifi:state: run -> init (0x6c0)
+I (57050) wifi:pm stop, total sleep time: 0 us / 53905433 us
+
+I (57050) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (57050) MESH_SETUP: Parent disconnected — reason 6.[0m
+I (57060) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (57070) wifi:state: init -> auth (0xb0)
+I (57080) wifi:state: auth -> init (0x69c0)
+I (57080) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (57080) MESH_SETUP: Parent disconnected — reason 105.[0m
+I (57770) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (57780) wifi:state: init -> auth (0xb0)
+I (57800) wifi:state: auth -> assoc (0x0)
+I (57820) wifi:state: assoc -> run (0x10)
+I (57820) wifi:connected with ESPM_F33218, aid = 2, channel 11, BW20, bssid = b0:cb:d8:f3:32:19
+I (57820) wifi:security: Open Auth, phy: bgn, rssi: -53, cipher(pairwise:0x0, group:0x0), pmf:0
+I (57840) wifi:pm start, type: 0
+
+I (57840) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+[0;32mI (57840) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (57850) MESH_SETUP: Parent connected. Layer=2  ParentMAC=b0:cb:d8:f3:32:19  IsRoot=NO[0m
+[0;32mI (57860) MESH_SETUP: ==============================[0m
+[0;32mI (57860) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (57870) MESH_SETUP: ==============================[0m
+I (57870) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+[0;32mI (57880) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (57890) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+W (58240) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:130, no_wnd_count:13, timeout_count:2
+I (58260) wifi:<ba-add>idx:0 (ifx:0, b0:cb:d8:f3:32:19), tid:5, ssn:0, winSize:64
+I (59230) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (59240) wifi:station: f4:2d:c9:73:e6:18 join, AID=1, bgn, 20
+I (59240) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (59240) wifi:station: b4:bf:e9:32:fe:90 join, AID=2, bgn, 20
+[0;32mI (59250) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (59260) MESH_SETUP: ==============================[0m
+[0;32mI (59260) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (59270) MESH_SETUP: ==============================[0m
+[0;32mI (59270) MESH_SETUP: Child connected: aid=1 MAC=f4:2d:c9:73:e6:18[0m
+[0;32mI (59280) MESH_SETUP: ==============================[0m
+[0;32mI (59280) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (59290) MESH_SETUP: ==============================[0m
+[0;32mI (59300) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (59300) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (59310) MESH_SETUP: ==============================[0m
+[0;32mI (59320) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (59320) MESH_SETUP: ==============================[0m
+[0;32mI (59330) MESH_SETUP: Child connected: aid=2 MAC=b4:bf:e9:32:fe:90[0m
+[0;32mI (59330) MESH_SETUP: ==============================[0m
+[0;32mI (59340) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (59340) MESH_SETUP: ==============================[0m
+[0;32mI (59350) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (64930) HEALTH: [HEALTH] up=64s heap=85284 min=82516 big=81920 | stack free(B): telemetry=1200 probe_gen=2228 probe_relay=2228 phase_listener=4280 heartbeat=4224 csv_export=3796[0m
+I (67290) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[monitor] closed

@@ -1,0 +1,1 @@
+[monitor] could not open COM11: could not open port 'COM11': FileNotFoundError(2, 'The system cannot find the file specified.', None, 2)

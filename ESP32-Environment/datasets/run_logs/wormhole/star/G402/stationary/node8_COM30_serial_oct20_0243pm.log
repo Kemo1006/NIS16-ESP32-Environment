@@ -1,0 +1,1055 @@
+[monitor] listening on COM30 at 115200 baud
+[0;33mW (7225) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP 20:50:0d:e7:1c:39 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (52695) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP 20:50:0d:e7:1c:39 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (62185) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62185) VICTIM_MAIN: Node ID: NODE_B4BFE934ED80   Run ID: RUN_001[0m
+[0;32mI (62185) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62195) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62195) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62205) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62215) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (101645) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (101645) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (101835) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (101855) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (101855) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (101895) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (101895) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (101905) VICTIM_MAIN: Probe generator task running at 1000 ms interval.[0m
+[0;33mW (101915) VICTIM_MAIN: Probe send failed seq=1: ESP_ERR_INVALID_STATE[0m
+[0;32mI (101915) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+[0;32mI (101925) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (101935) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (102915) VICTIM_MAIN: Probe send failed seq=2: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103915) VICTIM_MAIN: Probe send failed seq=3: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104915) VICTIM_MAIN: Probe send failed seq=4: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105075) MESH_SETUP: STAR HUB: scan 20 - wormhole A hub AP 20:50:0d:e7:1c:39 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (105915) VICTIM_MAIN: Probe send failed seq=5: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106915) VICTIM_MAIN: Probe send failed seq=6: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107915) VICTIM_MAIN: Probe send failed seq=7: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108915) VICTIM_MAIN: Probe send failed seq=8: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109915) VICTIM_MAIN: Probe send failed seq=9: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110915) VICTIM_MAIN: Probe send failed seq=10: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111915) VICTIM_MAIN: Probe send failed seq=11: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112915) VICTIM_MAIN: Probe send failed seq=12: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113915) VICTIM_MAIN: Probe send failed seq=13: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114915) VICTIM_MAIN: Probe send failed seq=14: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115915) VICTIM_MAIN: Probe send failed seq=15: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116915) VICTIM_MAIN: Probe send failed seq=16: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117915) VICTIM_MAIN: Probe send failed seq=17: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118915) VICTIM_MAIN: Probe send failed seq=18: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119915) VICTIM_MAIN: Probe send failed seq=19: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120915) VICTIM_MAIN: Probe send failed seq=20: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121915) VICTIM_MAIN: Probe send failed seq=21: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122915) VICTIM_MAIN: Probe send failed seq=22: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123915) VICTIM_MAIN: Probe send failed seq=23: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124915) VICTIM_MAIN: Probe send failed seq=24: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125915) VICTIM_MAIN: Probe send failed seq=25: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126915) VICTIM_MAIN: Probe send failed seq=26: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127915) VICTIM_MAIN: Probe send failed seq=27: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128915) VICTIM_MAIN: Probe send failed seq=28: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129915) VICTIM_MAIN: Probe send failed seq=29: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130915) VICTIM_MAIN: Probe send failed seq=30: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131915) VICTIM_MAIN: Probe send failed seq=31: ESP_ERR_INVALID_STATE[0m
+[0;32mI (131935) HEALTH: [HEALTH] up=131s heap=84444 min=83576 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (132915) VICTIM_MAIN: Probe send failed seq=32: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133915) VICTIM_MAIN: Probe send failed seq=33: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134915) VICTIM_MAIN: Probe send failed seq=34: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135405) MESH_SETUP: STAR HUB: joining wormhole A 20:50:0d:e7:1c:39 (layer 2, rssi -63, ch 11) as layer 3.[0m
+[0;33mW (135555) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (135595) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (135595) wifi:state: init -> auth (0xb0)
+I (135605) wifi:state: auth -> init (0x65c0)
+I (135605) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (135605) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (135695) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (135695) wifi:state: init -> auth (0xb0)
+I (135705) wifi:state: auth -> init (0x65c0)
+I (135715) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (135715) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (135795) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (135795) wifi:state: init -> auth (0xb0)
+I (135815) wifi:state: auth -> init (0x65c0)
+I (135825) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (135825) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (135895) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (135905) wifi:state: init -> auth (0xb0)
+[0;33mW (135915) VICTIM_MAIN: Probe send failed seq=35: ESP_ERR_INVALID_STATE[0m
+I (135965) wifi:state: auth -> assoc (0x0)
+I (135995) wifi:state: assoc -> run (0x10)
+I (136005) wifi:connected with ESPM_E71C38, aid = 4, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (136005) wifi:security: Open Auth, phy: bgn, rssi: -66, cipher(pairwise:0x0, group:0x0), pmf:0
+I (136025) wifi:pm start, type: 0
+
+[0;32mI (136025) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (136025) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (136035) MESH_SETUP: ==============================[0m
+[0;32mI (136035) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (136045) MESH_SETUP: ==============================[0m
+[0;32mI (136055) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (136055) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (136205) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (139215) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:3, no_wnd_count:2, timeout_count:0
+I (139975) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (140045) wifi:state: run -> init (0x6c0)
+I (140055) wifi:pm stop, total sleep time: 0 us / 4026567 us
+
+I (140055) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (140055) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (140065) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140205) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140325) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (140415) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:3, no_wnd_count:2, timeout_count:1
+[0;33mW (140415) VICTIM_MAIN: Probe send failed seq=37: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (140455) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140575) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140825) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (140945) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141065) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141315) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141415) VICTIM_MAIN: Probe send failed seq=38: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141435) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141805) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (141925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142295) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142415) VICTIM_MAIN: Probe send failed seq=39: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142415) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (142905) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143025) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143155) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143275) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143395) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143415) VICTIM_MAIN: Probe send failed seq=40: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143525) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143645) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (143885) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144015) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144135) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144255) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144375) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144415) VICTIM_MAIN: Probe send failed seq=41: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144505) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144625) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144875) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (144995) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145115) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145235) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145365) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145415) VICTIM_MAIN: Probe send failed seq=42: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145485) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145605) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145855) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (145975) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146095) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146215) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146345) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146415) VICTIM_MAIN: Probe send failed seq=43: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146465) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146715) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146835) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (146955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147205) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147325) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147415) VICTIM_MAIN: Probe send failed seq=44: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (147935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148415) VICTIM_MAIN: Probe send failed seq=45: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148545) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (148915) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149165) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149285) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149405) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149415) VICTIM_MAIN: Probe send failed seq=46: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149775) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (149895) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150025) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150145) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150265) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150385) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150415) VICTIM_MAIN: Probe send failed seq=47: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150515) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (150885) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151005) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151125) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151245) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151375) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151415) VICTIM_MAIN: Probe send failed seq=48: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151495) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151615) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151865) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (151985) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152105) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152235) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152355) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152415) VICTIM_MAIN: Probe send failed seq=49: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152475) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152845) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (152965) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153215) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153335) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153415) VICTIM_MAIN: Probe send failed seq=50: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153455) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153825) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (153945) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154315) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154415) VICTIM_MAIN: Probe send failed seq=51: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154435) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154805) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (154925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155295) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155415) VICTIM_MAIN: Probe send failed seq=52: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155545) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (155915) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156035) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156155) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156275) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156405) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156415) VICTIM_MAIN: Probe send failed seq=53: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156525) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156645) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (156895) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157015) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157135) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157265) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157385) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157415) VICTIM_MAIN: Probe send failed seq=54: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157505) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157625) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157875) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (157995) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158115) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158245) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158365) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158415) VICTIM_MAIN: Probe send failed seq=55: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158485) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158605) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158735) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158855) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (158975) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159095) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159225) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159345) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159415) VICTIM_MAIN: Probe send failed seq=56: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159465) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159715) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159835) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (159955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160205) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160325) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160415) VICTIM_MAIN: Probe send failed seq=57: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160575) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (160935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161065) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161415) VICTIM_MAIN: Probe send failed seq=58: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161435) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (161925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;32mI (161945) HEALTH: [HEALTH] up=161s heap=84564 min=82480 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (162045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162165) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162285) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162415) VICTIM_MAIN: Probe send failed seq=59: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162415) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (162905) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163025) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163145) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163275) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163395) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163415) VICTIM_MAIN: Probe send failed seq=60: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163515) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (163885) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164005) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164125) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164255) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164375) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164415) VICTIM_MAIN: Probe send failed seq=61: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164495) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164615) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164865) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (164985) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165115) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165235) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165355) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165415) VICTIM_MAIN: Probe send failed seq=62: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165475) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165605) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165845) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (165965) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166095) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166215) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166335) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166415) VICTIM_MAIN: Probe send failed seq=63: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166455) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166825) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (166955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167315) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167415) VICTIM_MAIN: Probe send failed seq=64: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167805) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (167935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (168055) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (168125) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (168125) wifi:state: init -> auth (0xb0)
+I (168135) wifi:state: auth -> init (0x65c0)
+I (168135) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (168135) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (168225) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (168225) wifi:state: init -> auth (0xb0)
+I (168235) wifi:state: auth -> init (0x65c0)
+I (168235) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (168245) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (168335) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (168335) wifi:state: init -> auth (0xb0)
+I (168365) wifi:state: auth -> init (0x65c0)
+I (168375) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (168375) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;33mW (168415) VICTIM_MAIN: Probe send failed seq=65: ESP_ERR_INVALID_STATE[0m
+I (168425) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (168425) wifi:state: init -> auth (0xb0)
+I (168435) wifi:state: auth -> assoc (0x0)
+[0;33mW (169415) VICTIM_MAIN: Probe send failed seq=66: ESP_ERR_INVALID_STATE[0m
+I (169435) wifi:state: assoc -> init (0x400)
+I (169445) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (169445) MESH_SETUP: Parent disconnected — reason 4.[0m
+[0;33mW (169565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (169685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (169815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (169935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170415) VICTIM_MAIN: Probe send failed seq=67: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170435) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170465) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170475) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170485) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170495) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170515) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170545) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170575) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170605) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170845) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (170975) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (171095) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (171145) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (171145) wifi:state: init -> auth (0xb0)
+I (171155) wifi:state: auth -> init (0x65c0)
+I (171155) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (171165) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (171245) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (171245) wifi:state: init -> auth (0xb0)
+I (171255) wifi:state: auth -> init (0x65c0)
+I (171255) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (171265) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (171355) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (171355) wifi:state: init -> auth (0xb0)
+I (171365) wifi:state: auth -> init (0x65c0)
+I (171365) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (171365) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;33mW (171415) VICTIM_MAIN: Probe send failed seq=68: ESP_ERR_INVALID_STATE[0m
+I (171475) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (171475) wifi:state: init -> auth (0xb0)
+I (171555) wifi:state: auth -> assoc (0x0)
+I (171585) wifi:state: assoc -> run (0x10)
+I (171585) wifi:connected with ESPM_E71C38, aid = 5, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (171585) wifi:security: Open Auth, phy: bgn, rssi: -65, cipher(pairwise:0x0, group:0x0), pmf:0
+I (171595) wifi:pm start, type: 0
+
+[0;32mI (171595) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (171605) MESH_SETUP: ==============================[0m
+[0;32mI (171605) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (171615) MESH_SETUP: ==============================[0m
+[0;32mI (171625) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (171625) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (171635) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (171755) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+I (171755) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (173145) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:4, no_wnd_count:2, timeout_count:2
+I (173975) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (174055) wifi:state: run -> init (0x6c0)
+I (174075) wifi:pm stop, total sleep time: 0 us / 2477191 us
+
+I (174075) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (174075) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (174195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (174325) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (174345) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:4, no_wnd_count:2, timeout_count:3
+[0;33mW (174345) VICTIM_MAIN: Probe send failed seq=69: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (174445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (174565) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (174605) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (174605) wifi:state: init -> auth (0xb0)
+I (174635) wifi:state: auth -> init (0x65c0)
+I (174635) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (174635) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (174715) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (174715) wifi:state: init -> auth (0xb0)
+I (174725) wifi:state: auth -> init (0x65c0)
+I (174725) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (174735) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;33mW (174855) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (174925) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (174925) wifi:state: init -> auth (0xb0)
+I (174955) wifi:state: auth -> init (0x65c0)
+I (174975) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (174975) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (175015) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (175015) wifi:state: init -> auth (0xb0)
+I (175085) wifi:state: auth -> assoc (0x0)
+I (175135) wifi:state: assoc -> run (0x10)
+I (175135) wifi:connected with ESPM_E71C38, aid = 5, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (175135) wifi:security: Open Auth, phy: bgn, rssi: -62, cipher(pairwise:0x0, group:0x0), pmf:0
+I (175155) wifi:pm start, type: 0
+
+I (175155) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+I (175155) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (175165) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (175175) MESH_SETUP: ==============================[0m
+[0;32mI (175175) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (175185) MESH_SETUP: ==============================[0m
+[0;32mI (175195) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (175195) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (175205) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (177175) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (177225) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (177245) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_B4BFE934ED80_r3_b4_telem.csv[0m
+W (184565) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:15, no_wnd_count:0, timeout_count:0
+I (185115) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (185335) wifi:state: run -> init (0x6c0)
+I (185335) wifi:pm stop, total sleep time: 0 us / 10185600 us
+
+I (185335) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (185345) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (185465) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (185585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (185715) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (185765) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:15, no_wnd_count:0, timeout_count:1
+[0;33mW (185765) VICTIM_MAIN: Probe send failed seq=78: ESP_ERR_MESH_DISCONNECTED[0m
+I (185775) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (185785) wifi:state: init -> auth (0xb0)
+I (185795) wifi:state: auth -> init (0x65c0)
+I (185805) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (185805) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (185885) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (185885) wifi:state: init -> auth (0xb0)
+I (185905) wifi:state: auth -> init (0x65c0)
+I (185905) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (185905) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (185985) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (185985) wifi:state: init -> auth (0xb0)
+I (185995) wifi:state: auth -> init (0x65c0)
+I (185995) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (185995) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (186085) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (186085) wifi:state: init -> auth (0xb0)
+I (186115) wifi:state: auth -> init (0x65c0)
+I (186125) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (186125) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (186185) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (186185) wifi:state: init -> auth (0xb0)
+I (186265) wifi:state: auth -> assoc (0x0)
+[0;33mW (186765) VICTIM_MAIN: Probe send failed seq=79: ESP_ERR_INVALID_STATE[0m
+I (187265) wifi:state: assoc -> init (0x400)
+I (187275) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (187275) MESH_SETUP: Parent disconnected — reason 4.[0m
+[0;33mW (187395) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (187515) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (187645) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (187765) VICTIM_MAIN: Probe send failed seq=80: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (187885) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188015) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188135) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188265) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188385) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188505) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188605) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188615) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188645) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188735) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188765) VICTIM_MAIN: Probe send failed seq=81: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188775) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188805) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (188925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189295) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189545) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189765) VICTIM_MAIN: Probe send failed seq=82: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (189915) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190035) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190165) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190285) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190405) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190765) VICTIM_MAIN: Probe send failed seq=83: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190905) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190915) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190945) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190975) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (190995) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191005) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191025) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191035) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191065) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191095) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191105) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191115) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191125) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191135) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191145) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191155) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (191765) VICTIM_MAIN: Probe send failed seq=84: ESP_ERR_INVALID_STATE[0m
+I (191775) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (191775) wifi:state: init -> auth (0xb0)
+I (191795) wifi:state: auth -> init (0x65c0)
+I (191795) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (191795) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (191875) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (191875) wifi:state: init -> auth (0xb0)
+I (191895) wifi:state: auth -> init (0x65c0)
+I (191905) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (191905) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;32mI (191955) HEALTH: [HEALTH] up=191s heap=84212 min=82260 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+I (191985) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (191985) wifi:state: init -> auth (0xb0)
+I (191995) wifi:state: auth -> init (0x65c0)
+I (192005) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (192005) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (192085) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (192085) wifi:state: init -> auth (0xb0)
+I (192095) wifi:state: auth -> assoc (0x0)
+I (192155) wifi:state: assoc -> run (0x10)
+I (192155) wifi:connected with ESPM_E71C38, aid = 2, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (192155) wifi:security: Open Auth, phy: bgn, rssi: -66, cipher(pairwise:0x0, group:0x0), pmf:0
+I (192165) wifi:pm start, type: 0
+
+I (192165) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (192175) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (192185) MESH_SETUP: ==============================[0m
+[0;32mI (192185) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (192195) MESH_SETUP: ==============================[0m
+[0;32mI (192205) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (192205) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (192215) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (192385) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (211985) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:37, no_wnd_count:0, timeout_count:0
+I (212195) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (212375) wifi:state: run -> init (0x6c0)
+I (212385) wifi:pm stop, total sleep time: 0 us / 20213935 us
+
+I (212385) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (212385) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (212505) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (212635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (212755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (212875) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (212925) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (212925) wifi:state: init -> auth (0xb0)
+I (212945) wifi:state: auth -> init (0x65c0)
+I (212955) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (212955) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (213025) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (213025) wifi:state: init -> auth (0xb0)
+I (213035) wifi:state: auth -> init (0x65c0)
+I (213035) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (213045) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (213125) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (213125) wifi:state: init -> auth (0xb0)
+I (213145) wifi:state: auth -> init (0x65c0)
+I (213145) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (213155) MESH_SETUP: Parent disconnected — reason 101.[0m
+W (213185) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:37, no_wnd_count:0, timeout_count:1
+[0;33mW (213185) VICTIM_MAIN: Probe send failed seq=103: ESP_ERR_MESH_DISCONNECTED[0m
+I (213235) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (213235) wifi:state: init -> auth (0xb0)
+I (213285) wifi:state: auth -> assoc (0x0)
+I (213335) wifi:state: assoc -> run (0x10)
+I (213335) wifi:connected with ESPM_E71C38, aid = 4, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (213335) wifi:security: Open Auth, phy: bgn, rssi: -61, cipher(pairwise:0x0, group:0x0), pmf:0
+I (213345) wifi:pm start, type: 0
+
+I (213345) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (213355) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (213365) MESH_SETUP: ==============================[0m
+[0;32mI (213375) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (213375) MESH_SETUP: ==============================[0m
+[0;32mI (213385) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (213385) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (213395) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (214035) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (219385) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:43, no_wnd_count:0, timeout_count:0
+I (219865) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (220055) wifi:state: run -> init (0x6c0)
+I (220075) wifi:pm stop, total sleep time: 0 us / 6722724 us
+
+I (220075) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (220075) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (220205) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (220325) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (220445) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (220505) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (220505) wifi:state: init -> auth (0xb0)
+I (220515) wifi:state: auth -> init (0x65c0)
+I (220525) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (220525) MESH_SETUP: Parent disconnected — reason 101.[0m
+W (220585) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:43, no_wnd_count:0, timeout_count:1
+[0;33mW (220585) VICTIM_MAIN: Probe send failed seq=108: ESP_ERR_MESH_DISCONNECTED[0m
+I (220605) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (220605) wifi:state: init -> auth (0xb0)
+I (220635) wifi:state: auth -> init (0x65c0)
+I (220635) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (220635) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (220715) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (220715) wifi:state: init -> auth (0xb0)
+I (220735) wifi:state: auth -> init (0x65c0)
+I (220735) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (220735) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (220815) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (220815) wifi:state: init -> auth (0xb0)
+I (220835) wifi:state: auth -> init (0x65c0)
+I (220835) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (220835) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (220915) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (220915) wifi:state: init -> auth (0xb0)
+I (220995) wifi:state: auth -> assoc (0x0)
+I (221025) wifi:state: assoc -> run (0x10)
+I (221025) wifi:connected with ESPM_E71C38, aid = 4, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (221025) wifi:security: Open Auth, phy: bgn, rssi: -61, cipher(pairwise:0x0, group:0x0), pmf:0
+I (221035) wifi:pm start, type: 0
+
+I (221035) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (221055) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (221055) MESH_SETUP: ==============================[0m
+[0;32mI (221065) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (221065) MESH_SETUP: ==============================[0m
+[0;32mI (221075) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (221085) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (221085) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (221095) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (221965) HEALTH: [HEALTH] up=221s heap=84208 min=82128 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (248795) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:74, no_wnd_count:0, timeout_count:0
+I (249485) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (249665) wifi:state: run -> init (0x6c0)
+I (249675) wifi:pm stop, total sleep time: 0 us / 28631296 us
+
+I (249675) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (249675) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (249795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (249925) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (249995) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:74, no_wnd_count:0, timeout_count:1
+[0;33mW (249995) VICTIM_MAIN: Probe send failed seq=135: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (250045) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (250115) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (250115) wifi:state: init -> auth (0xb0)
+I (250135) wifi:state: auth -> init (0x65c0)
+I (250145) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (250145) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (250215) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (250215) wifi:state: init -> auth (0xb0)
+I (250245) wifi:state: auth -> init (0x65c0)
+I (250245) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (250245) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (250325) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (250325) wifi:state: init -> auth (0xb0)
+I (250335) wifi:state: auth -> init (0x65c0)
+I (250335) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (250345) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (250425) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (250425) wifi:state: init -> auth (0xb0)
+I (250435) wifi:state: auth -> init (0x65c0)
+I (250445) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (250445) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (250525) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (250525) wifi:state: init -> auth (0xb0)
+I (250535) wifi:state: auth -> assoc (0x0)
+I (250625) wifi:state: assoc -> run (0x10)
+I (250625) wifi:connected with ESPM_E71C38, aid = 1, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (250625) wifi:security: Open Auth, phy: bgn, rssi: -61, cipher(pairwise:0x0, group:0x0), pmf:0
+I (250635) wifi:pm start, type: 0
+
+I (250635) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (250645) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (250655) MESH_SETUP: ==============================[0m
+[0;32mI (250665) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (250665) MESH_SETUP: ==============================[0m
+[0;32mI (250675) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (250685) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (250685) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (250895) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (251975) HEALTH: [HEALTH] up=251s heap=84200 min=82128 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (257205) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:81, no_wnd_count:0, timeout_count:0
+I (257855) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (258045) wifi:state: run -> init (0x6c0)
+I (258055) wifi:pm stop, total sleep time: 0 us / 7412351 us
+
+I (258055) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (258055) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (258175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (258305) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (258405) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:81, no_wnd_count:0, timeout_count:1
+[0;33mW (258405) VICTIM_MAIN: Probe send failed seq=141: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (258425) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (258495) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (258495) wifi:state: init -> auth (0xb0)
+I (258515) wifi:state: auth -> init (0x65c0)
+I (258515) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (258515) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (258595) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (258595) wifi:state: init -> auth (0xb0)
+I (258615) wifi:state: auth -> init (0x65c0)
+I (258615) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (258615) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (258695) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (258695) wifi:state: init -> auth (0xb0)
+I (258705) wifi:state: auth -> init (0x65c0)
+I (258715) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (258715) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (258795) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (258795) wifi:state: init -> auth (0xb0)
+I (258815) wifi:state: auth -> init (0x65c0)
+I (258825) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (258825) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;33mW (258955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (259075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (259195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (259315) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (259405) VICTIM_MAIN: Probe send failed seq=142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259445) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (259495) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (259505) wifi:state: init -> auth (0xb0)
+I (259555) wifi:state: auth -> assoc (0x0)
+I (259605) wifi:state: assoc -> run (0x10)
+I (259605) wifi:connected with ESPM_E71C38, aid = 4, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (259605) wifi:security: Open Auth, phy: bgn, rssi: -63, cipher(pairwise:0x0, group:0x0), pmf:0
+I (259615) wifi:pm start, type: 0
+
+I (259615) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (259625) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (259635) MESH_SETUP: ==============================[0m
+[0;32mI (259635) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (259645) MESH_SETUP: ==============================[0m
+[0;32mI (259655) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (259655) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (259665) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (259805) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (264605) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:85, no_wnd_count:0, timeout_count:0
+I (264615) wifi:state: run -> init (0x6c0)
+I (264625) wifi:pm stop, total sleep time: 0 us / 5005224 us
+
+I (264625) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (264625) MESH_SETUP: Parent disconnected — reason 6.[0m
+[0;33mW (264635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264645) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264725) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264735) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264765) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (264935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (265055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (265185) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (265305) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (265305) wifi:state: init -> auth (0xb0)
+I (265315) wifi:state: auth -> init (0x65c0)
+I (265325) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (265325) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (265405) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (265405) wifi:state: init -> auth (0xb0)
+I (265415) wifi:state: auth -> init (0x65c0)
+I (265425) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (265425) MESH_SETUP: Parent disconnected — reason 101.[0m
+I (265505) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (265505) wifi:state: init -> auth (0xb0)
+I (265515) wifi:state: auth -> init (0x65c0)
+I (265515) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (265525) MESH_SETUP: Parent disconnected — reason 101.[0m
+[0;33mW (265645) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (265715) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (265715) wifi:state: init -> auth (0xb0)
+I (265785) wifi:state: auth -> assoc (0x0)
+W (265805) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:85, no_wnd_count:0, timeout_count:1
+[0;33mW (265805) VICTIM_MAIN: Probe send failed seq=146: ESP_ERR_MESH_DISCONNECTED[0m
+I (265815) wifi:state: assoc -> run (0x10)
+I (265815) wifi:connected with ESPM_E71C38, aid = 5, channel 11, BW20, bssid = 20:50:0d:e7:1c:39
+I (265825) wifi:security: Open Auth, phy: bgn, rssi: -57, cipher(pairwise:0x0, group:0x0), pmf:0
+I (265835) wifi:pm start, type: 0
+
+[0;32mI (265835) MESH_SETUP: Parent connected. Layer=3  ParentMAC=20:50:0d:e7:1c:39  IsRoot=NO[0m
+[0;32mI (265845) MESH_SETUP: ==============================[0m
+[0;32mI (265845) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (265855) MESH_SETUP: ==============================[0m
+[0;32mI (265855) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (265865) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (265875) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (266015) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+W (271005) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:0
+W (272205) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:1
+W (273405) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:2
+W (274605) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:3
+W (275805) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:4
+I (275945) wifi:bcn_timeout,ap_probe_send_start
+W (277005) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:5
+W (278205) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:6
+I (278455) wifi:ap_probe_send over, reset wifi status to disassoc
+I (278455) wifi:state: run -> init (0xc800)
+I (278465) wifi:pm stop, total sleep time: 0 us / 12626287 us
+
+I (278465) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (278465) MESH_SETUP: Parent disconnected — reason 200.[0m
+[0;33mW (278595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (278715) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (278835) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (278965) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279205) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279325) MESH_SETUP: Parent disconnected — reason 201.[0m
+W (279405) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:89, no_wnd_count:0, timeout_count:7
+[0;33mW (279405) VICTIM_MAIN: Probe send failed seq=150: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (279455) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279575) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279825) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (279945) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280315) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280405) VICTIM_MAIN: Probe send failed seq=151: ESP_ERR_INVALID_STATE[0m
+[0;33mW (280445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280565) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280685) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (280935) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281055) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281405) VICTIM_MAIN: Probe send failed seq=152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (281425) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281795) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (281925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;32mI (281985) HEALTH: [HEALTH] up=281s heap=84208 min=82128 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;33mW (282045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282165) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282295) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282405) VICTIM_MAIN: Probe send failed seq=153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (282415) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282535) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (282905) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283035) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283155) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283275) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283395) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283405) VICTIM_MAIN: Probe send failed seq=154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (283525) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283655) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283775) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (283895) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284015) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284145) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284265) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284385) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284405) VICTIM_MAIN: Probe send failed seq=155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (284515) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284635) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284755) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (284885) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285005) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285125) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285255) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285375) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285405) VICTIM_MAIN: Probe send failed seq=156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (285495) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285625) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285745) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285875) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (285995) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286115) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286245) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286365) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286405) VICTIM_MAIN: Probe send failed seq=157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (286485) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286615) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286735) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286855) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (286985) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287105) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287225) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287345) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287405) VICTIM_MAIN: Probe send failed seq=158: ESP_ERR_INVALID_STATE[0m
+[0;33mW (287475) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287595) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287715) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287845) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (287965) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288085) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288215) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288335) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288405) VICTIM_MAIN: Probe send failed seq=159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (288455) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288585) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288705) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288825) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (288955) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289075) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289195) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289325) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289405) VICTIM_MAIN: Probe send failed seq=160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (289445) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289575) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289695) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289815) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (289945) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290065) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290185) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290305) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290405) VICTIM_MAIN: Probe send failed seq=161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (290435) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290555) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290675) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290805) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (290925) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291045) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291175) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291295) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291405) VICTIM_MAIN: Probe send failed seq=162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (291415) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291545) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291665) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291785) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (291915) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (292035) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (292155) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (292285) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (292405) VICTIM_MAIN: Probe send failed seq=163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (292405) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (292525) MESH_SETUP: Parent disconnected — reason 201.[0m
+[monitor] LOST COM30: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed

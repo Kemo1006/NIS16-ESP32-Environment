@@ -1,0 +1,8 @@
+collect_run.py --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-19 08:57 --outdir C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/out5 --cards C:/Users/ANGELO~1/AppData/Local/Temp/claude/A--Angelo-Excelsior-THESIS-T-ESP32-Environment/f827eaa6-fafd-4484-8442-414188a0c98f/scratchpad/t/cardC
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect_oct20_032030pm.log)
+
+-- cardC: reading the card ...
+   victim_NODE_20500DE71C38_r21_b39_telem.csv: recorded as highload, not burst - refused
+COLLECT: cardC 20500DE71C38 FAIL no piece on the card holds this run's baseline - nothing filed. Pieces checked: victim_NODE_20500DE71C38_r21_b39_telem.csv: the card recorded scenario highload, not burst - another run
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=1

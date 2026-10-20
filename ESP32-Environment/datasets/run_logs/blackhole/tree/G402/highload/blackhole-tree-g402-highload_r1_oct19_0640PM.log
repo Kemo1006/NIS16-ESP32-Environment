@@ -1,0 +1,1105 @@
+NIS16 Capture Studio run log - blackhole-tree-g402-highload.json - 19/10/2026 6:40:27 pm
+Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\highload\blackhole-tree-g402-highload_r1_oct19_0640PM.log
+
+> node4  -  blackhole victim  -  blackhole victim on COM36   .\run.ps1 -Port COM36 -Role child -Label node4 -Topology tree -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack blackhole -BlackholeRole victim -AttackerMac 20:50:0d:e7:1c:38 -Export -SkipExportNow -Mac f4:2d:c9:73:e6:18 -SharedBuild   (06:40:27 pm)
+Setting COM36's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 18:40:28 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM36 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM36
+Connecting......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 5.6 seconds.
+Hard resetting via RTS pin...
+  Attacker MAC for this build: 20:50:0d:e7:1c:38 (from the wizard, overrides mesh_config.h)
+Board: node4 (on COM36, MAC f4:2d:c9:73:e6:18)
+Flashing + monitoring child on COM36 (topology=tree, attack=blackhole, scenario=highload, build=C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI
+Executing "ninja flash"...
+[0/1] Re-running CMake...
+-- Minimal build - OFF
+-- ccache will be used for faster recompilation
+-- Building ESP-IDF components for target esp32
+-- ESP-TEE is currently supported only on the esp32c6;esp32h2;esp32c5 SoCs
+-- Project sdkconfig file A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/sdkconfig
+Loading defaults file A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/sdkconfig.defaults...
+-- Compiler supported targets: xtensa-esp-elf
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- USING O3
+-- App "child_node" version: backup/angelo-2026-10-01-266-g4
+-- Adding linker script C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/esp-idf/esp_system/ld/memory.ld
+-- Adding linker script C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/esp-idf/esp_system/ld/sections.ld.in
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.api.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.libgcc.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.newlib-data.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.syscalls.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.libc-funcs.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.newlib-reent-funcs.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/soc/esp32/ld/esp32.peripherals.ld
+-- child_node: building BLACKHOLE VICTIM (ACTIVE_ATTACK=1, BLACKHOLE_ROLE=1)
+-- child_node: TRAFFIC_PROFILE=2 (1=burst 2=highload)
+-- Components: app_trace app_update bootloader bootloader_support bt cmock console cxx driver efuse esp-tls esp_adc esp_app_format esp_bootloader_format esp_coex esp_common esp_driver_ana_cmpr esp_driver_bitscrambler esp_driver_cam esp_driver_dac esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_i2s esp_driver_isp esp_driver_jpeg esp_driver_ledc esp_driver_mcpwm esp_driver_parlio esp_driver_pcnt esp_driver_ppa esp_driver_rmt esp_driver_sdio esp_driver_sdm esp_driver_sdmmc esp_driver_sdspi esp_driver_spi esp_driver_touch_sens esp_driver_tsens esp_driver_twai esp_driver_uart esp_driver_usb_serial_jtag esp_eth esp_event esp_gdbstub esp_hal_ieee802154 esp_hid esp_http_client esp_http_server esp_https_ota esp_https_server esp_hw_support esp_lcd esp_local_ctrl esp_mm esp_netif esp_netif_stack esp_partition esp_phy esp_pm esp_psram esp_ringbuf esp_rom esp_security esp_system esp_timer esp_vfs_console esp_wifi espcoredump esptool_py fatfs freertos hal heap http_parser idf_test ieee802154 json log lwip main mbedtls mesh_common mqtt newlib nvs_flash nvs_sec_provider openthread partition_table perfmon protobuf-c protocomm pthread rt sdmmc soc spi_flash spiffs tcp_transport ulp unity usb vfs wear_levelling wifi_provisioning wpa_supplicant xtensa
+-- Component paths: C:/Espressif/frameworks/esp-idf-v5.5.4/components/app_trace C:/Espressif/frameworks/esp-idf-v5.5.4/components/app_update C:/Espressif/frameworks/esp-idf-v5.5.4/components/bootloader C:/Espressif/frameworks/esp-idf-v5.5.4/components/bootloader_support C:/Espressif/frameworks/esp-idf-v5.5.4/components/bt C:/Espressif/frameworks/esp-idf-v5.5.4/components/cmock C:/Espressif/frameworks/esp-idf-v5.5.4/components/console C:/Espressif/frameworks/esp-idf-v5.5.4/components/cxx C:/Espressif/frameworks/esp-idf-v5.5.4/components/driver C:/Espressif/frameworks/esp-idf-v5.5.4/components/efuse C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp-tls C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_adc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_app_format C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_bootloader_format C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_coex C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_common C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ana_cmpr C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_bitscrambler C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_cam C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_dac C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_gpio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_gptimer C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_i2c C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_i2s C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_isp C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_jpeg C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ledc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_mcpwm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_parlio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_pcnt C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ppa C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_rmt C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdmmc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdspi C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_spi C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_touch_sens C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_tsens C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_twai C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_uart C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_usb_serial_jtag C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_eth C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_event C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_gdbstub C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hal_ieee802154 C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hid C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_http_client C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_http_server C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_https_ota C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_https_server C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hw_support C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_lcd C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_local_ctrl C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_mm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_netif C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_netif_stack C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_partition C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_phy C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_pm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_psram C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_ringbuf C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_security C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_timer C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_vfs_console C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_wifi C:/Espressif/frameworks/esp-idf-v5.5.4/components/espcoredump C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py C:/Espressif/frameworks/esp-idf-v5.5.4/components/fatfs C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos C:/Espressif/frameworks/esp-idf-v5.5.4/components/hal C:/Espressif/frameworks/esp-idf-v5.5.4/components/heap C:/Espressif/frameworks/esp-idf-v5.5.4/components/http_parser C:/Espressif/frameworks/esp-idf-v5.5.4/components/idf_test C:/Espressif/frameworks/esp-idf-v5.5.4/components/ieee802154 C:/Espressif/frameworks/esp-idf-v5.5.4/components/json C:/Espressif/frameworks/esp-idf-v5.5.4/components/log C:/Espressif/frameworks/esp-idf-v5.5.4/components/lwip A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/main C:/Espressif/frameworks/esp-idf-v5.5.4/components/mbedtls A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/components/mesh_common C:/Espressif/frameworks/esp-idf-v5.5.4/components/mqtt C:/Espressif/frameworks/esp-idf-v5.5.4/components/newlib C:/Espressif/frameworks/esp-idf-v5.5.4/components/nvs_flash C:/Espressif/frameworks/esp-idf-v5.5.4/components/nvs_sec_provider C:/Espressif/frameworks/esp-idf-v5.5.4/components/openthread C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table C:/Espressif/frameworks/esp-idf-v5.5.4/components/perfmon C:/Espressif/frameworks/esp-idf-v5.5.4/components/protobuf-c C:/Espressif/frameworks/esp-idf-v5.5.4/components/protocomm C:/Espressif/frameworks/esp-idf-v5.5.4/components/pthread C:/Espressif/frameworks/esp-idf-v5.5.4/components/rt C:/Espressif/frameworks/esp-idf-v5.5.4/components/sdmmc C:/Espressif/frameworks/esp-idf-v5.5.4/components/soc C:/Espressif/frameworks/esp-idf-v5.5.4/components/spi_flash C:/Espressif/frameworks/esp-idf-v5.5.4/components/spiffs C:/Espressif/frameworks/esp-idf-v5.5.4/components/tcp_transport C:/Espressif/frameworks/esp-idf-v5.5.4/components/ulp C:/Espressif/frameworks/esp-idf-v5.5.4/components/unity C:/Espressif/frameworks/esp-idf-v5.5.4/components/usb C:/Espressif/frameworks/esp-idf-v5.5.4/components/vfs C:/Espressif/frameworks/esp-idf-v5.5.4/components/wear_levelling C:/Espressif/frameworks/esp-idf-v5.5.4/components/wifi_provisioning C:/Espressif/frameworks/esp-idf-v5.5.4/components/wpa_supplicant C:/Espressif/frameworks/esp-idf-v5.5.4/components/xtensa
+-- Configuring done (9.5s)
+-- Generating done (2.5s)
+-- Build files have been written to: C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI
+[1/11] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[2/11] No install step for 'bootloader'
+[3/11] Building C object esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj
+[4/11] Completed 'bootloader'
+[5/11] Linking C static library esp-idf\esp_app_format\libesp_app_format.a
+[6/11] Generating esp-idf/esp_system/ld/sections.ld
+[7/11] Linking CXX executable child_node.elf
+[8/11] Generating binary image from built executable
+esptool.py v4.12.0
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+Generated C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/child_node.bin
+[9/11] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/partition_table/partition-table.bin C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/child_node.bin"
+child_node.bin binary size 0x121050 bytes. Smallest app partition is 0x180000 bytes. 0x5efb0 bytes (25%) free.
+[9/11] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM36 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM36
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00131fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16527...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000756a... (100 %)
+Wrote 26160 bytes (16527 compressed) at 0x00001000 in 0.5 seconds (effective 410.6 kbit/s)...
+Hash of data verified.
+Compressed 1183824 bytes to 738715...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bd1e... (4 %)
+Writing at 0x0002975c... (6 %)
+Writing at 0x00035753... (8 %)
+Writing at 0x0003eed2... (10 %)
+Writing at 0x0004822b... (13 %)
+Writing at 0x0004db2e... (15 %)
+Writing at 0x00053a57... (17 %)
+Writing at 0x00059588... (19 %)
+Writing at 0x0005f064... (21 %)
+Writing at 0x000648a2... (23 %)
+Writing at 0x0006a53e... (26 %)
+Writing at 0x000702d9... (28 %)
+Writing at 0x00076176... (30 %)
+Writing at 0x0007c2f8... (32 %)
+Writing at 0x0008234f... (34 %)
+Writing at 0x0008875f... (36 %)
+Writing at 0x0008de44... (39 %)
+Writing at 0x00093749... (41 %)
+Writing at 0x00098efa... (43 %)
+Writing at 0x0009e66a... (45 %)
+Writing at 0x000a3c7d... (47 %)
+Writing at 0x000a95c3... (50 %)
+Writing at 0x000aed3e... (52 %)
+Writing at 0x000b43b5... (54 %)
+Writing at 0x000b982c... (56 %)
+Writing at 0x000bf37e... (58 %)
+Writing at 0x000c51b7... (60 %)
+Writing at 0x000cab82... (63 %)
+Writing at 0x000d027d... (65 %)
+Writing at 0x000d5cf5... (67 %)
+Writing at 0x000dbbf0... (69 %)
+Writing at 0x000e141a... (71 %)
+Writing at 0x000e7037... (73 %)
+Writing at 0x000ecd1b... (76 %)
+Writing at 0x000f2725... (78 %)
+Writing at 0x000f8524... (80 %)
+Writing at 0x000fe0dc... (82 %)
+Writing at 0x00103be2... (84 %)
+Writing at 0x00109e77... (86 %)
+Writing at 0x00113924... (89 %)
+Writing at 0x00119533... (91 %)
+Writing at 0x0011f1bb... (93 %)
+Writing at 0x001252e3... (95 %)
+Writing at 0x0012ad70... (97 %)
+Writing at 0x001305d9... (100 %)
+Wrote 1183824 bytes (738715 compressed) at 0x00010000 in 17.4 seconds (effective 543.3 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1573.2 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2463.7 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM36 at 115200 baud
+� xx�x� �xx �x�xpp_image: segment 3: paddr=00050020 vaddr=400d0020 size=d0b64h (854884) map
+I (482) esp_image: segment 4: paddr=00120b8c vaddr=4008b19c size=1046ch ( 66668) load
+I (508) esp_image: segment 5: paddr=00131000 vaddr=5000005c size=00020h (    32) load
+I (522) boot: Loaded app from partition at offset 0x10000
+I (526) boot: Set actual ota_seq=1 in otadata[0]
+I (526) boot: Disabling RNG early entropy source...
+I (537) cpu_start: Multicore app
+I (545) cpu_start: GPIO 3 and 1 are used as console UART I/O pins
+I (546) cpu_start: Pro cpu start user code
+I (546) cpu_start: cpu freq: 160000000 Hz
+I (550) app_init: Application information:
+I (555) app_init: Project name:     child_node
+I (560) app_init: App version:      backup/angelo-2026-10-01-266-g4
+I (567) app_init: Compile time:     Oct 19 2026 18:40:50
+I (573) app_init: ELF file SHA256:  76807c6dc...
+I (578) app_init: ESP-IDF:          v5.5.4-dirty
+I (584) efuse_init: Min chip rev:     v0.0
+I (588) efuse_init: Max chip rev:     v3.99 
+I (593) efuse_init: Chip rev:         v3.1
+I (598) heap_init: Initializing. RAM available for dynamic allocation:
+I (606) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (611) heap_init: At 3FFBC7A8 len 00023858 (142 KiB): DRAM
+I (618) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (624) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (631) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM
+I (638) spi_flash: detected chip: generic
+I (641) spi_flash: flash io: dio
+I (646) main_task: Started on CPU0
+I (656) main_task: Calling app_main()
+I (656) VICTIM_MAIN: === VICTIM NODE STARTING ===
+I (656) SD_STATUS: clock seeded from build stamp 2026-10-19 18:40:50 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (666) SD_STATUS: Reset reason: POWERON
+I (676) sdspi_transaction: cmd=52, R1 response: command not supported
+I (716) sdspi_transaction: cmd=5, R1 response: command not supported
+I (746) SD_STATUS: clock: card anchor is older than the build stamp - keeping the build stamp.
+=== SD CARD ENVIRONMENT REPORT (NODE_F42DC973E618) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 18:40:50 PHT
+  Source: FIRMWARE BUILD TIME + uptime - AN ESTIMATE, not a capture time. Connect this board to a laptop once to fix it.
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: blackhole
+  Build topology: tree
+  Firmware built: 2026-10-19 18:40:50
+  Run started: 2026-10-19 18:40:50 PHT (clock: build)
+  Recorded location: G402
+  Node: NODE_F42DC973E618 (MAC F4:2D:C9:73:E6:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 561
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 525
+I (1526) VICTIM_MAIN: SD ENV: OK -- /sdcard/blackhole/tree/G402/status_NODE_F42DC973E618.txt
+I (1536) NODE_ID: Identity: "Board-F4:18" role=CHILD mac=f4:2d:c9:73:e6:18 (via MAC (no node_config.txt nickname))
+I (1586) wifi:wifi driver task: 3ffcbd08, prio:23, stack:6656, core=0
+I (1586) wifi:wifi firmware version: 0947e8b
+I (1586) wifi:wifi certification version: v7.0
+I (1586) wifi:config NVS flash: enabled
+I (1586) wifi:config nano formatting: disabled
+I (1596) wifi:Init data frame dynamic rx buffer num: 32
+I (1596) wifi:Init static rx mgmt buffer num: 5
+I (1606) wifi:Init management short buffer num: 32
+I (1606) wifi:Init dynamic tx buffer num: 32
+I (1606) wifi:Init static rx buffer size: 1600
+I (1616) wifi:Init static rx buffer num: 10
+I (1616) wifi:Init dynamic rx buffer num: 32
+I (1626) wifi_init: rx ba win: 6
+I (1626) wifi_init: accept mbox: 6
+I (1626) wifi_init: tcpip mbox: 32
+I (1636) wifi_init: udp mbox: 6
+I (1636) wifi_init: tcp mbox: 6
+I (1646) wifi_init: tcp tx win: 5760
+I (1646) wifi_init: tcp rx win: 5760
+I (1646) wifi_init: tcp mss: 1440
+I (1656) wifi_init: WiFi IRAM OP enabled
+I (1656) wifi_init: WiFi RX IRAM OP enabled
+I (1666) wifi:Set ps type: 0, coexist: 0
+I (1676) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1676) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1686) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1766) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1776) wifi:mode : sta (f4:2d:c9:73:e6:18) + softAP (f4:2d:c9:73:e6:19)
+I (1776) wifi:enable tsf
+I (1786) wifi:Total power save buffer number: 16
+I (1786) wifi:Init max length of beacon: 752/752
+I (1786) wifi:Init max length of beacon: 752/752
+I (1796) mesh: <nvs>read layer:0, err:0x1102
+I (1796) mesh: <nvs>read assoc:0, err:0x1102
+I (1796) MESH_SETUP: Topology shaping: TREE (max_layer=25, max_children=10)
+I (1806) wifi:Set ps type: 0, coexist: 0
+I (1836) wifi:Total power save buffer number: 16
+W (2096) MESH_SETUP: STICKY PARENTS (D-26): switch set - watch 60000->180000 ms, keep -120->-126, switch -78->-84 dBm (parent SELECTION left stock: select -78 dBm)
+I (2106) wifi:mode : sta (f4:2d:c9:73:e6:18)
+I (2116) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2116) MESH_SETUP: Mesh stack started.
+I (2116) MESH_SETUP: Mesh started. Node ID: NODE_F42DC973E618  Role: 1
+I (2126) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+I (2416) wifi:mode : sta (f4:2d:c9:73:e6:18) + softAP (f4:2d:c9:73:e6:19)
+I (2416) wifi:Total power save buffer number: 16
+I (2416) wifi:Init max length of beacon: 752/752
+I (2426) wifi:Init max length of beacon: 752/752
+I (2436) wifi:Total power save buffer number: 16
+I (2886) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (2886) wifi:state: init -> auth (0xb0)
+I (2946) wifi:state: auth -> assoc (0x0)
+I (3006) wifi:state: assoc -> run (0x10)
+I (3016) wifi:connected with ESPM_34ED80, aid = 1, channel 11, BW20, bssid = b4:bf:e9:34:ed:81
+I (3016) wifi:security: Open Auth, phy: bgn, rssi: -67, cipher(pairwise:0x0, group:0x0), pmf:0
+I (3036) wifi:pm start, type: 0
+I (3036) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3036) MESH_SETUP: Parent connected. Layer=3  ParentMAC=b4:bf:e9:34:ed:81  IsRoot=NO
+I (3046) MESH_SETUP: ==============================
+I (3046) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (3056) MESH_SETUP: ==============================
+I (3066) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3066) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3076) MESH_SETUP: Mesh connected. Layer: 3  Root: NO
+I (3086) VICTIM_MAIN: Node ID: NODE_F42DC973E618   Run ID: RUN_001
+I (3086) PHASE_LISTENER: Phase listener task running.
+I (3096) PHASE_LISTENER: Phase listener started.
+I (3096) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).
+I (3106) PROBE_RELAY: Probe relay started (honest relay).
+W (3116) SPIFFS: mount failed, -10025. formatting...
+I (3116) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (3126) wifi:station: 20:50:0d:e7:0c:80 join, AID=1, bgn, 20
+I (3136) MESH_SETUP: Routing table updated (node added).
+I (3136) MESH_SETUP: ==============================
+I (3146) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3146) MESH_SETUP: ==============================
+I (3156) MESH_SETUP: Child connected: aid=1 MAC=20:50:0d:e7:0c:80
+I (3156) MESH_SETUP: ==============================
+I (3166) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3166) MESH_SETUP: ==============================
+I (3176) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3186) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+I (3326) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM36) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM36 --role child --topology tree --attack blackhole --repeat 1 --scenario highload --location G402 --label node4
+  finished (exit 0)
+  crash watch on node4 (COM36) -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\highload\node4_COM36_serial_oct19_0641pm.log
+
+> node3  -  blackhole victim  -  blackhole victim on COM35   .\run.ps1 -Port COM35 -Role child -Label node3 -Topology tree -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack blackhole -BlackholeRole victim -AttackerMac 20:50:0d:e7:1c:38 -Export -SkipExportNow -Mac 20:50:0d:e7:0c:80 -SharedBuild   (06:41:30 pm)
+Setting COM35's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 18:41:31 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM35 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM35
+Connecting....
+Connecting....
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.6 seconds.
+Hard resetting via RTS pin...
+  Attacker MAC for this build: 20:50:0d:e7:1c:38 (from the wizard, overrides mesh_config.h)
+Board: node3 (on COM35, MAC 20:50:0d:e7:0c:80)
+Flashing + monitoring child on COM35 (topology=tree, attack=blackhole, scenario=highload, build=C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/partition_table/partition-table.bin C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/child_node.bin"
+child_node.bin binary size 0x121050 bytes. Smallest app partition is 0x180000 bytes. 0x5efb0 bytes (25%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_victim_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_victim_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM35 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM35
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00131fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16527...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000756a... (100 %)
+Wrote 26160 bytes (16527 compressed) at 0x00001000 in 0.5 seconds (effective 387.0 kbit/s)...
+Hash of data verified.
+Compressed 1183824 bytes to 738715...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bd1e... (4 %)
+Writing at 0x0002975c... (6 %)
+Writing at 0x00035753... (8 %)
+Writing at 0x0003eed2... (10 %)
+Writing at 0x0004822b... (13 %)
+Writing at 0x0004db2e... (15 %)
+Writing at 0x00053a57... (17 %)
+Writing at 0x00059588... (19 %)
+Writing at 0x0005f064... (21 %)
+Writing at 0x000648a2... (23 %)
+Writing at 0x0006a53e... (26 %)
+Writing at 0x000702d9... (28 %)
+Writing at 0x00076176... (30 %)
+Writing at 0x0007c2f8... (32 %)
+Writing at 0x0008234f... (34 %)
+Writing at 0x0008875f... (36 %)
+Writing at 0x0008de44... (39 %)
+Writing at 0x00093749... (41 %)
+Writing at 0x00098efa... (43 %)
+Writing at 0x0009e66a... (45 %)
+Writing at 0x000a3c7d... (47 %)
+Writing at 0x000a95c3... (50 %)
+Writing at 0x000aed3e... (52 %)
+Writing at 0x000b43b5... (54 %)
+Writing at 0x000b982c... (56 %)
+Writing at 0x000bf37e... (58 %)
+Writing at 0x000c51b7... (60 %)
+Writing at 0x000cab82... (63 %)
+Writing at 0x000d027d... (65 %)
+Writing at 0x000d5cf5... (67 %)
+Writing at 0x000dbbf0... (69 %)
+Writing at 0x000e141a... (71 %)
+Writing at 0x000e7037... (73 %)
+Writing at 0x000ecd1b... (76 %)
+Writing at 0x000f2725... (78 %)
+Writing at 0x000f8524... (80 %)
+Writing at 0x000fe0dc... (82 %)
+Writing at 0x00103be2... (84 %)
+Writing at 0x00109e77... (86 %)
+Writing at 0x00113924... (89 %)
+Writing at 0x00119533... (91 %)
+Writing at 0x0011f1bb... (93 %)
+Writing at 0x001252e3... (95 %)
+Writing at 0x0012ad70... (97 %)
+Writing at 0x001305d9... (100 %)
+Wrote 1183824 bytes (738715 compressed) at 0x00010000 in 17.7 seconds (effective 533.6 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1421.9 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2484.7 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM35 at 115200 baud
+I (190) esp_image: segment 3: paddr=00050020 vaddr=400d0020 size=d0b64h (854884) map
+I (482) esp_image: segment 4: paddr=00120b8c vaddr=4008b19c size=1046ch ( 66668) load
+I (508) esp_image: segment 5: paddr=00131000 vaddr=5000005c size=00020h (    32) load
+I (522) boot: Loaded app from partition at offset 0x10000
+I (523) boot: Set actual ota_seq=1 in otadata[0]
+I (523) boot: Disabling RNG early entropy source...
+I (537) cpu_start: Multicore app
+I (545) cpu_start: GPIO 3 and 1 are used as console UART I/O pins
+I (546) cpu_start: Pro cpu start user code
+I (546) cpu_start: cpu freq: 160000000 Hz
+I (550) app_init: Application information:
+I (555) app_init: Project name:     child_node
+I (560) app_init: App version:      backup/angelo-2026-10-01-266-g4
+I (567) app_init: Compile time:     Oct 19 2026 18:40:50
+I (573) app_init: ELF file SHA256:  76807c6dc...
+I (578) app_init: ESP-IDF:          v5.5.4-dirty
+I (584) efuse_init: Min chip rev:     v0.0
+I (588) efuse_init: Max chip rev:     v3.99 
+I (593) efuse_init: Chip rev:         v3.1
+I (598) heap_init: Initializing. RAM available for dynamic allocation:
+I (606) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (611) heap_init: At 3FFBC7A8 len 00023858 (142 KiB): DRAM
+I (618) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (624) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (631) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM
+W (638) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (651) spi_flash: detected chip: generic
+I (655) spi_flash: flash io: dio
+I (660) main_task: Started on CPU0
+I (670) main_task: Calling app_main()
+I (670) VICTIM_MAIN: === VICTIM NODE STARTING ===
+I (670) SD_STATUS: clock seeded from build stamp 2026-10-19 18:40:50 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (680) SD_STATUS: Reset reason: POWERON
+I (690) sdspi_transaction: cmd=52, R1 response: command not supported
+I (730) sdspi_transaction: cmd=5, R1 response: command not supported
+I (760) SD_STATUS: clock: set from the card's host anchor -> 2026-10-19 18:41:31 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE70C80) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 18:41:31 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: blackhole
+  Build topology: tree
+  Firmware built: 2026-10-19 18:40:50
+  Run started: 2026-10-19 18:41:31 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE70C80 (MAC 20:50:0D:E7:0C:80)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 43
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 11
+I (1540) VICTIM_MAIN: SD ENV: OK -- /sdcard/blackhole/tree/G402/status_NODE_20500DE70C80.txt
+I (1550) NODE_ID: Identity: "Board-20:80" role=CHILD mac=20:50:0d:e7:0c:80 (via MAC (no node_config.txt nickname))
+I (1590) wifi:wifi driver task: 3ffcbd08, prio:23, stack:6656, core=0
+I (1590) wifi:wifi firmware version: 0947e8b
+I (1590) wifi:wifi certification version: v7.0
+I (1590) wifi:config NVS flash: enabled
+I (1590) wifi:config nano formatting: disabled
+I (1600) wifi:Init data frame dynamic rx buffer num: 32
+I (1600) wifi:Init static rx mgmt buffer num: 5
+I (1610) wifi:Init management short buffer num: 32
+I (1610) wifi:Init dynamic tx buffer num: 32
+I (1610) wifi:Init static rx buffer size: 1600
+I (1620) wifi:Init static rx buffer num: 10
+I (1620) wifi:Init dynamic rx buffer num: 32
+I (1630) wifi_init: rx ba win: 6
+I (1630) wifi_init: accept mbox: 6
+I (1630) wifi_init: tcpip mbox: 32
+I (1640) wifi_init: udp mbox: 6
+I (1640) wifi_init: tcp mbox: 6
+I (1650) wifi_init: tcp tx win: 5760
+I (1650) wifi_init: tcp rx win: 5760
+I (1650) wifi_init: tcp mss: 1440
+I (1660) wifi_init: WiFi IRAM OP enabled
+I (1660) wifi_init: WiFi RX IRAM OP enabled
+I (1670) wifi:Set ps type: 0, coexist: 0
+I (1680) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1680) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1690) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1770) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1790) wifi:mode : sta (20:50:0d:e7:0c:80) + softAP (20:50:0d:e7:0c:81)
+I (1790) wifi:enable tsf
+I (1790) wifi:Total power save buffer number: 16
+I (1790) wifi:Init max length of beacon: 752/752
+I (1790) wifi:Init max length of beacon: 752/752
+I (1800) mesh: <nvs>read layer:0, err:0x1102
+I (1800) mesh: <nvs>read assoc:0, err:0x1102
+I (1810) MESH_SETUP: Topology shaping: TREE (max_layer=25, max_children=10)
+I (1810) wifi:Set ps type: 0, coexist: 0
+I (1850) wifi:Total power save buffer number: 16
+W (2110) MESH_SETUP: STICKY PARENTS (D-26): switch set - watch 60000->180000 ms, keep -120->-126, switch -78->-84 dBm (parent SELECTION left stock: select -78 dBm)
+I (2120) wifi:mode : sta (20:50:0d:e7:0c:80)
+I (2130) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2130) MESH_SETUP: Mesh stack started.
+I (2130) MESH_SETUP: Mesh started. Node ID: NODE_20500DE70C80  Role: 1
+I (2140) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+I (2430) wifi:mode : sta (20:50:0d:e7:0c:80) + softAP (20:50:0d:e7:0c:81)
+I (2430) wifi:Total power save buffer number: 16
+I (2430) wifi:Init max length of beacon: 752/752
+I (2440) wifi:Init max length of beacon: 752/752
+I (2450) wifi:Total power save buffer number: 16
+I (3090) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (3090) wifi:state: init -> auth (0xb0)
+I (3100) wifi:state: auth -> assoc (0x0)
+I (3110) wifi:state: assoc -> run (0x10)
+I (3120) wifi:connected with ESPM_34ED80, aid = 2, channel 11, BW20, bssid = b4:bf:e9:34:ed:81
+I (3120) wifi:security: Open Auth, phy: bgn, rssi: -70, cipher(pairwise:0x0, group:0x0), pmf:0
+I (3140) wifi:pm start, type: 0
+I (3140) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3140) MESH_SETUP: Parent connected. Layer=3  ParentMAC=b4:bf:e9:34:ed:81  IsRoot=NO
+I (3150) MESH_SETUP: ==============================
+I (3150) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (3160) MESH_SETUP: ==============================
+I (3170) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3170) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3180) MESH_SETUP: Mesh connected. Layer: 3  Root: NO
+I (3190) VICTIM_MAIN: Node ID: NODE_20500DE70C80   Run ID: RUN_001
+I (3190) PHASE_LISTENER: Phase listener task running.
+I (3200) PHASE_LISTENER: Phase listener started.
+I (3200) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).
+I (3210) PROBE_RELAY: Probe relay started (honest relay).
+W (3220) SPIFFS: mount failed, -10025. formatting...
+I (3230) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (3230) wifi:station: 20:50:0d:e7:1c:38 join, AID=1, bgn, 20
+I (3240) MESH_SETUP: Routing table updated (node added).
+I (3240) MESH_SETUP: ==============================
+I (3250) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3250) MESH_SETUP: ==============================
+I (3260) MESH_SETUP: Child connected: aid=1 MAC=20:50:0d:e7:1c:38
+I (3270) MESH_SETUP: ==============================
+I (3270) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3280) MESH_SETUP: ==============================
+I (3280) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3400) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+I (4620) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
+I (4620) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM35) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM35 --role child --topology tree --attack blackhole --repeat 1 --scenario highload --location G402 --label node3
+  finished (exit 0)
+  crash watch on node3 (COM35) -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\highload\node3_COM35_serial_oct19_0642pm.log
+
+> node2  -  blackhole attacker  -  blackhole ATTACKER on COM8   .\run.ps1 -Port COM8 -Role child -Label node2 -Topology tree -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack blackhole -BlackholeRole attacker -AttackerMac 20:50:0d:e7:1c:38 -Export -SkipExportNow -Mac 20:50:0d:e7:1c:38 -SharedBuild   (06:42:09 pm)
+Setting COM8's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 18:42:10 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM8 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM8
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.5 seconds.
+Hard resetting via RTS pin...
+  Attacker MAC for this build: 20:50:0d:e7:1c:38 (from the wizard, overrides mesh_config.h)
+Board: node2 (on COM8, MAC 20:50:0d:e7:1c:38)
+Flashing + monitoring child on COM8 (topology=tree, attack=blackhole, scenario=highload, build=C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_attacker_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_attacker_highload_GUI
+Executing "ninja flash"...
+[0/1] Re-running CMake...
+-- Minimal build - OFF
+-- ccache will be used for faster recompilation
+-- Building ESP-IDF components for target esp32
+-- ESP-TEE is currently supported only on the esp32c6;esp32h2;esp32c5 SoCs
+-- Project sdkconfig file A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/sdkconfig
+Loading defaults file A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/sdkconfig.defaults...
+-- Compiler supported targets: xtensa-esp-elf
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- USING O3
+-- App "child_node" version: backup/angelo-2026-10-01-266-g4
+-- Adding linker script C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/esp-idf/esp_system/ld/memory.ld
+-- Adding linker script C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/esp-idf/esp_system/ld/sections.ld.in
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.api.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.libgcc.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.newlib-data.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.syscalls.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.libc-funcs.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom/esp32/ld/esp32.rom.newlib-reent-funcs.ld
+-- Adding linker script C:/Espressif/frameworks/esp-idf-v5.5.4/components/soc/esp32/ld/esp32.peripherals.ld
+-- child_node: building BLACKHOLE ATTACKER relay (ACTIVE_ATTACK=1, BLACKHOLE_ROLE=0)
+-- child_node: TRAFFIC_PROFILE=2 (1=burst 2=highload)
+-- Components: app_trace app_update bootloader bootloader_support bt cmock console cxx driver efuse esp-tls esp_adc esp_app_format esp_bootloader_format esp_coex esp_common esp_driver_ana_cmpr esp_driver_bitscrambler esp_driver_cam esp_driver_dac esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_i2s esp_driver_isp esp_driver_jpeg esp_driver_ledc esp_driver_mcpwm esp_driver_parlio esp_driver_pcnt esp_driver_ppa esp_driver_rmt esp_driver_sdio esp_driver_sdm esp_driver_sdmmc esp_driver_sdspi esp_driver_spi esp_driver_touch_sens esp_driver_tsens esp_driver_twai esp_driver_uart esp_driver_usb_serial_jtag esp_eth esp_event esp_gdbstub esp_hal_ieee802154 esp_hid esp_http_client esp_http_server esp_https_ota esp_https_server esp_hw_support esp_lcd esp_local_ctrl esp_mm esp_netif esp_netif_stack esp_partition esp_phy esp_pm esp_psram esp_ringbuf esp_rom esp_security esp_system esp_timer esp_vfs_console esp_wifi espcoredump esptool_py fatfs freertos hal heap http_parser idf_test ieee802154 json log lwip main mbedtls mesh_common mqtt newlib nvs_flash nvs_sec_provider openthread partition_table perfmon protobuf-c protocomm pthread rt sdmmc soc spi_flash spiffs tcp_transport ulp unity usb vfs wear_levelling wifi_provisioning wpa_supplicant xtensa
+-- Component paths: C:/Espressif/frameworks/esp-idf-v5.5.4/components/app_trace C:/Espressif/frameworks/esp-idf-v5.5.4/components/app_update C:/Espressif/frameworks/esp-idf-v5.5.4/components/bootloader C:/Espressif/frameworks/esp-idf-v5.5.4/components/bootloader_support C:/Espressif/frameworks/esp-idf-v5.5.4/components/bt C:/Espressif/frameworks/esp-idf-v5.5.4/components/cmock C:/Espressif/frameworks/esp-idf-v5.5.4/components/console C:/Espressif/frameworks/esp-idf-v5.5.4/components/cxx C:/Espressif/frameworks/esp-idf-v5.5.4/components/driver C:/Espressif/frameworks/esp-idf-v5.5.4/components/efuse C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp-tls C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_adc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_app_format C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_bootloader_format C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_coex C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_common C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ana_cmpr C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_bitscrambler C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_cam C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_dac C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_gpio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_gptimer C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_i2c C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_i2s C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_isp C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_jpeg C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ledc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_mcpwm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_parlio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_pcnt C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_ppa C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_rmt C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdio C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdmmc C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_sdspi C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_spi C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_touch_sens C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_tsens C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_twai C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_uart C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_driver_usb_serial_jtag C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_eth C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_event C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_gdbstub C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hal_ieee802154 C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hid C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_http_client C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_http_server C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_https_ota C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_https_server C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_hw_support C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_lcd C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_local_ctrl C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_mm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_netif C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_netif_stack C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_partition C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_phy C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_pm C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_psram C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_ringbuf C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_rom C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_security C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_system C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_timer C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_vfs_console C:/Espressif/frameworks/esp-idf-v5.5.4/components/esp_wifi C:/Espressif/frameworks/esp-idf-v5.5.4/components/espcoredump C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py C:/Espressif/frameworks/esp-idf-v5.5.4/components/fatfs C:/Espressif/frameworks/esp-idf-v5.5.4/components/freertos C:/Espressif/frameworks/esp-idf-v5.5.4/components/hal C:/Espressif/frameworks/esp-idf-v5.5.4/components/heap C:/Espressif/frameworks/esp-idf-v5.5.4/components/http_parser C:/Espressif/frameworks/esp-idf-v5.5.4/components/idf_test C:/Espressif/frameworks/esp-idf-v5.5.4/components/ieee802154 C:/Espressif/frameworks/esp-idf-v5.5.4/components/json C:/Espressif/frameworks/esp-idf-v5.5.4/components/log C:/Espressif/frameworks/esp-idf-v5.5.4/components/lwip A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/child_node/main C:/Espressif/frameworks/esp-idf-v5.5.4/components/mbedtls A:/Angelo/Excelsior/THESIS/T/ESP32-Environment/components/mesh_common C:/Espressif/frameworks/esp-idf-v5.5.4/components/mqtt C:/Espressif/frameworks/esp-idf-v5.5.4/components/newlib C:/Espressif/frameworks/esp-idf-v5.5.4/components/nvs_flash C:/Espressif/frameworks/esp-idf-v5.5.4/components/nvs_sec_provider C:/Espressif/frameworks/esp-idf-v5.5.4/components/openthread C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table C:/Espressif/frameworks/esp-idf-v5.5.4/components/perfmon C:/Espressif/frameworks/esp-idf-v5.5.4/components/protobuf-c C:/Espressif/frameworks/esp-idf-v5.5.4/components/protocomm C:/Espressif/frameworks/esp-idf-v5.5.4/components/pthread C:/Espressif/frameworks/esp-idf-v5.5.4/components/rt C:/Espressif/frameworks/esp-idf-v5.5.4/components/sdmmc C:/Espressif/frameworks/esp-idf-v5.5.4/components/soc C:/Espressif/frameworks/esp-idf-v5.5.4/components/spi_flash C:/Espressif/frameworks/esp-idf-v5.5.4/components/spiffs C:/Espressif/frameworks/esp-idf-v5.5.4/components/tcp_transport C:/Espressif/frameworks/esp-idf-v5.5.4/components/ulp C:/Espressif/frameworks/esp-idf-v5.5.4/components/unity C:/Espressif/frameworks/esp-idf-v5.5.4/components/usb C:/Espressif/frameworks/esp-idf-v5.5.4/components/vfs C:/Espressif/frameworks/esp-idf-v5.5.4/components/wear_levelling C:/Espressif/frameworks/esp-idf-v5.5.4/components/wifi_provisioning C:/Espressif/frameworks/esp-idf-v5.5.4/components/wpa_supplicant C:/Espressif/frameworks/esp-idf-v5.5.4/components/xtensa
+-- Configuring done (9.3s)
+-- Generating done (1.4s)
+-- Build files have been written to: C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI
+[1/11] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_attacker_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[2/11] No install step for 'bootloader'
+[3/11] Building C object esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj
+[4/11] Completed 'bootloader'
+[5/11] Linking C static library esp-idf\esp_app_format\libesp_app_format.a
+[6/11] Generating esp-idf/esp_system/ld/sections.ld
+[7/11] Linking CXX executable child_node.elf
+[8/11] Generating binary image from built executable
+esptool.py v4.12.0
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+Generated C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/child_node.bin
+[9/11] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\T_1140e558\child_node\build_child_blackhole_tree_attacker_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/partition_table/partition-table.bin C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI/child_node.bin"
+child_node.bin binary size 0x121980 bytes. Smallest app partition is 0x180000 bytes. 0x5e680 bytes (25%) free.
+[9/11] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/T_1140e558/child_node/build_child_blackhole_tree_attacker_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM8 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM8
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00131fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16527...
+Writing at 0x00001000... (50 %)
+Writing at 0x00007569... (100 %)
+Wrote 26160 bytes (16527 compressed) at 0x00001000 in 0.5 seconds (effective 385.1 kbit/s)...
+Hash of data verified.
+Compressed 1186176 bytes to 739685...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bc40... (4 %)
+Writing at 0x00029898... (6 %)
+Writing at 0x00035b8c... (8 %)
+Writing at 0x0003ecfd... (10 %)
+Writing at 0x00048683... (13 %)
+Writing at 0x0004decd... (15 %)
+Writing at 0x00053e76... (17 %)
+Writing at 0x000599f4... (19 %)
+Writing at 0x0005f4c6... (21 %)
+Writing at 0x00064cb1... (23 %)
+Writing at 0x0006a94d... (26 %)
+Writing at 0x000706df... (28 %)
+Writing at 0x000765b5... (30 %)
+Writing at 0x0007c724... (32 %)
+Writing at 0x000827d8... (34 %)
+Writing at 0x00088cc4... (36 %)
+Writing at 0x0008e282... (39 %)
+Writing at 0x00093b60... (41 %)
+Writing at 0x00099318... (43 %)
+Writing at 0x0009ea73... (45 %)
+Writing at 0x000a40ab... (47 %)
+Writing at 0x000a99f5... (50 %)
+Writing at 0x000af1b9... (52 %)
+Writing at 0x000b47ba... (54 %)
+Writing at 0x000b9c06... (56 %)
+Writing at 0x000bf78d... (58 %)
+Writing at 0x000c56b8... (60 %)
+Writing at 0x000cafc2... (63 %)
+Writing at 0x000d069a... (65 %)
+Writing at 0x000d60fe... (67 %)
+Writing at 0x000dc077... (69 %)
+Writing at 0x000e181c... (71 %)
+Writing at 0x000e7421... (73 %)
+Writing at 0x000ed149... (76 %)
+Writing at 0x000f2b61... (78 %)
+Writing at 0x000f8949... (80 %)
+Writing at 0x000fe470... (82 %)
+Writing at 0x00103fdb... (84 %)
+Writing at 0x0010a296... (86 %)
+Writing at 0x00113ceb... (89 %)
+Writing at 0x001199bb... (91 %)
+Writing at 0x0011f55e... (93 %)
+Writing at 0x00125721... (95 %)
+Writing at 0x0012b1c7... (97 %)
+Writing at 0x0013089b... (100 %)
+Wrote 1186176 bytes (739685 compressed) at 0x00010000 in 18.0 seconds (effective 528.4 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1414.1 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2457.4 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM8 at 115200 baud
+size=0aa8ch ( 43660) load
+I (190) esp_image: segment 3: paddr=00050020 vaddr=400d0020 size=d0d88h (855432) map
+I (482) esp_image: segment 4: paddr=00120db0 vaddr=4008aa8c size=10b7ch ( 68476) load
+I (509) esp_image: segment 5: paddr=00131934 vaddr=5000005c size=00020h (    32) load
+I (523) boot: Loaded app from partition at offset 0x10000
+I (524) boot: Set actual ota_seq=1 in otadata[0]
+I (524) boot: Disabling RNG early entropy source...
+I (538) cpu_start: Multicore app
+I (546) cpu_start: GPIO 3 and 1 are used as console UART I/O pins
+I (546) cpu_start: Pro cpu start user code
+I (546) cpu_start: cpu freq: 160000000 Hz
+I (551) app_init: Application information:
+I (556) app_init: Project name:     child_node
+I (561) app_init: App version:      backup/angelo-2026-10-01-266-g4
+I (568) app_init: Compile time:     Oct 19 2026 18:42:32
+I (574) app_init: ELF file SHA256:  31089a1b8...
+I (579) app_init: ESP-IDF:          v5.5.4-dirty
+I (584) efuse_init: Min chip rev:     v0.0
+I (589) efuse_init: Max chip rev:     v3.99 
+I (594) efuse_init: Chip rev:         v3.1
+I (599) heap_init: Initializing. RAM available for dynamic allocation:
+I (606) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (612) heap_init: At 3FFBC798 len 00023868 (142 KiB): DRAM
+I (618) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (625) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (631) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM
+W (639) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (651) spi_flash: detected chip: generic
+I (656) spi_flash: flash io: dio
+I (661) main_task: Started on CPU0
+I (671) main_task: Calling app_main()
+I (671) BLACKHOLE: === BLACKHOLE ATTACKER (relay) STARTING ===
+I (671) SD_STATUS: clock seeded from build stamp 2026-10-19 18:42:32 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (681) SD_STATUS: Reset reason: POWERON
+I (691) sdspi_transaction: cmd=52, R1 response: command not supported
+I (731) sdspi_transaction: cmd=5, R1 response: command not supported
+I (761) SD_STATUS: clock: card anchor is older than the build stamp - keeping the build stamp.
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE71C38) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 18:42:32 PHT
+  Source: FIRMWARE BUILD TIME + uptime - AN ESTIMATE, not a capture time. Connect this board to a laptop once to fix it.
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: blackhole
+  Build topology: tree
+  Firmware built: 2026-10-19 18:42:32
+  Run started: 2026-10-19 18:42:32 PHT (clock: build)
+  Recorded location: G402
+  Node: NODE_20500DE71C38 (MAC 20:50:0D:E7:1C:38)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 29
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+I (1861) BLACKHOLE: SD ENV: OK -- /sdcard/blackhole/tree/G402/status_NODE_20500DE71C38.txt
+I (1871) NODE_ID: Identity: "Board-20:38" role=BLACKHOLE mac=20:50:0d:e7:1c:38 (via MAC (no node_config.txt nickname))
+I (1911) wifi:wifi driver task: 3ffcbcf8, prio:23, stack:6656, core=0
+I (1911) wifi:wifi firmware version: 0947e8b
+I (1911) wifi:wifi certification version: v7.0
+I (1911) wifi:config NVS flash: enabled
+I (1911) wifi:config nano formatting: disabled
+I (1921) wifi:Init data frame dynamic rx buffer num: 32
+I (1921) wifi:Init static rx mgmt buffer num: 5
+I (1931) wifi:Init management short buffer num: 32
+I (1931) wifi:Init dynamic tx buffer num: 32
+I (1931) wifi:Init static rx buffer size: 1600
+I (1941) wifi:Init static rx buffer num: 10
+I (1941) wifi:Init dynamic rx buffer num: 32
+I (1951) wifi_init: rx ba win: 6
+I (1951) wifi_init: accept mbox: 6
+I (1951) wifi_init: tcpip mbox: 32
+I (1961) wifi_init: udp mbox: 6
+I (1961) wifi_init: tcp mbox: 6
+I (1971) wifi_init: tcp tx win: 5760
+I (1971) wifi_init: tcp rx win: 5760
+I (1971) wifi_init: tcp mss: 1440
+I (1981) wifi_init: WiFi IRAM OP enabled
+I (1981) wifi_init: WiFi RX IRAM OP enabled
+I (1991) wifi:Set ps type: 0, coexist: 0
+I (2001) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (2001) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (2011) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (2091) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (2111) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (2111) wifi:enable tsf
+I (2111) wifi:Total power save buffer number: 16
+I (2111) wifi:Init max length of beacon: 752/752
+I (2111) wifi:Init max length of beacon: 752/752
+I (2121) mesh: <nvs>read layer:0, err:0x1102
+I (2121) mesh: <nvs>read assoc:0, err:0x1102
+I (2131) MESH_SETUP: Topology shaping: TREE (max_layer=25, max_children=10)
+I (2131) wifi:Set ps type: 0, coexist: 0
+I (2161) wifi:Total power save buffer number: 16
+W (2421) MESH_SETUP: STICKY PARENTS (D-26): switch set - watch 60000->180000 ms, keep -120->-126, switch -78->-84 dBm (parent SELECTION left stock: select -78 dBm)
+I (2431) wifi:mode : sta (20:50:0d:e7:1c:38)
+I (2441) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2441) MESH_SETUP: Mesh stack started.
+I (2441) MESH_SETUP: Mesh started. Node ID: NODE_20500DE71C38  Role: 2
+I (2451) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+I (2741) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (2741) wifi:Total power save buffer number: 16
+I (2741) wifi:Init max length of beacon: 752/752
+I (2751) wifi:Init max length of beacon: 752/752
+I (2761) wifi:Total power save buffer number: 16
+I (3341) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (3341) wifi:state: init -> auth (0xb0)
+I (3351) wifi:state: auth -> assoc (0x0)
+I (3361) wifi:state: assoc -> run (0x10)
+I (3361) wifi:connected with ESPM_25B768, aid = 2, channel 11, BW20, bssid = 70:4b:ca:25:b7:69
+I (3361) wifi:security: Open Auth, phy: bgn, rssi: -71, cipher(pairwise:0x0, group:0x0), pmf:0
+I (3381) wifi:pm start, type: 0
+I (3381) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3391) MESH_SETUP: Parent connected. Layer=3  ParentMAC=70:4b:ca:25:b7:69  IsRoot=NO
+I (3391) MESH_SETUP: ==============================
+I (3401) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (3401) MESH_SETUP: ==============================
+I (3411) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3411) MESH_SETUP: Root address: b0:cb:d8:f3:32:19
+I (3421) MESH_SETUP: Mesh connected. Layer: 3  Root: NO
+I (3431) BLACKHOLE: Node ID: NODE_20500DE71C38   Run ID: RUN_001
+I (3431) BLACKHOLE: This is the blackhole ATTACKER. My STA MAC: 20:50:0d:e7:1c:38
+W (3441) BLACKHOLE: POSITIONAL ATTACK: I drop only what my DESCENDANTS route through me. As a leaf, or with every victim closer to the root than me, I drop nothing and the run looks benign. Check the root's PARENT/CHILD STRUCTURE before trusting it.
+I (3461) BH_TARGET: Attacker MAC from compiled default: 20:50:0d:e7:1c:38
+I (3471) BLACKHOLE: Attacker MAC (compiled) matches this board.
+I (3481) PHASE_LISTENER: Phase listener task running.
+I (3481) PHASE_LISTENER: Phase listener started.
+I (3491) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).
+I (3501) PROBE_RELAY: Probe relay started (WITH a forward-decision hook (attacker)).
+W (3511) SPIFFS: mount failed, -10025. formatting...
+I (3651) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM8) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM8 --role child --topology tree --attack blackhole --repeat 1 --scenario highload --location G402 --label node2
+  finished (exit 0)
+  crash watch on node2 (COM8) -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\highload\node2_COM8_serial_oct19_0643pm.log
+All boards done in 5 min 21 sec. Exports -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\tree\G402\highload

@@ -1,0 +1,19 @@
+collect_run.py --ports COM8,COM36,COM35 --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-19 08:57 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\blackhole-tree-g402-burst.json --pick COM8=blackhole/tree/G402/victim_NODE_20500DE70C80_r34_b60_telem.csv;COM36=blackhole/tree/G402/victim_NODE_F42DC973E618_r41_b576_telem.csv;COM35=blackhole/tree/G402/victim_NODE_20500DE71C38_r21_b39_telem.csv
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect_oct19_085756pm.log)
+
+-- COM8: reading the card ...
+   checked victim_NODE_20500DE70C80_r34_b60_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 52 s -> FULL
+   victim_NODE_20500DE70C80_r34_b60_telem.csv does NOT match the root's run: 597 of 754 probes (79.2 %) were sent in a different phase than the root was in when they arrived (a right, in-sync file is ~0 %): this file is from ANOTHER run than the root's, or the board's phase labels were out of sync (e.g. after a reboot)
+COLLECT: COM8 20500DE70C80 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_20500DE70C80_r34_b60_telem.csv (clean): baseline 300 s, attack 180 s, cooldown 120 s, stabilise 52 s -> FULL - does NOT match the root (79.2 % of probes in another phase). If you are sure, pick the file in Data > Import and footnote it
+
+-- COM36: reading the card ...
+   checked victim_NODE_F42DC973E618_r41_b576_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 67 s -> FULL
+   victim_NODE_F42DC973E618_r41_b576_telem.csv does NOT match the root's run: 301 of 411 probes (73.2 %) were sent in a different phase than the root was in when they arrived (a right, in-sync file is ~0 %): this file is from ANOTHER run than the root's, or the board's phase labels were out of sync (e.g. after a reboot)
+COLLECT: COM36 F42DC973E618 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_F42DC973E618_r41_b576_telem.csv (clean): baseline 300 s, attack 180 s, cooldown 120 s, stabilise 67 s -> FULL - does NOT match the root (73.2 % of probes in another phase). If you are sure, pick the file in Data > Import and footnote it
+
+-- COM35: reading the card ...
+   checked victim_NODE_20500DE71C38_r21_b39_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 172 s -> FULL
+COLLECT: COM35 20500DE71C38 OK victim_NODE_20500DE71C38_r21_b39_telem.csv -> victim_NODE-20500DE71C38_tree_blackhole_r1_oct19_0859PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 172 s
+
+COLLECT_SUMMARY: ok=1 skip=0 fail=2
+

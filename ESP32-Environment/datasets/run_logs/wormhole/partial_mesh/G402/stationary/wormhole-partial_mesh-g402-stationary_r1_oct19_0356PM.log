@@ -1,0 +1,1557 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-g402-stationary.json - 19/10/2026 3:56:40 pm
+Logging this run -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\wormhole-partial_mesh-g402-stationary_r1_oct19_0356PM.log
+  crash watch on 70:B0 (COM4) -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\70B0_COM4_serial_oct19_0356pm.log
+  crash watch: 1 more plugged-in board(s) are now listened to before the root starts
+
+> root  -  ROOT  -  ROOT (announces the phases) on COM3   .\run.ps1 -Port COM3 -Role root -Label root -Topology partial -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -Analyze -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18 -SharedBuild   (03:56:40 pm)
+Setting COM3's clock from this laptop (so captures get real dates) ...
+  crash watch on 70:B0 (COM4) closed - the port is needed for the next board
+LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 15:56:41 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM3
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 3.8 seconds.
+Hard resetting via RTS pin...
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Executing action: flash
+Running ninja in directory 'C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI'
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/partition_table/partition-table.bin" "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/root_node.bin""
+root_node.bin binary size 0x124170 bytes. Smallest app partition is 0x180000 bytes. 0x5be90 bytes (24%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI\bootloader\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/bootloader/bootloader.bin""
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D "WORKING_DIRECTORY=C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI" -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM3 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 root_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00134fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16528...
+Writing at 0x00001000... (50 %)
+Writing at 0x00007567... (100 %)
+Wrote 26160 bytes (16528 compressed) at 0x00001000 in 0.5 seconds (effective 411.6 kbit/s)...
+Hash of data verified.
+Compressed 1196400 bytes to 745238...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bcef... (4 %)
+Writing at 0x000299ad... (6 %)
+Writing at 0x000362b4... (8 %)
+Writing at 0x0003eed4... (10 %)
+Writing at 0x00048eef... (13 %)
+Writing at 0x0004e7b4... (15 %)
+Writing at 0x000547d2... (17 %)
+Writing at 0x0005a30f... (19 %)
+Writing at 0x0005fca8... (21 %)
+Writing at 0x000654f6... (23 %)
+Writing at 0x0006af34... (26 %)
+Writing at 0x00070f77... (28 %)
+Writing at 0x00076c58... (30 %)
+Writing at 0x0007ce80... (32 %)
+Writing at 0x00082e89... (34 %)
+Writing at 0x00088abb... (36 %)
+Writing at 0x0008ec19... (39 %)
+Writing at 0x000942c4... (41 %)
+Writing at 0x0009997a... (43 %)
+Writing at 0x0009f220... (45 %)
+Writing at 0x000a486a... (47 %)
+Writing at 0x000aa15b... (50 %)
+Writing at 0x000afa38... (52 %)
+Writing at 0x000b5112... (54 %)
+Writing at 0x000ba672... (56 %)
+Writing at 0x000c00a7... (58 %)
+Writing at 0x000c5cb8... (60 %)
+Writing at 0x000cb7f1... (63 %)
+Writing at 0x000d1045... (65 %)
+Writing at 0x000d69b3... (67 %)
+Writing at 0x000dc9e1... (69 %)
+Writing at 0x000e21fc... (71 %)
+Writing at 0x000e7dfd... (73 %)
+Writing at 0x000eda95... (76 %)
+Writing at 0x000f33cb... (78 %)
+Writing at 0x000f9240... (80 %)
+Writing at 0x000fef6d... (82 %)
+Writing at 0x001048d5... (84 %)
+Writing at 0x0010a9cc... (86 %)
+Writing at 0x0011239c... (89 %)
+Writing at 0x0011a0c3... (91 %)
+Writing at 0x0011fd7c... (93 %)
+Writing at 0x00125b02... (95 %)
+Writing at 0x0012be50... (97 %)
+Writing at 0x001311d7... (100 %)
+Wrote 1196400 bytes (745238 compressed) at 0x00010000 in 17.8 seconds (effective 537.8 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1644.0 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2631.1 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+Checking location.txt again now that the new firmware runs (about 10 s) ...
+LOCATION_CHECK: OK G402
+[monitor] listening on COM3 at 115200 baud
+I (10361) MESH_SETUP: ==================================================================
+I (10371) MESH_SETUP:  MESH TOPOLOGY
+I (10371) MESH_SETUP:  TYPE        : PARTIAL
+I (10371) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (10381) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (10381) MESH_SETUP:  REACHABLE   : 0x02 (2)
+W (10391) MESH_SETUP:  STATUS      : WARN
+I (10391) MESH_SETUP:  DETAIL      : 2 nodes, each seen under only one parent so far - still a plain tree (depth 2); 2 node(s) not attached to the root
+I (10411) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10411) MESH_SETUP: ------------------------------------------------------------------
+I (10421) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10431) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       3  not yet
+I (10441) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET       2  not yet
+I (10451) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD   -77  0xFF UNSET       2  not yet
+I (10461) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       0  not yet
+I (10471) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10471) MESH_SETUP: ------------------------------------------------------------------
+I (10481) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10491) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10501) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (10501) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x00
+I (10511) MESH_SETUP: ------------------------------------------------------------------
+I (10521) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10531) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (10541) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (10541) MESH_SETUP: ==================================================================
+I (10641) MESH_SETUP: ==================================================================
+I (10641) MESH_SETUP:  MESH TOPOLOGY
+I (10641) MESH_SETUP:  TYPE        : PARTIAL
+I (10641) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (10651) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (10651) MESH_SETUP:  REACHABLE   : 0x02 (2)
+W (10661) MESH_SETUP:  STATUS      : WARN
+I (10661) MESH_SETUP:  DETAIL      : 2 nodes, each seen under only one parent so far - still a plain tree (depth 2); 3 node(s) not attached to the root
+I (10681) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10691) MESH_SETUP: ------------------------------------------------------------------
+I (10691) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10701) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (10711) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET       3  not yet
+I (10721) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD   -77  0xFF UNSET       2  not yet
+I (10731) MESH_SETUP:  H--   B4:BF:E9:32:FE:90  CHILD   -48  0xFF UNSET       0  not yet
+I (10741) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       0  not yet
+I (10751) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10751) MESH_SETUP: ------------------------------------------------------------------
+I (10761) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10771) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10781) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (10781) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x00
+I (10791) MESH_SETUP: ------------------------------------------------------------------
+I (10801) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10811) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (10821) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (10821) MESH_SETUP: ==================================================================
+I (10831) MESH_SETUP: ==================================================================
+I (10841) MESH_SETUP:  MESH TOPOLOGY
+I (10841) MESH_SETUP:  TYPE        : PARTIAL
+I (10851) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (10851) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (10861) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (10861) MESH_SETUP:  STATUS      : WARN
+I (10871) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 5)
+I (10881) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10891) MESH_SETUP: ------------------------------------------------------------------
+I (10901) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10911) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (10911) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET       3  not yet
+I (10921) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -68  0xFF UNSET       0  not yet
+I (10931) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD   -77  0xFF UNSET       2  not yet
+I (10941) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       0  not yet
+I (10951) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD   -48  0xFF UNSET       0  not yet
+I (10961) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10961) MESH_SETUP: ------------------------------------------------------------------
+I (10971) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10981) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10991) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (11001) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (11001) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x02
+I (11011) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD  70:4B:CA:25:B7:68  0x00
+I (11021) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (11031) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (11041) MESH_SETUP: ------------------------------------------------------------------
+I (11041) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (11051) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (11061) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (11071) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (11071) MESH_SETUP:          +-- [H03] CHILD  28:05:A5:32:D7:B4
+I (11081) MESH_SETUP:          `-- [H03] CHILD  B4:BF:E9:34:ED:80
+I (11091) MESH_SETUP:              `-- [H04] CHILD  B4:BF:E9:32:FE:90
+I (11091) MESH_SETUP: ==================================================================
+I (15831) MESH_SETUP: Routing table shrunk (node removed).
+I (15831) MESH_SETUP: ==============================
+I (15831) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (15841) MESH_SETUP: ==============================
+I (15851) MESH_SETUP: ==================================================================
+I (15851) MESH_SETUP:  MESH TOPOLOGY
+I (15861) MESH_SETUP:  TYPE        : PARTIAL
+I (15861) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (15871) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (15871) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (15881) MESH_SETUP:  STATUS      : WARN
+I (15881) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 5)
+I (15891) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (15901) MESH_SETUP: ------------------------------------------------------------------
+I (15911) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (15921) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (15931) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       1  not yet
+I (15941) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -68  0xFF UNSET       5  not yet
+I (15951) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD   -79  0xFF UNSET       0  not yet
+I (15951) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       5  not yet
+I (15961) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD   -48  0xFF UNSET       5  not yet
+I (15971) MESH_SETUP:  n/a = no parent link to measure (root)
+I (15981) MESH_SETUP: ------------------------------------------------------------------
+I (15991) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (15991) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (16001) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (16011) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (16021) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x02
+I (16031) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD  70:4B:CA:25:B7:68  0x00
+I (16031) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (16041) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (16051) MESH_SETUP: ------------------------------------------------------------------
+I (16061) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (16071) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (16071) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (16081) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (16091) MESH_SETUP:          +-- [H03] CHILD  28:05:A5:32:D7:B4
+I (16091) MESH_SETUP:          `-- [H03] CHILD  B4:BF:E9:34:ED:80
+I (16101) MESH_SETUP:              `-- [H04] CHILD  B4:BF:E9:32:FE:90
+I (16111) MESH_SETUP: ==================================================================
+I (16521) MESH_SETUP: Routing table updated (node added).
+I (16521) MESH_SETUP: ==============================
+I (16521) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (16531) MESH_SETUP: ==============================
+I (34561) MESH_SETUP: ==================================================================
+I (34561) MESH_SETUP:  MESH TOPOLOGY
+I (34561) MESH_SETUP:  TYPE        : PARTIAL
+I (34561) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (34571) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (34571) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (34581) MESH_SETUP:  STATUS      : WARN
+I (34581) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 5)
+I (34591) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (34601) MESH_SETUP: ------------------------------------------------------------------
+I (34611) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (34621) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (34631) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -73  0xFF UNSET       5  not yet
+I (34641) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -66  0xFF UNSET       2  not yet
+I (34651) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD   -78  0xFF UNSET       5  not yet
+I (34651) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       3  not yet
+I (34661) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD   -48  0xFF UNSET       3  not yet
+I (34671) MESH_SETUP:  n/a = no parent link to measure (root)
+I (34681) MESH_SETUP: ------------------------------------------------------------------
+I (34691) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (34691) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (34701) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (34711) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (34721) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x02
+I (34731) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD  70:4B:CA:25:B7:68  0x00
+I (34731) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (34741) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (34751) MESH_SETUP: ------------------------------------------------------------------
+I (34761) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (34771) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (34771) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (34781) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (34791) MESH_SETUP:          +-- [H03] CHILD  28:05:A5:32:D7:B4
+I (34791) MESH_SETUP:          `-- [H03] CHILD  B4:BF:E9:34:ED:80
+I (34801) MESH_SETUP:              `-- [H04] CHILD  B4:BF:E9:32:FE:90
+I (34811) MESH_SETUP: ==================================================================
+I (36551) HEALTH: [HEALTH] up=35s heap=59272 min=55672 big=57344 | stack free(B): telemetry=1224 phase_listener=3128 phase_resync=5588 heartbeat=3280 csv_export=3668 arr_writer=3600 exp_ctrl=6312
+I (48821) MESH_SETUP: ==================================================================
+I (48821) MESH_SETUP:  MESH TOPOLOGY
+I (48821) MESH_SETUP:  TYPE        : PARTIAL
+I (48831) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (48831) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (48841) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (48841) MESH_SETUP:  STATUS      : WARN
+I (48851) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 5)
+I (48861) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (48861) MESH_SETUP: ------------------------------------------------------------------
+I (48871) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (48881) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (48891) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -73  0xFF UNSET       6  not yet
+I (48901) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -66  0xFF UNSET       3  not yet
+I (48911) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD   -80  0xFF UNSET       5  not yet
+I (48921) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       3  not yet
+I (48931) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD   -49  0xFF UNSET       3  not yet
+I (48931) MESH_SETUP:  n/a = no parent link to measure (root)
+I (48941) MESH_SETUP: ------------------------------------------------------------------
+I (48951) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (48961) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (48961) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (48971) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (48981) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x02
+I (48991) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD  70:4B:CA:25:B7:68  0x00
+I (49001) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (49001) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (49011) MESH_SETUP: ------------------------------------------------------------------
+I (49021) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (49031) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (49041) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (49041) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (49051) MESH_SETUP:          +-- [H03] CHILD  28:05:A5:32:D7:B4
+I (49061) MESH_SETUP:          `-- [H03] CHILD  B4:BF:E9:34:ED:80
+I (49061) MESH_SETUP:              `-- [H04] CHILD  B4:BF:E9:32:FE:90
+I (49071) MESH_SETUP: ==================================================================
+W (53411) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 27 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: other
+I (63081) MESH_SETUP: ==================================================================
+I (63081) MESH_SETUP:  MESH TOPOLOGY
+I (63081) MESH_SETUP:  TYPE        : PARTIAL
+I (63091) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (63091) MESH_SETUP:  HOP DEPTH   : 0x04 (4)
+I (63101) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (63101) MESH_SETUP:  STATUS      : WARN
+I (63111) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 5)
+I (63121) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (63131) MESH_SETUP: ------------------------------------------------------------------
+I (63141) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (63151) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (63151) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -77  0xFF UNSET       6  not yet
+I (63161) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -67  0xFF UNSET       3  not yet
+I (63171) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD   -80  0xFF UNSET       5  not yet
+I (63181) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       3  not yet
+I (63191) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD   -49  0xFF UNSET       3  not yet
+I (63201) MESH_SETUP:  n/a = no parent link to measure (root)
+I (63201) MESH_SETUP: ------------------------------------------------------------------
+I (63211) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (63221) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (63231) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (63241) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (63241) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x02
+I (63251) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD  70:4B:CA:25:B7:68  0x00
+I (63261) MESH_SETUP:  H03   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (63271) MESH_SETUP:  H04   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (63271) MESH_SETUP: ------------------------------------------------------------------
+I (63281) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (63291) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (63301) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (63311) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (63311) MESH_SETUP:          +-- [H03] CHILD  28:05:A5:32:D7:B4
+I (63321) MESH_SETUP:          `-- [H03] CHILD  B4:BF:E9:34:ED:80
+I (63331) MESH_SETUP:              `-- [H04] CHILD  B4:BF:E9:32:FE:90
+I (63331) MESH_SETUP: ==================================================================
+I (66561) HEALTH: [HEALTH] up=65s heap=59272 min=55672 big=57344 | stack free(B): telemetry=1224 phase_listener=3128 phase_resync=5588 heartbeat=3280 csv_export=3668 arr_writer=3600 exp_ctrl=6312
+I (66571) ROOT_MAIN: ════════════════════ WAITING FOR ALL CHILDREN ════════════════════  @ 15:58:26 PHT
+W (66581) ROOT_MAIN: [CTRL] WAITING: 5/7 children in the mesh (0 s). Phase 0 will NOT start until all have joined.
+W (66591) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+[monitor] closed
+Export skipped. Data is safe on the board (COM3) - import it from its SD card later, or export with the command below.
+To export later:  python tools\export_logs.py --port COM3 --role root --topology partial --attack wormhole --repeat 1 --scenario stationary --location G402 --label root
+  finished (exit 0)
+
+> Compile [1/1] root - ROOT   (04:14:32 pm)
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · partial · stationary  (compile only - no board is touched)
+  Build:  C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI
+  ✔ Already built and up to date (built Oct 19 3:27pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+
+> Compile [1/1] root - ROOT   (04:15:09 pm)
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · partial · stationary  (compile only - no board is touched)
+  Build:  C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI
+  ✔ Already built and up to date (built Oct 19 3:27pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+
+> root  -  ROOT  -  ROOT (announces the phases) on COM3   .\run.ps1 -Port COM3 -Role root -Label root -Topology partial -Location G402 -Repeat 1 -Scenario stationary -Wipe -Flash -Attack wormhole -Analyze -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18 -SharedBuild   (04:16:08 pm)
+Setting COM3's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 16:16:09 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 4.0 seconds.
+Hard resetting via RTS pin...
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Executing action: flash
+Running ninja in directory 'C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI'
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 partition --type app "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/partition_table/partition-table.bin" "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/root_node.bin""
+root_node.bin binary size 0x124170 bytes. Smallest app partition is 0x180000 bytes. 0x5be90 bytes (24%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D "C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI\bootloader\esp-idf\esptool_py" && C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.5.4/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 "C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI/bootloader/bootloader.bin""
+Bootloader binary size 0x6630 bytes. 0x9d0 bytes (9%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.5.4\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.5.4 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.5_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D "WORKING_DIRECTORY=C:/Users/Angelo Calpoporo/AppData/Local/esp32_builds/T_1140e558/root_node/build_root_wormhole_partial_GUI" -P C:/Espressif/frameworks/esp-idf-v5.5.4/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM3 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 root_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00134fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16528...
+Writing at 0x00001000... (50 %)
+Writing at 0x00007567... (100 %)
+Wrote 26160 bytes (16528 compressed) at 0x00001000 in 0.5 seconds (effective 413.0 kbit/s)...
+Hash of data verified.
+Compressed 1196400 bytes to 745238...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bcef... (4 %)
+Writing at 0x000299ad... (6 %)
+Writing at 0x000362b4... (8 %)
+Writing at 0x0003eed4... (10 %)
+Writing at 0x00048eef... (13 %)
+Writing at 0x0004e7b4... (15 %)
+Writing at 0x000547d2... (17 %)
+Writing at 0x0005a30f... (19 %)
+Writing at 0x0005fca8... (21 %)
+Writing at 0x000654f6... (23 %)
+Writing at 0x0006af34... (26 %)
+Writing at 0x00070f77... (28 %)
+Writing at 0x00076c58... (30 %)
+Writing at 0x0007ce80... (32 %)
+Writing at 0x00082e89... (34 %)
+Writing at 0x00088abb... (36 %)
+Writing at 0x0008ec19... (39 %)
+Writing at 0x000942c4... (41 %)
+Writing at 0x0009997a... (43 %)
+Writing at 0x0009f220... (45 %)
+Writing at 0x000a486a... (47 %)
+Writing at 0x000aa15b... (50 %)
+Writing at 0x000afa38... (52 %)
+Writing at 0x000b5112... (54 %)
+Writing at 0x000ba672... (56 %)
+Writing at 0x000c00a7... (58 %)
+Writing at 0x000c5cb8... (60 %)
+Writing at 0x000cb7f1... (63 %)
+Writing at 0x000d1045... (65 %)
+Writing at 0x000d69b3... (67 %)
+Writing at 0x000dc9e1... (69 %)
+Writing at 0x000e21fc... (71 %)
+Writing at 0x000e7dfd... (73 %)
+Writing at 0x000eda95... (76 %)
+Writing at 0x000f33cb... (78 %)
+Writing at 0x000f9240... (80 %)
+Writing at 0x000fef6d... (82 %)
+Writing at 0x001048d5... (84 %)
+Writing at 0x0010a9cc... (86 %)
+Writing at 0x0011239c... (89 %)
+Writing at 0x0011a0c3... (91 %)
+Writing at 0x0011fd7c... (93 %)
+Writing at 0x00125b02... (95 %)
+Writing at 0x0012be50... (97 %)
+Writing at 0x001311d7... (100 %)
+Wrote 1196400 bytes (745238 compressed) at 0x00010000 in 17.9 seconds (effective 535.6 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1704.6 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2633.7 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM3 at 115200 baud
+� xx��J*��}�����: segment 2: paddr=00046394 vaddr=40080000 size=09c84h ( 40068) load
+I (190) esp_image: segment 3: paddr=00050020 vaddr=400d0020 size=d2774h (862068) map
+I (484) esp_image: segment 4: paddr=0012279c vaddr=40089c84 size=11984h ( 72068) load
+I (513) esp_image: segment 5: paddr=00134128 vaddr=5000005c size=00020h (    32) load
+I (526) boot: Loaded app from partition at offset 0x10000
+I (530) boot: Set actual ota_seq=1 in otadata[0]
+I (530) boot: Disabling RNG early entropy source...
+I (541) cpu_start: Multicore app
+I (549) cpu_start: GPIO 3 and 1 are used as console UART I/O pins
+I (550) cpu_start: Pro cpu start user code
+I (550) cpu_start: cpu freq: 160000000 Hz
+I (554) app_init: Application information:
+I (559) app_init: Project name:     root_node
+I (564) app_init: App version:      backup/angelo-2026-10-01-253-g3
+I (571) app_init: Compile time:     Oct 19 2026 15:27:15
+I (577) app_init: ELF file SHA256:  c8b3e97f7...
+I (582) app_init: ESP-IDF:          v5.5.4-dirty
+I (588) efuse_init: Min chip rev:     v0.0
+I (593) efuse_init: Max chip rev:     v3.99 
+I (597) efuse_init: Chip rev:         v3.1
+I (603) heap_init: Initializing. RAM available for dynamic allocation:
+I (610) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (616) heap_init: At 3FFBC7F0 len 00023810 (142 KiB): DRAM
+I (622) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (628) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (635) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM
+I (642) spi_flash: detected chip: generic
+I (645) spi_flash: flash io: dio
+I (651) main_task: Started on CPU0
+I (661) main_task: Calling app_main()
+I (661) ROOT_MAIN: === ROOT NODE STARTING ===
+I (661) SD_STATUS: clock seeded from build stamp 2026-10-19 15:27:15 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (671) SD_STATUS: Reset reason: POWERON
+I (681) sdspi_transaction: cmd=52, R1 response: command not supported
+I (721) sdspi_transaction: cmd=5, R1 response: command not supported
+I (751) SD_STATUS: clock: set from the card's host anchor -> 2026-10-19 16:16:09 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_B0CBD8F33218) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 16:16:09 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: partial_mesh
+  Firmware built: 2026-10-19 15:27:15
+  Run started: 2026-10-19 16:16:09 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_B0CBD8F33218 (MAC B0:CB:D8:F3:32:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 5
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+I (1551) ROOT_MAIN: SD ENV: OK -- /sdcard/wormhole/partial_mesh/G402/status_NODE_B0CBD8F33218.txt
+I (1561) NODE_ID: Identity: "Board-B0:18" role=ROOT mac=b0:cb:d8:f3:32:18 (via MAC (no node_config.txt nickname))
+I (1601) wifi:wifi driver task: 3ffcbd50, prio:23, stack:6656, core=0
+I (1601) wifi:wifi firmware version: 0947e8b
+I (1601) wifi:wifi certification version: v7.0
+I (1601) wifi:config NVS flash: enabled
+I (1601) wifi:config nano formatting: disabled
+I (1611) wifi:Init data frame dynamic rx buffer num: 32
+I (1611) wifi:Init static rx mgmt buffer num: 5
+I (1621) wifi:Init management short buffer num: 32
+I (1621) wifi:Init dynamic tx buffer num: 32
+I (1621) wifi:Init static rx buffer size: 1600
+I (1631) wifi:Init static rx buffer num: 10
+I (1631) wifi:Init dynamic rx buffer num: 32
+I (1641) wifi_init: rx ba win: 6
+I (1641) wifi_init: accept mbox: 6
+I (1641) wifi_init: tcpip mbox: 32
+I (1651) wifi_init: udp mbox: 6
+I (1651) wifi_init: tcp mbox: 6
+I (1661) wifi_init: tcp tx win: 5760
+I (1661) wifi_init: tcp rx win: 5760
+I (1661) wifi_init: tcp mss: 1440
+I (1671) wifi_init: WiFi IRAM OP enabled
+I (1671) wifi_init: WiFi RX IRAM OP enabled
+I (1681) wifi:Set ps type: 0, coexist: 0
+I (1691) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1691) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1701) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1781) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1791) wifi:mode : sta (b0:cb:d8:f3:32:18) + softAP (b0:cb:d8:f3:32:19)
+I (1791) wifi:enable tsf
+I (1801) wifi:Total power save buffer number: 16
+I (1801) wifi:Init max length of beacon: 752/752
+I (1801) wifi:Init max length of beacon: 752/752
+I (1811) mesh: <nvs>read layer:0, err:0x1102
+I (1811) mesh: <nvs>read assoc:0, err:0x1102
+I (1811) MESH_SETUP: Topology shaping: PARTIAL (max_layer=25, max_children=2)
+I (1821) wifi:Set ps type: 0, coexist: 0
+I (1821) mesh: [IO]disable self-organizing<stop reconnect>
+I (1831) mesh: [IO]disable self-organizing<reconnect>
+I (1831) mesh: [CONFIG]invalid router settings, ssid_len:0, ssid:, bssid:00:00:00:00:00:00
+I (1861) wifi:Total power save buffer number: 16
+I (2121) MESH_SETUP: Root mesh RX queue: 64 (default 32).
+I (2131) mesh: [MANUAL]designated as root and router is not set
+I (2131) MESH_SETUP: Mesh stack started.
+I (2131) MESH_SETUP: Mesh started. Node ID: NODE_B0CBD8F33218  Role: 0
+I (3411) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (3411) wifi:station: f4:2d:c9:73:e6:18 join, AID=1, bgn, 20
+I (3411) MESH_SETUP: Routing table updated (node added).
+I (3421) MESH_SETUP: ==============================
+I (3421) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3431) MESH_SETUP: ==============================
+I (3431) MESH_SETUP: Child connected: aid=1 MAC=f4:2d:c9:73:e6:18
+I (3441) MESH_SETUP: ==============================
+I (3451) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (3451) MESH_SETUP: ==============================
+I (3461) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (3461) MESH_SETUP: Mesh connected. Layer: 1  Root: NO
+I (3471) ROOT_MAIN: Node ID: NODE_B0CBD8F33218   Run ID: RUN_001
+I (3481) PHASE_LISTENER: Phase listener task running.
+I (3481) PHASE_LISTENER: Phase listener started.
+I (3491) MESH_SETUP: =================================================================
+I (3501) MESH_SETUP:  MESH TOPOLOGY
+I (3501) MESH_SETUP:  TYPE        : PARTIAL
+I (3511) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (3511) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (3521) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (3521) MESH_SETUP:  STATUS      : WARN
+I (3531) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1)
+I (3541) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (3541) MESH_SETUP: -----------------------------------------------------------------
+I (3551) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (3561) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (3571) MESH_SETUP:  n/a = no parent link to measure (root)
+I (3581) MESH_SETUP: =================================================================
+W (3591) SPIFFS: mount failed, -10025. formatting...
+I (3781) MESH_SETUP: Routing table updated (node added).
+I (3781) MESH_SETUP: ==============================
+I (3781) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (3791) MESH_SETUP: ==============================
+I (5051) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (5051) wifi:station: b4:bf:e9:34:ed:80 join, AID=2, bgn, 20
+I (5061) MESH_SETUP: Routing table updated (node added).
+I (5061) MESH_SETUP: ==============================
+I (5071) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (5071) MESH_SETUP: ==============================
+I (5081) MESH_SETUP: Child connected: aid=2 MAC=b4:bf:e9:34:ed:80
+I (5091) MESH_SETUP: ==============================
+I (5091) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (5101) MESH_SETUP: ==============================
+I (5101) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (6591) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
+I (6591) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
+I (6771) CSV_LOGGER: Arrivals file:  /spiffs/arrivals.csv
+I (6961) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.
+I (6981) CSV_LOGGER: Logger ready. Role: root
+I (6981) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY
+===========You can ctrl + ] to export the data=========
+I (7021) CSV_LOGGER: CSV export task started on init (debug).
+I (7021) ROOT_MAIN: Logging to: /spiffs/telem.csv
+I (7031) ROOT_MAIN: Probe sink + heartbeat table registered (via phase-listener dispatch).
+I (7041) ROOT_MAIN: Telemetry task running at 100 ms interval.
+I (7041) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)
+I (7051) MESH_SETUP: Heartbeat sender running at 7000 ms interval.
+I (7061) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...
+I (7071) ROOT_MAIN: [CTRL] Sending PREPARE every 5 s so children log the stabilisation window.
+I (7071) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.
+I (7141) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.
+I (7171) CSV_LOGGER: SD mirror: /sdcard/wormhole/partial_mesh/G402/root_NODE_B0CBD8F33218_r4_b5_telem.csv
+I (7481) CSV_LOGGER: SD mirror: /sdcard/wormhole/partial_mesh/G402/root_NODE_B0CBD8F33218_r4_b5_arrivals.csv
+I (8431) MESH_SETUP: Routing table updated (node added).
+I (8431) MESH_SETUP: ==============================
+I (8431) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (8431) MESH_SETUP: ==================================================================
+I (8441) MESH_SETUP: ==============================
+I (8451) MESH_SETUP:  MESH TOPOLOGY
+I (8461) MESH_SETUP:  TYPE        : PARTIAL
+I (8461) MESH_SETUP:  NODE COUNT  : 0x02 (2)
+I (8471) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (8471) MESH_SETUP:  REACHABLE   : 0x02 (2)
+W (8481) MESH_SETUP:  STATUS      : WARN
+I (8481) MESH_SETUP:  DETAIL      : 2 nodes, each seen under only one parent so far - still a plain tree (depth 2)
+I (8491) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (8501) MESH_SETUP: ------------------------------------------------------------------
+I (8511) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (8521) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       1  not yet
+I (8531) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       0  not yet
+I (8531) MESH_SETUP:  n/a = no parent link to measure (root)
+I (8541) MESH_SETUP: ------------------------------------------------------------------
+I (8551) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (8561) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (8561) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (8571) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x00
+I (8581) MESH_SETUP: ------------------------------------------------------------------
+I (8591) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (8601) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (8601) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (8611) MESH_SETUP: ==================================================================
+I (13411) MESH_SETUP: Routing table shrunk (node removed).
+I (13411) MESH_SETUP: ==================================================================
+I (13411) MESH_SETUP:  MESH TOPOLOGY
+I (13411) MESH_SETUP: ==============================
+I (13421) MESH_SETUP:  TYPE        : PARTIAL
+I (13421) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (13431) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (13441) MESH_SETUP: ==============================
+I (13441) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (13451) MESH_SETUP:  REACHABLE   : 0x03 (3)
+W (13461) MESH_SETUP:  STATUS      : WARN
+I (13461) MESH_SETUP:  DETAIL      : 3 nodes, each seen under only one parent so far - still a plain tree (depth 2)
+I (13471) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13481) MESH_SETUP: ------------------------------------------------------------------
+I (13491) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (13501) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       6  not yet
+I (13511) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       4  not yet
+I (13511) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (13521) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13531) MESH_SETUP: ------------------------------------------------------------------
+I (13541) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13551) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (13551) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (13561) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x00
+I (13571) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x00
+I (13581) MESH_SETUP: ------------------------------------------------------------------
+I (13591) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13601) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (13601) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (13611) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (13611) MESH_SETUP: ==================================================================
+I (13621) MESH_SETUP: ==================================================================
+I (13631) MESH_SETUP:  MESH TOPOLOGY
+I (13641) MESH_SETUP:  TYPE        : PARTIAL
+I (13641) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (13651) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (13651) MESH_SETUP:  REACHABLE   : 0x03 (3)
+W (13661) MESH_SETUP:  STATUS      : WARN
+I (13661) MESH_SETUP:  DETAIL      : 3 nodes, each seen under only one parent so far - still a plain tree (depth 2)
+I (13671) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13681) MESH_SETUP: ------------------------------------------------------------------
+I (13691) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (13701) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       6  not yet
+I (13711) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       5  not yet
+I (13711) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (13721) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13731) MESH_SETUP: ------------------------------------------------------------------
+I (13741) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13741) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (13751) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (13761) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x00
+I (13771) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x00
+I (13781) MESH_SETUP: ------------------------------------------------------------------
+I (13791) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13801) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (13801) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (13811) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (13811) MESH_SETUP: ==================================================================
+I (13821) MESH_SETUP: ==================================================================
+I (13831) MESH_SETUP:  MESH TOPOLOGY
+I (13831) MESH_SETUP:  TYPE        : PARTIAL
+I (13841) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (13841) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (13851) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (13851) MESH_SETUP:  STATUS      : WARN
+I (13861) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (13871) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13881) MESH_SETUP: ------------------------------------------------------------------
+I (13891) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (13901) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       6  not yet
+I (13901) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       5  not yet
+I (13911) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (13921) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET       0  not yet
+I (13931) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13941) MESH_SETUP: ------------------------------------------------------------------
+I (13951) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13951) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (13961) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (13971) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x00
+I (13981) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x01
+I (13981) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (13991) MESH_SETUP: ------------------------------------------------------------------
+I (14001) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (14011) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (14021) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (14021) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (14031) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (14041) MESH_SETUP: ==================================================================
+I (19581) MESH_SETUP: Routing table updated (node added).
+I (19581) MESH_SETUP: ==============================
+I (19581) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (19591) MESH_SETUP: ==============================
+I (21511) MESH_SETUP: ==================================================================
+I (21511) MESH_SETUP:  MESH TOPOLOGY
+I (21511) MESH_SETUP:  TYPE        : PARTIAL
+I (21521) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (21521) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (21531) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (21531) MESH_SETUP:  STATUS      : WARN
+I (21541) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (21551) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (21551) MESH_SETUP: ------------------------------------------------------------------
+I (21561) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (21571) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (21581) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       5  not yet
+I (21591) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       1  not yet
+I (21601) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -69  0xFF UNSET       0  not yet
+I (21611) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET       1  not yet
+I (21621) MESH_SETUP:  n/a = no parent link to measure (root)
+I (21621) MESH_SETUP: ------------------------------------------------------------------
+I (21631) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (21641) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (21651) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (21651) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x00
+I (21661) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (21671) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (21681) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (21691) MESH_SETUP: ------------------------------------------------------------------
+I (21691) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (21701) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (21711) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (21721) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (21721) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (21731) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (21731) MESH_SETUP: ==================================================================
+I (23101) MESH_SETUP: Routing table updated (node added).
+I (23101) MESH_SETUP: ==============================
+I (23101) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (23101) MESH_SETUP: ==============================
+I (25241) MESH_SETUP: ==================================================================
+I (25241) MESH_SETUP:  MESH TOPOLOGY
+I (25241) MESH_SETUP:  TYPE        : PARTIAL
+I (25251) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (25251) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (25261) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (25261) MESH_SETUP:  STATUS      : WARN
+I (25271) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (25281) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (25291) MESH_SETUP: ------------------------------------------------------------------
+I (25291) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (25301) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (25311) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -83  0xFF UNSET       2  not yet
+I (25321) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       4  not yet
+I (25331) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -69  0xFF UNSET       3  not yet
+I (25341) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET       4  not yet
+I (25351) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -63  0xFF UNSET       0  not yet
+I (25361) MESH_SETUP:  n/a = no parent link to measure (root)
+I (25361) MESH_SETUP: ------------------------------------------------------------------
+I (25371) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (25381) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (25391) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (25391) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (25401) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (25411) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (25421) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (25431) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (25431) MESH_SETUP: ------------------------------------------------------------------
+I (25441) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (25451) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (25461) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (25461) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (25471) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (25481) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (25481) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (25491) MESH_SETUP: ==================================================================
+I (37051) HEALTH: [HEALTH] up=36s heap=57892 min=55360 big=57344 | stack free(B): telemetry=1228 phase_listener=3128 phase_resync=5588 heartbeat=3300 csv_export=3800 arr_writer=3732 exp_ctrl=6348
+I (42061) MESH_SETUP: ==================================================================
+I (42061) MESH_SETUP:  MESH TOPOLOGY
+I (42071) MESH_SETUP:  TYPE        : PARTIAL
+I (42071) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (42081) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (42081) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (42091) MESH_SETUP:  STATUS      : WARN
+I (42091) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (42101) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (42111) MESH_SETUP: ------------------------------------------------------------------
+I (42121) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (42131) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (42141) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -82  0xFF UNSET       5  not yet
+I (42151) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (42151) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -69  0xFF UNSET       6  not yet
+I (42161) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -64  0xFF UNSET       0  not yet
+I (42171) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -62  0xFF UNSET       2  not yet
+I (42181) MESH_SETUP:  n/a = no parent link to measure (root)
+I (42191) MESH_SETUP: ------------------------------------------------------------------
+I (42201) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (42201) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (42211) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (42221) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (42231) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (42231) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (42241) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (42251) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (42261) MESH_SETUP: ------------------------------------------------------------------
+I (42271) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (42281) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (42281) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (42291) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (42291) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (42301) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (42311) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (42311) MESH_SETUP: ==================================================================
+I (56331) MESH_SETUP: ==================================================================
+I (56331) MESH_SETUP:  MESH TOPOLOGY
+I (56331) MESH_SETUP:  TYPE        : PARTIAL
+I (56331) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (56341) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (56341) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (56351) MESH_SETUP:  STATUS      : WARN
+I (56351) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (56361) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (56371) MESH_SETUP: ------------------------------------------------------------------
+I (56381) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (56391) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (56401) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       5  not yet
+I (56411) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (56421) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -70  0xFF UNSET       6  not yet
+I (56421) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -65  0xFF UNSET       0  not yet
+I (56431) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -63  0xFF UNSET      10  not yet
+I (56441) MESH_SETUP:  n/a = no parent link to measure (root)
+I (56451) MESH_SETUP: ------------------------------------------------------------------
+I (56461) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (56461) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (56471) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (56481) MESH_SETUP:  H01   B4:BF:E9:34:ED:80  CHILD  B0:CB:D8:F3:32:18  0x01
+I (56491) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  B4:BF:E9:34:ED:80  0x00
+I (56501) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (56501) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (56511) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (56521) MESH_SETUP: ------------------------------------------------------------------
+I (56531) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (56541) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (56541) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:34:ED:80
+I (56551) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (56561) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (56561) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (56571) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (56571) MESH_SETUP: ==================================================================
+W (56731) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 44 ms) over the last 200 probes | Waiting-to-save line: longest 3 of 256, 0 lost so far | Mesh incoming buffer: longest 4 of 64 | Test phase: other
+W (63031) wifi:inactive timer: now=3a67164 last_rx_time=3003451 diff=2a8e, aid[2]b4:bf:e9:34:ed:80 leave
+I (63041) wifi:station: b4:bf:e9:34:ed:80 leave, AID = 2, reason = 4, bss_flags is 33721443, bss:0x3ffe3b5c
+I (63041) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (63051) MESH_SETUP: Child disconnected: aid=2 MAC=b4:bf:e9:34:ed:80
+I (63061) MESH_SETUP: ==============================
+I (63061) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (63071) MESH_SETUP: ==============================
+W (63071) MESH_SETUP: Node OFFLINE (child-disconnected event) — b4:bf:e9:34:ed:80
+I (63081) MESH_SETUP: Routing table shrunk (node removed).
+I (63091) MESH_SETUP: ==============================
+I (63091) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (63091) MESH_SETUP: ==================================================================
+I (63101) MESH_SETUP: ==============================
+I (63111) MESH_SETUP:  MESH TOPOLOGY
+I (63121) MESH_SETUP:  TYPE        : PARTIAL
+I (63121) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (63131) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (63131) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (63141) MESH_SETUP:  STATUS      : WARN
+I (63141) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3); 1 node(s) not attached to the root
+I (63161) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (63161) MESH_SETUP: ------------------------------------------------------------------
+I (63171) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (63181) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       6  not yet
+I (63191) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET       0  not yet
+I (63201) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -64  0xFF UNSET       6  not yet
+I (63211) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET       0  not yet
+I (63221) MESH_SETUP:  H--   B4:BF:E9:32:FE:90  CHILD   -63  0xFF UNSET      16  not yet
+I (63221) MESH_SETUP:  n/a = no parent link to measure (root)
+I (63231) MESH_SETUP: ------------------------------------------------------------------
+I (63241) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (63251) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (63251) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (63261) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (63271) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (63281) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (63291) MESH_SETUP: ------------------------------------------------------------------
+I (63291) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (63301) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (63311) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (63321) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (63321) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (63331) MESH_SETUP: ==================================================================
+I (63341) MESH_SETUP: ==================================================================
+I (63351) MESH_SETUP:  MESH TOPOLOGY
+I (63351) MESH_SETUP:  TYPE        : PARTIAL
+I (63361) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (63361) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (63371) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (63371) MESH_SETUP:  STATUS      : WARN
+I (63381) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3); 1 node(s) not attached to the root
+I (63391) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (63401) MESH_SETUP: ------------------------------------------------------------------
+I (63411) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (63421) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       7  not yet
+I (63421) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET       0  not yet
+I (63431) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -64  0xFF UNSET       6  not yet
+I (63441) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET       0  not yet
+I (63451) MESH_SETUP:  H--   B4:BF:E9:32:FE:90  CHILD   -63  0xFF UNSET      17  not yet
+I (63461) MESH_SETUP:  n/a = no parent link to measure (root)
+I (63471) MESH_SETUP: ------------------------------------------------------------------
+I (63471) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (63481) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (63491) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (63501) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (63511) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (63511) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (63521) MESH_SETUP: ------------------------------------------------------------------
+I (63531) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (63541) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (63551) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (63551) MESH_SETUP:      +-- [H02] CHILD  70:4B:CA:25:B7:68
+I (63561) MESH_SETUP:      `-- [H02] CHILD  28:05:A5:32:D7:B4
+I (63561) MESH_SETUP: ==================================================================
+I (67061) HEALTH: [HEALTH] up=66s heap=59204 min=50348 big=57344 | stack free(B): telemetry=1228 phase_listener=3128 phase_resync=5588 heartbeat=3188 csv_export=3800 arr_writer=3732 exp_ctrl=6348
+I (67071) ROOT_MAIN: ════════════════════ WAITING FOR ALL CHILDREN ════════════════════  @ 16:17:15 PHT
+W (67081) ROOT_MAIN: [CTRL] WAITING: 3/7 children in the mesh (0 s). Phase 0 will NOT start until all have joined.
+W (67091) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (77591) MESH_SETUP: Node OFFLINE — no heartbeat for 31 s: b4:bf:e9:32:fe:90
+I (77591) MESH_SETUP: ==================================================================
+I (77591) MESH_SETUP:  MESH TOPOLOGY
+I (77601) MESH_SETUP:  TYPE        : PARTIAL
+I (77601) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (77611) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (77611) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (77621) MESH_SETUP:  STATUS      : WARN
+I (77621) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (77631) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (77641) MESH_SETUP: ------------------------------------------------------------------
+I (77651) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (77661) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (77671) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD   -72  0xFF UNSET      14  not yet
+I (77681) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD   -67  0xFF UNSET      13  not yet
+I (77681) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET      14  not yet
+I (77691) MESH_SETUP:  n/a = no parent link to measure (root)
+I (77701) MESH_SETUP: ------------------------------------------------------------------
+I (77711) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (77721) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (77721) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (77731) MESH_SETUP:  H01   F4:2D:C9:73:E6:18  CHILD  B0:CB:D8:F3:32:18  0x02
+I (77741) MESH_SETUP:  H02   28:05:A5:32:D7:B4  CHILD  F4:2D:C9:73:E6:18  0x00
+I (77751) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  F4:2D:C9:73:E6:18  0x00
+I (77751) MESH_SETUP: ------------------------------------------------------------------
+I (77761) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (77771) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (77781) MESH_SETUP:  `-- [H01] CHILD  F4:2D:C9:73:E6:18
+I (77791) MESH_SETUP:      +-- [H02] CHILD  28:05:A5:32:D7:B4
+I (77791) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (77801) MESH_SETUP: ==================================================================
+W (79401) wifi:inactive timer: now=4a037df last_rx_time=3fc4fc6 diff=29f5, aid[1]f4:2d:c9:73:e6:18 leave
+I (79571) wifi:station: f4:2d:c9:73:e6:18 leave, AID = 1, reason = 4, bss_flags is 33721443, bss:0x3ffdeba4
+I (79571) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (79581) MESH_SETUP: Child disconnected: aid=1 MAC=f4:2d:c9:73:e6:18
+I (79581) MESH_SETUP: ==============================
+I (79591) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (79591) MESH_SETUP: ==============================
+W (79601) MESH_SETUP: Node OFFLINE (child-disconnected event) — f4:2d:c9:73:e6:18
+I (79611) MESH_SETUP: Routing table shrunk (node removed).
+I (79611) MESH_SETUP: ==================================================================
+I (79611) MESH_SETUP: ==============================
+I (79621) MESH_SETUP:  MESH TOPOLOGY
+I (79631) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (79631) MESH_SETUP:  TYPE        : PARTIAL
+I (79641) MESH_SETUP: ==============================
+I (79641) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (79651) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (79661) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (79661) MESH_SETUP:  STATUS      : WARN
+I (79671) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1); 2 node(s) not attached to the root
+I (79681) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (79691) MESH_SETUP: ------------------------------------------------------------------
+I (79701) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (79711) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (79721) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD   -67  0xFF UNSET      15  not yet
+I (79721) MESH_SETUP:  H--   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET      16  not yet
+I (79731) MESH_SETUP:  n/a = no parent link to measure (root)
+I (79741) MESH_SETUP: ------------------------------------------------------------------
+I (79751) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (79761) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (79761) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (79771) MESH_SETUP: ------------------------------------------------------------------
+I (79781) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (79791) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (79801) MESH_SETUP: ==================================================================
+I (79801) MESH_SETUP: ==================================================================
+I (79811) MESH_SETUP:  MESH TOPOLOGY
+I (79821) MESH_SETUP:  TYPE        : PARTIAL
+I (79821) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (79831) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (79831) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (79841) MESH_SETUP:  STATUS      : WARN
+I (79841) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1); 2 node(s) not attached to the root
+I (79861) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (79861) MESH_SETUP: ------------------------------------------------------------------
+I (79871) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (79881) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (79891) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD   -67  0xFF UNSET      16  not yet
+I (79901) MESH_SETUP:  H--   70:4B:CA:25:B7:68  CHILD   -63  0xFF UNSET      16  not yet
+I (79911) MESH_SETUP:  n/a = no parent link to measure (root)
+I (79911) MESH_SETUP: ------------------------------------------------------------------
+I (79921) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (79931) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (79941) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (79951) MESH_SETUP: ------------------------------------------------------------------
+I (79951) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (79961) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (79971) MESH_SETUP: ==================================================================
+W (84581) ROOT_MAIN: [CTRL] WAITING: 0/7 children in the mesh (10 s). Phase 0 will NOT start until all have joined.
+W (84581) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (94591) ROOT_MAIN: [CTRL] WAITING: 0/7 children in the mesh (20 s). Phase 0 will NOT start until all have joined.
+W (94591) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (94601) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (94611) wifi:station: 70:4b:ca:25:b7:68 join, AID=1, bgn, 20
+I (94621) MESH_SETUP: Routing table updated (node added).
+I (94621) MESH_SETUP: ==============================
+I (94621) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (94631) MESH_SETUP: ==============================
+I (94641) MESH_SETUP: Child connected: aid=1 MAC=70:4b:ca:25:b7:68
+I (94641) MESH_SETUP: ==============================
+I (94651) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (94651) MESH_SETUP: ==============================
+I (94661) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+W (95351) MESH_SETUP: Node OFFLINE — no heartbeat for 31 s: 28:05:a5:32:d7:b4
+I (95351) MESH_SETUP: ==================================================================
+I (95361) MESH_SETUP:  MESH TOPOLOGY
+I (95361) MESH_SETUP:  TYPE        : PARTIAL
+I (95371) MESH_SETUP:  NODE COUNT  : 0x02 (2)
+I (95371) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (95381) MESH_SETUP:  REACHABLE   : 0x02 (2)
+W (95381) MESH_SETUP:  STATUS      : WARN
+I (95391) MESH_SETUP:  DETAIL      : 2 nodes, each seen under only one parent so far - still a plain tree (depth 2)
+I (95401) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (95411) MESH_SETUP: ------------------------------------------------------------------
+I (95421) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (95421) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       3  not yet
+I (95431) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -73  0xFF UNSET       0  not yet
+I (95441) MESH_SETUP:  n/a = no parent link to measure (root)
+I (95451) MESH_SETUP: ------------------------------------------------------------------
+I (95461) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (95461) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (95471) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (95481) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (95491) MESH_SETUP: ------------------------------------------------------------------
+I (95501) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (95511) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (95511) MESH_SETUP:  `-- [H01] CHILD  70:4B:CA:25:B7:68
+I (95521) MESH_SETUP: ==================================================================
+I (97061) HEALTH: [HEALTH] up=96s heap=59420 min=50348 big=57344 | stack free(B): telemetry=1228 phase_listener=3128 phase_resync=5588 heartbeat=3188 csv_export=3800 arr_writer=3732 exp_ctrl=5916
+W (104601) ROOT_MAIN: [CTRL] WAITING: 1/7 children in the mesh (30 s). Phase 0 will NOT start until all have joined.
+W (104601) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (105351) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (105351) wifi:station: 28:05:a5:32:d7:b4 join, AID=2, bgn, 20
+I (105361) MESH_SETUP: Routing table updated (node added).
+I (105361) MESH_SETUP: ==============================
+I (105371) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (105371) MESH_SETUP: ==============================
+I (105381) MESH_SETUP: Child connected: aid=2 MAC=28:05:a5:32:d7:b4
+I (105391) MESH_SETUP: ==============================
+I (105391) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (105401) MESH_SETUP: ==============================
+I (105401) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (106091) MESH_SETUP: ==================================================================
+I (106101) MESH_SETUP:  MESH TOPOLOGY
+I (106101) MESH_SETUP:  TYPE        : PARTIAL
+I (106101) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (106111) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (106111) MESH_SETUP:  REACHABLE   : 0x03 (3)
+W (106121) MESH_SETUP:  STATUS      : WARN
+I (106121) MESH_SETUP:  DETAIL      : 3 nodes, each seen under only one parent so far - still a plain tree (depth 2)
+I (106131) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (106141) MESH_SETUP: ------------------------------------------------------------------
+I (106151) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (106161) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (106171) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD   -53  0xFF UNSET       0  not yet
+I (106181) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET       3  not yet
+I (106191) MESH_SETUP:  n/a = no parent link to measure (root)
+I (106191) MESH_SETUP: ------------------------------------------------------------------
+I (106201) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (106211) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (106221) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (106221) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (106231) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD  B0:CB:D8:F3:32:18  0x00
+I (106241) MESH_SETUP: ------------------------------------------------------------------
+I (106251) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (106261) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (106261) MESH_SETUP:  +-- [H01] CHILD  70:4B:CA:25:B7:68
+I (106271) MESH_SETUP:  `-- [H01] CHILD  28:05:A5:32:D7:B4
+I (106281) MESH_SETUP: ==================================================================
+W (114611) ROOT_MAIN: [CTRL] WAITING: 2/7 children in the mesh (40 s). Phase 0 will NOT start until all have joined.
+W (114611) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (119221) MESH_SETUP: Routing table updated (node added).
+I (119221) MESH_SETUP: ==============================
+I (119221) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (119221) MESH_SETUP: ==============================
+I (119921) MESH_SETUP: ==================================================================
+I (119931) MESH_SETUP:  MESH TOPOLOGY
+I (119931) MESH_SETUP:  TYPE        : PARTIAL
+I (119931) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (119941) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (119941) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (119951) MESH_SETUP:  STATUS      : WARN
+I (119951) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (119961) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (119971) MESH_SETUP: ------------------------------------------------------------------
+I (119981) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (119991) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (120001) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD   -47  0xFF UNSET       6  not yet
+I (120011) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -64  0xFF UNSET       3  not yet
+I (120021) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -35  0xFF UNSET       0  not yet
+I (120021) MESH_SETUP:  n/a = no parent link to measure (root)
+I (120031) MESH_SETUP: ------------------------------------------------------------------
+I (120041) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (120051) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (120061) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (120061) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (120071) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD  B0:CB:D8:F3:32:18  0x01
+I (120081) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  28:05:A5:32:D7:B4  0x00
+I (120091) MESH_SETUP: ------------------------------------------------------------------
+I (120101) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (120111) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (120111) MESH_SETUP:  +-- [H01] CHILD  70:4B:CA:25:B7:68
+I (120121) MESH_SETUP:  `-- [H01] CHILD  28:05:A5:32:D7:B4
+I (120121) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (120131) MESH_SETUP: ==================================================================
+W (124631) ROOT_MAIN: [CTRL] WAITING: 3/7 children in the mesh (50 s). Phase 0 will NOT start until all have joined.
+W (124631) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (127061) HEALTH: [HEALTH] up=126s heap=58096 min=50348 big=55296 | stack free(B): telemetry=1228 phase_listener=3128 phase_resync=5588 heartbeat=3188 csv_export=3800 arr_writer=3732 exp_ctrl=5916
+W (134651) ROOT_MAIN: [CTRL] WAITING: 3/7 children in the mesh (60 s). Phase 0 will NOT start until all have joined.
+W (134651) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (140821) MESH_SETUP: ==================================================================
+I (140821) MESH_SETUP:  MESH TOPOLOGY
+I (140821) MESH_SETUP:  TYPE        : PARTIAL
+I (140821) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (140831) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (140831) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (140841) MESH_SETUP:  STATUS      : WARN
+I (140841) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (140851) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (140861) MESH_SETUP: ------------------------------------------------------------------
+I (140871) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (140881) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (140891) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD   -48  0xFF UNSET       6  not yet
+I (140901) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -62  0xFF UNSET       3  not yet
+I (140911) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -40  0xFF UNSET       6  not yet
+I (140921) MESH_SETUP:  n/a = no parent link to measure (root)
+I (140921) MESH_SETUP: ------------------------------------------------------------------
+I (140931) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (140941) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (140951) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (140951) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x00
+I (140961) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD  B0:CB:D8:F3:32:18  0x01
+I (140971) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  28:05:A5:32:D7:B4  0x00
+I (140981) MESH_SETUP: ------------------------------------------------------------------
+I (140991) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (141001) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (141001) MESH_SETUP:  +-- [H01] CHILD  70:4B:CA:25:B7:68
+I (141011) MESH_SETUP:  `-- [H01] CHILD  28:05:A5:32:D7:B4
+I (141011) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (141021) MESH_SETUP: ==================================================================
+W (144671) ROOT_MAIN: [CTRL] WAITING: 3/7 children in the mesh (70 s). Phase 0 will NOT start until all have joined.
+W (144671) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (145441) MESH_SETUP: Routing table updated (node added).
+I (145441) MESH_SETUP: ==============================
+I (145451) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (145451) MESH_SETUP: ==============================
+I (145551) MESH_SETUP: ==================================================================
+I (145551) MESH_SETUP:  MESH TOPOLOGY
+I (145551) MESH_SETUP:  TYPE        : PARTIAL
+I (145561) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (145561) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (145571) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (145571) MESH_SETUP:  STATUS      : WARN
+I (145581) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (145591) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (145601) MESH_SETUP: ------------------------------------------------------------------
+I (145601) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (145611) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (145621) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD   -51  0xFF UNSET       4  not yet
+I (145631) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD   -61  0xFF UNSET       1  not yet
+I (145641) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD   -50  0xFF UNSET       4  not yet
+I (145651) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -43  0xFF UNSET       0  not yet
+I (145661) MESH_SETUP:  n/a = no parent link to measure (root)
+I (145661) MESH_SETUP: ------------------------------------------------------------------
+I (145671) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (145681) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (145691) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (145701) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD  B0:CB:D8:F3:32:18  0x01
+I (145701) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  70:4B:CA:25:B7:68  0x00
+I (145711) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD  B0:CB:D8:F3:32:18  0x01
+I (145721) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD  28:05:A5:32:D7:B4  0x00
+I (145731) MESH_SETUP: ------------------------------------------------------------------
+I (145741) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (145751) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (145751) MESH_SETUP:  +-- [H01] CHILD  70:4B:CA:25:B7:68
+I (145761) MESH_SETUP:  |   `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (145761) MESH_SETUP:  `-- [H01] CHILD  28:05:A5:32:D7:B4
+I (145771) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:32:FE:90
+I (145781) MESH_SETUP: ==================================================================
+I (146241) MESH_SETUP: =======================================================================
+I (146241) MESH_SETUP:  MESH TOPOLOGY
+I (146241) MESH_SETUP:  TYPE        : PARTIAL
+I (146251) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (146251) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (146261) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (146261) MESH_SETUP:  STATUS      : WARN
+I (146271) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (146281) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (146281) MESH_SETUP: -----------------------------------------------------------------------
+I (146291) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (146301) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       5  not yet
+I (146311) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD        -51  0xFF UNSET       5  not yet
+I (146321) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD        -61  0xFF UNSET       1  not yet
+I (146331) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A   -58  0xFF UNSET       0  not yet
+I (146341) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD        -50  0xFF UNSET       5  not yet
+I (146351) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -43  0xFF UNSET       0  not yet
+I (146361) MESH_SETUP:  n/a = no parent link to measure (root)
+I (146371) MESH_SETUP: -----------------------------------------------------------------------
+I (146371) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (146381) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (146391) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (146401) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       B0:CB:D8:F3:32:18  0x02
+I (146411) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       70:4B:CA:25:B7:68  0x00
+I (146421) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A  70:4B:CA:25:B7:68  0x00
+I (146421) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD       B0:CB:D8:F3:32:18  0x01
+I (146431) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD       28:05:A5:32:D7:B4  0x00
+I (146441) MESH_SETUP: -----------------------------------------------------------------------
+I (146451) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (146461) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (146471) MESH_SETUP:  +-- [H01] CHILD       70:4B:CA:25:B7:68
+I (146471) MESH_SETUP:  |   +-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (146481) MESH_SETUP:  |   `-- [H02] WORMHOLE_A  20:50:0D:E7:0C:80
+I (146491) MESH_SETUP:  `-- [H01] CHILD       28:05:A5:32:D7:B4
+I (146491) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:32:FE:90
+I (146501) MESH_SETUP: -----------------------------------------------------------------------
+I (146511) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (146521) MESH_SETUP:    ENTRY  B  -- not in the mesh / not reported --
+I (146531) MESH_SETUP:    EXIT   A  20:50:0D:E7:0C:80  H02  RSSI  -58  phase 0xFF UNSET      UART checking  "Board-20:80"
+W (146541) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (146561) MESH_SETUP: -----------------------------------------------------------------------
+I (146571) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (146581) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (146581) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (146591) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (146601) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (146611) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+E (146621) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node B is missing or not connected to the root.
+I (146631) MESH_SETUP: =======================================================================
+I (151791) MESH_SETUP: Routing table updated (node added).
+I (151791) MESH_SETUP: ==============================
+I (151791) MESH_SETUP:   MESH CONNECTED: 7 node(s)
+I (151801) MESH_SETUP: ==============================
+I (152381) MESH_SETUP: =======================================================================
+I (152381) MESH_SETUP:  MESH TOPOLOGY
+I (152381) MESH_SETUP:  TYPE        : PARTIAL
+I (152391) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (152391) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (152401) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (152401) MESH_SETUP:  STATUS      : OK
+I (152411) MESH_SETUP:  DETAIL      : 7 links over 7 nodes, 1 node(s) seen under 2+ parents, tree depth 4, min-hop depth 3
+I (152421) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (152431) MESH_SETUP: -----------------------------------------------------------------------
+I (152441) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (152451) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       4  not yet
+I (152461) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD        -49  0xFF UNSET       4  not yet
+I (152461) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD        -62  0xFF UNSET       1  not yet
+I (152471) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A   -58  0xFF UNSET       6  not yet
+I (152481) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD        -50  0xFF UNSET       4  not yet
+I (152491) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -43  0xFF UNSET       6  not yet
+I (152501) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD        -57  0xFF UNSET       0  not yet
+I (152511) MESH_SETUP:  n/a = no parent link to measure (root)
+I (152521) MESH_SETUP: -----------------------------------------------------------------------
+I (152531) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (152531) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (152541) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (152551) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       B0:CB:D8:F3:32:18  0x02
+I (152561) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       70:4B:CA:25:B7:68  0x01
+I (152571) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       B4:BF:E9:34:ED:80  0x00
+I (152581) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A  70:4B:CA:25:B7:68  0x00
+I (152581) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD       B0:CB:D8:F3:32:18  0x01
+I (152591) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD       28:05:A5:32:D7:B4  0x00
+I (152601) MESH_SETUP: -----------------------------------------------------------------------
+I (152611) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (152621) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (152631) MESH_SETUP:  +-- [H01] CHILD       70:4B:CA:25:B7:68
+I (152631) MESH_SETUP:  |   +-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (152641) MESH_SETUP:  |   |   `-- [H03] CHILD       F4:2D:C9:73:E6:18
+I (152651) MESH_SETUP:  |   `-- [H02] WORMHOLE_A  20:50:0D:E7:0C:80
+I (152651) MESH_SETUP:  `-- [H01] CHILD       28:05:A5:32:D7:B4
+I (152661) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:32:FE:90
+I (152671) MESH_SETUP: -----------------------------------------------------------------------
+I (152681) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (152691) MESH_SETUP:    ENTRY  B  -- not in the mesh / not reported --
+I (152701) MESH_SETUP:    EXIT   A  20:50:0D:E7:0C:80  H02  RSSI  -58  phase 0xFF UNSET      UART checking  "Board-20:80"
+W (152711) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (152731) MESH_SETUP: -----------------------------------------------------------------------
+I (152731) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (152741) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (152751) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (152761) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (152771) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (152781) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+I (152791) MESH_SETUP:    F4:2D:C9:73:E6:18  not involved - relayed as in baseline
+E (152801) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node B is missing or not connected to the root.
+I (152811) MESH_SETUP: =======================================================================
+I (153241) MESH_SETUP: =======================================================================
+I (153241) MESH_SETUP:  MESH TOPOLOGY
+I (153241) MESH_SETUP:  TYPE        : PARTIAL
+I (153251) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (153251) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (153261) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (153261) MESH_SETUP:  STATUS      : OK
+I (153271) MESH_SETUP:  DETAIL      : 7 links over 7 nodes, 1 node(s) seen under 2+ parents, tree depth 4, min-hop depth 3
+I (153281) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (153291) MESH_SETUP: -----------------------------------------------------------------------
+I (153301) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (153311) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       5  not yet
+I (153321) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD        -49  0xFF UNSET       5  not yet
+I (153321) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD        -62  0xFF UNSET       1  not yet
+I (153331) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A   -58  0xFF UNSET       0  not yet
+I (153341) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD        -50  0xFF UNSET       5  not yet
+I (153351) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -38  0xFF UNSET       0  not yet
+I (153361) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD        -57  0xFF UNSET       0  not yet
+I (153371) MESH_SETUP:  n/a = no parent link to measure (root)
+I (153381) MESH_SETUP: -----------------------------------------------------------------------
+I (153391) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (153391) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (153401) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (153411) MESH_SETUP:  H01   70:4B:CA:25:B7:68  CHILD       B0:CB:D8:F3:32:18  0x02
+I (153421) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       70:4B:CA:25:B7:68  0x01
+I (153431) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  CHILD       B4:BF:E9:34:ED:80  0x00
+I (153441) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_A  70:4B:CA:25:B7:68  0x00
+I (153441) MESH_SETUP:  H01   28:05:A5:32:D7:B4  CHILD       B0:CB:D8:F3:32:18  0x01
+I (153451) MESH_SETUP:  H02   B4:BF:E9:32:FE:90  CHILD       28:05:A5:32:D7:B4  0x00
+I (153461) MESH_SETUP: -----------------------------------------------------------------------
+I (153471) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (153481) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (153491) MESH_SETUP:  +-- [H01] CHILD       70:4B:CA:25:B7:68
+I (153491) MESH_SETUP:  |   +-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (153501) MESH_SETUP:  |   |   `-- [H03] CHILD       F4:2D:C9:73:E6:18
+I (153511) MESH_SETUP:  |   `-- [H02] WORMHOLE_A  20:50:0D:E7:0C:80
+I (153511) MESH_SETUP:  `-- [H01] CHILD       28:05:A5:32:D7:B4
+I (153521) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:32:FE:90
+I (153531) MESH_SETUP: -----------------------------------------------------------------------
+I (153541) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (153551) MESH_SETUP:    ENTRY  B  -- not in the mesh / not reported --
+E (153561) MESH_SETUP:    EXIT   A  20:50:0D:E7:0C:80  H02  RSSI  -58  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+W (153571) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (153591) MESH_SETUP: -----------------------------------------------------------------------
+I (153591) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (153601) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (153611) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (153621) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (153631) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (153641) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+I (153651) MESH_SETUP:    F4:2D:C9:73:E6:18  not involved - relayed as in baseline
+I (153661) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (153671) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (153681) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (153691) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (153711) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (153721) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node B is missing or not connected to the root.
+I (153731) MESH_SETUP: =======================================================================
+[monitor] LOST COM3: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed
+Exporting root CSVs from COM3 ...
+Done in 0s. Files are in datasets\exports\.
+  Is idf.py monitor still open? Close it first.
+Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...
+No CSVs found.
+Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.
+Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).
+  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary
+Export + analysis: 3s total
+Obj N="Tags" RefId="20"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="21"><TNRef RefId="0" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><Obj N="MessageData" RefId="22"><TNRef RefId="1" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><S N="Message">Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:16:14.8900782+08:00</DT><Obj N="Tags" RefId="23"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="24"><TNRef RefId="0" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><Obj N="MessageData" RefId="25"><TNRef RefId="1" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><S N="Message">Exporting root CSVs from COM3 ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.722755+08:00</DT><Obj N="Tags" RefId="26"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="27"><TNRef RefId="0" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><Obj N="MessageData" RefId="28"><TNRef RefId="1" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><S N="Message">Done in 0s. Files are in datasets\exports\.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.8482774+08:00</DT><Obj N="Tags" RefId="29"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="30"><TNRef RefId="0" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><Obj N="MessageData" RefId="31"><TNRef RefId="1" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><S N="Message">_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.8237758+08:00</DT><Obj N="Tags" RefId="32"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="33"><TNRef RefId="0" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><Obj N="MessageData" RefId="34"><TNRef RefId="1" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><S N="Message">Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9194586+08:00</DT><Obj N="Tags" RefId="35"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="36"><TNRef RefId="0" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><Obj N="MessageData" RefId="37"><TNRef RefId="1" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><S N="Message">_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9254553+08:00</DT><Obj N="Tags" RefId="38"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="39"><TNRef RefId="0" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><Obj N="MessageData" RefId="40"><TNRef RefId="1" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><S N="Message">  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9286246+08:00</DT><Obj N="Tags" RefId="41"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="42"><TNRef RefId="0" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><Obj N="MessageData" RefId="43"><TNRef RefId="1" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><S N="Message">_x000A_Export + analysis: 3s total</S><B N="NoNewLine">false</B><S N="ForegroundColor">DarkGray</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9296254+08:00</DT><Obj N="Tags" RefId="44"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj></Objs>
+Obj N="Tags" RefId="20"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="21"><TNRef RefId="0" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><Obj N="MessageData" RefId="22"><TNRef RefId="1" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><S N="Message">Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:16:14.8900782+08:00</DT><Obj N="Tags" RefId="23"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="24"><TNRef RefId="0" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><Obj N="MessageData" RefId="25"><TNRef RefId="1" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><S N="Message">Exporting root CSVs from COM3 ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.722755+08:00</DT><Obj N="Tags" RefId="26"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="27"><TNRef RefId="0" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><Obj N="MessageData" RefId="28"><TNRef RefId="1" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><S N="Message">Done in 0s. Files are in datasets\exports\.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.8482774+08:00</DT><Obj N="Tags" RefId="29"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="30"><TNRef RefId="0" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><Obj N="MessageData" RefId="31"><TNRef RefId="1" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><S N="Message">_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.8237758+08:00</DT><Obj N="Tags" RefId="32"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="33"><TNRef RefId="0" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><Obj N="MessageData" RefId="34"><TNRef RefId="1" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><S N="Message">Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9194586+08:00</DT><Obj N="Tags" RefId="35"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="36"><TNRef RefId="0" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><Obj N="MessageData" RefId="37"><TNRef RefId="1" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><S N="Message">_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9254553+08:00</DT><Obj N="Tags" RefId="38"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="39"><TNRef RefId="0" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><Obj N="MessageData" RefId="40"><TNRef RefId="1" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><S N="Message">  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9286246+08:00</DT><Obj N="Tags" RefId="41"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="42"><TNRef RefId="0" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><Obj N="MessageData" RefId="43"><TNRef RefId="1" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><S N="Message">_x000A_Export + analysis: 3s total</S><B N="NoNewLine">false</B><S N="ForegroundColor">DarkGray</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9296254+08:00</DT><Obj N="Tags" RefId="44"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj></Objs>
+Obj N="Tags" RefId="20"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="21"><TNRef RefId="0" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><Obj N="MessageData" RefId="22"><TNRef RefId="1" /><ToString>Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</ToString><Props><S N="Message">Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=stationary, build=C:\Users\Angelo Calpoporo\AppData\Local\esp32_builds\T_1140e558\root_node\build_root_wormhole_partial_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:16:14.8900782+08:00</DT><Obj N="Tags" RefId="23"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="24"><TNRef RefId="0" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><Obj N="MessageData" RefId="25"><TNRef RefId="1" /><ToString>Exporting root CSVs from COM3 ...</ToString><Props><S N="Message">Exporting root CSVs from COM3 ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.722755+08:00</DT><Obj N="Tags" RefId="26"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="27"><TNRef RefId="0" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><Obj N="MessageData" RefId="28"><TNRef RefId="1" /><ToString>Done in 0s. Files are in datasets\exports\.</ToString><Props><S N="Message">Done in 0s. Files are in datasets\exports\.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Green</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:12.8482774+08:00</DT><Obj N="Tags" RefId="29"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="30"><TNRef RefId="0" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><Obj N="MessageData" RefId="31"><TNRef RefId="1" /><ToString>_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</ToString><Props><S N="Message">_x000A_Auto-analysis (trim): trim_run.py over wormhole\partial_mesh\G402\stationary ...</S><B N="NoNewLine">false</B><S N="ForegroundColor">Cyan</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.8237758+08:00</DT><Obj N="Tags" RefId="32"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="33"><TNRef RefId="0" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><Obj N="MessageData" RefId="34"><TNRef RefId="1" /><ToString>Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</ToString><Props><S N="Message">Trim failed (exit 1) - analysing the RAW export. Re-run .\analyze.ps1 once fixed.</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9194586+08:00</DT><Obj N="Tags" RefId="35"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="36"><TNRef RefId="0" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><Obj N="MessageData" RefId="37"><TNRef RefId="1" /><ToString>_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</ToString><Props><S N="Message">_x000A_Skipping M6-M8: no child telemetry in wormhole\partial_mesh\G402\stationary yet (root only).</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9254553+08:00</DT><Obj N="Tags" RefId="38"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="39"><TNRef RefId="0" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><Obj N="MessageData" RefId="40"><TNRef RefId="1" /><ToString>  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</ToString><Props><S N="Message">  A root-only table has every relay/PDR feature NaN. Import the children, then run:  .\analyze.ps1 wormhole partial_mesh G402 stationary</S><B N="NoNewLine">false</B><S N="ForegroundColor">Yellow</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9286246+08:00</DT><Obj N="Tags" RefId="41"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj><Obj S="information" RefId="42"><TNRef RefId="0" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><Obj N="MessageData" RefId="43"><TNRef RefId="1" /><ToString>_x000A_Export + analysis: 3s total</ToString><Props><S N="Message">_x000A_Export + analysis: 3s total</S><B N="NoNewLine">false</B><S N="ForegroundColor">DarkGray</S><S N="BackgroundColor">DarkMagenta</S></Props></Obj><S N="Source">A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\run.ps1</S><DT N="TimeGenerated">2026-10-19T16:19:15.9296254+08:00</DT><Obj N="Tags" RefId="44"><TNRef RefId="2" /><LST><S>PSHOST</S></LST></Obj><S N="User">ANGELO\Angelo Calpoporo</S><S N="Computer">Angelo</S><U32 N="ProcessId">22544</U32><U32 N="NativeThreadId">18708</U32><U32 N="ManagedThreadId">16</U32></Props></Obj></Objs>
+  finished (exit 1)
+All boards done in 22 min 49 sec. Exports -> A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\partial_mesh\G402\stationary

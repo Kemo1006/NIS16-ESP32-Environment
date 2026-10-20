@@ -1,0 +1,7 @@
+[monitor] listening on COM12 at 115200 baud
+I (16771) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (26711) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+I (30701) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+[0;32mI (34601) HEALTH: [HEALTH] up=33s heap=87988 min=85256 big=86016 | stack free(B): telemetry=2148 probe_gen=2176 probe_relay=2196 phase_listener=4248 heartbeat=4232 csv_export=3796[0m
+I (40531) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[monitor] closed

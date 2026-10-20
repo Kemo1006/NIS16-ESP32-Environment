@@ -1,0 +1,508 @@
+[monitor] listening on COM3 at 115200 baud
+I (484) esp_image: segment 4: paddr=00121d3c vaddr=4008a59c size=1106ch ( 69740) load
+I (511) esp_image: segment 5: paddr=00132db0 vaddr=5000005c size=00020h (    32) load
+I (525) boot: Loaded app from partition at offset 0x10000
+I (525) boot: Set actual ota_seq=1 in otadata[0]
+I (525) boot: Disabling RNG early entropy source...
+[0;32mI (540) cpu_start: Multicore app[0m
+[0;32mI (548) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (548) cpu_start: Pro cpu start user code[0m
+[0;32mI (548) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (553) app_init: Application information:[0m
+[0;32mI (558) app_init: Project name:     child_node[0m
+[0;32mI (563) app_init: App version:      backup/angelo-2026-10-01-284-gf[0m
+[0;32mI (570) app_init: Compile time:     Oct 20 2026 22:59:49[0m
+[0;32mI (576) app_init: ELF file SHA256:  5b0ff4b59...[0m
+[0;32mI (581) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (586) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (591) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (596) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (601) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (608) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (614) heap_init: At 3FFBC878 len 00023788 (141 KiB): DRAM[0m
+[0;32mI (620) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (627) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (633) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;33mW (641) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig[0m
+[0;32mI (653) spi_flash: detected chip: generic[0m
+[0;32mI (658) spi_flash: flash io: dio[0m
+[0;32mI (663) main_task: Started on CPU0[0m
+[0;32mI (673) main_task: Calling app_main()[0m
+[0;32mI (673) VICTIM_MAIN: === VICTIM NODE STARTING ===[0m
+[0;32mI (673) SD_STATUS: clock seeded from build stamp 2026-10-20 22:59:49 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (683) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (693) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (733) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (763) SD_STATUS: clock: set from the card's host anchor -> 2026-10-20 23:11:27 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE71C38) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-20 23:11:27 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: burst
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-20 22:59:49
+  Run started: 2026-10-20 23:11:27 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE71C38 (MAC 20:50:0D:E7:1C:38)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 5
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+
+[0;32mI (1763) VICTIM_MAIN: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_20500DE71C38.txt[0m
+[0;32mI (1773) NODE_ID: Identity: "Board-20:38" role=CHILD mac=20:50:0d:e7:1c:38 (via MAC (no node_config.txt nickname))[0m
+I (1813) wifi:wifi driver task: 3ffcc5dc, prio:23, stack:6656, core=0
+I (1813) wifi:wifi firmware version: 0947e8b
+I (1813) wifi:wifi certification version: v7.0
+I (1813) wifi:config NVS flash: enabled
+I (1813) wifi:config nano formatting: disabled
+I (1823) wifi:Init data frame dynamic rx buffer num: 32
+I (1823) wifi:Init static rx mgmt buffer num: 5
+I (1833) wifi:Init management short buffer num: 32
+I (1833) wifi:Init dynamic tx buffer num: 32
+I (1833) wifi:Init static rx buffer size: 1600
+I (1843) wifi:Init static rx buffer num: 10
+I (1843) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1853) wifi_init: rx ba win: 6[0m
+[0;32mI (1853) wifi_init: accept mbox: 6[0m
+[0;32mI (1853) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1863) wifi_init: udp mbox: 6[0m
+[0;32mI (1863) wifi_init: tcp mbox: 6[0m
+[0;32mI (1873) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1873) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1873) wifi_init: tcp mss: 1440[0m
+[0;32mI (1883) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1883) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1893) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1903) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1903) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1913) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1993) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (2013) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (2013) wifi:enable tsf
+I (2013) wifi:Total power save buffer number: 16
+I (2013) wifi:Init max length of beacon: 752/752
+I (2013) wifi:Init max length of beacon: 752/752
+I (2023) mesh: <nvs>read layer:0, err:0x1102
+I (2023) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (2033) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (2043) wifi:Set ps type: 0, coexist: 0
+
+I (2073) wifi:Total power save buffer number: 16
+[0;32mI (2323) BH_TARGET: Attacker MAC from compiled default: f4:2d:c9:73:e6:18[0m
+[0;33mW (2323) MESH_SETUP: STAR HUB: this board joins ONLY the wormhole A hub f4:2d:c9:73:e6:18 (compiled; its mesh AP f4:2d:c9:73:e6:19), never the root directly.[0m
+I (2343) wifi:mode : sta (20:50:0d:e7:1c:38)
+I (2353) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2353) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (2353) MESH_SETUP: Mesh started. Node ID: NODE_20500DE71C38  Role: 1[0m
+I (2353) mesh: [IO]disable self-organizing<stop reconnect>
+I (2363) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+[0;32mI (2373) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (7413) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (52883) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (62383) MESH_SETUP: Mesh connection timeout after 60 s â€” continuing anyway.[0m
+[0;32mI (62383) VICTIM_MAIN: Node ID: NODE_20500DE71C38   Run ID: RUN_001[0m
+[0;32mI (62383) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62393) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62393) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62403) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62413) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (63743) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (63753) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (63933) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (63953) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (63953) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (63993) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (64003) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (64003) VICTIM_MAIN: Probe generator task running at 1000 ms interval.[0m
+[0;33mW (64013) VICTIM_MAIN: Probe send failed seq=1: ESP_ERR_INVALID_STATE[0m
+[0;32mI (64023) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+[0;32mI (64023) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (64033) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (65023) VICTIM_MAIN: Probe send failed seq=2: ESP_ERR_INVALID_STATE[0m
+[0;33mW (66023) VICTIM_MAIN: Probe send failed seq=3: ESP_ERR_INVALID_STATE[0m
+[0;33mW (67023) VICTIM_MAIN: Probe send failed seq=4: ESP_ERR_INVALID_STATE[0m
+[0;33mW (68023) VICTIM_MAIN: Probe send failed seq=5: ESP_ERR_INVALID_STATE[0m
+[0;33mW (69023) VICTIM_MAIN: Probe send failed seq=6: ESP_ERR_INVALID_STATE[0m
+[0;33mW (70023) VICTIM_MAIN: Probe send failed seq=7: ESP_ERR_INVALID_STATE[0m
+[0;33mW (71023) VICTIM_MAIN: Probe send failed seq=8: ESP_ERR_INVALID_STATE[0m
+[0;33mW (72023) VICTIM_MAIN: Probe send failed seq=9: ESP_ERR_INVALID_STATE[0m
+[0;33mW (73023) VICTIM_MAIN: Probe send failed seq=10: ESP_ERR_INVALID_STATE[0m
+[0;33mW (74023) VICTIM_MAIN: Probe send failed seq=11: ESP_ERR_INVALID_STATE[0m
+[0;33mW (75023) VICTIM_MAIN: Probe send failed seq=12: ESP_ERR_INVALID_STATE[0m
+[0;33mW (76023) VICTIM_MAIN: Probe send failed seq=13: ESP_ERR_INVALID_STATE[0m
+[0;33mW (77023) VICTIM_MAIN: Probe send failed seq=14: ESP_ERR_INVALID_STATE[0m
+[0;33mW (78023) VICTIM_MAIN: Probe send failed seq=15: ESP_ERR_INVALID_STATE[0m
+[0;33mW (79023) VICTIM_MAIN: Probe send failed seq=16: ESP_ERR_INVALID_STATE[0m
+[0;33mW (80023) VICTIM_MAIN: Probe send failed seq=17: ESP_ERR_INVALID_STATE[0m
+[0;33mW (81023) VICTIM_MAIN: Probe send failed seq=18: ESP_ERR_INVALID_STATE[0m
+[0;33mW (82023) VICTIM_MAIN: Probe send failed seq=19: ESP_ERR_INVALID_STATE[0m
+[0;33mW (83023) VICTIM_MAIN: Probe send failed seq=20: ESP_ERR_INVALID_STATE[0m
+[0;33mW (84023) VICTIM_MAIN: Probe send failed seq=21: ESP_ERR_INVALID_STATE[0m
+[0;33mW (85023) VICTIM_MAIN: Probe send failed seq=22: ESP_ERR_INVALID_STATE[0m
+[0;33mW (86023) VICTIM_MAIN: Probe send failed seq=23: ESP_ERR_INVALID_STATE[0m
+[0;33mW (87023) VICTIM_MAIN: Probe send failed seq=24: ESP_ERR_INVALID_STATE[0m
+[0;33mW (88023) VICTIM_MAIN: Probe send failed seq=25: ESP_ERR_INVALID_STATE[0m
+[0;33mW (89023) VICTIM_MAIN: Probe send failed seq=26: ESP_ERR_INVALID_STATE[0m
+[0;33mW (90023) VICTIM_MAIN: Probe send failed seq=27: ESP_ERR_INVALID_STATE[0m
+[0;33mW (91023) VICTIM_MAIN: Probe send failed seq=28: ESP_ERR_INVALID_STATE[0m
+[0;33mW (92023) VICTIM_MAIN: Probe send failed seq=29: ESP_ERR_INVALID_STATE[0m
+[0;33mW (93023) VICTIM_MAIN: Probe send failed seq=30: ESP_ERR_INVALID_STATE[0m
+[0;33mW (94023) VICTIM_MAIN: Probe send failed seq=31: ESP_ERR_INVALID_STATE[0m
+[0;32mI (94033) HEALTH: [HEALTH] up=93s heap=84896 min=83796 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (95023) VICTIM_MAIN: Probe send failed seq=32: ESP_ERR_INVALID_STATE[0m
+[0;33mW (96023) VICTIM_MAIN: Probe send failed seq=33: ESP_ERR_INVALID_STATE[0m
+[0;33mW (97023) VICTIM_MAIN: Probe send failed seq=34: ESP_ERR_INVALID_STATE[0m
+[0;33mW (98023) VICTIM_MAIN: Probe send failed seq=35: ESP_ERR_INVALID_STATE[0m
+[0;33mW (99023) VICTIM_MAIN: Probe send failed seq=36: ESP_ERR_INVALID_STATE[0m
+[0;33mW (100023) VICTIM_MAIN: Probe send failed seq=37: ESP_ERR_INVALID_STATE[0m
+[0;33mW (101023) VICTIM_MAIN: Probe send failed seq=38: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102023) VICTIM_MAIN: Probe send failed seq=39: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103023) VICTIM_MAIN: Probe send failed seq=40: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103413) MESH_SETUP: STAR HUB: scan 20 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (104023) VICTIM_MAIN: Probe send failed seq=41: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105023) VICTIM_MAIN: Probe send failed seq=42: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106023) VICTIM_MAIN: Probe send failed seq=43: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107023) VICTIM_MAIN: Probe send failed seq=44: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108023) VICTIM_MAIN: Probe send failed seq=45: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109023) VICTIM_MAIN: Probe send failed seq=46: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110023) VICTIM_MAIN: Probe send failed seq=47: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111023) VICTIM_MAIN: Probe send failed seq=48: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112023) VICTIM_MAIN: Probe send failed seq=49: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113023) VICTIM_MAIN: Probe send failed seq=50: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114023) VICTIM_MAIN: Probe send failed seq=51: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115023) VICTIM_MAIN: Probe send failed seq=52: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116023) VICTIM_MAIN: Probe send failed seq=53: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117023) VICTIM_MAIN: Probe send failed seq=54: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118023) VICTIM_MAIN: Probe send failed seq=55: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119023) VICTIM_MAIN: Probe send failed seq=56: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120023) VICTIM_MAIN: Probe send failed seq=57: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121023) VICTIM_MAIN: Probe send failed seq=58: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122023) VICTIM_MAIN: Probe send failed seq=59: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123023) VICTIM_MAIN: Probe send failed seq=60: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124023) VICTIM_MAIN: Probe send failed seq=61: ESP_ERR_INVALID_STATE[0m
+[0;32mI (124043) HEALTH: [HEALTH] up=123s heap=84896 min=83796 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (125023) VICTIM_MAIN: Probe send failed seq=62: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126023) VICTIM_MAIN: Probe send failed seq=63: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127023) VICTIM_MAIN: Probe send failed seq=64: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128023) VICTIM_MAIN: Probe send failed seq=65: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129023) VICTIM_MAIN: Probe send failed seq=66: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130023) VICTIM_MAIN: Probe send failed seq=67: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131023) VICTIM_MAIN: Probe send failed seq=68: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132023) VICTIM_MAIN: Probe send failed seq=69: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133023) VICTIM_MAIN: Probe send failed seq=70: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134023) VICTIM_MAIN: Probe send failed seq=71: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135023) VICTIM_MAIN: Probe send failed seq=72: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136023) VICTIM_MAIN: Probe send failed seq=73: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137023) VICTIM_MAIN: Probe send failed seq=74: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138023) VICTIM_MAIN: Probe send failed seq=75: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139023) VICTIM_MAIN: Probe send failed seq=76: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140023) VICTIM_MAIN: Probe send failed seq=77: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141023) VICTIM_MAIN: Probe send failed seq=78: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142023) VICTIM_MAIN: Probe send failed seq=79: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143023) VICTIM_MAIN: Probe send failed seq=80: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144023) VICTIM_MAIN: Probe send failed seq=81: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145023) VICTIM_MAIN: Probe send failed seq=82: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146023) VICTIM_MAIN: Probe send failed seq=83: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147023) VICTIM_MAIN: Probe send failed seq=84: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148023) VICTIM_MAIN: Probe send failed seq=85: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149023) VICTIM_MAIN: Probe send failed seq=86: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150023) VICTIM_MAIN: Probe send failed seq=87: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151023) VICTIM_MAIN: Probe send failed seq=88: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152023) VICTIM_MAIN: Probe send failed seq=89: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153023) VICTIM_MAIN: Probe send failed seq=90: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153943) MESH_SETUP: STAR HUB: scan 30 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (154023) VICTIM_MAIN: Probe send failed seq=91: ESP_ERR_INVALID_STATE[0m
+[0;32mI (154053) HEALTH: [HEALTH] up=153s heap=84996 min=83796 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (155023) VICTIM_MAIN: Probe send failed seq=92: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156023) VICTIM_MAIN: Probe send failed seq=93: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157023) VICTIM_MAIN: Probe send failed seq=94: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158023) VICTIM_MAIN: Probe send failed seq=95: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159023) VICTIM_MAIN: Probe send failed seq=96: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160023) VICTIM_MAIN: Probe send failed seq=97: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161023) VICTIM_MAIN: Probe send failed seq=98: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162023) VICTIM_MAIN: Probe send failed seq=99: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163023) VICTIM_MAIN: Probe send failed seq=100: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164023) VICTIM_MAIN: Probe send failed seq=101: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165023) VICTIM_MAIN: Probe send failed seq=102: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166023) VICTIM_MAIN: Probe send failed seq=103: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167023) VICTIM_MAIN: Probe send failed seq=104: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168023) VICTIM_MAIN: Probe send failed seq=105: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169023) VICTIM_MAIN: Probe send failed seq=106: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170023) VICTIM_MAIN: Probe send failed seq=107: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171023) VICTIM_MAIN: Probe send failed seq=108: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172023) VICTIM_MAIN: Probe send failed seq=109: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173023) VICTIM_MAIN: Probe send failed seq=110: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174023) VICTIM_MAIN: Probe send failed seq=111: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175023) VICTIM_MAIN: Probe send failed seq=112: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176023) VICTIM_MAIN: Probe send failed seq=113: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177023) VICTIM_MAIN: Probe send failed seq=114: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178023) VICTIM_MAIN: Probe send failed seq=115: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179023) VICTIM_MAIN: Probe send failed seq=116: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180023) VICTIM_MAIN: Probe send failed seq=117: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181023) VICTIM_MAIN: Probe send failed seq=118: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182023) VICTIM_MAIN: Probe send failed seq=119: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183023) VICTIM_MAIN: Probe send failed seq=120: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184023) VICTIM_MAIN: Probe send failed seq=121: ESP_ERR_INVALID_STATE[0m
+[0;32mI (184063) HEALTH: [HEALTH] up=183s heap=84096 min=83796 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (185023) VICTIM_MAIN: Probe send failed seq=122: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186023) VICTIM_MAIN: Probe send failed seq=123: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187023) VICTIM_MAIN: Probe send failed seq=124: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188023) VICTIM_MAIN: Probe send failed seq=125: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189023) VICTIM_MAIN: Probe send failed seq=126: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190023) VICTIM_MAIN: Probe send failed seq=127: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191023) VICTIM_MAIN: Probe send failed seq=128: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192023) VICTIM_MAIN: Probe send failed seq=129: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193023) VICTIM_MAIN: Probe send failed seq=130: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194023) VICTIM_MAIN: Probe send failed seq=131: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195023) VICTIM_MAIN: Probe send failed seq=132: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196023) VICTIM_MAIN: Probe send failed seq=133: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197023) VICTIM_MAIN: Probe send failed seq=134: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198023) VICTIM_MAIN: Probe send failed seq=135: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199023) VICTIM_MAIN: Probe send failed seq=136: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200023) VICTIM_MAIN: Probe send failed seq=137: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201023) VICTIM_MAIN: Probe send failed seq=138: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202023) VICTIM_MAIN: Probe send failed seq=139: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203023) VICTIM_MAIN: Probe send failed seq=140: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204023) VICTIM_MAIN: Probe send failed seq=141: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204473) MESH_SETUP: STAR HUB: scan 40 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (205023) VICTIM_MAIN: Probe send failed seq=142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206023) VICTIM_MAIN: Probe send failed seq=143: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207023) VICTIM_MAIN: Probe send failed seq=144: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208023) VICTIM_MAIN: Probe send failed seq=145: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209023) VICTIM_MAIN: Probe send failed seq=146: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210023) VICTIM_MAIN: Probe send failed seq=147: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211023) VICTIM_MAIN: Probe send failed seq=148: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212023) VICTIM_MAIN: Probe send failed seq=149: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213023) VICTIM_MAIN: Probe send failed seq=150: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214023) VICTIM_MAIN: Probe send failed seq=151: ESP_ERR_INVALID_STATE[0m
+[0;32mI (214073) HEALTH: [HEALTH] up=213s heap=84096 min=83796 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (215023) VICTIM_MAIN: Probe send failed seq=152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216023) VICTIM_MAIN: Probe send failed seq=153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217023) VICTIM_MAIN: Probe send failed seq=154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218023) VICTIM_MAIN: Probe send failed seq=155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219023) VICTIM_MAIN: Probe send failed seq=156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220023) VICTIM_MAIN: Probe send failed seq=157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221023) VICTIM_MAIN: Probe send failed seq=158: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222023) VICTIM_MAIN: Probe send failed seq=159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223023) VICTIM_MAIN: Probe send failed seq=160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224023) VICTIM_MAIN: Probe send failed seq=161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225023) VICTIM_MAIN: Probe send failed seq=162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226023) VICTIM_MAIN: Probe send failed seq=163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227023) VICTIM_MAIN: Probe send failed seq=164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228023) VICTIM_MAIN: Probe send failed seq=165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229023) VICTIM_MAIN: Probe send failed seq=166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230023) VICTIM_MAIN: Probe send failed seq=167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231023) VICTIM_MAIN: Probe send failed seq=168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232023) VICTIM_MAIN: Probe send failed seq=169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233023) VICTIM_MAIN: Probe send failed seq=170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234023) VICTIM_MAIN: Probe send failed seq=171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235023) VICTIM_MAIN: Probe send failed seq=172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236023) VICTIM_MAIN: Probe send failed seq=173: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237023) VICTIM_MAIN: Probe send failed seq=174: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238023) VICTIM_MAIN: Probe send failed seq=175: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239023) VICTIM_MAIN: Probe send failed seq=176: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240023) VICTIM_MAIN: Probe send failed seq=177: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241023) VICTIM_MAIN: Probe send failed seq=178: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242023) VICTIM_MAIN: Probe send failed seq=179: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243023) VICTIM_MAIN: Probe send failed seq=180: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244023) VICTIM_MAIN: Probe send failed seq=181: ESP_ERR_INVALID_STATE[0m
+[0;32mI (244083) HEALTH: [HEALTH] up=243s heap=84296 min=83696 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (245023) VICTIM_MAIN: Probe send failed seq=182: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246023) VICTIM_MAIN: Probe send failed seq=183: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247023) VICTIM_MAIN: Probe send failed seq=184: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248023) VICTIM_MAIN: Probe send failed seq=185: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249023) VICTIM_MAIN: Probe send failed seq=186: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250023) VICTIM_MAIN: Probe send failed seq=187: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251023) VICTIM_MAIN: Probe send failed seq=188: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252023) VICTIM_MAIN: Probe send failed seq=189: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253023) VICTIM_MAIN: Probe send failed seq=190: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254023) VICTIM_MAIN: Probe send failed seq=191: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255013) MESH_SETUP: STAR HUB: scan 50 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (255023) VICTIM_MAIN: Probe send failed seq=192: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256023) VICTIM_MAIN: Probe send failed seq=193: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257023) VICTIM_MAIN: Probe send failed seq=194: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258023) VICTIM_MAIN: Probe send failed seq=195: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259023) VICTIM_MAIN: Probe send failed seq=196: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260023) VICTIM_MAIN: Probe send failed seq=197: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260073) MESH_SETUP: STAR HUB: joining wormhole A f4:2d:c9:73:e6:19 (layer 2, rssi -59, ch 11) as layer 3.[0m
+I (260163) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (260163) wifi:state: init -> auth (0xb0)
+I (260173) wifi:state: auth -> assoc (0x0)
+I (260183) wifi:state: assoc -> run (0x10)
+I (260183) wifi:connected with ESPM_73E618, aid = 4, channel 11, BW20, bssid = f4:2d:c9:73:e6:19
+I (260193) wifi:security: Open Auth, phy: bgn, rssi: -60, cipher(pairwise:0x0, group:0x0), pmf:0
+I (260203) wifi:pm start, type: 0
+
+[0;32mI (260203) MESH_SETUP: Parent connected. Layer=3  ParentMAC=f4:2d:c9:73:e6:19  IsRoot=NO[0m
+[0;32mI (260213) MESH_SETUP: ==============================[0m
+[0;32mI (260213) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (260223) MESH_SETUP: ==============================[0m
+[0;32mI (260223) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (260233) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (260243) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (260463) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (261783) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (261823) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (261903) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_20500DE71C38_r5_b5_telem.csv[0m
+[0;32mI (274093) HEALTH: [HEALTH] up=273s heap=84100 min=82396 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (277033) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:16, no_wnd_count:6, timeout_count:0
+W (286583) wifi:5531<free>rootless
+[0;32mI (304103) HEALTH: [HEALTH] up=303s heap=84160 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;33mW (307873) PHASE_LISTENER: Root RESTARTED (new session d1e460e5) - dropped phase 255 from the old session; rows stay phase 255 until the new root's Phase 0.[0m
+W (314603) wifi:5531<free>rootless
+W (314923) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:25, no_wnd_count:9, timeout_count:0
+[0;33mW (321313) PHASE_LISTENER: Root RESTARTED (new session fece893c) - dropped phase 255 from the old session; rows stay phase 255 until the new root's Phase 0.[0m
+[0;32mI (334113) HEALTH: [HEALTH] up=333s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (364123) HEALTH: [HEALTH] up=363s heap=84404 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (394133) HEALTH: [HEALTH] up=393s heap=84404 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (415523) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:138, no_wnd_count:0, timeout_count:0
+I (419433) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (421383) wifi:dp: 1, bi: 1024000, li: 1, scale listen interval from 307200 us to 1024000 us
+[0;32mI (424143) HEALTH: [HEALTH] up=423s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+I (448003) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (450053) wifi:dp: 1, bi: 1024000, li: 1, scale listen interval from 307200 us to 1024000 us
+[0;32mI (454153) HEALTH: [HEALTH] up=453s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (471453) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:200, no_wnd_count:0, timeout_count:0
+[0;32mI (484163) HEALTH: [HEALTH] up=483s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (490753) PHASE_LISTENER: Phase update â†’ phase_id=0  gt_label=0  seq=36  root_ts=177598524 us[0m
+[0;32mI (514173) HEALTH: [HEALTH] up=513s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (528713) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:265, no_wnd_count:0, timeout_count:0
+[0;32mI (544183) HEALTH: [HEALTH] up=543s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (554973) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:293, no_wnd_count:0, timeout_count:0
+[0;32mI (574193) HEALTH: [HEALTH] up=573s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (604203) HEALTH: [HEALTH] up=603s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (634213) HEALTH: [HEALTH] up=633s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (664223) HEALTH: [HEALTH] up=663s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (694233) HEALTH: [HEALTH] up=693s heap=84404 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (724243) HEALTH: [HEALTH] up=723s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (754253) HEALTH: [HEALTH] up=753s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (784263) HEALTH: [HEALTH] up=783s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (791353) PHASE_LISTENER: Phase update â†’ phase_id=2  gt_label=2  seq=37  root_ts=478314242 us[0m
+[0;32mI (814273) HEALTH: [HEALTH] up=813s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (844283) HEALTH: [HEALTH] up=843s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+W (857663) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:637, no_wnd_count:0, timeout_count:0
+[0;32mI (874293) HEALTH: [HEALTH] up=873s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (904303) HEALTH: [HEALTH] up=903s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿH] up=933s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (964323) HEALTH: [HEALTH] up=963s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (972043) PHASE_LISTENER: Phase update â†’ phase_id=3  gt_label=0  seq=38  root_ts=658965079 us[0m
+[0;32mI (994333) HEALTH: [HEALTH] up=993s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿTH] up=1023s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿTH] up=1053s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1084363) HEALTH: [HEALTH] up=1083s heap=84432 min=82088 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1092793) PHASE_LISTENER: Phase update â†’ phase_id=4  gt_label=0  seq=39  root_ts=779706224 us[0m
+[0;32mI (1092793) PHASE_LISTENER: Experiment terminated â€” phase listener task exiting.[0m
+[0;32mI (1092803) VICTIM_MAIN: Experiment complete. Total probes sent: 791[0m
+[0;32mI (1092813) CSV_LOGGER: Telemetry file closed: /spiffs/telem.csv[0m
+[0;32mI (1092823) VICTIM_MAIN: Telemetry task exiting.[0m
+[0;32mI (1092843) CSV_LOGGER: SD card unmounted â€” safe to remove.[0m
+[0;32mI (1092843) VICTIM_MAIN: Send 'EXPORT_LOGS' via serial to retrieve the CSV.[0m
+[0;32mI (1092853) main_task: Returned from app_main()[0m
+[0;32mI (1093243) VICTIM_MAIN: Probe generator task exiting. Total sent: 791[0m
+ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿeartbeat task exiting - log closed and reported (child node); the board stays up for serial export commands.[0m
+[0;32mI (1114373) HEALTH: [HEALTH] up=1113s heap=140872 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1144373) HEALTH: [HEALTH] up=1143s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1174373) HEALTH: [HEALTH] up=1173s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1204373) HEALTH: [HEALTH] up=1203s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1234373) HEALTH: [HEALTH] up=1233s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1264373) HEALTH: [HEALTH] up=1263s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1294373) HEALTH: [HEALTH] up=1293s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1324373) HEALTH: [HEALTH] up=1323s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1354373) HEALTH: [HEALTH] up=1353s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (1384373) HEALTH: [HEALTH] up=1383s heap=139312 min=82088 big=81920 | stack free(B): probe_relay=2228 csv_export=3760 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[monitor] closed

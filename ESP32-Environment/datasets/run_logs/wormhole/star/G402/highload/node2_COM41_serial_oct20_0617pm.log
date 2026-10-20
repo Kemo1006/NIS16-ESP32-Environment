@@ -1,0 +1,278 @@
+[monitor] listening on COM41 at 115200 baud
+I (529) boot: Loaded app from partition at offset 0x10000
+I (530) boot: Set actual ota_seq=1 in otadata[0]
+I (530) boot: Disabling RNG early entropy source...
+[0;32mI (544) cpu_start: Multicore app[0m
+[0;32mI (552) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (552) cpu_start: Pro cpu start user code[0m
+[0;32mI (552) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (557) app_init: Application information:[0m
+[0;32mI (562) app_init: Project name:     child_node[0m
+[0;32mI (567) app_init: App version:      backup/angelo-2026-10-01-279-ga[0m
+[0;32mI (574) app_init: Compile time:     Oct 20 2026 18:13:28[0m
+[0;32mI (580) app_init: ELF file SHA256:  3d9513ee9...[0m
+[0;32mI (585) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (590) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (595) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (600) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (605) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (612) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (618) heap_init: At 3FFBC910 len 000236F0 (141 KiB): DRAM[0m
+[0;32mI (624) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (631) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (637) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;33mW (645) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig[0m
+[0;32mI (657) spi_flash: detected chip: generic[0m
+[0;32mI (662) spi_flash: flash io: dio[0m
+[0;32mI (667) main_task: Started on CPU0[0m
+[0;32mI (677) main_task: Calling app_main()[0m
+[0;32mI (677) WORMHOLE: === WORMHOLE NODE STARTING (auto-switch; fallback end A) ===[0m
+[0;32mI (677) SD_STATUS: clock seeded from build stamp 2026-10-20 18:13:28 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (687) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (697) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (747) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (777) SD_STATUS: clock: set from the card's host anchor -> 2026-10-20 18:16:37 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE71C38) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-20 18:16:37 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-20 18:13:28
+  Run started: 2026-10-20 18:16:37 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE71C38 (MAC 20:50:0D:E7:1C:38)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 1704
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 207
+Crash resets (total): 1480
+
+[0;32mI (1557) WORMHOLE: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_20500DE71C38.txt[0m
+I (1597) wifi:wifi driver task: 3ffcc674, prio:23, stack:6656, core=0
+I (1597) wifi:wifi firmware version: 0947e8b
+I (1597) wifi:wifi certification version: v7.0
+I (1597) wifi:config NVS flash: enabled
+I (1597) wifi:config nano formatting: disabled
+I (1607) wifi:Init data frame dynamic rx buffer num: 32
+I (1607) wifi:Init static rx mgmt buffer num: 5
+I (1617) wifi:Init management short buffer num: 32
+I (1617) wifi:Init dynamic tx buffer num: 32
+I (1617) wifi:Init static rx buffer size: 1600
+I (1627) wifi:Init static rx buffer num: 10
+I (1627) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1637) wifi_init: rx ba win: 6[0m
+[0;32mI (1637) wifi_init: accept mbox: 6[0m
+[0;32mI (1637) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1647) wifi_init: udp mbox: 6[0m
+[0;32mI (1647) wifi_init: tcp mbox: 6[0m
+[0;32mI (1657) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1657) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1657) wifi_init: tcp mss: 1440[0m
+[0;32mI (1667) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1667) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1677) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1687) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1687) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1697) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1777) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (1797) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (1797) wifi:enable tsf
+I (1797) wifi:Total power save buffer number: 16
+I (1797) wifi:Init max length of beacon: 752/752
+I (1807) wifi:Init max length of beacon: 752/752
+I (1807) mesh: <nvs>read layer:0, err:0x1102
+I (1807) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (1817) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (1827) wifi:Set ps type: 0, coexist: 0
+
+I (1847) wifi:Total power save buffer number: 16
+[0;32mI (2297) BH_TARGET: Attacker MAC from compiled default: 20:50:0d:e7:1c:38[0m
+[0;33mW (2297) MESH_SETUP: STAR HUB: this board IS the hub (wormhole A, compiled) - it joins the root; every other board joins it.[0m
+I (2317) wifi:mode : sta (20:50:0d:e7:1c:38)
+I (2327) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2327) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (2327) MESH_SETUP: Mesh started. Node ID: NODE_20500DE71C38  Role: 3[0m
+[0;32mI (2337) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (62347) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62347) WORMHOLE: Node ID: NODE_20500DE71C38   Run ID: RUN_001[0m
+[0;32mI (62347) WORMHOLE: Wormhole UART tunnel ready: UART1  TX=GPIO17  RX=GPIO16  115200 baud[0m
+[0;32mI (62357) NODE_ID: Identity: "Board-20:38" role=WORMHOLE_A mac=20:50:0d:e7:1c:38 (via MAC (no node_config.txt nickname))[0m
+[0;32mI (62367) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62367) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62377) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62387) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62397) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (63707) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (63707) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (63967) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (64037) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (64047) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+[0;32mI (64067) CSV_LOGGER: CSV export task started on init (debug).[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (64087) WORMHOLE: Logging to: /spiffs/telem.csv[0m
+[0;32mI (64097) WORMHOLE: UART tunnel receiver running.[0m
+[0;33mW (64107) WORMHOLE: UART link noisy: 506 bad frame windows so far - check the jumpers and the common GND.[0m
+[0;32mI (64107) WORMHOLE: Probe generator ready at 250 ms interval (runs only as locked Node B).[0m
+[0;32mI (64117) WORMHOLE: Tunnel forwarder running.[0m
+[0;32mI (64127) WORMHOLE: Re-inject task running.[0m
+[0;32mI (64127) WORMHOLE: Telemetry task running at 100 ms interval.[0m
+[0;32mI (64137) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (64147) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (64207) WORMHOLE: UART link noisy: 566 bad frame windows so far - check the jumpers and the common GND.[0m
+[0;33mW (65207) WORMHOLE: UART link noisy: 1044 bad frame windows so far - check the jumpers and the common GND.[0m
+[0;31mE (66207) WORMHOLE: Own HELLO heard back over UART - TX GPIO17 is bridged to this board's own RX GPIO16. Ignored (not the peer).[0m
+[0;31mE (66307) WORMHOLE: !! UART TUNNEL ECHO: this board hears its OWN HELLOs (1 so far) - its GPIO17 (TX) touches its own GPIO16 (RX). Each jumper must go from THIS board's TX to the OTHER board's RX (crossed), + GND -> GND. The peer is NOT heard. The root holds Phase 0 until this is fixed.[0m
+[0;32mI (68937) WORMHOLE: Peer heard over UART: 20:50:0d:e7:0c:80  layer -1  end B[0m
+[0;33mW (69017) WORMHOLE: Wormhole end A -> B (depth vs peer)[0m
+[0;32mI (69017) NODE_ID: Role WORMHOLE_A -> WORMHOLE_B (decided at run time)[0m
+[0;32mI (94137) HEALTH: [HEALTH] up=93s heap=62792 min=62284 big=61440 | stack free(B): telemetry=2184 probe_gen=2208 probe_relay=2224 phase_listener=4248 heartbeat=4232 csv_export=3768 wh_uart_rx=2144 wh_role=2120 wh_fwd=2200 wh_reinject=2224 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (124147) HEALTH: [HEALTH] up=123s heap=62792 min=62284 big=61440 | stack free(B): telemetry=2184 probe_gen=2208 probe_relay=2224 phase_listener=4248 heartbeat=4232 csv_export=3768 wh_uart_rx=2144 wh_role=2120 wh_fwd=2200 wh_reinject=2224 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (154157) HEALTH: [HEALTH] up=153s heap=62792 min=62284 big=61440 | stack free(B): telemetry=2184 probe_gen=2208 probe_relay=2224 phase_listener=4248 heartbeat=4232 csv_export=3768 wh_uart_rx=2144 wh_role=2120 wh_fwd=2200 wh_reinject=2224 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (184167) HEALTH: [HEALTH] up=183s heap=62792 min=62284 big=61440 | stack free(B): telemetry=2184 probe_gen=2208 probe_relay=2224 phase_listener=4248 heartbeat=4232 csv_export=3768 wh_uart_rx=2144 wh_role=2120 wh_fwd=2200 wh_reinject=2224 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+I (195507) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (195517) wifi:Total power save buffer number: 16
+I (195517) wifi:Init max length of beacon: 752/752
+I (195517) wifi:Init max length of beacon: 752/752
+I (195537) wifi:Total power save buffer number: 16
+I (195967) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (195967) wifi:state: init -> auth (0xb0)
+I (195977) wifi:state: auth -> assoc (0x0)
+I (195987) wifi:state: assoc -> run (0x10)
+I (195987) wifi:connected with ESPM_F33218, aid = 1, channel 11, BW20, bssid = b0:cb:d8:f3:32:19
+I (195987) wifi:security: Open Auth, phy: bgn, rssi: -60, cipher(pairwise:0x0, group:0x0), pmf:0
+I (196007) wifi:pm start, type: 0
+
+I (196007) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+[0;32mI (196007) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (196017) MESH_SETUP: Parent connected. Layer=2  ParentMAC=b0:cb:d8:f3:32:19  IsRoot=NO[0m
+[0;32mI (196017) WORMHOLE: TUNNEL TEST #1 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+[0;32mI (196027) MESH_SETUP: ==============================[0m
+[0;32mI (196037) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (196047) MESH_SETUP: ==============================[0m
+[0;32mI (196047) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (196057) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (196067) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+I (196857) wifi:[0;32mI (196857) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+<ba-add>idx:0 (ifx:0, b0:cb:d8:f3:32:19), tid:5, ssn:0, winSize:64
+[0;32mI (196937) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (197077) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_20500DE71C38_r65_b1704_telem.csv[0m
+I (202447) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (202447) wifi:station: b4:bf:e9:32:fe:90 join, AID=1, bgn, 20
+[0;32mI (202447) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (202447) MESH_SETUP: ==============================[0m
+[0;32mI (202457) MESH_SETUP:   MESH CONNECTED: 2 node(s)[0m
+[0;32mI (202467) MESH_SETUP: ==============================[0m
+[0;32mI (202467) MESH_SETUP: Child connected: aid=1 MAC=b4:bf:e9:32:fe:90[0m
+[0;32mI (202477) MESH_SETUP: ==============================[0m
+[0;32mI (202477) MESH_SETUP:   MESH CONNECTED: 2 node(s)[0m
+[0;32mI (202487) MESH_SETUP: ==============================[0m
+[0;32mI (202497) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (204587) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (204597) wifi:station: 20:50:0d:e7:0c:80 join, AID=2, bgn, 20
+[0;32mI (204597) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (204597) MESH_SETUP: ==============================[0m
+[0;32mI (204607) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (204607) MESH_SETUP: ==============================[0m
+[0;32mI (204617) MESH_SETUP: Child connected: aid=2 MAC=20:50:0d:e7:0c:80[0m
+[0;32mI (204627) MESH_SETUP: ==============================[0m
+[0;32mI (204627) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (204637) MESH_SETUP: ==============================[0m
+[0;32mI (204637) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;33mW (204767) WORMHOLE: Tunnel frame received while acting as Node B - ignored[0m
+[0;33mW (204837) WORMHOLE: Wormhole end B -> A (depth vs peer)[0m
+[0;32mI (204837) NODE_ID: Role WORMHOLE_B -> WORMHOLE_A (decided at run time)[0m
+[monitor] LOST COM41: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed

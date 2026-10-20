@@ -1,0 +1,13 @@
+collect_run.py --ports COM8,COM35,COM36 --attack blackhole --topology tree --location G402 --scenario burst --repeat 1 --since 2026-10-19 08:57 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\blackhole-tree-g402-burst.json --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmp288D.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\blackhole\tree\G402\burst\collect-scan_oct19_085740pm.log)
+
+-- COM8: reading the card ...
+COLLECT: COM8 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r34_b60_telem.csv (6539 rows, ran 2026-10-19 20:32:12)
+
+-- COM35: reading the card ...
+COLLECT: COM35 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r21_b39_telem.csv (7747 rows, ran 2026-10-19 20:29:07)
+
+-- COM36: reading the card ...
+COLLECT: COM36 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r41_b576_telem.csv (6689 rows, ran 2026-10-19 20:32:51)
+
+COLLECT_SUMMARY: ok=3 skip=0 fail=0

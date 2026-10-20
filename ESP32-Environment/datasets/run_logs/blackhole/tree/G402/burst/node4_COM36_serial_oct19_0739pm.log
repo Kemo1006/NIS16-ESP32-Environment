@@ -1,0 +1,27 @@
+[monitor] listening on COM36 at 115200 baud
+[0;32mI (5946) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (5946) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (6166) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (6196) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (6206) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (6236) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (6246) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (6246) VICTIM_MAIN: Probe generator task running at 1000 ms interval.[0m
+[0;32mI (6256) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+I (6266) wifi:<ba-add>idx:0 (ifx:0, b0:cb:d8:f3:32:19), tid:5, ssn:0, winSize:64
+[0;32mI (6276) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (6276) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+I (17776) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (27716) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+I (32006) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+[0;32mI (36276) HEALTH: [HEALTH] up=35s heap=87868 min=85280 big=86016 | stack free(B): telemetry=2144 probe_gen=2192 probe_relay=2196 phase_listener=4248 heartbeat=4228 csv_export=3764[0m
+I (42046) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+I (55566) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (65506) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (66286) HEALTH: [HEALTH] up=65s heap=87988 min=85280 big=86016 | stack free(B): telemetry=2144 probe_gen=2192 probe_relay=2196 phase_listener=4248 heartbeat=4228 csv_export=3764[0m
+I (69486) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (79316) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[monitor] closed
