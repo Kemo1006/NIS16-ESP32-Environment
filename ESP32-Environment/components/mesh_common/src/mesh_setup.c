@@ -1490,6 +1490,22 @@ static void heartbeat_table_print(void)
             ESP_LOGI(TAG, " SD LOGGING  : %u/%u board(s) writing to their SD card%s", (unsigned)ok, (unsigned)n,
                      old ? " (the rest run older firmware - not reported)" : "");
         }
+        /* oct. 20 2026: one machine-readable line per board for the GUI's live board
+         * panel (SD card, UART tunnel, how long since it was heard, uptime). Words, not
+         * numbers, so an older GUI can ignore them and a person can still read them. */
+        int64_t now_us = esp_timer_get_time();
+        for (size_t i = 0; i < n; i++) {
+            const heartbeat_entry_t *e = &s_nodes[i];
+            const char *sd = e->sd_log == SD_LOG_OK ? "OK" : e->sd_log == SD_LOG_WAITING ? "WAITING" :
+                             e->sd_log == SD_LOG_NO_CARD ? "NO_CARD" : e->sd_log == SD_LOG_FAILED ? "GIVEN_UP" :
+                             e->sd_log == SD_LOG_STALLED ? "STALLED" : e->sd_log == SD_LOG_INCOMPLETE ? "INCOMPLETE" : "NA";
+            const char *wh = e->wh_link == WH_LINK_OK ? "OK" : e->wh_link == WH_LINK_NONE ? "NO_SIGNAL" :
+                             e->wh_link == WH_LINK_LOST ? "LOST" : e->wh_link == WH_LINK_WAITING ? "CHECKING" :
+                             e->wh_link == WH_LINK_ONEWAY ? "ONE_WAY" : e->wh_link == WH_LINK_ECHO ? "ECHO" : "NA";
+            ESP_LOGI(TAG, " NODESTAT %02X:%02X:%02X:%02X:%02X:%02X sd=%s uart=%s age=%lld up=%lu rssi=%d",
+                     MAC2STR(e->mac), sd, wh, (long long)((now_us - e->last_seen_us) / 1000000),
+                     (unsigned long)e->uptime_sec, (int)e->parent_rssi);
+        }
     }
     log_rule('-', rule_w);
 

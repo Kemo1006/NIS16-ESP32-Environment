@@ -94,3 +94,18 @@ function Resume-AfterSnifferGate {
     $R.Wait = $null; $R.Phase = 'boards'; $st.State = 'waiting'; $st.Note = ''
     Start-RunStep $st
 }
+
+function Stop-SnifferWithRun {
+    # called when the root's monitor closes ("Finish + export root" / the run's end): a sniffer
+    # recording from THIS GUI gets its stop file - sniff.py closes the .pcap cleanly (same as
+    # its Stop button). One started from the CLI cannot be reached from here: say so.
+    if ($SelfTest) { return }
+    if ($script:Stream -and (Test-IsSnifferStream) -and $script:SnStop) {
+        Set-Content -Path $script:SnStop -Value 'stop'
+        Write-RunConsole '  sniffer: STOPPED with the root - its capture is closed and saved (Wireshark & sniffer page)' $Pal.Green
+        Add-RunAlert 'sniffer stopped with the root - capture saved' $Pal.Green
+        return
+    }
+    $sn = @{}; try { $sn = Get-SnifferPorts } catch { }
+    if ($sn.Count) { Write-RunConsole ("  sniffer: still recording on {0} (started outside this GUI) - stop it in its own window (Enter) so its capture is saved" -f (@($sn.Keys) -join ', ')) $Pal.Amber }
+}

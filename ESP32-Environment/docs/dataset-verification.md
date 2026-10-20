@@ -15,6 +15,29 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #69 — Oct 20, 2026 · ~8:30 PM — wormhole/star/G402/highload: every child ABORTED / EXTRA PIECE (two runs)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `aeaf1a2` + this change
+> **Request:** "why nothing saved to the SD card - everything says extra piece and aborted ... did you do something to the code ... maybe because of the scenario on the card"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | star | G402 | highload | r1 (twice) | oct. 20 4:56 PM (Phase 0 17:40) and 6:15 PM (Phase 0 18:24) | root run logs, root exports, 14 child crash-watch logs, collect-scan 5:58 PM |
+
+| Check | Result | Detail |
+|---|---|---|
+| Did the SD cards record? | ✅ | root `SD LOGGING : 8/8 boards writing` through baseline + attack in both runs; every child has a file of the run (~528 KB) |
+| Did a child crash / restart? | ✅ none | the 5 plain children ran 25-37 min with no reset (crash-watch logs) |
+| Why ABORTED | ❌ found | **the star hub (wormhole end A = 1C38) left the mesh 62 s (run 1) / 23 s (run 2) into the ATTACK**; every child joins only through the hub (D-28), so all 7 lost the root (`Cooldown start: only 0/7 children`), never heard COOLDOWN / TERMINATE, kept their files open -> ABORTED when unplugged; tiny post-reset pieces = EXTRA PIECE |
+| Why the hub dropped | ⚠️ likely power | Collect: 1C38's piece ended by an *unknown reset (power cut)*; its boot counter 58 -> 1,426 -> 1,627 on oct. 20; 0C80 (end B) BROWNOUT earlier and `UART link noisy: 68 bad frame windows - check jumpers and common GND` before run 2. The 2:43 PM star STATIONARY run (less traffic) closed cleanly. Firmware on the hub not excluded until its card is read (`fetch_crashes.py --card`) |
+| Scenario on the card (#68) | ✅ not the cause | runs.csv appends `scenario` LAST (header + rows agree); importer tested with an 11- and a 12-column header: a closed boot reads clean (8,800 rows, highload), an unclosed one not clean |
+| Collect picked old files (ED80, 2805) | ❌ -> 🔧 | with no clean file it keeps pieces >= half the biggest: the OLD 14:49 stationary piece (1.08 MB, no scenario) beat the run's 0.53 MB highload piece -> wrong run. Now: when a piece recorded the run's scenario, pieces with another / no scenario are dropped (reproduced + fixed) |
+| Safety net | 🔧 | firmware: a node that hears no phase for the rest of the planned run (+ max jitter + 60 s grace) closes its files itself -> manifest `root_lost`, no `clean` (cut short, safe to import); importer / GUI show **CUT SHORT - CLOSED SAFELY**; Collect says "lost the root". Before: only cooldown armed it |
+
+**Verdict: ❌ both runs are NOT usable as wormhole captures (≈ 1 min / 23 s of attack, no cooldown) - recapture after the hub is fixed (power the two wormhole boards from a solid source, common GND on the UART pair, read 1C38's card for its crash rows). The data that exists is intact up to the drop; nothing was lost by the scenario change.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #68 — Oct 20, 2026 · ~4:00 PM — GitHub sync, GUI export ("success" but no file), Collect (failures, board picker, identity)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `709e455` + #66/#67 + this change

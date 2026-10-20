@@ -350,7 +350,7 @@ def _size(f):
     return int(f.get("rows") or 0) * 80
 
 
-def pick(files, attack, topology, location, since, skip_macs, allow_other_location=False):
+def pick(files, attack, topology, location, since, skip_macs, allow_other_location=False, scenario=None):
     """(file, note) - this run's telemetry on one card - or (None, why).
 
     Safety net (oct. 18 2026): a card has NO scenario folder (only
@@ -381,6 +381,12 @@ def pick(files, attack, topology, location, since, skip_macs, allow_other_locati
             elsewhere.append(f"{f.get('location')} ran {f.get('started') or '?'}")
             continue
         cand.append(f)
+    # oct. 20 2026: a card of the oct. 20 firmware records each run's SCENARIO. When any
+    # piece recorded THIS run's scenario, a piece with another or no scenario (older
+    # firmware = an older run) is not this run - it was taken instead of the real one
+    # when it was the bigger piece (ED80 / 2805, wormhole/star/G402/highload).
+    if scenario and any(str(f.get("scenario") or "") == scenario for f in cand):
+        cand = [f for f in cand if str(f.get("scenario") or "") == scenario]
     clean = [f for f in cand if f.get("clean") is not False]
     aborted = [f for f in cand if f.get("clean") is False]
     crash = [f for f in aborted if str(f.get("ended_by") or "").upper() not in ("", "POWERON")]
@@ -406,6 +412,11 @@ def pick(files, attack, topology, location, since, skip_macs, allow_other_locati
             note = (f"PARTIAL: the board was RESET during the run (ended by {ended}) - took its run piece "
                     f"({_size(best):,} B, ran {best.get('started') or '?'}; {len(aborted)} piece(s) on the card). "
                     f"Its data stops at the reset - check the run summary")
+            if best.get("root_lost"):
+                # oct. 20 2026 firmware: not a reset - it lost the root and closed the file itself
+                note = (f"PARTIAL: the board LOST THE ROOT during the run and closed its file safely after the "
+                        f"planned run - took it ({_size(best):,} B, ran {best.get('started') or '?'}). Rows after "
+                        f"the loss carry the last phase it heard - check the run summary / root log")
             if best.get("location") != location:
                 note += f"; card recorded {best.get('location')}, filed under {location}"
             return best, note
@@ -542,7 +553,7 @@ def main():
                 fail += 1
                 continue
         else:
-            f, note = pick(files, a.attack, topology, a.location, since, skip, a.allow_other_location)
+            f, note = pick(files, a.attack, topology, a.location, since, skip, a.allow_other_location, a.scenario)
         if f is not None:
             row.update(rel=f.get("rel", ""), name=f.get("name", ""), started=str(f.get("started") or ""), rows=f.get("rows"),
                        cell=f"{f.get('filed_under')}/{f.get('topology')}/{f.get('location')}/{f.get('scenario') or '? (older card)'}")

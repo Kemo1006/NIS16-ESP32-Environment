@@ -341,7 +341,8 @@ def _parse_manifest_lines(lines):
         entry = manifest.setdefault(
             boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None,
                    "started": None, "clock_src": None, "reset": None,
-                   "ended_by": None, "sd_missed": 0, "sd_lost": False, "scenario": None})
+                   "ended_by": None, "sd_missed": 0, "sd_lost": False, "scenario": None,
+                   "root_lost": False})
         # Either row of a boot carries these and both say the same thing (one
         # flash cannot be relinked mid-run, and csv_logger.c reuses the run's
         # captured start time for the "clean" row), so the first row that has
@@ -365,6 +366,11 @@ def _parse_manifest_lines(lines):
             entry["sd_missed"] = max(entry["sd_missed"], rows)
             if row.get("event") == "sd_lost":
                 entry["sd_lost"] = True
+        # oct. 20 2026 firmware: lost the root before cooldown, closed its files itself
+        # after the planned run - safe to import, but cut short (no "clean" row)
+        if row.get("event") == "root_lost":
+            entry["root_lost"] = True
+            entry["rows"] = max(entry["rows"], rows)
         if row.get("event") == "clean":
             entry["rows"] = rows
             entry["uptime_s"] = uptime_s
@@ -991,6 +997,9 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         "ended_by": (entry or {}).get("ended_by"),
         # the run's SCENARIO as the card recorded it (oct. 20 2026 firmware; None = older)
         "scenario": (entry or {}).get("scenario"),
+        # True = the board lost the root before cooldown and CLOSED the file itself
+        # (safe, complete up to the loss; the run is cut short) - oct. 20 2026 firmware
+        "root_lost": bool((entry or {}).get("root_lost")),
         # The board's status_<node>.txt as it is NOW (mounted card only): its
         # boot count vs this file's boot shows boots that never reached logging.
         "status": (source.status(rel, m.group("node")) if hasattr(source, "status") else None),
@@ -1242,7 +1251,7 @@ def _run(source, args):
         status = f", {run_tag.rstrip(', ')}" if run_tag else ""
         if entry is not None:
             status += (f", manifest: {entry['rows']} rows / {entry['uptime_s']}s, "
-                       f"{'clean' if entry['clean'] else 'ABORTED'}")
+                       f"{'clean' if entry['clean'] else ('CUT SHORT (root lost - closed safely)' if entry.get('root_lost') else 'ABORTED')}")
             if entry.get("sd_missed"):
                 status += (f", CARD COPY INCOMPLETE: {entry['sd_missed']} row(s) never reached the card"
                            f"{' (card given up mid-run)' if entry.get('sd_lost') else ''} - "

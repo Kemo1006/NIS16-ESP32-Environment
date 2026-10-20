@@ -1919,14 +1919,20 @@ esp_err_t csv_logger_close(void)
          * events it does not know. */
         bool manual_complete = false;
         bool manual = phase_listener_ended_manually(&manual_complete);
+        /* oct. 20 2026: lost the root before cooldown -> closed safely here after the
+         * planned run, but cut short: "root_lost" and NO "clean" (like an early END_RUN) */
+        bool root_lost = !manual && phase_listener_root_lost();
         if (manual) {
             sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
                                "manual_end");
+        } else if (root_lost) {
+            sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
+                               "root_lost");
         } else if (phase_listener_terminate_timed_out()) {
             sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows,
                                "term_timeout");
         }
-        if (!manual || manual_complete) {
+        if ((!manual || manual_complete) && !root_lost) {
             sd_manifest_append(s_node_id, s_role_str, s_run_number, s_total_rows, "clean");
         }
     }

@@ -5927,6 +5927,11 @@ function Show-ImpList($Items) {
         $ph = if ($null -ne $f.phases) { (@($f.phases) | Where-Object { $_ -ne 255 }) -join ',' } else { '' }
         $L = $script:ImpLook[$look]
         $stTxt = $L.Text + $(if ($look -eq 'aborted' -and $f.ended_by) { ' - ' + (Get-EndedShort $f.ended_by) } else { '' })
+        # oct. 20 2026 firmware: closed by the board itself after it lost the root - not a broken file
+        if ($look -eq 'aborted' -and $f.root_lost -eq $true) {
+            $stTxt = 'CUT SHORT - CLOSED SAFELY'
+            $why = 'The board LOST THE ROOT (its link into the mesh broke) and closed this file itself once the planned run was over. Every row up to the loss is good and safe to import; the run is incomplete for this board - check the root log for when it dropped.'
+        }
         if ($isPiece -and $grp.Rel -eq $f.rel) { $stTxt += '  (best of {0} pieces)' -f $grp.N; $why = "This board REBOOTED during the run - the run is split over $($grp.N) files; this is the best piece (the analysis takes one file per board). " + $why }
         $tick = ($look -eq 'new') -or ($isPiece -and $grp.Rel -eq $f.rel -and $look -eq 'aborted')
         $row = $dt.Rows.Add($tick, $stTxt + $(if ($f.archived) { '  (_archive)' } else { '' }), $why,
@@ -7459,6 +7464,9 @@ function Stop-RunMonitor([switch]$NoExport) {
     $exports = (-not $NoExport) -and -not ($b.Role -ne 'root' -and $R.Settings.Child -eq 'now')
     if ($NoExport) { Set-Content -Path (Join-Path $R.Ctl 'noexport') -Value 'skip' }
     Set-Content -Path (Join-Path $R.Ctl 'stop') -Value 'stop'
+    # oct. 20 2026 (user): "Finish + export root" also STOPS the sniffer, so its .pcap is closed
+    # and saved with the run - the root is the last board, the run is over
+    if ($b.Role -eq 'root') { try { Stop-SnifferWithRun } catch { } }
     $R.Phase = $(if ($exports) { 'export' } else { 'closing' })
     $R.Current.Note = $(if ($exports) { 'exporting - do not unplug' } else { 'closing the monitor' })
     if ($exports) {
@@ -7675,6 +7683,7 @@ function Reset-RootDash {
     $ui.RunTopoStatus.Text = '-'; $ui.RunTopoInfo.Text = 'appears once the root prints its first table'; $ui.RunTopoDetail.Text = ''
     $ui.RunNodes.ItemsSource = $null; $ui.RunAlerts.ItemsSource = $null; $ui.RunAlertsNone.Visibility = 'Visible'
     Reset-SmartAlerts
+    try { Reset-BoardHealth } catch { }    # gui\BoardHealth.ps1: live board health card
     $ui.RunTunnelCard.Visibility = 'Collapsed'
     $ui.RunStart.IsEnabled = $false; $ui.RunStartAnyway.IsEnabled = $false
     Update-RootSegs
@@ -7774,6 +7783,8 @@ function Read-RootLine([string]$Line) {
     if ($t -match '\[CTRL\] START refused: (.+?)\. Fix') { $ui.RunGate.Text = "START refused (kept - it fires as soon as this is fixed): $($Matches[1])"; $ui.RunGate.Foreground = & $brush $Pal.Amber; Add-RunAlert "START refused: $($Matches[1])" $Pal.Amber; return }
     if ($t -match '\[CTRL\] START received') { Add-RunAlert 'START received - Phase 0 (baseline) is starting' $Pal.Green; $ui.RunGate.Text = 'START received - the run is starting.'; $ui.RunGate.Foreground = & $brush $Pal.Green; return }
     if ($t -match '\[CTRL\] START_ANYWAY') { Add-RunAlert $t $Pal.Red; return }
+    # gui\BoardHealth.ps1 (oct. 20 2026): per-board SD / UART / liveness line from the root
+    if ($t.StartsWith('NODESTAT ')) { try { [void](Read-BoardHealthLine $t) } catch { }; return }
     # the topology table
     if ($t -eq 'MESH TOPOLOGY') { $D.Collect = $true; $D.Rows.Clear(); $D.InTunnel = $false; return }
     if ($t -match '^TYPE\s+:\s+(.+)$') { $D.Topo.Type = $Matches[1]; return }
@@ -8078,6 +8089,7 @@ $runTimer.Add_Tick({ Measure-GuiTick 'run' {   # gui\Perf.ps1: a tick over 150 m
     Read-CrashWatch
     # a banner seen while the monitor was still opening keeps its move-on pending (oct. 20 2026)
     if ($R.AutoAt -and (Get-Date) -ge $R.AutoAt -and $R.Phase -ne 'flash') { $R.AutoAt = $null; if ($R.Phase -eq 'monitor' -and $R.Current.Board.Role -ne 'root') { Stop-RunMonitor } }
+    try { Update-BoardHealth } catch { }    # gui\BoardHealth.ps1: redraws at most every 2 s, only on change
     if ($R.Phase -eq 'pflash') { try { Step-ParallelFlash } catch { Write-RunConsole ("  parallel flash: {0}" -f $_.Exception.Message) $Pal.Red }; return }   # gui\ParallelFlash.ps1
     if (-not $R.Proc) { return }
     $lines = Read-RunOutput
@@ -8572,6 +8584,8 @@ else {
     L 'I' ' H1   20:50:0D:E7:0C:80  VICTIM    -48  0xFF UNSET        1  not yet'
     L 'I' '----------------------------------------------------------------'
     L 'I' ' PARENT/CHILD STRUCTURE (depth-first from root)'
+    L 'I' ' NODESTAT 20:50:0D:E7:FE:90 sd=OK uart=NA age=3 up=95 rssi=-41'
+    L 'I' ' NODESTAT 20:50:0D:E7:1C:38 sd=STALLED uart=LOST age=55 up=40 rssi=-60'
     L 'I' '[CTRL] All 1 children in the mesh after 12 s - starting the run.'
     L 'I' '════════════════════ READY - TYPE  START  TO BEGIN PHASE 0 ════════════════════  @ 10:00:12 PHT'
     L 'W' '[CTRL] READY: 1/1 children in the mesh. Check the topology table, then type START.'
@@ -8635,6 +8649,8 @@ exit 0
     $ui.RunNext.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
     $t0 = Get-Date
     while ($script:Run.Phase -ne 'done' -and ((Get-Date) - $t0).TotalSeconds -lt 60) { & $pump 250 }
+    try { $script:BH.DrawnAt = [datetime]::MinValue; $script:BH.Dirty = $true; Update-BoardHealth } catch { Write-Output ("board health ERROR: " + $_.Exception.Message) }
+    Write-Output ("board health: boards={0}, chips={1}, link={2}" -f @($script:BH.Stat.Keys).Count, ((@($script:BHChips.Children | ForEach-Object { $_.Child.Text })) -join ' | '), $(if ($script:BHLink.Children.Count -gt 1) { $script:BHLink.Children[1].Text } else { 'none' }))
     Write-Output ("live run: end phase={0}, steps={1}" -f $script:Run.Phase, (@($script:Run.Steps | ForEach-Object { "$($_.Kind):$($_.State)" }) -join ' '))
     & $shot 'liverun_done'
     $script:AutoConfirm = $false; $script:Run = $null

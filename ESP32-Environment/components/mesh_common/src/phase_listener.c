@@ -57,6 +57,12 @@ static int64_t           s_phase_since_us = 0;
 /* Set when TERMINATE was declared by the watchdog, not received from the root. */
 static volatile bool     s_term_timed_out = false;
 
+/* Set when the watchdog ended the run BEFORE cooldown: no phase broadcast reached
+ * this node for longer than the rest of the planned run (oct. 20 2026: the star hub
+ * dropped in the attack phase, every child lost the root, never heard COOLDOWN or
+ * TERMINATE, and its file stayed open until it was unplugged -> ABORTED). */
+static volatile bool     s_term_root_lost = false;
+
 /* Set by END_RUN (phase_listener_end_run_now). s_manual_complete says whether
  * the run had already reached cooldown, i.e. its labelled content is whole. */
 static volatile bool     s_term_manual     = false;
@@ -203,9 +209,35 @@ void phase_listener_wait_for_terminate(void)
             return;
         }
         xSemaphoreTake(s_phase_mutex, portMAX_DELAY);
-        bool in_cooldown = (s_phase_id == PHASE_ID_COOLDOWN);
+        uint8_t pid = s_phase_id;
+        bool in_cooldown = (pid == PHASE_ID_COOLDOWN);
         int64_t since_us = s_phase_since_us;
         xSemaphoreGive(s_phase_mutex);
+        /* oct. 20 2026: a node that lost the root BEFORE cooldown keeps logging for
+         * the whole rest of the planned run (a blackhole capture needs exactly that
+         * disconnection), then closes its files itself instead of waiting forever.
+         * The longest the rest can take: every remaining phase at its maximum
+         * (jitter included - this node cannot know the root's draw) + the grace.
+         * Every new phase heard restarts the clock, so a node that hears the root
+         * never gets here. PHASE_ID_UNSET (nothing heard yet) never arms it. */
+        uint32_t rest_s = 0;
+        if (pid == PHASE_ID_BASELINE) {
+            rest_s = PHASE_BASELINE_S + JITTER_BASELINE_MAX_S + PHASE_ATTACK_S +
+                     JITTER_ATTACK_MAX_S + PHASE_COOLDOWN_S;
+        } else if (pid == PHASE_ID_BLACKHOLE || pid == PHASE_ID_WORMHOLE) {
+            rest_s = PHASE_ATTACK_S + JITTER_ATTACK_MAX_S + PHASE_COOLDOWN_S;
+        }
+        if (rest_s &&
+            esp_timer_get_time() - since_us > (int64_t)(rest_s + TERMINATE_GRACE_S) * 1000000LL) {
+            s_term_timed_out = true;
+            s_term_root_lost = true;
+            ESP_LOGE(TAG, "No phase broadcast for %u s since phase %u began - the root was "
+                          "lost and the planned run is over: closing the files here (safe "
+                          "to import). Manifest will record root_lost (capture cut short).",
+                     (unsigned)(rest_s + TERMINATE_GRACE_S), (unsigned)pid);
+            xEventGroupSetBits(s_term_eg, TERMINATE_BIT);
+            return;
+        }
         if (in_cooldown && esp_timer_get_time() - since_us > limit_us) {
             s_term_timed_out = true;
             ESP_LOGE(TAG, "No TERMINATE received %u s into cooldown -- ending the "
@@ -220,6 +252,11 @@ void phase_listener_wait_for_terminate(void)
 bool phase_listener_terminate_timed_out(void)
 {
     return s_term_timed_out;
+}
+
+bool phase_listener_root_lost(void)
+{
+    return s_term_root_lost;
 }
 
 int phase_listener_end_run_now(void)

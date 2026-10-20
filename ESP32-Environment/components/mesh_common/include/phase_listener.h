@@ -109,6 +109,13 @@ void phase_listener_wait_for_terminate(void);
  */
 bool phase_listener_terminate_timed_out(void);
 
+/**
+ * @brief True when the watchdog ended the run BEFORE cooldown: no phase broadcast
+ *        for longer than the rest of the planned run (the root was lost). The file
+ *        is closed cleanly but the capture is cut short (manifest "root_lost").
+ */
+bool phase_listener_root_lost(void);
+
 /** Results of phase_listener_end_run_now(). */
 #define PL_END_NOT_RUNNING  (-1)  /**< listener never started                */
 #define PL_END_CUT_SHORT      0   /**< ended before cooldown: capture partial */
