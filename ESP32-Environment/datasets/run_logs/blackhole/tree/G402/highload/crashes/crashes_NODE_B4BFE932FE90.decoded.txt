@@ -1,0 +1,2 @@
+crash records of NODE_B4BFE932FE90 (from its SD card)
+elf used for decoding: NONE - pass --elf

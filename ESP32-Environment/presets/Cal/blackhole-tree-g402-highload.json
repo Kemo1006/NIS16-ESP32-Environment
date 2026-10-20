@@ -6,11 +6,11 @@
     "owner":  "Cal",
     "repeat":  1,
     "expectedChildren":  7,
-    "savedAt":  "2026-10-17 17:21",
+    "savedAt":  "2026-10-19 10:35",
     "boards":  [
                    {
                        "Label":  "root",
-                       "Port":  "COM10",
+                       "Port":  "COM18",
                        "Role":  "root",
                        "Kind":  "root",
                        "Display":  "ROOT (announces the phases)",

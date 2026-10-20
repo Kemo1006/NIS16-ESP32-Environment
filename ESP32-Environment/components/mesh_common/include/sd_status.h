@@ -178,6 +178,26 @@ void sd_status_unmount(void);
  *  @param what  command name, for the log line on failure. */
 bool sd_status_ensure_mounted(const char *what, bool *took_mount);
 
+/** Mid-run SD RECOVERY (oct. 20 2026): tear the run's mount down and bring it
+ *  back up with the same config, KEEPING sd_status_run_dir(), so csv_logger.c
+ *  can reopen its mirrors (append mode) after the card stopped answering - a
+ *  card brown-out / SPI glitch puts it back in its idle state, and only a fresh
+ *  card init reaches it again. Every FILE* on the card must be closed first.
+ *  @p run_dir is the run's folder as csv_logger.c captured it at init (passed
+ *  in, because a serial command's temporary mount can clear sd_status.c's own
+ *  copy while the run's mount is down). Returns false (nothing mounted) if the
+ *  card does not come back or @p run_dir is empty. */
+bool sd_status_remount(const char *run_dir);
+
+/* Boot mount retries (oct. 20 2026). Kept here, not in mesh_config.h, which
+ * carries each laptop's local attacker MAC (same reason as health_log.c). */
+#ifndef SD_BOOT_MOUNT_TRIES
+#define SD_BOOT_MOUNT_TRIES     3
+#endif
+#ifndef SD_BOOT_MOUNT_RETRY_MS
+#define SD_BOOT_MOUNT_RETRY_MS  300
+#endif
+
 /** Absolute path of the report written by the last boot check, or "" if none
  *  was written. */
 const char *sd_status_report_path(void);
@@ -241,6 +261,20 @@ sd_loc_read_t sd_status_peek_location(char *out, size_t out_len);
  *  "leave it alone if it already says this" should peek first — the firmware
  *  does not second-guess an explicit write request. */
 sd_loc_write_t sd_status_write_location(const char *value);
+
+/* ── scenario.txt (oct. 20 2026) ─────────────────────────────────────────────
+ * The SCENARIO of the run this card records (stationary / burst / highload /
+ * jitter / mobility / powercycle). The firmware cannot know it - in a burst run
+ * only the target child has the burst profile, mobility / powercycle use plain
+ * firmware - so the laptop writes it before each flash (run.ps1 ->
+ * export_logs.py --ensure-scenario), exactly like location.txt. Read at boot and
+ * recorded in runs.csv (12th column) so an imported file says which scenario the
+ * CARD recorded, next to attack / topology / location. Missing = "" (older run). */
+const char *sd_status_scenario(void);
+/** Write scenario.txt (validated). true = written. Takes effect on the next boot. */
+bool sd_status_write_scenario(const char *value);
+/** What scenario.txt says now: true + value, or true + "NONE"; false = no card. */
+bool sd_status_peek_scenario(char *out, size_t out_len);
 
 /* ── Command Center: /sdcard/node_config.txt ──────────────────────────────────
  * Read during the boot check's mounted window and cached here for

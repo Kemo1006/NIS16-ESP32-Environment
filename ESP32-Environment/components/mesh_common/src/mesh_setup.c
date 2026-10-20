@@ -1462,7 +1462,7 @@ static void heartbeat_table_print(void)
      * probes - the root sees it as healthy - but its telemetry exists only in its
      * internal flash (wiped by the next flash). Say so while it can still be fixed. */
     {
-        char bad[200] = "";
+        char bad[320] = "";
         size_t ok = 0, old = 0, nbad = 0;
         for (size_t i = 0; i < n; i++) {
             const heartbeat_entry_t *e = &s_nodes[i];
@@ -1471,18 +1471,20 @@ static void heartbeat_table_print(void)
             } else if (e->sd_log == SD_LOG_NA) {
                 old++;
             } else {
-                char one[40];
+                char one[64];
                 snprintf(one, sizeof(one), "%s%02X:%02X %s", nbad ? ", " : "", e->mac[0], e->mac[5],
                          e->sd_log == SD_LOG_NO_CARD ? "NO CARD" :
-                         e->sd_log == SD_LOG_FAILED  ? "WRITE FAILED" : "STALLED");
+                         e->sd_log == SD_LOG_FAILED  ? "CARD GIVEN UP" :
+                         e->sd_log == SD_LOG_INCOMPLETE ? "INCOMPLETE (card recovered, rows missed)"
+                                                        : "STALLED/RECOVERING");
                 strlcat(bad, one, sizeof(bad));
                 nbad++;
             }
         }
         if (nbad) {
-            ESP_LOGE(TAG, " SD LOGGING  : NOT WRITING on %u board(s): %s - their telemetry is ONLY in "
+            ESP_LOGE(TAG, " SD LOGGING  : NOT WRITING on %u board(s): %s - their telemetry is complete ONLY in "
                           "internal flash: fix the card (reseat / replace, then reset that board) "
-                          "BEFORE START, or export it over USB before it is re-flashed",
+                          "BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed",
                      (unsigned)nbad, bad);
         } else if (n > 0) {
             ESP_LOGI(TAG, " SD LOGGING  : %u/%u board(s) writing to their SD card%s", (unsigned)ok, (unsigned)n,

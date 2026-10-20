@@ -22,3 +22,9 @@ CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
 # 22 EINVAL — the same bug fixed in sd_card_test/ on sep. 12, 2026.
 CONFIG_FATFS_LFN_HEAP=y
 
+
+# oct. 20 2026: IPC task stack 1024 -> 2048. Four boards crashed (PANIC FAULT) at
+# the same PC, which on IDF 5.5.4 builds decodes to ipc_task right after a
+# blocking cross-core call returns; the 1 KB default stack was never watched
+# (health_log.c now prints ipc0/ipc1). Costs 2 KB of ~90 KB free heap.
+CONFIG_ESP_IPC_TASK_STACK_SIZE=2048

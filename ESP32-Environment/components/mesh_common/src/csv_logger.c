@@ -86,9 +86,43 @@ static FILE *s_sd_log_fp        = NULL;
 static FILE *s_sd_arrivals_fp   = NULL;
 static char  s_sd_log_path[192]      = {0};
 static char  s_sd_arrivals_path[192] = {0};
-static bool  s_sd_log_failed      = false;  /* latched: don't retry every row */
+static bool  s_sd_log_failed      = false;  /* latched: given up (or deleted) for this run */
 static int64_t s_sd_log_last_ok_us = 0;     /* last telemetry row the CARD took */
 static bool  s_sd_arrivals_failed = false;
+
+/* SD RECOVERY (oct. 20 2026). Until now ONE failed fopen / write ended the card
+ * copy for the rest of the run (before oct. 19 it even truncated the file on the
+ * next row). A card that browns out or misses one SPI transfer is back in its
+ * idle state, not dead: a fresh card init reaches it again. So a failed mirror
+ * now goes DOWN, the sd_recover task (no io_lock held while it remounts, so the
+ * 10 Hz telemetry never waits on a card init) first lets the writer simply
+ * reopen it, then remounts the card, up to SD_RECOVER_MAX_TRIES times, and the
+ * writer reopens the SAME file in APPEND mode - never "w" once it exists, so
+ * nothing already on the card is ever cut. Rows written while it was down are
+ * counted and recorded in runs.csv ("sd_gap" / "sd_lost"), so the importer and
+ * the verifier can tell a short card copy from a short run. SPIFFS keeps every
+ * row either way. */
+typedef enum {
+    SD_MIR_UP = 0,    /* open, or not opened yet (no row logged so far)           */
+    SD_MIR_DOWN,      /* failed - waiting for the recovery task; writers skip it   */
+    SD_MIR_REOPEN,    /* recovery says: try fopen on the next row                  */
+} sd_mir_state_t;
+typedef struct {
+    volatile sd_mir_state_t state;
+    bool     created;       /* file made this boot: reopen with "a", never "w"   */
+    bool     deleted;       /* DELETE_SD_FILE on request: not a failure          */
+    uint8_t  tries;         /* recovery attempts since the card last worked       */
+    uint8_t  recoveries;    /* outages recovered this run                         */
+    int64_t  down_us;       /* when it went DOWN                                  */
+    uint32_t missed;        /* rows that did not reach the card (whole run)      */
+    uint32_t missed_gap;    /* ... during the current outage                      */
+} sd_recover_t;
+static sd_recover_t      s_sd_log_rec, s_sd_arrivals_rec;
+static TaskHandle_t      s_sd_recover_task = NULL;
+static SemaphoreHandle_t s_sd_remount_lock = NULL;  /* recovery remount vs close's unmount */
+/* this run's card folder, kept HERE: sd_status_unmount() (a serial command's temp mount
+ * while the run's mount is down) clears sd_status.c's copy */
+static char              s_sd_run_dir[96] = {0};
 
 /* HIGHLOAD ROOT ONLY — see csv_logger_set_arrivals_sd_only(). Off in every
  * other build, which keeps the SPIFFS-first arrival path byte-for-byte as it
@@ -945,7 +979,7 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
         return;
     }
     if (need_header) {
-        fputs("boot,run,node_id,role,rows,uptime_s,event,built,started,clock_src,reset_reason\n", f);
+        fputs("boot,run,node_id,role,rows,uptime_s,event,built,started,clock_src,reset_reason,scenario\n", f);
     }
     int64_t uptime_s = (esp_timer_get_time() - s_boot_start_us) / 1000000;
 
@@ -987,11 +1021,13 @@ static void sd_manifest_append(const char *node_id, const char *role_str,
      * POWERON / BROWNOUT / PANIC / ... (sd_status_reset_reason_str()). Read the
      * NEXT boot's value to learn how an ABORTED boot ended: BROWNOUT or a crash
      * there names the cause; POWERON means the power was simply cut. */
-    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s,%s,%s,%s\n",
+    /* scenario (12th, appended oct. 20 2026 like the three before it): what the
+     * laptop wrote to scenario.txt before the flash; "" when it did not */
+    fprintf(f, "%d,%d,%s,%s,%u,%lld,%s,%s,%s,%s,%s,%s\n",
             sd_status_boot_count(), run_number, node_id, role_str,
             (unsigned)rows, (long long)uptime_s, event,
             sd_status_build_stamp(), s_run_started, sd_status_clock_source_str(),
-            sd_status_reset_reason_str());
+            sd_status_reset_reason_str(), sd_status_scenario());
     fflush(f);
     fclose(f);
 }
@@ -1086,55 +1122,215 @@ static int sd_manifest_count_prior_runs(const char *node_id)
  * few rows later than telemetry's would append a second, slightly later
  * "start" line for the same boot — confusing rather than informative. One
  * mirror opening (telemetry) is enough to mark "this boot began logging". */
+static void sd_mirror_down(FILE **fp, sd_recover_t *rec, const char *what);
+static void io_lock(void);
+static void io_unlock(void);
+
 static void sd_mirror_ensure(FILE **fp, const char *path, const char *header,
-                             bool *failed, const char *node_id, const char *role_str,
-                             int run_number, bool write_manifest_start)
+                             bool *failed, sd_recover_t *rec, const char *node_id,
+                             const char *role_str, int run_number, bool write_manifest_start)
 {
-    if (*fp || *failed || path[0] == '\0') {
+    if (*fp || *failed || path[0] == '\0' || rec->state == SD_MIR_DOWN) {
         return;
     }
+    const bool reopen = rec->created;
+    const char *what = (fp == &s_sd_arrivals_fp) ? "arrivals" : "telemetry";
 
-    FILE *f = fopen(path, "w");
+    /* "a" once this boot has created the file: a reopen after an outage must
+     * append, never truncate what the card already holds. */
+    FILE *f = fopen(path, reopen ? "a" : "w");
     if (!f) {
-        ESP_LOGW(TAG, "SD mirror unavailable (%s): fopen failed — SPIFFS logging continues.", path);
-        *failed = true;
+        ESP_LOGW(TAG, "SD %s mirror: fopen failed (%s) - SPIFFS logging continues; "
+                      "retrying the card in %u s.", what, path, (unsigned)(SD_RECOVER_INTERVAL_MS / 1000));
+        sd_mirror_down(fp, rec, what);
         return;
     }
     /* Highload root only: one 4 KB card write per ~37 rows instead of one per
-     * row (newlib's default FILE buffer is ~128 B). Must precede any I/O. */
+     * row (newlib's default FILE buffer is ~128 B). Must precede any I/O - on a
+     * reopen after an outage too. */
     if (fp == &s_sd_arrivals_fp && s_arrivals_sd_only) {
         if (setvbuf(f, NULL, _IOFBF, LOGGER_SD_ONLY_VBUF_BYTES) != 0) {
             ESP_LOGW(TAG, "SD arrivals: setvbuf(%u) failed — unbuffered writes.",
                      (unsigned)LOGGER_SD_ONLY_VBUF_BYTES);
         }
     }
-    if (fputs(header, f) < 0) {
-        ESP_LOGW(TAG, "SD mirror unavailable (%s): header write failed.", path);
-        fclose(f);
-        *failed = true;
+    if (reopen) {
+        rec->state = SD_MIR_UP;
+        rec->recoveries++;
+        rec->tries = 0;            /* the give-up limit counts CONSECUTIVE failed attempts */
+        *fp = f;
+        ESP_LOGW(TAG, "SD %s mirror RESUMED (append) after %u row(s) missed - %s", what,
+                 (unsigned)rec->missed_gap, path);
+        if (fp == &s_sd_log_fp) {
+            sd_manifest_append(node_id, role_str, run_number, rec->missed_gap, "sd_gap");
+        }
+        rec->missed_gap = 0;
         return;
     }
-    fflush(f);
+    if (fputs(header, f) < 0 || fflush(f) != 0) {
+        ESP_LOGW(TAG, "SD %s mirror: header write failed (%s) - retrying the card.", what, path);
+        fclose(f);
+        sd_mirror_down(fp, rec, what);
+        return;
+    }
     ESP_LOGI(TAG, "SD mirror: %s", path);
+    if (rec->tries) {
+        rec->recoveries++;         /* the FIRST open had failed - recovered now */
+        rec->tries = 0;
+    }
+    rec->created = true;
+    rec->state = SD_MIR_UP;
     *fp = f;
     if (write_manifest_start) {
         sd_manifest_append(node_id, role_str, run_number, 0, "start");
     }
 }
 
-/* Drop the mirror after a failed write rather than retrying every row — a card
- * that has gone away will not come back mid-run, and the log spam would itself
- * disturb the capture. oct. 19 2026: *failed is latched here too - without it the
- * NEXT row's sd_mirror_ensure() re-opened the same path with fopen("w"), which
- * truncated the card file: one failed write erased the run's card copy so far. */
-static void sd_mirror_drop(FILE **fp, bool *failed, const char *what)
+/* A mirror open / write failed: close the handle and hand the card to the
+ * recovery task instead of giving up (see sd_recover_t). Caller holds io_lock.
+ * oct. 19 2026 history: this used to latch *failed (before that it did not, and
+ * the next row's fopen("w") truncated the card file). Now the mirror goes DOWN,
+ * nothing is truncated (reopen = append) and the recovery task decides when the
+ * card is given up. */
+static void sd_mirror_down(FILE **fp, sd_recover_t *rec, const char *what)
 {
     if (*fp) {
-        ESP_LOGW(TAG, "SD %s write failed — mirror disabled for the rest of this run.", what);
-        fclose(*fp);
+        fclose(*fp);    /* may fail on a dead card - the handle is released anyway */
         *fp = NULL;
     }
-    *failed = true;
+    if (rec->state != SD_MIR_DOWN) {
+        ESP_LOGE(TAG, "SD %s copy DOWN - rows go to internal flash only until the card answers "
+                      "again (attempt %u of %u next)", what, (unsigned)rec->tries + 1u,
+                 (unsigned)SD_RECOVER_MAX_TRIES);
+        rec->state = SD_MIR_DOWN;
+        rec->down_us = esp_timer_get_time();
+    }
+    if (s_sd_recover_task) {
+        xTaskNotifyGive(s_sd_recover_task);
+    }
+}
+
+static void sd_mirror_drop(FILE **fp, sd_recover_t *rec, const char *what)
+{
+    ESP_LOGW(TAG, "SD %s write failed.", what);
+    sd_mirror_down(fp, rec, what);
+}
+
+/* A row the card copy did not get: the mirror exists (or should) but is down. */
+static inline void sd_mirror_count_miss(const FILE *fp, const char *path, bool failed,
+                                        sd_recover_t *rec)
+{
+    if (!fp && path[0] != '\0' && !rec->deleted && (rec->created || rec->state == SD_MIR_DOWN || failed)) {
+        rec->missed++;
+        rec->missed_gap++;
+    }
+}
+
+/* The recovery task (sd_recover_t). Wakes when a mirror goes DOWN, waits
+ * SD_RECOVER_INTERVAL_MS, then: attempt 1 = let the writer just reopen the file
+ * (a transient error that left the card fine); attempt 2+ = remount the card
+ * first (fresh card init over SPI). Remounting needs every FILE* on the card
+ * closed, so the other mirror (root: arrivals) is closed under io_lock and
+ * reopened too. The remount itself runs WITHOUT io_lock - SPIFFS rows keep
+ * flowing - and under s_sd_remount_lock so csv_logger_close() cannot unmount
+ * underneath it. */
+static void sd_recover_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SD_RECOVER_INTERVAL_MS));
+        if (s_closed) {
+            continue;
+        }
+        sd_recover_t *recs[2] = { &s_sd_log_rec, &s_sd_arrivals_rec };
+        bool *fails[2] = { &s_sd_log_failed, &s_sd_arrivals_failed };
+        const char *names[2] = { "telemetry", "arrivals" };
+        const int64_t now = esp_timer_get_time();
+        bool due = false, need_remount = false;
+        for (int i = 0; i < 2; i++) {
+            if (recs[i]->state == SD_MIR_DOWN && !*fails[i]
+                    && now - recs[i]->down_us >= (int64_t)SD_RECOVER_INTERVAL_MS * 1000) {
+                due = true;
+                if (recs[i]->tries >= 1) {
+                    need_remount = true;
+                }
+            }
+        }
+        if (!due) {
+            continue;
+        }
+
+        bool was_down[2];
+        io_lock();
+        for (int i = 0; i < 2; i++) {
+            was_down[i] = (recs[i]->state == SD_MIR_DOWN);
+            if (recs[i]->state == SD_MIR_DOWN && !*fails[i] && recs[i]->tries >= SD_RECOVER_MAX_TRIES) {
+                *fails[i] = true;
+                ESP_LOGE(TAG, "SD %s copy GIVEN UP after %u attempts - %u row(s) are NOT on the card "
+                              "(internal flash has them: export over USB before re-flashing)",
+                         names[i], (unsigned)recs[i]->tries, (unsigned)recs[i]->missed);
+                if (i == 0) {
+                    sd_manifest_append(s_node_id, s_role_str, s_run_number, recs[i]->missed, "sd_lost");
+                }
+            }
+        }
+        const bool any_left = (s_sd_log_rec.state == SD_MIR_DOWN && !s_sd_log_failed)
+                           || (s_sd_arrivals_rec.state == SD_MIR_DOWN && !s_sd_arrivals_failed);
+        if (any_left && need_remount) {
+            /* every FILE* on the card must be closed before the mount goes */
+            if (s_sd_log_fp) {
+                fflush(s_sd_log_fp);
+                fclose(s_sd_log_fp);
+                s_sd_log_fp = NULL;
+                s_sd_log_rec.state = SD_MIR_DOWN;
+                s_sd_log_rec.down_us = now;
+            }
+            if (s_sd_arrivals_fp) {
+                fflush(s_sd_arrivals_fp);
+                fclose(s_sd_arrivals_fp);
+                s_sd_arrivals_fp = NULL;
+                s_sd_arrivals_rec.state = SD_MIR_DOWN;
+                s_sd_arrivals_rec.down_us = now;
+            }
+        }
+        io_unlock();
+        if (!any_left || s_closed) {
+            continue;
+        }
+
+        bool card_ok = true;
+        if (need_remount) {
+            xSemaphoreTake(s_sd_remount_lock, portMAX_DELAY);
+            card_ok = !s_closed && sd_status_remount(s_sd_run_dir);
+            xSemaphoreGive(s_sd_remount_lock);
+        }
+
+        io_lock();
+        for (int i = 0; i < 2; i++) {
+            if (recs[i]->state != SD_MIR_DOWN || *fails[i]) {
+                continue;
+            }
+            if (was_down[i] && recs[i]->tries < 255) {
+                recs[i]->tries++;   /* a mirror only closed for the remount is not a failure */
+            }
+            if (card_ok) {
+                recs[i]->state = SD_MIR_REOPEN;      /* the writer reopens on its next row */
+            } else {
+                recs[i]->down_us = esp_timer_get_time();
+                ESP_LOGE(TAG, "SD %s copy: card still not answering (attempt %u of %u)", names[i],
+                         (unsigned)recs[i]->tries, (unsigned)SD_RECOVER_MAX_TRIES);
+            }
+        }
+        io_unlock();
+        if (!card_ok) {
+            xTaskNotifyGive(xTaskGetCurrentTaskHandle());   /* re-check the give-up rule */
+        }
+    }
+}
+
+uint32_t csv_logger_sd_rows_missed(void)
+{
+    return s_sd_log_rec.missed;
 }
 
 /* Owner-side half of a live DELETE_SD_FILE (see s_sd_log_del). Called from the
@@ -1142,7 +1338,7 @@ static void sd_mirror_drop(FILE **fp, bool *failed, const char *what)
  * never race a write. Latches *failed so sd_mirror_ensure() does not recreate
  * the file the operator just deleted; SPIFFS keeps the run either way. */
 static void sd_mirror_service_delete(atomic_int *slot, FILE **fp, const char *path,
-                                     bool *failed, const char *what)
+                                     bool *failed, sd_recover_t *rec, const char *what)
 {
     /* Claim it first: once BUSY, the export task can no longer withdraw the
      * request and waits for the answer instead. */
@@ -1155,6 +1351,7 @@ static void sd_mirror_service_delete(atomic_int *slot, FILE **fp, const char *pa
         *fp = NULL;
     }
     *failed = true;
+    rec->deleted = true;     /* asked for - not a card failure, not counted as missed */
     bool ok = (remove(path) == 0 || errno == ENOENT);
     if (ok) {
         ESP_LOGW(TAG, "DELETE_SD_FILE: live %s mirror deleted on request (%s) - "
@@ -1174,17 +1371,17 @@ static void sd_mirror_service_delete(atomic_int *slot, FILE **fp, const char *pa
  * 0 rows on the laptop even though the data was written — see
  * LOGGER_SD_SYNC_INTERVAL_MS in mesh_config.h for the full story.
  *
- * Best-effort by design: a failed sync is logged and ignored, never allowed to
- * disturb SPIFFS logging, exactly like every other mirror operation. */
-static void sd_mirror_sync(FILE *fp, const char *what)
+ * Never allowed to disturb SPIFFS logging. oct. 20 2026: a failed flush / sync
+ * means the card stopped taking rows, so the mirror goes DOWN for recovery
+ * (sd_recover_t) instead of warning every 5 s while every row is lost. */
+static void sd_mirror_sync(FILE **fp, sd_recover_t *rec, const char *what)
 {
-    if (!fp) {
+    if (!*fp) {
         return;
     }
-    fflush(fp);
-    if (fsync(fileno(fp)) != 0) {
-        ESP_LOGW(TAG, "SD %s fsync failed (errno %d) — rows may not survive a reset.",
-                 what, errno);
+    if (fflush(*fp) != 0 || fsync(fileno(*fp)) != 0) {
+        ESP_LOGW(TAG, "SD %s flush/fsync failed (errno %d).", what, errno);
+        sd_mirror_down(fp, rec, what);
     }
 }
 
@@ -1201,8 +1398,8 @@ static void sd_mirror_sync_due(void)
         return;
     }
     s_sd_last_sync_us = now;
-    sd_mirror_sync(s_sd_log_fp, "telemetry");
-    sd_mirror_sync(s_sd_arrivals_fp, "arrivals");
+    sd_mirror_sync(&s_sd_log_fp, &s_sd_log_rec, "telemetry");
+    sd_mirror_sync(&s_sd_arrivals_fp, &s_sd_arrivals_rec, "arrivals");
 }
 
 /* True once this boot may log (see LOG_ONLY_DURING_RUN in mesh_config.h).
@@ -1370,6 +1567,20 @@ esp_err_t csv_logger_init(const char *node_id, const char *run_id,
 
     sd_csv_path(s_sd_log_path, sizeof(s_sd_log_path), "telem", s_role_str, node_id, s_run_number);
     s_sd_log_failed = false;
+    memset(&s_sd_log_rec, 0, sizeof(s_sd_log_rec));
+    strlcpy(s_sd_run_dir, sd_status_run_dir() ? sd_status_run_dir() : "", sizeof(s_sd_run_dir));
+    memset(&s_sd_arrivals_rec, 0, sizeof(s_sd_arrivals_rec));
+    s_sd_log_last_ok_us = 0;
+    if (s_sd_log_path[0] != '\0' && !s_sd_recover_task) {
+        s_sd_remount_lock = xSemaphoreCreateMutex();
+        if (!s_sd_remount_lock
+                || xTaskCreate(sd_recover_task, "sd_recover", STACK_SD_RECOVER, NULL,
+                               TASK_PRIO_SD_RECOVER, &s_sd_recover_task) != pdPASS) {
+            /* not fatal: the mirror then simply stays down after a failure */
+            ESP_LOGW(TAG, "SD recovery task not started - a card failure ends the card copy.");
+            s_sd_recover_task = NULL;
+        }
+    }
     if (role == CSV_ROLE_ROOT) {
         sd_csv_path(s_sd_arrivals_path, sizeof(s_sd_arrivals_path), "arrivals",
                     s_role_str, node_id, s_run_number);
@@ -1460,28 +1671,32 @@ esp_err_t csv_logger_append_telemetry(
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (fputs(row, s_log_fp) < 0) {
-        io_unlock();
+    /* oct. 20 2026: a failed SPIFFS write no longer skips the card. The two
+     * copies are independent; returning before the card write meant a full or
+     * slow internal flash also cost the SD copy of the row. */
+    const bool spiffs_ok = (fputs(row, s_log_fp) >= 0);
+    if (!spiffs_ok) {
         ESP_LOGE(TAG, "fputs (telemetry) failed");
-        return ESP_FAIL;
     }
 
     sd_mirror_service_delete(&s_sd_log_del, &s_sd_log_fp, s_sd_log_path,
-                             &s_sd_log_failed, "telemetry");
+                             &s_sd_log_failed, &s_sd_log_rec, "telemetry");
     sd_mirror_ensure(&s_sd_log_fp, s_sd_log_path, TELEMETRY_HEADER,
-                     &s_sd_log_failed, s_node_id, s_role_str, s_run_number, true);
+                     &s_sd_log_failed, &s_sd_log_rec, s_node_id, s_role_str, s_run_number, true);
     if (s_sd_log_fp && fputs(row, s_sd_log_fp) < 0) {
-        sd_mirror_drop(&s_sd_log_fp, &s_sd_log_failed, "telemetry");
+        sd_mirror_drop(&s_sd_log_fp, &s_sd_log_rec, "telemetry");
     } else if (s_sd_log_fp) {
         s_sd_log_last_ok_us = esp_timer_get_time();
     }
+    sd_mirror_count_miss(s_sd_log_fp, s_sd_log_path, s_sd_log_failed, &s_sd_log_rec);
 
     s_row_count++;
     s_total_rows++;
     if (s_row_count >= LOGGER_FLUSH_RECORDS) {
         fflush(s_log_fp);
-        if (s_sd_log_fp) {
-            fflush(s_sd_log_fp);
+        if (s_sd_log_fp && fflush(s_sd_log_fp) != 0) {
+            /* a dead card shows up HERE (fputs only filled the stdio buffer) */
+            sd_mirror_drop(&s_sd_log_fp, &s_sd_log_rec, "telemetry");
         }
         /* fflush() above does not update the card's directory entry, so on its
          * own it leaves a reset-interrupted run reading back as 0 rows. */
@@ -1490,7 +1705,7 @@ esp_err_t csv_logger_append_telemetry(
     }
 
     io_unlock();
-    return ESP_OK;
+    return spiffs_ok ? ESP_OK : ESP_FAIL;
 }
 
 esp_err_t csv_logger_append_probe_arrival(
@@ -1566,13 +1781,13 @@ esp_err_t csv_logger_append_probe_arrival(
         /* Highload root: the card is the primary copy; SPIFFS only catches
          * rows the card could not take. */
         sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
-                                 &s_sd_arrivals_failed, "arrivals");
+                                 &s_sd_arrivals_failed, &s_sd_arrivals_rec, "arrivals");
         sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
-                         &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
+                         &s_sd_arrivals_failed, &s_sd_arrivals_rec, s_node_id, s_role_str, s_run_number, false);
         bool on_sd = false;
         if (s_sd_arrivals_fp) {
             if (fputs(row, s_sd_arrivals_fp) < 0) {
-                sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_failed, "arrivals");
+                sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_rec, "arrivals");
             } else {
                 on_sd = true;
             }
@@ -1597,20 +1812,22 @@ esp_err_t csv_logger_append_probe_arrival(
         }
 
         sd_mirror_service_delete(&s_sd_arrivals_del, &s_sd_arrivals_fp, s_sd_arrivals_path,
-                                 &s_sd_arrivals_failed, "arrivals");
+                                 &s_sd_arrivals_failed, &s_sd_arrivals_rec, "arrivals");
         sd_mirror_ensure(&s_sd_arrivals_fp, s_sd_arrivals_path, PROBE_ARRIVAL_HEADER,
-                         &s_sd_arrivals_failed, s_node_id, s_role_str, s_run_number, false);
+                         &s_sd_arrivals_failed, &s_sd_arrivals_rec, s_node_id, s_role_str, s_run_number, false);
         if (s_sd_arrivals_fp && fputs(row, s_sd_arrivals_fp) < 0) {
-            sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_failed, "arrivals");
+            sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_rec, "arrivals");
         }
+        sd_mirror_count_miss(s_sd_arrivals_fp, s_sd_arrivals_path, s_sd_arrivals_failed,
+                             &s_sd_arrivals_rec);
     }
 
     s_arrivals_row_count++;
     if (s_arrivals_row_count >= (s_arrivals_sd_only ? LOGGER_SD_ONLY_FLUSH_RECORDS
                                                     : LOGGER_FLUSH_RECORDS)) {
         fflush(s_arrivals_fp);
-        if (s_sd_arrivals_fp) {
-            fflush(s_sd_arrivals_fp);
+        if (s_sd_arrivals_fp && fflush(s_sd_arrivals_fp) != 0) {
+            sd_mirror_drop(&s_sd_arrivals_fp, &s_sd_arrivals_rec, "arrivals");
         }
         sd_mirror_sync_due();   /* see the telemetry path — fflush is not durable */
         s_arrivals_row_count = 0;
@@ -1637,8 +1854,8 @@ esp_err_t csv_logger_flush(void)
      * phase ends), not a hot-path tick — so the mirrors are synced
      * UNCONDITIONALLY here, bypassing the LOGGER_SD_SYNC_INTERVAL_MS rate limit.
      * These are exactly the checkpoints worth paying a card write for. */
-    sd_mirror_sync(s_sd_log_fp, "telemetry");
-    sd_mirror_sync(s_sd_arrivals_fp, "arrivals");
+    sd_mirror_sync(&s_sd_log_fp, &s_sd_log_rec, "telemetry");
+    sd_mirror_sync(&s_sd_arrivals_fp, &s_sd_arrivals_rec, "arrivals");
     s_sd_last_sync_us = esp_timer_get_time();
     s_row_count = 0;
     s_arrivals_row_count = 0;
@@ -1682,6 +1899,14 @@ esp_err_t csv_logger_close(void)
      * nothing to report either way. A boot that DID drop mid-run is left with a
      * "start" and no "clean", the same shape as a hard power-loss abort, which
      * is an honest description: the card stopped receiving that boot's data. */
+    /* the recovery task may be remounting right now: let it finish first */
+    if (s_sd_remount_lock) {
+        xSemaphoreTake(s_sd_remount_lock, portMAX_DELAY);
+    }
+    if (s_sd_log_rec.missed > 0 && !s_sd_log_rec.deleted) {
+        /* the card copy is short: say by how much (importer / verifier) */
+        sd_manifest_append(s_node_id, s_role_str, s_run_number, s_sd_log_rec.missed, "sd_short");
+    }
     if (s_sd_log_fp) {
         fflush(s_sd_log_fp);
         fclose(s_sd_log_fp);
@@ -1723,6 +1948,16 @@ esp_err_t csv_logger_close(void)
         strlcpy(s_last_sd_run_dir, sd_status_run_dir(), sizeof(s_last_sd_run_dir));
         sd_status_unmount();
         ESP_LOGI(TAG, "SD card unmounted — safe to remove.");
+    }
+    if (s_sd_log_rec.missed > 0) {
+        ESP_LOGE(TAG, "SD CARD COPY INCOMPLETE: %u of %u telemetry row(s) did not reach the card "
+                      "(%u recovery attempt(s)). Internal flash has every row - export over USB "
+                      "(EXPORT_LOGS) BEFORE re-flashing this board.",
+                 (unsigned)s_sd_log_rec.missed, (unsigned)s_total_rows,
+                 (unsigned)(s_sd_log_rec.recoveries + s_sd_log_rec.tries));
+    }
+    if (s_sd_remount_lock) {
+        xSemaphoreGive(s_sd_remount_lock);
     }
 
     s_closed = true;   /* last: heartbeats report "safe to export" from here */
@@ -1868,7 +2103,7 @@ static void serial_export_task(void *arg)
     ESP_LOGI(TAG, "Serial export task ready. Commands: "
                   "EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | "
                   "EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | "
-                  "SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
+                  "SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | "
                   "DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | "
                   "START | START_ANYWAY");
 
@@ -2181,6 +2416,22 @@ static void serial_export_task(void *arg)
              * value it could not show you. Reads the FILE rather than the boot
              * check's cached result, so a card the check rejected still
              * reports its actual contents. ── */
+            /* ── SET_SCENARIO=<name> / GET_SCENARIO (oct. 20 2026): scenario.txt,
+             * the run's scenario as the laptop knows it (see sd_status.h). ── */
+            } else if (strncmp(cmd_buf, "SET_SCENARIO=", 13) == 0) {
+                const char *r = sd_status_write_scenario(cmd_buf + 13) ? "SCENARIO_SET\n"
+                                                                          : "ERROR:SCENARIO_NOT_SET\n";
+                uart_write_bytes(EXPORT_UART, r, strlen(r));
+            } else if (strcmp(cmd_buf, "GET_SCENARIO") == 0) {
+                char sc[24] = {0};
+                char out[48];
+                if (sd_status_peek_scenario(sc, sizeof(sc))) {
+                    snprintf(out, sizeof(out), "SCENARIO:%s\n", sc);
+                } else {
+                    snprintf(out, sizeof(out), "ERROR:SCENARIO_NO_CARD\n");
+                }
+                uart_write_bytes(EXPORT_UART, out, strlen(out));
+
             } else if (strcmp(cmd_buf, "GET_LOCATION") == 0) {
                 char loc[40] = {0};
                 char out[80];
@@ -2417,7 +2668,13 @@ uint8_t csv_logger_sd_state(void)
     if (s_sd_log_path[0] == '\0') {
         return SD_LOG_NO_CARD;
     }
+    if (!csv_logger_is_closed() && s_sd_log_rec.state != SD_MIR_UP) {
+        return SD_LOG_STALLED;               /* down, recovery in progress */
+    }
     if (csv_logger_is_closed()) {
+        if (s_sd_log_last_ok_us && s_sd_log_rec.missed && !s_sd_log_rec.deleted) {
+            return SD_LOG_INCOMPLETE;
+        }
         return s_sd_log_last_ok_us ? SD_LOG_OK : SD_LOG_NO_CARD;
     }
     if (s_sd_log_last_ok_us == 0) {
@@ -2426,5 +2683,5 @@ uint8_t csv_logger_sd_state(void)
     if (esp_timer_get_time() - s_sd_log_last_ok_us > (int64_t)SD_LOG_STALL_S * 1000000LL) {
         return SD_LOG_STALLED;
     }
-    return SD_LOG_OK;
+    return (s_sd_log_rec.missed && !s_sd_log_rec.deleted) ? SD_LOG_INCOMPLETE : SD_LOG_OK;
 }

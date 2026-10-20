@@ -5,6 +5,148 @@ write-up. Companion to [REROUTE-VERDICT.md](REROUTE-VERDICT.md) (D-23 board move
 
 ---
 
+## 0. Oct. 20, 2026 update — one outcome, two questions, five dimensions
+
+*User: "the Campaign says REDO while Verify says STRONG — which is it?", "notes from one run
+appear in another", "establish clear rules for PASS, FAIL and INCONCLUSIVE". Verification #66.*
+
+**Two different questions** — now shown side by side on the Verify page (RUN STATUS card) and
+never merged into one word:
+
+| Question | Answered by | Words |
+|---|---|---|
+| **Does this data prove the attack?** (attack evidence) | `verify_attack.py` → `OUTCOME:` line | PASS · FAIL · INCONCLUSIVE |
+| **Must this capture be redone?** (Campaign status) | `redo_list.py` — every source: capture completeness, structure, verifier, verification log, checklist rows | DONE · DONE - RECAPTURE ADVISED / CHECK NOTES · RECAPTURE REQUIRED · REDO |
+
+So "STRONG + REDO" is not a contradiction any more, and the card says where the REDO comes
+from (e.g. "D2 asks for a recapture, but a newer capture exists — tick it"). A REDO with a PASS
+outcome always names a non-verifier source.
+
+**Five dimensions** (`redo_list.run_dimensions`, chips on the card):
+
+| Dimension | Question | PASS | not PASS |
+|---|---|---|---|
+| execution | did every board record the run? | all boards, ≥ 95 % samples | FAIL: board / file missing, coverage < 95 % |
+| topology | is the structure the intended one? (raw CSVs, whole run) | matches | WARN: partly / re-routed in baseline · FAIL: wrong shape, cycle |
+| signature | did the attack signature move? | ≥ 1 primary past 3σ **and** ≥ MIN_EFFECT | FAIL: primaries tested, none moved · INCONCLUSIVE: no primary testable |
+| setup | did the attack run as designed? (roles, victims, moves) | no check failed (tolerated moves are notes) | FAIL: a **design** check failed · INCONCLUSIVE: only **observation** checks failed (the data to judge it is missing) |
+| dataset | is the data complete enough? | STRONG / GOOD | MINOR (gaps proven harmless by the impact check) · FAIL (MAJOR GAPS) |
+
+**OUTCOME rules** (fixed in code, `verify_attack._outcome`; Campaign may only make it stricter):
+
+* **PASS** = signature PASS **and** setup PASS **and** dataset PASS or MINOR (and, at Campaign
+  level, execution PASS and topology not FAIL). A threshold alone never makes a PASS: the setup
+  checks (attacker really dropped, victims really behind it, bystanders still delivering) must
+  hold too.
+* **FAIL** = the attack was **testable** and did not happen as designed: a design check failed
+  (attacker forwarded, no victim behind it, a board flipped victim ↔ bystander, wrong topology,
+  tunnel reversed), or the signature did not move on valid data.
+* **INCONCLUSIVE** = everything else — missing or insufficient data (attacker telemetry missing,
+  victims logged nothing, too few victim-seconds, MAJOR GAPS, incomplete capture). Missing data
+  **never disproves** an attack (it is not a FAIL) and **never validates** one (it is not a PASS).
+
+**Node relationships (D-31).** A parent change is judged by what it changes, never by itself:
+victims / bystanders that move but keep their class → tolerated (D-23); the **attacker** changing
+its own parent → tolerated only when no board changed class and the attacker was without an
+uplink ≤ 10 % of its attack (an attacker outage drops its victims' probes exactly like the
+attack, so those seconds are excluded, never counted as evidence). Victim ↔ bystander flips
+still FAIL — that is two different experiments in one attack phase.
+
+**Run-specific notes only.** Two cross-run leaks were fixed: (1) `redo_list.py` moved any CHECK
+reason seen in ≥ 4 cells out of every cell and recomputed the cell's status — a run's status
+depended on *other* runs; now each cell keeps its own reasons and a team decision (D-29) is
+written on each cell as a note naming it. (2) The GUI drew a finished Verify result on whatever
+run was selected at that moment; now only on the run it belongs to. The card also warns when the
+saved report is older than the analysis or disagrees with the live re-check (stale report).
+Plain-words analogies now quote the run's own numbers instead of fixed claims ("passed on 0",
+"every victim").
+
+**Audits after the change (oct. 20):** 110 placebo tests → 0 false positives; verdict ↔ redo
+list ↔ GUI consistency: all 5 rules hold; verifier tests 48/48; Campaign statuses before → after:
+47 OK / 5 CHECK / 1 REDO → identical (the fixes change *why*, not the numbers).
+
+**New firmware numbers (SD reliability, kind E/D):** boot mount 3 attempts × 300 ms; mid-run
+recovery every 5 s, max 6 CONSECUTIVE failed attempts (1st = plain reopen, then card remount), reopen in append
+mode only. Basis: engineering bounds — a card init over SPI takes ~0.1-1 s, so 6 failed tries × 5 s cap one
+recovery at ~30 s of a 600 s capture while never blocking the 10 Hz telemetry task (the remount
+runs in its own low-priority task). Not from a study; validate on hardware (the new [HEALTH]
+`sd_recover` stack line and the `SD ... RESUMED` log lines).
+
+---
+
+## 0b. A missing board is judged by its ROLE, not counted (oct. 20, 2026 — `tools/missing_boards.py`)
+
+*User: "evaluate the importance of the missing board before deciding whether the run needs to be
+repeated ... yellow / recapture required / inconclusive."* Verification #67.
+
+**Detected** (before: an 8-board run with 7 files passed the completeness check — it only needed
+≥ 3 children — and the verifier never knew the 8th board existed): every board the **root heard**
+(≥ 100 probe arrivals in phases 0-3) that has **no file**, plus every board whose file has **no
+attack windows**.
+
+**Placed by structure only** — its own file before it went silent → the root's run log
+(PARENT/CHILD STRUCTURE, from every board's heartbeat) → boards that name it as their parent.
+**Never by its delivery**: "its probes still arrived, so it was a bystander" would turn a victim
+the attack failed to cut off into a dropped control — the outcome choosing the evidence (D-23
+fairness rule 1, [BA], [PR]).
+
+| Position | What the evidence needs from it | Verdict |
+|---|---|---|
+| attacker | its counters ARE the primary ForwardingRatio | **CRITICAL** → RECAPTURE REQUIRED |
+| victim (below the attacker), other victims keep ≥ 60 traceable s | one witness of the PDR collapse; the attacker's counters + the other victims still show it | **YELLOW** → DONE - RECAPTURE ADVISED + footnote |
+| victim, nothing traceable left (only victim, or it carried the others — e.g. linear E618 → B768 → FE90: without B768, FE90's path cannot be traced) | the collapse cannot be shown | **CRITICAL** |
+| bystander (other lineage from the root) / relay above the attacker, another control keeps ≥ 60 s | control group only; in no primary feature and no baseline the test uses | **YELLOW** |
+| the LAST control board | no control left: network-wide loss cannot be ruled out by the data (the attacker's own counters still point to a blackhole) | **UNDETERMINED** → INVESTIGATE |
+| position unknown (no file, no root log, nobody names it) | could be evidence or control | **UNDETERMINED** → INVESTIGATE |
+| wormhole plain child | not in the signature (B's TunnelIntensity + the root's DuplicateRate) | **YELLOW** (a missing tunnel end fails its own checks) |
+
+YELLOW = grade MINOR GAPS · CRITICAL = MAJOR GAPS · UNDETERMINED = new grade **UNDETERMINED**,
+OUTCOME INCONCLUSIVE, Campaign amber **INVESTIGATE - missing board** (never "DONE", never "REDO").
+A capture flagged incomplete *only* by per-board coverage < 95 % is no longer REDO by count: it is
+CHECK, and each short board is graded by role (missing root / arrivals / attacker stay REDO).
+
+**Result on the live data:** two boards that were invisible before are now named — B768 in
+blackhole/tree/G402/highload (no file; the root log places it as a **bystander**, 4 controls
+left → YELLOW) and **2805** in wormhole/partial_mesh/G402/highload (the #63 card that never
+recorded; plain child → YELLOW, was "OK"). No other status changed; tests 55/55, placebo 0/110,
+sensitivity 0 flips, sync 5/5.
+
+### Is a missing STANDBY board (another lineage, not related to the attacker) acceptable?
+
+**Yes — with a footnote, when all of these hold** (the system checks 1-4; 5 is the team's to
+state):
+
+1. **Its position is established, not assumed** — from the root log or the data. "It was probably
+   on another branch" is not enough → UNDETERMINED.
+2. **It carries nobody the attack evidence needs** — if victims hang below it, their paths become
+   untraceable and their seconds are left out; the victim-evidence count then decides.
+3. **Another control board remains** — bystanders are the control that shows the loss is specific
+   to the attacker's path. A blackhole drops only traffic routed through it [Karlof & Wagner 2003,
+   KW]; the control demonstrates exactly that. One control fewer costs precision, not validity;
+   the last control → UNDETERMINED.
+4. **It is in no calculation the verdict uses** — the 3-sigma test compares each feature's own
+   normal phase with its attack phase *on the same boards* (attacker / victims); bystanders are in
+   no primary feature and no baseline. The network-wide "ForwardingRatio (all relays)" row is
+   information only, never counted.
+5. **Its loss is unrelated to the attack** — an SD card that failed is "missing completely at
+   random": dropping the board is unbiased and only lowers precision (established statistics:
+   Rubin 1976, *Biometrika* 63(3):581-592; Little & Rubin, *Statistical Analysis with Missing Data*,
+   3rd ed., Wiley 2019 — **verify both at the source before citing; not yet in the vetted list**).
+   A board that **crashed because of the attack** is not missing at random (D9) — check
+   `crashes_<node>.csv` before writing the footnote.
+
+What it still costs: the **dataset** (the thesis's product for exploratory analysis) has one board
+fewer — that is why the status is yellow + footnote, not green.
+
+| Claim | Basis |
+|---|---|
+| only traffic through the attacker is lost → bystanders are the control | **study** [KW] Karlof & Wagner 2003 (already in the bibliography) |
+| MCAR missingness costs precision, not validity; attack-caused loss may bias | **established statistics** (Rubin 1976; Little & Rubin 2019) — verify before citing |
+| place a missing board by structure, never by its outcome | **our rule**, D-23 fairness rule 1, supported by [BA] MacCoun & Perlmutter 2015, [PR] Simmons et al. 2011 / Nosek et al. 2018 |
+| ≥ 100 arrivals = "took part"; ≥ 60 s = a usable control / enough victim evidence; last control → UNDETERMINED | **engineering decisions** (run_summary.py rule; MIN_VICTIM_EVIDENCE_S), fixed before seeing results |
+
+---
+
 ## 1. Four questions, answered separately
 
 The confusion "the dataset is incomplete, so why did the attack PASS?" comes from mixing four

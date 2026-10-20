@@ -15,6 +15,81 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #68 — Oct 20, 2026 · ~4:00 PM — GitHub sync, GUI export ("success" but no file), Collect (failures, board picker, identity)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `709e455` + #66/#67 + this change
+> **Request:** "fix GitHub sync (files mixed / wrong folders) ... GUI export said success but no files ... Collect All failed ... let me pick boards before scanning"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | tree | G402 | burst + highload | r1 | oct. 19 night (the failed Collect + individual exports) | collect logs, exports, sync plan of this laptop |
+
+| Check | Result | Detail |
+|---|---|---|
+| Collect at 8:57 PM (burst) | ✅ explained | 2 of 3 boards REFUSED correctly: their newest card file was the HIGHLOAD run (8:29-8:32 PM), not burst - 73-79 % of probes in another phase. The 3rd (1C38, attacker - sends no probes, root_match cannot test it) WAS filed into burst = the #65 wrong import |
+| Fix: later-run rule | 🔧 | a child piece that STARTED after this run's root was exported is refused ("a later run") - tested: 1C38's 20:29 piece vs the burst root's 20:03 export -> refused |
+| Fix: scenario on the card | 🔧 | scenario.txt written before every flash (run.ps1 -> export_logs --ensure-scenario), firmware records it in runs.csv (12th column); importer + Collect + Data page show attack / topology / location / SCENARIO; Collect refuses a piece recorded as another scenario - tested (highload piece vs burst -> refused) |
+| "Exported, but no file" | ❌ -> 🔧 | import_sdcard.py exits 0 when every ticked file is SKIPPED (already imported / same node + repeat / aborted / still running); the GUI printed "N file(s) -> <card's folder>" from exit 0 + the TICKED count. Now: every copy is read back at its FINAL path (IMPORTED_FILE path\|rows), IMPORT_RESULT copied/skipped/...; the GUI shows only verified files with their real folder, and "NOTHING was imported" + the reasons when 0 - reproduced: same file twice -> copied=0 |
+| Collect identity | 🔧 | the board's real MAC (GUI) goes with --expect-mac; a card whose files belong to another board (swapped card) is refused; each collected file is checked for its node_id and re-read after filing (COLLECT_FILE) |
+| Board picker | 🔧 | Collect window: tick boxes per plugged-in board BEFORE the scan (keyed by MAC, port only if unknown), All / None, ticked-but-unplugged boards named and never read; Retry failed / Retry this board unchanged |
+| GitHub sync | ❌ -> 🔧 | Push never sent deletions and Pull treated a file deleted HERE as "a teammate's file you don't have" -> deleted / replaced runs came BACK into the run folder (#48). Now: committed-but-deleted data files are detected (git ls-files -d); Pull never brings them back ('YOU DELETED IT'); Push offers 'DELETE ON GITHUB' UNTICKED (normal commit, recoverable); deleted here + changed on GitHub = held back as a conflict. On this laptop: 56 such files (oct. 2 burst + oct. 17 highload runs + their plots/logs) - before the fix all 56 were queued to be pulled back |
+| Tests | ✅ | card-folder tests: one board, two boards (already-collected one skipped, no duplicate), retry (no duplicate), swapped card refused, later run refused, scenario mismatch refused; import twice -> copied=0; sync status read-only on real data; verifier 55/55; GUI self-test OK (sync: 208 of 264 ticked = 56 deletes unticked) |
+
+**Verdict: 🔧 the "failed" Collect was mostly the safety net working (another run on the cards) - plus one gap that let the attacker's wrong-run file through, now closed; the GUI's false "success" came from treating exit 0 as "copied"; the sync's mixing came from deletions never travelling. All three fixed and tested on test cards / real plans; Collect over USB and Halt board not tried on hardware here (ports may be in use).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #67 — Oct 20, 2026 · ~1:00 PM — missing boards graded by their role (D-32) + the "standby board" question
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `709e455` + #66 + this change (uncommitted)
+> **Request:** "evaluate the importance of the missing board before deciding whether the run needs to be repeated ... yellow / recapture required / inconclusive ... is missing data from a standby board acceptable?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | r1 | every live cell (56) | feature tables, root arrivals, root run logs |
+
+| Check | Result | Detail |
+|---|---|---|
+| Was a board with NO file seen at all? | ❌ → 🔧 | completeness needed only ≥ 3 child files; the verifier never knew a board existed unless it had a file. Now `tools/missing_boards.py` names every board the root heard (≥ 100 arrivals, phases 0-3) with no file / no attack windows |
+| Position of a missing board | 🔧 | structure only: own file → root run log PARENT/CHILD STRUCTURE → boards naming it as parent; never its delivery (a victim the attack failed to cut off must not be dropped as a 'bystander') |
+| Grading | 🔧 | attacker CRITICAL; victim YELLOW if others keep ≥ 60 traceable s else CRITICAL; bystander YELLOW if another control remains, last control UNDETERMINED; unknown position UNDETERMINED; wormhole plain child YELLOW. New grade UNDETERMINED = OUTCOME INCONCLUSIVE + Campaign INVESTIGATE. Coverage-only incompleteness = CHECK, not REDO |
+| blackhole/tree/G402/highload | ⚠️ YELLOW | **B768: no file**, root heard it; root run log places it as a BYSTANDER; 4 controls left → MINOR GAPS, OUTCOME PASS, footnote C19 |
+| wormhole/partial_mesh/G402/highload | ⚠️ YELLOW | **2805 (D7B4): no data on its card (#63)** - was graded OK without knowing; plain child → MINOR GAPS, footnote C20 |
+| Every other cell | ✅ | unchanged; statuses 46 OK / 6 CHECK / 1 REDO (the 2 above OK/CHECK → CHECK) |
+| Tests | ✅ | test_verify_attack 55/55 (7 new: leaf victim YELLOW, victim carrying the other victim CRITICAL, bystander YELLOW, last control UNDETERMINED, no structure UNDETERMINED, placed by root log, grades); placebo 0/110; sensitivity 0 flips; sync 5/5; GUI self-test OK |
+| Standby-board question | ✅ answered | acceptable with a footnote when its position is established, it carries no victim, another control remains, it is in no calculation the verdict uses, and its loss is unrelated to the attack (check crash records) - GRADING-AND-THRESHOLDS.md §0b |
+
+**Verdict: 🔧 missing boards are now found and graded by their role in the attack; two real missing boards (B768, 2805) that had been overlooked are named as YELLOW footnotes. A standby board is acceptable to lose under the five conditions above; an unplaceable board or the last control is never silently accepted (INVESTIGATE).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #66 — Oct 20, 2026 · ~11:30 AM — SD-card failures, crashes, tree stability + verdict / Campaign / Verify consistency
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `709e455` + this change (uncommitted)
+> **Request:** "fix and reassess the verdict system, Campaign statuses, status notes ... boards suddenly failing to save data to their SD cards ... investigate first ... tree topology ... make the Verify page also show the Campaign status"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | r1 | every live cell (56) | firmware SD/crash code, run logs + crash records of blackhole/tree/G402, verifier + redo list on every cell |
+
+| Check | Result | Detail |
+|---|---|---|
+| Did recent code break SD mounting / file naming? | ✅ no | mount, SPI config, open modes, names unchanged since oct. 11-12; one card per board, names carry the MAC → no cross-board overwrite |
+| Firmware handling of a transient card error | ❌ → 🔧 | no boot retry; mid-run failure = card copy lost for the run (pre-oct. 19: next row `fopen("w")` TRUNCATED it); SPIFFS failure skipped the SD row; failed flush/fsync only warned. Now: 3 boot tries, background recovery (reopen → remount, 6 × 5 s, append-only), missed rows counted + `sd_gap`/`sd_short`/`sd_lost` in runs.csv, importer prints CARD COPY INCOMPLETE, root shows INCOMPLETE / STALLED/RECOVERING / CARD GIVEN UP |
+| Root "SD LOGGING" lines, oct. 19 tree runs | ✅ | no board on the new firmware reported a failure (4/8 = 4 boards on older firmware, not failures) |
+| 2805 (no highload file) | ⚠️ hardware | status written at boot but telemetry file never opened, card reads inconsistent, brownouts → its card / power link (#62/#63) |
+| Crash records (4 boards) | ❌ firmware | 0C80, 2805, FE90, E618: PANIC FAULT at the SAME PC 0x40081d4d (+ same backtrace) mid-run → deterministic. On IDF 5.5.4 oct. 19 builds = `ipc_task` (esp_ipc.c:85). Exact build ELF not kept → not proven. Mitigation: IPC stack 1024 → 2048, [HEALTH] now prints ipc0/ipc1; crash rows carry the ELF SHA, run.ps1 archives every .elf, fetch_crashes.py decodes against the exact build |
+| Tree instability | ⚠️ explained | firmware: parent selection stock since f786c07, only D-26 sticky switching left; the moves in the records follow crashing / browning-out parents (#55) → the crash above is the main cause |
+| Campaign REDO vs Verify STRONG | ❌ → 🔧 | two different questions shown as one; now the Verify page RUN STATUS card shows CAMPAIGN STATUS (redo list) + ATTACK EVIDENCE (verifier OUTCOME PASS/FAIL/INCONCLUSIVE) + 5 dimension chips + THIS run's reasons with their source; warns on a saved report older than the analysis / disagreeing with the live re-check |
+| Notes leaking between runs | ❌ → 🔧 | (1) redo_list `split_shared` removed a reason from every cell that shared it with ≥ 3 others and recomputed the cell's status (8 partial_mesh cells read OK only because of that) — now non-mutating; D-29 written on each cell as a decided note; (2) GUI drew a finished Verify result on whatever run was selected; (3) a report without a verdict left the old cached verdict on the banner; (4) log blocks were classified by words anywhere in the verdict ("no need to recapture" = REDO) — now by the leading ✅/⚠️/❌ |
+| Attacker moving (D-23 rule 4) | 🔧 D-31 | judged by what it changes: tolerated only when no board flipped class + attacker outage ≤ 10 %; victims' seconds with no working path THROUGH the attacker (attacker detached / crashed) excluded |
+| Statuses before → after | ✅ | planned cells 47 OK / 5 CHECK / 1 REDO → identical; outcomes: 52 PASS, 1 INCONCLUSIVE (wormhole/tree/DLSU_Library/stationary, MAJOR GAPS + incomplete capture) |
+| Tests | ✅ | test_verify_attack 48/48; placebo 110 → 0 false positives; sensitivity 14 thresholds ±~50 % → 0 flips (controls flip 18); verdict-sync 5/5 rules; GUI self-test passes (card rendered, screenshot checked); firmware build: see MEMORY |
+
+**Verdict: 🔧 no regression made the SD path skip a board, but the firmware turned every transient card error into a lost card copy, silently — fixed (retry, recovery, counting, reporting). The crash at one PC on four boards is a firmware/SDK fault and the most likely common cause of split files, missing windows and re-parenting trees — mitigated + made decodable, not yet proven fixed. Verdict logic: one OUTCOME per run (PASS/FAIL/INCONCLUSIVE), Campaign status shown beside it with its own reasons; no existing status changed. NOT hardware-tested — reflash every board. Full write-up: docs/operations/2026-10-20_SD-CRASH-TREE-INVESTIGATION.md.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #65 — Oct 20, 2026 · ~10:00 AM — tree/G402 burst + highload (last night): burst used two HIGHLOAD files
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4a8488d`

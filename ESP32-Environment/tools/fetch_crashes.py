@@ -46,17 +46,33 @@ def _guess_elf(node_role):
     return max(hits, key=os.path.getmtime) if hits else None
 
 
-def decode(rows, elf, tool):
-    """[(row dict, [decoded lines])]"""
+ELF_ARCHIVE = os.path.join(os.environ.get("LOCALAPPDATA", ""), "NIS16", "elf_archive")
+
+
+def _elf_for_sha(sha, node_role):
+    """The archived .elf whose SHA-256 starts with `sha` (crash row column
+    elf_sha, oct. 20 2026 firmware; run.ps1 archives every build), or None."""
+    if not sha or sha == "-" or not os.path.isdir(ELF_ARCHIVE):
+        return None
+    proj = "root_node" if node_role == "root" else "child_node"
+    hits = sorted(glob.glob(os.path.join(ELF_ARCHIVE, f"{sha.lower()}*_{proj}.elf"))) or         sorted(glob.glob(os.path.join(ELF_ARCHIVE, f"{sha.lower()}*.elf")))
+    return hits[0] if hits else None
+
+
+def decode(rows, elf, tool, node_role="child"):
+    """[(row dict, [decoded lines], elf used)]. A row that names its build
+    (elf_sha) is decoded against THAT archived .elf; a guessed .elf is only a
+    fallback and is named in the output."""
     out = []
     for r in rows:
         pcs = [p for p in ([r.get("pc", "")] + r.get("backtrace", "").split()) if re.fullmatch(r"0x[0-9a-fA-F]{8}", p or "")]
         pcs = list(dict.fromkeys(pcs))
         lines = []
-        if elf and tool and pcs and pcs != ["0x00000000"]:
-            p = subprocess.run([tool, "-pfiaC", "-e", elf] + pcs, capture_output=True, text=True, errors="replace")
+        use = _elf_for_sha(r.get("elf_sha"), node_role) or elf
+        if use and tool and pcs and pcs != ["0x00000000"]:
+            p = subprocess.run([tool, "-pfiaC", "-e", use] + pcs, capture_output=True, text=True, errors="replace")
             lines = [l for l in p.stdout.splitlines() if l.strip()]
-        out.append((r, lines))
+        out.append((r, lines, use))
     return out
 
 
@@ -75,9 +91,13 @@ def save(node, text, out_dir, elf, tool):
         fh.write(text if text.endswith("\n") else text + "\n")
     rows = _parse(text)
     dec = decode(rows, elf, tool)
-    txt = [f"crash records of {node} (from its SD card)", f"elf used for decoding: {elf or 'NONE - pass --elf'}", ""]
-    for r, lines in dec:
+    txt = [f"crash records of {node} (from its SD card)", f"default elf (rows without elf_sha): {elf or 'NONE - pass --elf'}", ""]
+    for r, lines, use in dec:
+        sha = r.get("elf_sha") or "-"
+        exact = use is not None and use != elf
         txt.append(f"boot {r.get('boot')} started after {r.get('reset_reason')}: exception {r.get('exception')} on core {r.get('core')}, pc {r.get('pc')}")
+        txt.append(f"  build elf_sha {sha}: decoded with {use or 'NOTHING'}"
+                   + ("" if exact else "  (NOT proven to be the build that crashed - addresses may be wrong)"))
         txt.append(f"  last [HEALTH] before it (uptime {r.get('health_uptime_s')} s): heap {r.get('heap')} B, lowest {r.get('min_heap')} B, "
                    f"largest block {r.get('big_block')} B, tightest stack {r.get('tightest_task')} = {r.get('tightest_stack_b')} B")
         txt += [f"    {l}" for l in lines] or ["    (no PCs to decode - the crash was not captured, e.g. a brownout)"]

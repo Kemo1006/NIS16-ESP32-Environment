@@ -606,8 +606,13 @@ def _reroute_lines(issues, measured):
 #   MAJOR GAPS  attack confirmed and visible, but data the result relies on is missing:
 #                    a board never measured in the attack (dropped out before it / no
 #                    labelled window), a large share of victim time with no path - or
-#                    minor gaps that FAILED the impact check
-#   FAILED           the attack cannot be confirmed: no attack signature, too little data to test,
+#                    minor gaps that FAILED the impact check, or a MISSING BOARD whose role
+#                    the evidence needs (missing_boards.py: CRITICAL)
+#   UNDETERMINED     (oct. 20 2026) attack signature seen, but a MISSING BOARD's role cannot be
+#                    placed (no file, no root run log, nobody names it as parent) or it was
+#                    the last control board - neither accepted nor rejected: investigate
+#                    (Campaign CHECK "INVESTIGATE", OUTCOME INCONCLUSIVE)
+#   FAILED          the attack cannot be confirmed: no attack signature, too little data to test,
 #                    the attacker's data missing, or the setup did not run as designed (was
 #                    "NOT CONFIRMED" before oct. 19 2026; the VERDICT line keeps that wording)
 #
@@ -615,7 +620,7 @@ def _reroute_lines(issues, measured):
 # (user, oct. 19): green DONE = STRONG / GOOD (redo list OK) . yellow DONE - RECAPTURE ADVISED =
 # MINOR GAPS (CHECK) . orange RECAPTURE REQUIRED = MAJOR GAPS (REDO,
 # evidence 'verifier-data'), or another source demands a recapture . red REDO = FAILED
-GRADES = ("STRONG", "GOOD", "MINOR GAPS", "MAJOR GAPS", "FAILED")
+GRADES = ("STRONG", "GOOD", "MINOR GAPS", "UNDETERMINED", "MAJOR GAPS", "FAILED")
 _FOOTNOTE = [  # (words in a WARN, short footnote)
     ("robustness re-test not possible", "the re-test on the seconds before the first move was not possible (too short)"),
     ("robustness re-test inconclusive", "the re-test on the seconds before the first move was inconclusive"),
@@ -631,8 +636,13 @@ _FOOTNOTE = [  # (words in a WARN, short footnote)
 
 
 def _gap(it):
-    """('major' | 'minor', board, text) when the issue is a DATA GAP, else None."""
+    """('major' | 'minor' | 'undetermined', board, text) when the issue is a DATA GAP, else None."""
     t = it.text
+    # oct. 20 2026: a missing board judged by its ROLE (tools/missing_boards.py)
+    m = re.match(r"MISSING BOARD (\w{4}) \(([^)]*)\): (YELLOW|CRITICAL|UNDETERMINED) - (.*)$", t, re.S)
+    if m:
+        kind = {"YELLOW": "minor", "CRITICAL": "major", "UNDETERMINED": "undetermined"}[m.group(3)]
+        return kind, m.group(1), f"{m.group(1)} ({m.group(2)}): missing - {m.group(4)}"
     who = t.split(" ", 1)[0] if t[:4].isalnum() else ""
     role = (" (attacker)" if "the ATTACKER" in t or re.match(r"\S+ \((blackhole|wormhole)", t) else
             " (victim)" if "a victim" in t else "")
@@ -729,7 +739,10 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
             continue
         g = _gap(it)
         if g:
-            (major if g[0] == "major" else minor).append(g[2])
+            if g[0] == "undetermined":
+                minor.append("UNDETERMINED: " + g[2])     # graded UNDETERMINED below, never "not affected"
+            else:
+                (major if g[0] == "major" else minor).append(g[2])
             continue
         for words, short in _FOOTNOTE:
             if words in it.text:
@@ -751,6 +764,10 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
     notes_all = notes + good
     if major:
         return "MAJOR GAPS", major, minor, notes_all, []
+    if any(g.startswith("UNDETERMINED:") for g in minor):
+        # oct. 20 2026: a missing board whose role cannot be placed - neither accepted
+        # (MINOR) nor rejected (MAJOR): the run is flagged for investigation
+        return "UNDETERMINED", [], minor, notes_all, []
     if minor:
         return "MINOR GAPS", [], minor, notes_all, []
     if notes:
@@ -825,24 +842,92 @@ def _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, coun
     say = {"STRONG": "attack confirmed, all board data present, nothing to note",
            "GOOD": f"attack confirmed, all board data present, {_n(len(real), 'note')} for the report",
            "MINOR GAPS": f"attack confirmed; {_n(len(minor), 'small gap')} in the data, none of which change{'s' if len(minor) == 1 else ''} the result - recapture advised",
-           "MAJOR GAPS": f"attack confirmed, but data the result relies on is missing ({_n(len(major), 'major gap')}) - recapture required"}[grade]
+           "MAJOR GAPS": f"attack confirmed, but data the result relies on is missing ({_n(len(major), 'major gap')}) - recapture required",
+           "UNDETERMINED": "attack signature seen, but a missing board's role in the attack cannot be determined - neither accepted nor rejected: investigate"}[grade]
     print(f" CONFIDENCE: {grade} - {say}")
     print(_wrap(f"ATTACK: confirmed - {count}", "     + "))
     print(_wrap("SETUP: no check failed", "     + "))
     for g in major:
         print(_wrap("MAJOR GAP (affects the result): " + g, "     ~ "))
     for g in minor:
-        print(_wrap("MINOR GAP (result not affected): " + g, "     ~ "))
+        if g.startswith("UNDETERMINED: "):
+            print(_wrap("UNDETERMINED (investigate - result may depend on it): " + g[len("UNDETERMINED: "):], "     ~ "))
+        else:
+            print(_wrap("MINOR GAP (result not affected): " + g, "     ~ "))
     if not major and not minor:
         print(_wrap("DATA: every board has usable data for the whole attack", "     + "))
     for n in good:
         print(_wrap(n, "     + "))
     for n in real:
         print(_wrap("note: " + n, "     ~ "))
-    tag = {"STRONG": "", "GOOD": "", "MINOR GAPS": " - minor gaps", "MAJOR GAPS": " - major gaps"}[grade]
+    tag = {"STRONG": "", "GOOD": "", "MINOR GAPS": " - minor gaps", "MAJOR GAPS": " - major gaps",
+           "UNDETERMINED": " - undetermined (investigate)"}[grade]
     foot = len(major) + len(minor) + len(real)
     print(_wrap(f"REPORT AS: \"{attack.upper()} CONFIRMED{tag}\""
                 + (f" + {_n(foot, 'footnote')} (copy them to the thesis checklist)" if foot else ""), "     = "))
+
+
+# ---- OUTCOME: PASS / FAIL / INCONCLUSIVE (oct. 20 2026) ----------------------------------
+# One word per run on top of the grade, with the four questions it is built from - so
+# "the attack is not proven" (FAIL) can never be confused with "we cannot tell from this
+# data" (INCONCLUSIVE). Built ONLY from what the report already decided (no new test):
+#   signature  PASS  a primary feature moved past 3-sigma AND by MIN_EFFECT
+#              FAIL  primaries were testable and none moved
+#              INCONCLUSIVE  no primary could be tested (missing / broken data)
+#   setup      FAIL  a DESIGN check failed: attacker forwarded, no victim behind it, a board
+#                    switched victim <-> bystander, wrong topology, tunnel reversed ...
+#              INCONCLUSIVE  only OBSERVATION checks failed: the data needed to judge the
+#                    setup is missing (attacker telemetry, victims logged nothing ...)
+#              PASS  no check failed (tolerated moves are notes, not failures - D-23/D-31)
+#   dataset    PASS (STRONG / GOOD), MINOR (gaps proven not to matter), FAIL (MAJOR GAPS)
+# OUTCOME     PASS = signature PASS, setup PASS, dataset not FAIL.
+#             FAIL = the attack was testable and did not happen as designed (signature FAIL
+#                    on valid data, or a DESIGN check failed).
+#             INCONCLUSIVE = everything else: missing / insufficient data. Missing data
+#                    never disproves an attack, and never validates one either.
+_OBSERVATION_FAIL = re.compile(r"attacker telemetry|no '(blackhole|wormhole\w*)' node|logged NO|"
+                               r"traceable VICTIM-seconds|could not be resolved|no attack windows|"
+                               r"telemetry missing|cannot check", re.I)
+_LAST_OUTCOME = [None]
+
+
+def _outcome(confirmed, setup_invalid, conclusive, issues, primary_pass, primary_total):
+    issues = issues or []
+    fails = [i.text for i in issues if i.level == "FAIL"]
+    design = [f for f in fails if not _OBSERVATION_FAIL.search(f)]
+    observ = [f for f in fails if _OBSERVATION_FAIL.search(f)]
+    sig = "PASS" if primary_pass else ("FAIL" if primary_total else "INCONCLUSIVE")
+    setup = "FAIL" if design else ("INCONCLUSIVE" if observ else "PASS")
+    grade = _confidence(confirmed, setup_invalid, conclusive, issues)[0]
+    data = {"STRONG": "PASS", "GOOD": "PASS", "MINOR GAPS": "MINOR", "MAJOR GAPS": "FAIL",
+            "UNDETERMINED": "INCONCLUSIVE"}.get(grade, "-")
+    if sig == "PASS" and setup == "PASS" and data in ("PASS", "MINOR"):
+        word, why = "PASS", ("the attack signature moved past 3-sigma, the setup ran as designed"
+                             + (" and the data is complete" if data == "PASS" else
+                                " and the data gaps were shown not to change the result"))
+    elif design:
+        word, why = "FAIL", "the run did not happen as designed: " + design[0]
+    elif sig == "FAIL" and setup == "PASS":
+        word, why = "FAIL", "the attack was testable and its signature did not move past 3-sigma"
+    elif sig == "PASS" and data == "FAIL" and not observ:
+        word, why = "INCONCLUSIVE", ("the attack signature moved in the data that exists, but data the "
+                                     "result relies on is missing (MAJOR GAPS) - not validated until "
+                                     "the run is captured again")
+    else:
+        reason = (observ[0] if observ else
+                  "no primary signature could be tested" if sig == "INCONCLUSIVE" else
+                  "data the result relies on is missing (MAJOR GAPS)" if data == "FAIL" else
+                  "a missing board's role cannot be determined (UNDETERMINED) - investigate" if data == "INCONCLUSIVE" else
+                  "the evidence is insufficient")
+        word, why = "INCONCLUSIVE", ("cannot be decided from this data - " + reason
+                                     + ". Missing data neither proves nor disproves the attack")
+    return {"outcome": word, "why": why, "signature": sig, "setup": setup, "dataset": data}
+
+
+def _print_outcome(o):
+    print(f" OUTCOME: {o['outcome']} - {o['why']}")
+    print(f"     signature {o['signature']}  |  setup {o['setup']}  |  dataset {o['dataset']}"
+          f"   (capture completeness / SD cards: Campaign status)")
 
 
 def _print_reroute_why(issues, measured, setup_invalid):
@@ -1024,6 +1109,8 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     """
     label = ATTACK_LABEL[attack]
     df_in = df
+    if checks:
+        _LAST_OUTCOME[0] = None      # never let a previous run's outcome stand for this one
     # D-23 (oct. 19 2026): attack windows in which a board had no working path to
     # the root (detached / a board above it went down) are not attack evidence -
     # drop them from the scored test (fairness rule 6: only makes it HARDER).
@@ -1321,6 +1408,9 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
     print("-" * RULE_W)
     print(f" VERDICT: {verdict}")
     _print_confidence(confirmed, setup_invalid, conclusive, issues, attack, count, "; ".join(extra))
+    if checks:
+        _LAST_OUTCOME[0] = _outcome(confirmed, setup_invalid, conclusive, issues, primary_pass, primary_total)
+        _print_outcome(_LAST_OUTCOME[0])
     print("-" * RULE_W)
     # oct. 19 2026 (user): the explanation of any allowed / refused board move, in
     # plain words with its sources, right below the verdict
@@ -1738,10 +1828,25 @@ def verify_benign(df):
             P(_wrap("DATA: every board has usable data for every phase", "     + "))
         P(_wrap(f"REPORT AS: \"BENIGN CONFIRMED{' - major gaps' if major else (' - minor gaps' if gaps else '')}\""
                 + (f" + {_n(len(gaps), 'footnote')} (copy them to the thesis checklist)" if gaps else ""), "     = "))
+    # OUTCOME (oct. 20 2026) - same three words as an attack run, for the benign question
+    # "is this a clean normal reference?"
+    if word == "BENIGN CONFIRMED" and grade != "MAJOR GAPS":
+        bo = ("PASS", "clean normal traffic: no attack signature moved and delivery stayed healthy", "PASS")
+    elif word == "BENIGN CONFIRMED":
+        bo = ("INCONCLUSIVE", "no signature moved, but too many boards have gaps to call it a complete "
+                              "reference", "FAIL")
+    elif word == "INCONCLUSIVE":
+        bo = ("INCONCLUSIVE", "too little data to test it as a normal reference", "-")
+    else:
+        bo = ("FAIL", "not a clean normal reference: " + (why[0] if why else "it looks attacked"), "-")
+    P(f" OUTCOME: {bo[0]} - {bo[1]}")
+    P(f"     signature {'FAIL' if word not in ('BENIGN CONFIRMED', 'INCONCLUSIVE') else ('PASS' if word == 'BENIGN CONFIRMED' else 'INCONCLUSIVE')}"
+      f"  |  setup -  |  dataset {bo[2]}   (capture completeness / SD cards: Campaign status)")
     P("-" * RULE_W)
     print(out.getvalue(), end="")
     _LAST_ISSUES[0] = []
     _LAST_SETUP_INVALID[0] = False
+    _LAST_OUTCOME[0] = {"outcome": bo[0], "why": bo[1], "signature": "-", "setup": "-", "dataset": bo[2]}
     _LAST_BENIGN[0] = {"word": word, "grade": grade, "gaps": [g for _b, g in gaps], "why": why,
                        "major": grade == "MAJOR GAPS"}
     return benign, conclusive

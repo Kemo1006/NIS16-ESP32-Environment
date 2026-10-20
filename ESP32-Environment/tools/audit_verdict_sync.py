@@ -37,7 +37,7 @@ for c in cells:
         conf, concl = va.verify(df, c['attack'], 3.0)
     txt = buf.getvalue()
     verdict = re.search(r'VERDICT: (.+?)(\s{2}\(|$)', txt, re.M).group(1).strip()
-    grade = (re.search(r'CONFIDENCE: (STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED)', txt) or [None, '?'])[1]
+    grade = (re.search(r'CONFIDENCE: (STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED)', txt) or [None, '?'])[1]
     ngap = len(re.findall(r'(?m)^     ~ MAJOR GAP \(affects the result\): ', txt))
     nmin = len(re.findall(r'(?m)^     ~ MINOR GAP ', txt))
     reasons = c['reasons']                       # (sev, text, evidence, fix)

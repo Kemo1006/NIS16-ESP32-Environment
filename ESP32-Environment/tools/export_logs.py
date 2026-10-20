@@ -701,6 +701,29 @@ def _ensure_location(ser: serial.Serial, want: str) -> str:
     return "FAILED"
 
 
+def _ensure_scenario(ser: serial.Serial, want: str) -> str:
+    """Make scenario.txt say `want` (oct. 20 2026) - same rules as _ensure_location: write
+    only when different, one SCENARIO_CHECK line, never raises. The firmware records it
+    in runs.csv so the card says which SCENARIO it recorded, not only attack / topology /
+    location. Firmware before oct. 20 answers nothing -> UNKNOWN (harmless)."""
+    _send_command(ser, "GET_SCENARIO")
+    line = _read_reply(ser, lambda l: l.startswith(("SCENARIO:", "ERROR:")), 5)
+    if line is None or line.startswith("ERROR:"):
+        print(f"SCENARIO_CHECK: UNKNOWN {line or 'no answer (firmware before GET_SCENARIO, or still booting)'}")
+        return "UNKNOWN"
+    have = line[len("SCENARIO:"):]
+    if have == want:
+        print(f"SCENARIO_CHECK: OK {want}")
+        return "OK"
+    _send_command(ser, f"SET_SCENARIO={want}")
+    ack = _read_reply(ser, lambda l: l == "SCENARIO_SET" or l.startswith("ERROR:"), 5)
+    if ack == "SCENARIO_SET":
+        print(f"SCENARIO_CHECK: FIXED {have} -> {want} (applies on the next boot)")
+        return "FIXED"
+    print(f"SCENARIO_CHECK: FAILED {have} -> {want}: {ack or 'no ack'}")
+    return "FAILED"
+
+
 def canon_scenario(scenario):
     """Canonical scenario name; empty/None/"none" -> "stationary"."""
     s = scenario or "stationary"
@@ -851,6 +874,9 @@ def main() -> int:
                         "what you would be overwriting. Prints the site name, 'NONE' "
                         "if the file is missing, or the rejected raw text if it holds "
                         "something unrecognised. Standalone: exports/wipes nothing.")
+    p.add_argument("--ensure-scenario", dest="ensure_scenario", choices=SCENARIOS, default=None,
+                   help="Make the card's scenario.txt say this (written only when different), so runs.csv "
+                        "records the run's scenario. Prints one 'SCENARIO_CHECK: ...' line.")
     p.add_argument("--ensure-location", dest="ensure_location", choices=LOCATIONS, default=None,
                    help="Read location.txt and write this value ONLY if it differs, in "
                         "the same connection. Combines with --set-time (run.ps1 sends "
@@ -936,6 +962,8 @@ def main() -> int:
     with ser:
         _drain(ser)
 
+        if args.ensure_scenario:
+            _ensure_scenario(ser, args.ensure_scenario)
         if args.ensure_location:
             _ensure_location(ser, args.ensure_location)
             if not args.set_time:

@@ -27,6 +27,7 @@ function Get-GradeLook([string]$Grade) {
         'GOOD'            { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A'; G = [char]0x2714; Say = 'all data present, notes for the report' } }
         'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320'; G = [char]0x26A0; Say = 'some data missing - not data the result uses (result not affected)' } }
         'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F'; Bd = '#7C3F1A'; G = [char]0x26A0; Say = 'attack confirmed, but data it relies on is missing - recapture required' } }
+        'UNDETERMINED' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320'; G = [char]0x003F; Say = 'a missing board''s role cannot be placed - not accepted, not rejected: investigate' } }
         { $_ -in 'FAILED', 'NOT CONFIRMED' } { @{ Fg = $Pal.Red;   Bg = '#33192A'; Bd = '#6B2A3F'; G = [char]0x2716; Say = 'the attack cannot be confirmed - see why below' } }
         { $_ -in 'SOUND', 'WITH NOTES', 'QUALIFIED', '-' } { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320'; G = [char]0x2026; Say = 'older report - press Verify' } }
         default     { @{ Fg = $Pal.Dim;   Bg = '#232742'; Bd = $Pal.Line; G = [char]0x2026; Say = 'no grade (older report - press Verify)' } }
@@ -62,7 +63,7 @@ function Add-ResultHeadline([string[]]$Lines, $Checks, $Nodes) {
     $vl = [string](@($Lines | Where-Object { $_ -match '^\s*VERDICT\s*:' } | Select-Object -Last 1))
     if (-not $vl) { return }
     $grade = ''; $cl = @($Lines | Where-Object { $_ -match '^\s*CONFIDENCE\s*:' } | Select-Object -Last 1)
-    if ($cl -and [string]$cl -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $grade = $Matches[1] }
+    if ($cl -and [string]$cl -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $grade = $Matches[1] }
     $wp = New-Object Windows.Controls.Primitives.UniformGrid; $wp.Rows = 1; $wp.Margin = '0,0,-10,4'   # tiles share the row evenly
     # SIGNATURE n/m primaries
     if ($vl -match '\((\d+)/(\d+) primary') {
@@ -113,12 +114,13 @@ function Set-VerdictExtras([string[]]$Lines) {
     }
     $x = $script:VerdictExtras; $x.Children.Clear()
     # oct. 19 2026: the banner speaks the same words / colours as the Campaign page
-    $gm = @($Lines | Where-Object { $_ -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED)' } | Select-Object -Last 1)
-    if ($gm -and [string]$gm -match 'CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED)') {
+    $gm = @($Lines | Where-Object { $_ -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED)' } | Select-Object -Last 1)
+    if ($gm -and [string]$gm -match 'CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED)') {
         $look = switch ($Matches[1]) {
             { $_ -in 'STRONG', 'GOOD' } { @('DONE - attack confirmed', 'GradGood') }
             'MINOR GAPS' { @('DONE - RECAPTURE ADVISED - minor gaps, result not affected', '#A16207') }
             'MAJOR GAPS' { @('RECAPTURE REQUIRED - major gaps, the result relies on what is missing', '#C2410C') }
+            'UNDETERMINED' { @('INVESTIGATE - a missing board''s role is unknown: not accepted, not rejected', '#A16207') }
             default           { @('REDO - FAILED: the attack cannot be confirmed', '#BE123C') } }
         # the campaign status can be stricter (a checklist / completeness recapture): it wins
         try {
@@ -145,7 +147,7 @@ function Set-VerdictExtras([string[]]$Lines) {
         }
     } catch { }
     $cl = @($Lines | Where-Object { $_ -match '^\s*CONFIDENCE\s*:' } | Select-Object -Last 1)
-    if ($cl -and [string]$cl -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') {
+    if ($cl -and [string]$cl -match '^\s*CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') {
         $g = $Matches[1]; $lk = Get-GradeLook $g
         $b = New-Object Windows.Controls.Border; $b.CornerRadius = 9; $b.Padding = '10,3'; $b.Margin = '0,0,8,4'; $b.Background = Get-Brush '#33000000'
         $t = New-Text ('{0}  CONFIDENCE: {1}' -f [string]$lk.G, $(if ($g -in 'SOUND', 'WITH NOTES', 'QUALIFIED', '-') { 'old report' } else { $g })) 11.5 '#FFFFFF' 'Bold'; $b.Child = $t

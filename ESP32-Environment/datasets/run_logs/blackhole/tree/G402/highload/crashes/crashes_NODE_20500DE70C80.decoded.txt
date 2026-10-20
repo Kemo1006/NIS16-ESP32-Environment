@@ -1,0 +1,6 @@
+crash records of NODE_20500DE70C80 (from its SD card)
+elf used for decoding: NONE - pass --elf
+
+boot None started after None: exception None on core None, pc None
+  last [HEALTH] before it (uptime None s): heap None B, lowest None B, largest block None B, tightest stack None = None B
+    (no PCs to decode - the crash was not captured, e.g. a brownout)

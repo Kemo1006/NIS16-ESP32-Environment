@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include "esp_attr.h"
+#include "esp_app_desc.h"   /* esp_app_get_elf_sha256(): WHICH build crashed */
 #include "esp_debug_helpers.h"
 #include "esp_private/panic_internal.h"
 #include "xtensa_context.h"
@@ -112,7 +113,12 @@ static const char *cr_exception_name(int32_t e)
 
 const char *crash_record_csv_header(void)
 {
-    return "boot,reset_reason,exception,core,pc,backtrace,health_uptime_s,heap,min_heap,big_block,tightest_task,tightest_stack_b";
+    /* elf_sha (oct. 20 2026, appended): first 16 hex of the firmware's ELF
+     * SHA-256 - the PCs only decode against THAT build (the oct. 18-19 records
+     * could not be decoded: the boards' build folders were gone). run.ps1 keeps
+     * every flashed .elf in %LOCALAPPDATA%/NIS16/elf_archive/<sha16>_<proj>.elf
+     * and fetch_crashes.py looks there first. */
+    return "boot,reset_reason,exception,core,pc,backtrace,health_uptime_s,heap,min_heap,big_block,tightest_task,tightest_stack_b,elf_sha";
 }
 
 bool crash_record_take(bool crashed, int boot, const char *reset_reason, char *row, size_t len)
@@ -126,13 +132,16 @@ bool crash_record_take(bool crashed, int boot, const char *reset_reason, char *r
         for (uint32_t i = 0; have && i < s_rtc.nbt && i < CR_BT_MAX && n + 12 < sizeof(bt); i++) {
             n += (size_t)snprintf(bt + n, sizeof(bt) - n, "%s0x%08lx", i ? " " : "", (unsigned long)s_rtc.bt[i]);
         }
-        snprintf(row, len, "%d,%s,%s,%ld,0x%08lx,%s,%lu,%lu,%lu,%lu,%s,%lu",
+        char sha[17] = "";
+        esp_app_get_elf_sha256(sha, sizeof(sha));
+        snprintf(row, len, "%d,%s,%s,%ld,0x%08lx,%s,%lu,%lu,%lu,%lu,%s,%lu,%s",
                  boot, reset_reason ? reset_reason : "?",
                  have ? cr_exception_name(s_rtc.exception) : "not-captured",
                  have ? (long)s_rtc.core : -1L, (unsigned long)(have ? s_rtc.pc : 0u), have ? bt : "-",
                  (unsigned long)(health ? s_rtc.h_up : 0u), (unsigned long)(health ? s_rtc.h_heap : 0u),
                  (unsigned long)(health ? s_rtc.h_min : 0u), (unsigned long)(health ? s_rtc.h_big : 0u),
-                 health ? s_rtc.h_task : "-", (unsigned long)(health ? s_rtc.h_tight : 0u));
+                 health ? s_rtc.h_task : "-", (unsigned long)(health ? s_rtc.h_tight : 0u),
+                 sha[0] ? sha : "-");
         out = true;
     }
     /* one record per crash: forget it once read (and on any normal boot) */

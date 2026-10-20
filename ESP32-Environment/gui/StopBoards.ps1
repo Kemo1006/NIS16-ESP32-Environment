@@ -94,6 +94,72 @@ function Stop-BoardPorts([string[]]$Ports) {
     try { Update-Ports } catch { }
 }
 
+# ---- HALT a board's firmware (oct. 20 2026, user: "a button that stops the board itself -
+# everything it runs - until it is flashed or started again") -------------------------
+# 1. END_RUN over USB: the firmware closes its run file cleanly (SD card + flash), so the
+#    halt never leaves a cut, ABORTED file (a board with no run open just answers ALREADY)
+# 2. esptool read_mac --after no_reset (twice, the Live run's 'park'): the chip is held in
+#    its ROM bootloader - firmware stopped: no mesh, no probes, no SD writes
+# It stays halted while it is powered from this USB port, until it is FLASHED, power-
+# cycled, or 'Start board again' (a hard reset = its firmware boots as after a plug-in).
+# A board on a powerbank cannot be reached over USB - plug it in first.
+$script:HaltQueue = New-Object System.Collections.Queue
+$script:HaltedPorts = @{}
+
+function Start-HaltBoards([string[]]$Ports) {
+    $Ports = @($Ports | Where-Object { $_ -match '^(?i)COM\d+$' } | ForEach-Object { $_.ToUpper() } | Select-Object -Unique)
+    if (-not $Ports.Count) { return }
+    $R = $script:Run
+    if ($R -and $R.Active -and $R.Current -and $R.Current.Board -and ([string]$R.Current.Board.Port).ToUpper() -in $Ports) {
+        [void][Windows.MessageBox]::Show("$($R.Current.Board.Port) is the Live run's current board - stop the run on the Live run page first.", 'Halt board'); return
+    }
+    $busy = @(); foreach ($p in $Ports) { foreach ($x in @(Get-PortProcesses $p)) { $busy += ("  {0}: {1}" -f $p, $x.What); if ($x.Danger) { [void][Windows.MessageBox]::Show("$p is being EXPORTED / its SD card read right now - wait for it to finish (cutting it can crash Windows).", 'Halt board'); return } } }
+    $msg = ("HALT {0}?`n`nEach board first closes its run file cleanly (END_RUN), then its firmware is STOPPED - no mesh, no probes, no SD writes - until it is flashed, power-cycled or you press 'Start board again'.{1}`n`nThe firmware itself is not erased." -f ($Ports -join ', '), $(if ($busy.Count) { "`n`nThese programs on the laptop use the port and are stopped first:`n" + ($busy -join "`n") } else { '' }))
+    if (-not (Confirm-Action $msg 'Halt board')) { return }
+    foreach ($p in $Ports) {
+        foreach ($x in @(Get-PortProcesses $p)) { & taskkill.exe /PID $x.Pid /T /F 2>&1 | Out-Null }
+        try { Stop-CrashWatchOn $p } catch { }
+        $script:HaltQueue.Enqueue($p)
+    }
+    Step-HaltBoards
+}
+
+function Step-HaltBoards {
+    if (-not $script:HaltQueue.Count) { try { Update-Ports } catch { }; return }
+    $p = $script:HaltQueue.Dequeue(); $py = Get-Py; $t = Get-EsptoolCommand
+    # 1. close the run file cleanly
+    $ok = Start-StreamJob -Exe $py -ToolArgs @('tools\export_logs.py', '--port', $p, '--end-run') -Title "Halt $p - 1/2 close its run file (END_RUN)" -NoStop -State @{ Port = $p; T = $t } -OnDone {
+        param($text, $code, $st)
+        $res = ([regex]::Match($text, '(?m)^END_RUN_RESULT:\s*(\S+)')).Groups[1].Value
+        Write-Activity ("  {0}: run file {1}" -f $st.Port, $(switch ($res) { 'COMPLETE' { 'closed - capture complete' } 'CUT_SHORT' { 'closed - the run was cut short (stays ABORTED)' } 'ALREADY' { 'was already closed' } default { 'could not be confirmed (old firmware / no answer) - halting anyway' } })) $Pal.Cyan
+        # 2. hold the chip in its ROM bootloader (the Live run's park, twice for a sure hold)
+        $cmd = "& '{0}' {1} --chip esp32 --port {2} --after no_reset read_mac; if (`$LASTEXITCODE -eq 0) {{ & '{0}' {1} --chip esp32 --port {2} --before no_reset --after no_reset read_mac }}; exit `$LASTEXITCODE" -f $st.T.Exe, (@($st.T.Pre) -join ' '), $st.Port
+        [void](Start-StreamJob -Exe 'powershell' -ToolArgs @('-NoProfile', '-Command', $cmd) -Title "Halt $($st.Port) - 2/2 stop its firmware" -NoStop -State $st -OnDone {
+            param($text2, $code2, $st2)
+            if ($code2 -eq 0) {
+                $script:HaltedPorts[$st2.Port] = Get-Date
+                Write-Activity ("HALTED {0}: its firmware is stopped until it is flashed, power-cycled or 'Start board again'." -f $st2.Port) $Pal.Green
+                Show-Toast "$($st2.Port) halted" 'Firmware stopped (run file closed first). Start board again / flash / power-cycle to wake it.' ([string][char]0xE769)
+            } else {
+                Write-Activity ("Could NOT halt {0} (esptool exit {1}) - is it plugged in, is the port free?" -f $st2.Port, $code2) $Pal.Red
+            }
+            Step-HaltBoards
+        })
+    }
+    if (-not $ok) { $script:HaltQueue.Clear() }
+}
+
+function Start-ResumeBoard([string]$Port) {
+    if (-not $Port) { return }
+    $t = Get-EsptoolCommand
+    [void](Start-StreamJob -Exe $t.Exe -ToolArgs (@($t.Pre) + @('--chip', 'esp32', '--port', $Port, '--before', 'no_reset', '--after', 'hard_reset', 'read_mac')) -Title "Start $Port again (hard reset)" -NoStop -State $Port -OnDone {
+        param($text, $code, $p)
+        if ($code -eq 0) { [void]$script:HaltedPorts.Remove($p); Write-Activity ("{0} started again - its firmware boots as after a plug-in." -f $p) $Pal.Green }
+        else { Write-Activity ("Could not reset {0} (exit {1}) - press its EN / RST button or unplug + replug it." -f $p, $code) $Pal.Red }
+        try { Update-Ports } catch { }
+    })
+}
+
 function Initialize-GuiStopBoards {
     $bar = $ui.IdentifyAll.Parent; if (-not ($bar -is [Windows.Controls.Panel])) { return }
     $one = New-Object Windows.Controls.Button; $one.Content = 'Stop selected board'
@@ -105,4 +171,14 @@ function Initialize-GuiStopBoards {
     $bar.Children.Insert($i, $all); $bar.Children.Insert($i, $one)
     $one.Add_Click({ $r = Get-SelectedPort; if ($r) { Stop-BoardPorts @([string]$r.Port) } })
     $all.Add_Click({ Stop-BoardPorts @($script:PortRows | ForEach-Object { [string]$_.Port }) })
+    # oct. 20 2026: stop the BOARD itself (its firmware), not only the laptop's programs
+    $halt = New-Object Windows.Controls.Button; $halt.Content = 'Halt board (stop its firmware)'; $halt.Margin = '6,0,0,0'
+    $halt.ToolTip = 'Closes the board''s run file cleanly (END_RUN), then holds the chip in its bootloader: no mesh, no probes, no SD writes - until it is flashed, power-cycled or started again. Firmware is not erased.'
+    try { $halt.Style = $win.FindResource('Danger') } catch { }
+    $wake = New-Object Windows.Controls.Button; $wake.Content = 'Start board again'; $wake.Margin = '6,0,0,0'
+    $wake.ToolTip = 'Hard-resets the selected board: its firmware boots as after a plug-in.'
+    $j = $bar.Children.IndexOf($all) + 1
+    $bar.Children.Insert($j, $wake); $bar.Children.Insert($j, $halt)
+    $halt.Add_Click({ $r = Get-SelectedPort; if ($r) { Start-HaltBoards @([string]$r.Port) } else { [void][Windows.MessageBox]::Show('Pick a board in the list first.', 'Halt board') } })
+    $wake.Add_Click({ $r = Get-SelectedPort; if ($r) { Start-ResumeBoard ([string]$r.Port) } })
 }

@@ -271,6 +271,25 @@ $buildRoot = Join-Path $env:LOCALAPPDATA "esp32_builds\$repoTag"
 # go under a short root instead; shorter ones stay put (and stay ccache-warm).
 # SAME RULE, SAME NUMBERS in menu.ps1 and run_wizard.ps1 (Get-SafeBuildDir) -
 # keep all three identical so they resolve the same dir for the same board.
+# ELF ARCHIVE (oct. 20 2026): a crash record on a card (crashes_<node>.csv)
+# carries the first 16 hex of the firmware's ELF SHA-256, and its PCs decode
+# ONLY against that exact .elf. The oct. 18-19 crashes (4 boards, one PC) could
+# not be decoded because the build folders had been cleaned. Keep one copy per
+# build, named by that SHA - tools/fetch_crashes.py looks here first. Called
+# after a build AND when a cached build is reused, so every flashed image is kept.
+function Save-ElfArchive {
+    try {
+        $elfFile = Join-Path $buildDir "$proj.elf"
+        if (Test-Path $elfFile) {
+            $elfDir = Join-Path $env:LOCALAPPDATA 'NIS16\elf_archive'
+            New-Item -ItemType Directory -Force -Path $elfDir | Out-Null
+            $sha16 = (Get-FileHash -Algorithm SHA256 -Path $elfFile).Hash.Substring(0, 16).ToLower()
+            $dest = Join-Path $elfDir ("{0}_{1}.elf" -f $sha16, $proj)
+            if (-not (Test-Path $dest)) { Copy-Item -Path $elfFile -Destination $dest -Force }
+        }
+    } catch { }
+}
+
 $shortBuildRoot  = Join-Path $env:SystemDrive "esp32b\$repoTag"
 $MaxBuildDirLen  = 110
 function Get-SafeBuildDir {
@@ -402,13 +421,17 @@ if (-not $BuildOnly) {
     Write-Host "Setting $Port's clock from this laptop (so captures get real dates) ..." -ForegroundColor DarkGray
     $timeArgs = @('--port', $Port, '--set-time')
     if ($Location) { $timeArgs += @('--ensure-location', $Location) }
+    # oct. 20 2026: the card also records the run's SCENARIO (scenario.txt -> runs.csv)
+    $timeArgs += @('--ensure-scenario', $Scenario)
     $script:LocState = ''
+    $script:ScnState = ''
     Push-Location (Join-Path $base 'tools')
     try {
         python export_logs.py @timeArgs | ForEach-Object {
             $c = switch -Regex ($_) { '^LOCATION_CHECK: OK' { 'Green' } '^LOCATION_CHECK: FIXED' { 'Cyan' } '^LOCATION_CHECK:' { 'Yellow' } default { 'Gray' } }
             Write-Host $_ -ForegroundColor $c
             if ($_ -match '^LOCATION_CHECK: (\w+)') { $script:LocState = $Matches[1] }
+            if ($_ -match '^SCENARIO_CHECK: (\w+)') { $script:ScnState = $Matches[1] }
             if ($_ -match '^LOCATION_CHECK: (FIXED|UNKNOWN|FAILED)' -and -not $Flash) {
                 Write-Host "  No -Flash here, so nothing reboots this board: power-cycle it before the run or its card keeps the old location." -ForegroundColor Yellow
             }
@@ -662,6 +685,7 @@ if ($BuildOnly) {
 
     if ($old -and $old.fingerprint -eq $fingerprint -and (Test-Path $binFile)) {
         $global:PrebuildResult = 'skipped'
+        Save-ElfArchive
         Write-Host ("  " + [char]0x2714 + " Already built and up to date (built {0}; no firmware code or settings changed since) - skipped compiling." -f $old.built_at) -ForegroundColor Green
         exit 0
     }
@@ -707,6 +731,7 @@ if ($BuildOnly) {
             files       = $fileHashes
         }
         try { $stamp | ConvertTo-Json -Depth 4 | Set-Content -Path $stampFile -Encoding UTF8 } catch { }
+        Save-ElfArchive
         $size = (Get-Item $binFile).Length
         $sizeText = "{0:N2} MB" -f ($size / 1MB)
         $partLine = Select-String -Path (Join-Path $projDir 'partitions.csv') -Pattern '^\s*app0\s*,' -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -811,17 +836,23 @@ function Repair-LocationAfterFlash {
     # firmware can answer. Only then - a normal flash pays nothing here. A fix
     # applies at boot, so the board is reset once (it has only just started:
     # no run is under way yet).
-    if (-not $Location -or $script:LocState -in @('OK', 'FIXED')) { return }
-    Write-Host "Checking location.txt again now that the new firmware runs (about 10 s) ..." -ForegroundColor DarkGray
+    # oct. 20 2026: scenario.txt too - firmware before oct. 20 cannot write it, so the
+    # pre-flash check is UNKNOWN on the first flash of the new firmware; fixed here
+    $needLoc = $Location -and $script:LocState -notin @('OK', 'FIXED')
+    $needScn = $script:ScnState -notin @('OK', 'FIXED')
+    if (-not $needLoc -and -not $needScn) { return }
+    Write-Host "Checking location.txt / scenario.txt again now that the new firmware runs (about 10 s) ..." -ForegroundColor DarkGray
     Start-Sleep -Seconds 8
-    $state = ''
+    $state = $(if ($needLoc) { '' } else { 'OK' }); $scn = ''
     $tools = Join-Path $base 'tools'
-    python (Join-Path $tools 'export_logs.py') --port $Port --ensure-location $Location | ForEach-Object {
+    $ea = @('--port', $Port); if ($needLoc) { $ea += @('--ensure-location', $Location) }; if ($needScn) { $ea += @('--ensure-scenario', $Scenario) }
+    python (Join-Path $tools 'export_logs.py') @ea | ForEach-Object {
+        if ($_ -match '^SCENARIO_CHECK: (\w+)') { $scn = $Matches[1] }
         if ($_ -match '^LOCATION_CHECK: (\w+)') { $state = $Matches[1] }
         Write-Host $_ -ForegroundColor $(if ($_ -match '^LOCATION_CHECK: OK') { 'Green' } elseif ($_ -match '^LOCATION_CHECK: FIXED') { 'Cyan' } else { 'Gray' })
     }
-    if ($state -eq 'FIXED') {
-        Write-Host "Rebooting $Port once so it starts recording under $Location ..." -ForegroundColor Cyan
+    if ($state -eq 'FIXED' -or $scn -eq 'FIXED') {
+        Write-Host "Rebooting $Port once so it starts recording under $Location / $Scenario ..." -ForegroundColor Cyan
         esptool.py --chip esp32 --port $Port --after hard_reset read_mac | Out-Null
     }
     elseif ($state -ne 'OK') {

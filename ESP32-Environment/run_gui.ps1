@@ -4164,6 +4164,12 @@ function Save-AnaResult([string]$Key, [string]$Text, [int]$Code = -99, [string]$
             $script:Verdicts[$Key] = [pscustomobject]@{ Code = $Code; Line = ([string]$line).Trim(); When = (Get-Date).ToString('yyyy-MM-dd HH:mm'); Data = $(if ($Data) { $Data } else { $prevData }) }
             $o = [ordered]@{}; foreach ($k in ($script:Verdicts.Keys | Sort-Object)) { $o[$k] = $script:Verdicts[$k] }
             [pscustomobject]$o | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $script:AnaDir 'verdicts.json') -Encoding UTF8
+        } elseif ($script:Verdicts.ContainsKey($Key)) {
+            # oct. 20 2026: the new report has NO verdict (tool error / analysis stopped) - drop
+            # the old one, or the banner keeps showing the previous result over the new report
+            [void]$script:Verdicts.Remove($Key)
+            $o = [ordered]@{}; foreach ($k in ($script:Verdicts.Keys | Sort-Object)) { $o[$k] = $script:Verdicts[$k] }
+            [pscustomobject]$o | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $script:AnaDir 'verdicts.json') -Encoding UTF8
         }
     } catch { }
 }
@@ -4215,6 +4221,8 @@ function Get-RunStatus([string]$A, [string]$T, [string]$L, [string]$S, [string]$
             default { 'ok' } }
         # yellow says WHY: minor gaps -> recapture advised; any other caveat -> check the notes
         if ($k -eq 'check' -and -not @($r.reasons | Where-Object { [string]$_.text -like 'CONFIRMED - MINOR GAPS*' }).Count) { $map['check'] = @('DONE - CHECK NOTES', '#42330F', $Pal.Amber) }
+        # oct. 20 2026: a missing board whose role cannot be placed - never 'DONE'
+        if ($k -eq 'check' -and @($r.reasons | Where-Object { [string]$_.text -like 'INVESTIGATE*' }).Count) { $map['check'] = @('INVESTIGATE - missing board', '#42330F', $Pal.Amber) }
     }
     else { $k = switch ($Look) { 'ok' { 'ok' } 'done' { 'ok' } default { 'redo' } } }      # no redo entry (e.g. baseline): the verifier code
     $m = $map[$k]
@@ -4361,6 +4369,9 @@ function Show-AnaReport([string]$Text) {
                         'Press Verify to update it - the data is not re-imported, only re-checked.') 12.5 $Pal.Amber 'SemiBold'
         $nt.TextWrapping = 'Wrap'; $nb.Child = $nt; [void]$ui.AnaResult.Children.Add($nb)
     }
+    # oct. 20 2026: Campaign status + attack evidence side by side, THIS run's reasons, and a
+    # warning when the saved report is older than the analysis (gui\RunStatusCard.ps1)
+    try { $rsc = New-RunStatusCard (Get-Cell) $t; if ($rsc) { [void]$ui.AnaResult.Children.Add($rsc) } } catch { }
     $mem = Get-MemberInfo
     # oct. 19 2026: the four validity questions on top + the shared signature card
     $bits = $null; try { $bits = ConvertFrom-ReportText $t } catch { }
@@ -4523,8 +4534,8 @@ function Show-AnaReport([string]$Text) {
     $ci = -1; for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match '^\s*CONFIDENCE\s*:') { $ci = $i; break } }
     if ($ci -ge 0) {
         $head = $lines[$ci].Trim() -replace '^CONFIDENCE\s*:\s*', ''
-        $grade = if ($head -match '^(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $Matches[1] } else { ($head -split '\s+')[0] }
-        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F' } } { $_ -in 'FAILED', 'NOT CONFIRMED' } { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } default { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } }
+        $grade = if ($head -match '^(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED|SOUND|WITH NOTES|QUALIFIED|-)') { $Matches[1] } else { ($head -split '\s+')[0] }
+        $lk = switch ($grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#1F4D3E' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F' } } 'UNDETERMINED' { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } { $_ -in 'FAILED', 'NOT CONFIRMED' } { @{ Fg = $Pal.Red; Bg = '#3A1E2C' } } default { @{ Fg = $Pal.Amber; Bg = '#3A2E14' } } }
         $card = New-AnaCard ('CONFIDENCE  -  ' + $head) $lk.Fg
         $items = New-Object System.Collections.ArrayList
         for ($i = $ci + 1; $i -lt $lines.Count; $i++) {
@@ -4687,10 +4698,15 @@ $ui.DoVerify.Add_Click({
         Save-AnaResult $key $text $code
         Update-Cells                      # first: it re-selects the run and redraws from the cache
         Start-RedoList                    # the Campaign tile's REDO / CHECK follows the new result
-        $ui.VerifyOut.Document.Blocks.Clear(); Add-Report $text
-        Show-AnaReport $text
-        Show-Verdict $text $code
-        $ui.AnaTabs.SelectedIndex = 0
+        # oct. 20 2026: only onto the run it belongs to - a run picked WHILE the verifier
+        # ran used to get this result drawn under its own name (one run's verdict on another)
+        $sel = Get-Cell
+        if ($sel -and (Get-AnaKey $sel) -eq $key) {
+            $ui.VerifyOut.Document.Blocks.Clear(); Add-Report $text
+            Show-AnaReport $text
+            Show-Verdict $text $code
+            $ui.AnaTabs.SelectedIndex = 0
+        }
         Set-Status ("Verifier finished (exit {0}: {1})" -f $code, $(switch ($code) { 0 { 'confirmed' } 3 { 'setup invalid' } default { 'not confirmed' } })) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
     }
 })
@@ -5917,7 +5933,8 @@ function Show-ImpList($Items) {
         $row['BMac'] = $(if ($nodeMac.Length -ge 12) { $nodeMac.Substring(0, 2) + ':' + $nodeMac.Substring(10, 2) } else { $nodeMac })
         $row['BNick'] = $(if ($k) { $k.Nick } else { '' })
         $row['CAtk'] = [string]$f.filed_under; $row['AtkFg'] = Get-Brush (Get-AtkHex ([string]$f.filed_under))
-        $row['CRest'] = ' / {0} / {1}' -f $f.topology, $f.location
+        # oct. 20 2026: + the SCENARIO the card recorded (scenario.txt, firmware since oct. 20); '?' on older cards
+        $row['CRest'] = ' / {0} / {1} / {2}' -f $f.topology, $f.location, $(if ($f.PSObject.Properties['scenario'] -and $f.scenario) { [string]$f.scenario } else { '? (older card)' })
         $row['DMid'] = '\{0}\{1}\' -f $f.topology, $f.location; $row['DScn'] = $scn
     }
     $dt.Add_ColumnChanged({ param($s, $e) if ($e.Column.ColumnName -eq 'Import') { Update-ImpSummary } })
@@ -6043,11 +6060,37 @@ function Start-ImpCopy([switch]$Preview) {
             return
         }
         try { Save-ImportBatch -Base $base -Before $st.Before -Started $st.Started } catch { }
+        # oct. 20 2026 (user: "it said the export succeeded, but no files were there"): exit 0 only
+        # meant "no error" - every ticked file could have been SKIPPED (already imported / same
+        # node + repeat / aborted / still running). Success now = files that exist at their real
+        # path and read back with rows (IMPORTED_FILE lines, re-checked here), shown by path.
+        $files = @([regex]::Matches($text, '(?m)^IMPORTED_FILE: (.+)\|(\d+)\s*$') | ForEach-Object {
+            [pscustomobject]@{ Path = $_.Groups[1].Value.Trim(); Rows = [int]$_.Groups[2].Value } } |
+            Where-Object { (Test-Path -LiteralPath $_.Path) -and (Get-Item -LiteralPath $_.Path).Length -gt 0 })
+        $res = [regex]::Match($text, 'IMPORT_RESULT: copied=(\d+) skipped=(\d+) aborted=(\d+) live=(\d+) failed=(\d+) filtered=(\d+)')
+        $skips = @([regex]::Matches($text, '(?m)^\s*SKIP\s+(\S+)\s*\r?\n\s+(.+)$') | ForEach-Object { '{0}: {1}' -f (Split-Path $_.Groups[1].Value -Leaf), $_.Groups[2].Value.Trim() })
+        foreach ($f in $files) { Write-Activity ("  WRITTEN + VERIFIED: {0}  ({1} rows)" -f $f.Path, $f.Rows) $Pal.Green }
+        foreach ($k in $skips) { Write-Activity ("  NOT IMPORTED: {0}" -f $k) $Pal.Amber }
+        if ($code -eq 0 -and -not $files.Count) {
+            $why = if ($skips.Count) { ($skips | Select-Object -First 2) -join "`n" } elseif ($res.Success -and [int]$res.Groups[5].Value) { "$($res.Groups[5].Value) file(s) failed to copy / verify" } else { 'no file reached the exports folder' }
+            Show-Toast 'NOTHING was imported' ("0 of {0} file(s) written. {1}" -f $st.N, $why) ([string][char]0xE7BA) 'GradMain'
+            [void][Windows.MessageBox]::Show(("No file was written to datasets\exports.`n`n{0}`n`nThe full reasons are in the activity pane. 'already imported' = that capture is already in exports (open its run on Verify); 'same node + repeat' = import it again with the next repeat number if it is a NEW run." -f (($skips | Select-Object -First 6) -join "`n")), 'Import - nothing written', 'OK', 'Warning')
+            Update-TrimCells; Update-ImpPorts; Start-ImpList -Again
+            return
+        }
         if ($code -eq 0) {
+            # the folder the files REALLY landed in (the importer may file a capture elsewhere by its rows)
+            $real = @($files | ForEach-Object { Split-Path $_.Path -Parent } | Select-Object -Unique)
+            if ($real.Count -eq 1) {
+                $rel = $real[0].Substring((Join-Path $base 'datasets\exports').Length).Trim('\') -split '\\'
+                if ($rel.Count -ge 4) { $st.Cell = ('{0} / {1} / {2}' -f $rel[0], $rel[1], $rel[2]) }
+            }
+            if ($files.Count -lt $st.N) { Write-Activity ("  {0} of {1} ticked file(s) written - the rest were skipped (see NOT IMPORTED above)" -f $files.Count, $st.N) $Pal.Amber }
+            $st.N = $files.Count
             $c = ($st.Cell -split ' / ')
             $script:ImpAnalyse = @{ Attack = $(if ($c[0] -eq 'baseline') { 'none' } else { $c[0] }); Topology = $c[1]; Location = $c[2]; Scenario = [string]$ui.ImpScenario.SelectedItem; Text = $st.Cell }
-            Show-Toast 'Imported' ("{0} file(s) -> {1}" -f $st.N, $st.Cell) ([string][char]0xE73E) 'GradGood' { $x = $script:ImpAnalyse; Start-Analysis $x.Attack $x.Topology $x.Location $x.Scenario ("{0} / {1}" -f $x.Text, $x.Scenario) } 'Analyse + verify this run'
-            $sd = Join-Path $base ('datasets\exports\{0}\{1}' -f ($st.Cell -replace ' / ', '\'), [string]$ui.ImpScenario.SelectedItem)
+            Show-Toast 'Imported' ("{0} file(s) written + verified -> {1}" -f $st.N, $(if ($real.Count -eq 1) { $real[0].Substring($base.Length).Trim('\') } else { "$($real.Count) folders (see the activity pane)" })) ([string][char]0xE73E) 'GradGood' { $x = $script:ImpAnalyse; Start-Analysis $x.Attack $x.Topology $x.Location $x.Scenario ("{0} / {1}" -f $x.Text, $x.Scenario) } 'Analyse + verify this run'
+            $sd = if ($real.Count -eq 1) { $real[0] } else { Join-Path $base ('datasets\exports\{0}\{1}' -f ($st.Cell -replace ' / ', '\'), [string]$ui.ImpScenario.SelectedItem) }
             $c3 = $st.Cell -split ' / '; Show-RunSummary $sd (Get-ExpectedBoards $c3[0] $c3[1] $c3[2] ([string]$ui.ImpScenario.SelectedItem)) 'IMPORTED - RUN SUMMARY'
         } else { Show-Toast 'Import ended with an error' 'Read the activity pane.' ([string][char]0xE783) 'GradMain' }
         Update-TrimCells; Update-ImpPorts
@@ -6302,6 +6345,9 @@ $script:SyncLook = @{
     older      = @{ Text = 'GITHUB IS NEWER';    Bg = '#2A2E48'; Fg = $Pal.Dim }
     archived   = @{ Text = 'ARCHIVED';           Bg = '#2A2E48'; Fg = $Pal.Dim }
     differ     = @{ Text = 'YOURS DIFFERS';      Bg = '#3A2E14'; Fg = $Pal.Amber }
+    delete     = @{ Text = 'DELETE ON GITHUB';   Bg = '#3A1E2C'; Fg = $Pal.Red }
+    deletedhere = @{ Text = 'YOU DELETED IT';    Bg = '#2A2E48'; Fg = $Pal.Dim }
+    deleteconflict = @{ Text = 'DELETED HERE, CHANGED THERE'; Bg = '#3A2E14'; Fg = $Pal.Amber }
 }
 $script:SyncFresh = @{
     fresh = @{ Text = 'CURRENT'; Bg = '#1F4D3E'; Fg = $Pal.Green }; stale = @{ Text = 'STALE'; Bg = '#3A2E14'; Fg = $Pal.Amber }
@@ -6389,7 +6435,8 @@ function Show-SyncStatus($St) {
     $held = New-SyncTable @('Badge', 'Area', 'CAtk', 'CRest', 'File', 'Rel', 'Why')
     foreach ($it in @($St.push)) {
         if ($it.act -eq 'push') {
-            $r = Add-SyncRow $send $it $script:SyncLook $true
+            # oct. 20 2026: a DELETE ON GITHUB item is never ticked for you (tick = False from smart_sync)
+            $r = Add-SyncRow $send $it $script:SyncLook ($it.kind -ne 'delete' -and $it.tick -ne $false)
             if ($it.needsAnalysis) { $f = $script:SyncFresh[[string]$it.needsAnalysis]; $r.Ana = $f.Text; $r.AnaBg = Get-Brush $f.Bg; $r.AnaFg = Get-Brush $f.Fg; $r.Why = $r.Why + "  -  this run's analysis is $($f.Text.ToLower())" }
             [void]$send.Rows.Add($r)
         } else { [void]$held.Rows.Add((Add-SyncRow $held $it $script:SyncLook $false)) }
@@ -7062,6 +7109,7 @@ function Open-RunPage($P) {
     }
     [void]$R.Steps.Add([pscustomobject]@{ Kind = 'summary'; Title = 'Done - check the run'; Sub = 'verify, import the SD cards'; Glyph = [string][char]0xE73E; State = 'waiting'; Note = ''; Tip = ''; Tone = $Pal.Green; Plan = $null })
     Update-RunSteps
+    try { Update-RootStepOption } catch { }     # gui\RootStep.ps1: one laptop, whole preset -> root by hand
     Set-RunState 'READY TO START'
     $ui.RunConsole.Document.Blocks.Clear(); $script:RunLines = 0
     Write-RunConsole ("Loaded {0}. Steps: compile -> {1}flash + run each board (root last) -> summary." -f $P.File, $(if ($R.Steps | Where-Object Kind -eq 'park') { 'park the old root -> ' } else { '' })) $Pal.Blue
@@ -7167,8 +7215,12 @@ function Start-RunBuild([switch]$ThenGo, [string[]]$Only, [switch]$Quiet) {
         [void]$e.Labels.Add($b.Board.Label)
     }
     $q = New-Object System.Collections.Queue
+    $rootLbl = @(@($R.Steps | Where-Object { $_.Kind -eq 'board' -and $_.Board.Role -eq 'root' }) | ForEach-Object { $_.Board.Label })
+    $byHand = $false; try { $byHand = Test-RootByHand } catch { }
     foreach ($e in $R.Builds) {
         $hit = (-not $Only) -or @($e.Labels | Where-Object { $Only -contains $_ }).Count
+        # gui\RootStep.ps1 (oct. 20 2026): one laptop + root by hand -> the root is compiled at its own step
+        if (-not $Only -and $byHand -and @($e.Labels | Where-Object { $rootLbl -contains $_ }).Count) { $hit = $false }
         if ($hit) { $e.Tries = 0; $e.Err = ''; $q.Enqueue($e) }
     }
     $R.BuildQueue = $q; $R | Add-Member -NotePropertyName BuildTotal -NotePropertyValue $q.Count -Force
@@ -7236,7 +7288,8 @@ function Step-RunBuild {
         $nNew = @($R.Builds | Where-Object Fresh).Count
         $st.State = 'ok'; $st.Note = "{0} variant(s) ready in {1}{2}" -f $R.Builds.Count, (Format-Duration ([int]$R.BuildWatch.Elapsed.TotalSeconds)), $(if ($nNew -lt $R.Builds.Count) { " ($nNew compiled, $($R.Builds.Count - $nNew) up to date)" } else { '' })
         $R.Built = $true
-        Write-RunConsole ("All {0} variant(s) ready - 0 errors." -f $R.Builds.Count) $Pal.Green
+        if ($R.PSObject.Properties['RootBuilding'] -and $R.RootBuilding) { Update-RunSteps; Complete-RootCompile; return }   # gui\RootStep.ps1
+        Write-RunConsole ("All {0} variant(s) ready - 0 errors." -f @($R.Builds | Where-Object State -eq 'ok').Count) $Pal.Green
         Update-RunSteps
         if ($R.GoAfterBuild) { Start-RunBoards; return }
         $R.Active = $false; $R.Phase = 'setup'; $ui.RunSetup.IsEnabled = $true
@@ -7318,6 +7371,9 @@ function Start-RunStep($St) {
         Update-RunSteps; return
     }
     $R.Wait = $null
+    # gui\RootStep.ps1 (oct. 20 2026): one laptop + root by hand -> the operator compiles + flashes it
+    $byHand = $false; try { $byHand = Test-RootByHand } catch { }
+    if ($b.Role -eq 'root' -and $byHand -and -not ($R.PSObject.Properties['RootGo'] -and $R.RootGo)) { Show-RootGate; return }
     if ($b.Role -eq 'root' -and $R.Parked) {
         Stop-CrashWatchOn ([string]$b.Port)
         $St.State = 'running'; $St.Note = 'waking the root...'
@@ -7435,6 +7491,7 @@ function Complete-RunStep([int]$Code) {
     }
 }
 function Complete-Run {
+    try { Hide-RootStepBar } catch { }     # gui\RootStep.ps1
     $R = $script:Run
     Stop-CrashWatch
     $sum = $R.Steps | Where-Object Kind -eq 'summary' | Select-Object -First 1
@@ -7464,6 +7521,7 @@ function Complete-Run {
     Update-NavBadges
 }
 function Finish-RunStopped {
+    try { Hide-RootStepBar } catch { }     # gui\RootStep.ps1
     $R = $script:Run
     # the flashed children KEEP RUNNING after a stop - keep listening to them
     # (oct. 18 2026: a victim crashed unwatched after a stop + root-only re-run)

@@ -31,6 +31,8 @@
 #include "crash_record.h"
 #include "esp_system.h"   /* esp_reset_reason(): why THIS boot happened */
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"   /* vTaskDelay between boot mount attempts */
 
 /* ── Module-private state ────────────────────────────────────────────────── */
 
@@ -59,6 +61,9 @@ static bool   s_location_valid   = false;
 static sdmmc_card_t *s_card          = NULL;
 static char          s_run_dir[96]   = {0};
 static int           s_boot_count    = 0;
+/* sd_status_remount() is rebuilding the mount: a serial command must not mount
+ * the card underneath it (see sd_status_ensure_mounted). */
+static volatile bool s_remounting    = false;
 
 /* Command Center: cached /sdcard/node_config.txt values. Empty = not found. */
 static char   s_cfg_nickname[NODE_NICKNAME_LEN] = {0};
@@ -75,6 +80,12 @@ static char   s_cfg_role[24]                    = {0};
 static const char *const s_topo_dirs[4] = {
     "star", "tree", "linear", "partial_mesh",
 };
+
+#define SD_SCENARIO_FILE SD_MOUNT_POINT "/scenario.txt"
+static const char *const s_scenarios[6] = {
+    "stationary", "burst", "highload", "jitter", "mobility", "powercycle",
+};
+static char s_scenario[16] = {0};   /* scenario.txt at boot, "" = none recorded */
 
 static const char *const s_locations[4] = {
     SD_LOCATION_HOME, SD_LOCATION_G402, SD_LOCATION_DLSU_LIB, SD_LOCATION_YUCHENGCO,
@@ -314,6 +325,69 @@ const char *sd_status_attack_dirname(void)
 const char *sd_status_location(void)
 {
     return s_location_valid ? s_location : NULL;
+}
+
+const char *sd_status_scenario(void)
+{
+    return s_scenario;
+}
+
+bool sd_status_peek_scenario(char *out, size_t out_len)
+{
+    if (!out || !out_len) {
+        return false;
+    }
+    bool took = false;
+    if (!sd_status_ensure_mounted("GET_SCENARIO", &took)) {
+        return false;
+    }
+    char raw[32] = "";
+    FILE *f = fopen(SD_SCENARIO_FILE, "r");
+    if (f) {
+        if (!fgets(raw, sizeof(raw), f)) {
+            raw[0] = '\0';
+        }
+        fclose(f);
+    }
+    if (took) {
+        sd_status_unmount();
+    }
+    raw[strcspn(raw, "\r\n ")] = '\0';
+    for (int i = 0; i < 6; i++) {
+        if (strcasecmp(raw, s_scenarios[i]) == 0) {
+            strlcpy(out, s_scenarios[i], out_len);
+            return true;
+        }
+    }
+    strlcpy(out, "NONE", out_len);
+    return true;
+}
+
+bool sd_status_write_scenario(const char *value)
+{
+    const char *canon = NULL;
+    for (int i = 0; value && i < 6; i++) {
+        if (strcasecmp(value, s_scenarios[i]) == 0) {
+            canon = s_scenarios[i];
+        }
+    }
+    if (!canon) {
+        return false;
+    }
+    bool took = false;
+    if (!sd_status_ensure_mounted("SET_SCENARIO", &took)) {
+        return false;
+    }
+    FILE *f = fopen(SD_SCENARIO_FILE, "w");
+    bool ok = false;
+    if (f) {
+        ok = fprintf(f, "%s\n", canon) > 0;
+        ok = (fclose(f) == 0) && ok;
+    }
+    if (took) {
+        sd_status_unmount();
+    }
+    return ok;
 }
 
 const char *sd_status_run_dir(void)
@@ -717,7 +791,41 @@ static bool mount_for_location_op(const char *what, bool *took_mount)
 
 bool sd_status_ensure_mounted(const char *what, bool *took_mount)
 {
+    if (s_remounting) {
+        *took_mount = false;
+        return false;   /* csv_logger's recovery owns SPI3 right now */
+    }
     return mount_for_location_op(what, took_mount);
+}
+
+bool sd_status_remount(const char *run_dir)
+{
+    if (!run_dir || run_dir[0] == '\0') {
+        return false;
+    }
+    char dir[sizeof(s_run_dir)];
+    strlcpy(dir, run_dir, sizeof(dir));
+    s_remounting = true;
+    if (s_card) {
+        esp_vfs_fat_sdcard_unmount(SD_MOUNT_POINT, s_card);
+        spi_bus_free(SPI3_HOST);
+        s_card = NULL;
+    }
+    bool took = false;
+    bool ok = mount_for_location_op("SD RECOVERY", &took);
+    if (ok) {
+        struct stat st;
+        ok = (stat(dir, &st) == 0 && S_ISDIR(st.st_mode));
+        if (!ok) {
+            ESP_LOGE(TAG, "SD RECOVERY: card back but %s is not readable on it", dir);
+        }
+    }
+    strlcpy(s_run_dir, dir, sizeof(s_run_dir));   /* kept either way: the next try needs it */
+    s_remounting = false;
+    if (ok) {
+        ESP_LOGW(TAG, "SD RECOVERY: card re-initialised and remounted (%s)", dir);
+    }
+    return ok;
 }
 
 sd_loc_read_t sd_status_peek_location(char *out, size_t out_len)
@@ -928,8 +1036,22 @@ sd_status_result_t sd_status_run_boot_check(void)
 
     sdmmc_card_t *card = NULL;
     esp_err_t mount_ret = ESP_FAIL;
-    if (bus_ret == ESP_OK) {
+    /* oct. 20 2026: up to SD_BOOT_MOUNT_TRIES attempts. One failed card init at
+     * boot (powerbank inrush, a card that is slow out of reset, a marginal
+     * jumper) used to mean NO card copy for the whole run - and a child on a
+     * powerbank has no laptop to show the error. Same config every attempt. */
+    for (int attempt = 1; bus_ret == ESP_OK && attempt <= SD_BOOT_MOUNT_TRIES; attempt++) {
         mount_ret = esp_vfs_fat_sdspi_mount(SD_MOUNT_POINT, &host, &slot_cfg, &mount_cfg, &card);
+        if (mount_ret == ESP_OK) {
+            if (attempt > 1) {
+                ESP_LOGW(TAG, "SD mount OK on attempt %d of %d", attempt, SD_BOOT_MOUNT_TRIES);
+            }
+            break;
+        }
+        ESP_LOGW(TAG, "SD mount attempt %d of %d failed (0x%x)", attempt, SD_BOOT_MOUNT_TRIES, mount_ret);
+        if (attempt < SD_BOOT_MOUNT_TRIES) {
+            vTaskDelay(pdMS_TO_TICKS(SD_BOOT_MOUNT_RETRY_MS));
+        }
     }
     s_card = (mount_ret == ESP_OK) ? card : NULL;
 
@@ -1000,6 +1122,11 @@ sd_status_result_t sd_status_run_boot_check(void)
         }
     }
     rep("[3] READ/WRITE INTEGRITY CHECK: %s\r\n\r\n", integrity_ok ? "MATCH" : "FAIL");
+    if (!integrity_ok) {
+        /* Not fatal (the mirror may still work), but a card that cannot read back
+         * a 34-byte file is the first suspect when its run file comes up short. */
+        ESP_LOGE(TAG, "SD R/W integrity check FAILED - this card may not keep the run: reseat / replace it");
+    }
 
     /* Command Center identity, read HERE because on any non-OK result this
      * function unmounts the card and frees SPI3 before returning —
@@ -1038,6 +1165,15 @@ sd_status_result_t sd_status_run_boot_check(void)
     char raw_loc[64];
     int loc_idx = -1;
     loc_lookup_t loc_result = read_location(s_location, sizeof(s_location), raw_loc, sizeof(raw_loc), &loc_idx);
+    {
+        /* scenario.txt (oct. 20 2026): optional, written by the laptop before the flash */
+        char sc[24] = "";
+        s_scenario[0] = '\0';
+        if (sd_status_peek_scenario(sc, sizeof(sc)) && strcmp(sc, "NONE") != 0) {
+            strlcpy(s_scenario, sc, sizeof(s_scenario));
+        }
+        rep("  Recorded scenario: %s\r\n", s_scenario[0] ? s_scenario : "NONE (scenario.txt missing - older laptop tools)");
+    }
     const char *topo_dir = s_topo_dirs[MESH_TOPOLOGY];
     const int   atk_idx  = attack_index();
     const char *atk_dir  = s_attack_dirs[atk_idx];
@@ -1192,7 +1328,7 @@ sd_status_result_t sd_status_run_boot_check(void)
                  * last [HEALTH] reading to crashes_<node>.csv next to the run's
                  * files, one row per crash. A child on a powerbank has no laptop
                  * listening, so this file is the only copy. */
-                char crow[256];
+                char crow[320];
                 if (crash_record_take(s_reset_is_crash, boot_count, s_reset_reason, crow, sizeof(crow))) {
                     char cpath[176];
                     snprintf(cpath, sizeof(cpath), "%s/crashes_%s.csv", dest_dir, node_id);

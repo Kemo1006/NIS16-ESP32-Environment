@@ -122,7 +122,10 @@ def _short(n):
 #      set before they were run on any capture, and the same for every run.
 #   3. Symmetric: a victim that becomes a bystander and a bystander that becomes
 #      a victim fail alike; boards carried across by a moving parent count too.
-#   4. The treatment is fixed: the ATTACKER moving is never tolerated.
+#   4. The treatment is fixed: WHO the attacker sits between. Until oct. 20 2026 the
+#      attacker moving was never tolerated; D-31 allows it ONLY when no board changed
+#      its victim / bystander class and the attacker's own outage stays within
+#      REROUTE_BUDGET (its outage windows are left out, like any board's).
 #   5. The outcome may only DOWNGRADE: verify_attack.py re-runs the 3-sigma test
 #      on the attack windows BEFORE the first re-route (robustness check); if the
 #      verdict does not hold there, the run fails. It can never upgrade one.
@@ -166,8 +169,18 @@ def _parent_timeline(seg, sta):
     tl = {}
     for n, g in seg.dropna(subset=[tc]).groupby("node_id"):
         g = g.sort_values(tc)
-        tl[n] = [(float(t), _exposure.resolve_parent(p, sta)) for t, p in zip(g[tc], g["parent_mac"])]
+        tl[n] = [(float(t), _resolve_or_elsewhere(p, sta)) for t, p in zip(g[tc], g["parent_mac"])]
     return tl
+
+
+ELSEWHERE = "elsewhere"   # a real parent MAC that is not a board in this table (its file is missing)
+
+
+def _resolve_or_elsewhere(p, sta):
+    r = _exposure.resolve_parent(p, sta)
+    if r is None and str(p) not in ("", "nan", "None", _exposure.ZERO_MAC):
+        return ELSEWHERE
+    return r
 
 
 def _parent_at(tl, n, t, tol=3.0):
@@ -188,19 +201,56 @@ _TIMES = {}      # id(timeline list) -> its times, for bisect (lists are rebuilt
 
 
 def _path_class(tl, n, t, attackers, roots):
-    cur = n
+    # oct. 20 2026 (D-31): the WHOLE path must reach the root. Before, a board was a
+    # 'victim' the moment its chain met the attacker - also while the attacker itself
+    # had no uplink or had crashed, when every probe is lost for a reason that is NOT
+    # the blackhole. Those seconds are now 'detached' / 'unknown' (no working path),
+    # which unresolved_windows() leaves out of the 3-sigma test (rule 6: stricter only).
+    cur, via_attacker = n, False
     for _ in range(16):
         p = _parent_at(tl, cur, t)
         if p == "unknown":
             return "unknown"
         if p is None:
             return "detached"
-        if p in attackers:
-            return "victim"
+        if p == ELSEWHERE:
+            # attached to a board whose data is missing: the attacker had SOME uplink
+            # (kept as before oct. 20); below the attacker or without it, untraceable
+            return "victim" if via_attacker else "detached"
         if p in roots:
-            return "bystander"
+            return "victim" if via_attacker else "bystander"
+        if p in attackers:
+            via_attacker = True
         cur = p
     return "unknown"
+
+
+def attacker_outage(df, n):
+    """(attack windows in which attacker n had NO working path to the root, its attack
+    windows) - structure only (D-31). A detached / crashed attacker loses its victims'
+    probes exactly like the attack does."""
+    seg = _seg(df, "attack")
+    if seg.empty or not {"node_id", "parent_mac"} <= set(seg.columns):
+        return 0, 0
+    roles = _roles(df)
+    roots = {x for x, r in roles.items() if r in _exposure.ROOT_ROLES}
+    tl = _parent_timeline(seg, _sta_map(df))
+    _TIMES.clear()
+    tc = _tcol(seg)
+    ts = sorted(float(t) for t in seg.loc[seg["node_id"] == n, tc].dropna())
+
+    def _up(t):
+        cur = n
+        for _ in range(16):
+            p = _parent_at(tl, cur, t)
+            if p in ("unknown", None):
+                return False          # silent board on the way, or no parent at all
+            if p == ELSEWHERE or p in roots:
+                return True           # reaches the root (or a board whose file is missing)
+            cur = p
+        return False
+    off = sum(1 for t in ts if not _up(t))
+    return off, len(ts)
 
 
 def exposure_timeline(df, attack, segment="attack"):
@@ -586,8 +636,32 @@ def topology_issues(df, attack, key_nodes=()):
             out.append(Issue(WARN, msg))
             continue
         if who in _exposure.ATTACK_ROLES and attack == "blackhole":
-            out.append(Issue(FAIL, msg + " - the ATTACKER itself moved: its position IS the experiment, so a"
-                                         " moved attacker is never tolerated"))
+            # D-31 (oct. 20 2026, user: "a change in node relationships should not automatically
+            # invalidate the run unless it violates an essential requirement or compromises the
+            # evidence"). The treatment is WHO the attacker sits between: its subtree (the
+            # victims) and the rest (bystanders). The attacker taking another UPSTREAM parent
+            # changes neither by itself - that is measured by the board classes, still outcome-
+            # blind (rule 1). It is tolerated only when (a) no board flipped victim <-> bystander
+            # (checked below for every board), (b) it had a victim in the attack, and (c) its own
+            # outage stayed within REROUTE_BUDGET - an attacker without an uplink drops its
+            # victims' probes exactly like the attack does, so a long outage is not evidence.
+            out_s, n_s = attacker_outage(df, n)
+            has_victim = any(_majority([c for _t, c in seq]) == "victim" for seq in timeline.values())
+            if flipped:
+                out.append(Issue(FAIL, msg + " - the ATTACKER moved AND boards switched between victim and bystander"
+                                             " (listed below): the attack reached different boards during the attack"))
+            elif not has_victim:
+                out.append(Issue(FAIL, msg + " - the ATTACKER moved and no board stayed behind it as a victim"))
+            elif n_s and out_s > REROUTE_BUDGET * n_s:
+                out.append(Issue(FAIL, msg + f" - the ATTACKER had no uplink for {out_s} of {n_s} attack windows "
+                                             f"({out_s / n_s:.0%}, over the {REROUTE_BUDGET:.0%} of a brief re-join): "
+                                             f"an attacker without a path drops its victims' probes exactly like the "
+                                             f"attack does, so those windows cannot tell the two apart"))
+            else:
+                out.append(Issue(WARN, msg + f" - TOLERATED (D-31): the ATTACKER changed its own parent, but every board "
+                                             f"kept its victim / bystander class and it had no uplink for only {out_s} s "
+                                             f"(limit {int(REROUTE_BUDGET * n_s)} s, those windows are left out); the attack "
+                                             f"reached the same boards. Decided from the layout only"))
             continue
         if attack == "blackhole" and n in timeline:
             cls = [c for _t, c in timeline[n]]
@@ -663,10 +737,13 @@ def topology_issues(df, attack, key_nodes=()):
         att_gone = any(n in key_nodes and roles.get(n) in _exposure.ATTACK_ROLES for n in gone)
         victims_left = [n for n in key_nodes if n in set(nodes) and roles.get(n) not in _exposure.ATTACK_ROLES]
         lvl = FAIL if (att_gone or (any(n in key_nodes for n in gone) and not victims_left)) else WARN
-        out.append(Issue(lvl, "no attack-window telemetry from "
-                              + ", ".join(_short(n) for n in gone)
-                              + " (board dropped out, its file is missing, or its attack"
-                              " windows were discarded for too few samples)"))
+        # oct. 20 2026: a non-fatal one is judged per board by its ROLE (missing_boards.py,
+        # added by setup_issues) - no longer one blanket gap for every board that went silent
+        if lvl == FAIL:
+            out.append(Issue(lvl, "no attack-window telemetry from "
+                                  + ", ".join(_short(n) for n in gone)
+                                  + " (board dropped out, its file is missing, or its attack"
+                                  " windows were discarded for too few samples)"))
     # (The no-labelled-window WARN below is skipped for boards the presence
     # line above already named, so each board is reported once.)
     # Nodes in the table with NO labelled window at all (e.g. segment
@@ -937,4 +1014,9 @@ def setup_issues(df, attack):
         issues, key = wormhole_issues(df)
     else:
         return []
-    return issues + topology_issues(df, attack, key) + start_anyway_issues(df)
+    try:
+        import missing_boards                   # role-based missing-board rule (oct. 20 2026)
+        missing = missing_boards.assess(df, attack)
+    except Exception as e:                      # this check must never break the others
+        missing = [Issue(SKIP, f"missing-board check could not run: {e}")]
+    return issues + topology_issues(df, attack, key) + missing + start_anyway_issues(df)

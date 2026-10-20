@@ -322,11 +322,33 @@ class Blackhole(unittest.TestCase):
         d.loc[attack_rows(d) & d.node_id.isin(self.victims), "PDR"] = 1.0
         self.assertTrue(any("not cut off" in t for t in fails(d, "blackhole")))
 
-    def test_attacker_moved_mid_attack(self):
+    def test_attacker_moved_keeping_its_victims_is_tolerated(self):
+        # D-31 (oct. 20 2026): the attacker taking another UPSTREAM parent while every board
+        # keeps its victim / bystander class is not a different experiment - tolerated (WARN)
         d = self.df.copy()
         rows = d.index[attack_rows(d) & (d.node_id == self.atk_id)]
         d.loc[rows[: len(rows) // 2], "parent_mac"] = "B0:CB:D8:F3:32:19"   # the root's AP
-        self.assertTrue(any("changed parent during the attack" in t for t in fails(d, "blackhole")))
+        txt = [i.text for i in ac.setup_issues(d, "blackhole")]
+        self.assertTrue(any("changed parent during the attack" in t and "TOLERATED (D-31)" in t for t in txt))
+        self.assertFalse(any("changed parent during the attack" in t for t in fails(d, "blackhole")))
+
+    def test_attacker_long_outage_still_fails(self):
+        # ...but an attacker WITHOUT an uplink for > 10 % of the attack loses its victims'
+        # probes exactly like the attack does - not evidence, so FAIL (D-31 condition c)
+        d = self.df.copy()
+        rows = d[attack_rows(d) & (d.node_id == self.atk_id)].sort_values("t_anchor_s").index
+        d.loc[rows[:5], "parent_mac"] = "B0:CB:D8:F3:32:19"                 # it moves ...
+        d.loc[rows[5: 5 + len(rows) // 3], "parent_mac"] = "00:00:00:00:00:00"   # ... then hangs detached
+        self.assertTrue(any("had no uplink" in t for t in fails(d, "blackhole")))
+
+    def test_attacker_outage_windows_are_excluded(self):
+        # D-31: victims' windows while the attacker has no uplink have no working path -
+        # left out of the 3-sigma test (an attacker outage drops PDR like the attack does)
+        d = self.df.copy()
+        rows = d[attack_rows(d) & (d.node_id == self.atk_id)].sort_values("t_anchor_s").index
+        d.loc[rows[:20], "parent_mac"] = "00:00:00:00:00:00"
+        base = len(ac.unresolved_windows(self.df, "blackhole"))
+        self.assertGreater(len(ac.unresolved_windows(d, "blackhole")), base)
 
     def test_linear_with_a_branch_is_not_linear(self):
         d = self.df.copy()
@@ -488,6 +510,75 @@ class StartAnyway(unittest.TestCase):
         self.log("blackhole-tree-g402-highload_r1_oct15_0524PM.log", self.ROOT_FORCED)
         self.assertEqual(self.level(), ac.SKIP)
 
+
+
+@unittest.skipUnless(os.path.exists(BH), "blackhole reference table not present")
+class MissingBoard(unittest.TestCase):
+    """oct. 20 2026: a missing board is judged by its ROLE (tools/missing_boards.py).
+    blackhole/linear/DLSU_Library/stationary: attacker E618, victims B768 + FE90,
+    bystanders 0C80, 1C38, D7B4, ED80."""
+    @classmethod
+    def setUpClass(cls):
+        import missing_boards as mb
+        cls.mb = mb
+        cls.df = pd.read_csv(BH, low_memory=False)
+
+    def silence(self, *ids):
+        d = self.df.copy()
+        return d[~(attack_rows(d) & d.node_id.isin(ids))]
+
+    def verdicts(self, d):
+        return [i.text for i in self.mb.assess(d, "blackhole")]
+
+    def test_bystander_with_other_controls_is_yellow(self):
+        t = self.verdicts(self.silence("NODE_20500DE70C80"))
+        self.assertTrue(any(x.startswith("MISSING BOARD 0C80 (bystander): YELLOW") for x in t), t)
+
+    def test_leaf_victim_with_another_victim_left_is_yellow(self):
+        t = self.verdicts(self.silence("NODE_B4BFE932FE90"))
+        self.assertTrue(any(x.startswith("MISSING BOARD FE90 (victim): YELLOW") for x in t), t)
+
+    def test_victim_carrying_the_other_victim_is_critical(self):
+        # linear chain: E618 -> B768 -> FE90. Without B768, FE90's path to the attacker cannot
+        # be traced, so no victim evidence is left (the 'grandchild' case) -> recapture
+        t = self.verdicts(self.silence("NODE_704BCA25B768"))
+        self.assertTrue(any(x.startswith("MISSING BOARD B768 (victim): CRITICAL") and "FE90" in x for x in t), t)
+
+    def test_last_control_is_undetermined(self):
+        t = self.verdicts(self.silence("NODE_20500DE70C80", "NODE_20500DE71C38",
+                                       "NODE_2805A532D7B4", "NODE_B4BFE934ED80"))
+        self.assertTrue(any("(bystander): UNDETERMINED" in x for x in t), t)
+
+    def test_no_file_and_no_structure_is_undetermined(self):
+        orig = self.mb.heard_boards
+        try:
+            self.mb.heard_boards = lambda df: {"AABBCCDDEEFF": 500}
+            t = self.verdicts(self.df)
+        finally:
+            self.mb.heard_boards = orig
+        self.assertTrue(any(x.startswith("MISSING BOARD EEFF (position unknown): UNDETERMINED") for x in t), t)
+
+    def test_no_file_placed_by_root_log(self):
+        oh, ol = self.mb.heard_boards, self.mb.root_log_parents
+        try:
+            self.mb.heard_boards = lambda df: {"AABBCCDDEEFF": 500}
+            # the root's structure table: EEFF hangs under the attacker E618
+            self.mb.root_log_parents = lambda df: {"AABBCCDDEEFF": ("F42DC973E618", "child"),
+                                                   "F42DC973E618": ("B0CBD8F33218", "blackhole")}
+            t = self.verdicts(self.df)
+        finally:
+            self.mb.heard_boards, self.mb.root_log_parents = oh, ol
+        self.assertTrue(any(x.startswith("MISSING BOARD EEFF (victim): YELLOW") for x in t), t)
+
+    def test_grades(self):
+        und = ac.Issue(ac.WARN, "MISSING BOARD EEFF (position unknown): UNDETERMINED - x [y]")
+        yel = ac.Issue(ac.WARN, "MISSING BOARD 0C80 (bystander): YELLOW - x [y]")
+        crit = ac.Issue(ac.WARN, "MISSING BOARD B768 (victim): CRITICAL - x [y]")
+        self.assertEqual(va._confidence(True, False, True, [und])[0], "UNDETERMINED")
+        self.assertEqual(va._confidence(True, False, True, [yel])[0], "MINOR GAPS")
+        self.assertEqual(va._confidence(True, False, True, [crit, und])[0], "MAJOR GAPS")
+        o = va._outcome(True, False, True, [und], 2, 2)
+        self.assertEqual(o["outcome"], "INCONCLUSIVE")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

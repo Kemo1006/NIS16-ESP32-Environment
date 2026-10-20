@@ -215,6 +215,21 @@ def _manifest_when(row):
     return built, started, src
 
 
+def _manifest_scenario(row):
+    """The scenario field (12th column, firmware since oct. 20 2026: what the laptop wrote to
+    scenario.txt before the flash), or None. By name on a new card; on a reused card it is
+    the LAST of the unnamed extras, and only when the row has all 12 values."""
+    if "scenario" in row:
+        v = (row.get("scenario") or "").strip()
+        return v or None
+    named = [k for k in row if k is not None]
+    extra = [str(x) for x in (row.get(None) or [])]
+    if len(named) + len(extra) >= 12 and extra:
+        v = extra[-1].strip()
+        return v if v in ("stationary", "burst", "highload", "jitter", "mobility", "powercycle") else None
+    return None
+
+
 def _manifest_reset(row):
     """The reset_reason field of one runs.csv row (why THAT boot started:
     POWERON / BROWNOUT / PANIC / TASK_WDT / ...), or None on firmware before it.
@@ -326,7 +341,7 @@ def _parse_manifest_lines(lines):
         entry = manifest.setdefault(
             boot, {"rows": 0, "uptime_s": 0, "clean": False, "built": None,
                    "started": None, "clock_src": None, "reset": None,
-                   "ended_by": None})
+                   "ended_by": None, "sd_missed": 0, "sd_lost": False, "scenario": None})
         # Either row of a boot carries these and both say the same thing (one
         # flash cannot be relinked mid-run, and csv_logger.c reuses the run's
         # captured start time for the "clean" row), so the first row that has
@@ -340,6 +355,16 @@ def _parse_manifest_lines(lines):
             entry["clock_src"] = clock_src
         if entry["reset"] is None:
             entry["reset"] = _manifest_reset(row)
+        if entry["scenario"] is None:
+            entry["scenario"] = _manifest_scenario(row)
+        # SD RECOVERY events (oct. 20 2026 firmware): the card copy of this boot
+        # missed rows while the card was down - "sd_short" (written at close)
+        # carries the run total, "sd_lost" = the card was given up mid-run.
+        # SPIFFS (EXPORT_LOGS over USB) still has every row until a re-flash.
+        if row.get("event") in ("sd_short", "sd_lost"):
+            entry["sd_missed"] = max(entry["sd_missed"], rows)
+            if row.get("event") == "sd_lost":
+                entry["sd_lost"] = True
         if row.get("event") == "clean":
             entry["rows"] = rows
             entry["uptime_s"] = uptime_s
@@ -953,7 +978,12 @@ def _describe(source, rel, attack_dir, topo_dir, location, m, entry, roster, arg
         # Why this boot started / how it ended (the next logged boot's reason) -
         # None on firmware before sep. 25, 2026 or when no later boot logged.
         "reset": (entry or {}).get("reset"),
+        # Rows of this boot that never reached the card (SD recovery, oct. 20
+        # 2026 firmware); 0 = the card copy is complete or older firmware.
+        "sd_missed": (entry or {}).get("sd_missed", 0),
         "ended_by": (entry or {}).get("ended_by"),
+        # the run's SCENARIO as the card recorded it (oct. 20 2026 firmware; None = older)
+        "scenario": (entry or {}).get("scenario"),
         # The board's status_<node>.txt as it is NOW (mounted card only): its
         # boot count vs this file's boot shows boots that never reached logging.
         "status": (source.status(rel, m.group("node")) if hasattr(source, "status") else None),
@@ -1206,6 +1236,10 @@ def _run(source, args):
         if entry is not None:
             status += (f", manifest: {entry['rows']} rows / {entry['uptime_s']}s, "
                        f"{'clean' if entry['clean'] else 'ABORTED'}")
+            if entry.get("sd_missed"):
+                status += (f", CARD COPY INCOMPLETE: {entry['sd_missed']} row(s) never reached the card"
+                           f"{' (card given up mid-run)' if entry.get('sd_lost') else ''} - "
+                           f"EXPORT_LOGS over USB has them until re-flash")
             # Capture time first, because that is the question being asked;
             # the build stamp stays visible as the flash's identity. An
             # extrapolated time is always shown with its "~" and its source so
@@ -1299,6 +1333,22 @@ def _run(source, args):
                 elif refile_why:
                     print(f"        confirmed: its rows carry the {actual} phase")
 
+            # oct. 20 2026 (user: "the GUI said the export succeeded but no file was there"):
+            # the copy is only counted once the file at its FINAL path exists and reads back
+            # with rows; the GUI shows these IMPORTED_FILE paths instead of guessing.
+            try:
+                with open(dest, "rb") as fh:
+                    back = max(0, sum(1 for _ in fh) - 1)
+            except OSError as e:
+                back = -1
+                print(f"        VERIFY FAILED: cannot read {dest}: {e}")
+            if back <= 0:
+                copied -= 1
+                failed += 1
+                print(f"        VERIFY FAILED: {os.path.relpath(dest, args.outdir)} has no data rows after the copy")
+                continue
+            print(f"IMPORTED_FILE: {os.path.abspath(dest)}|{back}")
+
             # --delete-source frees a reused card so last month's captures can't
             # be dragged into an exports folder again (the failure this whole
             # naming/repeat mess came from). Verified, not assumed: the
@@ -1334,6 +1384,10 @@ def _run(source, args):
     if failed:
         tail.append(f"{failed} FAILED")
     tail_str = (" (" + ", ".join(tail) + ")") if tail else ""
+    # one machine-readable line for the GUI (oct. 20 2026): exit 0 does NOT mean a file
+    # was written - every file may have been skipped as already imported / aborted
+    print(f"IMPORT_RESULT: copied={0 if args.dry_run else copied} skipped={skipped} aborted={aborted_skipped} "
+          f"live={live_skipped} failed={failed} filtered={filtered_out} dry_run={int(bool(args.dry_run))}")
     if args.dry_run:
         print(f"Dry run: {len(found)} file(s) found{tail_str}.")
     else:

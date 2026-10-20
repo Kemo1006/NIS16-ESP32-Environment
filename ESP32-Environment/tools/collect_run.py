@@ -283,6 +283,42 @@ def _fetch_crashes(kind, s, leaves, node, run_logs):
             print("   " + line, flush=True)
 
 
+def _file_node(path):
+    """node_id of a telemetry file's first data row (12 hex, upper) or ''."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            head = fh.readline().strip().split(",")
+            first = fh.readline().strip().split(",")
+        i = head.index("node_id")
+        return re.sub(r"[^0-9A-F]", "", first[i].upper())[-12:]
+    except (OSError, ValueError, IndexError):
+        return ""
+
+
+_STAMP = re.compile(r"(?i)_(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)(\d{1,2})_(\d{2})(\d{2})(am|pm)")
+_MON = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+def _root_export_time(roots):
+    """When this run folder's root was exported (its arrivals file name stamp), or None.
+    oct. 20 2026: a child's file that STARTED after that cannot belong to this run - the
+    attacker sends no probes, so root_match cannot test it (verification #65: 1C38's
+    highload file was filed into burst)."""
+    best = None
+    for r in roots or []:
+        m = _STAMP.search(os.path.basename(r))
+        if not m:
+            continue
+        h = int(m.group(3)) % 12 + (12 if m.group(5).lower() == "pm" else 0)
+        y = dt.datetime.fromtimestamp(os.path.getmtime(r)).year
+        try:
+            t = dt.datetime(y, _MON[m.group(1).lower()[:3]], int(m.group(2)), h, int(m.group(4)))
+        except ValueError:
+            continue
+        best = t if best is None or t > best else best
+    return best
+
+
 def _rows_in(path):
     with open(path, "rb") as fh:
         return max(0, sum(1 for _ in fh) - 1)
@@ -435,6 +471,9 @@ def main():
     ap.add_argument("--roster", default=None)
     ap.add_argument("--skip-mac", default="", help="MACs to leave alone (the root), comma separated")
     ap.add_argument("--outdir", default=EXPORTS)
+    ap.add_argument("--expect-mac", default="",
+                    help="'COM10=aa:bb:..;COM11=...' - each board's REAL MAC (the GUI reads it from the port): "
+                         "a card whose files belong to another board (SD card swapped) is refused, never filed")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -442,6 +481,11 @@ def main():
     attack_dir = "baseline" if a.attack in ("none", "baseline") else a.attack
     since = dt.datetime.strptime(a.since, "%Y-%m-%d %H:%M") if a.since else None
     skip = {re.sub(r"[^0-9a-f]", "", m.lower()) for m in a.skip_mac.split(",") if m.strip()}
+    expect = {}
+    for part in (a.expect_mac or "").split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            expect[k.strip().upper()] = re.sub(r"[^0-9A-F]", "", v.upper())[-12:]
     picks = {}
     for part in (a.pick or "").split(";"):
         if "=" in part:
@@ -472,6 +516,17 @@ def main():
             continue
         mac = str((files[0] if files else {}).get("node", "")).replace("NODE_", "")
         row["mac"] = mac
+        # oct. 20 2026: the card must belong to the board it sits in - else one board's data
+        # would be filed under another board's identity (a swapped SD card)
+        real = expect.get(label.upper())
+        card = re.sub(r"[^0-9A-F]", "", mac.upper())[-12:]
+        if real and card and real != card:
+            why = (f"this card's files belong to board {card[-4:]}, but the board on {label} is {real[-4:]} - "
+                   f"was the SD card swapped? Nothing filed (it would land under the wrong board)")
+            _say(label, mac, "FAIL", why)
+            row.update(state="FAIL", why=why, kind="IDENTITY")
+            fail += 1
+            continue
         if picks:
             want = picks.get(label.upper())
             if not want:
@@ -490,7 +545,7 @@ def main():
             f, note = pick(files, a.attack, topology, a.location, since, skip, a.allow_other_location)
         if f is not None:
             row.update(rel=f.get("rel", ""), name=f.get("name", ""), started=str(f.get("started") or ""), rows=f.get("rows"),
-                       cell=f"{f.get('filed_under')}/{f.get('topology')}/{f.get('location')}")
+                       cell=f"{f.get('filed_under')}/{f.get('topology')}/{f.get('location')}/{f.get('scenario') or '? (older card)'}")
         if f is None:
             state = "SKIP" if ("root" in note or "no telemetry" in note) else "FAIL"
             _say(label, mac, state, note)
@@ -532,12 +587,31 @@ def main():
             order = [x for x in order if x not in older]
             # the root of this run already exported? then every piece must match it
             roots = root_match.find_arrivals(dest_dir) if root_match else []
+            root_at = _root_export_time(roots)
             mismatch = None                  # a piece that holds a baseline but does NOT match the root
             for cand in order[:MAX_TRIES]:
                 sub = os.path.join(tmp, str(len(tried)))
                 path, out = _import_one(src_args, cand, a, sub)
                 if not path:
                     tried.append(f"{cand.get('name')}: copy failed ({(out.strip().splitlines() or ['?'])[-1][:80]})")
+                    continue
+                rec = cand.get("scenario")
+                if rec and rec != a.scenario:
+                    tried.append(f"{cand.get('name')}: the card recorded scenario {rec}, not {a.scenario} - another run")
+                    print(f"   {cand.get('name')}: recorded as {rec}, not {a.scenario} - refused", flush=True)
+                    continue
+                node = _file_node(path)
+                if node and card and node != card:
+                    tried.append(f"{cand.get('name')}: holds board {node[-4:]}'s data, not {card[-4:]}'s - refused")
+                    print(f"   {cand.get('name')}: its rows belong to board {node[-4:]} - refused", flush=True)
+                    continue
+                st_ = _when(cand.get("started"))
+                if root_at and st_ and st_ > root_at + dt.timedelta(minutes=2):
+                    tried.append(f"{cand.get('name')} (ran {cand.get('started')}): started AFTER this run's root was "
+                                 f"exported ({root_at:%H:%M}) - a later run, not this one")
+                    print(f"   {cand.get('name')}: started {st_:%H:%M}, after the root of this run was exported "
+                          f"({root_at:%H:%M}) - a LATER run, refused", flush=True)
+                    mismatch = mismatch or (cand, None, path, "LATER", {"pct": 1.0})
                     continue
                 c = _coverage(path)
                 g = _grade(c)
@@ -576,6 +650,13 @@ def main():
             if os.path.exists(dest):
                 dest = dest[:-len("_telem.csv")] + f"_{dt.datetime.now():%H%M%S}_telem.csv"
             shutil.move(path, dest)
+            if not os.path.isfile(dest) or _rows_in(dest) <= 0:
+                why = f"the copy did not verify ({os.path.basename(dest)} missing or empty after filing)"
+                _say(label, mac, "FAIL", why)
+                row.update(state="FAIL", why=why)
+                fail += 1
+                continue
+            print(f"COLLECT_FILE: {os.path.abspath(dest)}|{_rows_in(dest)}", flush=True)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
         verdict = {"FULL": "", "PARTIAL": "PARTIAL - ", "SHORT_BASELINE": "SHORT BASELINE - "}[g]

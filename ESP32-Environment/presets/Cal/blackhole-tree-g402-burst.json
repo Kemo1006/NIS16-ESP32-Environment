@@ -5,10 +5,11 @@
     "scenario":  "burst",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-10-02 19:51",
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-19 19:42",
     "boards":  [
                    {
-                       "Label":  "ROOT",
+                       "Label":  "root",
                        "Port":  "COM3",
                        "Role":  "root",
                        "Kind":  "root",

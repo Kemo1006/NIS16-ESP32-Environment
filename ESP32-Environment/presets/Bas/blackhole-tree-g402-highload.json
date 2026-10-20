@@ -1,0 +1,21 @@
+﻿{
+    "attack":  "blackhole",
+    "topology":  "tree",
+    "location":  "G402",
+    "scenario":  "highload",
+    "owner":  "Bas",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-19 20:35",
+    "boards":  [
+                   {
+                       "Label":  "root",
+                       "Port":  "COM4",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

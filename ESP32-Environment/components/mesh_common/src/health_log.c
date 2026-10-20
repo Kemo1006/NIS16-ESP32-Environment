@@ -57,7 +57,11 @@ static const char *TAG = "HEALTH";
 static const char *const k_tasks[] = {
     "telemetry", "probe_gen", "probe_relay", "phase_listener", "phase_resync",
     "heartbeat", "csv_export", "arr_writer", "exp_ctrl",
-    "wh_uart_rx", "wh_role", "wh_fwd", "wh_reinject",
+    "wh_uart_rx", "wh_role", "wh_fwd", "wh_reinject", "sd_recover",
+    /* oct. 20 2026: the IDF inter-processor-call tasks. The oct. 18-19 crash
+     * records (4 boards, one PC) decode to ipc_task on IDF 5.5.4 builds; their
+     * 1 KB default stack was never watched. */
+    "ipc0", "ipc1",
 };
 
 static void health_task(void *arg)

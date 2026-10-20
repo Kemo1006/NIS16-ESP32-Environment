@@ -248,6 +248,35 @@ def local_listing():
     return {a: sorted(v) for a, v in res.items()}
 
 
+def local_deletions():
+    """{area: {rel: canonical sha of the deleted version}} - data files this repo has
+    COMMITTED but that are gone from this laptop's folder (deleted or moved by hand, a
+    wrong import cleaned up, an old run replaced). oct. 20 2026: before, Pull saw such a
+    file only as 'a teammate's file you don't have' and brought it back - the deleted
+    run reappeared in its run folder next to the right one (verification #48, #68)."""
+    res = {a: {} for a in AREAS.values()}
+    dels = [r for r in ps.nul_list(ps.git(["ls-files", "-z", "-d", "--"] + list(AREAS.values()), BASE, check=False))
+            if not (BASE / r).exists()]
+    for i in range(0, len(dels), 100):
+        chunk = dels[i:i + 100]
+        p = ps.git(["ls-tree", "-r", "-z", "HEAD", "--"] + chunk, BASE, check=False)
+        for rec in ps.nul_list(p):
+            try:
+                meta, rel = rec.split("\t", 1)
+                sha = meta.split()[2]
+            except (ValueError, IndexError):
+                continue
+            area = next((x for x in AREAS.values() if rel.startswith(x + "/")), None)
+            if not area or not ps.is_area_payload(area, rel) or ps.in_archive(rel):
+                continue
+            try:
+                data = ps.git(["cat-file", "blob", sha], BASE).stdout
+                res[area][rel] = sha_blob(canon(area, rel, data))
+            except ps.SyncError:
+                continue
+    return res
+
+
 def local_sha(area, rel):
     p = BASE / rel
     return cached("sha", p, lambda: sha_blob(canon(area, rel, p.read_bytes())))
@@ -607,7 +636,11 @@ def pull_plan(ctx, area, rhash, local_hash, local_archived, rdeleted_mine):
         if lsha == sha or (lsha and same_remote_cached(ctx, area, rel, lsha, sha)):
             continue
         if not dst.exists():
-            if name in local_archived:
+            if rdeleted_mine and rel in rdeleted_mine:
+                items.append(dict(it, kind="deletedhere", act="skip",
+                                  why="you DELETED this on this laptop - not pulled back. To delete it on GitHub "
+                                      "too, tick it under Send ('DELETE ON GITHUB'); to get it back: git checkout -- <file>"))
+            elif name in local_archived:
                 items.append(dict(it, kind="archived", act="skip", why="you archived this locally"))
             elif sha in l_by_sha:
                 items.append(dict(it, kind="duplicate", act="skip", why="you already have this exact file as " + l_by_sha[sha]))
@@ -711,8 +744,26 @@ def build_status(ctx):
     if (BASE / "archive").is_dir():
         for _, _, files in os.walk(BASE / "archive"):
             local_archived.update(files)
+    dels = local_deletions()
     for key, area in AREAS.items():
-        pull += pull_plan(ctx, area, rh[area], lh[area], local_archived, None)
+        pull += pull_plan(ctx, area, rh[area], lh[area], local_archived, dels[area])
+    # oct. 20 2026: a file deleted here that GitHub still has -> an explicit DELETE item,
+    # NEVER ticked by default. Only offered when GitHub holds exactly the version you
+    # deleted; if a teammate changed it since, it is held back as a conflict.
+    for key, area in AREAS.items():
+        for rel, dsha in sorted(dels[area].items()):
+            rsha = rh[area].get(rel)
+            if rsha is None:
+                continue
+            it = {"area": key, "rel": rel, "cell": cell_of(rel), "size": 0, "dest": ctx.prefix + rel}
+            if rsha == dsha or same_remote_cached(ctx, area, rel, dsha, rsha):
+                push.append(dict(it, kind="delete", act="push", tick=False,
+                                 why="you deleted this on this laptop; GitHub still has it - tick to delete it on "
+                                     "GitHub too (a normal commit: it stays in GitHub's history, Restore brings it back)"))
+            else:
+                push.append(dict(it, kind="deleteconflict", act="skip",
+                                 why="you deleted it here, but a teammate CHANGED it on GitHub since - not deleted "
+                                     "there; decide with the team (git checkout -- <file> restores your copy)"))
     incoming = {}
     for it in pull:
         if it["area"] == "exports" and it["act"] == "pull" and it["rel"].endswith("_telem.csv"):
@@ -748,7 +799,7 @@ def build_status(ctx):
         if it["rel"] in ups:
             it["when"], it["who"] = ups[it["rel"]]
     for it in push:
-        if it["act"] == "push" and it["area"] == "exports":
+        if it["act"] == "push" and it["area"] == "exports" and it["kind"] != "delete":
             ca = freshness(BASE, it["cell"])
             if ca != "fresh":
                 it["needsAnalysis"] = ca
@@ -796,7 +847,7 @@ def do_push(ctx, wanted, report):
         # an analysis cell never goes up without the captures it was made from
         cells = {it["cell"] for it in go if it["area"] == "analysis"}
         extra = [it for it in st["push"] if it["act"] == "push" and it["area"] == "exports"
-                 and it["cell"] in cells and it["rel"] not in wanted]
+                 and it["kind"] != "delete" and it["cell"] in cells and it["rel"] not in wanted]
         if extra:
             log("  + {} capture file(s) added so the analysis travels with its data".format(len(extra)))
             go += extra
@@ -808,8 +859,11 @@ def do_push(ctx, wanted, report):
         if not go:
             log("  Nothing to push - GitHub already has it.")
             return 0
-        writes = []
-        for it in go:
+        writes, removes = [], []
+        for it in [x for x in go if x["kind"] == "delete"]:
+            removes.append(it["dest"])
+        go_w = [x for x in go if x["kind"] != "delete"]
+        for it in go_w:
             rel = it["rel"]
             area = AREAS[it["area"]]
             data = canon(area, rel, (BASE / rel).read_bytes())
@@ -821,23 +875,42 @@ def do_push(ctx, wanted, report):
             dst = ctx.sync / dest
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_bytes(data)
-        ps.git(["add", "-f", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
-               stdin="\0".join(w[2] for w in writes))
+        if writes:
+            ps.git(["add", "-f", "--pathspec-from-file=-", "--pathspec-file-nul"], ctx.sync,
+                   stdin="\0".join(w[2] for w in writes))
+        if removes:
+            ps.git(["rm", "-q", "--cached", "--ignore-unmatch", "--pathspec-from-file=-", "--pathspec-file-nul"],
+                   ctx.sync, stdin="\0".join(removes))
+            for dpath in removes:
+                try:
+                    (ctx.sync / dpath).unlink()
+                except OSError:
+                    pass
         check_staged(ctx)
         counts = {}
         for it in go:
             counts[it["area"]] = counts.get(it["area"], 0) + 1
         msg = "Data: {} file(s) ({}) from {} [smart sync]".format(
             len(writes), ", ".join("{} {}".format(v, k) for k, v in sorted(counts.items())), ctx.computer)
+        if removes:
+            msg += " - {} deleted on request: {}".format(
+                len(removes), ", ".join(r.rsplit("/", 1)[-1] for r in removes[:5]) + (" ..." if len(removes) > 5 else ""))
         ps.git(["commit", "-q", "-m", msg], ctx.sync, cfg=ctx.ident)
+        for dpath in removes:
+            if ps.git(["cat-file", "-e", "HEAD:" + dpath], ctx.sync, check=False).returncode == 0:
+                ps.refresh(ctx)
+                raise ps.SyncError("VERIFY FAILED - {} is still in the commit. Nothing was pushed.".format(dpath))
         for kind, rel, dest, data, area in writes:
             blob = ps.git(["cat-file", "blob", "HEAD:" + dest], ctx.sync).stdout
             if blob != data or (kind != "ledger" and data != canon(area, rel, (BASE / rel).read_bytes())):
                 ps.refresh(ctx)
                 raise ps.SyncError("VERIFY FAILED for {} - committed bytes differ from your file. Nothing was pushed.".format(rel))
         if ps.push_head(ctx):
-            log("  Pushed {} file(s), byte-for-byte verified ({}).".format(len(writes), ctx.branch))
-            return len(writes)
+            log("  Pushed {} file(s), byte-for-byte verified ({}){}.".format(
+                len(writes), ctx.branch, "; deleted on GitHub: {}".format(len(removes)) if removes else ""))
+            for dpath in removes:
+                log("  DELETED ON GITHUB (recoverable from history): " + dpath[len(ctx.prefix):])
+            return len(writes) + len(removes)
         log("  A teammate pushed at the same moment - redoing on top of theirs ({}/{})".format(attempt, ps.MAX_ATTEMPTS))
         time.sleep(1.5)
     raise ps.SyncError("GitHub kept changing during {} attempts - try again in a minute.".format(ps.MAX_ATTEMPTS))
@@ -848,7 +921,7 @@ def check_staged(ctx):
     bad = []
     for status, path in zip(toks[0::2], toks[1::2]):
         rel = path[len(ctx.prefix):]
-        ok = status in ("A", "M") and (
+        ok = status in ("A", "M", "D") and (
             any(rel.startswith(a + "/") and ps.is_area_payload(a, rel) for a in AREAS.values())
             or (rel.startswith(ps.CONFLICTS + "/") and rel.lower().endswith((".csv", ".png", ".json", ".md", ".log"))))
         if not ok:

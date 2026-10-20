@@ -213,11 +213,36 @@ typedef enum {
     SD_LOG_NA      = 0,   /**< not reported (older firmware)                         */
     SD_LOG_OK      = 1,   /**< the card took a row within SD_LOG_STALL_S             */
     SD_LOG_NO_CARD = 2,   /**< no card mounted at boot - internal flash only         */
-    SD_LOG_FAILED  = 3,   /**< a card write failed - card copy stopped for this run  */
+    SD_LOG_FAILED  = 3,   /**< card copy given up for this run (recovery exhausted)  */
     SD_LOG_WAITING = 4,   /**< logger not started / no row yet                       */
-    SD_LOG_STALLED = 5    /**< card copy open but no row for SD_LOG_STALL_S          */
+    SD_LOG_STALLED = 5,   /**< card copy open but no row for SD_LOG_STALL_S, or down
+                               and being recovered (oct. 20 2026)                    */
+    SD_LOG_INCOMPLETE = 6 /**< writing again after a recovery, but rows were missed:
+                               the card copy has a hole (oct. 20 2026; an older root
+                               shows it as STALLED)                                  */
 } sd_log_state_t;
 #define SD_LOG_STALL_S 30
+
+/* SD RECOVERY (oct. 20 2026, csv_logger.c): after a failed open / write the card
+ * copy is retried - first a plain reopen, then a full card remount - every
+ * SD_RECOVER_INTERVAL_MS, at most SD_RECOVER_MAX_TRIES times per run, before it
+ * is given up (SD_LOG_FAILED). Kept here, not in mesh_config.h (local MACs). */
+#ifndef SD_RECOVER_INTERVAL_MS
+#define SD_RECOVER_INTERVAL_MS  5000
+#endif
+#ifndef SD_RECOVER_MAX_TRIES
+#define SD_RECOVER_MAX_TRIES    6
+#endif
+#ifndef STACK_SD_RECOVER
+#define STACK_SD_RECOVER        4096U   /* card init + FatFs mount */
+#endif
+#ifndef TASK_PRIO_SD_RECOVER
+#define TASK_PRIO_SD_RECOVER    2       /* below telemetry / probes: a slow card init never delays a row */
+#endif
+
+/** Rows of this run that did NOT reach the SD card copy of the telemetry
+ *  (counted while the mirror was down; 0 = the card copy is complete). */
+uint32_t csv_logger_sd_rows_missed(void);
 
 /** What the SD copy of the telemetry is doing now (sd_log_state_t). */
 uint8_t csv_logger_sd_state(void);

@@ -6,15 +6,33 @@
     "owner":  "Cal",
     "repeat":  1,
     "expectedChildren":  7,
-    "savedAt":  "2026-10-19 16:29",
+    "savedAt":  "2026-10-19 16:19",
     "boards":  [
                    {
-                       "Label":  "root",
-                       "Port":  "COM4",
-                       "Role":  "root",
-                       "Kind":  "root",
-                       "Display":  "ROOT (announces the phases)",
-                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "Label":  "node4",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "control",
+                       "Display":  "control (plain firmware)",
+                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node3",
+                       "Port":  "COM8",
+                       "Role":  "child",
+                       "Kind":  "A",
+                       "Display":  "wormhole tunnel board 1 (entry/exit chosen automatically)",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node2",
+                       "Port":  "COM35",
+                       "Role":  "child",
+                       "Kind":  "B",
+                       "Display":  "wormhole tunnel board 2 (entry/exit chosen automatically)",
+                       "Mac":  "20:50:0d:e7:1c:38",
                        "ScenarioTarget":  false
                    }
                ]

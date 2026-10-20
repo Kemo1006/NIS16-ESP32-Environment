@@ -151,8 +151,13 @@ def load_drows(vdates):
     return out
 
 
+LAST_OUTCOME = [None]   # verify_attack._LAST_OUTCOME of the cell run_verifier() just checked
+
+
 def run_verifier(ft, attack):
-    """(verdict_word, first FAIL text, [data-gap WARN texts]) or None."""
+    """(verdict_word, first FAIL text, [data-gap WARN texts]) or None. The verifier's
+    OUTCOME (PASS / FAIL / INCONCLUSIVE + its dimensions) is left in LAST_OUTCOME[0]."""
+    LAST_OUTCOME[0] = None
     try:
         import pandas as pd
         import verify_attack as va
@@ -163,6 +168,7 @@ def run_verifier(ft, attack):
             with contextlib.redirect_stdout(io.StringIO()):
                 benign, conclusive = va.verify_benign(df)
             b = va._LAST_BENIGN[0]
+            LAST_OUTCOME[0] = getattr(va, "_LAST_OUTCOME", [None])[0]
             if b["word"] == "BENIGN CONFIRMED":
                 tag = "major: " if b["major"] else "minor: "
                 return ("CONFIRMED " + b["grade"], "", [tag + g for g in b["gaps"]])
@@ -171,6 +177,7 @@ def run_verifier(ft, attack):
             confirmed, conclusive = va.verify(df, attack, 3.0)
         # the verifier's own issues (incl. its re-test) - the same footnotes as the report
         issues = list(getattr(va, "_LAST_ISSUES", [[]])[0]) or ac.setup_issues(df, attack)
+        LAST_OUTCOME[0] = getattr(va, "_LAST_OUTCOME", [None])[0]
     except Exception as e:          # never let one broken table stop the list
         return ("ERROR", f"verifier could not run: {e}", [])
     fails = [i.text for i in issues if i.level == ac.FAIL]
@@ -266,9 +273,11 @@ def assess(cell, runs, planned, vlog, drows):
     elif latest["analysis"] == "stale":
         add(CHECK, "analysis is older than the capture", "analysis", "re-run analyze.ps1")
 
+    outcome = None
     if os.path.isfile(ft):
         v = run_verifier(ft, attack)
         word, fail, gaps = v
+        outcome = LAST_OUTCOME[0]
         if word == "SETUP INVALID":
             add(REDO, "signature moved but the attack did not run as designed: "
                 + _short_board(fail), "verifier", "fix the setup, then recapture")
@@ -298,6 +307,15 @@ def assess(cell, runs, planned, vlog, drows):
                 add(CHECK, f"CONFIRMED - MINOR GAPS ({len(dmin)} minor gap{'' if len(dmin) == 1 else 's'}, result not affected): "
                     + "; ".join(dmin) + (" | notes: " + "; ".join(dnote) if dnote else ""), "verifier",
                     "recapture advised (optional): usable as is, the gaps are footnotes")
+            elif grade == "UNDETERMINED":
+                # oct. 20 2026: a missing board whose role cannot be placed - not accepted,
+                # not rejected: flagged for investigation (amber, never green, never red)
+                und = [g[len("UNDETERMINED: "):] for g in dmin if g.startswith("UNDETERMINED: ")]
+                rest = [g for g in dmin if not g.startswith("UNDETERMINED: ")]
+                add(CHECK, "INVESTIGATE - CONFIRMED - UNDETERMINED: " + "; ".join(und)
+                    + (" | minor: " + "; ".join(rest) if rest else "") + (" | notes: " + "; ".join(dnote) if dnote else ""),
+                    "verifier", "investigate: find where the missing board sat (root run log / its card), then "
+                                "re-verify - it becomes a footnote or a recapture")
             elif grade == "GOOD":
                 # nothing missing - the notes are for the report, nothing to do
                 add(OK, f"CONFIRMED - GOOD ({len(dnote)} note{'' if len(dnote) == 1 else 's'} for the report): "
@@ -316,10 +334,13 @@ def assess(cell, runs, planned, vlog, drows):
 
     if cell in vlog:
         no, date, verdict = vlog[cell]
-        # a ✅ verdict may still MENTION a recapture ("the 3:02 PM recapture fixes ...")
-        good = verdict.lstrip().startswith("✅")
-        bad = not good and re.search(r"❌|NOT USABLE|RECAPTURE|RE-CAPTURE", verdict, re.I)
-        meh = not good and re.search(r"⚠️|DEGRADED|caveat|PARTIAL", verdict, re.I)
+        # oct. 20 2026: judged by the verdict's LEADING mark only (the format every block uses:
+        # ✅ usable / ⚠️ caveat / ❌ not usable / 🔧 fixed). Matching words anywhere in it made
+        # "no need to recapture" or "the recapture fixes it" read as a redo request.
+        lead = verdict.lstrip()[:2]
+        good = lead.startswith("✅")
+        bad = lead.startswith("❌")
+        meh = lead.startswith("⚠")
         newer = bool(when and date and when > date)
         short = _clean(verdict, 170)
         if bad and not newer:
@@ -348,10 +369,58 @@ def assess(cell, runs, planned, vlog, drows):
         else:
             add(REDO, f"{did}: " + _clean(why, 170), did, _clean(what, 120))
 
+    # oct. 20 2026 (user: "a missing board should not automatically invalidate an otherwise
+    # valid attack"): a capture incomplete ONLY because some boards are below the 95 %
+    # coverage floor is not a REDO by count - the verifier judges each such board by its
+    # ROLE (window coverage S9 + impact check + missing_boards.py). Missing root / arrivals
+    # / too few children stay REDO.
+    cov_only = bool(latest["verdict"] != "COMPLETE" and latest["reasons"]
+                    and all("coverage" in r for r in str(latest["reasons"]).split("; ")))
+    if cov_only and outcome and outcome.get("signature") == "PASS" and outcome.get("dataset") in ("PASS", "MINOR", "INCONCLUSIVE"):
+        reasons = [(CHECK, t + " - each short board is judged by its role in the attack by the verifier "
+                               "(see its grade): footnote, no recapture needed for the attack", e, f)
+                   if e == "capture" else (sv, t, e, f) for sv, t, e, f in reasons]
+    reasons = apply_decided(reasons)
     sev = max([r[0] for r in reasons], default=OK)
+    dims, verdict = run_dimensions(reasons, outcome)
     return {"attack": attack, "topology": topo, "location": loc, "scenario": scn,
             "planned": planned, "severity": sev, "when": when, "reasons": reasons,
-            "logged": cell in vlog}
+            "logged": cell in vlog, "outcome": verdict, "dimensions": dims}
+
+
+def run_dimensions(reasons, outcome):
+    """THE five questions of one run (oct. 20 2026, user: 'Campaign and Verify must not
+    contradict each other') and the run OUTCOME built from them:
+      execution  did every board record the run?      [capture]           (Campaign only)
+      topology   is the structure the intended one?   [topology]          raw CSVs, whole run
+      signature  did the attack signature move?       verifier [1]
+      setup      did the attack run as designed?      verifier [3]: roles, victims, moves (D-23/D-31)
+      dataset    is the data complete enough?         verifier grade (MINOR = proven harmless)
+    OUTCOME = the verifier's PASS / FAIL / INCONCLUSIVE, made stricter (never looser) by
+    what only the Campaign knows: a broken structure -> FAIL; an incomplete capture ->
+    at most INCONCLUSIVE. The Campaign SEVERITY (REDO / CHECK / OK) is a different
+    question - 'does this capture have to be redone?' - and may also come from the
+    verification log or a checklist row; both are shown side by side in the GUI."""
+    ev = lambda e: [r for r in reasons if r[2] == e]
+    cap = ev("capture")
+    topo = ev("topology")
+    dims = {
+        "execution": ("FAIL" if any(r[0] == REDO for r in cap) else "WARN") if cap else "PASS",
+        "topology": ("FAIL" if any(r[0] == REDO for r in topo) else
+                     "WARN" if topo else "PASS"),
+        "signature": (outcome or {}).get("signature", "-"),
+        "setup": (outcome or {}).get("setup", "-"),
+        "dataset": (outcome or {}).get("dataset", "-"),
+    }
+    if not outcome:
+        return dims, {"outcome": "-", "why": "not verified yet (no analysis / feature table)"}
+    word, why = outcome["outcome"], outcome["why"]
+    if dims["topology"] == "FAIL" and word != "FAIL":
+        word, why = "FAIL", "the mesh structure is not the intended topology: " + topo[0][1]
+    elif dims["execution"] != "PASS" and word == "PASS" and dims["execution"] == "FAIL":
+        word, why = "INCONCLUSIVE", ("the signature passed, but the capture is incomplete ("
+                                     + cap[0][1] + ") - not validated until it is complete")
+    return dims, {"outcome": word, "why": why}
 
 
 def collect(only=None):
@@ -416,10 +485,32 @@ def _shape(text):
     return re.sub(r"^(structure only partly \w+|topology during the attack): ", "", t)
 
 
+# A finding the TEAM already decided once for every cell it appears in (oct. 20 2026). It
+# stays on each cell as a note naming the decision, instead of a CHECK in each cell. Only
+# decisions recorded in the thesis files belong here - a pattern is not a decision.
+DECIDED = [
+    (re.compile(r"structure only partly partial: .*plain tree"),
+     "D-29 (oct. 19 2026): partial_mesh is reported as placement + 2-child cap; the mesh is a "
+     "plain tree when no board was seen under a 2nd parent - adviser to confirm (checklist B-pm)"),
+]
+
+
+def apply_decided(reasons):
+    """CHECK reasons matching a recorded team decision -> OK notes that name it."""
+    out = []
+    for sev, text, ev, fix in reasons:
+        hit = next((d for rx, d in DECIDED if sev == CHECK and rx.search(text)), None)
+        out.append((OK, f"{text} - DECIDED: {hit}", ev, "") if hit else (sev, text, ev, fix))
+    return out
+
+
 def split_shared(items):
-    """Move repeated CHECK reasons out of the cells into a shared list.
-    Returns {shape: (example text, [cells])}; cells keep only their own reasons
-    and get their severity recomputed."""
+    """Group repeated CHECK reasons for the SHARED FINDINGS block of the printout.
+    Returns {shape: (pattern text, [cells])}. Since oct. 20 2026 this NO LONGER changes
+    the cells: before, it removed the reason from every cell and recomputed the cell's
+    severity, so a run's status depended on how many OTHER runs had the same finding,
+    and that changed copy was what --json handed to the GUI. Each cell keeps its own
+    reasons and severity; the printout only shortens the repeated ones."""
     count = {}
     for x in items:
         if not x["planned"]:
@@ -430,19 +521,15 @@ def split_shared(items):
     shared_shapes = {k for k, v in count.items() if len(v) >= SHARED_MIN}
     shared = {}
     for x in items:
-        keep = []
         for r in x["reasons"]:
             sev, text, ev, _f = r
             k = _shape(text)
             if sev == CHECK and ev in ("topology", "verifier") and k in shared_shapes:
-                ex, cells = shared.setdefault(k, (text, []))
+                # the PATTERN (numbers / board ids blanked), never one cell's own text
+                ex, cells = shared.setdefault(k, (k, []))
                 label = (x["location"], f"{x['attack']}/{x['topology']}", x["scenario"])
                 if label not in cells:
                     cells.append(label)
-            else:
-                keep.append(r)
-        x["reasons"] = keep
-        x["severity"] = max([r[0] for r in keep], default=OK)
     return shared
 
 
@@ -534,6 +621,8 @@ def render(items, show_all, color):
                 if (text, ev) in seen:
                     continue
                 seen.add((text, ev))
+                if rsv == CHECK and ev in ("topology", "verifier") and _shape(text) in shared:
+                    text = "(shared finding, see the top) " + text
                 label = "why " if first else "    "
                 first = False
                 mark = f"{col[rsv]}{'!' if rsv == REDO else '~'}{C['x']}"
@@ -600,6 +689,7 @@ def main():
                             reasons=[{"severity": SEV_WORD[s].strip(), "text": t,
                                       "evidence": e, "fix": f} for s, t, e, f in x["reasons"]])
                        for x in items], fh, indent=1, default=str)
+            # (outcome / dimensions are plain dicts on each cell - see run_dimensions)
         print(f"  wrote {args.json}")
     return 0
 

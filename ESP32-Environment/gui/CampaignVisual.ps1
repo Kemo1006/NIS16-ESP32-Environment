@@ -48,7 +48,7 @@ function ConvertFrom-ReportText([string]$Text) {
         }
         if ($sk) { if (-not $tr) { $sk = $false } else { $o.Sketch += $(if ($ln.Length -gt 7) { $ln.Substring(7) } else { $tr }) }; continue }
         if ($tr -match '^VERDICT\s*:\s*(.+)$') { $o.Verdict = $Matches[1]; continue }
-        if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|MAJOR GAPS|FAILED|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $(if ($Matches[1] -eq 'NOT CONFIRMED') { 'FAILED' } else { $Matches[1] }); $o.Say = $Matches[2]; $inConf = $true; continue }
+        if ($tr -match '^CONFIDENCE\s*:\s*(STRONG|GOOD|MINOR GAPS|UNDETERMINED|MAJOR GAPS|FAILED|NOT CONFIRMED)\s*-?\s*(.*)$') { $o.Grade = $(if ($Matches[1] -eq 'NOT CONFIRMED') { 'FAILED' } else { $Matches[1] }); $o.Say = $Matches[2]; $inConf = $true; continue }
         # a report from before the final grades (oct. 19 2026) - shown as an OLD report
         if ($tr -match '^CONFIDENCE\s*:\s*(SOUND|WITH NOTES|QUALIFIED|-)\s*-?\s*(.*)$') { $o.Grade = $Matches[1]; $o.Say = $Matches[2]; $o.Old = $true; $inConf = $true; continue }
         if ($inConf) {
@@ -172,7 +172,7 @@ function New-ValidityStrip($Rep, [int]$Columns = 2) {
     $topoW = @($Rep.Glance | Where-Object { $_[0] -eq 'TOPOLOGY' -and $_[1] -eq 'WARN' }).Count
     $warnS = @($Rep.Glance | Where-Object { $_[1] -eq 'WARN' -and $_[0] -notin @('BOARDS', 'OTHER', 'RE-TEST', 'TOPOLOGY') }).Count
     $set = if ($Rep.Benign -or -not $Rep.Glance.Count) { @('na', '-') } elseif ($fails) { @('bad', "$fails check(s) failed") } elseif ($topoW) { @('ok', 'moves allowed') } elseif ($warnS) { @('ok', 'as designed, notes') } else { @('ok', 'as designed') }
-    $data = switch ($Rep.Grade) { { $_ -in 'STRONG', 'GOOD' } { @('ok', 'complete') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } default { @('na', '-') } }
+    $data = switch ($Rep.Grade) { { $_ -in 'STRONG', 'GOOD' } { @('ok', 'complete') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'UNDETERMINED' { @('warn', 'investigate') } 'MAJOR GAPS' { @('major', 'major gaps') } default { @('na', '-') } }
     $ug = New-Object Windows.Controls.Primitives.UniformGrid; $ug.Columns = $Columns; $ug.Margin = '0,0,0,8'   # 2 x 2 in the narrow run panel, 4 in a row on Verify
     foreach ($c in @(@('ATTACK', $atk), @('SIGNATURE', $sig), @('SETUP', $set), @('DATASET', $data))) {
         $st = $c[1][0]
@@ -192,9 +192,9 @@ function Get-PlainGap([string]$Note) {
     # one MINOR / MAJOR gap line -> a sentence a non-specialist can read
     $n = $Note -replace '^(MAJOR|MINOR) GAP \([^)]*\):\s*', ''
     if ($n -match '^(\w{4}) \(attacker\): ') { return "$($Matches[1]) is the attacker and its own record is incomplete. The attacker IS the attack, so this part cannot be left out - the run should be captured again." }
-    if ($n -match '^(\w{4}) \(victim\): only (\d+) of (\d+) s of its attack') { return "$($Matches[1]) (a victim) stopped recording after $($Matches[2]) s of the $($Matches[3])-s attack. That is one witness fewer, not missing proof: the attacker's own record and the other victims cover the whole attack." }
+    if ($n -match '^(\w{4}) \(victim\): only (\d+) of (\d+) s of its attack') { return "$($Matches[1]) (a victim) stopped recording after $($Matches[2]) s of the $($Matches[3])-s attack. That is one witness fewer, not missing proof: the attack was re-tested WITHOUT this board and the result held (that is what makes it a minor gap)." }
     if ($n -match '^(\w{4})(?: \(\w+\))?: only \d+ of \d+ s of cooldown') { return "$($Matches[1]) did not record the cooldown, so only its recovery after the attack is unknown. The verdict compares 'before' with 'during' - it never uses the cooldown." }
-    if ($n -match '^(\w{4}) \(bystander\): windows for only (\d+) of (\d+) s') { return "$($Matches[1]) is a control board (not behind the attacker) with a few gaps ($($Matches[2]) of $($Matches[3]) s recorded). It shows the network stayed healthy; the attack result does not depend on it." }
+    if ($n -match '^(\w{4}) \(bystander\): windows for only (\d+) of (\d+) s') { return "$($Matches[1]) is a control board (not behind the attacker) with a few gaps ($($Matches[2]) of $($Matches[3]) s recorded). The attack was re-tested without it and the result held, so the verdict does not depend on it." }
     if ($n -match '^(\w{4}) \((\w+)\): windows for only (\d+) of (\d+) s of its (\w+)') { return "$($Matches[1]) ($($Matches[2])) recorded $($Matches[3]) of $($Matches[4]) s of the $($Matches[5]) - some seconds are missing." }
     if ($n -match 'boards have gaps') { return "Too many boards have gaps ($($n -replace '^(\d+ of \d+).*', '$1')) to prove the gaps are harmless - the run should be captured again." }
     if ($n -match 'victim-seconds could be tested') { return "Most of the victims' attack time could not be used (their path to the root was broken), so the result rests on a small part of the attack - capture it again." }
@@ -229,10 +229,13 @@ function Get-VerdictAnalogy($Rep) {
     if ($v -match 'WORMHOLE') {
         $w = "$base`n`nA wormhole is a secret tunnel: two neighbours far apart are joined by a hidden pipe (the UART cable). One of them drops a copy of its card into the pipe, and it pops out near the post office. The post office then receives the SAME card number twice - once by the normal road, once through the tunnel. Those duplicates, and the tunnel's own traffic count, are the fingerprints."
         if ($g -eq 'MAJOR GAPS') { return @('the secret tunnel - but its logbook has holes', "$w`n`nHere part of the tunnel ends' own records is missing, and the tunnel IS the attack - so the run should be recorded again before its numbers are used.") }
-        if ($g -eq 'MINOR GAPS') { return @('the secret tunnel - a witness left early', "$w`n`nA board that is not part of the tunnel stopped recording early. The tunnel and the post office's duplicate count are complete, so the proof stands; recapturing only completes the dataset.") }
+        if ($g -eq 'MINOR GAPS') { return @('the secret tunnel - some records have holes', "$w`n`nSome boards' records have small gaps. The run was re-tested WITHOUT those boards and the tunnel's fingerprint was still there, so the proof stands; recapturing only completes the dataset.") }
         return @('the secret tunnel', $w)
     }
     $bh = "$base`n`nA blackhole is a neighbour who takes your cards with a smile and throws them in the bin. You handed them over fine, so you never find out - only the post office notices the missing card numbers. Delivery (PDR) = cards that arrived / cards sent: 1.00 = all, 0.00 = none."
+    if ($g -eq 'UNDETERMINED') {
+        return @('a witness nobody can place', "$bh`n`nOne house sent no logbook, and nothing on record says which street it is on - behind the thief (a victim) or on another street (a control). Until someone finds out (the post office's own map = the root's run log, or the house's card), the case is neither closed nor thrown out.")
+    }
     if ($g -eq 'MAJOR GAPS') {
         if (@($Rep.Notes | Where-Object { $_ -match '\(attacker\)' }).Count) {
             return @("the suspect's logbook has holes", "$bh`n`nHere part of the thief's OWN logbook is missing. The thief is the evidence - like CCTV of the suspect that is blank for part of the night. The hints are strong, but the case needs to be recorded again before it is used.")
@@ -240,9 +243,15 @@ function Get-VerdictAnalogy($Rep) {
         return @('a key part of the record is missing', "$bh`n`nHere data the result relies on is missing - a house that never recorded during the attack, too many houses with gaps, or most of the victims' time unusable. Like a trial where a key witness never testified: the case looks clear, but it cannot be closed on this record - record the run again before using it.")
     }
     if ($g -eq 'MINOR GAPS') {
-        return @('a witness left early', "$bh`n`nHere one or more houses stopped recording early - a witness who left the courtroom early. The thief's own logbook and the other witnesses are complete, and the case was re-checked WITHOUT the early leavers with the same result. The verdict stands; recapturing only makes the record more complete.")
+        return @('a witness left early', "$bh`n`nHere one or more houses have gaps in their records - a witness who left the courtroom early. The case was re-checked WITHOUT those houses and gave the same result, so the verdict stands; recapturing only makes the record more complete.")
     }
-    return @('the neighbour who bins your mail', "$bh`n`nIn this run everything is on record: the thief's logbook (received, passed on 0), every victim's cards missing at the post office, and the houses not behind the thief still receiving theirs. A complete, clean case.")
+    # oct. 20 2026: only what THIS run's report states - numbers when the report has them
+    $F = $Rep.Facts; $bits = @()
+    if ($F.AtkId) { $bits += "the thief ($($F.AtkId)) received $($F.AtkRecv) cards and passed on $($F.AtkFwd) ($($F.AtkPct)%)" }
+    if ($F.VicN) { $bits += ("{0} victim house(s) got {1:0}% of their cards through during the theft (before it: {2:0}%)" -f $F.VicN, (100 * [double]$F.VicPdr), (100 * [double]$F.VicBase)) }
+    if ($F.ByN) { $bits += "$($F.ByN) house(s) not behind the thief kept receiving theirs" }
+    $what = if ($bits.Count) { 'In this run: ' + ($bits -join '; ') + '.' } else { 'In this run the attack signature passed the test; the numbers are in the report above.' }
+    return @('the neighbour who bins your mail', "$bh`n`n$what Every board's data for the attack is present ($g).")
 }
 
 function New-PlainExplain($Rep) {
@@ -307,7 +316,7 @@ function New-PlainExplain($Rep) {
     }
     else {
         if ($F.AtkId) { & $add $ok $Pal.Green 'The attack happened.' "Board $($F.AtkId) was the blackhole: it received $($F.AtkRecv) messages from the boards behind it and passed on $($F.AtkFwd) ($($F.AtkPct)%). An honest board passes on about 100%." }
-        if ($F.VicN) { & $add $ok $Pal.Green "Its victims' messages never arrived." ("$($F.VicN) victim board(s) kept sending as normal, but the root received {0:0}% of their messages during the attack (before it: {1:0}%). The victims could not tell - a blackhole accepts each message and silently throws it away." -f (100 * [double]$F.VicPdr), (100 * [double]$F.VicBase)) }
+        if ($F.VicN) { & $add $ok $Pal.Green "Its victims' messages were lost." ("$($F.VicN) victim board(s) kept sending as normal, but the root received {0:0}% of their messages during the attack (before it: {1:0}%). The victims could not tell - a blackhole accepts each message and silently throws it away." -f (100 * [double]$F.VicPdr), (100 * [double]$F.VicBase)) }
         if ($F.ByN) {
             & $add $ok $Pal.Green 'The rest of the network was fine.' "$($F.ByN) board(s) whose messages do not pass the attacker kept delivering normally - so the loss is the attacker's doing, not a broken network or a bad signal."
             & $hint "these are houses on another street whose mail never passes the thief. Their cards all arrive - proof that the post office itself was working."
@@ -334,6 +343,9 @@ function New-PlainExplain($Rep) {
     } elseif ($min.Count -and -not $maj.Count) {
         & $add $warn $Pal.Amber 'Some data is missing - but it does not change the result.' 'The test was repeated WITHOUT the boards below and gave the same answer, so the verdict can be trusted. Recapturing would only make the dataset more complete.'
         foreach ($m in $min) { & $bullet (Get-PlainGap $m) }
+    } elseif ($Rep.Grade -eq 'UNDETERMINED') {
+        & $add $warn $Pal.Amber 'A board is missing and its role cannot be placed - investigate.' 'Nothing on record shows whether it sat behind the attacker (evidence) or not (control), so the run is neither accepted nor rejected. Find its position (root run log / its card), then verify again:'
+        foreach ($u in @($Rep.Notes | Where-Object { $_ -match '^UNDETERMINED' })) { & $bullet ($u -replace '^UNDETERMINED \([^)]*\):\s*', '') }
     } elseif ($maj.Count) {
         & $add $warn $Pal.Orange 'Important data is missing.' 'The attack is still visible, but the run should be captured again before its numbers are used:'
         foreach ($m in $maj) { & $bullet (Get-PlainGap $m) }
@@ -431,13 +443,13 @@ function Add-CampVisual($Body, $S, [string]$Look) {
                elseif ($v -and $v.Code -eq 0) { @('ok', 'confirmed') } elseif ($v) { @('bad', 'failed') } else { @('todo', '') }
         $grd = if (-not $rep) { @('todo', '') }
                elseif ($rep.Old) { @('warn', 'old report - press Verify') }
-               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'MAJOR GAPS' { @('major', 'major gaps') } 'FAILED' { @('bad', 'failed') } default { @('todo', '') } } }
+               else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'UNDETERMINED' { @('warn', 'investigate') } 'MAJOR GAPS' { @('major', 'major gaps') } 'FAILED' { @('bad', 'failed') } default { @('todo', '') } } }
     }
     Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]))
     if (-not $rep) { return }
 
     # 2. VERDICT tile
-    $tone = switch ($rep.Grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F'; Bd = '#7C3F1A' } } default { @{ Fg = $Pal.Red; Bg = '#33192A'; Bd = '#6B2A3F' } } }
+    $tone = switch ($rep.Grade) { 'STRONG' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'GOOD' { @{ Fg = $Pal.Green; Bg = '#16352B'; Bd = '#1F5E4A' } } 'MINOR GAPS' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } 'MAJOR GAPS' { @{ Fg = $Pal.Orange; Bg = '#35200F'; Bd = '#7C3F1A' } } 'UNDETERMINED' { @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } } default { @{ Fg = $Pal.Red; Bg = '#33192A'; Bd = '#6B2A3F' } } }
     if ($rep.Old) { $tone = @{ Fg = $Pal.Amber; Bg = '#2E2716'; Bd = '#6B5320' } }
     $tile = New-Object Windows.Controls.Border; $tile.CornerRadius = 12; $tile.Padding = '14,10'; $tile.Margin = '0,0,8,10'
     $tile.Background = Get-Brush $tone.Bg; $tile.BorderBrush = Get-Brush $tone.Bd; $tile.BorderThickness = 1

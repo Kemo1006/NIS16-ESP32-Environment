@@ -101,6 +101,16 @@ function Show-CollectDialog {
     $other.Content = 'These cards may have recorded the WRONG location (location.txt left on the last site) - file such a file under the location above'
     $other.Foreground = Get-Brush $Pal.Text; $other.Margin = '0,2,0,8'; [void]$head.Children.Add($other)
     $portLine = New-Text '' 12 $Pal.Dim; $portLine.TextWrapping = 'Wrap'; [void]$head.Children.Add($portLine)
+    # oct. 20 2026 (user: "select which boards to scan before the scan begins"): one tick box per
+    # plugged-in board, keyed by its MAC (its port when the MAC is unknown) - only ticked boards
+    # are ever opened. All / None keep the old "every board" workflow one click away.
+    $pickHead = New-Object Windows.Controls.WrapPanel; $pickHead.Margin = '0,8,0,2'
+    [void]$pickHead.Children.Add((New-Text 'BOARDS TO READ   ' 10.5 $Pal.Faint 'SemiBold'))
+    $bAll = New-Object Windows.Controls.Button; $bAll.Content = 'All'; $bAll.Padding = '10,2'; $bAll.Margin = '0,0,6,0'
+    $bNone = New-Object Windows.Controls.Button; $bNone.Content = 'None'; $bNone.Padding = '10,2'
+    [void]$pickHead.Children.Add($bAll); [void]$pickHead.Children.Add($bNone)
+    [void]$head.Children.Add($pickHead)
+    $pickPanel = New-Object Windows.Controls.WrapPanel; $pickPanel.Margin = '0,0,0,4'; [void]$head.Children.Add($pickPanel)
     $btns = New-Object Windows.Controls.StackPanel; $btns.Orientation = 'Horizontal'; $btns.Margin = '0,10,0,10'
     $bScan = New-Object Windows.Controls.Button; $bScan.Content = '1   Scan the boards  (copies nothing)'; $bScan.Padding = '16,8'
     try { $bScan.Style = $win.FindResource('Cool') } catch { }
@@ -125,12 +135,15 @@ function Show-CollectDialog {
     $script:CollectWin = $w
     $script:Col = @{ A = $cA; T = $cT; L = $cL; S = $cS; R = $cR; W = $cW; Other = $other; Rows = $rows; Scan = $bScan; Go = $bGo; Retry = $bRetry; Status = $status
                      PortLine = $portLine; FixedPorts = @($Ports); RunStart = $RunStart; Plan = $null; Checks = @{}
+                     Pick = $pickPanel; Sel = @{}; Missing = @()
                      Prog = @{ Panel = $cp; Bar = $cpb; Text = $cpt } }
     foreach ($c in @($cA, $cT, $cL, $cS, $cW)) { $c.Add_SelectionChanged({ Clear-CollectScan }) }
     $cR.Add_TextChanged({ Clear-CollectScan }); $other.Add_Click({ Clear-CollectScan })
     $bScan.Add_Click({ Start-CollectScan })
     $bGo.Add_Click({ Start-CollectTicked })
     $bRetry.Add_Click({ Start-CollectScan -RetryFailed })
+    $bAll.Add_Click({ foreach ($k in @($script:Col.Sel.Keys)) { $script:Col.Sel[$k] = $true }; Clear-CollectScan })
+    $bNone.Add_Click({ foreach ($k in @($script:Col.Sel.Keys)) { $script:Col.Sel[$k] = $false }; Clear-CollectScan })
     Clear-CollectScan
     $w.Show()
 }
@@ -142,7 +155,16 @@ function Get-CollectChoice {
     $rep = 0; [void][int]::TryParse($C.R.Text, [ref]$rep)
     if (-not $a -or -not $t -or -not $l -or -not $s -or $rep -lt 1) { return $null }
     $pre = Get-PresetFor $a $t $l $s
-    $ports = if ($C.FixedPorts.Count) { $C.FixedPorts } else { @(Get-AllPluggedPorts $pre.RootMac) }
+    $cand = if ($C.FixedPorts.Count) { $C.FixedPorts } else { @(Get-AllPluggedPorts $pre.RootMac) }
+    $ports = @(); $C.Missing = @()
+    foreach ($pt in $cand) {
+        $k = Get-CollectBoardKey $pt
+        if (-not $C.Sel.ContainsKey($k)) { $C.Sel[$k] = $true }          # a newly seen board starts ticked
+        if ($C.Sel[$k]) { $ports += $pt }
+    }
+    # a ticked board that is no longer plugged in: named, never read
+    $live = @($cand | ForEach-Object { Get-CollectBoardKey $_ })
+    foreach ($k in @($C.Sel.Keys)) { if ($C.Sel[$k] -and $live -notcontains $k) { $C.Missing += $k } }
     $since = switch ([string]$C.W.SelectedItem) {
         'since this Live run started' { $C.RunStart.AddMinutes(-15) }
         'in the last 3 hours'  { (Get-Date).AddHours(-3) }
@@ -151,7 +173,8 @@ function Get-CollectChoice {
         'in the last 24 hours' { (Get-Date).AddHours(-24) }
         default                { (Get-Date).AddDays(-7) }
     }
-    return @{ A = $a; T = $t; L = $l; S = $s; Rep = $rep; Pre = $pre; Ports = @($ports); Since = $since.ToString('yyyy-MM-dd HH:mm'); Other = [bool]$C.Other.IsChecked }
+    return @{ A = $a; T = $t; L = $l; S = $s; Rep = $rep; Pre = $pre; Ports = @($ports); Since = $since.ToString('yyyy-MM-dd HH:mm'); Other = [bool]$C.Other.IsChecked
+              Cand = @($cand) }
 }
 
 function Clear-CollectScan {
@@ -159,10 +182,34 @@ function Clear-CollectScan {
     $C.Plan = $null; $C.Checks = @{}; $C.Rows.Children.Clear(); $C.Go.IsEnabled = $false
     $ch = Get-CollectChoice
     if (-not $ch) { $C.PortLine.Text = 'Pick attack, topology, location, scenario and repeat.'; $C.Status.Text = ''; $C.Scan.IsEnabled = $false; return }
+    Update-CollectPicker $ch
     $C.Scan.IsEnabled = [bool]$ch.Ports.Count
     $C.PortLine.Text = $(if ($ch.Ports.Count) { 'Boards to read: {0}   (one at a time; {1})' -f ($ch.Ports -join ', '), $(if ($C.FixedPorts.Count) { "this Live run's children" } else { 'every plugged-in board - root and sniffer left out' }) } else { 'No board is plugged in (root and sniffer are left out).' }) +
                          $(if ($ch.Pre.Path) { "`nNaming from preset " + (Split-Path $ch.Pre.Path -Leaf) } else { "`nNo preset for this run - files keep the card's own names" })
+    if ($C.Missing.Count) { $C.PortLine.Text += "`nTicked but NOT plugged in now (not read): " + ($C.Missing -join ', ') }
     $C.Status.Text = 'Not scanned yet - choices changed.'; $C.Status.Foreground = Get-Brush $Pal.Faint
+}
+
+function Get-CollectBoardKey([string]$Port) {
+    # a board's identity for the picker: its MAC when known (survives a port change), else the port
+    $e = $null; try { $e = $script:Live[$Port] } catch { }
+    $m = if ($e -and $e.Mac) { ([string]$e.Mac -replace '[^0-9A-Fa-f]', '').ToUpper() } else { '' }
+    if ($m.Length -ge 12) { return $m } else { return $Port.ToUpper() }
+}
+
+function Update-CollectPicker($Ch) {
+    $C = $script:Col; $C.Pick.Children.Clear()
+    $mem = @{}; try { $mem = Get-MemberInfo } catch { }
+    foreach ($pt in @($Ch.Cand)) {
+        $k = Get-CollectBoardKey $pt
+        $cb = New-Object Windows.Controls.CheckBox; $cb.Margin = '0,2,14,2'; $cb.Tag = $k; $cb.IsChecked = [bool]$C.Sel[$k]
+        $nick = ''
+        if ($k.Length -eq 12) { $mm = $mem[($k.Substring(0, 2) + ':' + $k.Substring(10, 2)).ToLower()]; if ($mm) { $nick = $mm.Nick } }
+        $cb.Content = ('{0}  {1}{2}' -f $pt, $(if ($k.Length -eq 12) { $k.Substring(0, 2) + ':' + $k.Substring(10, 2) } else { 'MAC ?' }), $(if ($nick) { "  $nick" } else { '' }))
+        $cb.ToolTip = $(if ($k.Length -eq 12) { "Board $k on $pt" } else { "MAC not read yet - identified by its port $pt (press Read all MACs on Boards for a safer pick)" })
+        $cb.Add_Click({ param($x) $script:Col.Sel[[string]$x.Tag] = [bool]$x.IsChecked; Clear-CollectScan })
+        [void]$C.Pick.Children.Add($cb)
+    }
 }
 
 function Get-CollectArgs($Ch) {
@@ -171,6 +218,8 @@ function Get-CollectArgs($Ch) {
     if ($Ch.Other) { $a += '--allow-other-location' }
     if ($Ch.Pre.RootMac) { $a += @('--skip-mac', $Ch.Pre.RootMac) }
     if ($Ch.Pre.Path) { $a += @('--roster', $Ch.Pre.Path) }
+    $exp = @($Ch.Ports | ForEach-Object { $k = Get-CollectBoardKey $_; if ($k.Length -eq 12) { '{0}={1}' -f $_, $k } })
+    if ($exp.Count) { $a += @('--expect-mac', ($exp -join ';')) }
     return $a
 }
 
@@ -403,8 +452,12 @@ function Start-CollectTicked {
             $script:LastCrashFile = $dec
         }
         $C = $script:Col
+        # oct. 20 2026: count only the files that really are in the run folder (COLLECT_FILE lines, re-checked)
+        $got = @([regex]::Matches($text, '(?m)^COLLECT_FILE: (.+)\|(\d+)\s*$') | ForEach-Object { $_.Groups[1].Value.Trim() } |
+                 Where-Object { (Test-Path -LiteralPath $_) -and (Get-Item -LiteralPath $_).Length -gt 0 })
+        foreach ($f in $got) { Write-Activity ("  WRITTEN + VERIFIED: {0}" -f $f) $Pal.Green }
         if ($m.Success) {
-            $okN = [int]$m.Groups[1].Value; $failN = [int]$m.Groups[3].Value
+            $okN = [Math]::Min([int]$m.Groups[1].Value, $got.Count); $failN = [int]$m.Groups[3].Value + ([int]$m.Groups[1].Value - $okN)
             if ($C) { $C.Status.Text = "Collected $okN board(s)" + $(if ($failN) { " - $failN failed (see the activity pane)" } else { ' - the run summary opens next.' }); $C.Status.Foreground = Get-Brush $(if ($failN) { $Pal.Amber } else { $Pal.Green }) }
             Show-Toast $(if ($failN) { "Collected $okN - $failN failed" } else { "Collected $okN board(s)" }) 'The run summary opens next.' ([string][char]0xE73E) $(if ($failN) { 'GradMain' } else { 'GradGood' })
         }
