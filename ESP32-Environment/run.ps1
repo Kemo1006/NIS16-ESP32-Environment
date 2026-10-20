@@ -232,8 +232,15 @@ param(
     [switch]$SharedBuild, # run_gui.ps1 only (oct. 17 2026): one build dir per firmware
                        # VARIANT instead of per variant + port, so 5 identical victims
                        # compile once, not 5 times. Safe there because the GUI flashes
-                       # boards one at a time; the CLI keeps per-port dirs (it can
-                       # flash several boards from parallel windows).
+                       # with idf.py one board at a time, and its N-at-a-time flash uses
+                       # -FlashOnly (esptool, read-only); the CLI keeps per-port dirs (it
+                       # can flash several boards from parallel windows).
+    [switch]$FlashOnly, # run_gui.ps1 only (oct. 20 2026, "flash the children N at a time"):
+                       # with -Flash: clock/location/scenario -> erase -> write the ALREADY
+                       # compiled firmware with esptool (build\flash_args) -> exit. No idf.py
+                       # (it re-runs ninja in the shared build dir - two at once corrupt it),
+                       # no build-dir self-heal (never deletes a dir another board flashes
+                       # from), no monitor, no export. Exit 3 = not compiled yet.
     [string]$GuiMonitor = '' # run_gui.ps1 only (oct. 17 2026): a control folder. The
                        # monitor is tools\gui_monitor.py instead of idf.py monitor
                        # (no console needed): the GUI appends commands (START ...)
@@ -622,7 +629,7 @@ if ($Label) {
 # artifacts, so instead of failing we just wipe the stale one and let it
 # reconfigure from scratch — no manual fullclean needed by anyone.
 $cacheFile = Join-Path $buildDir "CMakeCache.txt"
-if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile)) {
+if (($Flash -or $BuildOnly) -and -not $FlashOnly -and (Test-Path $cacheFile)) {
     $expectedHome = (Join-Path $base $proj) -replace '\\', '/'
     $cachedHomeLine = Select-String -Path $cacheFile -Pattern '^CMAKE_HOME_DIRECTORY:INTERNAL=' | Select-Object -First 1
     if ($cachedHomeLine) {
@@ -642,7 +649,7 @@ if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile)) {
 # forever. Same remedy as the path-mismatch case above: wipe and let it reconfigure.
 $sdkconfigH  = Join-Path $buildDir "config\sdkconfig.h"
 $sdkconfigOk = (Test-Path $sdkconfigH) -and (Select-String -Path $sdkconfigH -Pattern '^#define CONFIG_IDF_TARGET_ESP32\b' -Quiet)
-if (($Flash -or $BuildOnly) -and (Test-Path $cacheFile) -and -not $sdkconfigOk) {
+if (($Flash -or $BuildOnly) -and -not $FlashOnly -and (Test-Path $cacheFile) -and -not $sdkconfigOk) {
     Write-Host "Stale build dir '$buildDir' has an incomplete sdkconfig.h (interrupted build?) -- wiping it so this run reconfigures cleanly." -ForegroundColor Yellow
     Remove-Item -Recurse -Force $buildDir
 }
@@ -884,10 +891,28 @@ try {
         # 100% with "Failed to leave compressed flash mode (C800: Not enough
         # data)" - bytes lost on the USB serial link at 460800 baud). One retry
         # at 115200 usually gets through; if not, stop before export.
+        if ($FlashOnly) {
+            # write the compiled image as-is: esptool only READS the build dir, so several
+            # boards can flash from one shared dir at once (idf.py flash would run ninja there)
+            $fa = Join-Path $buildDir 'flash_args'
+            if (-not (Test-Path $fa) -or -not (Test-Path (Join-Path $buildDir "$proj.bin"))) {
+                Write-Host "NOT COMPILED: $buildDir has no flash_args / .bin - compile first (step 1)." -ForegroundColor Red
+                exit 3
+            }
+            Push-Location $buildDir
+            try {
+                esptool.py --chip esp32 -p $Port -b 460800 --before default_reset --after hard_reset write_flash '@flash_args'
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "`nFlash FAILED on $Port (usually a USB serial glitch). Retrying once at 115200 baud ..." -ForegroundColor Yellow
+                    esptool.py --chip esp32 -p $Port -b 115200 --before default_reset --after hard_reset write_flash '@flash_args'
+                }
+            } finally { Pop-Location }
+        } else {
         idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags -p $Port flash
         if ($LASTEXITCODE -ne 0) {
             Write-Host "`nFlash FAILED on $Port (usually a USB serial glitch). Retrying once at 115200 baud ..." -ForegroundColor Yellow
             idf.py -B $buildDir @attackFlags $topologyFlag @scenarioFlags -p $Port -b 115200 flash
+        }
         }
         if ($LASTEXITCODE -ne 0) {
             Write-Host "`nFlash FAILED twice on $Port - NOT exporting (the board has no firmware on it)." -ForegroundColor Red
@@ -895,6 +920,7 @@ try {
             exit 1
         }
         Repair-LocationAfterFlash
+        if ($FlashOnly) { Write-Host "FLASH_ONLY_DONE: $Port flashed and started (no monitor - the GUI listens to it)" -ForegroundColor Green; exit 0 }
         Invoke-BoardMonitor
     } else {
         if ($Attack -ne 'none' -or $Topology -ne 'tree') {

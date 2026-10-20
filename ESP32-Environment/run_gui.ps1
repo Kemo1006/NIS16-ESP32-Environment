@@ -544,7 +544,7 @@ function Start-ToolJob {
 }
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromMilliseconds(400)
-$timer.Add_Tick({
+$timer.Add_Tick({ Measure-GuiTick 'jobs' {   # gui\Perf.ps1: a tick over 150 ms is logged
     foreach ($j in @($script:Jobs)) {
         if (-not $j.Proc.HasExited) { continue }
         [void]$script:Jobs.Remove($j)
@@ -559,7 +559,7 @@ $timer.Add_Tick({
             if ($SelfTest) { Write-Output ("TOOLJOB ERROR: " + $msg) }
         }
     }
-})
+} })
 $timer.Start()
 
 function Start-ConsoleWindow {
@@ -2032,6 +2032,14 @@ $StyleXaml
                         <RadioButton x:Name="RunChildExport" Style="{StaticResource Chip}" GroupName="runchild" Content="export over USB"/>
                       </WrapPanel>
                     </StackPanel>
+                    <StackPanel Margin="0,0,18,6">
+                      <TextBlock Text="FLASH THE CHILDREN" Style="{StaticResource Label}"/>
+                      <WrapPanel>
+                        <RadioButton x:Name="RunPFlash1" Style="{StaticResource Chip}" GroupName="runpflash" Content="one at a time (the normal way)" ToolTip="Each child: erase + flash + its monitor, then the next one (about 2 min per board)."/>
+                        <RadioButton x:Name="RunPFlash2" Style="{StaticResource Chip}" GroupName="runpflash" Content="2 at a time" ToolTip="Two children are erased + flashed at once from the compiled firmware; each is listened to as soon as it runs. A failed one is flashed alone afterwards."/>
+                        <RadioButton x:Name="RunPFlash3" Style="{StaticResource Chip}" GroupName="runpflash" Content="3 at a time (faster)" IsChecked="True" ToolTip="Three children at once (7 children: about 5 min instead of 14). Never more than 3 at a time, starts 4 s apart, nothing is cut mid-flash. A failed one is flashed alone afterwards. The root is always last, on its own."/>
+                      </WrapPanel>
+                    </StackPanel>
                   </WrapPanel>
                   <WrapPanel Margin="0,2,0,0">
                     <CheckBox x:Name="RunSaveLog" Content="save a run log" IsChecked="True" Margin="0,0,18,8"/>
@@ -2667,19 +2675,20 @@ $script:LiveNames = ''
 $script:Consoles = New-Object System.Collections.ArrayList
 $script:SeenMacs = @{}   # full MAC -> port, every board read this session
 function Test-IsSnifferStream { $script:Stream -and [string]$script:Stream.Title -match '^Sniffer recording' }
-function Get-SnifferPorts {
+function Get-SnifferPorts([int]$MaxAgeS = 0) {
     # A sniffer only holds ITS OWN port and needs nothing from the other boards,
     # so it must not block identifying them (oct. 17 2026: a sniffer left
     # recording made every MAC read say 'not now'). Only its port is skipped.
     $ports = @{}
     try {
-        foreach ($p in @(Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='py.exe'" -ErrorAction Stop | Where-Object { $_.CommandLine -match '(?i)sniff\.py' })) {
+        # gui\Perf.ps1: one shared process list (MaxAgeS > 0 = may be up to that old)
+        foreach ($p in @(Get-ProcRows $MaxAgeS | Where-Object { $_.Name -match '^(?i)py(thon)?\.exe$' -and $_.CommandLine -match '(?i)sniff\.py' })) {
             if ($p.CommandLine -match '(?i)--port\s+"?(COM\d+)') { $ports[$Matches[1].ToUpper()] = $true }
         }
     } catch { }
     return $ports
 }
-function Test-HandsOff {
+function Test-HandsOff([int]$MaxAgeS = 0) {
     foreach ($p in @($script:Consoles)) { if (-not $p.HasExited) { return 'a capture / tool window opened from this GUI is still open - close it first' } }
     if ($script:Stream -and -not (Test-IsSnifferStream)) { return ("'{0}' is still running in the activity pane - wait for it to finish" -f $script:Stream.Title) }
     if ($script:Run -and $script:Run.Active) { return 'a capture is running on the Live run page' }
@@ -2687,7 +2696,7 @@ function Test-HandsOff {
     # window) - its boards must not be reset either. Named, so the user knows
     # WHICH window to look for.
     try {
-        $busy = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe' OR Name='python.exe' OR Name='py.exe'" -ErrorAction Stop |
+        $busy = @(Get-ProcRows $MaxAgeS |
             # idf.py / esptool only count when they name a COM port: a plain 'idf.py build'
             # touches no board (oct. 19 2026: a background compile blocked 'Identify all')
             Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '(?i)run_wizard|(?<![\w-])run\.ps1|menu\.ps1|idf\.py|idf_monitor|gui_monitor|export_logs|import_sdcard|esptool' -and -not ($_.CommandLine -match '(?i)idf\.py|esptool' -and $_.CommandLine -notmatch '(?i)idf_monitor|COM\d+') -and $_.CommandLine -notmatch '(?i)Get-EspMac|sniff\.py' })
@@ -2867,12 +2876,12 @@ function Step-MacReads {
     if (-not $script:NoPeek -and ($ui.AutoMac.IsChecked -or $script:ForceRead)) {
         $ask = @($script:Live.Values | Where-Object { $_.Kind -eq 'BRIDGE' -and (-not $_.Mac -or $_.ReAsk) -and -not $_.Asked -and
                                                       $_.State -in @('new', 'unread', 'paused') -and ((Get-Date) - $_.Since).TotalSeconds -ge 3 }) | Select-Object -First 1
-        if ($ask -and -not (Test-HandsOff)) { Start-IdAsk $ask.Port; return }
+        if ($ask -and -not (Test-HandsOff -MaxAgeS 4)) { Start-IdAsk $ask.Port; return }
     }
     # 2) a board that did not answer: read_mac (RESETS it) - only a freshly
     #    plugged one, or after 'Read all MACs'
     $want = @($script:Live.Values | Where-Object { $_.State -in @('new', 'paused') -and ($_.Asked -or $script:NoPeek) -and ((Get-Date) - $_.Since).TotalSeconds -ge 2 })
-    if ($want.Count) { $sn = Get-SnifferPorts; $want = @($want | Where-Object { -not $sn.ContainsKey(([string]$_.Port).ToUpper()) }) }   # never reset a recording sniffer
+    if ($want.Count) { $sn = Get-SnifferPorts -MaxAgeS 4; $want = @($want | Where-Object { -not $sn.ContainsKey(([string]$_.Port).ToUpper()) }) }   # never reset a recording sniffer
     if (-not $want.Count) { $script:ForceRead = $false; $script:ResetOk = $false; return }
     # NEVER reset a board by itself (oct. 17 2026: an auto read_mac on plug-in can
     # reset a board whose run is still going -> its file ends ABORTED). Only the
@@ -2880,7 +2889,7 @@ function Step-MacReads {
     if (-not $script:ForceRead) {
         foreach ($r in $want) { $r.State = 'unread' }; Update-LiveViews; return
     }
-    if (Test-HandsOff) {
+    if (Test-HandsOff -MaxAgeS 4) {
         if (@($want | Where-Object { $_.State -ne 'paused' }).Count) { foreach ($r in $want) { $r.State = 'paused' }; Update-LiveViews }
         return
     }
@@ -2960,13 +2969,13 @@ function Update-LiveViews {
 }
 $liveTimer = New-Object Windows.Threading.DispatcherTimer
 $liveTimer.Interval = [TimeSpan]::FromMilliseconds(1500)
-$liveTimer.Add_Tick({
+$liveTimer.Add_Tick({ Measure-GuiTick 'live' {   # gui\Perf.ps1: a tick over 150 ms is logged
     try {
         $changed = Update-LivePorts
         Step-MacReads
         if ($changed -and $ui.Pages.SelectedIndex -eq 1) { Update-CaptureLive }
     } catch { Set-Status ("Board watcher: " + $_.Exception.Message) $Pal.Red }
-})
+} })
 $ui.HomeReadMacs.Add_Click({ Request-MacReadAll })
 
 # ── HOME ──────────────────────────────────────────────────────────────────────
@@ -5365,7 +5374,7 @@ function Start-StreamJob {
 }
 $streamTimer = New-Object Windows.Threading.DispatcherTimer
 $streamTimer.Interval = [TimeSpan]::FromMilliseconds(300)
-$streamTimer.Add_Tick({
+$streamTimer.Add_Tick({ Measure-GuiTick 'stream' {   # gui\Perf.ps1: a tick over 150 ms is logged
     $s = $script:Stream; if (-not $s) { return }
     $po = $s.PosO; $pe = $s.PosE
     $t = (Read-NewText $s.Out ([ref]$po)) + (Read-NewText $s.Err ([ref]$pe))
@@ -5388,7 +5397,7 @@ $streamTimer.Add_Tick({
         Set-Status ("Finished: {0} (exit {1})" -f $s.Title, $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
         if ($s.Done) { try { & $s.Done $s.All.ToString() $code $s.State } catch { Write-Activity ("  {0}   (run_gui.ps1 line {1}: {2})" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber, $_.InvocationInfo.Line.Trim()) $Pal.Red } }
     }
-})
+} })
 $streamTimer.Start()
 $ui.StopTask.Add_Click({
     $s = $script:Stream; if (-not $s) { return }
@@ -7110,6 +7119,7 @@ function Open-RunPage($P) {
     [void]$R.Steps.Add([pscustomobject]@{ Kind = 'summary'; Title = 'Done - check the run'; Sub = 'verify, import the SD cards'; Glyph = [string][char]0xE73E; State = 'waiting'; Note = ''; Tip = ''; Tone = $Pal.Green; Plan = $null })
     Update-RunSteps
     try { Update-RootStepOption } catch { }     # gui\RootStep.ps1: one laptop, whole preset -> root by hand
+    try { Initialize-ParallelFlashUi } catch { }  # gui\ParallelFlash.ps1: flash the children N at a time
     Set-RunState 'READY TO START'
     $ui.RunConsole.Document.Blocks.Clear(); $script:RunLines = 0
     Write-RunConsole ("Loaded {0}. Steps: compile -> {1}flash + run each board (root last) -> summary." -f $P.File, $(if ($R.Steps | Where-Object Kind -eq 'park') { 'park the old root -> ' } else { '' })) $Pal.Blue
@@ -7231,12 +7241,34 @@ function Start-RunBuild([switch]$ThenGo, [string[]]$Only, [switch]$Quiet) {
     # builds this run just made and compile everything twice.
     if ($ui.RunClean.IsChecked -and -not $R.PSObject.Properties['Cleaned']) {
         $R | Add-Member -NotePropertyName Cleaned -NotePropertyValue $true -Force
+        # oct. 20 2026 (clean rebuild ON by default - "make sure it won't crash our laptop"): a
+        # compile never touches the boards' USB driver (the 0xB8 blue screen), so the risks are
+        # deleting a build something else still compiles / flashes from, and a full disk.
+        # Either one -> no clean this run (the normal incremental compile), said plainly.
+        $skipWhy = ''
+        try {
+            $users = @(Get-CimInstance Win32_Process -Filter "Name='ninja.exe' OR Name='cmake.exe' OR Name='esptool.exe' OR Name='python.exe' OR Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction Stop |
+                Where-Object { $_.ProcessId -ne $PID -and ($_.Name -in @('ninja.exe', 'cmake.exe', 'esptool.exe') -or [string]$_.CommandLine -match '(?i)idf\.py|esptool|(?<![\w-])run\.ps1|run_wizard|menu\.ps1') })
+            if ($users.Count) { $skipWhy = ("{0} is still compiling or flashing (process {1})" -f $users[0].Name, $users[0].ProcessId) }
+        } catch { }
+        try { $free = (New-Object IO.DriveInfo ([IO.Path]::GetPathRoot($shortBuildRoot))).AvailableFreeSpace; if ($free -lt 3GB) { $skipWhy = ("only {0:N1} GB free on {1}" -f ($free / 1GB), [IO.Path]::GetPathRoot($shortBuildRoot)) } } catch { }
+        if ($skipWhy -and -not $SelfTest) {
+            Write-RunConsole ("Clean rebuild SKIPPED for this run: {0}. Compiling normally (only changed code) - safe; tick it again once that is done." -f $skipWhy) $Pal.Amber
+            Add-RunAlert ("clean rebuild skipped: {0}" -f $skipWhy) $Pal.Amber
+        } else {
         Write-RunConsole "Clean rebuild: removing build_* under $buildRoot and $shortBuildRoot (first compile of this run - every variant compiles from scratch, ~2-4 min each) ..." $Pal.Amber
         # NOT $r: PowerShell names are case-insensitive, $r IS $R (the run) -
         # the old loop overwrote the run with a path and crashed the window
         foreach ($cleanDir in @($buildRoot, $shortBuildRoot)) {
             Remove-Item -Recurse -Force (Join-Path $cleanDir 'child_node\build_*') -ErrorAction SilentlyContinue
             Remove-Item -Recurse -Force (Join-Path $cleanDir 'root_node\build_*') -ErrorAction SilentlyContinue
+            # a file held open (antivirus, an open log) leaves a HALF-deleted folder: drop its
+            # CMake cache so the compile reconfigures it from scratch instead of failing oddly
+            foreach ($left in @(Get-ChildItem -Directory -Path (Join-Path $cleanDir 'child_node'), (Join-Path $cleanDir 'root_node') -Filter 'build_*' -ErrorAction SilentlyContinue)) {
+                Remove-Item -Force (Join-Path $left.FullName 'CMakeCache.txt') -ErrorAction SilentlyContinue
+                Write-RunConsole ("  could not delete all of {0} (a file is open) - it is reconfigured from scratch instead" -f $left.FullName) $Pal.Amber
+            }
+        }
         }
     }
     $R.Current = $st; $st.State = 'running'; $st.Note = "0 of $($q.Count)"
@@ -7354,6 +7386,12 @@ function Start-RunStep($St) {
     }
     # a board: its port must be live, and a shared port means "swap now"
     $b = $St.Board
+    # gui\ParallelFlash.ps1 (oct. 20 2026): the first child step flashes every plugged-in child N at a time
+    if ($b.Role -ne 'root') {
+        $pfGo = $false
+        try { $pfGo = Start-ParallelChildFlash $St } catch { Write-RunConsole ("  parallel flash could not start ({0}) - flashing one at a time" -f $_.Exception.Message) $Pal.Amber }
+        if ($pfGo) { return }
+    }
     if (-not $script:Live.Contains([string]$b.Port)) {
         $St.State = 'attention'; $St.Note = 'plug it in'
         $R.Wait = @{ Kind = 'port'; Step = $St; Known = @($script:Live.Keys) }
@@ -7957,6 +7995,11 @@ $ui.RunAbort.Add_Click({
     if ($R.Phase -eq 'export') { [void][Windows.MessageBox]::Show('An export is running - it must finish (cutting one blue-screens this laptop).', 'Wait'); return }
     if (-not (Confirm-Action 'Stop the run? Boards already flashed keep running; nothing more is exported.' 'Stop the run')) { return }
     if ($R.Phase -eq 'monitor') { Stop-RunMonitor -NoExport; $R.Phase = 'stopping'; return }
+    if ($R.Phase -eq 'pflash' -and $R.PF -and $R.PF.Jobs.Count) {
+        # gui\ParallelFlash.ps1: boards are being written - never cut them, stop once they finish
+        [void][Windows.MessageBox]::Show(("{0} board(s) are being written right now - cutting that leaves them half-flashed. The run stops as soon as they finish (no new board is started)." -f $R.PF.Jobs.Count), 'Stopping after these boards')
+        $R | Add-Member -NotePropertyName StopAfterFlash -NotePropertyValue $true -Force; return
+    }
     if ($R.Proc -and -not $R.Proc.HasExited) {
         if ($R.Phase -eq 'build') {
             # compiling touches no board - safe to cut
@@ -8000,7 +8043,7 @@ $ui.RunCmd.Add_KeyDown({ param($s, $e) if ($e.Key -eq 'Return') { $t = ([string]
 # ── the run's heartbeat ──────────────────────────────────────────────────────
 $runTimer = New-Object Windows.Threading.DispatcherTimer
 $runTimer.Interval = [TimeSpan]::FromMilliseconds(250)
-$runTimer.Add_Tick({
+$runTimer.Add_Tick({ Measure-GuiTick 'run' {   # gui\Perf.ps1: a tick over 150 ms is logged
     $R = $script:Run; if (-not $R) { return }
     Update-PreStartClock
     if ($R.Started -and $R.Active) { $e = (Get-Date) - $R.Started; $ui.RunClock.Text = '{0}:{1:00}' -f [int][Math]::Floor($e.TotalMinutes), $e.Seconds }
@@ -8035,6 +8078,7 @@ $runTimer.Add_Tick({
     Read-CrashWatch
     # a banner seen while the monitor was still opening keeps its move-on pending (oct. 20 2026)
     if ($R.AutoAt -and (Get-Date) -ge $R.AutoAt -and $R.Phase -ne 'flash') { $R.AutoAt = $null; if ($R.Phase -eq 'monitor' -and $R.Current.Board.Role -ne 'root') { Stop-RunMonitor } }
+    if ($R.Phase -eq 'pflash') { try { Step-ParallelFlash } catch { Write-RunConsole ("  parallel flash: {0}" -f $_.Exception.Message) $Pal.Red }; return }   # gui\ParallelFlash.ps1
     if (-not $R.Proc) { return }
     $lines = Read-RunOutput
     if ($lines.Count) {
@@ -8060,7 +8104,7 @@ $runTimer.Add_Tick({
         Write-RunConsole ("  finished (exit {0})" -f $code) $(if ($code -eq 0) { $Pal.Green } else { $Pal.Amber })
         if ($R.Current) { Complete-RunStep $code }
     }
-})
+} })
 $runTimer.Start()
 
 # ── SPEED-UPS (oct. 17 2026): remember me, Ctrl+K, shortcuts, next-step toasts ─
@@ -8071,7 +8115,7 @@ $script:Settings = @{ Me = ''; Page = 0; Zoom = 0 }
 try {
     if (Test-Path $script:SettingsPath) {
         $j = Get-Content $script:SettingsPath -Raw | ConvertFrom-Json
-        foreach ($k in 'Me', 'Page', 'Zoom') { if ($j.PSObject.Properties[$k]) { $script:Settings[$k] = $j.$k } }
+        foreach ($k in 'Me', 'Page', 'Zoom', 'PFlash') { if ($j.PSObject.Properties[$k]) { $script:Settings[$k] = $j.$k } }
     }
 } catch { }
 $script:Me = [string]$script:Settings.Me
@@ -8170,7 +8214,7 @@ function Open-Import([string]$Drive) {
 }
 $stepTimer = New-Object Windows.Threading.DispatcherTimer
 $stepTimer.Interval = [TimeSpan]::FromSeconds(2)
-$stepTimer.Add_Tick({
+$stepTimer.Add_Tick({ Measure-GuiTick 'step' {   # gui\Perf.ps1: a tick over 150 ms is logged
     try {
         $now = Get-RemovableDrives
         if ($null -ne $script:Drives) {
@@ -8186,7 +8230,7 @@ $stepTimer.Add_Tick({
         }
         Update-NavBadges
     } catch { }
-})
+} })
 
 # Ctrl+K palette: pages, actions, presets, campaign runs, analysed cells
 function New-PalItem($Kind, $Title, $Sub, $Glyph, $Hex, $Type, $Data) {
