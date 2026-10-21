@@ -183,6 +183,23 @@ def _identity(path, text):
     return ident
 
 
+def _log_started(path, text):
+    """Laptop time the run log was opened (epoch), or None. A run.ps1 transcript says
+    'Start time: yyyyMMddHHmmss'. A GUI run log (run_gui.ps1, 'NIS16 Capture Studio run
+    log - ...') has no such line and dates its header in the laptop's locale (20/10/2026
+    here, 10/20/2026 on a US laptop), so its file name stamp (_oct20_1008PM) is used:
+    the GUI names the file when it opens it. Until oct. 21 2026 every GUI-era capture was
+    refused as 'no run log started within 20 min'."""
+    m = RE_TRANSCRIPT.search(text)
+    if m:
+        return dt.datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=PHT).timestamp()
+    if text.startswith("NIS16 Capture Studio run log"):
+        stamp = name_stamp.find(os.path.basename(path))
+        if stamp:
+            return name_stamp.parse(stamp, path)[0].replace(tzinfo=PHT).timestamp()
+    return None
+
+
 def parse_root_log(path):
     with open(path, encoding="utf-8-sig", errors="replace") as f:
         text = f.read()
@@ -210,9 +227,7 @@ def parse_root_log(path):
     roles = {}
     for m in RE_NODE.finditer(text):
         roles[m.group(1).lower()] = m.group(2)
-    m = RE_TRANSCRIPT.search(text)
-    started = (dt.datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=PHT).timestamp()
-               if m else None)
+    started = _log_started(path, text)
     return {"phases": phases, "stamp": stamp, "clock_ok": bool(RE_CLOCK_OK.search(text)),
             "roles": roles, "started": started, "identity": _identity(path, text)}
 
@@ -699,10 +714,8 @@ def _root_logs(root):
         except Refuse:  # corrupt (a phase starting twice); a log with NO phase lines parses fine
             with open(path, encoding="utf-8-sig", errors="replace") as f:
                 text = f.read()
-            m = RE_TRANSCRIPT.search(text)
             out[path] = {"phases": None, "identity": _identity(path, text), "unusable": True,
-                         "started": m and dt.datetime.strptime(
-                             m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=PHT).timestamp()}
+                         "started": _log_started(path, text)}
         except OSError:
             continue
     return out

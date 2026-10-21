@@ -798,6 +798,17 @@ def build_status(ctx):
     for it in pull:
         if it["rel"] in ups:
             it["when"], it["who"] = ups[it["rel"]]
+    # oct. 21 2026 (user: "time in each file"): every row carries both times - when GitHub got
+    # its current version (commit time) and when this laptop's copy last changed (mtime;
+    # after a pull that is the pull time, not the capture time)
+    for it in push + pull + gone:
+        u = ups.get(it["rel"])
+        if u:
+            it["hubWhen"], it["hubWho"] = u
+        try:
+            it["localWhen"] = int((BASE / it["rel"]).stat().st_mtime)
+        except OSError:
+            pass
     for it in push:
         if it["act"] == "push" and it["area"] == "exports" and it["kind"] != "delete":
             ca = freshness(BASE, it["cell"])
@@ -991,8 +1002,13 @@ def record(ctx, report):
         st = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     except (OSError, ValueError):
         st = {}
-    st[ctx.branch] = {"when": int(time.time()), "pushed": report["pushed"], "pulled": report["pulled"],
+    now, prev = int(time.time()), st.get(ctx.branch) or {}
+    st[ctx.branch] = {"when": now, "pushed": report["pushed"], "pulled": report["pulled"],
                       "updated": bool(report.get("updated") and report["updated"].get("ok"))}
+    # oct. 21 2026: the last SEND and last RECEIVE are kept apart (the GUI's time strip) -
+    # a receive-only sync must not hide when this laptop last sent
+    for key, n in (("lastSend", report["pushed"]), ("lastRecv", report["pulled"])):
+        st[ctx.branch][key] = {"when": now, "files": n} if n else prev.get(key)
     try:
         STATE.write_text(json.dumps(st), encoding="utf-8")
     except OSError:

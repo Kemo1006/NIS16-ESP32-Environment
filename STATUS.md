@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 21, 2026 ~10:15 AM (Angelo's laptop) — features.py latency fix (#75) committed + the 16 affected cells re-analysed and pushed (1ccb3a6, 1d77493): pre-run phase-255 arrivals had made LatencyHopRatio/TunnelLatency impossible. Next: teammates pull; redo any paper number/figure using either feature (B-lat255); Verify only per cell for the scenario tag. Earlier today: #72-#74 pushed (9f56f75, 11f5d98).
+**Updated:** oct. 21, 2026 ~2:30 PM (Angelo's laptop) — code + docs pushed (re-analysis tooling #75/#76, verdict-sync fix #78, sync page time strip + per-file times). GitHub audit: no accidental loss; wormhole/partial_mesh/G402/stationary on GitHub mixes the oct. 19 and oct. 21 runs (user to OK removing oct. 19). Data (analysis re-runs) goes via GUI Smart sync. Next: campaign plan editor (scenario/location ticks), scenario NOT APPLIED -> MINOR GAPS, #77 fixes.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).

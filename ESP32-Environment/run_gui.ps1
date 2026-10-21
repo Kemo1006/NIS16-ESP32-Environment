@@ -2234,6 +2234,24 @@ $StyleXaml
               </StackPanel>
             </DockPanel>
           </Border>
+          <!-- time strip (oct. 21 2026): when this laptop last sent / received / updated / pushed code -->
+          <ItemsControl x:Name="SyncTimes" DockPanel.Dock="Top" Margin="0,0,0,10">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Background="$($Pal.Card)" CornerRadius="12" Padding="10,6" Margin="0,0,8,0" ToolTip="{Binding Tip}">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{Binding Fg}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" Foreground="$($Pal.Dim)" FontSize="11"/>
+                      <TextBlock Text="{Binding When}" Foreground="$($Pal.Text)" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Ago}" Foreground="{Binding Fg}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <!-- stepper -->
           <ItemsControl x:Name="SyncSteps" DockPanel.Dock="Top" Margin="0,0,0,10">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -2334,7 +2352,17 @@ $StyleXaml
                             <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
                           </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" MinWidth="220" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTemplateColumn Header="here (changed)" Width="112" SortMemberPath="HereAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HereT}" Foreground="$($Pal.Dim)" ToolTip="When this laptop's copy last changed (after a receive: the receive time)"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="on GitHub since" Width="112" SortMemberPath="HubAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HubT}" Foreground="$($Pal.Dim)" ToolTip="{Binding HubTip}"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="analysis" Width="130">
                           <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -2382,7 +2410,17 @@ $StyleXaml
                             <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
                           </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" MinWidth="220" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTemplateColumn Header="here (changed)" Width="112" SortMemberPath="HereAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HereT}" Foreground="$($Pal.Dim)" ToolTip="When this laptop's copy last changed (after a receive: the receive time)"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="on GitHub since" Width="112" SortMemberPath="HubAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HubT}" Foreground="$($Pal.Dim)" ToolTip="{Binding HubTip}"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="from" Binding="{Binding Who}" Width="150" Foreground="$($Pal.Dim)"/>
                         <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
                       </DataGrid.Columns>
@@ -2413,7 +2451,17 @@ $StyleXaml
                             <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
                           </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" MinWidth="220" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTemplateColumn Header="here (changed)" Width="112" SortMemberPath="HereAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HereT}" Foreground="$($Pal.Dim)" ToolTip="When this laptop's copy last changed (after a receive: the receive time)"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="on GitHub since" Width="112" SortMemberPath="HubAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HubT}" Foreground="$($Pal.Dim)" ToolTip="{Binding HubTip}"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
                       </DataGrid.Columns>
                     </DataGrid>
@@ -2505,7 +2553,17 @@ $StyleXaml
                             <DataTemplate><TextBlock><Run Text="{Binding CAtk, Mode=OneWay}" Foreground="{Binding AtkFg, Mode=OneWay}" FontWeight="SemiBold"/><Run Text="{Binding CRest, Mode=OneWay}" Foreground="$($Pal.Text)"/></TextBlock></DataTemplate>
                           </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTextColumn Header="file" Binding="{Binding File}" Width="*" MinWidth="220" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                        <DataGridTemplateColumn Header="here (changed)" Width="112" SortMemberPath="HereAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HereT}" Foreground="$($Pal.Dim)" ToolTip="When this laptop's copy last changed (after a receive: the receive time)"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="on GitHub since" Width="112" SortMemberPath="HubAt">
+                          <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding HubT}" Foreground="$($Pal.Dim)" ToolTip="{Binding HubTip}"/></DataTemplate>
+                          </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="why" Binding="{Binding Why}" Width="2*" Foreground="$($Pal.Dim)"/>
                       </DataGrid.Columns>
                     </DataGrid>
@@ -4170,6 +4228,10 @@ function Save-AnaResult([string]$Key, [string]$Text, [int]$Code = -99, [string]$
     try {
         New-Item -ItemType Directory -Force -Path (Join-Path $script:AnaDir 'reports') | Out-Null
         [IO.File]::WriteAllText((Join-Path $script:AnaDir ('reports\' + ($Key -replace '/', '__') + '.txt')), $t)
+        # oct. 21 2026 (user: "selected run notes didn't match the Verify page"): the list in
+        # memory is from GUI start; saving it whole wrote every OTHER run's old verdict back
+        # over results verified meanwhile (a batch Verify, a sync). Re-read the file first.
+        Read-Verdicts
         if ($Code -ge 0) {
             $prevData = if ($script:Verdicts[$Key] -and $script:Verdicts[$Key].PSObject.Properties['Data']) { $script:Verdicts[$Key].Data } else { '' }
             $script:Verdicts[$Key] = [pscustomobject]@{ Code = $Code; Line = ([string]$line).Trim(); When = (Get-Date).ToString('yyyy-MM-dd HH:mm'); Data = $(if ($Data) { $Data } else { $prevData }) }
@@ -6405,6 +6467,9 @@ function New-SyncTable([string[]]$Cols) {
     [void]$dt.Columns.Add('Pick', [bool])
     foreach ($c in $Cols) { [void]$dt.Columns.Add($c, [string]) }
     foreach ($c in 'BadgeBg', 'BadgeFg', 'AreaFg', 'AtkFg', 'AnaBg', 'AnaFg', 'AnaLBg', 'AnaLFg', 'AnaRBg', 'AnaRFg') { [void]$dt.Columns.Add($c, [object]) }
+    # per-file times (oct. 21 2026): text to show + unix seconds to sort by ("today 1:40 pm" sorts wrong as text)
+    foreach ($c in 'HereT', 'HubT', 'HubTip') { [void]$dt.Columns.Add($c, [string]) }
+    foreach ($c in 'HereAt', 'HubAt') { [void]$dt.Columns.Add($c, [long]) }
     return , $dt   # the comma: PowerShell would unroll an empty DataTable into $null
 }
 function Add-SyncRow($Dt, $It, [hashtable]$Look, [bool]$Pick) {
@@ -6417,6 +6482,13 @@ function Add-SyncRow($Dt, $It, [hashtable]$Look, [bool]$Pick) {
     $r.CAtk = $(if ($cp[0]) { $cp[0] } else { '-' }); $r.AtkFg = Get-Brush (Get-AtkHex $cp[0])
     $r.CRest = $(if ($cp.Count -gt 1) { '  /  ' + (($cp | Select-Object -Skip 1) -join '  /  ') } else { '' })
     $r.File = ([string]$It.rel).Split('/')[-1]; $r.Rel = [string]$It.rel; $r.Why = [string]$It.why
+    if ($It.localWhen) { $r.HereAt = [long]$It.localWhen; $r.HereT = Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$It.localWhen).LocalDateTime) } else { $r.HereAt = 0; $r.HereT = 'not here' }
+    if ($It.hubWhen) {
+        $t = [DateTimeOffset]::FromUnixTimeSeconds([long]$It.hubWhen).LocalDateTime
+        $r.HubAt = [long]$It.hubWhen; $r.HubT = Format-When $t
+        $r.HubTip = "on GitHub since {0}`nby {1}" -f $t.ToString('ddd MMM d yyyy, h:mm:ss tt'), $It.hubWho
+    } elseif ([string]$It.kind -in @('gone', 'deleted')) { $r.HubAt = 0; $r.HubT = 'deleted'; $r.HubTip = [string]$It.why }
+    else { $r.HubAt = 0; $r.HubT = 'not on GitHub'; $r.HubTip = 'GitHub does not have this file (yet)' }
     return $r
 }
 function Show-SyncStatus($St) {
@@ -6461,7 +6533,7 @@ function Show-SyncStatus($St) {
     foreach ($it in @($St.pull)) {
         if ($it.act -eq 'pull') {
             $r = Add-SyncRow $recv $it $script:SyncLook $true
-            $r.Who = $(if ($it.who) { "$($it.who)  " + $(if ($it.when) { (Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$it.when).LocalDateTime)) }) } else { '' })
+            $r.Who = [string]$it.who   # its time is in the "on GitHub since" column
             [void]$recv.Rows.Add($r)
         } else { [void]$held.Rows.Add((Add-SyncRow $held $it $script:SyncLook $false)) }
     }
@@ -6503,6 +6575,7 @@ function Show-SyncStatus($St) {
     $ui.SyncTabGone.Header = "  Cleanup  ($($gone.Rows.Count))  "
     Update-SyncCounts
     Update-SyncGate
+    Update-SyncTimes
 }
 function Get-SyncPicked([string]$Which) {
     $t = $null; if ($script:SyncTables) { $t = $script:SyncTables[$Which] }   # not "$t = if ...": that unrolls the table
@@ -6560,6 +6633,7 @@ function Set-SyncDone([string]$Head, [string]$Sub, [string]$Fill = 'GradGood', [
     $ui.SyncSendOnly.IsEnabled = $false; $ui.SyncRecvOnly.IsEnabled = $false; $ui.SyncFoldOnly.IsEnabled = $false
     $ui.SyncHead.Text = $Head; $ui.SyncSubHead.Text = $Sub + '   -   press Check to see the latest state.'
     $ui.SyncIcon.Text = $Glyph; $ui.SyncIconBg.Background = $win.FindResource($Fill)
+    Update-SyncTimes
 }
 function Start-SyncCheck([switch]$Continue) {
     $py = Get-Py; if (-not $py) { return }
@@ -6697,6 +6771,80 @@ $ui.SyncAdvanced2.Add_Click({
 })
 # No automatic check (user, oct. 18 2026): GitHub is only contacted when Check
 # again or Smart sync is pressed. Opening the page just shows the last plan.
+
+# ── time strip (user, oct. 21 2026: "put time and date when it was pushed or pulled") ──
+# Local only - git's own history + reflogs and smart_sync's sync_state.json, never the
+# network. "Last sent" = the newest data commit on GitHub signed by this laptop (any tool),
+# "last received" = the newest folder update from GitHub or smart-sync file receive.
+function Format-Ago([datetime]$T) {
+    $m = ((Get-Date) - $T).TotalMinutes
+    if ($m -lt 1) { return 'just now' } elseif ($m -lt 60) { return '{0} min ago' -f [int][math]::Floor($m) }
+    elseif ($m -lt 1440) { return '{0} h {1} min ago' -f [int][math]::Floor($m / 60), [int]($m % 60) }
+    else { return '{0} day(s) ago' -f [int][math]::Floor($m / 1440) }
+}
+function Get-RefTimes([string]$Ref, [string]$Pattern) {
+    # newest reflog entry of $Ref whose message matches $Pattern -> @{ T; Msg }
+    $lines = @(& git -C $base reflog show --date=unix --format='%gd|%gs' -n 300 $Ref 2>$null)
+    foreach ($l in $lines) {
+        if ($l -notmatch '@\{(\d+)\}\|(.*)$') { continue }
+        $sec = [long]$Matches[1]; $msg = $Matches[2]   # copy first: the next -match overwrites $Matches
+        if ($msg -match $Pattern) { return @{ T = [DateTimeOffset]::FromUnixTimeSeconds($sec).LocalDateTime; Msg = $msg } }
+    }
+    return $null
+}
+function Update-SyncTimes([switch]$AgoOnly) {
+    if (-not $AgoOnly -or -not $script:SyncTimeData) {
+        $tiles = @()
+        try {
+            $br = (& git -C $base rev-parse --abbrev-ref HEAD 2>$null | Select-Object -First 1)
+            $tag = { param($s) $v = (([string]$s) -replace '[^A-Za-z0-9-]', '-').Trim('-'); if ($v) { $v } else { 'unknown' } }   # = push_data.tag()
+            $me = (& $tag $env:COMPUTERNAME) + '_' + (& $tag $env:USERNAME)
+            $hub = "refs/remotes/origin/$br"
+            $log = @(& git -C $base log $hub --format='%ct|%s' -n 400 2>$null)
+            $mine = $log | Where-Object { $_ -match ('from ' + [regex]::Escape($me) + '(\s|$)') } | Select-Object -First 1
+            $sent = $null; if ($mine -match '^(\d+)\|(.*)$') { $sent = @{ T = [DateTimeOffset]::FromUnixTimeSeconds([long]$Matches[1]).LocalDateTime; Msg = $Matches[2] } }
+            $recv = Get-RefTimes 'HEAD' "^(merge origin/|pull|reset: moving to origin/)"
+            $state = $null; $sf = Join-Path $env:LOCALAPPDATA 'NIS16\sync_state.json'
+            if (Test-Path $sf) { try { $state = (Get-Content -Raw -Encoding UTF8 $sf | ConvertFrom-Json).$br } catch { } }
+            if ($state -and $state.lastRecv) {
+                $t = [DateTimeOffset]::FromUnixTimeSeconds([long]$state.lastRecv.when).LocalDateTime
+                if (-not $recv -or $t -gt $recv.T) { $recv = @{ T = $t; Msg = "smart sync received $($state.lastRecv.files) file(s)" } }
+            }
+            $code = Get-RefTimes $hub '^update by push'
+            # the reflog only logs a fetch that brought something new; FETCH_HEAD is rewritten by every fetch
+            $seen = Get-RefTimes $hub '^(fetch|pull|update by push)'
+            $fh = (& git -C $base rev-parse --git-path FETCH_HEAD 2>$null | Select-Object -First 1)
+            if ($fh -and -not [IO.Path]::IsPathRooted($fh)) { $fh = Join-Path $base $fh }
+            if ($fh -and (Test-Path $fh)) {
+                $t = (Get-Item $fh).LastWriteTime
+                if (-not $seen -or $t -gt $seen.T) { $seen = @{ T = $t; Msg = 'git fetch (Check / Smart sync)' } }
+            }
+            $top = $log | Select-Object -First 1; $hubT = $null
+            if ($top -match '^(\d+)\|(.*)$') { $hubT = @{ T = [DateTimeOffset]::FromUnixTimeSeconds([long]$Matches[1]).LocalDateTime; Msg = $Matches[2] } }
+            $who = ''; if ($hubT -and $hubT.Msg -match 'from (\S+)') { $who = $Matches[1] -replace '\s*\[smart sync\]$', '' }
+            $spec = @(
+                @('Last sent (data)',        [char]0xE898, $Pal.Green, $sent, "Newest data commit on GitHub from this laptop ($me)"),
+                @('Last received',           [char]0xE896, $Pal.Blue,  $recv, 'Your folder last updated from GitHub (or files received by Smart sync)'),
+                @('Code pushed',             [char]0xE943, $Pal.Cyan,  $code, 'Last git push of code from this folder'),
+                @('GitHub last changed',     [char]0xE753, $Pal.Amber, $hubT, $(if ($who) { "newest commit on $br, by $who (as of the last check)" } else { "newest commit on $br (as of the last check)" })),
+                @('Last checked GitHub',     [char]0xE895, $Pal.Dim,   $seen, 'Last time this folder talked to GitHub (Check, sync, fetch or push)'))
+            foreach ($s in $spec) {
+                $tiles += [pscustomobject]@{ Name = $s[0]; Glyph = [string]$s[1]; Fg = (Get-Brush $s[2]); At = $(if ($s[3]) { $s[3].T } else { $null })
+                                             When = $(if ($s[3]) { (Format-When $s[3].T) } else { 'never (on this laptop)' }); Ago = ''
+                                             Tip = $s[4] + $(if ($s[3]) { "`n" + $s[3].T.ToString('ddd MMM d yyyy, h:mm:ss tt') + "`n" + $s[3].Msg } else { '' }) }
+            }
+        } catch { $tiles = @([pscustomobject]@{ Name = 'Sync times'; Glyph = [string][char]0xE783; Fg = (Get-Brush $Pal.Red); At = $null; When = 'could not read git history'; Ago = ''; Tip = $_.Exception.Message }) }
+        $script:SyncTimeData = $tiles
+    }
+    foreach ($t in $script:SyncTimeData) { $t.Ago = $(if ($t.At) { Format-Ago $t.At } else { '' }) }
+    $ui.SyncTimes.ItemsSource = $null; $ui.SyncTimes.ItemsSource = @($script:SyncTimeData)
+}
+$ui.NavSync.Add_Checked({ Update-SyncTimes })
+# the "x min ago" lines tick once a minute while the page is open (no git, no network)
+$syncClock = New-Object Windows.Threading.DispatcherTimer
+$syncClock.Interval = [TimeSpan]::FromSeconds(60)
+$syncClock.Add_Tick({ if ($ui.Pages.SelectedIndex -eq 8 -and $script:SyncTimeData) { Update-SyncTimes -AgoOnly } })
+$syncClock.Start()
 
 function Update-Logs {
     $root = Join-Path $base 'datasets\run_logs'
@@ -8746,6 +8894,8 @@ exit 0
     $t0 = Get-Date; while ($script:Stream -and ((Get-Date) - $t0).TotalSeconds -lt 60) { & $pump 250 }
     Show-Page 8; & $pump 400
     Write-Output ("sync page opened: check started by itself = {0} (must be False)" -f [bool]$script:Stream)
+    try { Update-SyncTimes; foreach ($t in @($ui.SyncTimes.ItemsSource)) { Write-Output ("sync time: {0} = {1} ({2})" -f $t.Name, $t.When, $(if ($t.At) { $t.Ago } else { $t.Tip })) } }
+    catch { Write-Output ("sync times ERROR: {0} at line {1}" -f $_.Exception.Message, $_.InvocationInfo.ScriptLineNumber) }
     $ui.SyncCheck.RaiseEvent((New-Object Windows.RoutedEventArgs ([Windows.Controls.Button]::ClickEvent)))
     $t0 = Get-Date; while (($script:Stream -or -not $script:Sync) -and ((Get-Date) - $t0).TotalSeconds -lt 180) { & $pump 400 }
     & $pump 400
@@ -8754,6 +8904,7 @@ exit 0
         Write-Output ("sync page: head='{0}' | send {1} | receive {2} | held {3} | runs {4} | gate={5} | steps={6}" -f $ui.SyncHead.Text, $script:SyncTables.Send.Rows.Count, $script:SyncTables.Recv.Rows.Count,
             $ui.SyncHeldGrid.Items.Count, $ui.SyncRunsGrid.Items.Count, $ui.SyncGate.Visibility, ((@($ui.SyncSteps.ItemsSource | ForEach-Object { "$($_.Name)=$($_.Info)" })) -join ', '))
         Write-Output ("sync chips: " + ((@($ui.SyncChips.ItemsSource | ForEach-Object Text)) -join ' | '))
+        foreach ($tn in 'Send', 'Recv') { $r0 = @($script:SyncTables[$tn].Rows) | Select-Object -First 1; if ($r0) { Write-Output ("sync file time ({0}): {1} | here {2} | GitHub {3}" -f $tn, $r0.File, $r0.HereT, $r0.HubT) } }
     } else { Write-Output 'sync page: NO STATUS (check failed)' }
     & $shot 'sync'
     $ui.SyncTabs.SelectedIndex = 3; & $pump 300; & $shot 'sync_runs'

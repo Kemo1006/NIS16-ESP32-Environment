@@ -15,6 +15,89 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #78 — Oct 21, 2026 · ~12:30 PM — Campaign "Selected run" vs Verify page out of sync (blackhole/tree/Yuchengco/burst)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `357d91f` + uncommitted (#75-#77, `run_gui.ps1`)
+> **Request:** "check blackhole tree yuch burst why the selected run notes or verdict there didn't match what verify page showing ... make sure everything in sync and aligned"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole (+ all) | tree | Yuchengco | burst | r1 | oct. 11 8:29 PM | `%LOCALAPPDATA%\NIS16\reports\*.txt`, `verdicts.json`, live `tools/redo_list.py --json` |
+
+| Check | Result | Detail |
+|---|---|---|
+| tree/Yuchengco/burst: saved report vs live redo check | ✅ same | CONFIRMED · MINOR GAPS · OUTCOME PASS; gap = 0C80 (bystander) 40 of 300 s baseline windows; note = force-start not checkable; Campaign CHECK (yellow) |
+| All 63 runs: report VERDICT = verdicts.json line | ✅ 63/63 | all re-saved 11:40-11:41 |
+| All 63 runs: report OUTCOME = redo outcome | ✅ 63/63 | |
+| All 63 runs: report grade -> expected tile = redo severity | ✅ 61/63 | the 2 others are by design: blackhole/linear/G402/burst + linear/home/burst are CHECK because scenario burst NOT APPLIED |
+| Reports older than their analysis | ✅ 0 | |
+
+**Findings:**
+- The stored results are aligned. The mismatch came from the GUI being open while results changed outside it (this session's batch Verify at ~10:18 and the full re-analysis 10:24-11:25).
+- **GUI bug fixed (`run_gui.ps1` `Save-AnaResult`):** it saved its WHOLE in-memory verdict list (loaded at GUI start) on every Verify, writing every other run's old verdict back over newer ones -> Campaign (live re-check) and Verify (stored verdict) could disagree. It now calls `Read-Verdicts` first, so a save only changes its own run. Self-test passes. Takes effect on the next GUI start.
+
+**Verdict: ✅ all 63 runs aligned across report, verdict store and redo check; the stale-overwrite cause is fixed. Restart the GUI once (or Campaign -> Re-check the redo list) to see it.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #77 — Oct 21, 2026 · ~12:00 PM — are all the analysis graphs correct?
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `357d91f` + uncommitted re-analysis of all 61 cells (#76)
+> **Request:** "can you check all the graphs in analysis are those correct?"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | r1 | 61 analysed cells, 1,170 PNGs | `datasets/analysis/**/eda_output/*.png` (+ the `correlation_*.csv` behind the maps) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Every plot newer than its feature table | ⚠️ 7 stale | `dimensionality_reduction_tunnel_ends.png` in 7 BLACKHOLE cells |
+| Per-board timeseries = boards in the table | ✅ | 0 orphans, 0 missing (eda._find_orphan_timeseries + per source_file) |
+| Blank / broken images (< 8 KB) | ✅ 0 | |
+| Blackhole plots (linear/G402/stationary, tree/G402/burst) | ✅ data correct | PDR 1 -> 0 -> 1, root arrivals 6 -> 0 -> 6, attacker FR 0; PCA attack cluster separate |
+| Wormhole plots (star/G402/stationary) | ✅ data correct | root arrivals 6 -> 7/s in the attack (tunnel duplicate); LatencyHopRatio correlations ~0 after #75 |
+| Tunnel-end PCA | ❌ empty of its subject | every wormhole cell: "tunnel features INCLUDED: none survived" |
+| Correlation maps: ForwardingRatio / IngressEgressDelta | ❌ misleading | 51 strong r (abs >= 0.7) in 24 cells are between-board artifacts |
+| Distribution plots, right panel | ⚠️ layout | y-axis label longer than the panel: runs off the figure and over the title (all cells) |
+
+**Findings:**
+- **Stale tunnel-end plots (7 blackhole cells):** blackhole linear/G402/highload, linear/Yuchengco/highload, partial_mesh/G402/burst, tree/DLSU_Library/highload, tree/G402/burst, tree/G402/stationary, tree/Yuchengco/highload = exactly the cells that had a FAKE TunnelLatency before #75, so EDA drew a wormhole-only plot. Now skipped, but `plot_tunnel_end_projection` never deletes an old file.
+- **Tunnel-end PCA has no tunnel features:** it calls `run_dimensionality_reduction(exclude_tunnel=False)` but keeps `exclude_leaking=True`, and `leakage.py` lists TunnelIntensity / TunnelBytes / TunnelLatency as role-gated leaks - so the plot titled "separability WITH the tunnel features" is built without them (eda.py:1323 vs leakage.py:117).
+- **Correlation artifact:** ForwardingRatio / IngressEgressDelta exist only on forwarding boards; in the attack phase that is often 2 boards. blackhole/tree/G402/burst attack: FR vs RSSI_mean r = +0.95 from attacker 1C38 (FR 0, -71 dBm) vs relay E618 (FR 1, -64 dBm); WITHIN each board r = 0 / undefined. Signs flip between cells (+0.82 / -0.93) - the value says which board is the attacker, not a feature relationship. 31 attack, 12 baseline, 8 all-phase cases.
+- Not checked visually: all 1,170 images one by one (sampled every plot type on 3 cells + programmatic checks on all).
+
+**Verdict: ⚠️ the plotted DATA is correct; 3 plot problems: 7 stale tunnel-end plots (delete), tunnel-end PCA missing its tunnel features, FR/IED correlations misleading in 24 cells (do not quote them; checklist B-corr). Plus a cosmetic label overflow.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #76 — Oct 21, 2026 · ~11:30 AM — re-analysis of all 61 cells to fill MacRetryRate (B-mrr)
+
+> **Requested by:** Angelo · **Laptop:** Angelo's (44 sniffer captures in `datasets/PCAP`) · **Commit:** `357d91f` + uncommitted `tools/pcap_retry.py`
+> **Request:** "re-run analysis on all cells to fill MacRetryRate"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | r1 | every analysed cell (61) | `datasets/analysis/**`, `datasets/PCAP/**/*_retry.json` |
+
+| Check | Result | Detail |
+|---|---|---|
+| analyze.ps1 -SkipTrim on all 61 cells | ✅ 61/61 exit 0 | ~1 min each |
+| Sniffer captures with retry data | ⚠️ 12 / 44 (was 7) | bug fixed, see findings |
+| Cells with MacRetryRate | ⚠️ 10 / 61 (was 6) | + blackhole linear/Yuchengco/stationary, tree/G402/burst, tree/G402/highload, tree/G402/stationary |
+| Latency fix (#75) after re-analysis | ✅ | no cell > 2 % victim windows over 1 s/hop or TunnelLatency > 5 s except baseline/linear/home/highload (real congestion, test data) |
+| Root-clock alignment for wormhole captures | ❌ not usable | on 4 blackhole runs with both, the fitted attack start is 31-39 s AFTER the root's SET_TIME banner time |
+
+**Findings:**
+- **Bug fixed - `tools/pcap_retry.py`:** GUI run logs (`NIS16 Capture Studio run log - ...`) have no `Start time:` transcript line, so `started` was None and every GUI-era capture was refused as "no run log started within 20 min". New `_log_started()` takes the start from the log's file-name stamp (`_oct20_1008PM`; the header date is locale-dependent: 20/10/2026 vs 10/20/2026). 29 cached refusals of that kind were deleted and rebuilt.
+- **Wormhole captures (19) stay empty:** only blackhole runs can be aligned from traffic (the attacker's uplink step). The root clock (`--trust-stamp`) is 31-39 s behind the fit even with a laptop-set clock, which would put attack windows in the wrong phase. A wormhole traffic fit (end A's uplink should rise during the attack) is a possible next step - not built.
+- Other refusals: incomplete runs (no attack/cooldown in the root log), no root log on this laptop (tree/G402 oct. 2 / oct. 17 / oct. 19 10:44 AM), exports missing, partial_mesh/DLSU_Library/highload 4:46 PM (no attack step). partial_mesh/DLSU_Library/highload 3:13 PM is usable but not the run the cell holds, so the cell stays NaN.
+- `star-wormhole-highload-g402_r1_oct21_0137AM.pcap` (the Library run done with the G402 preset) moved to `PCAP/wormhole/star/DLSU_Library/highload/` as `..._dlsu_library_r1_oct21_0137AM.pcap` (+ MOVED note; PCAP is local, not committed).
+- The 45 cells not in #75 also changed slightly: their stabilise (phase 255) windows lost LatencyHopRatio (the #75 fix), run-phase values unchanged.
+
+**Verdict: ⚠️ MacRetryRate 10/61 cells (all blackhole). B-mrr stays open for wormhole: needs a wormhole alignment method, not more captures.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #75 — Oct 21, 2026 · ~10:00 AM — teammate audit: impossible LatencyHopRatio / TunnelLatency (pre-run arrivals)
 
 > **Requested by:** Angelo (forwarding a classmate's audit of the S:\ copy) · **Laptop:** Angelo's · **Commit:** `e1380b7` + uncommitted `analysis/features.py`
