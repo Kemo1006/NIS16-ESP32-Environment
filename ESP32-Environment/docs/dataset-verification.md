@@ -15,6 +15,36 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #75 — Oct 21, 2026 · ~10:00 AM — teammate audit: impossible LatencyHopRatio / TunnelLatency (pre-run arrivals)
+
+> **Requested by:** Angelo (forwarding a classmate's audit of the S:\ copy) · **Laptop:** Angelo's · **Commit:** `e1380b7` + uncommitted `analysis/features.py`
+> **Request:** classmate's report "Why some feature-table columns are empty" - item 3: LatencyHopRatio 39,396 ms/hop and TunnelLatency 315 s in ~17 folders
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| all | all | all | all | r1 | every analysed cell (61 feature tables) | `datasets/analysis/**/feature_table.csv` + `datasets/exports/**/trimmed/*_arrivals.csv` |
+
+| Check | Result | Detail |
+|---|---|---|
+| Item 1: blanks are intentional (PDR, Tunnel*, LatencyHopRatio, RetryRate) | ✅ agreed | NaN = not measured, by design |
+| Item 2: MacRetryRate empty | ✅ known | 6/61 cells here - checklist B-mrr (132 PCAPs on this laptop) |
+| Item 3: impossible latency values | ❌ **CONFIRMED - 16 cells** (one fewer than the S:\ copy: wormhole/linear/Yuchengco/burst is 13 %, blackhole/star/G402/highload 1 %) | every fake duplicate pairs a ROOT phase-255 arrival with the run's same seq |
+| Clock jumps inside the run phases (after dropping 255) | ✅ none | only blackhole/linear/home/highload (5 repeats in one folder, test data) |
+| Fix: `features.compute_latency_features` drops root phase-255 arrivals | ✅ | broken cells 11-93 % -> 0 % victim windows > 1 s/hop (tree/G402/burst 1 % = 21 windows of 1.2-2.7 s in phases 0/3, real-size delays); blackhole TunnelLatency -> all NaN (was up to 270 s); wormhole TunnelLatency max 0.01-1.21 s, ~180 windows = the attack |
+| Unaffected cells unchanged | ✅ | run-phase LatencyHopRatio max change 0.005 ms/hop; only stabilise (255) windows lose their value (~10 %, excluded from analysis anyway) |
+| Attack verdicts | ✅ unaffected | verify_attack shows these two columns, does not score them (B-lat); DuplicateRate reads Node B rows only |
+
+**Findings:**
+- Cause (as the classmate found): the root logs probes while the boards still idle (root phase 255); the victims are then reset for the run, so seq restarts and their clocks restart. `compute_latency_features` (a) took each node's minimum latency from that idle period (different clock offset -> every value ~100-600 s / hops too high) and (b) grouped an idle seq with the run's same seq as a "duplicate" (100-600 s TunnelLatency, even in blackhole runs).
+- Affected (old % victim windows > 1 s/hop -> new): blackhole linear/G402/highload 63->0, linear/Yuchengco/highload 42->0, partial_mesh/G402/burst 58->0, partial_mesh/Yuchengco/stationary 21->0, tree/DLSU_Library/highload 18->0, tree/G402/burst 93->1, tree/G402/stationary 47->0, tree/Yuchengco/highload 11->0; wormhole linear/DLSU_Library/highload 82->0, linear/G402/burst 83->0, linear/Yuchengco/burst 13->0, linear/Yuchengco/highload 64->0, linear/Yuchengco/stationary 66->0, partial_mesh/G402/stationary 64->0, star/G402/highload 83->0, star/G402/stationary 83->0.
+- Fixed medians: 2-7 ms/hop (tree/DLSU_Library 14.6). baseline/linear/home/highload stays 15 % > 1 s/hop: real congestion (7-17 s), not this bug.
+- Classmate's item 4 (1C38 wormhole_b for 54 idle rows) = the auto-switch's provisional role before Phase 0 locks it - expected (wormhole_victim.c header).
+- **The saved feature tables / EDA still hold the old values until each affected cell is re-analysed** (`analyze.ps1` / GUI Analyze).
+
+**Verdict: ❌ -> ✅ after re-analysis: LatencyHopRatio + TunnelLatency were wrong in 16 cells; fixed in features.py (verified on all 61 cells). Re-analyse the 16 cells before quoting either feature (checklist B-lat255).**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #74 — Oct 21, 2026 · ~3:15 AM — new SCENARIO check in the attack verdict: was each run's scenario really applied?
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `dadccb3` + uncommitted `tools/attack_checks.py`, `tools/verify_attack.py`, `gui/CampaignVisual.ps1`

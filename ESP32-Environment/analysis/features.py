@@ -109,6 +109,9 @@ TUNNEL_FRAME_BYTES = 30
 # Used only as a fallback when a run has no root row to read it from.
 ROOT_LAYER_DEFAULT = 1
 
+# phase_id the firmware logs before the run's phases begin (idle/stabilise).
+PHASE_UNSET = 255
+
 # parent_mac the firmware writes when a node has no upstream link (detached).
 # A node in that state cannot be held responsible for undelivered probes.
 NO_PARENT_MAC = "00:00:00:00:00:00"
@@ -959,7 +962,18 @@ def compute_latency_features(
     if arrivals is None or "latency_us" not in arrivals.columns:
         return out
 
+    # PRE-RUN ARRIVALS OUT (oct. 21 2026, a teammate's audit). The root logs
+    # probes while the boards still idle (root phase 255); the victims are then
+    # reset for the run, so their seq numbers restart and their clocks restart.
+    # Kept, those rows (a) set each node's minimum latency from a different
+    # clock offset, so every LatencyHopRatio came out ~100-600 s / hops too
+    # high, and (b) pair an idle seq with the run's same seq as a fake
+    # "duplicate", a 100-600 s TunnelLatency even in blackhole runs. 17 of 61
+    # cells were hit; with these rows gone no duplicate spread exceeds ~1.2 s.
+    # The experiment's own windows (phase 0+) never need a root phase-255 row.
     a = arrivals.copy()
+    if "phase_id" in a.columns:
+        a = a[pd.to_numeric(a["phase_id"], errors="coerce") != PHASE_UNSET].copy()
     grp = ["_source_arrivals_file", "_src_mac_norm"]
 
     # ── LatencyHopRatio ──────────────────────────────────────────────
