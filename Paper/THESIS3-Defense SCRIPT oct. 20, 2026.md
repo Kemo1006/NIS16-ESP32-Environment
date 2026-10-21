@@ -203,6 +203,7 @@ One finding to flag early: the partial mesh behaved as a plain tree in all nine 
 **If asked / prep:**
 
 - Figures 4.17, 4.19, 4.21 and 4.23 in the paper.
+- "Did you tune ESP-MESH's parent switching?" Only for tree runs from Oct. 19 evening on (D-26: wait 3x longer on a weak parent before re-parenting). Of the processed tree runs, only G402 burst used it; the other seven ran stock ESP-MESH. D-26's effect is unproven (one run, and the earlier tree runs already had almost no parent switches during the attack). Say exactly that, and don't claim D-26 made the trees stable.
 
 ## Slide 15 — Slide 15
 

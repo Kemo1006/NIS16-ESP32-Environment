@@ -15,6 +15,98 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #81 — Oct 21, 2026 · ~12 AM — member's paper copy with the new Chapter 5: every Chapter 5 number recomputed, merged into v4
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `f22ee5cd`
+> **Request:** "check everything again the paper folder and plan folder like what we did 2 hrs ago" (`Plan/Paper-Editing/1-Working-Copy/All in one (CTHESIS3).docx`)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | all 4 | G402, DLSU_Library, Yuchengco | stationary, burst, highload | r1 | sep. 30 – oct. 19 | 36 feature tables as of `709e455` (the draft's snapshot) + the current tree/G402 burst/highload tables |
+
+| Check | Result | Detail |
+|---|---|---|
+| Which copy the member's file is | ⚠️ | an older copy (43 runs, MacBook, dev dates, no D-23…D-32) + a new Chapter 5; 143 of v3's 165 green-fixed paragraphs are missing from it |
+| Table 5.1 windows by phase | ✅ exact | 213,148 = 41,076 / 85,570 / 51,286 / 33,901 / 1,315 |
+| Table 5.2 boards behind / not behind | ✅ exact | 33/21, 18/36, 54/0, 20/33 (125/90); FE90 missing in tree/G402/burst |
+| Table 5.3 notes | ✅ | B768 94 s victim, neighbours 42 %, ED80 266/300 s, Yuchengco victim baseline 0.734, B768 no windows after +28 s |
+| Table 5.4 coverage | ✅ (method) | matches only when counted over ALL 213,148 windows (incl. pre-baseline) — said so in the text now |
+| Table 5.5 verifier checks | ✅ exact | FR 36/36 (1.000–1.004 → 0.000–0.007, \|z\| ≥ 22.9, median 115, 14 undefined), PDR 35/36, CS 31, IED 31, NFR 31 + 4 no data + 1 fail |
+| Verifier outcome tree/G402/burst (snapshot) | ⚠️ | VERDICT confirmed, but OUTCOME INCONCLUSIVE (MAJOR GAPS, FE90) — added to Table 5.3 |
+| Table 5.6 collapse / recovery | ✅ | 121 of 123 victims below 0.5 in their own first attack window; recovery median 2 s, max 3 s (from the last attack window); 1 silent board |
+| Table 5.7 single-feature audit | ✅ exact | `analysis/leakage.py` method: 0.871/0.997, 0.846/0.998, clock 0.802/0.800, missingness 0.990, 99.5 % |
+| Table 5.8 means + Cohen's d | ✅ | means exact; d = −16.55 uses √((s₁²+s₂²)/2), not the n-weighted pooled SD (−17.39) — wording changed |
+| §5.3 correlations | ✅ | same four pairs ≥ 0.5 in all / baseline / attack |
+| §5.4 clustering (spot check) | ✅ | pools 126,741 / 127,666 exact; 42 % bystander windows; ceiling 0.526 vs 0.528; K-Means REDUCED ARI 0.516 vs 0.515, victims 0.987 vs 0.991; FULL / no-PDR ≈ 0 |
+| REDUCED low-variance rule | ❌ | ">90 % identical values" keeps RSSI_stability (74.6 %); the stated rule does not produce the stated set → PENDING added |
+| Draft says re-analysed tree tables are not on GitHub | ❌ stale | pushed in `6fb00803`: burst now PASS (8 boards), highload CONFIRMED but INCONCLUSIVE (missing board role), windows 212,417 |
+| Member's 7-board highload limitation | ❌ outdated | sep. 30 home test; campus 8-board highload baseline and cooldown PDR 1.000 (lowest run 0.998). v2 had already deleted it (tracked) |
+
+**Verdict: ⚠️ Chapter 5 is computed correctly from its snapshot; 4 wording/method fixes + 1 stale note fixed in green. Merged into `…_8boards v4 (Chapter 5 merged and checked, oct. 21, 2026).docx` (v3 + the member's Chapter 5); the member's file is left as is. Action: rerun Chapter 5 on the current tables; the member says which low-variance filter was used.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #80 — Oct 21, 2026 · ~12:40 PM — paper Figure 5.4 (single-feature audit, three groups of nodes)
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `f4834e50`
+> **Request:** "check figure 5.4" (`Plan/Paper-Editing/1-Working-Copy/…_8boards v4 (Chapter 5 merged and checked, oct. 21, 2026).docx`, `word/media/image67.gif`)
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole | all 4 | G402, DLSU_Library, Yuchengco | stationary, burst, highload | r1 | sep. 30 – oct. 19 | 36 feature tables at `709e455` (draft snapshot, 213,148 rows) and at HEAD (212,417 rows); jitter + home excluded |
+
+| Check | Result | Detail |
+|---|---|---|
+| Who made the figure | ⚠️ | no repo script draws it (no "victims only" / "Single-feature audit" string in code); recomputed with `analysis/leakage.py` `single_feature_decidability`, label attack = 1, baseline + cooldown = 0 |
+| Groups | ✅ | all non-root = child + blackhole rows (149,191); child nodes = `node_role` child (127,680); victims only = child with `exposure` downstream (74,092) |
+| Bars, panel 1 (all non-root) | ✅ | PDR 0.871, LHR 0.846, FR 0.804, CS 0.803, IED 0.737, RetryRate 0.731, rest 0.699-0.700; majority 0.700 |
+| Bars, panel 2 (child nodes) | ✅ | PDR 0.871, LHR 0.846, FR = CS 0.717, rest 0.699-0.700; majority 0.700 |
+| Bars, panel 3 (victims only) | ✅ | LHR 0.998, PDR 0.997, rest 0.698-0.699; majority 0.699 — matches the paragraph |
+| Current data (HEAD) | ⚠️ minor | victims PDR 0.999, LHR 1.000, LHR missingness 0.992 (paragraph: 0.997 / 0.998 / 0.990); every other bar within ±0.002 — the picture does not change |
+| Colour of LatencyHopRatio | ❌ | text + Table 5.4: "kept out of the clustering"; figure: blue "analysed feature" (panels 1-2) and red "analysed feature that decides the label alone" (panel 3) |
+| Colour of FR / CS / IED | ⚠️ | blue "analysed" in panel 1, grey "kept out" in panels 2-3; Table 5.4: attacker-side record, kept out of the child-node clustering — caption does not explain the switch |
+| Panel names vs text | ⚠️ | text says "the nodes behind the attacker" and "three groups of nodes" but never names them; panel 1 includes the attacker's rows (why FR/CS reach 0.80 there) |
+| Image quality | ⚠️ | 779×362 GIF — low for print |
+
+**Findings:**
+- The numbers in the figure are right for the draft's snapshot; the drift on current data is ≤ 0.002 and does not change any conclusion.
+- The legend contradicts the text for LatencyHopRatio: the paper says it is kept out because its *missing* value gives away the label (0.990), but the figure marks it as an analysed feature, and in panel 3 as the one that "decides the label alone" next to PDR.
+
+**Verdict: ⚠️ figure data correct; fix the colours (LatencyHopRatio grey in all panels; FR/CS/IED consistent or explained), name the three groups in the text, re-export at print resolution. Logged as checklist B-fig54.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #79 — Oct 21, 2026 · ~11:25 AM — wormhole/star/DLSU_Library/burst: "how come there is no value" in the feature table + "is the dataset good"
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `f4834e50` (feature_table.csv unmodified vs HEAD, built after `1ccb3a6e` phase-255 latency fix)
+> **Request:** two screenshots of `feature_table.csv` (rows 98-131 = 0C80 pre_baseline, rows 1434-1467 = 1C38 attack) with blank columns — "how come there is no value … verify it" + "verify if the dataset is good or not"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | star | DLSU_Library | burst | r1 | oct. 21 ~10:01 AM run, exported 10:15-10:27 AM | root telem + arrivals, 7 children (E618 hub/A, 0C80 B, 5 plain), 6,118 feature rows |
+
+| Check | Result | Detail |
+|---|---|---|
+| Blank ForwardingRatio / IngressEgress / Consistency / Neighbour* | ✅ by design | filled only where `recv_count_delta > 0` (`features.py:191-212`) = the hub E618 (100 % in phases 0-3); star leaves relay nothing → NaN, not 0 |
+| Blank RetryRate (0C80 pre_baseline, screenshot 1) | ✅ by design | NaN when tx+retry = 0 (`features.py:515`); 0C80 sent 1 frame in its 312 pre-run windows |
+| Blank LatencyHopRatio in pre_baseline | ✅ by design | root phase-255 arrivals dropped (`features.py:974-976`, fix `1ccb3a6e`); children 99-100 % filled in attack |
+| Blank Tunnel* on child rows (screenshot 2) | ✅ by design | Tunnel features only for wormhole_a/b (`features.py:1291-1292`); TunnelLatency only on 0C80 (the duplicated sender), 99 % in attack |
+| Blank MacRetryRate everywhere | ✅ expected | no sniffer capture for wormhole/star (`datasets/PCAP/wormhole/` has partial_mesh only); context feature, not scored |
+| Gate 1 integrity | ✅ | 9 files, 9 PASS, 0 WARN; 180 duplicate deliveries from 0C80 in phase 2 |
+| Gate 2 topology `--expect star` | ✅ | hub E618 = wormhole A, 6 direct nodes, settled before Phase 0, no baseline re-routing |
+| Gate 3 attack | ✅ | WORMHOLE CONFIRMED 2/2 (TunnelIntensity 0 → 0.994, DuplicateRate 0 → 0.986), UART 178/178, CONFIDENCE STRONG, OUTCOME PASS |
+| Burst | ✅ | ED80 +292 extra probes (verify_burst); +296 in 10 s at 62 s into the attack (verify_attack) |
+| PDR plain children | ✅ | 1.0000 baseline and attack, all 5 |
+
+**Findings:**
+- None of the blanks is missing data. Every blank is a feature that is *undefined* for that board or phase, and the code writes NaN on purpose so "not applicable" is never read as a measured 0.
+- The `missing_firmware_fields` column says `ForwardingRatio,IngressEgressDelta,ConsistencyScore` on all 6,118 rows, including the hub rows that do have values. It is a fixed schema label (`features.py:134-144`), not a per-row flag — misleading when read in Excel.
+- E618 and 0C80 flip roles a/b in phase 255 (stabilisation) only; phases 0-3 are stable (same as #72). Cosmetic: integrity says "expected for the blackhole attacker" for E618 in a wormhole run.
+
+**Verdict: ✅ usable. The empty cells are role/phase-gated features, not a fault; the capture passes all three gates plus the burst check with STRONG confidence.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #78 — Oct 21, 2026 · ~12:30 PM — Campaign "Selected run" vs Verify page out of sync (blackhole/tree/Yuchengco/burst)
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `357d91f` + uncommitted (#75-#77, `run_gui.ps1`)

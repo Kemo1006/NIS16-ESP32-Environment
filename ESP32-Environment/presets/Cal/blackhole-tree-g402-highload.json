@@ -6,15 +6,33 @@
     "owner":  "Cal",
     "repeat":  1,
     "expectedChildren":  7,
-    "savedAt":  "2026-10-19 10:35",
+    "savedAt":  "2026-10-19 14:16",
     "boards":  [
                    {
-                       "Label":  "root",
-                       "Port":  "COM18",
-                       "Role":  "root",
-                       "Kind":  "root",
-                       "Display":  "ROOT (announces the phases)",
-                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "Label":  "node2",
+                       "Port":  "COM6",
+                       "Role":  "child",
+                       "Kind":  "attacker",
+                       "Display":  "blackhole ATTACKER",
+                       "Mac":  "20:50:0d:e7:1c:38",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node3",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node4",
+                       "Port":  "COM7",
+                       "Role":  "child",
+                       "Kind":  "victim",
+                       "Display":  "blackhole victim",
+                       "Mac":  "f4:2d:c9:73:e6:18",
                        "ScenarioTarget":  false
                    }
                ]

@@ -6,15 +6,15 @@
     "owner":  "Bas",
     "repeat":  1,
     "expectedChildren":  7,
-    "savedAt":  "2026-10-19 17:29",
+    "savedAt":  "2026-10-21 14:39",
     "boards":  [
                    {
-                       "Label":  "node4",
-                       "Port":  "COM3",
+                       "Label":  "node2",
+                       "Port":  "COM6",
                        "Role":  "child",
                        "Kind":  "control",
                        "Display":  "control (plain firmware)",
-                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "Mac":  "20:50:0d:e7:1c:38",
                        "ScenarioTarget":  false
                    },
                    {
@@ -27,12 +27,12 @@
                        "ScenarioTarget":  false
                    },
                    {
-                       "Label":  "node2",
-                       "Port":  "COM6",
+                       "Label":  "node4",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "B",
                        "Display":  "wormhole tunnel board 2 (entry/exit chosen automatically)",
-                       "Mac":  "20:50:0d:e7:1c:38",
+                       "Mac":  "f4:2d:c9:73:e6:18",
                        "ScenarioTarget":  false
                    }
                ]
