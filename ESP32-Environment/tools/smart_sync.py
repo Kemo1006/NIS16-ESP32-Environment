@@ -55,6 +55,7 @@ STATE = HOME / "sync_state.json"
 ROW_TOL = 2
 # push items that REMOVE a file on GitHub (oct. 21 2026: + "replaced" = the old capture of a re-captured run)
 DELETE_KINDS = ("delete", "replaced")
+BUSY_S = 120   # a file changed this recently is still being written - never sent
 
 
 def sha_blob(data):
@@ -562,6 +563,17 @@ def push_plan(ctx, area, lhash, rhash, hist, archived, deleted, rfp_cache):
         rsha = rhash.get(rel)
         if rsha == sha or same_remote_cached(ctx, area, rel, sha, rsha):
             continue                                     # identical on GitHub
+        try:
+            busy = time.time() - p.stat().st_mtime < BUSY_S
+        except OSError:
+            busy = False
+        if busy:
+            # oct. 21 2026: a run log growing during a live capture failed the whole sync at
+            # the byte-for-byte check ("committed bytes differ") - hold it back instead
+            items.append(dict(it, kind="busy", act="skip",
+                              why="still being written (changed in the last {} s - a capture or analysis is "
+                                  "running); it goes in the next sync".format(BUSY_S)))
+            continue
         data = canon(area, rel, p.read_bytes())          # only files that really differ are read
         it["size"] = len(data)
         repo_path = ctx.prefix + rel

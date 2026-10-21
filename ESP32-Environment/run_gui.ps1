@@ -6428,6 +6428,7 @@ $script:SyncLook = @{
     differ     = @{ Text = 'YOURS DIFFERS';      Bg = '#3A2E14'; Fg = $Pal.Amber }
     delete     = @{ Text = 'DELETE ON GITHUB';   Bg = '#3A1E2C'; Fg = $Pal.Red }
     replaced   = @{ Text = 'OLD RUN - REPLACED'; Bg = '#3A2E14'; Fg = $Pal.Amber }
+    busy       = @{ Text = 'BEING WRITTEN';      Bg = '#14304A'; Fg = $Pal.Cyan }
     deletedhere = @{ Text = 'YOU DELETED IT';    Bg = '#2A2E48'; Fg = $Pal.Dim }
     deleteconflict = @{ Text = 'DELETED HERE, CHANGED THERE'; Bg = '#3A2E14'; Fg = $Pal.Amber }
 }
