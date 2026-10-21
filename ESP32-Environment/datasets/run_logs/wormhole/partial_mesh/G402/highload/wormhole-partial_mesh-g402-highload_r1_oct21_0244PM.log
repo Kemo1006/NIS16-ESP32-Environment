@@ -1,0 +1,38 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-g402-highload.json - 21/10/2026 2:44:52 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\wormhole-partial_mesh-g402-highload_r1_oct21_0244PM.log
+
+> Parallel flash: 3 children, 3 at a time   (02:44:52 pm)
+  node2 on COM6: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node2_COM6_flash_oct21_0244pm.log)
+  node2: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node3 on COM4: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node3_COM4_flash_oct21_0245pm.log)
+  node2: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node3: SCENARIO_CHECK: OK highload
+  node3: LOCATION_CHECK: OK G402
+  node4 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node4_COM3_flash_oct21_0245pm.log)
+  node2: Hash of data verified.
+  node4: SCENARIO_CHECK: OK highload
+  node4: LOCATION_CHECK: OK G402
+  node3: Hash of data verified.
+  node4: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: FLASH_ONLY_DONE: COM4 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node3 (COM4) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node3_COM4_serial_oct21_0245pm.log
+  node3 on COM4: flashed + started in 35 sec
+  node2: SCENARIO_CHECK: OK highload
+  node2: LOCATION_CHECK: OK G402
+  node2: FLASH_ONLY_DONE: COM6 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node2_COM6_serial_oct21_0245pm.log
+  node2 on COM6: flashed + started in 49 sec
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node4_COM3_serial_oct21_0245pm.log
+  node4 on COM3: flashed + started in 35 sec
+  parallel flash: 3 of 3 children flashed in 51 sec
+All boards done in 6 min 05 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\G402\highload

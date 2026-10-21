@@ -1,0 +1,13 @@
+collect_run.py --ports COM3,COM4,COM6 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-21 02:07 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --expect-mac COM3=F42DC973E618;COM4=20500DE70C80;COM6=20500DE71C38 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmpC865.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect-scan_oct21_020706pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r1_b2_telem.csv (7419 rows, ran 2026-10-21 13:43:14)
+
+-- COM4: reading the card ...
+COLLECT: COM4 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r2_b68_telem.csv (6655 rows, ran 2026-10-21 13:42:54)
+
+-- COM6: reading the card ...
+COLLECT: COM6 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r2_b2_telem.csv (8054 rows, ran 2026-10-21 13:42:42)
+
+COLLECT_SUMMARY: ok=3 skip=0 fail=0
