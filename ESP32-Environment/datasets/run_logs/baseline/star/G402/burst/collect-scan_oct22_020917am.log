@@ -1,0 +1,25 @@
+collect_run.py --ports COM3,COM5,COM6,COM7,COM9,COM10,COM14 --attack none --topology star --location G402 --scenario burst --repeat 1 --since 2026-10-21 14:09 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-star-g402-burst.json --expect-mac COM3=20500DE70C80;COM5=B4BFE934ED80;COM6=704BCA25B768;COM7=2805A532D7B4;COM9=F42DC973E618;COM10=20500DE71C38;COM14=B4BFE932FE90 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp84B8.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\star\G402\burst\collect-scan_oct22_020917am.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r1_b2_telem.csv (6739 rows, ran 2026-10-22 01:24:00)
+
+-- COM5: reading the card ...
+COLLECT: COM5 B4BFE934ED80 OK would copy victim_NODE_B4BFE934ED80_r1_b2_telem.csv (6636 rows, ran 2026-10-22 01:26:40)
+
+-- COM6: reading the card ...
+COLLECT: COM6 704BCA25B768 OK would copy victim_NODE_704BCA25B768_r1_b2_telem.csv (6689 rows, ran 2026-10-22 01:26:40)
+
+-- COM7: reading the card ...
+COLLECT: COM7 2805A532D7B4 OK would copy victim_NODE_2805A532D7B4_r1_b2_telem.csv (6740 rows, ran 2026-10-22 01:25:30)
+
+-- COM9: reading the card ...
+COLLECT: COM9 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r1_b2_telem.csv (6739 rows, ran 2026-10-22 01:25:32)
+
+-- COM10: reading the card ...
+COLLECT: COM10 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r1_b2_telem.csv (6740 rows, ran 2026-10-22 01:24:58)
+
+-- COM14: reading the card ...
+COLLECT: COM14 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r1_b2_telem.csv (6739 rows, ran 2026-10-22 01:26:26)
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0

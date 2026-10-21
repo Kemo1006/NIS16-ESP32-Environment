@@ -1,0 +1,1582 @@
+NIS16 Capture Studio run log - baseline-linear-yuchengco-stationary.json - 22/10/2026 12:14:49 am
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\Yuchengco\stationary\baseline-linear-yuchengco-stationary_r1_oct22_1214AM.log
+  sniffer check: nothing recording - the root waits
+  sniffer check: recording - flashing the root
+
+> root  -  ROOT  -  ROOT (announces the phases) on COM6   .\run.ps1 -Port COM6 -Role root -Label root -Topology linear -Location Yuchengco -Repeat 1 -Scenario stationary -Wipe -Flash -Attack none -Export -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18 -SharedBuild   (12:15:03 am)
+Setting COM6's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: OK stationary
+LOCATION_CHECK: OK Yuchengco
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-22 00:15:05 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM6 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM6
+Connecting......
+Connecting......
+Connecting.......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 4.4 seconds.
+Hard resetting via RTS pin...
+Board: root (on COM6, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM6 (topology=linear, attack=none, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_none_linear_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Executing action: flash
+Running ninja in directory C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_none_linear_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_none_linear_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_none_linear_GUI/partition_table/partition-table.bin C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_none_linear_GUI/root_node.bin"
+root_node.bin binary size 0x120160 bytes. Smallest app partition is 0x180000 bytes. 0x5fea0 bytes (25%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_none_linear_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_none_linear_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x68e0 bytes. 0x720 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.5 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_none_linear_GUI -P C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM6 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 root_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM6
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00130fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 424.1 kbit/s)...
+Hash of data verified.
+Compressed 1180000 bytes to 734902...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bd2b... (4 %)
+Writing at 0x000295d6... (6 %)
+Writing at 0x00033063... (8 %)
+Writing at 0x0003f4b6... (11 %)
+Writing at 0x000483f8... (13 %)
+Writing at 0x0004dd36... (15 %)
+Writing at 0x00053cef... (17 %)
+Writing at 0x000598cf... (20 %)
+Writing at 0x0005f080... (22 %)
+Writing at 0x00064974... (24 %)
+Writing at 0x0006a397... (26 %)
+Writing at 0x00070289... (28 %)
+Writing at 0x00075e76... (31 %)
+Writing at 0x0007c0f3... (33 %)
+Writing at 0x000820de... (35 %)
+Writing at 0x00087ca1... (37 %)
+Writing at 0x0008dd9d... (40 %)
+Writing at 0x000936ae... (42 %)
+Writing at 0x00098dfe... (44 %)
+Writing at 0x0009e5a4... (46 %)
+Writing at 0x000a3b39... (48 %)
+Writing at 0x000a94f8... (51 %)
+Writing at 0x000aebd6... (53 %)
+Writing at 0x000b429e... (55 %)
+Writing at 0x000b9864... (57 %)
+Writing at 0x000bf259... (60 %)
+Writing at 0x000c4fd8... (62 %)
+Writing at 0x000caa9d... (64 %)
+Writing at 0x000d01cf... (66 %)
+Writing at 0x000d5c72... (68 %)
+Writing at 0x000dbc69... (71 %)
+Writing at 0x000e13f7... (73 %)
+Writing at 0x000e7026... (75 %)
+Writing at 0x000ecd87... (77 %)
+Writing at 0x000f26fd... (80 %)
+Writing at 0x000f8472... (82 %)
+Writing at 0x000fdfc2... (84 %)
+Writing at 0x00103a79... (86 %)
+Writing at 0x00109ffa... (88 %)
+Writing at 0x001140ac... (91 %)
+Writing at 0x00119dcd... (93 %)
+Writing at 0x0011f866... (95 %)
+Writing at 0x00125b13... (97 %)
+Writing at 0x0012b505... (100 %)
+Wrote 1180000 bytes (734902 compressed) at 0x00010000 in 17.6 seconds (effective 535.4 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1716.2 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2429.2 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM6 at 115200 baud
+I (503) esp_image: segment 4: paddr=001209a0 vaddr=4008b33c size=0f790h ( 63376) load
+I (541) boot: Loaded app from partition at offset 0x10000
+I (545) boot: Set actual ota_seq=1 in otadata[0]
+I (545) boot: Disabling RNG early entropy source...
+I (559) cpu_start: Multicore app
+I (567) cpu_start: Pro cpu start user code
+I (568) cpu_start: cpu freq: 160000000 Hz
+I (568) app_init: Application information:
+I (570) app_init: Project name:     root_node
+I (576) app_init: App version:      backup/angelo-2026-10-01-333-g9
+I (582) app_init: Compile time:     Oct 21 2026 23:55:58
+I (588) app_init: ELF file SHA256:  054a75f25...
+I (594) app_init: ESP-IDF:          v5.3.5
+I (599) efuse_init: Min chip rev:     v0.0
+I (603) efuse_init: Max chip rev:     v3.99 
+I (608) efuse_init: Chip rev:         v3.1
+I (613) heap_init: Initializing. RAM available for dynamic allocation:
+I (620) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (626) heap_init: At 3FFBC4C0 len 00023B40 (142 KiB): DRAM
+I (633) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (639) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (645) heap_init: At 4009AACC len 00005534 (21 KiB): IRAM
+I (653) spi_flash: detected chip: generic
+I (656) spi_flash: flash io: dio
+I (661) main_task: Started on CPU0
+I (671) main_task: Calling app_main()
+I (671) ROOT_MAIN: === ROOT NODE STARTING ===
+I (671) SD_STATUS: clock seeded from build stamp 2026-10-21 23:55:58 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (681) SD_STATUS: Reset reason: POWERON
+I (691) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (691) sdspi_transaction: cmd=52, R1 response: command not supported
+I (741) sdspi_transaction: cmd=5, R1 response: command not supported
+I (771) SD_STATUS: clock: set from the card's host anchor -> 2026-10-22 00:15:05 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_B0CBD8F33218) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.3.5
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-22 00:15:05 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  Recorded scenario: stationary
+[5] ENVIRONMENT
+  Build attack: baseline
+  Build topology: linear
+  Firmware built: 2026-10-21 23:55:58
+  Run started: 2026-10-22 00:15:05 PHT (clock: host)
+  Recorded location: Yuchengco
+  Node: NODE_B0CBD8F33218 (MAC B0:CB:D8:F3:32:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 3
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+I (1521) ROOT_MAIN: SD ENV: OK -- /sdcard/baseline/linear/Yuchengco/status_NODE_B0CBD8F33218.txt
+I (1531) NODE_ID: Identity: "Board-B0:18" role=ROOT mac=b0:cb:d8:f3:32:18 (via MAC (no node_config.txt nickname))
+I (1571) wifi:wifi driver task: 3ffcba9c, prio:23, stack:6656, core=0
+I (1571) wifi:wifi firmware version: 18db208
+I (1571) wifi:wifi certification version: v7.0
+I (1571) wifi:config NVS flash: enabled
+I (1571) wifi:config nano formating: disabled
+I (1581) wifi:Init data frame dynamic rx buffer num: 32
+I (1581) wifi:Init static rx mgmt buffer num: 5
+I (1591) wifi:Init management short buffer num: 32
+I (1591) wifi:Init dynamic tx buffer num: 32
+I (1591) wifi:Init static rx buffer size: 1600
+I (1601) wifi:Init static rx buffer num: 10
+I (1601) wifi:Init dynamic rx buffer num: 32
+I (1611) wifi_init: rx ba win: 6
+I (1611) wifi_init: accept mbox: 6
+I (1611) wifi_init: tcpip mbox: 32
+I (1621) wifi_init: udp mbox: 6
+I (1621) wifi_init: tcp mbox: 6
+I (1631) wifi_init: tcp tx win: 5760
+I (1631) wifi_init: tcp rx win: 5760
+I (1631) wifi_init: tcp mss: 1440
+I (1641) wifi_init: WiFi IRAM OP enabled
+I (1641) wifi_init: WiFi RX IRAM OP enabled
+I (1651) wifi:Set ps type: 0, coexist: 0
+I (1661) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1661) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1671) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1751) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1761) wifi:mode : sta (b0:cb:d8:f3:32:18) + softAP (b0:cb:d8:f3:32:19)
+I (1761) wifi:enable tsf
+I (1771) wifi:Total power save buffer number: 16
+I (1771) wifi:Init max length of beacon: 752/752
+I (1771) wifi:Init max length of beacon: 752/752
+I (1781) mesh: <nvs>read layer:0, err:0x1102
+I (1781) mesh: <nvs>read assoc:0, err:0x1102
+I (1781) MESH_SETUP: Topology shaping: LINEAR (max_layer=1000, max_children=1)
+I (1791) wifi:Set ps type: 0, coexist: 0
+I (1791) mesh: [IO]disable self-organizing<stop reconnect>
+I (1801) mesh: [IO]disable self-organizing<reconnect>
+I (1801) mesh: [CONFIG]invalid router settings, ssid_len:0, ssid:, bssid:00:00:00:00:00:00
+I (1831) wifi:Total power save buffer number: 16
+I (2091) MESH_SETUP: Root mesh RX queue: 64 (default 32).
+I (2091) mesh: [MANUAL]designated as root and router is not set
+I (2091) MESH_SETUP: Mesh stack started.
+I (2091) MESH_SETUP: Mesh started. Node ID: NODE_B0CBD8F33218  Role: 0
+I (2831) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (2831) wifi:station: b4:bf:e9:32:fe:90 join, AID=1, bgn, 20
+I (2841) MESH_SETUP: Routing table updated (node added).
+I (2841) MESH_SETUP: ==============================
+I (2851) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2851) MESH_SETUP: ==============================
+I (2861) MESH_SETUP: Child connected: aid=1 MAC=b4:bf:e9:32:fe:90
+I (2861) MESH_SETUP: ==============================
+I (2871) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2871) MESH_SETUP: ==============================
+I (2881) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (2891) MESH_SETUP: Mesh connected. Layer: 1  Root: NO
+I (2901) ROOT_MAIN: Node ID: NODE_B0CBD8F33218   Run ID: RUN_001
+I (2901) PHASE_LISTENER: Phase listener task running.
+I (2911) PHASE_LISTENER: Phase listener started.
+I (2911) MESH_SETUP: =================================================================
+I (2921) MESH_SETUP:  MESH TOPOLOGY
+I (2921) MESH_SETUP:  TYPE        : LINEAR
+I (2931) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (2931) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (2941) MESH_SETUP:  REACHABLE   : 0x01 (1)
+I (2941) MESH_SETUP:  STATUS      : OK
+I (2951) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18
+I (2961) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (2961) MESH_SETUP:  SD LOGGING  : 0/1 board(s) writing to their SD card (the rest run older firmware - not reported)
+I (2981) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=NA uart=NA age=0 up=0 rssi=0
+I (2981) MESH_SETUP: -----------------------------------------------------------------
+I (2991) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (3001) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (3011) MESH_SETUP:  n/a = no parent link to measure (root)
+I (3021) MESH_SETUP: =================================================================
+W (3031) SPIFFS: mount failed, -10025. formatting...
+I (5991) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
+I (5991) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
+I (6181) CSV_LOGGER: Arrivals file:  /spiffs/arrivals.csv
+I (6401) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.
+I (6411) CSV_LOGGER: Logger ready. Role: root
+I (6421) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY
+===========You can ctrl + ] to export the data=========
+I (6461) CSV_LOGGER: CSV export task started on init (debug).
+I (6461) ROOT_MAIN: Logging to: /spiffs/telem.csv
+I (6471) ROOT_MAIN: Probe sink + heartbeat table registered (via phase-listener dispatch).
+I (6481) ROOT_MAIN: Telemetry task running at 100 ms interval.
+I (6481) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)
+I (6491) MESH_SETUP: Heartbeat sender running at 7000 ms interval.
+I (6501) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...
+I (6511) ROOT_MAIN: [CTRL] Sending PREPARE every 5 s so children log the stabilisation window.
+I (6511) MESH_SETUP: =================================================================
+I (6521) MESH_SETUP:  MESH TOPOLOGY
+I (6531) MESH_SETUP:  TYPE        : LINEAR
+I (6531) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (6541) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (6541) MESH_SETUP:  REACHABLE   : 0x01 (1)
+I (6551) MESH_SETUP:  STATUS      : OK
+I (6551) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18
+I (6561) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (6571) MESH_SETUP:  SD LOGGING  : 1/1 board(s) writing to their SD card
+I (6581) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=0 up=0 rssi=0
+I (6591) MESH_SETUP: -----------------------------------------------------------------
+I (6591) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (6601) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (6611) MESH_SETUP:  n/a = no parent link to measure (root)
+I (6621) MESH_SETUP: =================================================================
+I (6631) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.
+I (6641) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.
+I (6671) CSV_LOGGER: SD mirror: /sdcard/baseline/linear/Yuchengco/root_NODE_B0CBD8F33218_r3_b3_arrivals.csv
+I (6701) CSV_LOGGER: SD mirror: /sdcard/baseline/linear/Yuchengco/root_NODE_B0CBD8F33218_r3_b3_telem.csv
+I (7371) MESH_SETUP: Routing table updated (node added).
+I (7371) MESH_SETUP: ==============================
+I (7381) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (7381) MESH_SETUP: ==============================
+I (8701) MESH_SETUP: ==================================================================
+I (8701) MESH_SETUP:  MESH TOPOLOGY
+I (8701) MESH_SETUP:  TYPE        : LINEAR
+I (8711) MESH_SETUP:  NODE COUNT  : 0x02 (2)
+I (8711) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (8721) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (8721) MESH_SETUP:  STATUS      : WARN
+I (8731) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18; 1 node(s) not attached to the root
+I (8741) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (8751) MESH_SETUP:  SD LOGGING  : 2/2 board(s) writing to their SD card
+I (8761) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=2 up=0 rssi=0
+I (8761) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=0 up=483 rssi=-71
+I (8771) MESH_SETUP: ------------------------------------------------------------------
+I (8781) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (8791) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (8801) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       0  not yet
+I (8811) MESH_SETUP:  n/a = no parent link to measure (root)
+I (8811) MESH_SETUP: ------------------------------------------------------------------
+I (8821) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (8831) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (8841) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (8851) MESH_SETUP: ------------------------------------------------------------------
+I (8851) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (8861) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (8871) MESH_SETUP: ==================================================================
+I (9881) MESH_SETUP: ==================================================================
+I (9881) MESH_SETUP:  MESH TOPOLOGY
+I (9881) MESH_SETUP:  TYPE        : LINEAR
+I (9881) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (9891) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (9891) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (9901) MESH_SETUP:  STATUS      : WARN
+I (9901) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18; 2 node(s) not attached to the root
+I (9921) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (9921) MESH_SETUP:  SD LOGGING  : 3/3 board(s) writing to their SD card
+I (9931) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=3 up=0 rssi=0
+I (9941) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=1 up=483 rssi=-71
+I (9951) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=0 up=855 rssi=-67
+I (9961) MESH_SETUP: ------------------------------------------------------------------
+I (9961) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (9971) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       3  not yet
+I (9981) MESH_SETUP:  H--   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       0  not yet
+I (9991) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       1  not yet
+I (10001) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10011) MESH_SETUP: ------------------------------------------------------------------
+I (10011) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10021) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10031) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (10041) MESH_SETUP: ------------------------------------------------------------------
+I (10051) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10061) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (10061) MESH_SETUP: ==================================================================
+I (10301) MESH_SETUP: ==================================================================
+I (10301) MESH_SETUP:  MESH TOPOLOGY
+I (10301) MESH_SETUP:  TYPE        : LINEAR
+I (10311) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (10311) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (10321) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (10321) MESH_SETUP:  STATUS      : WARN
+I (10331) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18; 3 node(s) not attached to the root
+I (10341) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10351) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (10351) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=3 up=0 rssi=0
+I (10361) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=1 up=483 rssi=-71
+I (10371) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=0 up=855 rssi=-67
+I (10381) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=835 rssi=-87
+I (10391) MESH_SETUP: ------------------------------------------------------------------
+I (10401) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (10411) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       3  not yet
+I (10411) MESH_SETUP:  H--   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       0  not yet
+I (10421) MESH_SETUP:  H--   70:4B:CA:25:B7:68  CHILD   -87  0xFF UNSET       0  not yet
+I (10431) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       1  not yet
+I (10441) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10451) MESH_SETUP: ------------------------------------------------------------------
+I (10461) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10461) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (10471) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (10481) MESH_SETUP: ------------------------------------------------------------------
+I (10491) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10501) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (10501) MESH_SETUP: ==================================================================
+I (12601) MESH_SETUP: ==================================================================
+I (12601) MESH_SETUP:  MESH TOPOLOGY
+I (12601) MESH_SETUP:  TYPE        : LINEAR
+I (12601) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (12611) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (12611) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (12621) MESH_SETUP:  STATUS      : WARN
+I (12621) MESH_SETUP:  DETAIL      : chain of 4 node(s), B0:CB:D8:F3:32:18 .. 20:50:0D:E7:0C:80; 1 node(s) not attached to the root
+I (12641) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (12641) MESH_SETUP:  SD LOGGING  : 5/5 board(s) writing to their SD card
+I (12651) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=6 up=0 rssi=0
+I (12661) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=3 up=483 rssi=-71
+I (12671) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=2 up=855 rssi=-67
+I (12681) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=2 up=835 rssi=-87
+I (12681) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=846 rssi=-69
+I (12691) MESH_SETUP: ------------------------------------------------------------------
+I (12701) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (12711) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       5  not yet
+I (12721) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       0  not yet
+I (12731) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -87  0xFF UNSET       2  not yet
+I (12741) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       2  not yet
+I (12751) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       3  not yet
+I (12751) MESH_SETUP:  n/a = no parent link to measure (root)
+I (12761) MESH_SETUP: ------------------------------------------------------------------
+I (12771) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (12781) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (12781) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (12791) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (12801) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (12811) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x00
+I (12821) MESH_SETUP: ------------------------------------------------------------------
+I (12831) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (12841) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (12841) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (12851) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (12851) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (12861) MESH_SETUP: ==================================================================
+I (13401) MESH_SETUP: ==================================================================
+I (13401) MESH_SETUP:  MESH TOPOLOGY
+I (13401) MESH_SETUP:  TYPE        : LINEAR
+I (13401) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (13411) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (13411) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (13421) MESH_SETUP:  STATUS      : OK
+I (13421) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (13431) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13441) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (13451) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=6 up=0 rssi=0
+I (13461) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=4 up=483 rssi=-71
+I (13461) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=3 up=855 rssi=-67
+I (13471) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=3 up=835 rssi=-87
+I (13481) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=846 rssi=-69
+I (13491) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=848 rssi=-75
+I (13501) MESH_SETUP: ------------------------------------------------------------------
+I (13511) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (13521) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       6  not yet
+I (13521) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       0  not yet
+I (13531) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -87  0xFF UNSET       3  not yet
+I (13541) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       3  not yet
+I (13551) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -75  0xFF UNSET       0  not yet
+I (13561) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       4  not yet
+I (13571) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13571) MESH_SETUP: ------------------------------------------------------------------
+I (13581) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13591) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (13601) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (13611) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (13611) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (13621) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (13631) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (13641) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (13651) MESH_SETUP: ------------------------------------------------------------------
+I (13651) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13661) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (13671) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (13681) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (13681) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (13691) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (13701) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (13701) MESH_SETUP: ==================================================================
+I (13711) MESH_SETUP: ==================================================================
+I (13721) MESH_SETUP:  MESH TOPOLOGY
+I (13731) MESH_SETUP:  TYPE        : LINEAR
+I (13731) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (13741) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (13741) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (13751) MESH_SETUP:  STATUS      : OK
+I (13751) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (13761) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13771) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (13771) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=7 rssi=0
+I (13781) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=5 up=483 rssi=-71
+I (13791) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=3 up=855 rssi=-67
+I (13801) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=3 up=835 rssi=-87
+I (13811) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=846 rssi=-69
+I (13821) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=848 rssi=-75
+I (13831) MESH_SETUP: ------------------------------------------------------------------
+I (13831) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (13841) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (13851) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       1  not yet
+I (13861) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -87  0xFF UNSET       3  not yet
+I (13871) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       3  not yet
+I (13881) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -75  0xFF UNSET       0  not yet
+I (13891) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -71  0xFF UNSET       5  not yet
+I (13901) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13901) MESH_SETUP: ------------------------------------------------------------------
+I (13911) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13921) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (13931) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (13931) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (13941) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (13951) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (13961) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (13961) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (13971) MESH_SETUP: ------------------------------------------------------------------
+I (13981) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13991) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (14001) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (14001) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (14011) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (14021) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (14021) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (14031) MESH_SETUP: ==================================================================
+I (28041) MESH_SETUP: ==================================================================
+I (28041) MESH_SETUP:  MESH TOPOLOGY
+I (28051) MESH_SETUP:  TYPE        : LINEAR
+I (28051) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (28061) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (28061) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (28071) MESH_SETUP:  STATUS      : OK
+I (28071) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (28081) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (28091) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (28101) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=21 rssi=0
+I (28101) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=5 up=497 rssi=-77
+I (28111) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=4 up=869 rssi=-67
+I (28121) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=3 up=849 rssi=-85
+I (28131) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=860 rssi=-69
+I (28141) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=862 rssi=-78
+I (28151) MESH_SETUP: ------------------------------------------------------------------
+I (28151) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (28161) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (28171) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       1  not yet
+I (28181) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -85  0xFF UNSET       3  not yet
+I (28191) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       4  not yet
+I (28201) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       0  not yet
+I (28211) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -77  0xFF UNSET       5  not yet
+I (28221) MESH_SETUP:  n/a = no parent link to measure (root)
+I (28221) MESH_SETUP: ------------------------------------------------------------------
+I (28231) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (28241) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (28251) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (28251) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (28261) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (28271) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (28281) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (28291) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (28291) MESH_SETUP: ------------------------------------------------------------------
+I (28301) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (28311) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (28321) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (28321) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (28331) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (28341) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (28341) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (28351) MESH_SETUP: ==================================================================
+I (36491) HEALTH: [HEALTH] up=35s heap=58972 min=56580 big=57344 | stack free(B): telemetry=1120 phase_listener=2972 phase_resync=5592 heartbeat=3040 csv_export=3776 arr_writer=3700 exp_ctrl=6344 sd_recover=3524 ipc0=1488 ipc1=1520
+I (42361) MESH_SETUP: ==================================================================
+I (42361) MESH_SETUP:  MESH TOPOLOGY
+I (42371) MESH_SETUP:  TYPE        : LINEAR
+I (42371) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (42381) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (42381) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (42391) MESH_SETUP:  STATUS      : OK
+I (42391) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (42401) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (42411) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (42411) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=35 rssi=0
+I (42421) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=5 up=511 rssi=-76
+I (42431) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=4 up=883 rssi=-67
+I (42441) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=863 rssi=-86
+I (42451) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=874 rssi=-73
+I (42461) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=876 rssi=-81
+I (42471) MESH_SETUP: ------------------------------------------------------------------
+I (42471) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (42481) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (42491) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -73  0xFF UNSET       1  not yet
+I (42501) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -86  0xFF UNSET       4  not yet
+I (42511) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -67  0xFF UNSET       4  not yet
+I (42521) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -81  0xFF UNSET       0  not yet
+I (42531) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -76  0xFF UNSET       5  not yet
+I (42541) MESH_SETUP:  n/a = no parent link to measure (root)
+I (42541) MESH_SETUP: ------------------------------------------------------------------
+I (42551) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (42561) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (42571) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (42571) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (42581) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (42591) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (42601) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (42611) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (42611) MESH_SETUP: ------------------------------------------------------------------
+I (42621) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (42631) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (42641) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (42641) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (42651) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (42661) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (42661) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (42671) MESH_SETUP: ==================================================================
+W (46651) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 31 ms) over the last 200 probes | Waiting-to-save line: longest 3 of 256, 0 lost so far | Mesh incoming buffer: longest 3 of 64 | Test phase: other
+I (56681) MESH_SETUP: ==================================================================
+I (56681) MESH_SETUP:  MESH TOPOLOGY
+I (56681) MESH_SETUP:  TYPE        : LINEAR
+I (56691) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (56691) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (56701) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (56701) MESH_SETUP:  STATUS      : OK
+I (56711) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (56721) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (56731) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (56731) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=50 rssi=0
+I (56741) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=5 up=525 rssi=-77
+I (56751) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=4 up=897 rssi=-66
+I (56761) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=877 rssi=-83
+I (56771) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=888 rssi=-81
+I (56781) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=890 rssi=-77
+I (56781) MESH_SETUP: ------------------------------------------------------------------
+I (56791) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (56801) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (56811) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -81  0xFF UNSET       2  not yet
+I (56821) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -83  0xFF UNSET       4  not yet
+I (56831) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -66  0xFF UNSET       4  not yet
+I (56841) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -77  0xFF UNSET       1  not yet
+I (56851) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -77  0xFF UNSET       5  not yet
+I (56851) MESH_SETUP:  n/a = no parent link to measure (root)
+I (56861) MESH_SETUP: ------------------------------------------------------------------
+I (56871) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (56881) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (56891) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (56891) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (56901) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (56911) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (56921) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (56921) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (56931) MESH_SETUP: ------------------------------------------------------------------
+I (56941) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (56951) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (56961) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (56961) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (56971) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (56981) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (56981) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (56991) MESH_SETUP: ==================================================================
+I (66501) HEALTH: [HEALTH] up=65s heap=58972 min=56580 big=57344 | stack free(B): telemetry=1120 phase_listener=2972 phase_resync=5592 heartbeat=3040 csv_export=3776 arr_writer=3700 exp_ctrl=6344 sd_recover=3524 ipc0=1488 ipc1=1520
+I (66531) ROOT_MAIN: ════════════════════ WAITING FOR ALL CHILDREN ════════════════════  @ 00:16:10 PHT
+W (66531) ROOT_MAIN: [CTRL] WAITING: 5/7 children in the mesh (0 s). Phase 0 will NOT start until all have joined.
+W (66541) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (71001) MESH_SETUP: ==================================================================
+I (71001) MESH_SETUP:  MESH TOPOLOGY
+I (71011) MESH_SETUP:  TYPE        : LINEAR
+I (71011) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (71011) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (71021) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (71031) MESH_SETUP:  STATUS      : OK
+I (71031) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (71041) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (71051) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (71051) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=64 rssi=0
+I (71061) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=6 up=539 rssi=-69
+I (71071) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=5 up=911 rssi=-66
+I (71081) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=892 rssi=-80
+I (71091) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=902 rssi=-74
+I (71101) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=904 rssi=-81
+I (71111) MESH_SETUP: ------------------------------------------------------------------
+I (71111) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (71121) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (71131) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET       2  not yet
+I (71141) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -80  0xFF UNSET       4  not yet
+I (71151) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -66  0xFF UNSET       5  not yet
+I (71161) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -81  0xFF UNSET       1  not yet
+I (71171) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -69  0xFF UNSET       6  not yet
+I (71181) MESH_SETUP:  n/a = no parent link to measure (root)
+I (71181) MESH_SETUP: ------------------------------------------------------------------
+I (71191) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (71201) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (71211) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (71211) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (71221) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (71231) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (71241) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (71241) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (71251) MESH_SETUP: ------------------------------------------------------------------
+I (71261) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (71271) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (71281) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (71281) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (71291) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (71301) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (71301) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (71311) MESH_SETUP: ==================================================================
+W (76581) ROOT_MAIN: [CTRL] WAITING: 5/7 children in the mesh (10 s). Phase 0 will NOT start until all have joined.
+W (76581) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (85321) MESH_SETUP: ==================================================================
+I (85321) MESH_SETUP:  MESH TOPOLOGY
+I (85321) MESH_SETUP:  TYPE        : LINEAR
+I (85331) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (85331) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (85341) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (85341) MESH_SETUP:  STATUS      : OK
+I (85351) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (85361) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (85371) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (85371) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=78 rssi=0
+I (85381) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=6 up=553 rssi=-77
+I (85391) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=5 up=925 rssi=-64
+I (85401) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=906 rssi=-82
+I (85411) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=916 rssi=-74
+I (85421) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=918 rssi=-75
+I (85421) MESH_SETUP: ------------------------------------------------------------------
+I (85431) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (85441) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (85451) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET       2  not yet
+I (85461) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -82  0xFF UNSET       4  not yet
+I (85471) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       5  not yet
+I (85481) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -75  0xFF UNSET       1  not yet
+I (85491) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -77  0xFF UNSET       6  not yet
+I (85491) MESH_SETUP:  n/a = no parent link to measure (root)
+I (85501) MESH_SETUP: ------------------------------------------------------------------
+I (85511) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (85521) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (85521) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (85531) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (85541) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (85551) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (85561) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (85561) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (85571) MESH_SETUP: ------------------------------------------------------------------
+I (85581) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (85591) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (85601) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (85601) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (85611) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (85621) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (85621) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (85631) MESH_SETUP: ==================================================================
+W (86621) ROOT_MAIN: [CTRL] WAITING: 5/7 children in the mesh (20 s). Phase 0 will NOT start until all have joined.
+W (86621) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (87521) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 47 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 0 of 64 | Test phase: other
+I (96511) HEALTH: [HEALTH] up=95s heap=58972 min=56580 big=57344 | stack free(B): telemetry=1120 phase_listener=2972 phase_resync=5592 heartbeat=3040 csv_export=3776 arr_writer=3700 exp_ctrl=5944 sd_recover=3524 ipc0=1488 ipc1=1520
+W (96651) ROOT_MAIN: [CTRL] WAITING: 5/7 children in the mesh (30 s). Phase 0 will NOT start until all have joined.
+W (96651) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (99641) MESH_SETUP: ==================================================================
+I (99641) MESH_SETUP:  MESH TOPOLOGY
+I (99641) MESH_SETUP:  TYPE        : LINEAR
+I (99651) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (99651) MESH_SETUP:  HOP DEPTH   : 0x05 (5)
+I (99661) MESH_SETUP:  REACHABLE   : 0x06 (6)
+I (99661) MESH_SETUP:  STATUS      : OK
+I (99671) MESH_SETUP:  DETAIL      : chain of 6 node(s), B0:CB:D8:F3:32:18 .. F4:2D:C9:73:E6:18
+I (99681) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (99691) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (99691) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=93 rssi=0
+I (99701) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=6 up=567 rssi=-77
+I (99711) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=5 up=939 rssi=-66
+I (99721) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=920 rssi=-86
+I (99731) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=930 rssi=-74
+I (99741) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=2 up=932 rssi=-77
+I (99741) MESH_SETUP: ------------------------------------------------------------------
+I (99751) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (99761) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (99771) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET       2  not yet
+I (99781) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -86  0xFF UNSET       5  not yet
+I (99791) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -66  0xFF UNSET       5  not yet
+I (99801) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -77  0xFF UNSET       2  not yet
+I (99811) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -77  0xFF UNSET       6  not yet
+I (99811) MESH_SETUP:  n/a = no parent link to measure (root)
+I (99821) MESH_SETUP: ------------------------------------------------------------------
+I (99831) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (99841) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (99841) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (99851) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (99861) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (99871) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (99881) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (99881) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x00
+I (99891) MESH_SETUP: ------------------------------------------------------------------
+I (99901) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (99911) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (99921) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (99921) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (99931) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (99941) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (99941) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (99951) MESH_SETUP: ==================================================================
+I (102181) MESH_SETUP: ==================================================================
+I (102181) MESH_SETUP:  MESH TOPOLOGY
+I (102181) MESH_SETUP:  TYPE        : LINEAR
+I (102191) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (102191) MESH_SETUP:  HOP DEPTH   : 0x06 (6)
+I (102201) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (102201) MESH_SETUP:  STATUS      : OK
+I (102211) MESH_SETUP:  DETAIL      : chain of 7 node(s), B0:CB:D8:F3:32:18 .. B4:BF:E9:34:ED:80
+I (102221) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (102221) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (102231) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=2 up=93 rssi=0
+I (102241) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=2 up=574 rssi=-75
+I (102251) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=1 up=946 rssi=-65
+I (102261) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=927 rssi=-86
+I (102261) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=5 up=930 rssi=-74
+I (102271) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=4 up=932 rssi=-77
+I (102281) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=WAITING uart=NA age=0 up=0 rssi=-84
+I (102291) MESH_SETUP: ------------------------------------------------------------------
+I (102301) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (102311) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (102321) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET       5  not yet
+I (102331) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -86  0xFF UNSET       0  not yet
+I (102341) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       1  not yet
+I (102341) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -77  0xFF UNSET       4  not yet
+I (102351) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -75  0xFF UNSET       2  not yet
+I (102361) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -84  0xFF UNSET       0  not yet
+I (102371) MESH_SETUP:  n/a = no parent link to measure (root)
+I (102381) MESH_SETUP: ------------------------------------------------------------------
+I (102391) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (102391) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (102401) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (102411) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (102421) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (102421) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (102431) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (102441) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (102451) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x00
+I (102461) MESH_SETUP: ------------------------------------------------------------------
+I (102471) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (102481) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (102481) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (102491) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (102491) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (102501) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (102511) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (102521) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (102521) MESH_SETUP: ==================================================================
+I (104091) MESH_SETUP: Routing table updated (node added).
+I (104091) MESH_SETUP: ==============================
+I (104091) MESH_SETUP:   MESH CONNECTED: 7 node(s)
+I (104101) MESH_SETUP: ==============================
+W (106691) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (40 s). Phase 0 will NOT start until all have joined.
+W (106691) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (109141) MESH_SETUP: ==================================================================
+I (109141) MESH_SETUP:  MESH TOPOLOGY
+I (109141) MESH_SETUP:  TYPE        : LINEAR
+I (109141) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (109151) MESH_SETUP:  HOP DEPTH   : 0x06 (6)
+I (109151) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (109161) MESH_SETUP:  STATUS      : OK
+I (109161) MESH_SETUP:  DETAIL      : chain of 7 node(s), B0:CB:D8:F3:32:18 .. B4:BF:E9:34:ED:80
+I (109171) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (109181) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (109191) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=2 up=100 rssi=0
+I (109201) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=2 up=581 rssi=-79
+I (109201) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=1 up=953 rssi=-64
+I (109211) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=934 rssi=-79
+I (109221) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=5 up=937 rssi=-74
+I (109231) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=4 up=939 rssi=-75
+I (109241) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=0 up=7 rssi=-81
+I (109251) MESH_SETUP: ------------------------------------------------------------------
+I (109261) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (109271) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (109271) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET       5  not yet
+I (109281) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -79  0xFF UNSET       0  not yet
+I (109291) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       1  not yet
+I (109301) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -75  0xFF UNSET       4  not yet
+I (109311) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       2  not yet
+I (109321) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -81  0xFF UNSET       0  not yet
+I (109331) MESH_SETUP:  n/a = no parent link to measure (root)
+I (109331) MESH_SETUP: ------------------------------------------------------------------
+I (109341) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (109351) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (109361) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (109371) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (109371) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (109381) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (109391) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (109401) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (109411) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x00
+I (109411) MESH_SETUP: ------------------------------------------------------------------
+I (109421) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (109431) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (109441) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (109441) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (109451) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (109461) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (109461) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (109471) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (109481) MESH_SETUP: ==================================================================
+W (116771) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (50 s). Phase 0 will NOT start until all have joined.
+W (116771) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (123151) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 30 ms) over the last 200 probes | Waiting-to-save line: longest 1 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: other
+I (126521) HEALTH: [HEALTH] up=125s heap=58972 min=56580 big=57344 | stack free(B): telemetry=1120 phase_listener=2956 phase_resync=5592 heartbeat=3040 csv_export=3776 arr_writer=3700 exp_ctrl=5944 sd_recover=3524 ipc0=1488 ipc1=1520
+W (126801) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (60 s). Phase 0 will NOT start until all have joined.
+W (126801) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (127961) MESH_SETUP: ==================================================================
+I (127961) MESH_SETUP:  MESH TOPOLOGY
+I (127971) MESH_SETUP:  TYPE        : LINEAR
+I (127971) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (127981) MESH_SETUP:  HOP DEPTH   : 0x06 (6)
+I (127981) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (127991) MESH_SETUP:  STATUS      : OK
+I (127991) MESH_SETUP:  DETAIL      : chain of 7 node(s), B0:CB:D8:F3:32:18 .. B4:BF:E9:34:ED:80
+I (128001) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (128011) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (128021) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=121 rssi=0
+I (128021) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=0 up=602 rssi=-78
+I (128031) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=5 up=967 rssi=-65
+I (128041) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=948 rssi=-81
+I (128051) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=958 rssi=-85
+I (128061) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=960 rssi=-78
+I (128071) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=4 up=21 rssi=-80
+I (128081) MESH_SETUP: ------------------------------------------------------------------
+I (128091) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (128091) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (128101) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -85  0xFF UNSET       3  not yet
+I (128111) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -81  0xFF UNSET       5  not yet
+I (128121) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       5  not yet
+I (128131) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       1  not yet
+I (128141) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -78  0xFF UNSET       0  not yet
+I (128151) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       4  not yet
+I (128161) MESH_SETUP:  n/a = no parent link to measure (root)
+I (128161) MESH_SETUP: ------------------------------------------------------------------
+I (128171) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (128181) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (128191) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (128191) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (128201) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (128211) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (128221) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (128231) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (128231) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x00
+I (128241) MESH_SETUP: ------------------------------------------------------------------
+I (128251) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (128261) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (128271) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (128271) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (128281) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (128291) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (128291) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (128301) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (128311) MESH_SETUP: ==================================================================
+W (136841) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (70 s). Phase 0 will NOT start until all have joined.
+W (136841) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (142321) MESH_SETUP: ==================================================================
+I (142321) MESH_SETUP:  MESH TOPOLOGY
+I (142321) MESH_SETUP:  TYPE        : LINEAR
+I (142331) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (142331) MESH_SETUP:  HOP DEPTH   : 0x06 (6)
+I (142341) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (142341) MESH_SETUP:  STATUS      : OK
+I (142351) MESH_SETUP:  DETAIL      : chain of 7 node(s), B0:CB:D8:F3:32:18 .. B4:BF:E9:34:ED:80
+I (142361) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (142371) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (142371) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=135 rssi=0
+I (142381) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=0 up=616 rssi=-79
+I (142391) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=6 up=981 rssi=-65
+I (142401) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=962 rssi=-88
+I (142411) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=972 rssi=-80
+I (142421) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=975 rssi=-76
+I (142421) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=5 up=35 rssi=-81
+I (142431) MESH_SETUP: ------------------------------------------------------------------
+I (142441) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (142451) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (142461) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -80  0xFF UNSET       3  not yet
+I (142471) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -88  0xFF UNSET       5  not yet
+I (142481) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       6  not yet
+I (142491) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -76  0xFF UNSET       1  not yet
+I (142501) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       0  not yet
+I (142501) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -81  0xFF UNSET       5  not yet
+I (142511) MESH_SETUP:  n/a = no parent link to measure (root)
+I (142521) MESH_SETUP: ------------------------------------------------------------------
+I (142531) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (142541) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (142541) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (142551) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (142561) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (142571) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (142581) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (142581) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (142591) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x00
+I (142601) MESH_SETUP: ------------------------------------------------------------------
+I (142611) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (142621) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (142621) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (142631) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (142641) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (142641) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (142651) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (142661) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (142671) MESH_SETUP: ==================================================================
+W (146881) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (80 s). Phase 0 will NOT start until all have joined.
+W (146881) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (156531) HEALTH: [HEALTH] up=155s heap=58972 min=56580 big=57344 | stack free(B): telemetry=1120 phase_listener=2956 phase_resync=5592 heartbeat=2960 csv_export=3776 arr_writer=3700 exp_ctrl=5944 sd_recover=3524 ipc0=1488 ipc1=1520
+I (156681) MESH_SETUP: ==================================================================
+I (156681) MESH_SETUP:  MESH TOPOLOGY
+I (156681) MESH_SETUP:  TYPE        : LINEAR
+I (156691) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (156691) MESH_SETUP:  HOP DEPTH   : 0x06 (6)
+I (156701) MESH_SETUP:  REACHABLE   : 0x07 (7)
+I (156701) MESH_SETUP:  STATUS      : OK
+I (156711) MESH_SETUP:  DETAIL      : chain of 7 node(s), B0:CB:D8:F3:32:18 .. B4:BF:E9:34:ED:80
+I (156721) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (156721) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (156731) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=150 rssi=0
+I (156741) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=0 up=630 rssi=-79
+I (156751) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=6 up=995 rssi=-65
+I (156761) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=6 up=976 rssi=-78
+I (156771) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=986 rssi=-72
+I (156771) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=989 rssi=-77
+I (156781) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=5 up=49 rssi=-81
+I (156791) MESH_SETUP: ------------------------------------------------------------------
+I (156801) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (156811) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (156821) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -72  0xFF UNSET       3  not yet
+I (156831) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -78  0xFF UNSET       6  not yet
+I (156841) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       6  not yet
+I (156841) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -77  0xFF UNSET       1  not yet
+I (156851) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       0  not yet
+I (156861) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -81  0xFF UNSET       5  not yet
+I (156871) MESH_SETUP:  n/a = no parent link to measure (root)
+I (156881) MESH_SETUP: ------------------------------------------------------------------
+I (156891) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (156891) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (156901) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+W (156911) ROOT_MAIN: [CTRL] WAITING: 6/7 children in the mesh (90 s). Phase 0 will NOT start until all have joined.
+I (156911) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+W (156921) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (156931) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (156951) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (156961) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (156971) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (156971) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x00
+I (156981) MESH_SETUP: ------------------------------------------------------------------
+I (156991) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (157001) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (157011) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (157011) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (157021) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (157031) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (157031) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (157041) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (157051) MESH_SETUP: ==================================================================
+W (157191) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 37 ms) over the last 200 probes | Waiting-to-save line: longest 3 of 256, 0 lost so far | Mesh incoming buffer: longest 1 of 64 | Test phase: other
+I (167501) MESH_SETUP: Routing table updated (node added).
+I (167501) MESH_SETUP: ==============================
+I (167501) MESH_SETUP:   MESH CONNECTED: 8 node(s)
+I (167511) MESH_SETUP: ==============================
+I (168691) MESH_SETUP: ==================================================================
+I (168701) MESH_SETUP:  MESH TOPOLOGY
+I (168701) MESH_SETUP:  TYPE        : LINEAR
+I (168701) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (168711) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (168711) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (168721) MESH_SETUP:  STATUS      : OK
+I (168721) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (168731) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (168741) MESH_SETUP:  SD LOGGING  : 8/8 board(s) writing to their SD card
+I (168751) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=4 up=157 rssi=0
+I (168761) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=5 up=637 rssi=-79
+I (168761) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=4 up=1009 rssi=-64
+I (168771) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=990 rssi=-82
+I (168781) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=1000 rssi=-72
+I (168791) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=996 rssi=-78
+I (168801) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=3 up=63 rssi=-78
+I (168811) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=0 up=0 rssi=-74
+I (168821) MESH_SETUP: ------------------------------------------------------------------
+I (168821) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (168831) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (168841) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -72  0xFF UNSET       1  not yet
+I (168851) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -82  0xFF UNSET       4  not yet
+I (168861) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       4  not yet
+I (168871) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       6  not yet
+I (168881) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       5  not yet
+I (168891) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       3  not yet
+I (168901) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -74  0xFF UNSET       0  not yet
+I (168901) MESH_SETUP:  n/a = no parent link to measure (root)
+I (168911) MESH_SETUP: ------------------------------------------------------------------
+I (168921) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (168931) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (168931) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (168941) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (168951) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (168961) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (168971) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (168971) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (168981) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (168991) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (169001) MESH_SETUP: ------------------------------------------------------------------
+I (169011) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (169021) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (169021) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (169031) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (169041) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (169041) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (169051) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (169061) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (169071) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (169071) MESH_SETUP: ==================================================================
+I (170981) ROOT_MAIN: [CTRL] All 7 children in the mesh after 104 s - starting the run.
+I (170981) ROOT_MAIN: ════════════════════ READY - TYPE  START  TO BEGIN PHASE 0 ════════════════════  @ 00:17:55 PHT
+W (170991) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (173911) MESH_SETUP: ==================================================================
+I (173911) MESH_SETUP:  MESH TOPOLOGY
+I (173921) MESH_SETUP:  TYPE        : LINEAR
+I (173921) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (173931) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (173931) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (173941) MESH_SETUP:  STATUS      : OK
+I (173941) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (173951) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (173961) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 STALLED/RECOVERING - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (173981) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=2 up=164 rssi=0
+I (173991) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=3 up=644 rssi=-79
+I (174001) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=2 up=1016 rssi=-65
+I (174011) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=2 up=997 rssi=-76
+I (174021) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=STALLED uart=NA age=0 up=1007 rssi=-69
+I (174031) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=4 up=1003 rssi=-76
+I (174031) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=1 up=70 rssi=-80
+I (174041) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=5 up=0 rssi=-74
+I (174051) MESH_SETUP: ------------------------------------------------------------------
+I (174061) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (174071) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (174081) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       0  not yet
+I (174091) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET       2  not yet
+I (174101) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       2  not yet
+I (174111) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -76  0xFF UNSET       4  not yet
+I (174111) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       3  not yet
+I (174121) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       1  not yet
+I (174131) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -74  0xFF UNSET       5  not yet
+I (174141) MESH_SETUP:  n/a = no parent link to measure (root)
+I (174151) MESH_SETUP: ------------------------------------------------------------------
+I (174161) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (174161) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (174171) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (174181) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (174191) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (174201) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (174201) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (174211) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (174221) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (174231) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (174231) MESH_SETUP: ------------------------------------------------------------------
+I (174241) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (174251) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (174261) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (174271) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (174271) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (174281) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (174291) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (174291) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (174301) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (174311) MESH_SETUP: ==================================================================
+I (175681) MESH_SETUP: ==================================================================
+I (175681) MESH_SETUP:  MESH TOPOLOGY
+I (175681) MESH_SETUP:  TYPE        : LINEAR
+I (175691) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (175691) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (175701) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (175701) MESH_SETUP:  STATUS      : OK
+I (175711) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (175721) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (175721) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 STALLED/RECOVERING - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (175751) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=4 up=164 rssi=0
+I (175761) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=4 up=644 rssi=-79
+I (175761) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=4 up=1016 rssi=-65
+I (175771) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=997 rssi=-76
+I (175781) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=STALLED uart=NA age=1 up=1007 rssi=-69
+I (175791) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=1003 rssi=-76
+I (175801) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=3 up=70 rssi=-80
+I (175811) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=0 up=7 rssi=-75
+I (175821) MESH_SETUP: ------------------------------------------------------------------
+I (175831) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (175831) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       4  not yet
+I (175841) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       1  not yet
+I (175851) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET       4  not yet
+I (175861) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       4  not yet
+I (175871) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -76  0xFF UNSET       6  not yet
+I (175881) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       4  not yet
+I (175891) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       3  not yet
+I (175901) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -75  0xFF UNSET       0  not yet
+I (175911) MESH_SETUP:  n/a = no parent link to measure (root)
+I (175911) MESH_SETUP: ------------------------------------------------------------------
+I (175921) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (175931) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (175941) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (175941) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (175951) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (175961) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (175971) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (175981) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (175981) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (175991) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (176001) MESH_SETUP: ------------------------------------------------------------------
+I (176011) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (176021) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (176021) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (176031) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (176041) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (176041) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (176051) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (176061) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (176071) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (176071) MESH_SETUP: ==================================================================
+W (186041) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (186541) HEALTH: [HEALTH] up=185s heap=58972 min=56200 big=57344 | stack free(B): telemetry=1120 phase_listener=2956 phase_resync=5592 heartbeat=2960 csv_export=3776 arr_writer=3700 exp_ctrl=5928 sd_recover=3524 ipc0=1488 ipc1=1520
+W (187901) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 38 ms) over the last 200 probes | Waiting-to-save line: longest 3 of 256, 0 lost so far | Mesh incoming buffer: longest 5 of 64 | Test phase: other
+I (192061) MESH_SETUP: ==================================================================
+I (192061) MESH_SETUP:  MESH TOPOLOGY
+I (192071) MESH_SETUP:  TYPE        : LINEAR
+I (192071) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (192081) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (192081) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (192091) MESH_SETUP:  STATUS      : OK
+I (192091) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (192101) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (192111) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 STALLED/RECOVERING - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (192131) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=185 rssi=0
+I (192141) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=1 up=665 rssi=-79
+I (192151) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=7 up=1030 rssi=-65
+I (192161) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=6 up=1011 rssi=-73
+I (192171) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=STALLED uart=NA age=4 up=1021 rssi=-67
+I (192181) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=2 up=1024 rssi=-78
+I (192191) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=5 up=84 rssi=-81
+I (192191) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=2 up=21 rssi=-75
+I (192201) MESH_SETUP: ------------------------------------------------------------------
+I (192211) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (192221) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (192231) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -67  0xFF UNSET       4  not yet
+I (192241) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -73  0xFF UNSET       6  not yet
+I (192251) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -65  0xFF UNSET       6  not yet
+I (192261) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       2  not yet
+I (192261) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       0  not yet
+I (192271) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -81  0xFF UNSET       5  not yet
+I (192281) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -75  0xFF UNSET       2  not yet
+I (192291) MESH_SETUP:  n/a = no parent link to measure (root)
+I (192301) MESH_SETUP: ------------------------------------------------------------------
+I (192311) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (192311) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (192321) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (192331) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (192341) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (192351) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (192351) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (192361) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (192371) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (192381) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (192381) MESH_SETUP: ------------------------------------------------------------------
+I (192391) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (192401) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (192411) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (192421) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (192421) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (192431) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (192441) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (192441) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (192451) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (192461) MESH_SETUP: ==================================================================
+W (201101) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (206471) MESH_SETUP: ==================================================================
+I (206471) MESH_SETUP:  MESH TOPOLOGY
+I (206481) MESH_SETUP:  TYPE        : LINEAR
+I (206481) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (206481) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (206491) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (206491) MESH_SETUP:  STATUS      : OK
+I (206501) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (206511) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (206521) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 STALLED/RECOVERING - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (206541) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=199 rssi=0
+I (206551) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=1 up=679 rssi=-79
+I (206561) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=0 up=1051 rssi=-64
+I (206571) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=1032 rssi=-88
+I (206581) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=STALLED uart=NA age=4 up=1036 rssi=-78
+I (206581) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=2 up=1038 rssi=-76
+I (206591) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=6 up=98 rssi=-77
+I (206601) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=2 up=35 rssi=-76
+I (206611) MESH_SETUP: ------------------------------------------------------------------
+I (206621) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (206631) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (206641) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -78  0xFF UNSET       4  not yet
+I (206651) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -88  0xFF UNSET       0  not yet
+I (206651) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       0  not yet
+I (206661) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -76  0xFF UNSET       2  not yet
+I (206671) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       1  not yet
+I (206681) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -77  0xFF UNSET       6  not yet
+I (206691) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -76  0xFF UNSET       2  not yet
+I (206701) MESH_SETUP:  n/a = no parent link to measure (root)
+I (206711) MESH_SETUP: ------------------------------------------------------------------
+I (206711) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (206721) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (206731) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (206741) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (206751) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (206751) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (206761) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (206771) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (206781) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (206791) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (206791) MESH_SETUP: ------------------------------------------------------------------
+I (206801) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (206811) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (206821) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (206821) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (206831) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (206841) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (206841) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (206851) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (206861) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (206871) MESH_SETUP: ==================================================================
+I (215981) MESH_SETUP: ==================================================================
+I (215981) MESH_SETUP:  MESH TOPOLOGY
+I (215981) MESH_SETUP:  TYPE        : LINEAR
+I (215991) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (215991) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (216001) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (216001) MESH_SETUP:  STATUS      : OK
+I (216011) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (216021) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (216021) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 INCOMPLETE (card recovered, rows missed) - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (216051) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=2 up=207 rssi=0
+I (216061) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=4 up=686 rssi=-78
+I (216071) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=2 up=1058 rssi=-64
+I (216081) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=2 up=1039 rssi=-76
+I (216081) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=INCOMPLETE uart=NA age=0 up=1050 rssi=-73
+I (216091) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=4 up=1045 rssi=-78
+I (216101) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=1 up=112 rssi=-80
+I (216111) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=4 up=42 rssi=-76
+I (216121) MESH_SETUP: ------------------------------------------------------------------
+I (216131) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (216141) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       2  not yet
+I (216151) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -73  0xFF UNSET       0  not yet
+I (216161) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET       2  not yet
+I (216161) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       2  not yet
+I (216171) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       4  not yet
+I (216181) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -78  0xFF UNSET       4  not yet
+W (216191) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (216191) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       1  not yet
+I (216221) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -76  0xFF UNSET       4  not yet
+I (216221) MESH_SETUP:  n/a = no parent link to measure (root)
+I (216231) MESH_SETUP: ------------------------------------------------------------------
+I (216241) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (216251) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (216251) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (216261) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (216271) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (216281) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (216291) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (216291) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (216301) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (216311) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (216321) MESH_SETUP: ------------------------------------------------------------------
+I (216331) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (216341) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (216341) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (216351) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (216361) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (216361) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (216371) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (216381) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (216391) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (216391) MESH_SETUP: ==================================================================
+I (216551) HEALTH: [HEALTH] up=215s heap=58972 min=55416 big=57344 | stack free(B): telemetry=1120 phase_listener=2956 phase_resync=5592 heartbeat=2960 csv_export=3776 arr_writer=3700 exp_ctrl=5928 sd_recover=3524 ipc0=1488 ipc1=1520
+W (216841) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 8 ms on average (slowest 43 ms) over the last 200 probes | Waiting-to-save line: longest 5 of 256, 0 lost so far | Mesh incoming buffer: longest 4 of 64 | Test phase: other
+����������������������������������������������������������������RL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (234881) MESH_SETUP: ==================================================================
+I (234881) MESH_SETUP:  MESH TOPOLOGY
+I (234881) MESH_SETUP:  TYPE        : LINEAR
+I (234891) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (234891) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (234901) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (234901) MESH_SETUP:  STATUS      : OK
+I (234911) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (234921) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (234931) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 INCOMPLETE (card recovered, rows missed) - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (234951) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=228 rssi=0
+I (234961) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=2 up=707 rssi=-79
+I (234971) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=0 up=1079 rssi=-64
+I (234981) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=1060 rssi=-75
+I (234991) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=INCOMPLETE uart=NA age=4 up=1064 rssi=-73
+I (235001) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=3 up=1067 rssi=-78
+I (235011) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=6 up=126 rssi=-79
+I (235011) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=3 up=63 rssi=-76
+I (235021) MESH_SETUP: ------------------------------------------------------------------
+I (235031) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (235041) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (235051) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -73  0xFF UNSET       4  not yet
+I (235061) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -75  0xFF UNSET       0  not yet
+I (235071) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       0  not yet
+I (235081) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       2  not yet
+I (235081) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       1  not yet
+I (235091) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -79  0xFF UNSET       6  not yet
+I (235101) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -76  0xFF UNSET       3  not yet
+I (235111) MESH_SETUP:  n/a = no parent link to measure (root)
+I (235121) MESH_SETUP: ------------------------------------------------------------------
+I (235131) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (235131) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (235141) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (235151) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (235161) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (235171) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (235171) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (235181) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (235191) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (235201) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (235211) MESH_SETUP: ------------------------------------------------------------------
+I (235211) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (235221) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (235231) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (235241) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (235241) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (235251) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (235261) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (235261) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (235271) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (235281) MESH_SETUP: ==================================================================
+W (246341) ROOT_MAIN: [CTRL] READY: 7/7 children in the mesh. Check the topology table, move boards NOW if needed, then type START (Phase 0 will NOT start by itself).
+I (246561) HEALTH: [HEALTH] up=245s heap=58560 min=55416 big=57344 | stack free(B): telemetry=1120 phase_listener=2956 phase_resync=5592 heartbeat=2960 csv_export=3776 arr_writer=3700 exp_ctrl=5928 sd_recover=3524 ipc0=1488 ipc1=1520
+I (249291) MESH_SETUP: ==================================================================
+I (249291) MESH_SETUP:  MESH TOPOLOGY
+I (249301) MESH_SETUP:  TYPE        : LINEAR
+I (249301) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (249311) MESH_SETUP:  HOP DEPTH   : 0x07 (7)
+I (249311) MESH_SETUP:  REACHABLE   : 0x08 (8)
+I (249321) MESH_SETUP:  STATUS      : OK
+I (249321) MESH_SETUP:  DETAIL      : chain of 8 node(s), B0:CB:D8:F3:32:18 .. 28:05:A5:32:D7:B4
+I (249331) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+E (249341) MESH_SETUP:  SD LOGGING  : NOT WRITING on 1 board(s): B4:90 INCOMPLETE (card recovered, rows missed) - their telemetry is complete ONLY in internal flash: fix the card (reseat / replace, then reset that board) BEFORE START, or export it over USB (EXPORT_LOGS) before it is re-flashed
+I (249361) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=242 rssi=0
+I (249371) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=9 up=714 rssi=-79
+I (249381) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=8 up=1086 rssi=-64
+I (249391) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=7 up=1067 rssi=-76
+I (249401) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=INCOMPLETE uart=NA age=12 up=1071 rssi=-74
+I (249411) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=10 up=1074 rssi=-78
+I (249421) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=7 up=140 rssi=-80
+I (249431) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=10 up=70 rssi=-77
+I (249431) MESH_SETUP: ------------------------------------------------------------------
+I (249441) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (249451) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (249461) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -74  0xFF UNSET      12  not yet
+I (249471) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET       7  not yet
+I (249481) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET       8  not yet
+I (249491) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET      10  not yet
+I (249501) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET       9  not yet
+I (249511) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET       7  not yet
+I (249511) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD   -77  0xFF UNSET      10  not yet
+I (249521) MESH_SETUP:  n/a = no parent link to measure (root)
+I (249531) MESH_SETUP: ------------------------------------------------------------------
+I (249541) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (249551) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (249551) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x01
+I (249561) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (249571) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x01
+I (249581) MESH_SETUP:  H03   20:50:0D:E7:0C:80  CHILD  70:4B:CA:25:B7:68  0x01
+I (249591) MESH_SETUP:  H04   20:50:0D:E7:1C:38  CHILD  20:50:0D:E7:0C:80  0x01
+I (249591) MESH_SETUP:  H05   F4:2D:C9:73:E6:18  CHILD  20:50:0D:E7:1C:38  0x01
+I (249601) MESH_SETUP:  H06   B4:BF:E9:34:ED:80  CHILD  F4:2D:C9:73:E6:18  0x01
+I (249611) MESH_SETUP:  H07   28:05:A5:32:D7:B4  CHILD  B4:BF:E9:34:ED:80  0x00
+I (249621) MESH_SETUP: ------------------------------------------------------------------
+I (249631) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (249641) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (249641) MESH_SETUP:  `-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (249651) MESH_SETUP:      `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (249651) MESH_SETUP:          `-- [H03] CHILD  20:50:0D:E7:0C:80
+I (249661) MESH_SETUP:              `-- [H04] CHILD  20:50:0D:E7:1C:38
+I (249671) MESH_SETUP:                  `-- [H05] CHILD  F4:2D:C9:73:E6:18
+I (249681) MESH_SETUP:                      `-- [H06] CHILD  B4:BF:E9:34:ED:80
+I (249681) MESH_SETUP:                          `-- [H07] CHILD  28:05:A5:32:D7:B4
+I (249691) MESH_SETUP: ==================================================================
+  sniffer: STOPPED with the root - its capture is closed and saved (Wireshark & sniffer page)
+W (254831) wifi:inactive timer: now=f157b3c last_rx_time=e5e9c69 diff=2ed0, aid[1]b4:bf:e9:32:fe:90 leave
+I (254841) wifi:station: b4:bf:e9:32:fe:90 leave, AID = 1, reason = 4, bss_flags is 33721443, bss:0x3ffdddb8
+I (254841) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (254851) MESH_SETUP: Child disconnected: aid=1 MAC=b4:bf:e9:32:fe:90
+I (254851) MESH_SETUP: ==============================
+I (254861) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (254871) MESH_SETUP: ==============================
+W (254871) MESH_SETUP: Node OFFLINE (child-disconnected event) — b4:bf:e9:32:fe:90
+I (254881) MESH_SETUP: Routing table shrunk (node removed).
+I (254881) MESH_SETUP: ==================================================================
+I (254891) MESH_SETUP: ==============================
+I (254901) MESH_SETUP:  MESH TOPOLOGY
+I (254901) MESH_SETUP:   MESH CONNECTED: 1 node(s)
+I (254911) MESH_SETUP:  TYPE        : LINEAR
+I (254911) MESH_SETUP: ==============================
+I (254921) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (254931) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (254931) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (254941) MESH_SETUP:  STATUS      : WARN
+I (254941) MESH_SETUP:  DETAIL      : chain of 1 node(s), B0:CB:D8:F3:32:18 .. B0:CB:D8:F3:32:18; 6 node(s) not attached to the root
+I (254951) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (254961) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (254971) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=5 up=242 rssi=0
+I (254981) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=OK uart=NA age=15 up=714 rssi=-79
+I (254991) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NA age=13 up=1086 rssi=-64
+I (255001) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=13 up=1067 rssi=-76
+I (255001) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=OK uart=NA age=16 up=70 rssi=-77
+I (255011) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=15 up=1074 rssi=-78
+I (255021) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=12 up=140 rssi=-80
+I (255031) MESH_SETUP: ------------------------------------------------------------------
+I (255041) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (255051) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       5  not yet
+I (255061) MESH_SETUP:  H--   20:50:0D:E7:0C:80  CHILD   -64  0xFF UNSET      13  not yet
+I (255071) MESH_SETUP:  H--   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET      15  not yet
+I (255071) MESH_SETUP:  H--   28:05:A5:32:D7:B4  CHILD   -77  0xFF UNSET      16  not yet
+I (255081) MESH_SETUP:  H--   70:4B:CA:25:B7:68  CHILD   -76  0xFF UNSET      13  not yet
+I (255091) MESH_SETUP:  H--   B4:BF:E9:34:ED:80  CHILD   -80  0xFF UNSET      12  not yet
+I (255101) MESH_SETUP:  H--   F4:2D:C9:73:E6:18  CHILD   -79  0xFF UNSET      14  not yet
+I (255111) MESH_SETUP:  n/a = no parent link to measure (root)
+I (255121) MESH_SETUP: ------------------------------------------------------------------
+I (255131) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (255131) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (255141) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x00
+I (255151) MESH_SETUP: ------------------------------------------------------------------
+I (255161) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (255171) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (255171) MESH_SETUP: ==================================================================
+I (255181) MESH_SETUP: ==================================================================
+I (255191) MESH_SETUP:  MESH TOPOLOGY
+I (255201) MESH_SETUP:  TYPE        : LINEAR
+I (255201) MESH_SETUP:  
+[monitor] closed
+Export skipped. Data is safe on the board (COM6) - import it from its SD card later, or export with the command below.
+To export later:  python tools\export_logs.py --port COM6 --role root --topology linear --attack none --repeat 1 --scenario stationary --location Yuchengco --label root
+  finished (exit 0)
