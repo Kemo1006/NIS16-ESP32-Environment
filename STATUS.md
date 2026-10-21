@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 21, 2026 ~10 AM (Angelo's laptop) — features.py latency fix (#75, uncommitted): pre-run phase-255 arrivals made LatencyHopRatio/TunnelLatency impossible in 16 cells. Next: re-analyse those 16 cells (B-lat255), Verify only per cell, commit + GitHub sync. Earlier today: Library/G402 star highload fixed + scenario check (#72-#74) pushed (9f56f75, 11f5d98).
+**Updated:** oct. 21, 2026 ~10:15 AM (Angelo's laptop) — features.py latency fix (#75) committed + the 16 affected cells re-analysed and pushed (1ccb3a6, 1d77493): pre-run phase-255 arrivals had made LatencyHopRatio/TunnelLatency impossible. Next: teammates pull; redo any paper number/figure using either feature (B-lat255); Verify only per cell for the scenario tag. Earlier today: #72-#74 pushed (9f56f75, 11f5d98).
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
