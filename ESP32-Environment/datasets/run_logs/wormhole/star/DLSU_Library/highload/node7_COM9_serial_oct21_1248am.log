@@ -1,0 +1,2217 @@
+[monitor] listening on COM9 at 115200 baud
+������: segment 4: paddr=00121d3c vaddr=4008a59c size=1106ch ( 69740) load
+I (511) esp_image: segment 5: paddr=00132db0 vaddr=5000005c size=00020h (    32) load
+I (525) boot: Loaded app from partition at offset 0x10000
+I (575) boot: Set actual ota_seq=1 in otadata[0]
+I (575) boot: Disabling RNG early entropy source...
+[0;32mI (585) cpu_start: Multicore app[0m
+[0;32mI (593) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (593) cpu_start: Pro cpu start user code[0m
+[0;32mI (593) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (598) app_init: Application information:[0m
+[0;32mI (603) app_init: Project name:     child_node[0m
+[0;32mI (608) app_init: App version:      backup/angelo-2026-10-01-288-gd[0m
+[0;32mI (615) app_init: Compile time:     Oct 21 2026 00:44:39[0m
+[0;32mI (621) app_init: ELF file SHA256:  1ffc13ab7...[0m
+[0;32mI (626) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (631) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (636) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (641) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (646) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (653) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (659) heap_init: At 3FFBC878 len 00023788 (141 KiB): DRAM[0m
+[0;32mI (665) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (672) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (678) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;32mI (686) spi_flash: detected chip: generic[0m
+[0;32mI (689) spi_flash: flash io: dio[0m
+[0;32mI (694) main_task: Started on CPU0[0m
+[0;32mI (704) main_task: Calling app_main()[0m
+[0;32mI (704) VICTIM_MAIN: === VICTIM NODE STARTING ===[0m
+[0;32mI (704) SD_STATUS: clock seeded from build stamp 2026-10-21 00:44:39 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (714) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (724) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (764) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (794) SD_STATUS: clock: set from the card's host anchor -> 2026-10-21 00:47:31 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_B4BFE932FE90) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-21 00:47:31 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-21 00:44:39
+  Run started: 2026-10-21 00:47:31 PHT (clock: host)
+  Recorded location: DLSU_Library
+  Node: NODE_B4BFE932FE90 (MAC B4:BF:E9:32:FE:90)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 2
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+
+[0;32mI (1574) VICTIM_MAIN: SD ENV: OK -- /sdcard/wormhole/star/DLSU_Library/status_NODE_B4BFE932FE90.txt[0m
+[0;32mI (1584) NODE_ID: Identity: "Board-B4:90" role=CHILD mac=b4:bf:e9:32:fe:90 (via MAC (no node_config.txt nickname))[0m
+I (1624) wifi:wifi driver task: 3ffcc5dc, prio:23, stack:6656, core=0
+I (1624) wifi:wifi firmware version: 0947e8b
+I (1624) wifi:wifi certification version: v7.0
+I (1624) wifi:config NVS flash: enabled
+I (1624) wifi:config nano formatting: disabled
+I (1634) wifi:Init data frame dynamic rx buffer num: 32
+I (1634) wifi:Init static rx mgmt buffer num: 5
+I (1644) wifi:Init management short buffer num: 32
+I (1644) wifi:Init dynamic tx buffer num: 32
+I (1644) wifi:Init static rx buffer size: 1600
+I (1654) wifi:Init static rx buffer num: 10
+I (1654) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1664) wifi_init: rx ba win: 6[0m
+[0;32mI (1664) wifi_init: accept mbox: 6[0m
+[0;32mI (1664) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1674) wifi_init: udp mbox: 6[0m
+[0;32mI (1674) wifi_init: tcp mbox: 6[0m
+[0;32mI (1684) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1684) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1684) wifi_init: tcp mss: 1440[0m
+[0;32mI (1694) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1694) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1704) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1714) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1714) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1724) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1804) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (1824) wifi:mode : sta (b4:bf:e9:32:fe:90) + softAP (b4:bf:e9:32:fe:91)
+I (1824) wifi:enable tsf
+I (1824) wifi:Total power save buffer number: 16
+I (1824) wifi:Init max length of beacon: 752/752
+I (1824) wifi:Init max length of beacon: 752/752
+I (1834) mesh: <nvs>read layer:0, err:0x1102
+I (1834) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (1844) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (1844) wifi:Set ps type: 0, coexist: 0
+
+I (1874) wifi:Total power save buffer number: 16
+[0;32mI (2124) BH_TARGET: Attacker MAC from compiled default: f4:2d:c9:73:e6:18[0m
+[0;33mW (2124) MESH_SETUP: STAR HUB: this board joins ONLY the wormhole A hub f4:2d:c9:73:e6:18 (compiled; its mesh AP f4:2d:c9:73:e6:19), never the root directly.[0m
+I (2144) wifi:mode : sta (b4:bf:e9:32:fe:90)
+I (2154) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2154) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (2154) MESH_SETUP: Mesh started. Node ID: NODE_B4BFE932FE90  Role: 1[0m
+I (2154) mesh: [IO]disable self-organizing<stop reconnect>
+I (2174) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+[0;32mI (2174) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (7224) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (52684) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (62184) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62184) VICTIM_MAIN: Node ID: NODE_B4BFE932FE90   Run ID: RUN_001[0m
+[0;32mI (62184) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62194) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62194) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62204) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62214) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (100034) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (100034) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (100224) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (100244) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (100244) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (100284) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (100294) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (100294) VICTIM_MAIN: Probe generator task running at 250 ms interval.[0m
+[0;33mW (100304) VICTIM_MAIN: Probe send failed seq=1: ESP_ERR_INVALID_STATE[0m
+[0;32mI (100314) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+[0;32mI (100314) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (100324) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (100564) VICTIM_MAIN: Probe send failed seq=2: ESP_ERR_INVALID_STATE[0m
+[0;33mW (100814) VICTIM_MAIN: Probe send failed seq=3: ESP_ERR_INVALID_STATE[0m
+[0;33mW (101064) VICTIM_MAIN: Probe send failed seq=4: ESP_ERR_INVALID_STATE[0m
+[0;33mW (101314) VICTIM_MAIN: Probe send failed seq=5: ESP_ERR_INVALID_STATE[0m
+[0;33mW (101564) VICTIM_MAIN: Probe send failed seq=6: ESP_ERR_INVALID_STATE[0m
+[0;33mW (101814) VICTIM_MAIN: Probe send failed seq=7: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102064) VICTIM_MAIN: Probe send failed seq=8: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102314) VICTIM_MAIN: Probe send failed seq=9: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102564) VICTIM_MAIN: Probe send failed seq=10: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102814) VICTIM_MAIN: Probe send failed seq=11: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103064) VICTIM_MAIN: Probe send failed seq=12: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103314) VICTIM_MAIN: Probe send failed seq=13: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103564) VICTIM_MAIN: Probe send failed seq=14: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103814) VICTIM_MAIN: Probe send failed seq=15: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104064) VICTIM_MAIN: Probe send failed seq=16: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104314) VICTIM_MAIN: Probe send failed seq=17: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104564) VICTIM_MAIN: Probe send failed seq=18: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104814) VICTIM_MAIN: Probe send failed seq=19: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104924) MESH_SETUP: STAR HUB: scan 20 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (105064) VICTIM_MAIN: Probe send failed seq=20: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105314) VICTIM_MAIN: Probe send failed seq=21: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105564) VICTIM_MAIN: Probe send failed seq=22: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105814) VICTIM_MAIN: Probe send failed seq=23: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106064) VICTIM_MAIN: Probe send failed seq=24: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106314) VICTIM_MAIN: Probe send failed seq=25: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106564) VICTIM_MAIN: Probe send failed seq=26: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106814) VICTIM_MAIN: Probe send failed seq=27: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107064) VICTIM_MAIN: Probe send failed seq=28: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107314) VICTIM_MAIN: Probe send failed seq=29: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107564) VICTIM_MAIN: Probe send failed seq=30: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107814) VICTIM_MAIN: Probe send failed seq=31: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108064) VICTIM_MAIN: Probe send failed seq=32: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108314) VICTIM_MAIN: Probe send failed seq=33: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108564) VICTIM_MAIN: Probe send failed seq=34: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108814) VICTIM_MAIN: Probe send failed seq=35: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109064) VICTIM_MAIN: Probe send failed seq=36: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109314) VICTIM_MAIN: Probe send failed seq=37: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109564) VICTIM_MAIN: Probe send failed seq=38: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109814) VICTIM_MAIN: Probe send failed seq=39: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110064) VICTIM_MAIN: Probe send failed seq=40: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110314) VICTIM_MAIN: Probe send failed seq=41: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110564) VICTIM_MAIN: Probe send failed seq=42: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110814) VICTIM_MAIN: Probe send failed seq=43: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111064) VICTIM_MAIN: Probe send failed seq=44: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111314) VICTIM_MAIN: Probe send failed seq=45: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111564) VICTIM_MAIN: Probe send failed seq=46: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111814) VICTIM_MAIN: Probe send failed seq=47: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112064) VICTIM_MAIN: Probe send failed seq=48: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112314) VICTIM_MAIN: Probe send failed seq=49: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112564) VICTIM_MAIN: Probe send failed seq=50: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112814) VICTIM_MAIN: Probe send failed seq=51: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113064) VICTIM_MAIN: Probe send failed seq=52: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113314) VICTIM_MAIN: Probe send failed seq=53: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113564) VICTIM_MAIN: Probe send failed seq=54: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113814) VICTIM_MAIN: Probe send failed seq=55: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114064) VICTIM_MAIN: Probe send failed seq=56: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114314) VICTIM_MAIN: Probe send failed seq=57: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114564) VICTIM_MAIN: Probe send failed seq=58: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114814) VICTIM_MAIN: Probe send failed seq=59: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115064) VICTIM_MAIN: Probe send failed seq=60: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115314) VICTIM_MAIN: Probe send failed seq=61: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115564) VICTIM_MAIN: Probe send failed seq=62: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115814) VICTIM_MAIN: Probe send failed seq=63: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116064) VICTIM_MAIN: Probe send failed seq=64: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116314) VICTIM_MAIN: Probe send failed seq=65: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116564) VICTIM_MAIN: Probe send failed seq=66: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116814) VICTIM_MAIN: Probe send failed seq=67: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117064) VICTIM_MAIN: Probe send failed seq=68: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117314) VICTIM_MAIN: Probe send failed seq=69: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117564) VICTIM_MAIN: Probe send failed seq=70: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117814) VICTIM_MAIN: Probe send failed seq=71: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118064) VICTIM_MAIN: Probe send failed seq=72: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118314) VICTIM_MAIN: Probe send failed seq=73: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118564) VICTIM_MAIN: Probe send failed seq=74: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118814) VICTIM_MAIN: Probe send failed seq=75: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119064) VICTIM_MAIN: Probe send failed seq=76: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119314) VICTIM_MAIN: Probe send failed seq=77: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119564) VICTIM_MAIN: Probe send failed seq=78: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119814) VICTIM_MAIN: Probe send failed seq=79: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120064) VICTIM_MAIN: Probe send failed seq=80: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120314) VICTIM_MAIN: Probe send failed seq=81: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120564) VICTIM_MAIN: Probe send failed seq=82: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120814) VICTIM_MAIN: Probe send failed seq=83: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121064) VICTIM_MAIN: Probe send failed seq=84: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121314) VICTIM_MAIN: Probe send failed seq=85: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121564) VICTIM_MAIN: Probe send failed seq=86: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121814) VICTIM_MAIN: Probe send failed seq=87: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122064) VICTIM_MAIN: Probe send failed seq=88: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122314) VICTIM_MAIN: Probe send failed seq=89: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122564) VICTIM_MAIN: Probe send failed seq=90: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122814) VICTIM_MAIN: Probe send failed seq=91: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123064) VICTIM_MAIN: Probe send failed seq=92: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123314) VICTIM_MAIN: Probe send failed seq=93: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123564) VICTIM_MAIN: Probe send failed seq=94: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123814) VICTIM_MAIN: Probe send failed seq=95: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124064) VICTIM_MAIN: Probe send failed seq=96: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124314) VICTIM_MAIN: Probe send failed seq=97: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124564) VICTIM_MAIN: Probe send failed seq=98: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124814) VICTIM_MAIN: Probe send failed seq=99: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125064) VICTIM_MAIN: Probe send failed seq=100: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125314) VICTIM_MAIN: Probe send failed seq=101: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125564) VICTIM_MAIN: Probe send failed seq=102: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125814) VICTIM_MAIN: Probe send failed seq=103: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126064) VICTIM_MAIN: Probe send failed seq=104: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126314) VICTIM_MAIN: Probe send failed seq=105: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126564) VICTIM_MAIN: Probe send failed seq=106: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126814) VICTIM_MAIN: Probe send failed seq=107: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127064) VICTIM_MAIN: Probe send failed seq=108: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127314) VICTIM_MAIN: Probe send failed seq=109: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127564) VICTIM_MAIN: Probe send failed seq=110: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127814) VICTIM_MAIN: Probe send failed seq=111: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128064) VICTIM_MAIN: Probe send failed seq=112: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128314) VICTIM_MAIN: Probe send failed seq=113: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128564) VICTIM_MAIN: Probe send failed seq=114: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128814) VICTIM_MAIN: Probe send failed seq=115: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129064) VICTIM_MAIN: Probe send failed seq=116: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129314) VICTIM_MAIN: Probe send failed seq=117: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129564) VICTIM_MAIN: Probe send failed seq=118: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129814) VICTIM_MAIN: Probe send failed seq=119: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130064) VICTIM_MAIN: Probe send failed seq=120: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130314) VICTIM_MAIN: Probe send failed seq=121: ESP_ERR_INVALID_STATE[0m
+[0;32mI (130324) HEALTH: [HEALTH] up=129s heap=85020 min=84252 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (130564) VICTIM_MAIN: Probe send failed seq=122: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130814) VICTIM_MAIN: Probe send failed seq=123: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131064) VICTIM_MAIN: Probe send failed seq=124: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131314) VICTIM_MAIN: Probe send failed seq=125: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131564) VICTIM_MAIN: Probe send failed seq=126: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131814) VICTIM_MAIN: Probe send failed seq=127: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132064) VICTIM_MAIN: Probe send failed seq=128: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132314) VICTIM_MAIN: Probe send failed seq=129: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132564) VICTIM_MAIN: Probe send failed seq=130: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132814) VICTIM_MAIN: Probe send failed seq=131: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133064) VICTIM_MAIN: Probe send failed seq=132: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133314) VICTIM_MAIN: Probe send failed seq=133: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133564) VICTIM_MAIN: Probe send failed seq=134: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133814) VICTIM_MAIN: Probe send failed seq=135: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134064) VICTIM_MAIN: Probe send failed seq=136: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134314) VICTIM_MAIN: Probe send failed seq=137: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134564) VICTIM_MAIN: Probe send failed seq=138: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134814) VICTIM_MAIN: Probe send failed seq=139: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135064) VICTIM_MAIN: Probe send failed seq=140: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135314) VICTIM_MAIN: Probe send failed seq=141: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135564) VICTIM_MAIN: Probe send failed seq=142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135814) VICTIM_MAIN: Probe send failed seq=143: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136064) VICTIM_MAIN: Probe send failed seq=144: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136314) VICTIM_MAIN: Probe send failed seq=145: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136564) VICTIM_MAIN: Probe send failed seq=146: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136814) VICTIM_MAIN: Probe send failed seq=147: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137064) VICTIM_MAIN: Probe send failed seq=148: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137314) VICTIM_MAIN: Probe send failed seq=149: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137564) VICTIM_MAIN: Probe send failed seq=150: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137814) VICTIM_MAIN: Probe send failed seq=151: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138064) VICTIM_MAIN: Probe send failed seq=152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138314) VICTIM_MAIN: Probe send failed seq=153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138564) VICTIM_MAIN: Probe send failed seq=154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138814) VICTIM_MAIN: Probe send failed seq=155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139064) VICTIM_MAIN: Probe send failed seq=156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139314) VICTIM_MAIN: Probe send failed seq=157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139564) VICTIM_MAIN: Probe send failed seq=158: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139814) VICTIM_MAIN: Probe send failed seq=159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140064) VICTIM_MAIN: Probe send failed seq=160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140314) VICTIM_MAIN: Probe send failed seq=161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140564) VICTIM_MAIN: Probe send failed seq=162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140814) VICTIM_MAIN: Probe send failed seq=163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141064) VICTIM_MAIN: Probe send failed seq=164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141314) VICTIM_MAIN: Probe send failed seq=165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141564) VICTIM_MAIN: Probe send failed seq=166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141814) VICTIM_MAIN: Probe send failed seq=167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142064) VICTIM_MAIN: Probe send failed seq=168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142314) VICTIM_MAIN: Probe send failed seq=169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142564) VICTIM_MAIN: Probe send failed seq=170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142814) VICTIM_MAIN: Probe send failed seq=171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143064) VICTIM_MAIN: Probe send failed seq=172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143314) VICTIM_MAIN: Probe send failed seq=173: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143564) VICTIM_MAIN: Probe send failed seq=174: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143814) VICTIM_MAIN: Probe send failed seq=175: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144064) VICTIM_MAIN: Probe send failed seq=176: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144314) VICTIM_MAIN: Probe send failed seq=177: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144564) VICTIM_MAIN: Probe send failed seq=178: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144814) VICTIM_MAIN: Probe send failed seq=179: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145064) VICTIM_MAIN: Probe send failed seq=180: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145314) VICTIM_MAIN: Probe send failed seq=181: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145564) VICTIM_MAIN: Probe send failed seq=182: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145814) VICTIM_MAIN: Probe send failed seq=183: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146064) VICTIM_MAIN: Probe send failed seq=184: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146314) VICTIM_MAIN: Probe send failed seq=185: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146564) VICTIM_MAIN: Probe send failed seq=186: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146814) VICTIM_MAIN: Probe send failed seq=187: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147064) VICTIM_MAIN: Probe send failed seq=188: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147314) VICTIM_MAIN: Probe send failed seq=189: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147564) VICTIM_MAIN: Probe send failed seq=190: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147814) VICTIM_MAIN: Probe send failed seq=191: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148064) VICTIM_MAIN: Probe send failed seq=192: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148314) VICTIM_MAIN: Probe send failed seq=193: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148564) VICTIM_MAIN: Probe send failed seq=194: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148814) VICTIM_MAIN: Probe send failed seq=195: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149064) VICTIM_MAIN: Probe send failed seq=196: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149314) VICTIM_MAIN: Probe send failed seq=197: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149564) VICTIM_MAIN: Probe send failed seq=198: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149814) VICTIM_MAIN: Probe send failed seq=199: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150064) VICTIM_MAIN: Probe send failed seq=200: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150314) VICTIM_MAIN: Probe send failed seq=201: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150564) VICTIM_MAIN: Probe send failed seq=202: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150814) VICTIM_MAIN: Probe send failed seq=203: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151064) VICTIM_MAIN: Probe send failed seq=204: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151314) VICTIM_MAIN: Probe send failed seq=205: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151564) VICTIM_MAIN: Probe send failed seq=206: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151814) VICTIM_MAIN: Probe send failed seq=207: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152064) VICTIM_MAIN: Probe send failed seq=208: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152314) VICTIM_MAIN: Probe send failed seq=209: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152564) VICTIM_MAIN: Probe send failed seq=210: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152814) VICTIM_MAIN: Probe send failed seq=211: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153064) VICTIM_MAIN: Probe send failed seq=212: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153314) VICTIM_MAIN: Probe send failed seq=213: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153564) VICTIM_MAIN: Probe send failed seq=214: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153814) VICTIM_MAIN: Probe send failed seq=215: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154064) VICTIM_MAIN: Probe send failed seq=216: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154314) VICTIM_MAIN: Probe send failed seq=217: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154564) VICTIM_MAIN: Probe send failed seq=218: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154814) VICTIM_MAIN: Probe send failed seq=219: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155064) VICTIM_MAIN: Probe send failed seq=220: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155314) VICTIM_MAIN: Probe send failed seq=221: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155454) MESH_SETUP: STAR HUB: scan 30 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (155564) VICTIM_MAIN: Probe send failed seq=222: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155814) VICTIM_MAIN: Probe send failed seq=223: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156064) VICTIM_MAIN: Probe send failed seq=224: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156314) VICTIM_MAIN: Probe send failed seq=225: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156564) VICTIM_MAIN: Probe send failed seq=226: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156814) VICTIM_MAIN: Probe send failed seq=227: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157064) VICTIM_MAIN: Probe send failed seq=228: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157314) VICTIM_MAIN: Probe send failed seq=229: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157564) VICTIM_MAIN: Probe send failed seq=230: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157814) VICTIM_MAIN: Probe send failed seq=231: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158064) VICTIM_MAIN: Probe send failed seq=232: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158314) VICTIM_MAIN: Probe send failed seq=233: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158564) VICTIM_MAIN: Probe send failed seq=234: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158814) VICTIM_MAIN: Probe send failed seq=235: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159064) VICTIM_MAIN: Probe send failed seq=236: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159314) VICTIM_MAIN: Probe send failed seq=237: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159564) VICTIM_MAIN: Probe send failed seq=238: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159814) VICTIM_MAIN: Probe send failed seq=239: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160064) VICTIM_MAIN: Probe send failed seq=240: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160314) VICTIM_MAIN: Probe send failed seq=241: ESP_ERR_INVALID_STATE[0m
+[0;32mI (160334) HEALTH: [HEALTH] up=159s heap=84316 min=84252 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (160564) VICTIM_MAIN: Probe send failed seq=242: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160814) VICTIM_MAIN: Probe send failed seq=243: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161064) VICTIM_MAIN: Probe send failed seq=244: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161314) VICTIM_MAIN: Probe send failed seq=245: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161564) VICTIM_MAIN: Probe send failed seq=246: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161814) VICTIM_MAIN: Probe send failed seq=247: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162064) VICTIM_MAIN: Probe send failed seq=248: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162314) VICTIM_MAIN: Probe send failed seq=249: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162564) VICTIM_MAIN: Probe send failed seq=250: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162814) VICTIM_MAIN: Probe send failed seq=251: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163064) VICTIM_MAIN: Probe send failed seq=252: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163314) VICTIM_MAIN: Probe send failed seq=253: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163564) VICTIM_MAIN: Probe send failed seq=254: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163814) VICTIM_MAIN: Probe send failed seq=255: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164064) VICTIM_MAIN: Probe send failed seq=256: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164314) VICTIM_MAIN: Probe send failed seq=257: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164564) VICTIM_MAIN: Probe send failed seq=258: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164814) VICTIM_MAIN: Probe send failed seq=259: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165064) VICTIM_MAIN: Probe send failed seq=260: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165314) VICTIM_MAIN: Probe send failed seq=261: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165564) VICTIM_MAIN: Probe send failed seq=262: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165814) VICTIM_MAIN: Probe send failed seq=263: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166064) VICTIM_MAIN: Probe send failed seq=264: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166314) VICTIM_MAIN: Probe send failed seq=265: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166564) VICTIM_MAIN: Probe send failed seq=266: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166814) VICTIM_MAIN: Probe send failed seq=267: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167064) VICTIM_MAIN: Probe send failed seq=268: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167314) VICTIM_MAIN: Probe send failed seq=269: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167564) VICTIM_MAIN: Probe send failed seq=270: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167814) VICTIM_MAIN: Probe send failed seq=271: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168064) VICTIM_MAIN: Probe send failed seq=272: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168314) VICTIM_MAIN: Probe send failed seq=273: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168564) VICTIM_MAIN: Probe send failed seq=274: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168814) VICTIM_MAIN: Probe send failed seq=275: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169064) VICTIM_MAIN: Probe send failed seq=276: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169314) VICTIM_MAIN: Probe send failed seq=277: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169564) VICTIM_MAIN: Probe send failed seq=278: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169814) VICTIM_MAIN: Probe send failed seq=279: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170064) VICTIM_MAIN: Probe send failed seq=280: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170314) VICTIM_MAIN: Probe send failed seq=281: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170564) VICTIM_MAIN: Probe send failed seq=282: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170814) VICTIM_MAIN: Probe send failed seq=283: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171064) VICTIM_MAIN: Probe send failed seq=284: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171314) VICTIM_MAIN: Probe send failed seq=285: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171564) VICTIM_MAIN: Probe send failed seq=286: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171814) VICTIM_MAIN: Probe send failed seq=287: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172064) VICTIM_MAIN: Probe send failed seq=288: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172314) VICTIM_MAIN: Probe send failed seq=289: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172564) VICTIM_MAIN: Probe send failed seq=290: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172814) VICTIM_MAIN: Probe send failed seq=291: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173064) VICTIM_MAIN: Probe send failed seq=292: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173314) VICTIM_MAIN: Probe send failed seq=293: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173564) VICTIM_MAIN: Probe send failed seq=294: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173814) VICTIM_MAIN: Probe send failed seq=295: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174064) VICTIM_MAIN: Probe send failed seq=296: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174314) VICTIM_MAIN: Probe send failed seq=297: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174564) VICTIM_MAIN: Probe send failed seq=298: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174814) VICTIM_MAIN: Probe send failed seq=299: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175064) VICTIM_MAIN: Probe send failed seq=300: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175314) VICTIM_MAIN: Probe send failed seq=301: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175564) VICTIM_MAIN: Probe send failed seq=302: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175814) VICTIM_MAIN: Probe send failed seq=303: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176064) VICTIM_MAIN: Probe send failed seq=304: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176314) VICTIM_MAIN: Probe send failed seq=305: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176564) VICTIM_MAIN: Probe send failed seq=306: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176814) VICTIM_MAIN: Probe send failed seq=307: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177064) VICTIM_MAIN: Probe send failed seq=308: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177314) VICTIM_MAIN: Probe send failed seq=309: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177564) VICTIM_MAIN: Probe send failed seq=310: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177814) VICTIM_MAIN: Probe send failed seq=311: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178064) VICTIM_MAIN: Probe send failed seq=312: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178314) VICTIM_MAIN: Probe send failed seq=313: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178564) VICTIM_MAIN: Probe send failed seq=314: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178814) VICTIM_MAIN: Probe send failed seq=315: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179064) VICTIM_MAIN: Probe send failed seq=316: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179314) VICTIM_MAIN: Probe send failed seq=317: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179564) VICTIM_MAIN: Probe send failed seq=318: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179814) VICTIM_MAIN: Probe send failed seq=319: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180064) VICTIM_MAIN: Probe send failed seq=320: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180314) VICTIM_MAIN: Probe send failed seq=321: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180564) VICTIM_MAIN: Probe send failed seq=322: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180814) VICTIM_MAIN: Probe send failed seq=323: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181064) VICTIM_MAIN: Probe send failed seq=324: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181314) VICTIM_MAIN: Probe send failed seq=325: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181564) VICTIM_MAIN: Probe send failed seq=326: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181814) VICTIM_MAIN: Probe send failed seq=327: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182064) VICTIM_MAIN: Probe send failed seq=328: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182314) VICTIM_MAIN: Probe send failed seq=329: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182564) VICTIM_MAIN: Probe send failed seq=330: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182814) VICTIM_MAIN: Probe send failed seq=331: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183064) VICTIM_MAIN: Probe send failed seq=332: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183314) VICTIM_MAIN: Probe send failed seq=333: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183564) VICTIM_MAIN: Probe send failed seq=334: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183814) VICTIM_MAIN: Probe send failed seq=335: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184064) VICTIM_MAIN: Probe send failed seq=336: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184314) VICTIM_MAIN: Probe send failed seq=337: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184564) VICTIM_MAIN: Probe send failed seq=338: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184814) VICTIM_MAIN: Probe send failed seq=339: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185064) VICTIM_MAIN: Probe send failed seq=340: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185314) VICTIM_MAIN: Probe send failed seq=341: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185564) VICTIM_MAIN: Probe send failed seq=342: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185814) VICTIM_MAIN: Probe send failed seq=343: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186064) VICTIM_MAIN: Probe send failed seq=344: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186314) VICTIM_MAIN: Probe send failed seq=345: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186564) VICTIM_MAIN: Probe send failed seq=346: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186814) VICTIM_MAIN: Probe send failed seq=347: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187064) VICTIM_MAIN: Probe send failed seq=348: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187314) VICTIM_MAIN: Probe send failed seq=349: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187564) VICTIM_MAIN: Probe send failed seq=350: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187814) VICTIM_MAIN: Probe send failed seq=351: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188064) VICTIM_MAIN: Probe send failed seq=352: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188314) VICTIM_MAIN: Probe send failed seq=353: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188564) VICTIM_MAIN: Probe send failed seq=354: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188814) VICTIM_MAIN: Probe send failed seq=355: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189064) VICTIM_MAIN: Probe send failed seq=356: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189314) VICTIM_MAIN: Probe send failed seq=357: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189564) VICTIM_MAIN: Probe send failed seq=358: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189814) VICTIM_MAIN: Probe send failed seq=359: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190064) VICTIM_MAIN: Probe send failed seq=360: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190314) VICTIM_MAIN: Probe send failed seq=361: ESP_ERR_INVALID_STATE[0m
+[0;32mI (190344) HEALTH: [HEALTH] up=189s heap=84116 min=84052 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (190564) VICTIM_MAIN: Probe send failed seq=362: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190814) VICTIM_MAIN: Probe send failed seq=363: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191064) VICTIM_MAIN: Probe send failed seq=364: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191314) VICTIM_MAIN: Probe send failed seq=365: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191564) VICTIM_MAIN: Probe send failed seq=366: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191814) VICTIM_MAIN: Probe send failed seq=367: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192064) VICTIM_MAIN: Probe send failed seq=368: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192314) VICTIM_MAIN: Probe send failed seq=369: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192564) VICTIM_MAIN: Probe send failed seq=370: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192814) VICTIM_MAIN: Probe send failed seq=371: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193064) VICTIM_MAIN: Probe send failed seq=372: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193314) VICTIM_MAIN: Probe send failed seq=373: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193564) VICTIM_MAIN: Probe send failed seq=374: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193814) VICTIM_MAIN: Probe send failed seq=375: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194064) VICTIM_MAIN: Probe send failed seq=376: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194314) VICTIM_MAIN: Probe send failed seq=377: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194564) VICTIM_MAIN: Probe send failed seq=378: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194814) VICTIM_MAIN: Probe send failed seq=379: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195064) VICTIM_MAIN: Probe send failed seq=380: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195314) VICTIM_MAIN: Probe send failed seq=381: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195564) VICTIM_MAIN: Probe send failed seq=382: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195814) VICTIM_MAIN: Probe send failed seq=383: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196064) VICTIM_MAIN: Probe send failed seq=384: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196314) VICTIM_MAIN: Probe send failed seq=385: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196564) VICTIM_MAIN: Probe send failed seq=386: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196814) VICTIM_MAIN: Probe send failed seq=387: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197064) VICTIM_MAIN: Probe send failed seq=388: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197314) VICTIM_MAIN: Probe send failed seq=389: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197564) VICTIM_MAIN: Probe send failed seq=390: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197814) VICTIM_MAIN: Probe send failed seq=391: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198064) VICTIM_MAIN: Probe send failed seq=392: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198314) VICTIM_MAIN: Probe send failed seq=393: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198564) VICTIM_MAIN: Probe send failed seq=394: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198814) VICTIM_MAIN: Probe send failed seq=395: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199064) VICTIM_MAIN: Probe send failed seq=396: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199314) VICTIM_MAIN: Probe send failed seq=397: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199564) VICTIM_MAIN: Probe send failed seq=398: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199814) VICTIM_MAIN: Probe send failed seq=399: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200064) VICTIM_MAIN: Probe send failed seq=400: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200314) VICTIM_MAIN: Probe send failed seq=401: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200564) VICTIM_MAIN: Probe send failed seq=402: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200814) VICTIM_MAIN: Probe send failed seq=403: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201064) VICTIM_MAIN: Probe send failed seq=404: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201314) VICTIM_MAIN: Probe send failed seq=405: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201564) VICTIM_MAIN: Probe send failed seq=406: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201814) VICTIM_MAIN: Probe send failed seq=407: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202064) VICTIM_MAIN: Probe send failed seq=408: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202314) VICTIM_MAIN: Probe send failed seq=409: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202564) VICTIM_MAIN: Probe send failed seq=410: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202814) VICTIM_MAIN: Probe send failed seq=411: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203064) VICTIM_MAIN: Probe send failed seq=412: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203314) VICTIM_MAIN: Probe send failed seq=413: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203564) VICTIM_MAIN: Probe send failed seq=414: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203814) VICTIM_MAIN: Probe send failed seq=415: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204064) VICTIM_MAIN: Probe send failed seq=416: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204314) VICTIM_MAIN: Probe send failed seq=417: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204564) VICTIM_MAIN: Probe send failed seq=418: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204814) VICTIM_MAIN: Probe send failed seq=419: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205064) VICTIM_MAIN: Probe send failed seq=420: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205314) VICTIM_MAIN: Probe send failed seq=421: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205564) VICTIM_MAIN: Probe send failed seq=422: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205814) VICTIM_MAIN: Probe send failed seq=423: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205994) MESH_SETUP: STAR HUB: scan 40 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (206064) VICTIM_MAIN: Probe send failed seq=424: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206314) VICTIM_MAIN: Probe send failed seq=425: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206564) VICTIM_MAIN: Probe send failed seq=426: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206814) VICTIM_MAIN: Probe send failed seq=427: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207064) VICTIM_MAIN: Probe send failed seq=428: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207314) VICTIM_MAIN: Probe send failed seq=429: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207564) VICTIM_MAIN: Probe send failed seq=430: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207814) VICTIM_MAIN: Probe send failed seq=431: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208064) VICTIM_MAIN: Probe send failed seq=432: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208314) VICTIM_MAIN: Probe send failed seq=433: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208564) VICTIM_MAIN: Probe send failed seq=434: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208814) VICTIM_MAIN: Probe send failed seq=435: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209064) VICTIM_MAIN: Probe send failed seq=436: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209314) VICTIM_MAIN: Probe send failed seq=437: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209564) VICTIM_MAIN: Probe send failed seq=438: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209814) VICTIM_MAIN: Probe send failed seq=439: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210064) VICTIM_MAIN: Probe send failed seq=440: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210314) VICTIM_MAIN: Probe send failed seq=441: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210564) VICTIM_MAIN: Probe send failed seq=442: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210814) VICTIM_MAIN: Probe send failed seq=443: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211064) VICTIM_MAIN: Probe send failed seq=444: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211314) VICTIM_MAIN: Probe send failed seq=445: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211564) VICTIM_MAIN: Probe send failed seq=446: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211814) VICTIM_MAIN: Probe send failed seq=447: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212064) VICTIM_MAIN: Probe send failed seq=448: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212314) VICTIM_MAIN: Probe send failed seq=449: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212564) VICTIM_MAIN: Probe send failed seq=450: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212814) VICTIM_MAIN: Probe send failed seq=451: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213064) VICTIM_MAIN: Probe send failed seq=452: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213314) VICTIM_MAIN: Probe send failed seq=453: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213564) VICTIM_MAIN: Probe send failed seq=454: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213814) VICTIM_MAIN: Probe send failed seq=455: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214064) VICTIM_MAIN: Probe send failed seq=456: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214314) VICTIM_MAIN: Probe send failed seq=457: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214564) VICTIM_MAIN: Probe send failed seq=458: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214814) VICTIM_MAIN: Probe send failed seq=459: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215064) VICTIM_MAIN: Probe send failed seq=460: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215314) VICTIM_MAIN: Probe send failed seq=461: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215564) VICTIM_MAIN: Probe send failed seq=462: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215814) VICTIM_MAIN: Probe send failed seq=463: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216064) VICTIM_MAIN: Probe send failed seq=464: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216314) VICTIM_MAIN: Probe send failed seq=465: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216564) VICTIM_MAIN: Probe send failed seq=466: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216814) VICTIM_MAIN: Probe send failed seq=467: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217064) VICTIM_MAIN: Probe send failed seq=468: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217314) VICTIM_MAIN: Probe send failed seq=469: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217564) VICTIM_MAIN: Probe send failed seq=470: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217814) VICTIM_MAIN: Probe send failed seq=471: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218064) VICTIM_MAIN: Probe send failed seq=472: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218314) VICTIM_MAIN: Probe send failed seq=473: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218564) VICTIM_MAIN: Probe send failed seq=474: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218814) VICTIM_MAIN: Probe send failed seq=475: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219064) VICTIM_MAIN: Probe send failed seq=476: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219314) VICTIM_MAIN: Probe send failed seq=477: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219564) VICTIM_MAIN: Probe send failed seq=478: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219814) VICTIM_MAIN: Probe send failed seq=479: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220064) VICTIM_MAIN: Probe send failed seq=480: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220314) VICTIM_MAIN: Probe send failed seq=481: ESP_ERR_INVALID_STATE[0m
+[0;32mI (220354) HEALTH: [HEALTH] up=219s heap=84316 min=84052 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (220564) VICTIM_MAIN: Probe send failed seq=482: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220814) VICTIM_MAIN: Probe send failed seq=483: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221064) VICTIM_MAIN: Probe send failed seq=484: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221314) VICTIM_MAIN: Probe send failed seq=485: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221564) VICTIM_MAIN: Probe send failed seq=486: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221814) VICTIM_MAIN: Probe send failed seq=487: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222064) VICTIM_MAIN: Probe send failed seq=488: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222314) VICTIM_MAIN: Probe send failed seq=489: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222564) VICTIM_MAIN: Probe send failed seq=490: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222814) VICTIM_MAIN: Probe send failed seq=491: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223064) VICTIM_MAIN: Probe send failed seq=492: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223314) VICTIM_MAIN: Probe send failed seq=493: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223564) VICTIM_MAIN: Probe send failed seq=494: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223814) VICTIM_MAIN: Probe send failed seq=495: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224064) VICTIM_MAIN: Probe send failed seq=496: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224314) VICTIM_MAIN: Probe send failed seq=497: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224564) VICTIM_MAIN: Probe send failed seq=498: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224814) VICTIM_MAIN: Probe send failed seq=499: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225064) VICTIM_MAIN: Probe send failed seq=500: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225314) VICTIM_MAIN: Probe send failed seq=501: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225564) VICTIM_MAIN: Probe send failed seq=502: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225814) VICTIM_MAIN: Probe send failed seq=503: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226064) VICTIM_MAIN: Probe send failed seq=504: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226314) VICTIM_MAIN: Probe send failed seq=505: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226564) VICTIM_MAIN: Probe send failed seq=506: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226814) VICTIM_MAIN: Probe send failed seq=507: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227064) VICTIM_MAIN: Probe send failed seq=508: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227314) VICTIM_MAIN: Probe send failed seq=509: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227564) VICTIM_MAIN: Probe send failed seq=510: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227814) VICTIM_MAIN: Probe send failed seq=511: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228064) VICTIM_MAIN: Probe send failed seq=512: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228314) VICTIM_MAIN: Probe send failed seq=513: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228564) VICTIM_MAIN: Probe send failed seq=514: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228814) VICTIM_MAIN: Probe send failed seq=515: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229064) VICTIM_MAIN: Probe send failed seq=516: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229314) VICTIM_MAIN: Probe send failed seq=517: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229564) VICTIM_MAIN: Probe send failed seq=518: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229814) VICTIM_MAIN: Probe send failed seq=519: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230064) VICTIM_MAIN: Probe send failed seq=520: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230314) VICTIM_MAIN: Probe send failed seq=521: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230564) VICTIM_MAIN: Probe send failed seq=522: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230814) VICTIM_MAIN: Probe send failed seq=523: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231064) VICTIM_MAIN: Probe send failed seq=524: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231314) VICTIM_MAIN: Probe send failed seq=525: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231564) VICTIM_MAIN: Probe send failed seq=526: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231814) VICTIM_MAIN: Probe send failed seq=527: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232064) VICTIM_MAIN: Probe send failed seq=528: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232314) VICTIM_MAIN: Probe send failed seq=529: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232564) VICTIM_MAIN: Probe send failed seq=530: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232814) VICTIM_MAIN: Probe send failed seq=531: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233064) VICTIM_MAIN: Probe send failed seq=532: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233314) VICTIM_MAIN: Probe send failed seq=533: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233564) VICTIM_MAIN: Probe send failed seq=534: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233814) VICTIM_MAIN: Probe send failed seq=535: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234064) VICTIM_MAIN: Probe send failed seq=536: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234314) VICTIM_MAIN: Probe send failed seq=537: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234564) VICTIM_MAIN: Probe send failed seq=538: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234814) VICTIM_MAIN: Probe send failed seq=539: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235064) VICTIM_MAIN: Probe send failed seq=540: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235314) VICTIM_MAIN: Probe send failed seq=541: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235564) VICTIM_MAIN: Probe send failed seq=542: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235814) VICTIM_MAIN: Probe send failed seq=543: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236064) VICTIM_MAIN: Probe send failed seq=544: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236314) VICTIM_MAIN: Probe send failed seq=545: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236564) VICTIM_MAIN: Probe send failed seq=546: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236814) VICTIM_MAIN: Probe send failed seq=547: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237064) VICTIM_MAIN: Probe send failed seq=548: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237314) VICTIM_MAIN: Probe send failed seq=549: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237564) VICTIM_MAIN: Probe send failed seq=550: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237814) VICTIM_MAIN: Probe send failed seq=551: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238064) VICTIM_MAIN: Probe send failed seq=552: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238314) VICTIM_MAIN: Probe send failed seq=553: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238564) VICTIM_MAIN: Probe send failed seq=554: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238814) VICTIM_MAIN: Probe send failed seq=555: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239064) VICTIM_MAIN: Probe send failed seq=556: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239314) VICTIM_MAIN: Probe send failed seq=557: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239564) VICTIM_MAIN: Probe send failed seq=558: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239814) VICTIM_MAIN: Probe send failed seq=559: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240064) VICTIM_MAIN: Probe send failed seq=560: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240314) VICTIM_MAIN: Probe send failed seq=561: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240564) VICTIM_MAIN: Probe send failed seq=562: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240814) VICTIM_MAIN: Probe send failed seq=563: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241064) VICTIM_MAIN: Probe send failed seq=564: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241314) VICTIM_MAIN: Probe send failed seq=565: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241564) VICTIM_MAIN: Probe send failed seq=566: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241814) VICTIM_MAIN: Probe send failed seq=567: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242064) VICTIM_MAIN: Probe send failed seq=568: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242314) VICTIM_MAIN: Probe send failed seq=569: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242564) VICTIM_MAIN: Probe send failed seq=570: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242814) VICTIM_MAIN: Probe send failed seq=571: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243064) VICTIM_MAIN: Probe send failed seq=572: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243314) VICTIM_MAIN: Probe send failed seq=573: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243564) VICTIM_MAIN: Probe send failed seq=574: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243814) VICTIM_MAIN: Probe send failed seq=575: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244064) VICTIM_MAIN: Probe send failed seq=576: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244314) VICTIM_MAIN: Probe send failed seq=577: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244564) VICTIM_MAIN: Probe send failed seq=578: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244814) VICTIM_MAIN: Probe send failed seq=579: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245064) VICTIM_MAIN: Probe send failed seq=580: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245314) VICTIM_MAIN: Probe send failed seq=581: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245564) VICTIM_MAIN: Probe send failed seq=582: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245814) VICTIM_MAIN: Probe send failed seq=583: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246064) VICTIM_MAIN: Probe send failed seq=584: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246314) VICTIM_MAIN: Probe send failed seq=585: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246564) VICTIM_MAIN: Probe send failed seq=586: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246814) VICTIM_MAIN: Probe send failed seq=587: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247064) VICTIM_MAIN: Probe send failed seq=588: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247314) VICTIM_MAIN: Probe send failed seq=589: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247564) VICTIM_MAIN: Probe send failed seq=590: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247814) VICTIM_MAIN: Probe send failed seq=591: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248064) VICTIM_MAIN: Probe send failed seq=592: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248314) VICTIM_MAIN: Probe send failed seq=593: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248564) VICTIM_MAIN: Probe send failed seq=594: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248814) VICTIM_MAIN: Probe send failed seq=595: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249064) VICTIM_MAIN: Probe send failed seq=596: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249314) VICTIM_MAIN: Probe send failed seq=597: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249564) VICTIM_MAIN: Probe send failed seq=598: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249814) VICTIM_MAIN: Probe send failed seq=599: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250064) VICTIM_MAIN: Probe send failed seq=600: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250314) VICTIM_MAIN: Probe send failed seq=601: ESP_ERR_INVALID_STATE[0m
+[0;32mI (250364) HEALTH: [HEALTH] up=249s heap=84316 min=84052 big=81920 | stack free(B): telemetry=2184 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (250564) VICTIM_MAIN: Probe send failed seq=602: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250814) VICTIM_MAIN: Probe send failed seq=603: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251064) VICTIM_MAIN: Probe send failed seq=604: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251314) VICTIM_MAIN: Probe send failed seq=605: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251564) VICTIM_MAIN: Probe send failed seq=606: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251814) VICTIM_MAIN: Probe send failed seq=607: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252064) VICTIM_MAIN: Probe send failed seq=608: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252314) VICTIM_MAIN: Probe send failed seq=609: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252564) VICTIM_MAIN: Probe send failed seq=610: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252814) VICTIM_MAIN: Probe send failed seq=611: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253064) VICTIM_MAIN: Probe send failed seq=612: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253314) VICTIM_MAIN: Probe send failed seq=613: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253564) VICTIM_MAIN: Probe send failed seq=614: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253814) VICTIM_MAIN: Probe send failed seq=615: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254064) VICTIM_MAIN: Probe send failed seq=616: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254314) VICTIM_MAIN: Probe send failed seq=617: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254564) VICTIM_MAIN: Probe send failed seq=618: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254814) VICTIM_MAIN: Probe send failed seq=619: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255064) VICTIM_MAIN: Probe send failed seq=620: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255314) VICTIM_MAIN: Probe send failed seq=621: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255564) VICTIM_MAIN: Probe send failed seq=622: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255814) VICTIM_MAIN: Probe send failed seq=623: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256064) VICTIM_MAIN: Probe send failed seq=624: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256314) VICTIM_MAIN: Probe send failed seq=625: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256534) MESH_SETUP: STAR HUB: scan 50 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (256564) VICTIM_MAIN: Probe send failed seq=626: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256814) VICTIM_MAIN: Probe send failed seq=627: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257064) VICTIM_MAIN: Probe send failed seq=628: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257314) VICTIM_MAIN: Probe send failed seq=629: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257564) VICTIM_MAIN: Probe send failed seq=630: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257814) VICTIM_MAIN: Probe send failed seq=631: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258064) VICTIM_MAIN: Probe send failed seq=632: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258314) VICTIM_MAIN: Probe send failed seq=633: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258564) VICTIM_MAIN: Probe send failed seq=634: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258814) VICTIM_MAIN: Probe send failed seq=635: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259064) VICTIM_MAIN: Probe send failed seq=636: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259314) VICTIM_MAIN: Probe send failed seq=637: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259564) VICTIM_MAIN: Probe send failed seq=638: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259814) VICTIM_MAIN: Probe send failed seq=639: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260064) VICTIM_MAIN: Probe send failed seq=640: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260314) VICTIM_MAIN: Probe send failed seq=641: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260564) VICTIM_MAIN: Probe send failed seq=642: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260814) VICTIM_MAIN: Probe send failed seq=643: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261064) VICTIM_MAIN: Probe send failed seq=644: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261314) VICTIM_MAIN: Probe send failed seq=645: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261564) VICTIM_MAIN: Probe send failed seq=646: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261594) MESH_SETUP: STAR HUB: joining wormhole A f4:2d:c9:73:e6:19 (layer 2, rssi -70, ch 11) as layer 3.[0m
+[0;33mW (261754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (261814) VICTIM_MAIN: Probe send failed seq=647: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261874) MESH_SETUP: Parent disconnected — reason 201.[0m
+I (261894) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (261894) wifi:state: init -> auth (0xb0)
+I (261904) wifi:state: auth -> assoc (0x0)
+I (261914) wifi:state: assoc -> run (0x10)
+I (261914) wifi:connected with ESPM_73E618, aid = 2, channel 11, BW20, bssid = f4:2d:c9:73:e6:19
+I (261914) wifi:security: Open Auth, phy: bgn, rssi: -67, cipher(pairwise:0x0, group:0x0), pmf:0
+I (261934) wifi:pm start, type: 0
+
+[0;32mI (261934) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (261934) MESH_SETUP: Parent connected. Layer=3  ParentMAC=f4:2d:c9:73:e6:19  IsRoot=NO[0m
+[0;32mI (261944) MESH_SETUP: ==============================[0m
+[0;32mI (261954) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (261954) MESH_SETUP: ==============================[0m
+[0;32mI (261964) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (261964) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (262204) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (262354) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (262414) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (262434) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/DLSU_Library/victim_NODE_B4BFE932FE90_r2_b2_telem.csv[0m
+[0;32mI (280374) HEALTH: [HEALTH] up=279s heap=84344 min=82412 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+W (291384) wifi:5531<free>rootless
+[0;32mI (310384) HEALTH: [HEALTH] up=309s heap=84464 min=82292 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;33mW (311634) PHASE_LISTENER: Root RESTARTED (new session b70f5641) - dropped phase 255 from the old session; rows stay phase 255 until the new root's Phase 0.[0m
+W (324734) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:116, no_wnd_count:0, timeout_count:0
+[0;32mI (340394) HEALTH: [HEALTH] up=339s heap=84464 min=82292 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+I (346624) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (356664) wifi:dp: 1, bi: 307200, li: 1, scale listen interval from 307200 us to 307200 us
+[0;32mI (370404) HEALTH: [HEALTH] up=369s heap=84464 min=82292 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (397034) PHASE_LISTENER: Phase update → phase_id=0  gt_label=0  seq=18  root_ts=91594512 us[0m
+[0;32mI (400414) HEALTH: [HEALTH] up=399s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (430424) HEALTH: [HEALTH] up=429s heap=84140 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+I (452304) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (453234) wifi:dp: 1, bi: 1024000, li: 1, scale listen interval from 307200 us to 1024000 us
+[0;32mI (460434) HEALTH: [HEALTH] up=459s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (490444) HEALTH: [HEALTH] up=489s heap=84164 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (520454) HEALTH: [HEALTH] up=519s heap=84344 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (550464) HEALTH: [HEALTH] up=549s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (580474) HEALTH: [HEALTH] up=579s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (610484) HEALTH: [HEALTH] up=609s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (640494) HEALTH: [HEALTH] up=639s heap=84464 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (670504) HEALTH: [HEALTH] up=669s heap=84344 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (697604) PHASE_LISTENER: Phase update → phase_id=2  gt_label=2  seq=19  root_ts=392154363 us[0m
+[0;32mI (700514) HEALTH: [HEALTH] up=699s heap=84140 min=82220 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (730524) HEALTH: [HEALTH] up=729s heap=84464 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (760534) HEALTH: [HEALTH] up=759s heap=84464 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (790544) HEALTH: [HEALTH] up=789s heap=84164 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (820554) HEALTH: [HEALTH] up=819s heap=84464 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;32mI (850564) HEALTH: [HEALTH] up=849s heap=84464 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2204 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+W (859604) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:0
+W (860804) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:1
+W (862004) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:2
+W (863204) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:3
+I (864154) wifi:bcn_timeout,ap_probe_send_start
+W (864404) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:4
+W (865604) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:5
+I (866664) wifi:ap_probe_send over, reset wifi status to disassoc
+I (866664) wifi:state: run -> init (0xc800)
+I (866674) wifi:pm stop, total sleep time: 0 us / 604737023 us
+
+I (866674) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (866674) MESH_SETUP: Parent disconnected — reason 200.[0m
+W (866804) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:2298, no_wnd_count:0, timeout_count:6
+[0;33mW (866804) VICTIM_MAIN: Probe send failed seq=2863: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (866804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (866924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867064) VICTIM_MAIN: Probe send failed seq=2864: ESP_ERR_INVALID_STATE[0m
+[0;33mW (867174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867314) VICTIM_MAIN: Probe send failed seq=2865: ESP_ERR_INVALID_STATE[0m
+[0;33mW (867414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867564) VICTIM_MAIN: Probe send failed seq=2866: ESP_ERR_INVALID_STATE[0m
+[0;33mW (867664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (867814) VICTIM_MAIN: Probe send failed seq=2867: ESP_ERR_INVALID_STATE[0m
+[0;33mW (867914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868064) VICTIM_MAIN: Probe send failed seq=2868: ESP_ERR_INVALID_STATE[0m
+[0;33mW (868154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868314) VICTIM_MAIN: Probe send failed seq=2869: ESP_ERR_INVALID_STATE[0m
+[0;33mW (868404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868564) VICTIM_MAIN: Probe send failed seq=2870: ESP_ERR_INVALID_STATE[0m
+[0;33mW (868654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (868814) VICTIM_MAIN: Probe send failed seq=2871: ESP_ERR_INVALID_STATE[0m
+[0;33mW (868894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869064) VICTIM_MAIN: Probe send failed seq=2872: ESP_ERR_INVALID_STATE[0m
+[0;33mW (869144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869314) VICTIM_MAIN: Probe send failed seq=2873: ESP_ERR_INVALID_STATE[0m
+[0;33mW (869384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869564) VICTIM_MAIN: Probe send failed seq=2874: ESP_ERR_INVALID_STATE[0m
+[0;33mW (869634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (869814) VICTIM_MAIN: Probe send failed seq=2875: ESP_ERR_INVALID_STATE[0m
+[0;33mW (869884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870064) VICTIM_MAIN: Probe send failed seq=2876: ESP_ERR_INVALID_STATE[0m
+[0;33mW (870124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870314) VICTIM_MAIN: Probe send failed seq=2877: ESP_ERR_INVALID_STATE[0m
+[0;33mW (870374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870564) VICTIM_MAIN: Probe send failed seq=2878: ESP_ERR_INVALID_STATE[0m
+[0;33mW (870624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870814) VICTIM_MAIN: Probe send failed seq=2879: ESP_ERR_INVALID_STATE[0m
+[0;33mW (870864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (870994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871064) VICTIM_MAIN: Probe send failed seq=2880: ESP_ERR_INVALID_STATE[0m
+[0;33mW (871114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871314) VICTIM_MAIN: Probe send failed seq=2881: ESP_ERR_INVALID_STATE[0m
+[0;33mW (871364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871564) VICTIM_MAIN: Probe send failed seq=2882: ESP_ERR_INVALID_STATE[0m
+[0;33mW (871604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871814) VICTIM_MAIN: Probe send failed seq=2883: ESP_ERR_INVALID_STATE[0m
+[0;33mW (871854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (871974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872064) VICTIM_MAIN: Probe send failed seq=2884: ESP_ERR_INVALID_STATE[0m
+[0;33mW (872104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872314) VICTIM_MAIN: Probe send failed seq=2885: ESP_ERR_INVALID_STATE[0m
+[0;33mW (872344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872564) VICTIM_MAIN: Probe send failed seq=2886: ESP_ERR_INVALID_STATE[0m
+[0;33mW (872594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872814) VICTIM_MAIN: Probe send failed seq=2887: ESP_ERR_INVALID_STATE[0m
+[0;33mW (872844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (872964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873064) VICTIM_MAIN: Probe send failed seq=2888: ESP_ERR_INVALID_STATE[0m
+[0;33mW (873084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873314) VICTIM_MAIN: Probe send failed seq=2889: ESP_ERR_INVALID_STATE[0m
+[0;33mW (873334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873564) VICTIM_MAIN: Probe send failed seq=2890: ESP_ERR_INVALID_STATE[0m
+[0;33mW (873584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873814) VICTIM_MAIN: Probe send failed seq=2891: ESP_ERR_INVALID_STATE[0m
+[0;33mW (873824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (873954) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874064) VICTIM_MAIN: Probe send failed seq=2892: ESP_ERR_INVALID_STATE[0m
+[0;33mW (874074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874314) VICTIM_MAIN: Probe send failed seq=2893: ESP_ERR_INVALID_STATE[0m
+[0;33mW (874314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874564) VICTIM_MAIN: Probe send failed seq=2894: ESP_ERR_INVALID_STATE[0m
+[0;33mW (874564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874814) VICTIM_MAIN: Probe send failed seq=2895: ESP_ERR_INVALID_STATE[0m
+[0;33mW (874814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (874944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875064) VICTIM_MAIN: Probe send failed seq=2896: ESP_ERR_INVALID_STATE[0m
+[0;33mW (875064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875314) VICTIM_MAIN: Probe send failed seq=2897: ESP_ERR_INVALID_STATE[0m
+[0;33mW (875434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875564) VICTIM_MAIN: Probe send failed seq=2898: ESP_ERR_INVALID_STATE[0m
+[0;33mW (875684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (875814) VICTIM_MAIN: Probe send failed seq=2899: ESP_ERR_INVALID_STATE[0m
+[0;33mW (875924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876064) VICTIM_MAIN: Probe send failed seq=2900: ESP_ERR_INVALID_STATE[0m
+[0;33mW (876174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876314) VICTIM_MAIN: Probe send failed seq=2901: ESP_ERR_INVALID_STATE[0m
+[0;33mW (876424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876564) VICTIM_MAIN: Probe send failed seq=2902: ESP_ERR_INVALID_STATE[0m
+[0;33mW (876664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (876814) VICTIM_MAIN: Probe send failed seq=2903: ESP_ERR_INVALID_STATE[0m
+[0;33mW (876914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877064) VICTIM_MAIN: Probe send failed seq=2904: ESP_ERR_INVALID_STATE[0m
+[0;33mW (877154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877314) VICTIM_MAIN: Probe send failed seq=2905: ESP_ERR_INVALID_STATE[0m
+[0;33mW (877404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877564) VICTIM_MAIN: Probe send failed seq=2906: ESP_ERR_INVALID_STATE[0m
+[0;33mW (877654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (877814) VICTIM_MAIN: Probe send failed seq=2907: ESP_ERR_INVALID_STATE[0m
+[0;33mW (877894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878024) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878064) VICTIM_MAIN: Probe send failed seq=2908: ESP_ERR_INVALID_STATE[0m
+[0;33mW (878144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878314) VICTIM_MAIN: Probe send failed seq=2909: ESP_ERR_INVALID_STATE[0m
+[0;33mW (878394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878564) VICTIM_MAIN: Probe send failed seq=2910: ESP_ERR_INVALID_STATE[0m
+[0;33mW (878644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (878814) VICTIM_MAIN: Probe send failed seq=2911: ESP_ERR_INVALID_STATE[0m
+[0;33mW (878884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879064) VICTIM_MAIN: Probe send failed seq=2912: ESP_ERR_INVALID_STATE[0m
+[0;33mW (879134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879314) VICTIM_MAIN: Probe send failed seq=2913: ESP_ERR_INVALID_STATE[0m
+[0;33mW (879384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879564) VICTIM_MAIN: Probe send failed seq=2914: ESP_ERR_INVALID_STATE[0m
+[0;33mW (879624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879814) VICTIM_MAIN: Probe send failed seq=2915: ESP_ERR_INVALID_STATE[0m
+[0;33mW (879874) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (879994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880064) VICTIM_MAIN: Probe send failed seq=2916: ESP_ERR_INVALID_STATE[0m
+[0;33mW (880114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880314) VICTIM_MAIN: Probe send failed seq=2917: ESP_ERR_INVALID_STATE[0m
+[0;33mW (880364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880564) VICTIM_MAIN: Probe send failed seq=2918: ESP_ERR_INVALID_STATE[0m
+[0;32mI (880574) HEALTH: [HEALTH] up=879s heap=84460 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2172 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;33mW (880614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880814) VICTIM_MAIN: Probe send failed seq=2919: ESP_ERR_INVALID_STATE[0m
+[0;33mW (880864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (880984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881064) VICTIM_MAIN: Probe send failed seq=2920: ESP_ERR_INVALID_STATE[0m
+[0;33mW (881104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881314) VICTIM_MAIN: Probe send failed seq=2921: ESP_ERR_INVALID_STATE[0m
+[0;33mW (881354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881564) VICTIM_MAIN: Probe send failed seq=2922: ESP_ERR_INVALID_STATE[0m
+[0;33mW (881594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881814) VICTIM_MAIN: Probe send failed seq=2923: ESP_ERR_INVALID_STATE[0m
+[0;33mW (881844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (881964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882064) VICTIM_MAIN: Probe send failed seq=2924: ESP_ERR_INVALID_STATE[0m
+[0;33mW (882094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882314) VICTIM_MAIN: Probe send failed seq=2925: ESP_ERR_INVALID_STATE[0m
+[0;33mW (882334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882564) VICTIM_MAIN: Probe send failed seq=2926: ESP_ERR_INVALID_STATE[0m
+[0;33mW (882584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882814) VICTIM_MAIN: Probe send failed seq=2927: ESP_ERR_INVALID_STATE[0m
+[0;33mW (882834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (882954) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883064) VICTIM_MAIN: Probe send failed seq=2928: ESP_ERR_INVALID_STATE[0m
+[0;33mW (883074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883314) VICTIM_MAIN: Probe send failed seq=2929: ESP_ERR_INVALID_STATE[0m
+[0;33mW (883324) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883564) VICTIM_MAIN: Probe send failed seq=2930: ESP_ERR_INVALID_STATE[0m
+[0;33mW (883574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883814) VICTIM_MAIN: Probe send failed seq=2931: ESP_ERR_INVALID_STATE[0m
+[0;33mW (883814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (883944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884064) VICTIM_MAIN: Probe send failed seq=2932: ESP_ERR_INVALID_STATE[0m
+[0;33mW (884064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884314) VICTIM_MAIN: Probe send failed seq=2933: ESP_ERR_INVALID_STATE[0m
+[0;33mW (884314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884564) VICTIM_MAIN: Probe send failed seq=2934: ESP_ERR_INVALID_STATE[0m
+[0;33mW (884684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (884814) VICTIM_MAIN: Probe send failed seq=2935: ESP_ERR_INVALID_STATE[0m
+[0;33mW (884924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885064) VICTIM_MAIN: Probe send failed seq=2936: ESP_ERR_INVALID_STATE[0m
+[0;33mW (885174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885314) VICTIM_MAIN: Probe send failed seq=2937: ESP_ERR_INVALID_STATE[0m
+[0;33mW (885424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885564) VICTIM_MAIN: Probe send failed seq=2938: ESP_ERR_INVALID_STATE[0m
+[0;33mW (885664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (885814) VICTIM_MAIN: Probe send failed seq=2939: ESP_ERR_INVALID_STATE[0m
+[0;33mW (885914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886064) VICTIM_MAIN: Probe send failed seq=2940: ESP_ERR_INVALID_STATE[0m
+[0;33mW (886164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886314) VICTIM_MAIN: Probe send failed seq=2941: ESP_ERR_INVALID_STATE[0m
+[0;33mW (886404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886564) VICTIM_MAIN: Probe send failed seq=2942: ESP_ERR_INVALID_STATE[0m
+[0;33mW (886654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (886814) VICTIM_MAIN: Probe send failed seq=2943: ESP_ERR_INVALID_STATE[0m
+[0;33mW (886904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887024) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887064) VICTIM_MAIN: Probe send failed seq=2944: ESP_ERR_INVALID_STATE[0m
+[0;33mW (887144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887314) VICTIM_MAIN: Probe send failed seq=2945: ESP_ERR_INVALID_STATE[0m
+[0;33mW (887394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887564) VICTIM_MAIN: Probe send failed seq=2946: ESP_ERR_INVALID_STATE[0m
+[0;33mW (887644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (887814) VICTIM_MAIN: Probe send failed seq=2947: ESP_ERR_INVALID_STATE[0m
+[0;33mW (887884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888064) VICTIM_MAIN: Probe send failed seq=2948: ESP_ERR_INVALID_STATE[0m
+[0;33mW (888134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888314) VICTIM_MAIN: Probe send failed seq=2949: ESP_ERR_INVALID_STATE[0m
+[0;33mW (888384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888564) VICTIM_MAIN: Probe send failed seq=2950: ESP_ERR_INVALID_STATE[0m
+[0;33mW (888624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888814) VICTIM_MAIN: Probe send failed seq=2951: ESP_ERR_INVALID_STATE[0m
+[0;33mW (888874) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (888994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889064) VICTIM_MAIN: Probe send failed seq=2952: ESP_ERR_INVALID_STATE[0m
+[0;33mW (889114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889314) VICTIM_MAIN: Probe send failed seq=2953: ESP_ERR_INVALID_STATE[0m
+[0;33mW (889364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889564) VICTIM_MAIN: Probe send failed seq=2954: ESP_ERR_INVALID_STATE[0m
+[0;33mW (889614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889814) VICTIM_MAIN: Probe send failed seq=2955: ESP_ERR_INVALID_STATE[0m
+[0;33mW (889854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (889984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890064) VICTIM_MAIN: Probe send failed seq=2956: ESP_ERR_INVALID_STATE[0m
+[0;33mW (890104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890314) VICTIM_MAIN: Probe send failed seq=2957: ESP_ERR_INVALID_STATE[0m
+[0;33mW (890354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890564) VICTIM_MAIN: Probe send failed seq=2958: ESP_ERR_INVALID_STATE[0m
+[0;33mW (890594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890814) VICTIM_MAIN: Probe send failed seq=2959: ESP_ERR_INVALID_STATE[0m
+[0;33mW (890844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (890964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891064) VICTIM_MAIN: Probe send failed seq=2960: ESP_ERR_INVALID_STATE[0m
+[0;33mW (891094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891314) VICTIM_MAIN: Probe send failed seq=2961: ESP_ERR_INVALID_STATE[0m
+[0;33mW (891334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891564) VICTIM_MAIN: Probe send failed seq=2962: ESP_ERR_INVALID_STATE[0m
+[0;33mW (891584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891814) VICTIM_MAIN: Probe send failed seq=2963: ESP_ERR_INVALID_STATE[0m
+[0;33mW (891824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (891954) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892064) VICTIM_MAIN: Probe send failed seq=2964: ESP_ERR_INVALID_STATE[0m
+[0;33mW (892074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892314) VICTIM_MAIN: Probe send failed seq=2965: ESP_ERR_INVALID_STATE[0m
+[0;33mW (892324) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892564) VICTIM_MAIN: Probe send failed seq=2966: ESP_ERR_INVALID_STATE[0m
+[0;33mW (892574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892814) VICTIM_MAIN: Probe send failed seq=2967: ESP_ERR_INVALID_STATE[0m
+[0;33mW (892824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (892944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893064) VICTIM_MAIN: Probe send failed seq=2968: ESP_ERR_INVALID_STATE[0m
+[0;33mW (893064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893314) VICTIM_MAIN: Probe send failed seq=2969: ESP_ERR_INVALID_STATE[0m
+[0;33mW (893314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893564) VICTIM_MAIN: Probe send failed seq=2970: ESP_ERR_INVALID_STATE[0m
+[0;33mW (893564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (893814) VICTIM_MAIN: Probe send failed seq=2971: ESP_ERR_INVALID_STATE[0m
+[0;33mW (893934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894064) VICTIM_MAIN: Probe send failed seq=2972: ESP_ERR_INVALID_STATE[0m
+[0;33mW (894174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894314) VICTIM_MAIN: Probe send failed seq=2973: ESP_ERR_INVALID_STATE[0m
+[0;33mW (894424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894564) VICTIM_MAIN: Probe send failed seq=2974: ESP_ERR_INVALID_STATE[0m
+[0;33mW (894664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (894814) VICTIM_MAIN: Probe send failed seq=2975: ESP_ERR_INVALID_STATE[0m
+[0;33mW (894914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895064) VICTIM_MAIN: Probe send failed seq=2976: ESP_ERR_INVALID_STATE[0m
+[0;33mW (895164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895314) VICTIM_MAIN: Probe send failed seq=2977: ESP_ERR_INVALID_STATE[0m
+[0;33mW (895404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895564) VICTIM_MAIN: Probe send failed seq=2978: ESP_ERR_INVALID_STATE[0m
+[0;33mW (895654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (895814) VICTIM_MAIN: Probe send failed seq=2979: ESP_ERR_INVALID_STATE[0m
+[0;33mW (895904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896024) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896064) VICTIM_MAIN: Probe send failed seq=2980: ESP_ERR_INVALID_STATE[0m
+[0;33mW (896144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896314) VICTIM_MAIN: Probe send failed seq=2981: ESP_ERR_INVALID_STATE[0m
+[0;33mW (896394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896564) VICTIM_MAIN: Probe send failed seq=2982: ESP_ERR_INVALID_STATE[0m
+[0;33mW (896644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (896814) VICTIM_MAIN: Probe send failed seq=2983: ESP_ERR_INVALID_STATE[0m
+[0;33mW (896884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897064) VICTIM_MAIN: Probe send failed seq=2984: ESP_ERR_INVALID_STATE[0m
+[0;33mW (897134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897314) VICTIM_MAIN: Probe send failed seq=2985: ESP_ERR_INVALID_STATE[0m
+[0;33mW (897384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897564) VICTIM_MAIN: Probe send failed seq=2986: ESP_ERR_INVALID_STATE[0m
+[0;33mW (897624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897814) VICTIM_MAIN: Probe send failed seq=2987: ESP_ERR_INVALID_STATE[0m
+[0;33mW (897874) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (897994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898064) VICTIM_MAIN: Probe send failed seq=2988: ESP_ERR_INVALID_STATE[0m
+[0;33mW (898114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898314) VICTIM_MAIN: Probe send failed seq=2989: ESP_ERR_INVALID_STATE[0m
+[0;33mW (898364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898564) VICTIM_MAIN: Probe send failed seq=2990: ESP_ERR_INVALID_STATE[0m
+[0;33mW (898614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898814) VICTIM_MAIN: Probe send failed seq=2991: ESP_ERR_INVALID_STATE[0m
+[0;33mW (898864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (898984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899064) VICTIM_MAIN: Probe send failed seq=2992: ESP_ERR_INVALID_STATE[0m
+[0;33mW (899104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899314) VICTIM_MAIN: Probe send failed seq=2993: ESP_ERR_INVALID_STATE[0m
+[0;33mW (899354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899564) VICTIM_MAIN: Probe send failed seq=2994: ESP_ERR_INVALID_STATE[0m
+[0;33mW (899604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899814) VICTIM_MAIN: Probe send failed seq=2995: ESP_ERR_INVALID_STATE[0m
+[0;33mW (899844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (899974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900064) VICTIM_MAIN: Probe send failed seq=2996: ESP_ERR_INVALID_STATE[0m
+[0;33mW (900094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900314) VICTIM_MAIN: Probe send failed seq=2997: ESP_ERR_INVALID_STATE[0m
+[0;33mW (900344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900564) VICTIM_MAIN: Probe send failed seq=2998: ESP_ERR_INVALID_STATE[0m
+[0;33mW (900584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900814) VICTIM_MAIN: Probe send failed seq=2999: ESP_ERR_INVALID_STATE[0m
+[0;33mW (900834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (900954) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901064) VICTIM_MAIN: Probe send failed seq=3000: ESP_ERR_INVALID_STATE[0m
+[0;33mW (901084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901314) VICTIM_MAIN: Probe send failed seq=3001: ESP_ERR_INVALID_STATE[0m
+[0;33mW (901324) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901564) VICTIM_MAIN: Probe send failed seq=3002: ESP_ERR_INVALID_STATE[0m
+[0;33mW (901574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901814) VICTIM_MAIN: Probe send failed seq=3003: ESP_ERR_INVALID_STATE[0m
+[0;33mW (901824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (901944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902064) VICTIM_MAIN: Probe send failed seq=3004: ESP_ERR_INVALID_STATE[0m
+[0;33mW (902064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902314) VICTIM_MAIN: Probe send failed seq=3005: ESP_ERR_INVALID_STATE[0m
+[0;33mW (902314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902564) VICTIM_MAIN: Probe send failed seq=3006: ESP_ERR_INVALID_STATE[0m
+[0;33mW (902564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (902814) VICTIM_MAIN: Probe send failed seq=3007: ESP_ERR_INVALID_STATE[0m
+[0;33mW (902934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903064) VICTIM_MAIN: Probe send failed seq=3008: ESP_ERR_INVALID_STATE[0m
+[0;33mW (903174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903314) VICTIM_MAIN: Probe send failed seq=3009: ESP_ERR_INVALID_STATE[0m
+[0;33mW (903424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903564) VICTIM_MAIN: Probe send failed seq=3010: ESP_ERR_INVALID_STATE[0m
+[0;33mW (903674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (903814) VICTIM_MAIN: Probe send failed seq=3011: ESP_ERR_INVALID_STATE[0m
+[0;33mW (903914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904064) VICTIM_MAIN: Probe send failed seq=3012: ESP_ERR_INVALID_STATE[0m
+[0;33mW (904164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904314) VICTIM_MAIN: Probe send failed seq=3013: ESP_ERR_INVALID_STATE[0m
+[0;33mW (904414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904564) VICTIM_MAIN: Probe send failed seq=3014: ESP_ERR_INVALID_STATE[0m
+[0;33mW (904654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (904814) VICTIM_MAIN: Probe send failed seq=3015: ESP_ERR_INVALID_STATE[0m
+[0;33mW (904904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905024) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905064) VICTIM_MAIN: Probe send failed seq=3016: ESP_ERR_INVALID_STATE[0m
+[0;33mW (905154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905314) VICTIM_MAIN: Probe send failed seq=3017: ESP_ERR_INVALID_STATE[0m
+[0;33mW (905394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905564) VICTIM_MAIN: Probe send failed seq=3018: ESP_ERR_INVALID_STATE[0m
+[0;33mW (905644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (905814) VICTIM_MAIN: Probe send failed seq=3019: ESP_ERR_INVALID_STATE[0m
+[0;33mW (905894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906064) VICTIM_MAIN: Probe send failed seq=3020: ESP_ERR_INVALID_STATE[0m
+[0;33mW (906134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906314) VICTIM_MAIN: Probe send failed seq=3021: ESP_ERR_INVALID_STATE[0m
+[0;33mW (906384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906564) VICTIM_MAIN: Probe send failed seq=3022: ESP_ERR_INVALID_STATE[0m
+[0;33mW (906634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906814) VICTIM_MAIN: Probe send failed seq=3023: ESP_ERR_INVALID_STATE[0m
+[0;33mW (906874) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (906994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907064) VICTIM_MAIN: Probe send failed seq=3024: ESP_ERR_INVALID_STATE[0m
+[0;33mW (907124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907314) VICTIM_MAIN: Probe send failed seq=3025: ESP_ERR_INVALID_STATE[0m
+[0;33mW (907374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907564) VICTIM_MAIN: Probe send failed seq=3026: ESP_ERR_INVALID_STATE[0m
+[0;33mW (907614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907814) VICTIM_MAIN: Probe send failed seq=3027: ESP_ERR_INVALID_STATE[0m
+[0;33mW (907864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (907984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908064) VICTIM_MAIN: Probe send failed seq=3028: ESP_ERR_INVALID_STATE[0m
+[0;33mW (908114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908314) VICTIM_MAIN: Probe send failed seq=3029: ESP_ERR_INVALID_STATE[0m
+[0;33mW (908354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908564) VICTIM_MAIN: Probe send failed seq=3030: ESP_ERR_INVALID_STATE[0m
+[0;33mW (908604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908814) VICTIM_MAIN: Probe send failed seq=3031: ESP_ERR_INVALID_STATE[0m
+[0;33mW (908854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (908974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909064) VICTIM_MAIN: Probe send failed seq=3032: ESP_ERR_INVALID_STATE[0m
+[0;33mW (909094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909314) VICTIM_MAIN: Probe send failed seq=3033: ESP_ERR_INVALID_STATE[0m
+[0;33mW (909344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909564) VICTIM_MAIN: Probe send failed seq=3034: ESP_ERR_INVALID_STATE[0m
+[0;33mW (909584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909814) VICTIM_MAIN: Probe send failed seq=3035: ESP_ERR_INVALID_STATE[0m
+[0;33mW (909834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (909964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910064) VICTIM_MAIN: Probe send failed seq=3036: ESP_ERR_INVALID_STATE[0m
+[0;33mW (910084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910314) VICTIM_MAIN: Probe send failed seq=3037: ESP_ERR_INVALID_STATE[0m
+[0;33mW (910334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910564) VICTIM_MAIN: Probe send failed seq=3038: ESP_ERR_INVALID_STATE[0m
+[0;33mW (910574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;32mI (910584) HEALTH: [HEALTH] up=909s heap=84160 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2028 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;33mW (910704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910814) VICTIM_MAIN: Probe send failed seq=3039: ESP_ERR_INVALID_STATE[0m
+[0;33mW (910824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (910944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911064) VICTIM_MAIN: Probe send failed seq=3040: ESP_ERR_INVALID_STATE[0m
+[0;33mW (911074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911314) VICTIM_MAIN: Probe send failed seq=3041: ESP_ERR_INVALID_STATE[0m
+[0;33mW (911314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911564) VICTIM_MAIN: Probe send failed seq=3042: ESP_ERR_INVALID_STATE[0m
+[0;33mW (911564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911814) VICTIM_MAIN: Probe send failed seq=3043: ESP_ERR_INVALID_STATE[0m
+[0;33mW (911814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (911934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912064) VICTIM_MAIN: Probe send failed seq=3044: ESP_ERR_INVALID_STATE[0m
+[0;33mW (912054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912314) VICTIM_MAIN: Probe send failed seq=3045: ESP_ERR_INVALID_STATE[0m
+[0;33mW (912434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912564) VICTIM_MAIN: Probe send failed seq=3046: ESP_ERR_INVALID_STATE[0m
+[0;33mW (912674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (912814) VICTIM_MAIN: Probe send failed seq=3047: ESP_ERR_INVALID_STATE[0m
+[0;33mW (912924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913064) VICTIM_MAIN: Probe send failed seq=3048: ESP_ERR_INVALID_STATE[0m
+[0;33mW (913174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913314) VICTIM_MAIN: Probe send failed seq=3049: ESP_ERR_INVALID_STATE[0m
+[0;33mW (913414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913564) VICTIM_MAIN: Probe send failed seq=3050: ESP_ERR_INVALID_STATE[0m
+[0;33mW (913664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (913814) VICTIM_MAIN: Probe send failed seq=3051: ESP_ERR_INVALID_STATE[0m
+[0;33mW (913904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914064) VICTIM_MAIN: Probe send failed seq=3052: ESP_ERR_INVALID_STATE[0m
+[0;33mW (914154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914314) VICTIM_MAIN: Probe send failed seq=3053: ESP_ERR_INVALID_STATE[0m
+[0;33mW (914404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914564) VICTIM_MAIN: Probe send failed seq=3054: ESP_ERR_INVALID_STATE[0m
+[0;33mW (914644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (914814) VICTIM_MAIN: Probe send failed seq=3055: ESP_ERR_INVALID_STATE[0m
+[0;33mW (914894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915064) VICTIM_MAIN: Probe send failed seq=3056: ESP_ERR_INVALID_STATE[0m
+[0;33mW (915144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915314) VICTIM_MAIN: Probe send failed seq=3057: ESP_ERR_INVALID_STATE[0m
+[0;33mW (915384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915564) VICTIM_MAIN: Probe send failed seq=3058: ESP_ERR_INVALID_STATE[0m
+[0;33mW (915634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (915814) VICTIM_MAIN: Probe send failed seq=3059: ESP_ERR_INVALID_STATE[0m
+[0;33mW (915884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916064) VICTIM_MAIN: Probe send failed seq=3060: ESP_ERR_INVALID_STATE[0m
+[0;33mW (916124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916314) VICTIM_MAIN: Probe send failed seq=3061: ESP_ERR_INVALID_STATE[0m
+[0;33mW (916374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916564) VICTIM_MAIN: Probe send failed seq=3062: ESP_ERR_INVALID_STATE[0m
+[0;33mW (916624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916814) VICTIM_MAIN: Probe send failed seq=3063: ESP_ERR_INVALID_STATE[0m
+[0;33mW (916864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (916994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917064) VICTIM_MAIN: Probe send failed seq=3064: ESP_ERR_INVALID_STATE[0m
+[0;33mW (917114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917314) VICTIM_MAIN: Probe send failed seq=3065: ESP_ERR_INVALID_STATE[0m
+[0;33mW (917354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917564) VICTIM_MAIN: Probe send failed seq=3066: ESP_ERR_INVALID_STATE[0m
+[0;33mW (917604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917814) VICTIM_MAIN: Probe send failed seq=3067: ESP_ERR_INVALID_STATE[0m
+[0;33mW (917854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (917974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918064) VICTIM_MAIN: Probe send failed seq=3068: ESP_ERR_INVALID_STATE[0m
+[0;33mW (918094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918314) VICTIM_MAIN: Probe send failed seq=3069: ESP_ERR_INVALID_STATE[0m
+[0;33mW (918344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918564) VICTIM_MAIN: Probe send failed seq=3070: ESP_ERR_INVALID_STATE[0m
+[0;33mW (918594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918814) VICTIM_MAIN: Probe send failed seq=3071: ESP_ERR_INVALID_STATE[0m
+[0;33mW (918834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (918964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919064) VICTIM_MAIN: Probe send failed seq=3072: ESP_ERR_INVALID_STATE[0m
+[0;33mW (919084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919314) VICTIM_MAIN: Probe send failed seq=3073: ESP_ERR_INVALID_STATE[0m
+[0;33mW (919334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919564) VICTIM_MAIN: Probe send failed seq=3074: ESP_ERR_INVALID_STATE[0m
+[0;33mW (919574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919814) VICTIM_MAIN: Probe send failed seq=3075: ESP_ERR_INVALID_STATE[0m
+[0;33mW (919824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (919944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920064) VICTIM_MAIN: Probe send failed seq=3076: ESP_ERR_INVALID_STATE[0m
+[0;33mW (920074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920314) VICTIM_MAIN: Probe send failed seq=3077: ESP_ERR_INVALID_STATE[0m
+[0;33mW (920324) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920564) VICTIM_MAIN: Probe send failed seq=3078: ESP_ERR_INVALID_STATE[0m
+[0;33mW (920564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920814) VICTIM_MAIN: Probe send failed seq=3079: ESP_ERR_INVALID_STATE[0m
+[0;33mW (920814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (920934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921064) VICTIM_MAIN: Probe send failed seq=3080: ESP_ERR_INVALID_STATE[0m
+[0;33mW (921184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921314) VICTIM_MAIN: Probe send failed seq=3081: ESP_ERR_INVALID_STATE[0m
+[0;33mW (921424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921564) VICTIM_MAIN: Probe send failed seq=3082: ESP_ERR_INVALID_STATE[0m
+[0;33mW (921674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (921814) VICTIM_MAIN: Probe send failed seq=3083: ESP_ERR_INVALID_STATE[0m
+[0;33mW (921924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922064) VICTIM_MAIN: Probe send failed seq=3084: ESP_ERR_INVALID_STATE[0m
+[0;33mW (922164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922314) VICTIM_MAIN: Probe send failed seq=3085: ESP_ERR_INVALID_STATE[0m
+[0;33mW (922414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922564) VICTIM_MAIN: Probe send failed seq=3086: ESP_ERR_INVALID_STATE[0m
+[0;33mW (922664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (922814) VICTIM_MAIN: Probe send failed seq=3087: ESP_ERR_INVALID_STATE[0m
+[0;33mW (922904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923064) VICTIM_MAIN: Probe send failed seq=3088: ESP_ERR_INVALID_STATE[0m
+[0;33mW (923154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923314) VICTIM_MAIN: Probe send failed seq=3089: ESP_ERR_INVALID_STATE[0m
+[0;33mW (923404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923564) VICTIM_MAIN: Probe send failed seq=3090: ESP_ERR_INVALID_STATE[0m
+[0;33mW (923644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (923814) VICTIM_MAIN: Probe send failed seq=3091: ESP_ERR_INVALID_STATE[0m
+[0;33mW (923894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924064) VICTIM_MAIN: Probe send failed seq=3092: ESP_ERR_INVALID_STATE[0m
+[0;33mW (924144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924314) VICTIM_MAIN: Probe send failed seq=3093: ESP_ERR_INVALID_STATE[0m
+[0;33mW (924384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924564) VICTIM_MAIN: Probe send failed seq=3094: ESP_ERR_INVALID_STATE[0m
+[0;33mW (924634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (924814) VICTIM_MAIN: Probe send failed seq=3095: ESP_ERR_INVALID_STATE[0m
+[0;33mW (924884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925064) VICTIM_MAIN: Probe send failed seq=3096: ESP_ERR_INVALID_STATE[0m
+[0;33mW (925124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925314) VICTIM_MAIN: Probe send failed seq=3097: ESP_ERR_INVALID_STATE[0m
+[0;33mW (925374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925564) VICTIM_MAIN: Probe send failed seq=3098: ESP_ERR_INVALID_STATE[0m
+[0;33mW (925614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925814) VICTIM_MAIN: Probe send failed seq=3099: ESP_ERR_INVALID_STATE[0m
+[0;33mW (925864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (925984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926064) VICTIM_MAIN: Probe send failed seq=3100: ESP_ERR_INVALID_STATE[0m
+[0;33mW (926114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926314) VICTIM_MAIN: Probe send failed seq=3101: ESP_ERR_INVALID_STATE[0m
+[0;33mW (926354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926564) VICTIM_MAIN: Probe send failed seq=3102: ESP_ERR_INVALID_STATE[0m
+[0;33mW (926604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926814) VICTIM_MAIN: Probe send failed seq=3103: ESP_ERR_INVALID_STATE[0m
+[0;33mW (926854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (926974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927064) VICTIM_MAIN: Probe send failed seq=3104: ESP_ERR_INVALID_STATE[0m
+[0;33mW (927094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927314) VICTIM_MAIN: Probe send failed seq=3105: ESP_ERR_INVALID_STATE[0m
+[0;33mW (927344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927564) VICTIM_MAIN: Probe send failed seq=3106: ESP_ERR_INVALID_STATE[0m
+[0;33mW (927594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927814) VICTIM_MAIN: Probe send failed seq=3107: ESP_ERR_INVALID_STATE[0m
+[0;33mW (927834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (927964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928064) VICTIM_MAIN: Probe send failed seq=3108: ESP_ERR_INVALID_STATE[0m
+[0;33mW (928084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928314) VICTIM_MAIN: Probe send failed seq=3109: ESP_ERR_INVALID_STATE[0m
+[0;33mW (928334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928564) VICTIM_MAIN: Probe send failed seq=3110: ESP_ERR_INVALID_STATE[0m
+[0;33mW (928574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928814) VICTIM_MAIN: Probe send failed seq=3111: ESP_ERR_INVALID_STATE[0m
+[0;33mW (928824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (928944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929064) VICTIM_MAIN: Probe send failed seq=3112: ESP_ERR_INVALID_STATE[0m
+[0;33mW (929074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929314) VICTIM_MAIN: Probe send failed seq=3113: ESP_ERR_INVALID_STATE[0m
+[0;33mW (929314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929564) VICTIM_MAIN: Probe send failed seq=3114: ESP_ERR_INVALID_STATE[0m
+[0;33mW (929564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929814) VICTIM_MAIN: Probe send failed seq=3115: ESP_ERR_INVALID_STATE[0m
+[0;33mW (929814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (929934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930064) VICTIM_MAIN: Probe send failed seq=3116: ESP_ERR_INVALID_STATE[0m
+[0;33mW (930184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930314) VICTIM_MAIN: Probe send failed seq=3117: ESP_ERR_INVALID_STATE[0m
+[0;33mW (930424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930564) VICTIM_MAIN: Probe send failed seq=3118: ESP_ERR_INVALID_STATE[0m
+[0;33mW (930674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (930814) VICTIM_MAIN: Probe send failed seq=3119: ESP_ERR_INVALID_STATE[0m
+[0;33mW (930924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931064) VICTIM_MAIN: Probe send failed seq=3120: ESP_ERR_INVALID_STATE[0m
+[0;33mW (931164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931314) VICTIM_MAIN: Probe send failed seq=3121: ESP_ERR_INVALID_STATE[0m
+[0;33mW (931414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931564) VICTIM_MAIN: Probe send failed seq=3122: ESP_ERR_INVALID_STATE[0m
+[0;33mW (931664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (931814) VICTIM_MAIN: Probe send failed seq=3123: ESP_ERR_INVALID_STATE[0m
+[0;33mW (931904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932064) VICTIM_MAIN: Probe send failed seq=3124: ESP_ERR_INVALID_STATE[0m
+[0;33mW (932154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932314) VICTIM_MAIN: Probe send failed seq=3125: ESP_ERR_INVALID_STATE[0m
+[0;33mW (932394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932564) VICTIM_MAIN: Probe send failed seq=3126: ESP_ERR_INVALID_STATE[0m
+[0;33mW (932644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (932814) VICTIM_MAIN: Probe send failed seq=3127: ESP_ERR_INVALID_STATE[0m
+[0;33mW (932894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933064) VICTIM_MAIN: Probe send failed seq=3128: ESP_ERR_INVALID_STATE[0m
+[0;33mW (933144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933314) VICTIM_MAIN: Probe send failed seq=3129: ESP_ERR_INVALID_STATE[0m
+[0;33mW (933384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933564) VICTIM_MAIN: Probe send failed seq=3130: ESP_ERR_INVALID_STATE[0m
+[0;33mW (933634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (933814) VICTIM_MAIN: Probe send failed seq=3131: ESP_ERR_INVALID_STATE[0m
+[0;33mW (933884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934064) VICTIM_MAIN: Probe send failed seq=3132: ESP_ERR_INVALID_STATE[0m
+[0;33mW (934124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934314) VICTIM_MAIN: Probe send failed seq=3133: ESP_ERR_INVALID_STATE[0m
+[0;33mW (934374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934564) VICTIM_MAIN: Probe send failed seq=3134: ESP_ERR_INVALID_STATE[0m
+[0;33mW (934614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934814) VICTIM_MAIN: Probe send failed seq=3135: ESP_ERR_INVALID_STATE[0m
+[0;33mW (934864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (934984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935064) VICTIM_MAIN: Probe send failed seq=3136: ESP_ERR_INVALID_STATE[0m
+[0;33mW (935114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935314) VICTIM_MAIN: Probe send failed seq=3137: ESP_ERR_INVALID_STATE[0m
+[0;33mW (935354) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935564) VICTIM_MAIN: Probe send failed seq=3138: ESP_ERR_INVALID_STATE[0m
+[0;33mW (935604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935724) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935814) VICTIM_MAIN: Probe send failed seq=3139: ESP_ERR_INVALID_STATE[0m
+[0;33mW (935854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (935974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936064) VICTIM_MAIN: Probe send failed seq=3140: ESP_ERR_INVALID_STATE[0m
+[0;33mW (936094) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936314) VICTIM_MAIN: Probe send failed seq=3141: ESP_ERR_INVALID_STATE[0m
+[0;33mW (936344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936464) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936564) VICTIM_MAIN: Probe send failed seq=3142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (936594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936814) VICTIM_MAIN: Probe send failed seq=3143: ESP_ERR_INVALID_STATE[0m
+[0;33mW (936834) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (936964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937064) VICTIM_MAIN: Probe send failed seq=3144: ESP_ERR_INVALID_STATE[0m
+[0;33mW (937084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937204) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937314) VICTIM_MAIN: Probe send failed seq=3145: ESP_ERR_INVALID_STATE[0m
+[0;33mW (937334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937564) VICTIM_MAIN: Probe send failed seq=3146: ESP_ERR_INVALID_STATE[0m
+[0;33mW (937574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937814) VICTIM_MAIN: Probe send failed seq=3147: ESP_ERR_INVALID_STATE[0m
+[0;33mW (937824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (937944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938064) VICTIM_MAIN: Probe send failed seq=3148: ESP_ERR_INVALID_STATE[0m
+[0;33mW (938074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938314) VICTIM_MAIN: Probe send failed seq=3149: ESP_ERR_INVALID_STATE[0m
+[0;33mW (938314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938564) VICTIM_MAIN: Probe send failed seq=3150: ESP_ERR_INVALID_STATE[0m
+[0;33mW (938564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938814) VICTIM_MAIN: Probe send failed seq=3151: ESP_ERR_INVALID_STATE[0m
+[0;33mW (938814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (938934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939064) VICTIM_MAIN: Probe send failed seq=3152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (939184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939314) VICTIM_MAIN: Probe send failed seq=3153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (939424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939564) VICTIM_MAIN: Probe send failed seq=3154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (939674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (939814) VICTIM_MAIN: Probe send failed seq=3155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (939924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940064) VICTIM_MAIN: Probe send failed seq=3156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (940164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940314) VICTIM_MAIN: Probe send failed seq=3157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (940414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940564) VICTIM_MAIN: Probe send failed seq=3158: ESP_ERR_INVALID_STATE[0m
+[0;32mI (940594) HEALTH: [HEALTH] up=939s heap=84460 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2028 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;33mW (940664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (940814) VICTIM_MAIN: Probe send failed seq=3159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (940904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941064) VICTIM_MAIN: Probe send failed seq=3160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (941154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941314) VICTIM_MAIN: Probe send failed seq=3161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (941394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941564) VICTIM_MAIN: Probe send failed seq=3162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (941644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (941814) VICTIM_MAIN: Probe send failed seq=3163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (941894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942064) VICTIM_MAIN: Probe send failed seq=3164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (942144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942314) VICTIM_MAIN: Probe send failed seq=3165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (942384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942564) VICTIM_MAIN: Probe send failed seq=3166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (942634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (942814) VICTIM_MAIN: Probe send failed seq=3167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (942884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943064) VICTIM_MAIN: Probe send failed seq=3168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (943134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943314) VICTIM_MAIN: Probe send failed seq=3169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (943374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943564) VICTIM_MAIN: Probe send failed seq=3170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (943624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943814) VICTIM_MAIN: Probe send failed seq=3171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (943864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (943994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944064) VICTIM_MAIN: Probe send failed seq=3172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (944114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944314) VICTIM_MAIN: Probe send failed seq=3173: ESP_ERR_INVALID_STATE[0m
+[0;33mW (944364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944564) VICTIM_MAIN: Probe send failed seq=3174: ESP_ERR_INVALID_STATE[0m
+[0;33mW (944604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944814) VICTIM_MAIN: Probe send failed seq=3175: ESP_ERR_INVALID_STATE[0m
+[0;33mW (944854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (944974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945064) VICTIM_MAIN: Probe send failed seq=3176: ESP_ERR_INVALID_STATE[0m
+[0;33mW (945104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945314) VICTIM_MAIN: Probe send failed seq=3177: ESP_ERR_INVALID_STATE[0m
+[0;33mW (945344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945564) VICTIM_MAIN: Probe send failed seq=3178: ESP_ERR_INVALID_STATE[0m
+[0;33mW (945594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945814) VICTIM_MAIN: Probe send failed seq=3179: ESP_ERR_INVALID_STATE[0m
+[0;33mW (945844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (945964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946064) VICTIM_MAIN: Probe send failed seq=3180: ESP_ERR_INVALID_STATE[0m
+[0;33mW (946084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946314) VICTIM_MAIN: Probe send failed seq=3181: ESP_ERR_INVALID_STATE[0m
+[0;33mW (946334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946564) VICTIM_MAIN: Probe send failed seq=3182: ESP_ERR_INVALID_STATE[0m
+[0;33mW (946584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946814) VICTIM_MAIN: Probe send failed seq=3183: ESP_ERR_INVALID_STATE[0m
+[0;33mW (946824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (946954) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947064) VICTIM_MAIN: Probe send failed seq=3184: ESP_ERR_INVALID_STATE[0m
+[0;33mW (947074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947314) VICTIM_MAIN: Probe send failed seq=3185: ESP_ERR_INVALID_STATE[0m
+[0;33mW (947324) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947564) VICTIM_MAIN: Probe send failed seq=3186: ESP_ERR_INVALID_STATE[0m
+[0;33mW (947564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947814) VICTIM_MAIN: Probe send failed seq=3187: ESP_ERR_INVALID_STATE[0m
+[0;33mW (947814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (947934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948064) VICTIM_MAIN: Probe send failed seq=3188: ESP_ERR_INVALID_STATE[0m
+[0;33mW (948064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948314) VICTIM_MAIN: Probe send failed seq=3189: ESP_ERR_INVALID_STATE[0m
+[0;33mW (948434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948564) VICTIM_MAIN: Probe send failed seq=3190: ESP_ERR_INVALID_STATE[0m
+[0;33mW (948674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (948814) VICTIM_MAIN: Probe send failed seq=3191: ESP_ERR_INVALID_STATE[0m
+[0;33mW (948924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949064) VICTIM_MAIN: Probe send failed seq=3192: ESP_ERR_INVALID_STATE[0m
+[0;33mW (949164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949314) VICTIM_MAIN: Probe send failed seq=3193: ESP_ERR_INVALID_STATE[0m
+[0;33mW (949414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949564) VICTIM_MAIN: Probe send failed seq=3194: ESP_ERR_INVALID_STATE[0m
+[0;33mW (949664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (949814) VICTIM_MAIN: Probe send failed seq=3195: ESP_ERR_INVALID_STATE[0m
+[0;33mW (949904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950064) VICTIM_MAIN: Probe send failed seq=3196: ESP_ERR_INVALID_STATE[0m
+[0;33mW (950154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950314) VICTIM_MAIN: Probe send failed seq=3197: ESP_ERR_INVALID_STATE[0m
+[0;33mW (950404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950564) VICTIM_MAIN: Probe send failed seq=3198: ESP_ERR_INVALID_STATE[0m
+[0;33mW (950644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (950814) VICTIM_MAIN: Probe send failed seq=3199: ESP_ERR_INVALID_STATE[0m
+[0;33mW (950894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951064) VICTIM_MAIN: Probe send failed seq=3200: ESP_ERR_INVALID_STATE[0m
+[0;33mW (951144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951314) VICTIM_MAIN: Probe send failed seq=3201: ESP_ERR_INVALID_STATE[0m
+[0;33mW (951384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951564) VICTIM_MAIN: Probe send failed seq=3202: ESP_ERR_INVALID_STATE[0m
+[0;33mW (951634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (951814) VICTIM_MAIN: Probe send failed seq=3203: ESP_ERR_INVALID_STATE[0m
+[0;33mW (951884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952064) VICTIM_MAIN: Probe send failed seq=3204: ESP_ERR_INVALID_STATE[0m
+[0;33mW (952124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952314) VICTIM_MAIN: Probe send failed seq=3205: ESP_ERR_INVALID_STATE[0m
+[0;33mW (952374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952564) VICTIM_MAIN: Probe send failed seq=3206: ESP_ERR_INVALID_STATE[0m
+[0;33mW (952624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952814) VICTIM_MAIN: Probe send failed seq=3207: ESP_ERR_INVALID_STATE[0m
+[0;33mW (952864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (952994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953064) VICTIM_MAIN: Probe send failed seq=3208: ESP_ERR_INVALID_STATE[0m
+[0;33mW (953114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953314) VICTIM_MAIN: Probe send failed seq=3209: ESP_ERR_INVALID_STATE[0m
+[0;33mW (953364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953564) VICTIM_MAIN: Probe send failed seq=3210: ESP_ERR_INVALID_STATE[0m
+[0;33mW (953604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953814) VICTIM_MAIN: Probe send failed seq=3211: ESP_ERR_INVALID_STATE[0m
+[0;33mW (953854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (953974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954064) VICTIM_MAIN: Probe send failed seq=3212: ESP_ERR_INVALID_STATE[0m
+[0;33mW (954104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954314) VICTIM_MAIN: Probe send failed seq=3213: ESP_ERR_INVALID_STATE[0m
+[0;33mW (954344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954564) VICTIM_MAIN: Probe send failed seq=3214: ESP_ERR_INVALID_STATE[0m
+[0;33mW (954594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954814) VICTIM_MAIN: Probe send failed seq=3215: ESP_ERR_INVALID_STATE[0m
+[0;33mW (954844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (954964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955064) VICTIM_MAIN: Probe send failed seq=3216: ESP_ERR_INVALID_STATE[0m
+[0;33mW (955084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955314) VICTIM_MAIN: Probe send failed seq=3217: ESP_ERR_INVALID_STATE[0m
+[0;33mW (955334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955564) VICTIM_MAIN: Probe send failed seq=3218: ESP_ERR_INVALID_STATE[0m
+[0;33mW (955584) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955814) VICTIM_MAIN: Probe send failed seq=3219: ESP_ERR_INVALID_STATE[0m
+[0;33mW (955824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (955944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956064) VICTIM_MAIN: Probe send failed seq=3220: ESP_ERR_INVALID_STATE[0m
+[0;33mW (956074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956314) VICTIM_MAIN: Probe send failed seq=3221: ESP_ERR_INVALID_STATE[0m
+[0;33mW (956314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956564) VICTIM_MAIN: Probe send failed seq=3222: ESP_ERR_INVALID_STATE[0m
+[0;33mW (956564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956694) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956814) VICTIM_MAIN: Probe send failed seq=3223: ESP_ERR_INVALID_STATE[0m
+[0;33mW (956814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (956934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957054) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957064) VICTIM_MAIN: Probe send failed seq=3224: ESP_ERR_INVALID_STATE[0m
+[0;33mW (957184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957314) VICTIM_MAIN: Probe send failed seq=3225: ESP_ERR_INVALID_STATE[0m
+[0;33mW (957424) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957564) VICTIM_MAIN: Probe send failed seq=3226: ESP_ERR_INVALID_STATE[0m
+[0;33mW (957674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957794) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (957814) VICTIM_MAIN: Probe send failed seq=3227: ESP_ERR_INVALID_STATE[0m
+[0;33mW (957924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958064) VICTIM_MAIN: Probe send failed seq=3228: ESP_ERR_INVALID_STATE[0m
+[0;33mW (958164) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958314) VICTIM_MAIN: Probe send failed seq=3229: ESP_ERR_INVALID_STATE[0m
+[0;33mW (958414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958534) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958564) VICTIM_MAIN: Probe send failed seq=3230: ESP_ERR_INVALID_STATE[0m
+[0;33mW (958664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (958814) VICTIM_MAIN: Probe send failed seq=3231: ESP_ERR_INVALID_STATE[0m
+[0;33mW (958904) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959064) VICTIM_MAIN: Probe send failed seq=3232: ESP_ERR_INVALID_STATE[0m
+[0;33mW (959154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959274) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959314) VICTIM_MAIN: Probe send failed seq=3233: ESP_ERR_INVALID_STATE[0m
+[0;33mW (959394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959564) VICTIM_MAIN: Probe send failed seq=3234: ESP_ERR_INVALID_STATE[0m
+[0;33mW (959644) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (959814) VICTIM_MAIN: Probe send failed seq=3235: ESP_ERR_INVALID_STATE[0m
+[0;33mW (959894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960014) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960064) VICTIM_MAIN: Probe send failed seq=3236: ESP_ERR_INVALID_STATE[0m
+[0;33mW (960144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960314) VICTIM_MAIN: Probe send failed seq=3237: ESP_ERR_INVALID_STATE[0m
+[0;33mW (960384) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960564) VICTIM_MAIN: Probe send failed seq=3238: ESP_ERR_INVALID_STATE[0m
+[0;33mW (960634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960754) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (960814) VICTIM_MAIN: Probe send failed seq=3239: ESP_ERR_INVALID_STATE[0m
+[0;33mW (960884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961064) VICTIM_MAIN: Probe send failed seq=3240: ESP_ERR_INVALID_STATE[0m
+[0;33mW (961124) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961314) VICTIM_MAIN: Probe send failed seq=3241: ESP_ERR_INVALID_STATE[0m
+[0;33mW (961374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961494) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961564) VICTIM_MAIN: Probe send failed seq=3242: ESP_ERR_INVALID_STATE[0m
+[0;33mW (961614) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961814) VICTIM_MAIN: Probe send failed seq=3243: ESP_ERR_INVALID_STATE[0m
+[0;33mW (961864) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (961984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962064) VICTIM_MAIN: Probe send failed seq=3244: ESP_ERR_INVALID_STATE[0m
+[0;33mW (962114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962234) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962314) VICTIM_MAIN: Probe send failed seq=3245: ESP_ERR_INVALID_STATE[0m
+[0;33mW (962364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962564) VICTIM_MAIN: Probe send failed seq=3246: ESP_ERR_INVALID_STATE[0m
+[0;33mW (962604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962814) VICTIM_MAIN: Probe send failed seq=3247: ESP_ERR_INVALID_STATE[0m
+[0;33mW (962854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (962974) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963064) VICTIM_MAIN: Probe send failed seq=3248: ESP_ERR_INVALID_STATE[0m
+[0;33mW (963104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963224) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963314) VICTIM_MAIN: Probe send failed seq=3249: ESP_ERR_INVALID_STATE[0m
+[0;33mW (963344) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963474) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963564) VICTIM_MAIN: Probe send failed seq=3250: ESP_ERR_INVALID_STATE[0m
+[0;33mW (963594) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963714) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963814) VICTIM_MAIN: Probe send failed seq=3251: ESP_ERR_INVALID_STATE[0m
+[0;33mW (963844) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (963964) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964064) VICTIM_MAIN: Probe send failed seq=3252: ESP_ERR_INVALID_STATE[0m
+[0;33mW (964084) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964214) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964314) VICTIM_MAIN: Probe send failed seq=3253: ESP_ERR_INVALID_STATE[0m
+[0;33mW (964334) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964454) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964564) VICTIM_MAIN: Probe send failed seq=3254: ESP_ERR_INVALID_STATE[0m
+[0;33mW (964574) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964704) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964814) VICTIM_MAIN: Probe send failed seq=3255: ESP_ERR_INVALID_STATE[0m
+[0;33mW (964824) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (964944) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965064) VICTIM_MAIN: Probe send failed seq=3256: ESP_ERR_INVALID_STATE[0m
+[0;33mW (965074) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965194) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965314) VICTIM_MAIN: Probe send failed seq=3257: ESP_ERR_INVALID_STATE[0m
+[0;33mW (965314) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965444) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965564) VICTIM_MAIN: Probe send failed seq=3258: ESP_ERR_INVALID_STATE[0m
+[0;33mW (965564) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965684) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965814) VICTIM_MAIN: Probe send failed seq=3259: ESP_ERR_INVALID_STATE[0m
+[0;33mW (965814) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (965934) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966064) VICTIM_MAIN: Probe send failed seq=3260: ESP_ERR_INVALID_STATE[0m
+[0;33mW (966064) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966184) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966304) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966314) VICTIM_MAIN: Probe send failed seq=3261: ESP_ERR_INVALID_STATE[0m
+[0;33mW (966434) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966554) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966564) VICTIM_MAIN: Probe send failed seq=3262: ESP_ERR_INVALID_STATE[0m
+[0;33mW (966674) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966804) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (966814) VICTIM_MAIN: Probe send failed seq=3263: ESP_ERR_INVALID_STATE[0m
+[0;33mW (966924) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967044) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967064) VICTIM_MAIN: Probe send failed seq=3264: ESP_ERR_INVALID_STATE[0m
+[0;33mW (967174) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967294) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967314) VICTIM_MAIN: Probe send failed seq=3265: ESP_ERR_INVALID_STATE[0m
+[0;33mW (967414) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967544) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967564) VICTIM_MAIN: Probe send failed seq=3266: ESP_ERR_INVALID_STATE[0m
+[0;33mW (967664) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967784) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (967814) VICTIM_MAIN: Probe send failed seq=3267: ESP_ERR_INVALID_STATE[0m
+[0;33mW (967914) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968034) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968064) VICTIM_MAIN: Probe send failed seq=3268: ESP_ERR_INVALID_STATE[0m
+[0;33mW (968154) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968284) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968314) VICTIM_MAIN: Probe send failed seq=3269: ESP_ERR_INVALID_STATE[0m
+[0;33mW (968404) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968524) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968564) VICTIM_MAIN: Probe send failed seq=3270: ESP_ERR_INVALID_STATE[0m
+[0;33mW (968654) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968774) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (968814) VICTIM_MAIN: Probe send failed seq=3271: ESP_ERR_INVALID_STATE[0m
+[0;33mW (968894) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969024) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969064) VICTIM_MAIN: Probe send failed seq=3272: ESP_ERR_INVALID_STATE[0m
+[0;33mW (969144) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969264) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969314) VICTIM_MAIN: Probe send failed seq=3273: ESP_ERR_INVALID_STATE[0m
+[0;33mW (969394) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969514) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969564) VICTIM_MAIN: Probe send failed seq=3274: ESP_ERR_INVALID_STATE[0m
+[0;33mW (969634) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969764) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (969814) VICTIM_MAIN: Probe send failed seq=3275: ESP_ERR_INVALID_STATE[0m
+[0;33mW (969884) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970004) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970064) VICTIM_MAIN: Probe send failed seq=3276: ESP_ERR_INVALID_STATE[0m
+[0;33mW (970134) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970254) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970314) VICTIM_MAIN: Probe send failed seq=3277: ESP_ERR_INVALID_STATE[0m
+[0;33mW (970374) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970504) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970564) VICTIM_MAIN: Probe send failed seq=3278: ESP_ERR_INVALID_STATE[0m
+[0;32mI (970604) HEALTH: [HEALTH] up=969s heap=84460 min=82104 big=81920 | stack free(B): telemetry=1192 probe_gen=2028 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1448 ipc1=1528[0m
+[0;33mW (970624) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970744) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970814) VICTIM_MAIN: Probe send failed seq=3279: ESP_ERR_INVALID_STATE[0m
+[0;33mW (970874) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (970994) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971064) VICTIM_MAIN: Probe send failed seq=3280: ESP_ERR_INVALID_STATE[0m
+[0;33mW (971114) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971244) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971314) VICTIM_MAIN: Probe send failed seq=3281: ESP_ERR_INVALID_STATE[0m
+[0;33mW (971364) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971484) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971564) VICTIM_MAIN: Probe send failed seq=3282: ESP_ERR_INVALID_STATE[0m
+[0;33mW (971604) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971734) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971814) VICTIM_MAIN: Probe send failed seq=3283: ESP_ERR_INVALID_STATE[0m
+[0;33mW (971854) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (971984) MESH_SETUP: Parent disconnected — reason 201.[0m
+[0;33mW (972064) VICTIM_MAIN: Probe send failed seq=3284: ESP_ERR_INVALID_STATE[0m
+[0;33mW (972104) MESH_SETUP: Parent disconnected — reason 201.[0m
+[monitor] LOST COM9: the board disappeared (unplugged, cable/USB reset or a reset re-enumerated it) - plug it back; it may come back on ANOTHER COM number. (ClearCommError failed (PermissionError(13, 'Access is denied.', None, 5)))
+[monitor] closed

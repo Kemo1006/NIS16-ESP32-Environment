@@ -1,0 +1,6 @@
+collect_run.py --ports COM20 --attack wormhole --topology star --location DLSU_Library --scenario stationary --repeat 1 --since 2026-10-20 12:24 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-star-dlsu_library-stationary.json --expect-mac COM20=704BCA25BAB0 --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmp430B.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\stationary\collect-scan_oct21_122457am.log)
+
+-- COM20: reading the card ...
+   retry 2/3 of COM20 in 3 s (no_answer)
+   retry 3/3 of COM20 in 8 s (no_answer)

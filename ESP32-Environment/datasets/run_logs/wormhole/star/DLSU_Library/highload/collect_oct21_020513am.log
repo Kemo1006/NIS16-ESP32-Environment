@@ -1,0 +1,40 @@
+collect_run.py --ports COM3,COM9,COM10,COM30,COM31,COM41,COM42 --attack wormhole --topology star --location DLSU_Library --scenario highload --repeat 1 --since 2026-10-21 01:25 --allow-other-location --skip-mac b0:cb:d8:f3:32:18 --roster presets/Cal/wormhole-star-dlsu_library-highload.json --expect-mac COM3=2805A532D7B4;COM9=B4BFE932FE90;COM10=704BCA25B768;COM30=B4BFE934ED80;COM31=20500DE71C38;COM41=20500DE70C80;COM42=F42DC973E618
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\highload\collect_oct21_020513am.log)
+
+-- COM3: reading the card ...
+   checked victim_NODE_2805A532D7B4_r8_b8_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-2805A532D7B4_star_wormhole_r1_oct21_0205AM_telem.csv|6874
+COLLECT: COM3 2805A532D7B4 OK victim_NODE_2805A532D7B4_r8_b8_telem.csv -> victim_NODE-2805A532D7B4_star_wormhole_r1_oct21_0205AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM9: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r7_b7_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-B4BFE932FE90_star_wormhole_r1_oct21_0206AM_telem.csv|6873
+COLLECT: COM9 B4BFE932FE90 OK victim_NODE_B4BFE932FE90_r7_b7_telem.csv -> victim_NODE-B4BFE932FE90_star_wormhole_r1_oct21_0206AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM10: reading the card ...
+   checked victim_NODE_704BCA25B768_r6_b6_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-704BCA25B768_star_wormhole_r1_oct21_0207AM_telem.csv|6874
+COLLECT: COM10 704BCA25B768 OK victim_NODE_704BCA25B768_r6_b6_telem.csv -> victim_NODE-704BCA25B768_star_wormhole_r1_oct21_0207AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM30: reading the card ...
+   checked victim_NODE_B4BFE934ED80_r7_b7_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-B4BFE934ED80_star_wormhole_r1_oct21_0207AM_telem.csv|6873
+COLLECT: COM30 B4BFE934ED80 OK victim_NODE_B4BFE934ED80_r7_b7_telem.csv -> victim_NODE-B4BFE934ED80_star_wormhole_r1_oct21_0207AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM31: reading the card ...
+   checked victim_NODE_20500DE71C38_r6_b6_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-20500DE71C38_star_wormhole_r1_oct21_0208AM_telem.csv|6873
+COLLECT: COM31 20500DE71C38 OK victim_NODE_20500DE71C38_r6_b6_telem.csv -> victim_NODE-20500DE71C38_star_wormhole_r1_oct21_0208AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM41: reading the card ...
+   checked victim_NODE_20500DE70C80_r6_b7_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-20500DE70C80_star_wormhole_r1_oct21_0209AM_telem.csv|6873
+COLLECT: COM41 20500DE70C80 OK victim_NODE_20500DE70C80_r6_b7_telem.csv -> victim_NODE-20500DE70C80_star_wormhole_r1_oct21_0209AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 85 s - card recorded G402, filed under DLSU_Library
+
+-- COM42: reading the card ...
+   checked victim_NODE_F42DC973E618_r5_b223_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 129 s -> FULL
+COLLECT_FILE: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\highload\victim_NODE-F42DC973E618_star_wormhole_r1_oct21_0210AM_telem.csv|7314
+COLLECT: COM42 F42DC973E618 OK victim_NODE_F42DC973E618_r5_b223_telem.csv -> victim_NODE-F42DC973E618_star_wormhole_r1_oct21_0210AM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 129 s - card recorded G402, filed under DLSU_Library
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0
+

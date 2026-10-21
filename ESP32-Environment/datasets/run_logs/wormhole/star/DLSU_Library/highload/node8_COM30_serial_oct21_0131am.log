@@ -1,0 +1,1588 @@
+[monitor] listening on COM30 at 115200 baud
+I (484) esp_image: segment 4: paddr=00121d3c vaddr=4008a59c size=1106ch ( 69740) load
+I (511) esp_image: segment 5: paddr=00132db0 vaddr=5000005c size=00020h (    32) load
+I (525) boot: Loaded app from partition at offset 0x10000
+I (581) boot: Set actual ota_seq=1 in otadata[0]
+I (581) boot: Disabling RNG early entropy source...
+[0;32mI (591) cpu_start: Multicore app[0m
+[0;32mI (599) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (599) cpu_start: Pro cpu start user code[0m
+[0;32mI (600) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (604) app_init: Application information:[0m
+[0;32mI (609) app_init: Project name:     child_node[0m
+[0;32mI (614) app_init: App version:      backup/angelo-2026-10-01-288-gd[0m
+[0;32mI (621) app_init: Compile time:     Oct 21 2026 00:44:39[0m
+[0;32mI (627) app_init: ELF file SHA256:  1ffc13ab7...[0m
+[0;32mI (632) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (638) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (642) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (647) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (652) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (660) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (665) heap_init: At 3FFBC878 len 00023788 (141 KiB): DRAM[0m
+[0;32mI (672) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (678) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (684) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;32mI (692) spi_flash: detected chip: generic[0m
+[0;32mI (695) spi_flash: flash io: dio[0m
+[0;32mI (700) main_task: Started on CPU0[0m
+[0;32mI (710) main_task: Calling app_main()[0m
+[0;32mI (710) VICTIM_MAIN: === VICTIM NODE STARTING ===[0m
+[0;32mI (710) SD_STATUS: clock seeded from build stamp 2026-10-21 00:44:39 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (720) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (730) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (770) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (800) SD_STATUS: clock: set from the card's host anchor -> 2026-10-21 01:30:19 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_B4BFE934ED80) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-21 01:30:19 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-21 00:44:39
+  Run started: 2026-10-21 01:30:19 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_B4BFE934ED80 (MAC B4:BF:E9:34:ED:80)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 7
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+
+[0;32mI (1580) VICTIM_MAIN: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_B4BFE934ED80.txt[0m
+[0;32mI (1590) NODE_ID: Identity: "Board-B4:80" role=CHILD mac=b4:bf:e9:34:ed:80 (via MAC (no node_config.txt nickname))[0m
+I (1630) wifi:wifi driver task: 3ffcc5dc, prio:23, stack:6656, core=0
+I (1630) wifi:wifi firmware version: 0947e8b
+I (1630) wifi:wifi certification version: v7.0
+I (1630) wifi:config NVS flash: enabled
+I (1630) wifi:config nano formatting: disabled
+I (1640) wifi:Init data frame dynamic rx buffer num: 32
+I (1640) wifi:Init static rx mgmt buffer num: 5
+I (1650) wifi:Init management short buffer num: 32
+I (1650) wifi:Init dynamic tx buffer num: 32
+I (1650) wifi:Init static rx buffer size: 1600
+I (1660) wifi:Init static rx buffer num: 10
+I (1660) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1670) wifi_init: rx ba win: 6[0m
+[0;32mI (1670) wifi_init: accept mbox: 6[0m
+[0;32mI (1670) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1680) wifi_init: udp mbox: 6[0m
+[0;32mI (1680) wifi_init: tcp mbox: 6[0m
+[0;32mI (1690) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1690) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1690) wifi_init: tcp mss: 1440[0m
+[0;32mI (1700) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1700) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1710) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1720) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1720) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1730) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1810) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (1820) wifi:mode : sta (b4:bf:e9:34:ed:80) + softAP (b4:bf:e9:34:ed:81)
+I (1820) wifi:enable tsf
+I (1830) wifi:Total power save buffer number: 16
+I (1830) wifi:Init max length of beacon: 752/752
+I (1830) wifi:Init max length of beacon: 752/752
+I (1840) mesh: <nvs>read layer:0, err:0x1102
+I (1840) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (1840) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (1850) wifi:Set ps type: 0, coexist: 0
+
+I (1880) wifi:Total power save buffer number: 16
+[0;32mI (2130) BH_TARGET: Attacker MAC from compiled default: f4:2d:c9:73:e6:18[0m
+[0;33mW (2140) MESH_SETUP: STAR HUB: this board joins ONLY the wormhole A hub f4:2d:c9:73:e6:18 (compiled; its mesh AP f4:2d:c9:73:e6:19), never the root directly.[0m
+I (2150) wifi:mode : sta (b4:bf:e9:34:ed:80)
+[0;32mI (2160) MESH_SETUP: Mesh stack started.[0m
+I (2160) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2160) MESH_SETUP: Mesh started. Node ID: NODE_B4BFE934ED80  Role: 1[0m
+I (2160) mesh: [IO]disable self-organizing<stop reconnect>
+I (2180) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:129
+[0;32mI (2180) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (2480) MESH_SETUP: STAR HUB: scan 1 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (47940) MESH_SETUP: STAR HUB: scan 10 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (62190) MESH_SETUP: Mesh connection timeout after 60 s â€” continuing anyway.[0m
+[0;32mI (62190) VICTIM_MAIN: Node ID: NODE_B4BFE934ED80   Run ID: RUN_001[0m
+[0;32mI (62190) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62200) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62200) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62210) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62220) SPIFFS: mount failed, -10025. formatting...[0m
+[0;33mW (100510) MESH_SETUP: STAR HUB: scan 20 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;32mI (101990) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (101990) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (102180) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (102200) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (102200) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (102240) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (102250) VICTIM_MAIN: Logging to: /spiffs/telem.csv[0m
+[0;32mI (102250) VICTIM_MAIN: Probe generator task running at 250 ms interval.[0m
+[0;33mW (102260) VICTIM_MAIN: Probe send failed seq=1: ESP_ERR_INVALID_STATE[0m
+[0;32mI (102270) VICTIM_MAIN: Telemetry task running at 100 ms interval.[0m
+[0;32mI (102270) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (102280) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;33mW (102520) VICTIM_MAIN: Probe send failed seq=2: ESP_ERR_INVALID_STATE[0m
+[0;33mW (102770) VICTIM_MAIN: Probe send failed seq=3: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103020) VICTIM_MAIN: Probe send failed seq=4: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103270) VICTIM_MAIN: Probe send failed seq=5: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103520) VICTIM_MAIN: Probe send failed seq=6: ESP_ERR_INVALID_STATE[0m
+[0;33mW (103770) VICTIM_MAIN: Probe send failed seq=7: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104020) VICTIM_MAIN: Probe send failed seq=8: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104270) VICTIM_MAIN: Probe send failed seq=9: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104520) VICTIM_MAIN: Probe send failed seq=10: ESP_ERR_INVALID_STATE[0m
+[0;33mW (104770) VICTIM_MAIN: Probe send failed seq=11: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105020) VICTIM_MAIN: Probe send failed seq=12: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105270) VICTIM_MAIN: Probe send failed seq=13: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105520) VICTIM_MAIN: Probe send failed seq=14: ESP_ERR_INVALID_STATE[0m
+[0;33mW (105770) VICTIM_MAIN: Probe send failed seq=15: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106020) VICTIM_MAIN: Probe send failed seq=16: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106270) VICTIM_MAIN: Probe send failed seq=17: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106520) VICTIM_MAIN: Probe send failed seq=18: ESP_ERR_INVALID_STATE[0m
+[0;33mW (106770) VICTIM_MAIN: Probe send failed seq=19: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107020) VICTIM_MAIN: Probe send failed seq=20: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107270) VICTIM_MAIN: Probe send failed seq=21: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107520) VICTIM_MAIN: Probe send failed seq=22: ESP_ERR_INVALID_STATE[0m
+[0;33mW (107770) VICTIM_MAIN: Probe send failed seq=23: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108020) VICTIM_MAIN: Probe send failed seq=24: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108270) VICTIM_MAIN: Probe send failed seq=25: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108520) VICTIM_MAIN: Probe send failed seq=26: ESP_ERR_INVALID_STATE[0m
+[0;33mW (108770) VICTIM_MAIN: Probe send failed seq=27: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109020) VICTIM_MAIN: Probe send failed seq=28: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109270) VICTIM_MAIN: Probe send failed seq=29: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109520) VICTIM_MAIN: Probe send failed seq=30: ESP_ERR_INVALID_STATE[0m
+[0;33mW (109770) VICTIM_MAIN: Probe send failed seq=31: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110020) VICTIM_MAIN: Probe send failed seq=32: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110270) VICTIM_MAIN: Probe send failed seq=33: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110520) VICTIM_MAIN: Probe send failed seq=34: ESP_ERR_INVALID_STATE[0m
+[0;33mW (110770) VICTIM_MAIN: Probe send failed seq=35: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111020) VICTIM_MAIN: Probe send failed seq=36: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111270) VICTIM_MAIN: Probe send failed seq=37: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111520) VICTIM_MAIN: Probe send failed seq=38: ESP_ERR_INVALID_STATE[0m
+[0;33mW (111770) VICTIM_MAIN: Probe send failed seq=39: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112020) VICTIM_MAIN: Probe send failed seq=40: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112270) VICTIM_MAIN: Probe send failed seq=41: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112520) VICTIM_MAIN: Probe send failed seq=42: ESP_ERR_INVALID_STATE[0m
+[0;33mW (112770) VICTIM_MAIN: Probe send failed seq=43: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113020) VICTIM_MAIN: Probe send failed seq=44: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113270) VICTIM_MAIN: Probe send failed seq=45: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113520) VICTIM_MAIN: Probe send failed seq=46: ESP_ERR_INVALID_STATE[0m
+[0;33mW (113770) VICTIM_MAIN: Probe send failed seq=47: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114020) VICTIM_MAIN: Probe send failed seq=48: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114270) VICTIM_MAIN: Probe send failed seq=49: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114520) VICTIM_MAIN: Probe send failed seq=50: ESP_ERR_INVALID_STATE[0m
+[0;33mW (114770) VICTIM_MAIN: Probe send failed seq=51: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115020) VICTIM_MAIN: Probe send failed seq=52: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115270) VICTIM_MAIN: Probe send failed seq=53: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115520) VICTIM_MAIN: Probe send failed seq=54: ESP_ERR_INVALID_STATE[0m
+[0;33mW (115770) VICTIM_MAIN: Probe send failed seq=55: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116020) VICTIM_MAIN: Probe send failed seq=56: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116270) VICTIM_MAIN: Probe send failed seq=57: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116520) VICTIM_MAIN: Probe send failed seq=58: ESP_ERR_INVALID_STATE[0m
+[0;33mW (116770) VICTIM_MAIN: Probe send failed seq=59: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117020) VICTIM_MAIN: Probe send failed seq=60: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117270) VICTIM_MAIN: Probe send failed seq=61: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117520) VICTIM_MAIN: Probe send failed seq=62: ESP_ERR_INVALID_STATE[0m
+[0;33mW (117770) VICTIM_MAIN: Probe send failed seq=63: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118020) VICTIM_MAIN: Probe send failed seq=64: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118270) VICTIM_MAIN: Probe send failed seq=65: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118520) VICTIM_MAIN: Probe send failed seq=66: ESP_ERR_INVALID_STATE[0m
+[0;33mW (118770) VICTIM_MAIN: Probe send failed seq=67: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119020) VICTIM_MAIN: Probe send failed seq=68: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119270) VICTIM_MAIN: Probe send failed seq=69: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119520) VICTIM_MAIN: Probe send failed seq=70: ESP_ERR_INVALID_STATE[0m
+[0;33mW (119770) VICTIM_MAIN: Probe send failed seq=71: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120020) VICTIM_MAIN: Probe send failed seq=72: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120270) VICTIM_MAIN: Probe send failed seq=73: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120520) VICTIM_MAIN: Probe send failed seq=74: ESP_ERR_INVALID_STATE[0m
+[0;33mW (120770) VICTIM_MAIN: Probe send failed seq=75: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121020) VICTIM_MAIN: Probe send failed seq=76: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121270) VICTIM_MAIN: Probe send failed seq=77: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121520) VICTIM_MAIN: Probe send failed seq=78: ESP_ERR_INVALID_STATE[0m
+[0;33mW (121770) VICTIM_MAIN: Probe send failed seq=79: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122020) VICTIM_MAIN: Probe send failed seq=80: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122270) VICTIM_MAIN: Probe send failed seq=81: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122520) VICTIM_MAIN: Probe send failed seq=82: ESP_ERR_INVALID_STATE[0m
+[0;33mW (122770) VICTIM_MAIN: Probe send failed seq=83: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123020) VICTIM_MAIN: Probe send failed seq=84: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123270) VICTIM_MAIN: Probe send failed seq=85: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123520) VICTIM_MAIN: Probe send failed seq=86: ESP_ERR_INVALID_STATE[0m
+[0;33mW (123770) VICTIM_MAIN: Probe send failed seq=87: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124020) VICTIM_MAIN: Probe send failed seq=88: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124270) VICTIM_MAIN: Probe send failed seq=89: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124520) VICTIM_MAIN: Probe send failed seq=90: ESP_ERR_INVALID_STATE[0m
+[0;33mW (124770) VICTIM_MAIN: Probe send failed seq=91: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125020) VICTIM_MAIN: Probe send failed seq=92: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125270) VICTIM_MAIN: Probe send failed seq=93: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125520) VICTIM_MAIN: Probe send failed seq=94: ESP_ERR_INVALID_STATE[0m
+[0;33mW (125770) VICTIM_MAIN: Probe send failed seq=95: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126020) VICTIM_MAIN: Probe send failed seq=96: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126270) VICTIM_MAIN: Probe send failed seq=97: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126520) VICTIM_MAIN: Probe send failed seq=98: ESP_ERR_INVALID_STATE[0m
+[0;33mW (126770) VICTIM_MAIN: Probe send failed seq=99: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127020) VICTIM_MAIN: Probe send failed seq=100: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127270) VICTIM_MAIN: Probe send failed seq=101: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127520) VICTIM_MAIN: Probe send failed seq=102: ESP_ERR_INVALID_STATE[0m
+[0;33mW (127770) VICTIM_MAIN: Probe send failed seq=103: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128020) VICTIM_MAIN: Probe send failed seq=104: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128270) VICTIM_MAIN: Probe send failed seq=105: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128520) VICTIM_MAIN: Probe send failed seq=106: ESP_ERR_INVALID_STATE[0m
+[0;33mW (128770) VICTIM_MAIN: Probe send failed seq=107: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129020) VICTIM_MAIN: Probe send failed seq=108: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129270) VICTIM_MAIN: Probe send failed seq=109: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129520) VICTIM_MAIN: Probe send failed seq=110: ESP_ERR_INVALID_STATE[0m
+[0;33mW (129770) VICTIM_MAIN: Probe send failed seq=111: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130020) VICTIM_MAIN: Probe send failed seq=112: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130270) VICTIM_MAIN: Probe send failed seq=113: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130520) VICTIM_MAIN: Probe send failed seq=114: ESP_ERR_INVALID_STATE[0m
+[0;33mW (130770) VICTIM_MAIN: Probe send failed seq=115: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131020) VICTIM_MAIN: Probe send failed seq=116: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131270) VICTIM_MAIN: Probe send failed seq=117: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131520) VICTIM_MAIN: Probe send failed seq=118: ESP_ERR_INVALID_STATE[0m
+[0;33mW (131770) VICTIM_MAIN: Probe send failed seq=119: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132020) VICTIM_MAIN: Probe send failed seq=120: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132270) VICTIM_MAIN: Probe send failed seq=121: ESP_ERR_INVALID_STATE[0m
+[0;32mI (132280) HEALTH: [HEALTH] up=131s heap=84828 min=84092 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (132520) VICTIM_MAIN: Probe send failed seq=122: ESP_ERR_INVALID_STATE[0m
+[0;33mW (132770) VICTIM_MAIN: Probe send failed seq=123: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133020) VICTIM_MAIN: Probe send failed seq=124: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133270) VICTIM_MAIN: Probe send failed seq=125: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133520) VICTIM_MAIN: Probe send failed seq=126: ESP_ERR_INVALID_STATE[0m
+[0;33mW (133770) VICTIM_MAIN: Probe send failed seq=127: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134020) VICTIM_MAIN: Probe send failed seq=128: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134270) VICTIM_MAIN: Probe send failed seq=129: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134520) VICTIM_MAIN: Probe send failed seq=130: ESP_ERR_INVALID_STATE[0m
+[0;33mW (134770) VICTIM_MAIN: Probe send failed seq=131: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135020) VICTIM_MAIN: Probe send failed seq=132: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135270) VICTIM_MAIN: Probe send failed seq=133: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135520) VICTIM_MAIN: Probe send failed seq=134: ESP_ERR_INVALID_STATE[0m
+[0;33mW (135770) VICTIM_MAIN: Probe send failed seq=135: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136020) VICTIM_MAIN: Probe send failed seq=136: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136270) VICTIM_MAIN: Probe send failed seq=137: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136520) VICTIM_MAIN: Probe send failed seq=138: ESP_ERR_INVALID_STATE[0m
+[0;33mW (136770) VICTIM_MAIN: Probe send failed seq=139: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137020) VICTIM_MAIN: Probe send failed seq=140: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137270) VICTIM_MAIN: Probe send failed seq=141: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137520) VICTIM_MAIN: Probe send failed seq=142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (137770) VICTIM_MAIN: Probe send failed seq=143: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138020) VICTIM_MAIN: Probe send failed seq=144: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138270) VICTIM_MAIN: Probe send failed seq=145: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138520) VICTIM_MAIN: Probe send failed seq=146: ESP_ERR_INVALID_STATE[0m
+[0;33mW (138770) VICTIM_MAIN: Probe send failed seq=147: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139020) VICTIM_MAIN: Probe send failed seq=148: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139270) VICTIM_MAIN: Probe send failed seq=149: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139520) VICTIM_MAIN: Probe send failed seq=150: ESP_ERR_INVALID_STATE[0m
+[0;33mW (139770) VICTIM_MAIN: Probe send failed seq=151: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140020) VICTIM_MAIN: Probe send failed seq=152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140270) VICTIM_MAIN: Probe send failed seq=153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140520) VICTIM_MAIN: Probe send failed seq=154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (140770) VICTIM_MAIN: Probe send failed seq=155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141020) VICTIM_MAIN: Probe send failed seq=156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141270) VICTIM_MAIN: Probe send failed seq=157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141520) VICTIM_MAIN: Probe send failed seq=158: ESP_ERR_INVALID_STATE[0m
+[0;33mW (141770) VICTIM_MAIN: Probe send failed seq=159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142020) VICTIM_MAIN: Probe send failed seq=160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142270) VICTIM_MAIN: Probe send failed seq=161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142520) VICTIM_MAIN: Probe send failed seq=162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (142770) VICTIM_MAIN: Probe send failed seq=163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143020) VICTIM_MAIN: Probe send failed seq=164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143270) VICTIM_MAIN: Probe send failed seq=165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143520) VICTIM_MAIN: Probe send failed seq=166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (143770) VICTIM_MAIN: Probe send failed seq=167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144020) VICTIM_MAIN: Probe send failed seq=168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144270) VICTIM_MAIN: Probe send failed seq=169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144520) VICTIM_MAIN: Probe send failed seq=170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (144770) VICTIM_MAIN: Probe send failed seq=171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145020) VICTIM_MAIN: Probe send failed seq=172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145270) VICTIM_MAIN: Probe send failed seq=173: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145520) VICTIM_MAIN: Probe send failed seq=174: ESP_ERR_INVALID_STATE[0m
+[0;33mW (145770) VICTIM_MAIN: Probe send failed seq=175: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146020) VICTIM_MAIN: Probe send failed seq=176: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146270) VICTIM_MAIN: Probe send failed seq=177: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146520) VICTIM_MAIN: Probe send failed seq=178: ESP_ERR_INVALID_STATE[0m
+[0;33mW (146770) VICTIM_MAIN: Probe send failed seq=179: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147020) VICTIM_MAIN: Probe send failed seq=180: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147270) VICTIM_MAIN: Probe send failed seq=181: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147520) VICTIM_MAIN: Probe send failed seq=182: ESP_ERR_INVALID_STATE[0m
+[0;33mW (147770) VICTIM_MAIN: Probe send failed seq=183: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148020) VICTIM_MAIN: Probe send failed seq=184: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148270) VICTIM_MAIN: Probe send failed seq=185: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148520) VICTIM_MAIN: Probe send failed seq=186: ESP_ERR_INVALID_STATE[0m
+[0;33mW (148770) VICTIM_MAIN: Probe send failed seq=187: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149020) VICTIM_MAIN: Probe send failed seq=188: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149270) VICTIM_MAIN: Probe send failed seq=189: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149520) VICTIM_MAIN: Probe send failed seq=190: ESP_ERR_INVALID_STATE[0m
+[0;33mW (149770) VICTIM_MAIN: Probe send failed seq=191: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150020) VICTIM_MAIN: Probe send failed seq=192: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150270) VICTIM_MAIN: Probe send failed seq=193: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150520) VICTIM_MAIN: Probe send failed seq=194: ESP_ERR_INVALID_STATE[0m
+[0;33mW (150770) VICTIM_MAIN: Probe send failed seq=195: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151020) VICTIM_MAIN: Probe send failed seq=196: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151070) MESH_SETUP: STAR HUB: scan 30 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (151270) VICTIM_MAIN: Probe send failed seq=197: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151520) VICTIM_MAIN: Probe send failed seq=198: ESP_ERR_INVALID_STATE[0m
+[0;33mW (151770) VICTIM_MAIN: Probe send failed seq=199: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152020) VICTIM_MAIN: Probe send failed seq=200: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152270) VICTIM_MAIN: Probe send failed seq=201: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152520) VICTIM_MAIN: Probe send failed seq=202: ESP_ERR_INVALID_STATE[0m
+[0;33mW (152770) VICTIM_MAIN: Probe send failed seq=203: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153020) VICTIM_MAIN: Probe send failed seq=204: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153270) VICTIM_MAIN: Probe send failed seq=205: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153520) VICTIM_MAIN: Probe send failed seq=206: ESP_ERR_INVALID_STATE[0m
+[0;33mW (153770) VICTIM_MAIN: Probe send failed seq=207: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154020) VICTIM_MAIN: Probe send failed seq=208: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154270) VICTIM_MAIN: Probe send failed seq=209: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154520) VICTIM_MAIN: Probe send failed seq=210: ESP_ERR_INVALID_STATE[0m
+[0;33mW (154770) VICTIM_MAIN: Probe send failed seq=211: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155020) VICTIM_MAIN: Probe send failed seq=212: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155270) VICTIM_MAIN: Probe send failed seq=213: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155520) VICTIM_MAIN: Probe send failed seq=214: ESP_ERR_INVALID_STATE[0m
+[0;33mW (155770) VICTIM_MAIN: Probe send failed seq=215: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156020) VICTIM_MAIN: Probe send failed seq=216: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156270) VICTIM_MAIN: Probe send failed seq=217: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156520) VICTIM_MAIN: Probe send failed seq=218: ESP_ERR_INVALID_STATE[0m
+[0;33mW (156770) VICTIM_MAIN: Probe send failed seq=219: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157020) VICTIM_MAIN: Probe send failed seq=220: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157270) VICTIM_MAIN: Probe send failed seq=221: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157520) VICTIM_MAIN: Probe send failed seq=222: ESP_ERR_INVALID_STATE[0m
+[0;33mW (157770) VICTIM_MAIN: Probe send failed seq=223: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158020) VICTIM_MAIN: Probe send failed seq=224: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158270) VICTIM_MAIN: Probe send failed seq=225: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158520) VICTIM_MAIN: Probe send failed seq=226: ESP_ERR_INVALID_STATE[0m
+[0;33mW (158770) VICTIM_MAIN: Probe send failed seq=227: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159020) VICTIM_MAIN: Probe send failed seq=228: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159270) VICTIM_MAIN: Probe send failed seq=229: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159520) VICTIM_MAIN: Probe send failed seq=230: ESP_ERR_INVALID_STATE[0m
+[0;33mW (159770) VICTIM_MAIN: Probe send failed seq=231: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160020) VICTIM_MAIN: Probe send failed seq=232: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160270) VICTIM_MAIN: Probe send failed seq=233: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160520) VICTIM_MAIN: Probe send failed seq=234: ESP_ERR_INVALID_STATE[0m
+[0;33mW (160770) VICTIM_MAIN: Probe send failed seq=235: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161020) VICTIM_MAIN: Probe send failed seq=236: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161270) VICTIM_MAIN: Probe send failed seq=237: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161520) VICTIM_MAIN: Probe send failed seq=238: ESP_ERR_INVALID_STATE[0m
+[0;33mW (161770) VICTIM_MAIN: Probe send failed seq=239: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162020) VICTIM_MAIN: Probe send failed seq=240: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162270) VICTIM_MAIN: Probe send failed seq=241: ESP_ERR_INVALID_STATE[0m
+[0;32mI (162290) HEALTH: [HEALTH] up=161s heap=84928 min=83992 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (162520) VICTIM_MAIN: Probe send failed seq=242: ESP_ERR_INVALID_STATE[0m
+[0;33mW (162770) VICTIM_MAIN: Probe send failed seq=243: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163020) VICTIM_MAIN: Probe send failed seq=244: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163270) VICTIM_MAIN: Probe send failed seq=245: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163520) VICTIM_MAIN: Probe send failed seq=246: ESP_ERR_INVALID_STATE[0m
+[0;33mW (163770) VICTIM_MAIN: Probe send failed seq=247: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164020) VICTIM_MAIN: Probe send failed seq=248: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164270) VICTIM_MAIN: Probe send failed seq=249: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164520) VICTIM_MAIN: Probe send failed seq=250: ESP_ERR_INVALID_STATE[0m
+[0;33mW (164770) VICTIM_MAIN: Probe send failed seq=251: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165020) VICTIM_MAIN: Probe send failed seq=252: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165270) VICTIM_MAIN: Probe send failed seq=253: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165520) VICTIM_MAIN: Probe send failed seq=254: ESP_ERR_INVALID_STATE[0m
+[0;33mW (165770) VICTIM_MAIN: Probe send failed seq=255: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166020) VICTIM_MAIN: Probe send failed seq=256: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166270) VICTIM_MAIN: Probe send failed seq=257: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166520) VICTIM_MAIN: Probe send failed seq=258: ESP_ERR_INVALID_STATE[0m
+[0;33mW (166770) VICTIM_MAIN: Probe send failed seq=259: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167020) VICTIM_MAIN: Probe send failed seq=260: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167270) VICTIM_MAIN: Probe send failed seq=261: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167520) VICTIM_MAIN: Probe send failed seq=262: ESP_ERR_INVALID_STATE[0m
+[0;33mW (167770) VICTIM_MAIN: Probe send failed seq=263: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168020) VICTIM_MAIN: Probe send failed seq=264: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168270) VICTIM_MAIN: Probe send failed seq=265: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168520) VICTIM_MAIN: Probe send failed seq=266: ESP_ERR_INVALID_STATE[0m
+[0;33mW (168770) VICTIM_MAIN: Probe send failed seq=267: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169020) VICTIM_MAIN: Probe send failed seq=268: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169270) VICTIM_MAIN: Probe send failed seq=269: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169520) VICTIM_MAIN: Probe send failed seq=270: ESP_ERR_INVALID_STATE[0m
+[0;33mW (169770) VICTIM_MAIN: Probe send failed seq=271: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170020) VICTIM_MAIN: Probe send failed seq=272: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170270) VICTIM_MAIN: Probe send failed seq=273: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170520) VICTIM_MAIN: Probe send failed seq=274: ESP_ERR_INVALID_STATE[0m
+[0;33mW (170770) VICTIM_MAIN: Probe send failed seq=275: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171020) VICTIM_MAIN: Probe send failed seq=276: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171270) VICTIM_MAIN: Probe send failed seq=277: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171520) VICTIM_MAIN: Probe send failed seq=278: ESP_ERR_INVALID_STATE[0m
+[0;33mW (171770) VICTIM_MAIN: Probe send failed seq=279: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172020) VICTIM_MAIN: Probe send failed seq=280: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172270) VICTIM_MAIN: Probe send failed seq=281: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172520) VICTIM_MAIN: Probe send failed seq=282: ESP_ERR_INVALID_STATE[0m
+[0;33mW (172770) VICTIM_MAIN: Probe send failed seq=283: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173020) VICTIM_MAIN: Probe send failed seq=284: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173270) VICTIM_MAIN: Probe send failed seq=285: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173520) VICTIM_MAIN: Probe send failed seq=286: ESP_ERR_INVALID_STATE[0m
+[0;33mW (173770) VICTIM_MAIN: Probe send failed seq=287: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174020) VICTIM_MAIN: Probe send failed seq=288: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174270) VICTIM_MAIN: Probe send failed seq=289: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174520) VICTIM_MAIN: Probe send failed seq=290: ESP_ERR_INVALID_STATE[0m
+[0;33mW (174770) VICTIM_MAIN: Probe send failed seq=291: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175020) VICTIM_MAIN: Probe send failed seq=292: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175270) VICTIM_MAIN: Probe send failed seq=293: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175520) VICTIM_MAIN: Probe send failed seq=294: ESP_ERR_INVALID_STATE[0m
+[0;33mW (175770) VICTIM_MAIN: Probe send failed seq=295: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176020) VICTIM_MAIN: Probe send failed seq=296: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176270) VICTIM_MAIN: Probe send failed seq=297: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176520) VICTIM_MAIN: Probe send failed seq=298: ESP_ERR_INVALID_STATE[0m
+[0;33mW (176770) VICTIM_MAIN: Probe send failed seq=299: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177020) VICTIM_MAIN: Probe send failed seq=300: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177270) VICTIM_MAIN: Probe send failed seq=301: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177520) VICTIM_MAIN: Probe send failed seq=302: ESP_ERR_INVALID_STATE[0m
+[0;33mW (177770) VICTIM_MAIN: Probe send failed seq=303: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178020) VICTIM_MAIN: Probe send failed seq=304: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178270) VICTIM_MAIN: Probe send failed seq=305: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178520) VICTIM_MAIN: Probe send failed seq=306: ESP_ERR_INVALID_STATE[0m
+[0;33mW (178770) VICTIM_MAIN: Probe send failed seq=307: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179020) VICTIM_MAIN: Probe send failed seq=308: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179270) VICTIM_MAIN: Probe send failed seq=309: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179520) VICTIM_MAIN: Probe send failed seq=310: ESP_ERR_INVALID_STATE[0m
+[0;33mW (179770) VICTIM_MAIN: Probe send failed seq=311: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180020) VICTIM_MAIN: Probe send failed seq=312: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180270) VICTIM_MAIN: Probe send failed seq=313: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180520) VICTIM_MAIN: Probe send failed seq=314: ESP_ERR_INVALID_STATE[0m
+[0;33mW (180770) VICTIM_MAIN: Probe send failed seq=315: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181020) VICTIM_MAIN: Probe send failed seq=316: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181270) VICTIM_MAIN: Probe send failed seq=317: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181520) VICTIM_MAIN: Probe send failed seq=318: ESP_ERR_INVALID_STATE[0m
+[0;33mW (181770) VICTIM_MAIN: Probe send failed seq=319: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182020) VICTIM_MAIN: Probe send failed seq=320: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182270) VICTIM_MAIN: Probe send failed seq=321: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182520) VICTIM_MAIN: Probe send failed seq=322: ESP_ERR_INVALID_STATE[0m
+[0;33mW (182770) VICTIM_MAIN: Probe send failed seq=323: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183020) VICTIM_MAIN: Probe send failed seq=324: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183270) VICTIM_MAIN: Probe send failed seq=325: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183520) VICTIM_MAIN: Probe send failed seq=326: ESP_ERR_INVALID_STATE[0m
+[0;33mW (183770) VICTIM_MAIN: Probe send failed seq=327: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184020) VICTIM_MAIN: Probe send failed seq=328: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184270) VICTIM_MAIN: Probe send failed seq=329: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184520) VICTIM_MAIN: Probe send failed seq=330: ESP_ERR_INVALID_STATE[0m
+[0;33mW (184770) VICTIM_MAIN: Probe send failed seq=331: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185020) VICTIM_MAIN: Probe send failed seq=332: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185270) VICTIM_MAIN: Probe send failed seq=333: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185520) VICTIM_MAIN: Probe send failed seq=334: ESP_ERR_INVALID_STATE[0m
+[0;33mW (185770) VICTIM_MAIN: Probe send failed seq=335: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186020) VICTIM_MAIN: Probe send failed seq=336: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186270) VICTIM_MAIN: Probe send failed seq=337: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186520) VICTIM_MAIN: Probe send failed seq=338: ESP_ERR_INVALID_STATE[0m
+[0;33mW (186770) VICTIM_MAIN: Probe send failed seq=339: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187020) VICTIM_MAIN: Probe send failed seq=340: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187270) VICTIM_MAIN: Probe send failed seq=341: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187520) VICTIM_MAIN: Probe send failed seq=342: ESP_ERR_INVALID_STATE[0m
+[0;33mW (187770) VICTIM_MAIN: Probe send failed seq=343: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188020) VICTIM_MAIN: Probe send failed seq=344: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188270) VICTIM_MAIN: Probe send failed seq=345: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188520) VICTIM_MAIN: Probe send failed seq=346: ESP_ERR_INVALID_STATE[0m
+[0;33mW (188770) VICTIM_MAIN: Probe send failed seq=347: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189020) VICTIM_MAIN: Probe send failed seq=348: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189270) VICTIM_MAIN: Probe send failed seq=349: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189520) VICTIM_MAIN: Probe send failed seq=350: ESP_ERR_INVALID_STATE[0m
+[0;33mW (189770) VICTIM_MAIN: Probe send failed seq=351: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190020) VICTIM_MAIN: Probe send failed seq=352: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190270) VICTIM_MAIN: Probe send failed seq=353: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190520) VICTIM_MAIN: Probe send failed seq=354: ESP_ERR_INVALID_STATE[0m
+[0;33mW (190770) VICTIM_MAIN: Probe send failed seq=355: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191020) VICTIM_MAIN: Probe send failed seq=356: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191270) VICTIM_MAIN: Probe send failed seq=357: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191520) VICTIM_MAIN: Probe send failed seq=358: ESP_ERR_INVALID_STATE[0m
+[0;33mW (191770) VICTIM_MAIN: Probe send failed seq=359: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192020) VICTIM_MAIN: Probe send failed seq=360: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192270) VICTIM_MAIN: Probe send failed seq=361: ESP_ERR_INVALID_STATE[0m
+[0;32mI (192300) HEALTH: [HEALTH] up=191s heap=84928 min=83992 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (192520) VICTIM_MAIN: Probe send failed seq=362: ESP_ERR_INVALID_STATE[0m
+[0;33mW (192770) VICTIM_MAIN: Probe send failed seq=363: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193020) VICTIM_MAIN: Probe send failed seq=364: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193270) VICTIM_MAIN: Probe send failed seq=365: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193520) VICTIM_MAIN: Probe send failed seq=366: ESP_ERR_INVALID_STATE[0m
+[0;33mW (193770) VICTIM_MAIN: Probe send failed seq=367: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194020) VICTIM_MAIN: Probe send failed seq=368: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194270) VICTIM_MAIN: Probe send failed seq=369: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194520) VICTIM_MAIN: Probe send failed seq=370: ESP_ERR_INVALID_STATE[0m
+[0;33mW (194770) VICTIM_MAIN: Probe send failed seq=371: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195020) VICTIM_MAIN: Probe send failed seq=372: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195270) VICTIM_MAIN: Probe send failed seq=373: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195520) VICTIM_MAIN: Probe send failed seq=374: ESP_ERR_INVALID_STATE[0m
+[0;33mW (195770) VICTIM_MAIN: Probe send failed seq=375: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196020) VICTIM_MAIN: Probe send failed seq=376: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196270) VICTIM_MAIN: Probe send failed seq=377: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196520) VICTIM_MAIN: Probe send failed seq=378: ESP_ERR_INVALID_STATE[0m
+[0;33mW (196770) VICTIM_MAIN: Probe send failed seq=379: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197020) VICTIM_MAIN: Probe send failed seq=380: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197270) VICTIM_MAIN: Probe send failed seq=381: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197520) VICTIM_MAIN: Probe send failed seq=382: ESP_ERR_INVALID_STATE[0m
+[0;33mW (197770) VICTIM_MAIN: Probe send failed seq=383: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198020) VICTIM_MAIN: Probe send failed seq=384: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198270) VICTIM_MAIN: Probe send failed seq=385: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198520) VICTIM_MAIN: Probe send failed seq=386: ESP_ERR_INVALID_STATE[0m
+[0;33mW (198770) VICTIM_MAIN: Probe send failed seq=387: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199020) VICTIM_MAIN: Probe send failed seq=388: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199270) VICTIM_MAIN: Probe send failed seq=389: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199520) VICTIM_MAIN: Probe send failed seq=390: ESP_ERR_INVALID_STATE[0m
+[0;33mW (199770) VICTIM_MAIN: Probe send failed seq=391: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200020) VICTIM_MAIN: Probe send failed seq=392: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200270) VICTIM_MAIN: Probe send failed seq=393: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200520) VICTIM_MAIN: Probe send failed seq=394: ESP_ERR_INVALID_STATE[0m
+[0;33mW (200770) VICTIM_MAIN: Probe send failed seq=395: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201020) VICTIM_MAIN: Probe send failed seq=396: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201270) VICTIM_MAIN: Probe send failed seq=397: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201520) VICTIM_MAIN: Probe send failed seq=398: ESP_ERR_INVALID_STATE[0m
+[0;33mW (201610) MESH_SETUP: STAR HUB: scan 40 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (201770) VICTIM_MAIN: Probe send failed seq=399: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202020) VICTIM_MAIN: Probe send failed seq=400: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202270) VICTIM_MAIN: Probe send failed seq=401: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202520) VICTIM_MAIN: Probe send failed seq=402: ESP_ERR_INVALID_STATE[0m
+[0;33mW (202770) VICTIM_MAIN: Probe send failed seq=403: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203020) VICTIM_MAIN: Probe send failed seq=404: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203270) VICTIM_MAIN: Probe send failed seq=405: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203520) VICTIM_MAIN: Probe send failed seq=406: ESP_ERR_INVALID_STATE[0m
+[0;33mW (203770) VICTIM_MAIN: Probe send failed seq=407: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204020) VICTIM_MAIN: Probe send failed seq=408: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204270) VICTIM_MAIN: Probe send failed seq=409: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204520) VICTIM_MAIN: Probe send failed seq=410: ESP_ERR_INVALID_STATE[0m
+[0;33mW (204770) VICTIM_MAIN: Probe send failed seq=411: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205020) VICTIM_MAIN: Probe send failed seq=412: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205270) VICTIM_MAIN: Probe send failed seq=413: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205520) VICTIM_MAIN: Probe send failed seq=414: ESP_ERR_INVALID_STATE[0m
+[0;33mW (205770) VICTIM_MAIN: Probe send failed seq=415: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206020) VICTIM_MAIN: Probe send failed seq=416: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206270) VICTIM_MAIN: Probe send failed seq=417: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206520) VICTIM_MAIN: Probe send failed seq=418: ESP_ERR_INVALID_STATE[0m
+[0;33mW (206770) VICTIM_MAIN: Probe send failed seq=419: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207020) VICTIM_MAIN: Probe send failed seq=420: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207270) VICTIM_MAIN: Probe send failed seq=421: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207520) VICTIM_MAIN: Probe send failed seq=422: ESP_ERR_INVALID_STATE[0m
+[0;33mW (207770) VICTIM_MAIN: Probe send failed seq=423: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208020) VICTIM_MAIN: Probe send failed seq=424: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208270) VICTIM_MAIN: Probe send failed seq=425: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208520) VICTIM_MAIN: Probe send failed seq=426: ESP_ERR_INVALID_STATE[0m
+[0;33mW (208770) VICTIM_MAIN: Probe send failed seq=427: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209020) VICTIM_MAIN: Probe send failed seq=428: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209270) VICTIM_MAIN: Probe send failed seq=429: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209520) VICTIM_MAIN: Probe send failed seq=430: ESP_ERR_INVALID_STATE[0m
+[0;33mW (209770) VICTIM_MAIN: Probe send failed seq=431: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210020) VICTIM_MAIN: Probe send failed seq=432: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210270) VICTIM_MAIN: Probe send failed seq=433: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210520) VICTIM_MAIN: Probe send failed seq=434: ESP_ERR_INVALID_STATE[0m
+[0;33mW (210770) VICTIM_MAIN: Probe send failed seq=435: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211020) VICTIM_MAIN: Probe send failed seq=436: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211270) VICTIM_MAIN: Probe send failed seq=437: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211520) VICTIM_MAIN: Probe send failed seq=438: ESP_ERR_INVALID_STATE[0m
+[0;33mW (211770) VICTIM_MAIN: Probe send failed seq=439: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212020) VICTIM_MAIN: Probe send failed seq=440: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212270) VICTIM_MAIN: Probe send failed seq=441: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212520) VICTIM_MAIN: Probe send failed seq=442: ESP_ERR_INVALID_STATE[0m
+[0;33mW (212770) VICTIM_MAIN: Probe send failed seq=443: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213020) VICTIM_MAIN: Probe send failed seq=444: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213270) VICTIM_MAIN: Probe send failed seq=445: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213520) VICTIM_MAIN: Probe send failed seq=446: ESP_ERR_INVALID_STATE[0m
+[0;33mW (213770) VICTIM_MAIN: Probe send failed seq=447: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214020) VICTIM_MAIN: Probe send failed seq=448: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214270) VICTIM_MAIN: Probe send failed seq=449: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214520) VICTIM_MAIN: Probe send failed seq=450: ESP_ERR_INVALID_STATE[0m
+[0;33mW (214770) VICTIM_MAIN: Probe send failed seq=451: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215020) VICTIM_MAIN: Probe send failed seq=452: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215270) VICTIM_MAIN: Probe send failed seq=453: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215520) VICTIM_MAIN: Probe send failed seq=454: ESP_ERR_INVALID_STATE[0m
+[0;33mW (215770) VICTIM_MAIN: Probe send failed seq=455: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216020) VICTIM_MAIN: Probe send failed seq=456: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216270) VICTIM_MAIN: Probe send failed seq=457: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216520) VICTIM_MAIN: Probe send failed seq=458: ESP_ERR_INVALID_STATE[0m
+[0;33mW (216770) VICTIM_MAIN: Probe send failed seq=459: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217020) VICTIM_MAIN: Probe send failed seq=460: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217270) VICTIM_MAIN: Probe send failed seq=461: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217520) VICTIM_MAIN: Probe send failed seq=462: ESP_ERR_INVALID_STATE[0m
+[0;33mW (217770) VICTIM_MAIN: Probe send failed seq=463: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218020) VICTIM_MAIN: Probe send failed seq=464: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218270) VICTIM_MAIN: Probe send failed seq=465: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218520) VICTIM_MAIN: Probe send failed seq=466: ESP_ERR_INVALID_STATE[0m
+[0;33mW (218770) VICTIM_MAIN: Probe send failed seq=467: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219020) VICTIM_MAIN: Probe send failed seq=468: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219270) VICTIM_MAIN: Probe send failed seq=469: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219520) VICTIM_MAIN: Probe send failed seq=470: ESP_ERR_INVALID_STATE[0m
+[0;33mW (219770) VICTIM_MAIN: Probe send failed seq=471: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220020) VICTIM_MAIN: Probe send failed seq=472: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220270) VICTIM_MAIN: Probe send failed seq=473: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220520) VICTIM_MAIN: Probe send failed seq=474: ESP_ERR_INVALID_STATE[0m
+[0;33mW (220770) VICTIM_MAIN: Probe send failed seq=475: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221020) VICTIM_MAIN: Probe send failed seq=476: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221270) VICTIM_MAIN: Probe send failed seq=477: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221520) VICTIM_MAIN: Probe send failed seq=478: ESP_ERR_INVALID_STATE[0m
+[0;33mW (221770) VICTIM_MAIN: Probe send failed seq=479: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222020) VICTIM_MAIN: Probe send failed seq=480: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222270) VICTIM_MAIN: Probe send failed seq=481: ESP_ERR_INVALID_STATE[0m
+[0;32mI (222310) HEALTH: [HEALTH] up=221s heap=84928 min=83992 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (222520) VICTIM_MAIN: Probe send failed seq=482: ESP_ERR_INVALID_STATE[0m
+[0;33mW (222770) VICTIM_MAIN: Probe send failed seq=483: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223020) VICTIM_MAIN: Probe send failed seq=484: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223270) VICTIM_MAIN: Probe send failed seq=485: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223520) VICTIM_MAIN: Probe send failed seq=486: ESP_ERR_INVALID_STATE[0m
+[0;33mW (223770) VICTIM_MAIN: Probe send failed seq=487: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224020) VICTIM_MAIN: Probe send failed seq=488: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224270) VICTIM_MAIN: Probe send failed seq=489: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224520) VICTIM_MAIN: Probe send failed seq=490: ESP_ERR_INVALID_STATE[0m
+[0;33mW (224770) VICTIM_MAIN: Probe send failed seq=491: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225020) VICTIM_MAIN: Probe send failed seq=492: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225270) VICTIM_MAIN: Probe send failed seq=493: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225520) VICTIM_MAIN: Probe send failed seq=494: ESP_ERR_INVALID_STATE[0m
+[0;33mW (225770) VICTIM_MAIN: Probe send failed seq=495: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226020) VICTIM_MAIN: Probe send failed seq=496: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226270) VICTIM_MAIN: Probe send failed seq=497: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226520) VICTIM_MAIN: Probe send failed seq=498: ESP_ERR_INVALID_STATE[0m
+[0;33mW (226770) VICTIM_MAIN: Probe send failed seq=499: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227020) VICTIM_MAIN: Probe send failed seq=500: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227270) VICTIM_MAIN: Probe send failed seq=501: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227520) VICTIM_MAIN: Probe send failed seq=502: ESP_ERR_INVALID_STATE[0m
+[0;33mW (227770) VICTIM_MAIN: Probe send failed seq=503: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228020) VICTIM_MAIN: Probe send failed seq=504: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228270) VICTIM_MAIN: Probe send failed seq=505: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228520) VICTIM_MAIN: Probe send failed seq=506: ESP_ERR_INVALID_STATE[0m
+[0;33mW (228770) VICTIM_MAIN: Probe send failed seq=507: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229020) VICTIM_MAIN: Probe send failed seq=508: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229270) VICTIM_MAIN: Probe send failed seq=509: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229520) VICTIM_MAIN: Probe send failed seq=510: ESP_ERR_INVALID_STATE[0m
+[0;33mW (229770) VICTIM_MAIN: Probe send failed seq=511: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230020) VICTIM_MAIN: Probe send failed seq=512: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230270) VICTIM_MAIN: Probe send failed seq=513: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230520) VICTIM_MAIN: Probe send failed seq=514: ESP_ERR_INVALID_STATE[0m
+[0;33mW (230770) VICTIM_MAIN: Probe send failed seq=515: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231020) VICTIM_MAIN: Probe send failed seq=516: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231270) VICTIM_MAIN: Probe send failed seq=517: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231520) VICTIM_MAIN: Probe send failed seq=518: ESP_ERR_INVALID_STATE[0m
+[0;33mW (231770) VICTIM_MAIN: Probe send failed seq=519: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232020) VICTIM_MAIN: Probe send failed seq=520: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232270) VICTIM_MAIN: Probe send failed seq=521: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232520) VICTIM_MAIN: Probe send failed seq=522: ESP_ERR_INVALID_STATE[0m
+[0;33mW (232770) VICTIM_MAIN: Probe send failed seq=523: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233020) VICTIM_MAIN: Probe send failed seq=524: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233270) VICTIM_MAIN: Probe send failed seq=525: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233520) VICTIM_MAIN: Probe send failed seq=526: ESP_ERR_INVALID_STATE[0m
+[0;33mW (233770) VICTIM_MAIN: Probe send failed seq=527: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234020) VICTIM_MAIN: Probe send failed seq=528: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234270) VICTIM_MAIN: Probe send failed seq=529: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234520) VICTIM_MAIN: Probe send failed seq=530: ESP_ERR_INVALID_STATE[0m
+[0;33mW (234770) VICTIM_MAIN: Probe send failed seq=531: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235020) VICTIM_MAIN: Probe send failed seq=532: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235270) VICTIM_MAIN: Probe send failed seq=533: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235520) VICTIM_MAIN: Probe send failed seq=534: ESP_ERR_INVALID_STATE[0m
+[0;33mW (235770) VICTIM_MAIN: Probe send failed seq=535: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236020) VICTIM_MAIN: Probe send failed seq=536: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236270) VICTIM_MAIN: Probe send failed seq=537: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236520) VICTIM_MAIN: Probe send failed seq=538: ESP_ERR_INVALID_STATE[0m
+[0;33mW (236770) VICTIM_MAIN: Probe send failed seq=539: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237020) VICTIM_MAIN: Probe send failed seq=540: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237270) VICTIM_MAIN: Probe send failed seq=541: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237520) VICTIM_MAIN: Probe send failed seq=542: ESP_ERR_INVALID_STATE[0m
+[0;33mW (237770) VICTIM_MAIN: Probe send failed seq=543: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238020) VICTIM_MAIN: Probe send failed seq=544: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238270) VICTIM_MAIN: Probe send failed seq=545: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238520) VICTIM_MAIN: Probe send failed seq=546: ESP_ERR_INVALID_STATE[0m
+[0;33mW (238770) VICTIM_MAIN: Probe send failed seq=547: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239020) VICTIM_MAIN: Probe send failed seq=548: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239270) VICTIM_MAIN: Probe send failed seq=549: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239520) VICTIM_MAIN: Probe send failed seq=550: ESP_ERR_INVALID_STATE[0m
+[0;33mW (239770) VICTIM_MAIN: Probe send failed seq=551: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240020) VICTIM_MAIN: Probe send failed seq=552: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240270) VICTIM_MAIN: Probe send failed seq=553: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240520) VICTIM_MAIN: Probe send failed seq=554: ESP_ERR_INVALID_STATE[0m
+[0;33mW (240770) VICTIM_MAIN: Probe send failed seq=555: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241020) VICTIM_MAIN: Probe send failed seq=556: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241270) VICTIM_MAIN: Probe send failed seq=557: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241520) VICTIM_MAIN: Probe send failed seq=558: ESP_ERR_INVALID_STATE[0m
+[0;33mW (241770) VICTIM_MAIN: Probe send failed seq=559: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242020) VICTIM_MAIN: Probe send failed seq=560: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242270) VICTIM_MAIN: Probe send failed seq=561: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242520) VICTIM_MAIN: Probe send failed seq=562: ESP_ERR_INVALID_STATE[0m
+[0;33mW (242770) VICTIM_MAIN: Probe send failed seq=563: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243020) VICTIM_MAIN: Probe send failed seq=564: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243270) VICTIM_MAIN: Probe send failed seq=565: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243520) VICTIM_MAIN: Probe send failed seq=566: ESP_ERR_INVALID_STATE[0m
+[0;33mW (243770) VICTIM_MAIN: Probe send failed seq=567: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244020) VICTIM_MAIN: Probe send failed seq=568: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244270) VICTIM_MAIN: Probe send failed seq=569: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244520) VICTIM_MAIN: Probe send failed seq=570: ESP_ERR_INVALID_STATE[0m
+[0;33mW (244770) VICTIM_MAIN: Probe send failed seq=571: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245020) VICTIM_MAIN: Probe send failed seq=572: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245270) VICTIM_MAIN: Probe send failed seq=573: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245520) VICTIM_MAIN: Probe send failed seq=574: ESP_ERR_INVALID_STATE[0m
+[0;33mW (245770) VICTIM_MAIN: Probe send failed seq=575: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246020) VICTIM_MAIN: Probe send failed seq=576: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246270) VICTIM_MAIN: Probe send failed seq=577: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246520) VICTIM_MAIN: Probe send failed seq=578: ESP_ERR_INVALID_STATE[0m
+[0;33mW (246770) VICTIM_MAIN: Probe send failed seq=579: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247020) VICTIM_MAIN: Probe send failed seq=580: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247270) VICTIM_MAIN: Probe send failed seq=581: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247520) VICTIM_MAIN: Probe send failed seq=582: ESP_ERR_INVALID_STATE[0m
+[0;33mW (247770) VICTIM_MAIN: Probe send failed seq=583: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248020) VICTIM_MAIN: Probe send failed seq=584: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248270) VICTIM_MAIN: Probe send failed seq=585: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248520) VICTIM_MAIN: Probe send failed seq=586: ESP_ERR_INVALID_STATE[0m
+[0;33mW (248770) VICTIM_MAIN: Probe send failed seq=587: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249020) VICTIM_MAIN: Probe send failed seq=588: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249270) VICTIM_MAIN: Probe send failed seq=589: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249520) VICTIM_MAIN: Probe send failed seq=590: ESP_ERR_INVALID_STATE[0m
+[0;33mW (249770) VICTIM_MAIN: Probe send failed seq=591: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250020) VICTIM_MAIN: Probe send failed seq=592: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250270) VICTIM_MAIN: Probe send failed seq=593: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250520) VICTIM_MAIN: Probe send failed seq=594: ESP_ERR_INVALID_STATE[0m
+[0;33mW (250770) VICTIM_MAIN: Probe send failed seq=595: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251020) VICTIM_MAIN: Probe send failed seq=596: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251270) VICTIM_MAIN: Probe send failed seq=597: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251520) VICTIM_MAIN: Probe send failed seq=598: ESP_ERR_INVALID_STATE[0m
+[0;33mW (251770) VICTIM_MAIN: Probe send failed seq=599: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252020) VICTIM_MAIN: Probe send failed seq=600: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252150) MESH_SETUP: STAR HUB: scan 50 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (252270) VICTIM_MAIN: Probe send failed seq=601: ESP_ERR_INVALID_STATE[0m
+[0;32mI (252320) HEALTH: [HEALTH] up=251s heap=85028 min=83892 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (252520) VICTIM_MAIN: Probe send failed seq=602: ESP_ERR_INVALID_STATE[0m
+[0;33mW (252770) VICTIM_MAIN: Probe send failed seq=603: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253020) VICTIM_MAIN: Probe send failed seq=604: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253270) VICTIM_MAIN: Probe send failed seq=605: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253520) VICTIM_MAIN: Probe send failed seq=606: ESP_ERR_INVALID_STATE[0m
+[0;33mW (253770) VICTIM_MAIN: Probe send failed seq=607: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254020) VICTIM_MAIN: Probe send failed seq=608: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254270) VICTIM_MAIN: Probe send failed seq=609: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254520) VICTIM_MAIN: Probe send failed seq=610: ESP_ERR_INVALID_STATE[0m
+[0;33mW (254770) VICTIM_MAIN: Probe send failed seq=611: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255020) VICTIM_MAIN: Probe send failed seq=612: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255270) VICTIM_MAIN: Probe send failed seq=613: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255520) VICTIM_MAIN: Probe send failed seq=614: ESP_ERR_INVALID_STATE[0m
+[0;33mW (255770) VICTIM_MAIN: Probe send failed seq=615: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256020) VICTIM_MAIN: Probe send failed seq=616: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256270) VICTIM_MAIN: Probe send failed seq=617: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256520) VICTIM_MAIN: Probe send failed seq=618: ESP_ERR_INVALID_STATE[0m
+[0;33mW (256770) VICTIM_MAIN: Probe send failed seq=619: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257020) VICTIM_MAIN: Probe send failed seq=620: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257270) VICTIM_MAIN: Probe send failed seq=621: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257520) VICTIM_MAIN: Probe send failed seq=622: ESP_ERR_INVALID_STATE[0m
+[0;33mW (257770) VICTIM_MAIN: Probe send failed seq=623: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258020) VICTIM_MAIN: Probe send failed seq=624: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258270) VICTIM_MAIN: Probe send failed seq=625: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258520) VICTIM_MAIN: Probe send failed seq=626: ESP_ERR_INVALID_STATE[0m
+[0;33mW (258770) VICTIM_MAIN: Probe send failed seq=627: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259020) VICTIM_MAIN: Probe send failed seq=628: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259270) VICTIM_MAIN: Probe send failed seq=629: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259520) VICTIM_MAIN: Probe send failed seq=630: ESP_ERR_INVALID_STATE[0m
+[0;33mW (259770) VICTIM_MAIN: Probe send failed seq=631: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260020) VICTIM_MAIN: Probe send failed seq=632: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260270) VICTIM_MAIN: Probe send failed seq=633: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260520) VICTIM_MAIN: Probe send failed seq=634: ESP_ERR_INVALID_STATE[0m
+[0;33mW (260770) VICTIM_MAIN: Probe send failed seq=635: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261020) VICTIM_MAIN: Probe send failed seq=636: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261270) VICTIM_MAIN: Probe send failed seq=637: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261520) VICTIM_MAIN: Probe send failed seq=638: ESP_ERR_INVALID_STATE[0m
+[0;33mW (261770) VICTIM_MAIN: Probe send failed seq=639: ESP_ERR_INVALID_STATE[0m
+[0;33mW (262020) VICTIM_MAIN: Probe send failed seq=640: ESP_ERR_INVALID_STATE[0m
+[0;33mW (262270) VICTIM_MAIN: Probe send failed seq=641: ESP_ERR_INVALID_STATE[0m
+[0;33mW (262520) VICTIM_MAIN: Probe send failed seq=642: ESP_ERR_INVALID_STATE[0m
+[0;33mW (262770) VICTIM_MAIN: Probe send failed seq=643: ESP_ERR_INVALID_STATE[0m
+[0;33mW (263020) VICTIM_MAIN: Probe send failed seq=644: ESP_ERR_INVALID_STATE[0m
+[0;33mW (263270) VICTIM_MAIN: Probe send failed seq=645: ESP_ERR_INVALID_STATE[0m
+[0;33mW (263520) VICTIM_MAIN: Probe send failed seq=646: ESP_ERR_INVALID_STATE[0m
+[0;33mW (263770) VICTIM_MAIN: Probe send failed seq=647: ESP_ERR_INVALID_STATE[0m
+[0;33mW (264020) VICTIM_MAIN: Probe send failed seq=648: ESP_ERR_INVALID_STATE[0m
+[0;33mW (264270) VICTIM_MAIN: Probe send failed seq=649: ESP_ERR_INVALID_STATE[0m
+[0;33mW (264520) VICTIM_MAIN: Probe send failed seq=650: ESP_ERR_INVALID_STATE[0m
+[0;33mW (264770) VICTIM_MAIN: Probe send failed seq=651: ESP_ERR_INVALID_STATE[0m
+[0;33mW (265020) VICTIM_MAIN: Probe send failed seq=652: ESP_ERR_INVALID_STATE[0m
+[0;33mW (265270) VICTIM_MAIN: Probe send failed seq=653: ESP_ERR_INVALID_STATE[0m
+[0;33mW (265520) VICTIM_MAIN: Probe send failed seq=654: ESP_ERR_INVALID_STATE[0m
+[0;33mW (265770) VICTIM_MAIN: Probe send failed seq=655: ESP_ERR_INVALID_STATE[0m
+[0;33mW (266020) VICTIM_MAIN: Probe send failed seq=656: ESP_ERR_INVALID_STATE[0m
+[0;33mW (266270) VICTIM_MAIN: Probe send failed seq=657: ESP_ERR_INVALID_STATE[0m
+[0;33mW (266520) VICTIM_MAIN: Probe send failed seq=658: ESP_ERR_INVALID_STATE[0m
+[0;33mW (266770) VICTIM_MAIN: Probe send failed seq=659: ESP_ERR_INVALID_STATE[0m
+[0;33mW (267020) VICTIM_MAIN: Probe send failed seq=660: ESP_ERR_INVALID_STATE[0m
+[0;33mW (267270) VICTIM_MAIN: Probe send failed seq=661: ESP_ERR_INVALID_STATE[0m
+[0;33mW (267520) VICTIM_MAIN: Probe send failed seq=662: ESP_ERR_INVALID_STATE[0m
+[0;33mW (267770) VICTIM_MAIN: Probe send failed seq=663: ESP_ERR_INVALID_STATE[0m
+[0;33mW (268020) VICTIM_MAIN: Probe send failed seq=664: ESP_ERR_INVALID_STATE[0m
+[0;33mW (268270) VICTIM_MAIN: Probe send failed seq=665: ESP_ERR_INVALID_STATE[0m
+[0;33mW (268520) VICTIM_MAIN: Probe send failed seq=666: ESP_ERR_INVALID_STATE[0m
+[0;33mW (268770) VICTIM_MAIN: Probe send failed seq=667: ESP_ERR_INVALID_STATE[0m
+[0;33mW (269020) VICTIM_MAIN: Probe send failed seq=668: ESP_ERR_INVALID_STATE[0m
+[0;33mW (269270) VICTIM_MAIN: Probe send failed seq=669: ESP_ERR_INVALID_STATE[0m
+[0;33mW (269520) VICTIM_MAIN: Probe send failed seq=670: ESP_ERR_INVALID_STATE[0m
+[0;33mW (269770) VICTIM_MAIN: Probe send failed seq=671: ESP_ERR_INVALID_STATE[0m
+[0;33mW (270020) VICTIM_MAIN: Probe send failed seq=672: ESP_ERR_INVALID_STATE[0m
+[0;33mW (270270) VICTIM_MAIN: Probe send failed seq=673: ESP_ERR_INVALID_STATE[0m
+[0;33mW (270520) VICTIM_MAIN: Probe send failed seq=674: ESP_ERR_INVALID_STATE[0m
+[0;33mW (270770) VICTIM_MAIN: Probe send failed seq=675: ESP_ERR_INVALID_STATE[0m
+[0;33mW (271020) VICTIM_MAIN: Probe send failed seq=676: ESP_ERR_INVALID_STATE[0m
+[0;33mW (271270) VICTIM_MAIN: Probe send failed seq=677: ESP_ERR_INVALID_STATE[0m
+[0;33mW (271520) VICTIM_MAIN: Probe send failed seq=678: ESP_ERR_INVALID_STATE[0m
+[0;33mW (271770) VICTIM_MAIN: Probe send failed seq=679: ESP_ERR_INVALID_STATE[0m
+[0;33mW (272020) VICTIM_MAIN: Probe send failed seq=680: ESP_ERR_INVALID_STATE[0m
+[0;33mW (272270) VICTIM_MAIN: Probe send failed seq=681: ESP_ERR_INVALID_STATE[0m
+[0;33mW (272520) VICTIM_MAIN: Probe send failed seq=682: ESP_ERR_INVALID_STATE[0m
+[0;33mW (272770) VICTIM_MAIN: Probe send failed seq=683: ESP_ERR_INVALID_STATE[0m
+[0;33mW (273020) VICTIM_MAIN: Probe send failed seq=684: ESP_ERR_INVALID_STATE[0m
+[0;33mW (273270) VICTIM_MAIN: Probe send failed seq=685: ESP_ERR_INVALID_STATE[0m
+[0;33mW (273520) VICTIM_MAIN: Probe send failed seq=686: ESP_ERR_INVALID_STATE[0m
+[0;33mW (273770) VICTIM_MAIN: Probe send failed seq=687: ESP_ERR_INVALID_STATE[0m
+[0;33mW (274020) VICTIM_MAIN: Probe send failed seq=688: ESP_ERR_INVALID_STATE[0m
+[0;33mW (274270) VICTIM_MAIN: Probe send failed seq=689: ESP_ERR_INVALID_STATE[0m
+[0;33mW (274520) VICTIM_MAIN: Probe send failed seq=690: ESP_ERR_INVALID_STATE[0m
+[0;33mW (274770) VICTIM_MAIN: Probe send failed seq=691: ESP_ERR_INVALID_STATE[0m
+[0;33mW (275020) VICTIM_MAIN: Probe send failed seq=692: ESP_ERR_INVALID_STATE[0m
+[0;33mW (275270) VICTIM_MAIN: Probe send failed seq=693: ESP_ERR_INVALID_STATE[0m
+[0;33mW (275520) VICTIM_MAIN: Probe send failed seq=694: ESP_ERR_INVALID_STATE[0m
+[0;33mW (275770) VICTIM_MAIN: Probe send failed seq=695: ESP_ERR_INVALID_STATE[0m
+[0;33mW (276020) VICTIM_MAIN: Probe send failed seq=696: ESP_ERR_INVALID_STATE[0m
+[0;33mW (276270) VICTIM_MAIN: Probe send failed seq=697: ESP_ERR_INVALID_STATE[0m
+[0;33mW (276520) VICTIM_MAIN: Probe send failed seq=698: ESP_ERR_INVALID_STATE[0m
+[0;33mW (276770) VICTIM_MAIN: Probe send failed seq=699: ESP_ERR_INVALID_STATE[0m
+[0;33mW (277020) VICTIM_MAIN: Probe send failed seq=700: ESP_ERR_INVALID_STATE[0m
+[0;33mW (277270) VICTIM_MAIN: Probe send failed seq=701: ESP_ERR_INVALID_STATE[0m
+[0;33mW (277520) VICTIM_MAIN: Probe send failed seq=702: ESP_ERR_INVALID_STATE[0m
+[0;33mW (277770) VICTIM_MAIN: Probe send failed seq=703: ESP_ERR_INVALID_STATE[0m
+[0;33mW (278020) VICTIM_MAIN: Probe send failed seq=704: ESP_ERR_INVALID_STATE[0m
+[0;33mW (278270) VICTIM_MAIN: Probe send failed seq=705: ESP_ERR_INVALID_STATE[0m
+[0;33mW (278520) VICTIM_MAIN: Probe send failed seq=706: ESP_ERR_INVALID_STATE[0m
+[0;33mW (278770) VICTIM_MAIN: Probe send failed seq=707: ESP_ERR_INVALID_STATE[0m
+[0;33mW (279020) VICTIM_MAIN: Probe send failed seq=708: ESP_ERR_INVALID_STATE[0m
+[0;33mW (279270) VICTIM_MAIN: Probe send failed seq=709: ESP_ERR_INVALID_STATE[0m
+[0;33mW (279520) VICTIM_MAIN: Probe send failed seq=710: ESP_ERR_INVALID_STATE[0m
+[0;33mW (279770) VICTIM_MAIN: Probe send failed seq=711: ESP_ERR_INVALID_STATE[0m
+[0;33mW (280020) VICTIM_MAIN: Probe send failed seq=712: ESP_ERR_INVALID_STATE[0m
+[0;33mW (280270) VICTIM_MAIN: Probe send failed seq=713: ESP_ERR_INVALID_STATE[0m
+[0;33mW (280520) VICTIM_MAIN: Probe send failed seq=714: ESP_ERR_INVALID_STATE[0m
+[0;33mW (280770) VICTIM_MAIN: Probe send failed seq=715: ESP_ERR_INVALID_STATE[0m
+[0;33mW (281020) VICTIM_MAIN: Probe send failed seq=716: ESP_ERR_INVALID_STATE[0m
+[0;33mW (281270) VICTIM_MAIN: Probe send failed seq=717: ESP_ERR_INVALID_STATE[0m
+[0;33mW (281520) VICTIM_MAIN: Probe send failed seq=718: ESP_ERR_INVALID_STATE[0m
+[0;33mW (281770) VICTIM_MAIN: Probe send failed seq=719: ESP_ERR_INVALID_STATE[0m
+[0;33mW (282020) VICTIM_MAIN: Probe send failed seq=720: ESP_ERR_INVALID_STATE[0m
+[0;33mW (282270) VICTIM_MAIN: Probe send failed seq=721: ESP_ERR_INVALID_STATE[0m
+[0;32mI (282330) HEALTH: [HEALTH] up=281s heap=83928 min=83892 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (282520) VICTIM_MAIN: Probe send failed seq=722: ESP_ERR_INVALID_STATE[0m
+[0;33mW (282770) VICTIM_MAIN: Probe send failed seq=723: ESP_ERR_INVALID_STATE[0m
+[0;33mW (283020) VICTIM_MAIN: Probe send failed seq=724: ESP_ERR_INVALID_STATE[0m
+[0;33mW (283270) VICTIM_MAIN: Probe send failed seq=725: ESP_ERR_INVALID_STATE[0m
+[0;33mW (283520) VICTIM_MAIN: Probe send failed seq=726: ESP_ERR_INVALID_STATE[0m
+[0;33mW (283770) VICTIM_MAIN: Probe send failed seq=727: ESP_ERR_INVALID_STATE[0m
+[0;33mW (284020) VICTIM_MAIN: Probe send failed seq=728: ESP_ERR_INVALID_STATE[0m
+[0;33mW (284270) VICTIM_MAIN: Probe send failed seq=729: ESP_ERR_INVALID_STATE[0m
+[0;33mW (284520) VICTIM_MAIN: Probe send failed seq=730: ESP_ERR_INVALID_STATE[0m
+[0;33mW (284770) VICTIM_MAIN: Probe send failed seq=731: ESP_ERR_INVALID_STATE[0m
+[0;33mW (285020) VICTIM_MAIN: Probe send failed seq=732: ESP_ERR_INVALID_STATE[0m
+[0;33mW (285270) VICTIM_MAIN: Probe send failed seq=733: ESP_ERR_INVALID_STATE[0m
+[0;33mW (285520) VICTIM_MAIN: Probe send failed seq=734: ESP_ERR_INVALID_STATE[0m
+[0;33mW (285770) VICTIM_MAIN: Probe send failed seq=735: ESP_ERR_INVALID_STATE[0m
+[0;33mW (286020) VICTIM_MAIN: Probe send failed seq=736: ESP_ERR_INVALID_STATE[0m
+[0;33mW (286270) VICTIM_MAIN: Probe send failed seq=737: ESP_ERR_INVALID_STATE[0m
+[0;33mW (286520) VICTIM_MAIN: Probe send failed seq=738: ESP_ERR_INVALID_STATE[0m
+[0;33mW (286770) VICTIM_MAIN: Probe send failed seq=739: ESP_ERR_INVALID_STATE[0m
+[0;33mW (287020) VICTIM_MAIN: Probe send failed seq=740: ESP_ERR_INVALID_STATE[0m
+[0;33mW (287270) VICTIM_MAIN: Probe send failed seq=741: ESP_ERR_INVALID_STATE[0m
+[0;33mW (287520) VICTIM_MAIN: Probe send failed seq=742: ESP_ERR_INVALID_STATE[0m
+[0;33mW (287770) VICTIM_MAIN: Probe send failed seq=743: ESP_ERR_INVALID_STATE[0m
+[0;33mW (288020) VICTIM_MAIN: Probe send failed seq=744: ESP_ERR_INVALID_STATE[0m
+[0;33mW (288270) VICTIM_MAIN: Probe send failed seq=745: ESP_ERR_INVALID_STATE[0m
+[0;33mW (288520) VICTIM_MAIN: Probe send failed seq=746: ESP_ERR_INVALID_STATE[0m
+[0;33mW (288770) VICTIM_MAIN: Probe send failed seq=747: ESP_ERR_INVALID_STATE[0m
+[0;33mW (289020) VICTIM_MAIN: Probe send failed seq=748: ESP_ERR_INVALID_STATE[0m
+[0;33mW (289270) VICTIM_MAIN: Probe send failed seq=749: ESP_ERR_INVALID_STATE[0m
+[0;33mW (289520) VICTIM_MAIN: Probe send failed seq=750: ESP_ERR_INVALID_STATE[0m
+[0;33mW (289770) VICTIM_MAIN: Probe send failed seq=751: ESP_ERR_INVALID_STATE[0m
+[0;33mW (290020) VICTIM_MAIN: Probe send failed seq=752: ESP_ERR_INVALID_STATE[0m
+[0;33mW (290270) VICTIM_MAIN: Probe send failed seq=753: ESP_ERR_INVALID_STATE[0m
+[0;33mW (290520) VICTIM_MAIN: Probe send failed seq=754: ESP_ERR_INVALID_STATE[0m
+[0;33mW (290770) VICTIM_MAIN: Probe send failed seq=755: ESP_ERR_INVALID_STATE[0m
+[0;33mW (291020) VICTIM_MAIN: Probe send failed seq=756: ESP_ERR_INVALID_STATE[0m
+[0;33mW (291270) VICTIM_MAIN: Probe send failed seq=757: ESP_ERR_INVALID_STATE[0m
+[0;33mW (291520) VICTIM_MAIN: Probe send failed seq=758: ESP_ERR_INVALID_STATE[0m
+[0;33mW (291770) VICTIM_MAIN: Probe send failed seq=759: ESP_ERR_INVALID_STATE[0m
+[0;33mW (292020) VICTIM_MAIN: Probe send failed seq=760: ESP_ERR_INVALID_STATE[0m
+[0;33mW (292270) VICTIM_MAIN: Probe send failed seq=761: ESP_ERR_INVALID_STATE[0m
+[0;33mW (292520) VICTIM_MAIN: Probe send failed seq=762: ESP_ERR_INVALID_STATE[0m
+[0;33mW (292770) VICTIM_MAIN: Probe send failed seq=763: ESP_ERR_INVALID_STATE[0m
+[0;33mW (293020) VICTIM_MAIN: Probe send failed seq=764: ESP_ERR_INVALID_STATE[0m
+[0;33mW (293270) VICTIM_MAIN: Probe send failed seq=765: ESP_ERR_INVALID_STATE[0m
+[0;33mW (293520) VICTIM_MAIN: Probe send failed seq=766: ESP_ERR_INVALID_STATE[0m
+[0;33mW (293770) VICTIM_MAIN: Probe send failed seq=767: ESP_ERR_INVALID_STATE[0m
+[0;33mW (294020) VICTIM_MAIN: Probe send failed seq=768: ESP_ERR_INVALID_STATE[0m
+[0;33mW (294270) VICTIM_MAIN: Probe send failed seq=769: ESP_ERR_INVALID_STATE[0m
+[0;33mW (294520) VICTIM_MAIN: Probe send failed seq=770: ESP_ERR_INVALID_STATE[0m
+[0;33mW (294770) VICTIM_MAIN: Probe send failed seq=771: ESP_ERR_INVALID_STATE[0m
+[0;33mW (295020) VICTIM_MAIN: Probe send failed seq=772: ESP_ERR_INVALID_STATE[0m
+[0;33mW (295270) VICTIM_MAIN: Probe send failed seq=773: ESP_ERR_INVALID_STATE[0m
+[0;33mW (295520) VICTIM_MAIN: Probe send failed seq=774: ESP_ERR_INVALID_STATE[0m
+[0;33mW (295770) VICTIM_MAIN: Probe send failed seq=775: ESP_ERR_INVALID_STATE[0m
+[0;33mW (296020) VICTIM_MAIN: Probe send failed seq=776: ESP_ERR_INVALID_STATE[0m
+[0;33mW (296270) VICTIM_MAIN: Probe send failed seq=777: ESP_ERR_INVALID_STATE[0m
+[0;33mW (296520) VICTIM_MAIN: Probe send failed seq=778: ESP_ERR_INVALID_STATE[0m
+[0;33mW (296770) VICTIM_MAIN: Probe send failed seq=779: ESP_ERR_INVALID_STATE[0m
+[0;33mW (297020) VICTIM_MAIN: Probe send failed seq=780: ESP_ERR_INVALID_STATE[0m
+[0;33mW (297270) VICTIM_MAIN: Probe send failed seq=781: ESP_ERR_INVALID_STATE[0m
+[0;33mW (297520) VICTIM_MAIN: Probe send failed seq=782: ESP_ERR_INVALID_STATE[0m
+[0;33mW (297770) VICTIM_MAIN: Probe send failed seq=783: ESP_ERR_INVALID_STATE[0m
+[0;33mW (298020) VICTIM_MAIN: Probe send failed seq=784: ESP_ERR_INVALID_STATE[0m
+[0;33mW (298270) VICTIM_MAIN: Probe send failed seq=785: ESP_ERR_INVALID_STATE[0m
+[0;33mW (298520) VICTIM_MAIN: Probe send failed seq=786: ESP_ERR_INVALID_STATE[0m
+[0;33mW (298770) VICTIM_MAIN: Probe send failed seq=787: ESP_ERR_INVALID_STATE[0m
+[0;33mW (299020) VICTIM_MAIN: Probe send failed seq=788: ESP_ERR_INVALID_STATE[0m
+[0;33mW (299270) VICTIM_MAIN: Probe send failed seq=789: ESP_ERR_INVALID_STATE[0m
+[0;33mW (299520) VICTIM_MAIN: Probe send failed seq=790: ESP_ERR_INVALID_STATE[0m
+[0;33mW (299770) VICTIM_MAIN: Probe send failed seq=791: ESP_ERR_INVALID_STATE[0m
+[0;33mW (300020) VICTIM_MAIN: Probe send failed seq=792: ESP_ERR_INVALID_STATE[0m
+[0;33mW (300270) VICTIM_MAIN: Probe send failed seq=793: ESP_ERR_INVALID_STATE[0m
+[0;33mW (300520) VICTIM_MAIN: Probe send failed seq=794: ESP_ERR_INVALID_STATE[0m
+[0;33mW (300770) VICTIM_MAIN: Probe send failed seq=795: ESP_ERR_INVALID_STATE[0m
+[0;33mW (301020) VICTIM_MAIN: Probe send failed seq=796: ESP_ERR_INVALID_STATE[0m
+[0;33mW (301270) VICTIM_MAIN: Probe send failed seq=797: ESP_ERR_INVALID_STATE[0m
+[0;33mW (301520) VICTIM_MAIN: Probe send failed seq=798: ESP_ERR_INVALID_STATE[0m
+[0;33mW (301770) VICTIM_MAIN: Probe send failed seq=799: ESP_ERR_INVALID_STATE[0m
+[0;33mW (302020) VICTIM_MAIN: Probe send failed seq=800: ESP_ERR_INVALID_STATE[0m
+[0;33mW (302270) VICTIM_MAIN: Probe send failed seq=801: ESP_ERR_INVALID_STATE[0m
+[0;33mW (302520) VICTIM_MAIN: Probe send failed seq=802: ESP_ERR_INVALID_STATE[0m
+[0;33mW (302690) MESH_SETUP: STAR HUB: scan 60 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (302770) VICTIM_MAIN: Probe send failed seq=803: ESP_ERR_INVALID_STATE[0m
+[0;33mW (303020) VICTIM_MAIN: Probe send failed seq=804: ESP_ERR_INVALID_STATE[0m
+[0;33mW (303270) VICTIM_MAIN: Probe send failed seq=805: ESP_ERR_INVALID_STATE[0m
+[0;33mW (303520) VICTIM_MAIN: Probe send failed seq=806: ESP_ERR_INVALID_STATE[0m
+[0;33mW (303770) VICTIM_MAIN: Probe send failed seq=807: ESP_ERR_INVALID_STATE[0m
+[0;33mW (304020) VICTIM_MAIN: Probe send failed seq=808: ESP_ERR_INVALID_STATE[0m
+[0;33mW (304270) VICTIM_MAIN: Probe send failed seq=809: ESP_ERR_INVALID_STATE[0m
+[0;33mW (304520) VICTIM_MAIN: Probe send failed seq=810: ESP_ERR_INVALID_STATE[0m
+[0;33mW (304770) VICTIM_MAIN: Probe send failed seq=811: ESP_ERR_INVALID_STATE[0m
+[0;33mW (305020) VICTIM_MAIN: Probe send failed seq=812: ESP_ERR_INVALID_STATE[0m
+[0;33mW (305270) VICTIM_MAIN: Probe send failed seq=813: ESP_ERR_INVALID_STATE[0m
+[0;33mW (305520) VICTIM_MAIN: Probe send failed seq=814: ESP_ERR_INVALID_STATE[0m
+[0;33mW (305770) VICTIM_MAIN: Probe send failed seq=815: ESP_ERR_INVALID_STATE[0m
+[0;33mW (306020) VICTIM_MAIN: Probe send failed seq=816: ESP_ERR_INVALID_STATE[0m
+[0;33mW (306270) VICTIM_MAIN: Probe send failed seq=817: ESP_ERR_INVALID_STATE[0m
+[0;33mW (306520) VICTIM_MAIN: Probe send failed seq=818: ESP_ERR_INVALID_STATE[0m
+[0;33mW (306770) VICTIM_MAIN: Probe send failed seq=819: ESP_ERR_INVALID_STATE[0m
+[0;33mW (307020) VICTIM_MAIN: Probe send failed seq=820: ESP_ERR_INVALID_STATE[0m
+[0;33mW (307270) VICTIM_MAIN: Probe send failed seq=821: ESP_ERR_INVALID_STATE[0m
+[0;33mW (307520) VICTIM_MAIN: Probe send failed seq=822: ESP_ERR_INVALID_STATE[0m
+[0;33mW (307770) VICTIM_MAIN: Probe send failed seq=823: ESP_ERR_INVALID_STATE[0m
+[0;33mW (308020) VICTIM_MAIN: Probe send failed seq=824: ESP_ERR_INVALID_STATE[0m
+[0;33mW (308270) VICTIM_MAIN: Probe send failed seq=825: ESP_ERR_INVALID_STATE[0m
+[0;33mW (308520) VICTIM_MAIN: Probe send failed seq=826: ESP_ERR_INVALID_STATE[0m
+[0;33mW (308770) VICTIM_MAIN: Probe send failed seq=827: ESP_ERR_INVALID_STATE[0m
+[0;33mW (309020) VICTIM_MAIN: Probe send failed seq=828: ESP_ERR_INVALID_STATE[0m
+[0;33mW (309270) VICTIM_MAIN: Probe send failed seq=829: ESP_ERR_INVALID_STATE[0m
+[0;33mW (309520) VICTIM_MAIN: Probe send failed seq=830: ESP_ERR_INVALID_STATE[0m
+[0;33mW (309770) VICTIM_MAIN: Probe send failed seq=831: ESP_ERR_INVALID_STATE[0m
+[0;33mW (310020) VICTIM_MAIN: Probe send failed seq=832: ESP_ERR_INVALID_STATE[0m
+[0;33mW (310270) VICTIM_MAIN: Probe send failed seq=833: ESP_ERR_INVALID_STATE[0m
+[0;33mW (310520) VICTIM_MAIN: Probe send failed seq=834: ESP_ERR_INVALID_STATE[0m
+[0;33mW (310770) VICTIM_MAIN: Probe send failed seq=835: ESP_ERR_INVALID_STATE[0m
+[0;33mW (311020) VICTIM_MAIN: Probe send failed seq=836: ESP_ERR_INVALID_STATE[0m
+[0;33mW (311270) VICTIM_MAIN: Probe send failed seq=837: ESP_ERR_INVALID_STATE[0m
+[0;33mW (311520) VICTIM_MAIN: Probe send failed seq=838: ESP_ERR_INVALID_STATE[0m
+[0;33mW (311770) VICTIM_MAIN: Probe send failed seq=839: ESP_ERR_INVALID_STATE[0m
+[0;33mW (312020) VICTIM_MAIN: Probe send failed seq=840: ESP_ERR_INVALID_STATE[0m
+[0;33mW (312270) VICTIM_MAIN: Probe send failed seq=841: ESP_ERR_INVALID_STATE[0m
+[0;32mI (312340) HEALTH: [HEALTH] up=311s heap=84128 min=83892 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (312520) VICTIM_MAIN: Probe send failed seq=842: ESP_ERR_INVALID_STATE[0m
+[0;33mW (312770) VICTIM_MAIN: Probe send failed seq=843: ESP_ERR_INVALID_STATE[0m
+[0;33mW (313020) VICTIM_MAIN: Probe send failed seq=844: ESP_ERR_INVALID_STATE[0m
+[0;33mW (313270) VICTIM_MAIN: Probe send failed seq=845: ESP_ERR_INVALID_STATE[0m
+[0;33mW (313520) VICTIM_MAIN: Probe send failed seq=846: ESP_ERR_INVALID_STATE[0m
+[0;33mW (313770) VICTIM_MAIN: Probe send failed seq=847: ESP_ERR_INVALID_STATE[0m
+[0;33mW (314020) VICTIM_MAIN: Probe send failed seq=848: ESP_ERR_INVALID_STATE[0m
+[0;33mW (314270) VICTIM_MAIN: Probe send failed seq=849: ESP_ERR_INVALID_STATE[0m
+[0;33mW (314520) VICTIM_MAIN: Probe send failed seq=850: ESP_ERR_INVALID_STATE[0m
+[0;33mW (314770) VICTIM_MAIN: Probe send failed seq=851: ESP_ERR_INVALID_STATE[0m
+[0;33mW (315020) VICTIM_MAIN: Probe send failed seq=852: ESP_ERR_INVALID_STATE[0m
+[0;33mW (315270) VICTIM_MAIN: Probe send failed seq=853: ESP_ERR_INVALID_STATE[0m
+[0;33mW (315520) VICTIM_MAIN: Probe send failed seq=854: ESP_ERR_INVALID_STATE[0m
+[0;33mW (315770) VICTIM_MAIN: Probe send failed seq=855: ESP_ERR_INVALID_STATE[0m
+[0;33mW (316020) VICTIM_MAIN: Probe send failed seq=856: ESP_ERR_INVALID_STATE[0m
+[0;33mW (316270) VICTIM_MAIN: Probe send failed seq=857: ESP_ERR_INVALID_STATE[0m
+[0;33mW (316520) VICTIM_MAIN: Probe send failed seq=858: ESP_ERR_INVALID_STATE[0m
+[0;33mW (316770) VICTIM_MAIN: Probe send failed seq=859: ESP_ERR_INVALID_STATE[0m
+[0;33mW (317020) VICTIM_MAIN: Probe send failed seq=860: ESP_ERR_INVALID_STATE[0m
+[0;33mW (317270) VICTIM_MAIN: Probe send failed seq=861: ESP_ERR_INVALID_STATE[0m
+[0;33mW (317520) VICTIM_MAIN: Probe send failed seq=862: ESP_ERR_INVALID_STATE[0m
+[0;33mW (317770) VICTIM_MAIN: Probe send failed seq=863: ESP_ERR_INVALID_STATE[0m
+[0;33mW (318020) VICTIM_MAIN: Probe send failed seq=864: ESP_ERR_INVALID_STATE[0m
+[0;33mW (318270) VICTIM_MAIN: Probe send failed seq=865: ESP_ERR_INVALID_STATE[0m
+[0;33mW (318520) VICTIM_MAIN: Probe send failed seq=866: ESP_ERR_INVALID_STATE[0m
+[0;33mW (318770) VICTIM_MAIN: Probe send failed seq=867: ESP_ERR_INVALID_STATE[0m
+[0;33mW (319020) VICTIM_MAIN: Probe send failed seq=868: ESP_ERR_INVALID_STATE[0m
+[0;33mW (319270) VICTIM_MAIN: Probe send failed seq=869: ESP_ERR_INVALID_STATE[0m
+[0;33mW (319520) VICTIM_MAIN: Probe send failed seq=870: ESP_ERR_INVALID_STATE[0m
+[0;33mW (319770) VICTIM_MAIN: Probe send failed seq=871: ESP_ERR_INVALID_STATE[0m
+[0;33mW (320020) VICTIM_MAIN: Probe send failed seq=872: ESP_ERR_INVALID_STATE[0m
+[0;33mW (320270) VICTIM_MAIN: Probe send failed seq=873: ESP_ERR_INVALID_STATE[0m
+[0;33mW (320520) VICTIM_MAIN: Probe send failed seq=874: ESP_ERR_INVALID_STATE[0m
+[0;33mW (320770) VICTIM_MAIN: Probe send failed seq=875: ESP_ERR_INVALID_STATE[0m
+[0;33mW (321020) VICTIM_MAIN: Probe send failed seq=876: ESP_ERR_INVALID_STATE[0m
+[0;33mW (321270) VICTIM_MAIN: Probe send failed seq=877: ESP_ERR_INVALID_STATE[0m
+[0;33mW (321520) VICTIM_MAIN: Probe send failed seq=878: ESP_ERR_INVALID_STATE[0m
+[0;33mW (321770) VICTIM_MAIN: Probe send failed seq=879: ESP_ERR_INVALID_STATE[0m
+[0;33mW (322020) VICTIM_MAIN: Probe send failed seq=880: ESP_ERR_INVALID_STATE[0m
+[0;33mW (322270) VICTIM_MAIN: Probe send failed seq=881: ESP_ERR_INVALID_STATE[0m
+[0;33mW (322520) VICTIM_MAIN: Probe send failed seq=882: ESP_ERR_INVALID_STATE[0m
+[0;33mW (322770) VICTIM_MAIN: Probe send failed seq=883: ESP_ERR_INVALID_STATE[0m
+[0;33mW (323020) VICTIM_MAIN: Probe send failed seq=884: ESP_ERR_INVALID_STATE[0m
+[0;33mW (323270) VICTIM_MAIN: Probe send failed seq=885: ESP_ERR_INVALID_STATE[0m
+[0;33mW (323520) VICTIM_MAIN: Probe send failed seq=886: ESP_ERR_INVALID_STATE[0m
+[0;33mW (323770) VICTIM_MAIN: Probe send failed seq=887: ESP_ERR_INVALID_STATE[0m
+[0;33mW (324020) VICTIM_MAIN: Probe send failed seq=888: ESP_ERR_INVALID_STATE[0m
+[0;33mW (324270) VICTIM_MAIN: Probe send failed seq=889: ESP_ERR_INVALID_STATE[0m
+[0;33mW (324520) VICTIM_MAIN: Probe send failed seq=890: ESP_ERR_INVALID_STATE[0m
+[0;33mW (324770) VICTIM_MAIN: Probe send failed seq=891: ESP_ERR_INVALID_STATE[0m
+[0;33mW (325020) VICTIM_MAIN: Probe send failed seq=892: ESP_ERR_INVALID_STATE[0m
+[0;33mW (325270) VICTIM_MAIN: Probe send failed seq=893: ESP_ERR_INVALID_STATE[0m
+[0;33mW (325520) VICTIM_MAIN: Probe send failed seq=894: ESP_ERR_INVALID_STATE[0m
+[0;33mW (325770) VICTIM_MAIN: Probe send failed seq=895: ESP_ERR_INVALID_STATE[0m
+[0;33mW (326020) VICTIM_MAIN: Probe send failed seq=896: ESP_ERR_INVALID_STATE[0m
+[0;33mW (326270) VICTIM_MAIN: Probe send failed seq=897: ESP_ERR_INVALID_STATE[0m
+[0;33mW (326520) VICTIM_MAIN: Probe send failed seq=898: ESP_ERR_INVALID_STATE[0m
+[0;33mW (326770) VICTIM_MAIN: Probe send failed seq=899: ESP_ERR_INVALID_STATE[0m
+[0;33mW (327020) VICTIM_MAIN: Probe send failed seq=900: ESP_ERR_INVALID_STATE[0m
+[0;33mW (327270) VICTIM_MAIN: Probe send failed seq=901: ESP_ERR_INVALID_STATE[0m
+[0;33mW (327520) VICTIM_MAIN: Probe send failed seq=902: ESP_ERR_INVALID_STATE[0m
+[0;33mW (327770) VICTIM_MAIN: Probe send failed seq=903: ESP_ERR_INVALID_STATE[0m
+[0;33mW (328020) VICTIM_MAIN: Probe send failed seq=904: ESP_ERR_INVALID_STATE[0m
+[0;33mW (328270) VICTIM_MAIN: Probe send failed seq=905: ESP_ERR_INVALID_STATE[0m
+[0;33mW (328520) VICTIM_MAIN: Probe send failed seq=906: ESP_ERR_INVALID_STATE[0m
+[0;33mW (328770) VICTIM_MAIN: Probe send failed seq=907: ESP_ERR_INVALID_STATE[0m
+[0;33mW (329020) VICTIM_MAIN: Probe send failed seq=908: ESP_ERR_INVALID_STATE[0m
+[0;33mW (329270) VICTIM_MAIN: Probe send failed seq=909: ESP_ERR_INVALID_STATE[0m
+[0;33mW (329520) VICTIM_MAIN: Probe send failed seq=910: ESP_ERR_INVALID_STATE[0m
+[0;33mW (329770) VICTIM_MAIN: Probe send failed seq=911: ESP_ERR_INVALID_STATE[0m
+[0;33mW (330020) VICTIM_MAIN: Probe send failed seq=912: ESP_ERR_INVALID_STATE[0m
+[0;33mW (330270) VICTIM_MAIN: Probe send failed seq=913: ESP_ERR_INVALID_STATE[0m
+[0;33mW (330520) VICTIM_MAIN: Probe send failed seq=914: ESP_ERR_INVALID_STATE[0m
+[0;33mW (330770) VICTIM_MAIN: Probe send failed seq=915: ESP_ERR_INVALID_STATE[0m
+[0;33mW (331020) VICTIM_MAIN: Probe send failed seq=916: ESP_ERR_INVALID_STATE[0m
+[0;33mW (331270) VICTIM_MAIN: Probe send failed seq=917: ESP_ERR_INVALID_STATE[0m
+[0;33mW (331520) VICTIM_MAIN: Probe send failed seq=918: ESP_ERR_INVALID_STATE[0m
+[0;33mW (331770) VICTIM_MAIN: Probe send failed seq=919: ESP_ERR_INVALID_STATE[0m
+[0;33mW (332020) VICTIM_MAIN: Probe send failed seq=920: ESP_ERR_INVALID_STATE[0m
+[0;33mW (332270) VICTIM_MAIN: Probe send failed seq=921: ESP_ERR_INVALID_STATE[0m
+[0;33mW (332520) VICTIM_MAIN: Probe send failed seq=922: ESP_ERR_INVALID_STATE[0m
+[0;33mW (332770) VICTIM_MAIN: Probe send failed seq=923: ESP_ERR_INVALID_STATE[0m
+[0;33mW (333020) VICTIM_MAIN: Probe send failed seq=924: ESP_ERR_INVALID_STATE[0m
+[0;33mW (333270) VICTIM_MAIN: Probe send failed seq=925: ESP_ERR_INVALID_STATE[0m
+[0;33mW (333520) VICTIM_MAIN: Probe send failed seq=926: ESP_ERR_INVALID_STATE[0m
+[0;33mW (333770) VICTIM_MAIN: Probe send failed seq=927: ESP_ERR_INVALID_STATE[0m
+[0;33mW (334020) VICTIM_MAIN: Probe send failed seq=928: ESP_ERR_INVALID_STATE[0m
+[0;33mW (334270) VICTIM_MAIN: Probe send failed seq=929: ESP_ERR_INVALID_STATE[0m
+[0;33mW (334520) VICTIM_MAIN: Probe send failed seq=930: ESP_ERR_INVALID_STATE[0m
+[0;33mW (334770) VICTIM_MAIN: Probe send failed seq=931: ESP_ERR_INVALID_STATE[0m
+[0;33mW (335020) VICTIM_MAIN: Probe send failed seq=932: ESP_ERR_INVALID_STATE[0m
+[0;33mW (335270) VICTIM_MAIN: Probe send failed seq=933: ESP_ERR_INVALID_STATE[0m
+[0;33mW (335520) VICTIM_MAIN: Probe send failed seq=934: ESP_ERR_INVALID_STATE[0m
+[0;33mW (335770) VICTIM_MAIN: Probe send failed seq=935: ESP_ERR_INVALID_STATE[0m
+[0;33mW (336020) VICTIM_MAIN: Probe send failed seq=936: ESP_ERR_INVALID_STATE[0m
+[0;33mW (336270) VICTIM_MAIN: Probe send failed seq=937: ESP_ERR_INVALID_STATE[0m
+[0;33mW (336520) VICTIM_MAIN: Probe send failed seq=938: ESP_ERR_INVALID_STATE[0m
+[0;33mW (336770) VICTIM_MAIN: Probe send failed seq=939: ESP_ERR_INVALID_STATE[0m
+[0;33mW (337020) VICTIM_MAIN: Probe send failed seq=940: ESP_ERR_INVALID_STATE[0m
+[0;33mW (337270) VICTIM_MAIN: Probe send failed seq=941: ESP_ERR_INVALID_STATE[0m
+[0;33mW (337520) VICTIM_MAIN: Probe send failed seq=942: ESP_ERR_INVALID_STATE[0m
+[0;33mW (337770) VICTIM_MAIN: Probe send failed seq=943: ESP_ERR_INVALID_STATE[0m
+[0;33mW (338020) VICTIM_MAIN: Probe send failed seq=944: ESP_ERR_INVALID_STATE[0m
+[0;33mW (338270) VICTIM_MAIN: Probe send failed seq=945: ESP_ERR_INVALID_STATE[0m
+[0;33mW (338520) VICTIM_MAIN: Probe send failed seq=946: ESP_ERR_INVALID_STATE[0m
+[0;33mW (338770) VICTIM_MAIN: Probe send failed seq=947: ESP_ERR_INVALID_STATE[0m
+[0;33mW (339020) VICTIM_MAIN: Probe send failed seq=948: ESP_ERR_INVALID_STATE[0m
+[0;33mW (339270) VICTIM_MAIN: Probe send failed seq=949: ESP_ERR_INVALID_STATE[0m
+[0;33mW (339520) VICTIM_MAIN: Probe send failed seq=950: ESP_ERR_INVALID_STATE[0m
+[0;33mW (339770) VICTIM_MAIN: Probe send failed seq=951: ESP_ERR_INVALID_STATE[0m
+[0;33mW (340020) VICTIM_MAIN: Probe send failed seq=952: ESP_ERR_INVALID_STATE[0m
+[0;33mW (340270) VICTIM_MAIN: Probe send failed seq=953: ESP_ERR_INVALID_STATE[0m
+[0;33mW (340520) VICTIM_MAIN: Probe send failed seq=954: ESP_ERR_INVALID_STATE[0m
+[0;33mW (340770) VICTIM_MAIN: Probe send failed seq=955: ESP_ERR_INVALID_STATE[0m
+[0;33mW (341020) VICTIM_MAIN: Probe send failed seq=956: ESP_ERR_INVALID_STATE[0m
+[0;33mW (341270) VICTIM_MAIN: Probe send failed seq=957: ESP_ERR_INVALID_STATE[0m
+[0;33mW (341520) VICTIM_MAIN: Probe send failed seq=958: ESP_ERR_INVALID_STATE[0m
+[0;33mW (341770) VICTIM_MAIN: Probe send failed seq=959: ESP_ERR_INVALID_STATE[0m
+[0;33mW (342020) VICTIM_MAIN: Probe send failed seq=960: ESP_ERR_INVALID_STATE[0m
+[0;33mW (342270) VICTIM_MAIN: Probe send failed seq=961: ESP_ERR_INVALID_STATE[0m
+[0;32mI (342350) HEALTH: [HEALTH] up=341s heap=84028 min=83892 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (342520) VICTIM_MAIN: Probe send failed seq=962: ESP_ERR_INVALID_STATE[0m
+[0;33mW (342770) VICTIM_MAIN: Probe send failed seq=963: ESP_ERR_INVALID_STATE[0m
+[0;33mW (343020) VICTIM_MAIN: Probe send failed seq=964: ESP_ERR_INVALID_STATE[0m
+[0;33mW (343270) VICTIM_MAIN: Probe send failed seq=965: ESP_ERR_INVALID_STATE[0m
+[0;33mW (343520) VICTIM_MAIN: Probe send failed seq=966: ESP_ERR_INVALID_STATE[0m
+[0;33mW (343770) VICTIM_MAIN: Probe send failed seq=967: ESP_ERR_INVALID_STATE[0m
+[0;33mW (344020) VICTIM_MAIN: Probe send failed seq=968: ESP_ERR_INVALID_STATE[0m
+[0;33mW (344270) VICTIM_MAIN: Probe send failed seq=969: ESP_ERR_INVALID_STATE[0m
+[0;33mW (344520) VICTIM_MAIN: Probe send failed seq=970: ESP_ERR_INVALID_STATE[0m
+[0;33mW (344770) VICTIM_MAIN: Probe send failed seq=971: ESP_ERR_INVALID_STATE[0m
+[0;33mW (345020) VICTIM_MAIN: Probe send failed seq=972: ESP_ERR_INVALID_STATE[0m
+[0;33mW (345270) VICTIM_MAIN: Probe send failed seq=973: ESP_ERR_INVALID_STATE[0m
+[0;33mW (345520) VICTIM_MAIN: Probe send failed seq=974: ESP_ERR_INVALID_STATE[0m
+[0;33mW (345770) VICTIM_MAIN: Probe send failed seq=975: ESP_ERR_INVALID_STATE[0m
+[0;33mW (346020) VICTIM_MAIN: Probe send failed seq=976: ESP_ERR_INVALID_STATE[0m
+[0;33mW (346270) VICTIM_MAIN: Probe send failed seq=977: ESP_ERR_INVALID_STATE[0m
+[0;33mW (346520) VICTIM_MAIN: Probe send failed seq=978: ESP_ERR_INVALID_STATE[0m
+[0;33mW (346770) VICTIM_MAIN: Probe send failed seq=979: ESP_ERR_INVALID_STATE[0m
+[0;33mW (347020) VICTIM_MAIN: Probe send failed seq=980: ESP_ERR_INVALID_STATE[0m
+[0;33mW (347270) VICTIM_MAIN: Probe send failed seq=981: ESP_ERR_INVALID_STATE[0m
+[0;33mW (347520) VICTIM_MAIN: Probe send failed seq=982: ESP_ERR_INVALID_STATE[0m
+[0;33mW (347770) VICTIM_MAIN: Probe send failed seq=983: ESP_ERR_INVALID_STATE[0m
+[0;33mW (348020) VICTIM_MAIN: Probe send failed seq=984: ESP_ERR_INVALID_STATE[0m
+[0;33mW (348270) VICTIM_MAIN: Probe send failed seq=985: ESP_ERR_INVALID_STATE[0m
+[0;33mW (348520) VICTIM_MAIN: Probe send failed seq=986: ESP_ERR_INVALID_STATE[0m
+[0;33mW (348770) VICTIM_MAIN: Probe send failed seq=987: ESP_ERR_INVALID_STATE[0m
+[0;33mW (349020) VICTIM_MAIN: Probe send failed seq=988: ESP_ERR_INVALID_STATE[0m
+[0;33mW (349270) VICTIM_MAIN: Probe send failed seq=989: ESP_ERR_INVALID_STATE[0m
+[0;33mW (349520) VICTIM_MAIN: Probe send failed seq=990: ESP_ERR_INVALID_STATE[0m
+[0;33mW (349770) VICTIM_MAIN: Probe send failed seq=991: ESP_ERR_INVALID_STATE[0m
+[0;33mW (350020) VICTIM_MAIN: Probe send failed seq=992: ESP_ERR_INVALID_STATE[0m
+[0;33mW (350270) VICTIM_MAIN: Probe send failed seq=993: ESP_ERR_INVALID_STATE[0m
+[0;33mW (350520) VICTIM_MAIN: Probe send failed seq=994: ESP_ERR_INVALID_STATE[0m
+[0;33mW (350770) VICTIM_MAIN: Probe send failed seq=995: ESP_ERR_INVALID_STATE[0m
+[0;33mW (351020) VICTIM_MAIN: Probe send failed seq=996: ESP_ERR_INVALID_STATE[0m
+[0;33mW (351270) VICTIM_MAIN: Probe send failed seq=997: ESP_ERR_INVALID_STATE[0m
+[0;33mW (351520) VICTIM_MAIN: Probe send failed seq=998: ESP_ERR_INVALID_STATE[0m
+[0;33mW (351770) VICTIM_MAIN: Probe send failed seq=999: ESP_ERR_INVALID_STATE[0m
+[0;33mW (352020) VICTIM_MAIN: Probe send failed seq=1000: ESP_ERR_INVALID_STATE[0m
+[0;33mW (352270) VICTIM_MAIN: Probe send failed seq=1001: ESP_ERR_INVALID_STATE[0m
+[0;33mW (352520) VICTIM_MAIN: Probe send failed seq=1002: ESP_ERR_INVALID_STATE[0m
+[0;33mW (352770) VICTIM_MAIN: Probe send failed seq=1003: ESP_ERR_INVALID_STATE[0m
+[0;33mW (353020) VICTIM_MAIN: Probe send failed seq=1004: ESP_ERR_INVALID_STATE[0m
+[0;33mW (353230) MESH_SETUP: STAR HUB: scan 70 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (353270) VICTIM_MAIN: Probe send failed seq=1005: ESP_ERR_INVALID_STATE[0m
+[0;33mW (353520) VICTIM_MAIN: Probe send failed seq=1006: ESP_ERR_INVALID_STATE[0m
+[0;33mW (353770) VICTIM_MAIN: Probe send failed seq=1007: ESP_ERR_INVALID_STATE[0m
+[0;33mW (354020) VICTIM_MAIN: Probe send failed seq=1008: ESP_ERR_INVALID_STATE[0m
+[0;33mW (354270) VICTIM_MAIN: Probe send failed seq=1009: ESP_ERR_INVALID_STATE[0m
+[0;33mW (354520) VICTIM_MAIN: Probe send failed seq=1010: ESP_ERR_INVALID_STATE[0m
+[0;33mW (354770) VICTIM_MAIN: Probe send failed seq=1011: ESP_ERR_INVALID_STATE[0m
+[0;33mW (355020) VICTIM_MAIN: Probe send failed seq=1012: ESP_ERR_INVALID_STATE[0m
+[0;33mW (355270) VICTIM_MAIN: Probe send failed seq=1013: ESP_ERR_INVALID_STATE[0m
+[0;33mW (355520) VICTIM_MAIN: Probe send failed seq=1014: ESP_ERR_INVALID_STATE[0m
+[0;33mW (355770) VICTIM_MAIN: Probe send failed seq=1015: ESP_ERR_INVALID_STATE[0m
+[0;33mW (356020) VICTIM_MAIN: Probe send failed seq=1016: ESP_ERR_INVALID_STATE[0m
+[0;33mW (356270) VICTIM_MAIN: Probe send failed seq=1017: ESP_ERR_INVALID_STATE[0m
+[0;33mW (356520) VICTIM_MAIN: Probe send failed seq=1018: ESP_ERR_INVALID_STATE[0m
+[0;33mW (356770) VICTIM_MAIN: Probe send failed seq=1019: ESP_ERR_INVALID_STATE[0m
+[0;33mW (357020) VICTIM_MAIN: Probe send failed seq=1020: ESP_ERR_INVALID_STATE[0m
+[0;33mW (357270) VICTIM_MAIN: Probe send failed seq=1021: ESP_ERR_INVALID_STATE[0m
+[0;33mW (357520) VICTIM_MAIN: Probe send failed seq=1022: ESP_ERR_INVALID_STATE[0m
+[0;33mW (357770) VICTIM_MAIN: Probe send failed seq=1023: ESP_ERR_INVALID_STATE[0m
+[0;33mW (358020) VICTIM_MAIN: Probe send failed seq=1024: ESP_ERR_INVALID_STATE[0m
+[0;33mW (358270) VICTIM_MAIN: Probe send failed seq=1025: ESP_ERR_INVALID_STATE[0m
+[0;33mW (358520) VICTIM_MAIN: Probe send failed seq=1026: ESP_ERR_INVALID_STATE[0m
+[0;33mW (358770) VICTIM_MAIN: Probe send failed seq=1027: ESP_ERR_INVALID_STATE[0m
+[0;33mW (359020) VICTIM_MAIN: Probe send failed seq=1028: ESP_ERR_INVALID_STATE[0m
+[0;33mW (359270) VICTIM_MAIN: Probe send failed seq=1029: ESP_ERR_INVALID_STATE[0m
+[0;33mW (359520) VICTIM_MAIN: Probe send failed seq=1030: ESP_ERR_INVALID_STATE[0m
+[0;33mW (359770) VICTIM_MAIN: Probe send failed seq=1031: ESP_ERR_INVALID_STATE[0m
+[0;33mW (360020) VICTIM_MAIN: Probe send failed seq=1032: ESP_ERR_INVALID_STATE[0m
+[0;33mW (360270) VICTIM_MAIN: Probe send failed seq=1033: ESP_ERR_INVALID_STATE[0m
+[0;33mW (360520) VICTIM_MAIN: Probe send failed seq=1034: ESP_ERR_INVALID_STATE[0m
+[0;33mW (360770) VICTIM_MAIN: Probe send failed seq=1035: ESP_ERR_INVALID_STATE[0m
+[0;33mW (361020) VICTIM_MAIN: Probe send failed seq=1036: ESP_ERR_INVALID_STATE[0m
+[0;33mW (361270) VICTIM_MAIN: Probe send failed seq=1037: ESP_ERR_INVALID_STATE[0m
+[0;33mW (361520) VICTIM_MAIN: Probe send failed seq=1038: ESP_ERR_INVALID_STATE[0m
+[0;33mW (361770) VICTIM_MAIN: Probe send failed seq=1039: ESP_ERR_INVALID_STATE[0m
+[0;33mW (362020) VICTIM_MAIN: Probe send failed seq=1040: ESP_ERR_INVALID_STATE[0m
+[0;33mW (362270) VICTIM_MAIN: Probe send failed seq=1041: ESP_ERR_INVALID_STATE[0m
+[0;33mW (362520) VICTIM_MAIN: Probe send failed seq=1042: ESP_ERR_INVALID_STATE[0m
+[0;33mW (362770) VICTIM_MAIN: Probe send failed seq=1043: ESP_ERR_INVALID_STATE[0m
+[0;33mW (363020) VICTIM_MAIN: Probe send failed seq=1044: ESP_ERR_INVALID_STATE[0m
+[0;33mW (363270) VICTIM_MAIN: Probe send failed seq=1045: ESP_ERR_INVALID_STATE[0m
+[0;33mW (363520) VICTIM_MAIN: Probe send failed seq=1046: ESP_ERR_INVALID_STATE[0m
+[0;33mW (363770) VICTIM_MAIN: Probe send failed seq=1047: ESP_ERR_INVALID_STATE[0m
+[0;33mW (364020) VICTIM_MAIN: Probe send failed seq=1048: ESP_ERR_INVALID_STATE[0m
+[0;33mW (364270) VICTIM_MAIN: Probe send failed seq=1049: ESP_ERR_INVALID_STATE[0m
+[0;33mW (364520) VICTIM_MAIN: Probe send failed seq=1050: ESP_ERR_INVALID_STATE[0m
+[0;33mW (364770) VICTIM_MAIN: Probe send failed seq=1051: ESP_ERR_INVALID_STATE[0m
+[0;33mW (365020) VICTIM_MAIN: Probe send failed seq=1052: ESP_ERR_INVALID_STATE[0m
+[0;33mW (365270) VICTIM_MAIN: Probe send failed seq=1053: ESP_ERR_INVALID_STATE[0m
+[0;33mW (365520) VICTIM_MAIN: Probe send failed seq=1054: ESP_ERR_INVALID_STATE[0m
+[0;33mW (365770) VICTIM_MAIN: Probe send failed seq=1055: ESP_ERR_INVALID_STATE[0m
+[0;33mW (366020) VICTIM_MAIN: Probe send failed seq=1056: ESP_ERR_INVALID_STATE[0m
+[0;33mW (366270) VICTIM_MAIN: Probe send failed seq=1057: ESP_ERR_INVALID_STATE[0m
+[0;33mW (366520) VICTIM_MAIN: Probe send failed seq=1058: ESP_ERR_INVALID_STATE[0m
+[0;33mW (366770) VICTIM_MAIN: Probe send failed seq=1059: ESP_ERR_INVALID_STATE[0m
+[0;33mW (367020) VICTIM_MAIN: Probe send failed seq=1060: ESP_ERR_INVALID_STATE[0m
+[0;33mW (367270) VICTIM_MAIN: Probe send failed seq=1061: ESP_ERR_INVALID_STATE[0m
+[0;33mW (367520) VICTIM_MAIN: Probe send failed seq=1062: ESP_ERR_INVALID_STATE[0m
+[0;33mW (367770) VICTIM_MAIN: Probe send failed seq=1063: ESP_ERR_INVALID_STATE[0m
+[0;33mW (368020) VICTIM_MAIN: Probe send failed seq=1064: ESP_ERR_INVALID_STATE[0m
+[0;33mW (368270) VICTIM_MAIN: Probe send failed seq=1065: ESP_ERR_INVALID_STATE[0m
+[0;33mW (368520) VICTIM_MAIN: Probe send failed seq=1066: ESP_ERR_INVALID_STATE[0m
+[0;33mW (368770) VICTIM_MAIN: Probe send failed seq=1067: ESP_ERR_INVALID_STATE[0m
+[0;33mW (369020) VICTIM_MAIN: Probe send failed seq=1068: ESP_ERR_INVALID_STATE[0m
+[0;33mW (369270) VICTIM_MAIN: Probe send failed seq=1069: ESP_ERR_INVALID_STATE[0m
+[0;33mW (369520) VICTIM_MAIN: Probe send failed seq=1070: ESP_ERR_INVALID_STATE[0m
+[0;33mW (369770) VICTIM_MAIN: Probe send failed seq=1071: ESP_ERR_INVALID_STATE[0m
+[0;33mW (370020) VICTIM_MAIN: Probe send failed seq=1072: ESP_ERR_INVALID_STATE[0m
+[0;33mW (370270) VICTIM_MAIN: Probe send failed seq=1073: ESP_ERR_INVALID_STATE[0m
+[0;33mW (370520) VICTIM_MAIN: Probe send failed seq=1074: ESP_ERR_INVALID_STATE[0m
+[0;33mW (370770) VICTIM_MAIN: Probe send failed seq=1075: ESP_ERR_INVALID_STATE[0m
+[0;33mW (371020) VICTIM_MAIN: Probe send failed seq=1076: ESP_ERR_INVALID_STATE[0m
+[0;33mW (371270) VICTIM_MAIN: Probe send failed seq=1077: ESP_ERR_INVALID_STATE[0m
+[0;33mW (371520) VICTIM_MAIN: Probe send failed seq=1078: ESP_ERR_INVALID_STATE[0m
+[0;33mW (371770) VICTIM_MAIN: Probe send failed seq=1079: ESP_ERR_INVALID_STATE[0m
+[0;33mW (372020) VICTIM_MAIN: Probe send failed seq=1080: ESP_ERR_INVALID_STATE[0m
+[0;33mW (372270) VICTIM_MAIN: Probe send failed seq=1081: ESP_ERR_INVALID_STATE[0m
+[0;32mI (372360) HEALTH: [HEALTH] up=371s heap=84028 min=83872 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (372520) VICTIM_MAIN: Probe send failed seq=1082: ESP_ERR_INVALID_STATE[0m
+[0;33mW (372770) VICTIM_MAIN: Probe send failed seq=1083: ESP_ERR_INVALID_STATE[0m
+[0;33mW (373020) VICTIM_MAIN: Probe send failed seq=1084: ESP_ERR_INVALID_STATE[0m
+[0;33mW (373270) VICTIM_MAIN: Probe send failed seq=1085: ESP_ERR_INVALID_STATE[0m
+[0;33mW (373520) VICTIM_MAIN: Probe send failed seq=1086: ESP_ERR_INVALID_STATE[0m
+[0;33mW (373770) VICTIM_MAIN: Probe send failed seq=1087: ESP_ERR_INVALID_STATE[0m
+[0;33mW (374020) VICTIM_MAIN: Probe send failed seq=1088: ESP_ERR_INVALID_STATE[0m
+[0;33mW (374270) VICTIM_MAIN: Probe send failed seq=1089: ESP_ERR_INVALID_STATE[0m
+[0;33mW (374520) VICTIM_MAIN: Probe send failed seq=1090: ESP_ERR_INVALID_STATE[0m
+[0;33mW (374770) VICTIM_MAIN: Probe send failed seq=1091: ESP_ERR_INVALID_STATE[0m
+[0;33mW (375020) VICTIM_MAIN: Probe send failed seq=1092: ESP_ERR_INVALID_STATE[0m
+[0;33mW (375270) VICTIM_MAIN: Probe send failed seq=1093: ESP_ERR_INVALID_STATE[0m
+[0;33mW (375520) VICTIM_MAIN: Probe send failed seq=1094: ESP_ERR_INVALID_STATE[0m
+[0;33mW (375770) VICTIM_MAIN: Probe send failed seq=1095: ESP_ERR_INVALID_STATE[0m
+[0;33mW (376020) VICTIM_MAIN: Probe send failed seq=1096: ESP_ERR_INVALID_STATE[0m
+[0;33mW (376270) VICTIM_MAIN: Probe send failed seq=1097: ESP_ERR_INVALID_STATE[0m
+[0;33mW (376520) VICTIM_MAIN: Probe send failed seq=1098: ESP_ERR_INVALID_STATE[0m
+[0;33mW (376770) VICTIM_MAIN: Probe send failed seq=1099: ESP_ERR_INVALID_STATE[0m
+[0;33mW (377020) VICTIM_MAIN: Probe send failed seq=1100: ESP_ERR_INVALID_STATE[0m
+[0;33mW (377270) VICTIM_MAIN: Probe send failed seq=1101: ESP_ERR_INVALID_STATE[0m
+[0;33mW (377520) VICTIM_MAIN: Probe send failed seq=1102: ESP_ERR_INVALID_STATE[0m
+[0;33mW (377770) VICTIM_MAIN: Probe send failed seq=1103: ESP_ERR_INVALID_STATE[0m
+[0;33mW (378020) VICTIM_MAIN: Probe send failed seq=1104: ESP_ERR_INVALID_STATE[0m
+[0;33mW (378270) VICTIM_MAIN: Probe send failed seq=1105: ESP_ERR_INVALID_STATE[0m
+[0;33mW (378520) VICTIM_MAIN: Probe send failed seq=1106: ESP_ERR_INVALID_STATE[0m
+[0;33mW (378770) VICTIM_MAIN: Probe send failed seq=1107: ESP_ERR_INVALID_STATE[0m
+[0;33mW (379020) VICTIM_MAIN: Probe send failed seq=1108: ESP_ERR_INVALID_STATE[0m
+[0;33mW (379270) VICTIM_MAIN: Probe send failed seq=1109: ESP_ERR_INVALID_STATE[0m
+[0;33mW (379520) VICTIM_MAIN: Probe send failed seq=1110: ESP_ERR_INVALID_STATE[0m
+[0;33mW (379770) VICTIM_MAIN: Probe send failed seq=1111: ESP_ERR_INVALID_STATE[0m
+[0;33mW (380020) VICTIM_MAIN: Probe send failed seq=1112: ESP_ERR_INVALID_STATE[0m
+[0;33mW (380270) VICTIM_MAIN: Probe send failed seq=1113: ESP_ERR_INVALID_STATE[0m
+[0;33mW (380520) VICTIM_MAIN: Probe send failed seq=1114: ESP_ERR_INVALID_STATE[0m
+[0;33mW (380770) VICTIM_MAIN: Probe send failed seq=1115: ESP_ERR_INVALID_STATE[0m
+[0;33mW (381020) VICTIM_MAIN: Probe send failed seq=1116: ESP_ERR_INVALID_STATE[0m
+[0;33mW (381270) VICTIM_MAIN: Probe send failed seq=1117: ESP_ERR_INVALID_STATE[0m
+[0;33mW (381520) VICTIM_MAIN: Probe send failed seq=1118: ESP_ERR_INVALID_STATE[0m
+[0;33mW (381770) VICTIM_MAIN: Probe send failed seq=1119: ESP_ERR_INVALID_STATE[0m
+[0;33mW (382020) VICTIM_MAIN: Probe send failed seq=1120: ESP_ERR_INVALID_STATE[0m
+[0;33mW (382270) VICTIM_MAIN: Probe send failed seq=1121: ESP_ERR_INVALID_STATE[0m
+[0;33mW (382520) VICTIM_MAIN: Probe send failed seq=1122: ESP_ERR_INVALID_STATE[0m
+[0;33mW (382770) VICTIM_MAIN: Probe send failed seq=1123: ESP_ERR_INVALID_STATE[0m
+[0;33mW (383020) VICTIM_MAIN: Probe send failed seq=1124: ESP_ERR_INVALID_STATE[0m
+[0;33mW (383270) VICTIM_MAIN: Probe send failed seq=1125: ESP_ERR_INVALID_STATE[0m
+[0;33mW (383520) VICTIM_MAIN: Probe send failed seq=1126: ESP_ERR_INVALID_STATE[0m
+[0;33mW (383770) VICTIM_MAIN: Probe send failed seq=1127: ESP_ERR_INVALID_STATE[0m
+[0;33mW (384020) VICTIM_MAIN: Probe send failed seq=1128: ESP_ERR_INVALID_STATE[0m
+[0;33mW (384270) VICTIM_MAIN: Probe send failed seq=1129: ESP_ERR_INVALID_STATE[0m
+[0;33mW (384520) VICTIM_MAIN: Probe send failed seq=1130: ESP_ERR_INVALID_STATE[0m
+[0;33mW (384770) VICTIM_MAIN: Probe send failed seq=1131: ESP_ERR_INVALID_STATE[0m
+[0;33mW (385020) VICTIM_MAIN: Probe send failed seq=1132: ESP_ERR_INVALID_STATE[0m
+[0;33mW (385270) VICTIM_MAIN: Probe send failed seq=1133: ESP_ERR_INVALID_STATE[0m
+[0;33mW (385520) VICTIM_MAIN: Probe send failed seq=1134: ESP_ERR_INVALID_STATE[0m
+[0;33mW (385770) VICTIM_MAIN: Probe send failed seq=1135: ESP_ERR_INVALID_STATE[0m
+[0;33mW (386020) VICTIM_MAIN: Probe send failed seq=1136: ESP_ERR_INVALID_STATE[0m
+[0;33mW (386270) VICTIM_MAIN: Probe send failed seq=1137: ESP_ERR_INVALID_STATE[0m
+[0;33mW (386520) VICTIM_MAIN: Probe send failed seq=1138: ESP_ERR_INVALID_STATE[0m
+[0;33mW (386770) VICTIM_MAIN: Probe send failed seq=1139: ESP_ERR_INVALID_STATE[0m
+[0;33mW (387020) VICTIM_MAIN: Probe send failed seq=1140: ESP_ERR_INVALID_STATE[0m
+[0;33mW (387270) VICTIM_MAIN: Probe send failed seq=1141: ESP_ERR_INVALID_STATE[0m
+[0;33mW (387520) VICTIM_MAIN: Probe send failed seq=1142: ESP_ERR_INVALID_STATE[0m
+[0;33mW (387770) VICTIM_MAIN: Probe send failed seq=1143: ESP_ERR_INVALID_STATE[0m
+[0;33mW (388020) VICTIM_MAIN: Probe send failed seq=1144: ESP_ERR_INVALID_STATE[0m
+[0;33mW (388270) VICTIM_MAIN: Probe send failed seq=1145: ESP_ERR_INVALID_STATE[0m
+[0;33mW (388520) VICTIM_MAIN: Probe send failed seq=1146: ESP_ERR_INVALID_STATE[0m
+[0;33mW (388770) VICTIM_MAIN: Probe send failed seq=1147: ESP_ERR_INVALID_STATE[0m
+[0;33mW (389020) VICTIM_MAIN: Probe send failed seq=1148: ESP_ERR_INVALID_STATE[0m
+[0;33mW (389270) VICTIM_MAIN: Probe send failed seq=1149: ESP_ERR_INVALID_STATE[0m
+[0;33mW (389520) VICTIM_MAIN: Probe send failed seq=1150: ESP_ERR_INVALID_STATE[0m
+[0;33mW (389770) VICTIM_MAIN: Probe send failed seq=1151: ESP_ERR_INVALID_STATE[0m
+[0;33mW (390020) VICTIM_MAIN: Probe send failed seq=1152: ESP_ERR_INVALID_STATE[0m
+[0;33mW (390270) VICTIM_MAIN: Probe send failed seq=1153: ESP_ERR_INVALID_STATE[0m
+[0;33mW (390520) VICTIM_MAIN: Probe send failed seq=1154: ESP_ERR_INVALID_STATE[0m
+[0;33mW (390770) VICTIM_MAIN: Probe send failed seq=1155: ESP_ERR_INVALID_STATE[0m
+[0;33mW (391020) VICTIM_MAIN: Probe send failed seq=1156: ESP_ERR_INVALID_STATE[0m
+[0;33mW (391270) VICTIM_MAIN: Probe send failed seq=1157: ESP_ERR_INVALID_STATE[0m
+[0;33mW (391520) VICTIM_MAIN: Probe send failed seq=1158: ESP_ERR_INVALID_STATE[0m
+[0;33mW (391770) VICTIM_MAIN: Probe send failed seq=1159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (392020) VICTIM_MAIN: Probe send failed seq=1160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (392270) VICTIM_MAIN: Probe send failed seq=1161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (392520) VICTIM_MAIN: Probe send failed seq=1162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (392770) VICTIM_MAIN: Probe send failed seq=1163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (393020) VICTIM_MAIN: Probe send failed seq=1164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (393270) VICTIM_MAIN: Probe send failed seq=1165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (393520) VICTIM_MAIN: Probe send failed seq=1166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (393770) VICTIM_MAIN: Probe send failed seq=1167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (394020) VICTIM_MAIN: Probe send failed seq=1168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (394270) VICTIM_MAIN: Probe send failed seq=1169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (394520) VICTIM_MAIN: Probe send failed seq=1170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (394770) VICTIM_MAIN: Probe send failed seq=1171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (395020) VICTIM_MAIN: Probe send failed seq=1172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (395270) VICTIM_MAIN: Probe send failed seq=1173: ESP_ERR_INVALID_STATE[0m
+[0;33mW (395520) VICTIM_MAIN: Probe send failed seq=1174: ESP_ERR_INVALID_STATE[0m
+[0;33mW (395770) VICTIM_MAIN: Probe send failed seq=1175: ESP_ERR_INVALID_STATE[0m
+[0;33mW (396020) VICTIM_MAIN: Probe send failed seq=1176: ESP_ERR_INVALID_STATE[0m
+[0;33mW (396270) VICTIM_MAIN: Probe send failed seq=1177: ESP_ERR_INVALID_STATE[0m
+[0;33mW (396520) VICTIM_MAIN: Probe send failed seq=1178: ESP_ERR_INVALID_STATE[0m
+[0;33mW (396770) VICTIM_MAIN: Probe send failed seq=1179: ESP_ERR_INVALID_STATE[0m
+[0;33mW (397020) VICTIM_MAIN: Probe send failed seq=1180: ESP_ERR_INVALID_STATE[0m
+[0;33mW (397270) VICTIM_MAIN: Probe send failed seq=1181: ESP_ERR_INVALID_STATE[0m
+[0;33mW (397520) VICTIM_MAIN: Probe send failed seq=1182: ESP_ERR_INVALID_STATE[0m
+[0;33mW (397770) VICTIM_MAIN: Probe send failed seq=1183: ESP_ERR_INVALID_STATE[0m
+[0;33mW (398020) VICTIM_MAIN: Probe send failed seq=1184: ESP_ERR_INVALID_STATE[0m
+[0;33mW (398270) VICTIM_MAIN: Probe send failed seq=1185: ESP_ERR_INVALID_STATE[0m
+[0;33mW (398520) VICTIM_MAIN: Probe send failed seq=1186: ESP_ERR_INVALID_STATE[0m
+[0;33mW (398770) VICTIM_MAIN: Probe send failed seq=1187: ESP_ERR_INVALID_STATE[0m
+[0;33mW (399020) VICTIM_MAIN: Probe send failed seq=1188: ESP_ERR_INVALID_STATE[0m
+[0;33mW (399270) VICTIM_MAIN: Probe send failed seq=1189: ESP_ERR_INVALID_STATE[0m
+[0;33mW (399520) VICTIM_MAIN: Probe send failed seq=1190: ESP_ERR_INVALID_STATE[0m
+[0;33mW (399770) VICTIM_MAIN: Probe send failed seq=1191: ESP_ERR_INVALID_STATE[0m
+[0;33mW (400020) VICTIM_MAIN: Probe send failed seq=1192: ESP_ERR_INVALID_STATE[0m
+[0;33mW (400270) VICTIM_MAIN: Probe send failed seq=1193: ESP_ERR_INVALID_STATE[0m
+[0;33mW (400520) VICTIM_MAIN: Probe send failed seq=1194: ESP_ERR_INVALID_STATE[0m
+[0;33mW (400770) VICTIM_MAIN: Probe send failed seq=1195: ESP_ERR_INVALID_STATE[0m
+[0;33mW (401020) VICTIM_MAIN: Probe send failed seq=1196: ESP_ERR_INVALID_STATE[0m
+[0;33mW (401270) VICTIM_MAIN: Probe send failed seq=1197: ESP_ERR_INVALID_STATE[0m
+[0;33mW (401520) VICTIM_MAIN: Probe send failed seq=1198: ESP_ERR_INVALID_STATE[0m
+[0;33mW (401770) VICTIM_MAIN: Probe send failed seq=1199: ESP_ERR_INVALID_STATE[0m
+[0;33mW (402020) VICTIM_MAIN: Probe send failed seq=1200: ESP_ERR_INVALID_STATE[0m
+[0;33mW (402270) VICTIM_MAIN: Probe send failed seq=1201: ESP_ERR_INVALID_STATE[0m
+[0;32mI (402370) HEALTH: [HEALTH] up=401s heap=84428 min=83872 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;33mW (402520) VICTIM_MAIN: Probe send failed seq=1202: ESP_ERR_INVALID_STATE[0m
+[0;33mW (402770) VICTIM_MAIN: Probe send failed seq=1203: ESP_ERR_INVALID_STATE[0m
+[0;33mW (403020) VICTIM_MAIN: Probe send failed seq=1204: ESP_ERR_INVALID_STATE[0m
+[0;33mW (403270) VICTIM_MAIN: Probe send failed seq=1205: ESP_ERR_INVALID_STATE[0m
+[0;33mW (403520) VICTIM_MAIN: Probe send failed seq=1206: ESP_ERR_INVALID_STATE[0m
+[0;33mW (403770) VICTIM_MAIN: Probe send failed seq=1207: ESP_ERR_INVALID_STATE[0m
+[0;33mW (403770) MESH_SETUP: STAR HUB: scan 80 - wormhole A hub AP f4:2d:c9:73:e6:19 not seen. Waiting (check the wormhole A board is powered + in the mesh, and the run's -AttackerMac / SET_ATTACKER_MAC names it).[0m
+[0;33mW (404020) VICTIM_MAIN: Probe send failed seq=1208: ESP_ERR_INVALID_STATE[0m
+[0;33mW (404270) VICTIM_MAIN: Probe send failed seq=1209: ESP_ERR_INVALID_STATE[0m
+[0;33mW (404520) VICTIM_MAIN: Probe send failed seq=1210: ESP_ERR_INVALID_STATE[0m
+[0;33mW (404770) VICTIM_MAIN: Probe send failed seq=1211: ESP_ERR_INVALID_STATE[0m
+[0;33mW (405020) VICTIM_MAIN: Probe send failed seq=1212: ESP_ERR_INVALID_STATE[0m
+[0;33mW (405270) VICTIM_MAIN: Probe send failed seq=1213: ESP_ERR_INVALID_STATE[0m
+[0;33mW (405520) VICTIM_MAIN: Probe send failed seq=1214: ESP_ERR_INVALID_STATE[0m
+[0;33mW (405770) VICTIM_MAIN: Probe send failed seq=1215: ESP_ERR_INVALID_STATE[0m
+[0;33mW (406020) VICTIM_MAIN: Probe send failed seq=1216: ESP_ERR_INVALID_STATE[0m
+[0;33mW (406270) VICTIM_MAIN: Probe send failed seq=1217: ESP_ERR_INVALID_STATE[0m
+[0;33mW (406520) VICTIM_MAIN: Probe send failed seq=1218: ESP_ERR_INVALID_STATE[0m
+[0;33mW (406770) VICTIM_MAIN: Probe send failed seq=1219: ESP_ERR_INVALID_STATE[0m
+[0;33mW (407020) VICTIM_MAIN: Probe send failed seq=1220: ESP_ERR_INVALID_STATE[0m
+[0;33mW (407270) VICTIM_MAIN: Probe send failed seq=1221: ESP_ERR_INVALID_STATE[0m
+[0;33mW (407520) VICTIM_MAIN: Probe send failed seq=1222: ESP_ERR_INVALID_STATE[0m
+[0;33mW (407770) VICTIM_MAIN: Probe send failed seq=1223: ESP_ERR_INVALID_STATE[0m
+[0;33mW (408020) VICTIM_MAIN: Probe send failed seq=1224: ESP_ERR_INVALID_STATE[0m
+[0;33mW (408270) VICTIM_MAIN: Probe send failed seq=1225: ESP_ERR_INVALID_STATE[0m
+[0;33mW (408520) VICTIM_MAIN: Probe send failed seq=1226: ESP_ERR_INVALID_STATE[0m
+[0;33mW (408770) VICTIM_MAIN: Probe send failed seq=1227: ESP_ERR_INVALID_STATE[0m
+[0;33mW (409020) VICTIM_MAIN: Probe send failed seq=1228: ESP_ERR_INVALID_STATE[0m
+[0;33mW (409270) VICTIM_MAIN: Probe send failed seq=1229: ESP_ERR_INVALID_STATE[0m
+[0;33mW (409520) VICTIM_MAIN: Probe send failed seq=1230: ESP_ERR_INVALID_STATE[0m
+[0;33mW (409770) VICTIM_MAIN: Probe send failed seq=1231: ESP_ERR_INVALID_STATE[0m
+[0;33mW (410020) VICTIM_MAIN: Probe send failed seq=1232: ESP_ERR_INVALID_STATE[0m
+[0;33mW (410270) VICTIM_MAIN: Probe send failed seq=1233: ESP_ERR_INVALID_STATE[0m
+[0;33mW (410520) VICTIM_MAIN: Probe send failed seq=1234: ESP_ERR_INVALID_STATE[0m
+[0;33mW (410770) VICTIM_MAIN: Probe send failed seq=1235: ESP_ERR_INVALID_STATE[0m
+[0;33mW (411020) VICTIM_MAIN: Probe send failed seq=1236: ESP_ERR_INVALID_STATE[0m
+[0;33mW (411270) VICTIM_MAIN: Probe send failed seq=1237: ESP_ERR_INVALID_STATE[0m
+[0;33mW (411520) VICTIM_MAIN: Probe send failed seq=1238: ESP_ERR_INVALID_STATE[0m
+[0;33mW (411770) VICTIM_MAIN: Probe send failed seq=1239: ESP_ERR_INVALID_STATE[0m
+[0;33mW (412020) VICTIM_MAIN: Probe send failed seq=1240: ESP_ERR_INVALID_STATE[0m
+[0;33mW (412270) VICTIM_MAIN: Probe send failed seq=1241: ESP_ERR_INVALID_STATE[0m
+[0;33mW (412520) VICTIM_MAIN: Probe send failed seq=1242: ESP_ERR_INVALID_STATE[0m
+[0;33mW (412770) VICTIM_MAIN: Probe send failed seq=1243: ESP_ERR_INVALID_STATE[0m
+[0;33mW (413020) VICTIM_MAIN: Probe send failed seq=1244: ESP_ERR_INVALID_STATE[0m
+[0;33mW (413270) VICTIM_MAIN: Probe send failed seq=1245: ESP_ERR_INVALID_STATE[0m
+[0;33mW (413520) VICTIM_MAIN: Probe send failed seq=1246: ESP_ERR_INVALID_STATE[0m
+[0;33mW (413770) VICTIM_MAIN: Probe send failed seq=1247: ESP_ERR_INVALID_STATE[0m
+[0;33mW (414020) VICTIM_MAIN: Probe send failed seq=1248: ESP_ERR_INVALID_STATE[0m
+[0;33mW (414270) VICTIM_MAIN: Probe send failed seq=1249: ESP_ERR_INVALID_STATE[0m
+[0;33mW (414520) VICTIM_MAIN: Probe send failed seq=1250: ESP_ERR_INVALID_STATE[0m
+[0;33mW (414770) VICTIM_MAIN: Probe send failed seq=1251: ESP_ERR_INVALID_STATE[0m
+[0;33mW (415020) VICTIM_MAIN: Probe send failed seq=1252: ESP_ERR_INVALID_STATE[0m
+[0;33mW (415270) VICTIM_MAIN: Probe send failed seq=1253: ESP_ERR_INVALID_STATE[0m
+[0;33mW (415520) VICTIM_MAIN: Probe send failed seq=1254: ESP_ERR_INVALID_STATE[0m
+[0;33mW (415770) VICTIM_MAIN: Probe send failed seq=1255: ESP_ERR_INVALID_STATE[0m
+[0;33mW (416020) VICTIM_MAIN: Probe send failed seq=1256: ESP_ERR_INVALID_STATE[0m
+[0;33mW (416270) VICTIM_MAIN: Probe send failed seq=1257: ESP_ERR_INVALID_STATE[0m
+[0;33mW (416520) VICTIM_MAIN: Probe send failed seq=1258: ESP_ERR_INVALID_STATE[0m
+[0;33mW (416770) VICTIM_MAIN: Probe send failed seq=1259: ESP_ERR_INVALID_STATE[0m
+[0;33mW (417020) VICTIM_MAIN: Probe send failed seq=1260: ESP_ERR_INVALID_STATE[0m
+[0;33mW (417270) VICTIM_MAIN: Probe send failed seq=1261: ESP_ERR_INVALID_STATE[0m
+[0;33mW (417520) VICTIM_MAIN: Probe send failed seq=1262: ESP_ERR_INVALID_STATE[0m
+[0;33mW (417770) VICTIM_MAIN: Probe send failed seq=1263: ESP_ERR_INVALID_STATE[0m
+[0;33mW (418020) VICTIM_MAIN: Probe send failed seq=1264: ESP_ERR_INVALID_STATE[0m
+[0;33mW (418270) VICTIM_MAIN: Probe send failed seq=1265: ESP_ERR_INVALID_STATE[0m
+[0;33mW (418520) VICTIM_MAIN: Probe send failed seq=1266: ESP_ERR_INVALID_STATE[0m
+[0;33mW (418770) VICTIM_MAIN: Probe send failed seq=1267: ESP_ERR_INVALID_STATE[0m
+[0;33mW (419020) VICTIM_MAIN: Probe send failed seq=1268: ESP_ERR_INVALID_STATE[0m
+[0;33mW (419270) VICTIM_MAIN: Probe send failed seq=1269: ESP_ERR_INVALID_STATE[0m
+[0;33mW (419520) VICTIM_MAIN: Probe send failed seq=1270: ESP_ERR_INVALID_STATE[0m
+[0;33mW (419770) VICTIM_MAIN: Probe send failed seq=1271: ESP_ERR_INVALID_STATE[0m
+[0;33mW (420020) VICTIM_MAIN: Probe send failed seq=1272: ESP_ERR_INVALID_STATE[0m
+[0;33mW (420270) VICTIM_MAIN: Probe send failed seq=1273: ESP_ERR_INVALID_STATE[0m
+[0;33mW (420520) VICTIM_MAIN: Probe send failed seq=1274: ESP_ERR_INVALID_STATE[0m
+[0;33mW (420770) VICTIM_MAIN: Probe send failed seq=1275: ESP_ERR_INVALID_STATE[0m
+[0;33mW (421020) VICTIM_MAIN: Probe send failed seq=1276: ESP_ERR_INVALID_STATE[0m
+[0;33mW (421270) VICTIM_MAIN: Probe send failed seq=1277: ESP_ERR_INVALID_STATE[0m
+[0;33mW (421520) VICTIM_MAIN: Probe send failed seq=1278: ESP_ERR_INVALID_STATE[0m
+[0;33mW (421770) VICTIM_MAIN: Probe send failed seq=1279: ESP_ERR_INVALID_STATE[0m
+[0;33mW (422020) VICTIM_MAIN: Probe send failed seq=1280: ESP_ERR_INVALID_STATE[0m
+[0;33mW (422270) VICTIM_MAIN: Probe send failed seq=1281: ESP_ERR_INVALID_STATE[0m
+[0;33mW (422520) VICTIM_MAIN: Probe send failed seq=1282: ESP_ERR_INVALID_STATE[0m
+[0;33mW (422770) VICTIM_MAIN: Probe send failed seq=1283: ESP_ERR_INVALID_STATE[0m
+[0;33mW (423020) VICTIM_MAIN: Probe send failed seq=1284: ESP_ERR_INVALID_STATE[0m
+[0;33mW (423270) VICTIM_MAIN: Probe send failed seq=1285: ESP_ERR_INVALID_STATE[0m
+[0;33mW (423520) VICTIM_MAIN: Probe send failed seq=1286: ESP_ERR_INVALID_STATE[0m
+[0;33mW (423770) VICTIM_MAIN: Probe send failed seq=1287: ESP_ERR_INVALID_STATE[0m
+[0;33mW (424000) MESH_SETUP: STAR HUB: joining wormhole A f4:2d:c9:73:e6:19 (layer 2, rssi -63, ch 11) as layer 3.[0m
+[0;33mW (424020) VICTIM_MAIN: Probe send failed seq=1288: ESP_ERR_INVALID_STATE[0m
+[0;33mW (424150) MESH_SETUP: Parent disconnected â€” reason 201.[0m
+I (424160) wifi:new:<11,0>, old:<11,0>, ap:<255,255>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (424160) wifi:state: init -> auth (0xb0)
+I (424160) wifi:state: auth -> assoc (0x0)
+I (424180) wifi:state: assoc -> run (0x10)
+I (424180) wifi:connected with ESPM_73E618, aid = 2, channel 11, BW20, bssid = f4:2d:c9:73:e6:19
+I (424180) wifi:security: Open Auth, phy: bgn, rssi: -60, cipher(pairwise:0x0, group:0x0), pmf:0
+I (424200) wifi:pm start, type: 0
+
+[0;32mI (424200) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (424200) MESH_SETUP: Parent connected. Layer=3  ParentMAC=f4:2d:c9:73:e6:19  IsRoot=NO[0m
+[0;32mI (424210) MESH_SETUP: ==============================[0m
+[0;32mI (424210) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (424220) MESH_SETUP: ==============================[0m
+[0;32mI (424230) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (424230) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (424460) wifi:AP's beacon interval = 307200 us, DTIM period = 1
+[0;32mI (432380) HEALTH: [HEALTH] up=431s heap=84436 min=82524 big=81920 | stack free(B): telemetry=2184 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+W (441050) wifi:5531<free>rootless
+[0;32mI (461210) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (461270) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (461290) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_B4BFE934ED80_r7_b7_telem.csv[0m
+[0;32mI (462390) HEALTH: [HEALTH] up=461s heap=84456 min=82424 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1528 ipc1=1528[0m
+[0;32mI (492400) HEALTH: [HEALTH] up=491s heap=84456 min=82272 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (522410) HEALTH: [HEALTH] up=521s heap=84336 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (546860) PHASE_LISTENER: Phase update â†’ phase_id=0  gt_label=0  seq=18  root_ts=91844657 us[0m
+[0;32mI (552420) HEALTH: [HEALTH] up=551s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+I (561340) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (562360) wifi:dp: 1, bi: 1024000, li: 1, scale listen interval from 307200 us to 1024000 us
+[0;32mI (582430) HEALTH: [HEALTH] up=581s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (612440) HEALTH: [HEALTH] up=611s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (642450) HEALTH: [HEALTH] up=641s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (672460) HEALTH: [HEALTH] up=671s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (702470) HEALTH: [HEALTH] up=701s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (732480) HEALTH: [HEALTH] up=731s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (762490) HEALTH: [HEALTH] up=761s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (792500) HEALTH: [HEALTH] up=791s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (822510) HEALTH: [HEALTH] up=821s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (847440) PHASE_LISTENER: Phase update â†’ phase_id=2  gt_label=2  seq=19  root_ts=392424340 us[0m
+[0;32mI (852520) HEALTH: [HEALTH] up=851s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (882530) HEALTH: [HEALTH] up=881s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (912540) HEALTH: [HEALTH] up=911s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (942550) HEALTH: [HEALTH] up=941s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (972560) HEALTH: [HEALTH] up=971s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1002570) HEALTH: [HEALTH] up=1001s heap=84432 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4280 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿR: Phase update â†’ phase_id=3  gt_label=0  seq=20  root_ts=573005439 us[0m
+[0;32mI (1032580) HEALTH: [HEALTH] up=1031s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4200 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1062590) HEALTH: [HEALTH] up=1061s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4200 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1092600) HEALTH: [HEALTH] up=1091s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4200 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1122610) HEALTH: [HEALTH] up=1121s heap=84456 min=82244 big=81920 | stack free(B): telemetry=1192 probe_gen=2236 probe_relay=2228 phase_listener=4200 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1148560) PHASE_LISTENER: Phase update â†’ phase_id=4  gt_label=0  seq=21  root_ts=693547270 us[0m
+[0;32mI (1148560) PHASE_LISTENER: Experiment terminated â€” phase listener task exiting.[0m
+[0;32mI (1148570) VICTIM_MAIN: Telemetry task exiting.[0m
+[0;32mI (1148570) VICTIM_MAIN: Experiment complete. Total probes sent: 2776[0m
+[0;32mI (1148600) CSV_LOGGER: Telemetry file closed: /spiffs/telem.csv[0m
+[0;32mI (1148700) CSV_LOGGER: SD card unmounted â€” safe to remove.[0m
+[0;32mI (1148700) VICTIM_MAIN: Send 'EXPORT_LOGS' via serial to retrieve the CSV.[0m
+[0;32mI (1148700) main_task: Returned from app_main()[0m
+[0;32mI (1148710) VICTIM_MAIN: Probe generator task exiting. Total sent: 2776[0m
+[0;32mI (1152620) HEALTH: [HEALTH] up=1151s heap=136168 min=82244 big=81920 | stack free(B): probe_relay=2228 heartbeat=4236 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1154870) MESH_SETUP: Heartbeat task exiting - log closed and reported (child node); the board stays up for serial export commands.[0m
+[0;32mI (1182620) HEALTH: [HEALTH] up=1181s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1212620) HEALTH: [HEALTH] up=1211s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1242620) HEALTH: [HEALTH] up=1241s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1272620) HEALTH: [HEALTH] up=1271s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1302620) HEALTH: [HEALTH] up=1301s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1332620) HEALTH: [HEALTH] up=1331s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[0;32mI (1362620) HEALTH: [HEALTH] up=1361s heap=139280 min=82244 big=90112 | stack free(B): probe_relay=2228 csv_export=3792 sd_recover=3508 ipc0=1496 ipc1=1528[0m
+[monitor] closed

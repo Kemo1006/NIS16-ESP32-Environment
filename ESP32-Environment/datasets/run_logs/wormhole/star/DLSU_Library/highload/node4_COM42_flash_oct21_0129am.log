@@ -1,0 +1,107 @@
+Setting COM42's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: OK highload
+LOCATION_CHECK: FIXED DLSU_Library -> G402 (applies on the next boot)
+-> SET_TIME (host clock -> board + SD card) ...
+   no answer — this board predates SET_TIME/GET_TIME. Reflash it to give it a real clock.
+Full-erasing COM42 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.12.0
+Serial port COM42
+Connecting..........
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 5.6 seconds.
+Hard resetting via RTS pin...
+  Attacker MAC for this build: f4:2d:c9:73:e6:18 (from the wizard, overrides mesh_config.h)
+Board: node4 (on COM42, MAC f4:2d:c9:73:e6:18)
+Flashing + monitoring child on COM42 (topology=star, attack=wormhole/A, scenario=highload, build=C:\esp32b\T_1140e558\child_node\build_child_wormhole_star_A_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+esptool.py --chip esp32 -p COM42 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.12.0
+Serial port COM42
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00136fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26160 bytes to 16528...
+Writing at 0x00001000... (50 %)
+Writing at 0x00007568... (100 %)
+Wrote 26160 bytes (16528 compressed) at 0x00001000 in 0.5 seconds (effective 412.0 kbit/s)...
+Hash of data verified.
+Compressed 1205088 bytes to 749200...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001be5f... (4 %)
+Writing at 0x00029e84... (6 %)
+Writing at 0x00036505... (8 %)
+Writing at 0x0003f175... (10 %)
+Writing at 0x00049692... (13 %)
+Writing at 0x0004ef86... (15 %)
+Writing at 0x00054dca... (17 %)
+Writing at 0x0005a9ea... (19 %)
+Writing at 0x00060616... (21 %)
+Writing at 0x00065ed4... (23 %)
+Writing at 0x0006b854... (26 %)
+Writing at 0x0007192a... (28 %)
+Writing at 0x000775ac... (30 %)
+Writing at 0x0007d837... (32 %)
+Writing at 0x00083927... (34 %)
+Writing at 0x00089530... (36 %)
+Writing at 0x0008f671... (39 %)
+Writing at 0x00094e11... (41 %)
+Writing at 0x0009a509... (43 %)
+Writing at 0x0009fbf3... (45 %)
+Writing at 0x000a53b1... (47 %)
+Writing at 0x000aabf1... (50 %)
+Writing at 0x000b0445... (52 %)
+Writing at 0x000b5b54... (54 %)
+Writing at 0x000bb17a... (56 %)
+Writing at 0x000c098e... (58 %)
+Writing at 0x000c65ec... (60 %)
+Writing at 0x000cc2b8... (63 %)
+Writing at 0x000d1afc... (65 %)
+Writing at 0x000d741f... (67 %)
+Writing at 0x000dd26c... (69 %)
+Writing at 0x000e2c94... (71 %)
+Writing at 0x000e86a1... (73 %)
+Writing at 0x000ee3c0... (76 %)
+Writing at 0x000f3e90... (78 %)
+Writing at 0x000f9aff... (80 %)
+Writing at 0x000ff956... (82 %)
+Writing at 0x00105326... (84 %)
+Writing at 0x0010aac1... (86 %)
+Writing at 0x00112b75... (89 %)
+Writing at 0x0011a9f9... (91 %)
+Writing at 0x00120520... (93 %)
+Writing at 0x001265d7... (95 %)
+Writing at 0x0012cb8b... (97 %)
+Writing at 0x00131f73... (100 %)
+Wrote 1205088 bytes (749200 compressed) at 0x00010000 in 17.8 seconds (effective 542.8 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1556.2 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2868.1 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+FLASH_ONLY_DONE: COM42 flashed and started (no monitor - the GUI listens to it)

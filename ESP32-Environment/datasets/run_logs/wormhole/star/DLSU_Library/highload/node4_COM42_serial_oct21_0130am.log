@@ -1,0 +1,550 @@
+[monitor] listening on COM42 at 115200 baud
+I (486) esp_image: segment 4: paddr=00123c10 vaddr=40088f0c size=126fch ( 75516) load
+I (516) esp_image: segment 5: paddr=00136314 vaddr=5000005c size=00020h (    32) load
+I (529) boot: Loaded app from partition at offset 0x10000
+I (532) boot: Set actual ota_seq=1 in otadata[0]
+I (532) boot: Disabling RNG early entropy source...
+[0;32mI (544) cpu_start: Multicore app[0m
+[0;32mI (552) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (553) cpu_start: Pro cpu start user code[0m
+[0;32mI (553) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (557) app_init: Application information:[0m
+[0;32mI (562) app_init: Project name:     child_node[0m
+[0;32mI (567) app_init: App version:      backup/angelo-2026-10-01-288-gd[0m
+[0;32mI (574) app_init: Compile time:     Oct 21 2026 00:43:44[0m
+[0;32mI (580) app_init: ELF file SHA256:  ca517f9f2...[0m
+[0;32mI (586) app_init: ESP-IDF:          v5.5.4-dirty[0m
+[0;32mI (591) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (596) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (601) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (606) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (613) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (619) heap_init: At 3FFBC910 len 000236F0 (141 KiB): DRAM[0m
+[0;32mI (625) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (631) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (638) heap_init: At 4009B608 len 000049F8 (18 KiB): IRAM[0m
+[0;32mI (645) spi_flash: detected chip: generic[0m
+[0;32mI (649) spi_flash: flash io: dio[0m
+[0;32mI (654) main_task: Started on CPU0[0m
+[0;32mI (664) main_task: Calling app_main()[0m
+[0;32mI (664) WORMHOLE: === WORMHOLE NODE STARTING (auto-switch; fallback end A) ===[0m
+[0;32mI (664) SD_STATUS: clock seeded from build stamp 2026-10-21 00:43:44 (ESTIMATE) - refined from the card's anchor next if it has one.[0m
+[0;32mI (674) SD_STATUS: Reset reason: POWERON[0m
+[0;32mI (684) sdspi_transaction: cmd=52, R1 response: command not supported[0m
+[0;32mI (734) sdspi_transaction: cmd=5, R1 response: command not supported[0m
+[0;32mI (764) SD_STATUS: clock: set from the card's host anchor -> 2026-10-21 01:29:44 PHT (REAL time, plus however long this board sat unpowered).[0m
+=== SD CARD ENVIRONMENT REPORT (NODE_F42DC973E618) ===
+
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.5.4-dirty
+
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+
+[2b] CLOCK
+  Boot time now: 2026-10-21 01:29:44 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+
+  Recorded scenario: highload
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: star
+  Firmware built: 2026-10-21 00:43:44
+  Run started: 2026-10-21 01:29:44 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_F42DC973E618 (MAC F4:2D:C9:73:E6:18)
+
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+
+Boot count: 223
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 217
+
+[0;32mI (1534) WORMHOLE: SD ENV: OK -- /sdcard/wormhole/star/G402/status_NODE_F42DC973E618.txt[0m
+I (1574) wifi:wifi driver task: 3ffcc674, prio:23, stack:6656, core=0
+I (1574) wifi:wifi firmware version: 0947e8b
+I (1574) wifi:wifi certification version: v7.0
+I (1574) wifi:config NVS flash: enabled
+I (1574) wifi:config nano formatting: disabled
+I (1584) wifi:Init data frame dynamic rx buffer num: 32
+I (1584) wifi:Init static rx mgmt buffer num: 5
+I (1594) wifi:Init management short buffer num: 32
+I (1594) wifi:Init dynamic tx buffer num: 32
+I (1594) wifi:Init static rx buffer size: 1600
+I (1604) wifi:Init static rx buffer num: 10
+I (1604) wifi:Init dynamic rx buffer num: 32
+[0;32mI (1614) wifi_init: rx ba win: 6[0m
+[0;32mI (1614) wifi_init: accept mbox: 6[0m
+[0;32mI (1614) wifi_init: tcpip mbox: 32[0m
+[0;32mI (1624) wifi_init: udp mbox: 6[0m
+[0;32mI (1624) wifi_init: tcp mbox: 6[0m
+[0;32mI (1634) wifi_init: tcp tx win: 5760[0m
+[0;32mI (1634) wifi_init: tcp rx win: 5760[0m
+[0;32mI (1634) wifi_init: tcp mss: 1440[0m
+[0;32mI (1644) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (1644) wifi_init: WiFi RX IRAM OP enabled[0m
+I (1654) wifi:Set ps type: 0, coexist: 0
+
+[0;32mI (1664) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0[0m
+[0;32mI (1664) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;33mW (1674) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration[0m
+[0;32mI (1754) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)[0m
+I (1764) wifi:mode : sta (f4:2d:c9:73:e6:18) + softAP (f4:2d:c9:73:e6:19)
+I (1764) wifi:enable tsf
+I (1764) wifi:Total power save buffer number: 16
+I (1774) wifi:Init max length of beacon: 752/752
+I (1774) wifi:Init max length of beacon: 752/752
+I (1784) mesh: <nvs>read layer:0, err:0x1102
+I (1784) mesh: <nvs>read assoc:0, err:0x1102
+[0;32mI (1784) MESH_SETUP: Topology shaping: STAR (wormhole A hub) (max_layer=3, max_children=10)[0m
+I (1794) wifi:Set ps type: 0, coexist: 0
+
+I (1824) wifi:Total power save buffer number: 16
+[0;32mI (2144) BH_TARGET: Attacker MAC from compiled default: f4:2d:c9:73:e6:18[0m
+[0;33mW (2144) MESH_SETUP: STAR HUB: this board IS the hub (wormhole A, compiled) - it joins the root; every other board joins it.[0m
+I (2154) wifi:mode : sta (f4:2d:c9:73:e6:18)
+I (2164) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+[0;32mI (2164) MESH_SETUP: Mesh stack started.[0m
+[0;32mI (2164) MESH_SETUP: Mesh started. Node ID: NODE_F42DC973E618  Role: 3[0m
+[0;32mI (2174) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)[0m
+[0;33mW (62184) MESH_SETUP: Mesh connection timeout after 60 s — continuing anyway.[0m
+[0;32mI (62184) WORMHOLE: Node ID: NODE_F42DC973E618   Run ID: RUN_001[0m
+[0;32mI (62184) WORMHOLE: Wormhole UART tunnel ready: UART1  TX=GPIO17  RX=GPIO16  115200 baud[0m
+[0;32mI (62194) NODE_ID: Identity: "Board-F4:18" role=WORMHOLE_A mac=f4:2d:c9:73:e6:18 (via MAC (no node_config.txt nickname))[0m
+[0;32mI (62204) PHASE_LISTENER: Phase listener task running.[0m
+[0;32mI (62214) PHASE_LISTENER: Phase listener started.[0m
+[0;32mI (62214) PROBE_RELAY: Relay task running (hop-by-hop, forwards to parent).[0m
+[0;32mI (62224) PROBE_RELAY: Probe relay started (honest relay).[0m
+[0;33mW (62234) SPIFFS: mount failed, -10025. formatting...[0m
+[0;32mI (65204) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB[0m
+[0;32mI (65204) CSV_LOGGER: Telemetry file: /spiffs/telem.csv[0m
+[0;32mI (65394) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.[0m
+[0;32mI (65414) CSV_LOGGER: Logger ready. Role: victim[0m
+[0;32mI (65414) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY[0m
+
+===========You can ctrl + ] to export the data=========
+
+[0;32mI (65454) CSV_LOGGER: CSV export task started on init (debug).[0m
+[0;32mI (65464) WORMHOLE: Logging to: /spiffs/telem.csv[0m
+[0;32mI (65464) WORMHOLE: UART tunnel receiver running.[0m
+[0;32mI (65474) WORMHOLE: Probe generator ready at 250 ms interval (runs only as locked Node B).[0m
+[0;32mI (65474) WORMHOLE: Telemetry task running at 100 ms interval.[0m
+[0;32mI (65474) WORMHOLE: Tunnel forwarder running.[0m
+[0;32mI (65474) WORMHOLE: Re-inject task running.[0m
+[0;32mI (65474) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)[0m
+[0;32mI (65504) MESH_SETUP: Heartbeat sender running at 7000 ms interval.[0m
+[0;32mI (69524) WORMHOLE: Peer heard over UART: 20:50:0d:e7:0c:80  layer -1  end B[0m
+[0;33mW (69574) WORMHOLE: Wormhole end A -> B (depth vs peer)[0m
+[0;32mI (69574) NODE_ID: Role WORMHOLE_A -> WORMHOLE_B (decided at run time)[0m
+[0;32mI (95474) HEALTH: [HEALTH] up=94s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (125484) HEALTH: [HEALTH] up=124s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (155494) HEALTH: [HEALTH] up=154s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (185504) HEALTH: [HEALTH] up=184s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (215514) HEALTH: [HEALTH] up=214s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (245524) HEALTH: [HEALTH] up=244s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (275534) HEALTH: [HEALTH] up=274s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (305544) HEALTH: [HEALTH] up=304s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (335554) HEALTH: [HEALTH] up=334s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (365564) HEALTH: [HEALTH] up=364s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (395574) HEALTH: [HEALTH] up=394s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (425584) HEALTH: [HEALTH] up=424s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+[0;32mI (455594) HEALTH: [HEALTH] up=454s heap=62816 min=62288 big=61440 | stack free(B): telemetry=2188 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1528 ipc1=1520[0m
+I (474834) wifi:mode : sta (f4:2d:c9:73:e6:18) + softAP (f4:2d:c9:73:e6:19)
+I (474834) wifi:Total power save buffer number: 16
+I (474844) wifi:Init max length of beacon: 752/752
+I (474844) wifi:Init max length of beacon: 752/752
+I (474854) wifi:Total power save buffer number: 16
+I (475514) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (475514) wifi:state: init -> auth (0xb0)
+I (475524) wifi:state: auth -> assoc (0x0)
+I (475534) wifi:state: assoc -> run (0x10)
+I (475534) wifi:connected with ESPM_F33218, aid = 1, channel 11, BW20, bssid = b0:cb:d8:f3:32:19
+I (475534) wifi:security: Open Auth, phy: bgn, rssi: -62, cipher(pairwise:0x0, group:0x0), pmf:0
+I (475554) wifi:pm start, type: 0
+
+I (475554) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+[0;32mI (475554) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (475564) MESH_SETUP: Parent connected. Layer=2  ParentMAC=b0:cb:d8:f3:32:19  IsRoot=NO[0m
+[0;32mI (475574) WORMHOLE: TUNNEL TEST #1 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+[0;32mI (475574) MESH_SETUP: ==============================[0m
+[0;32mI (475584) MESH_SETUP:   MESH CONNECTED: 1 node(s)[0m
+[0;32mI (475594) MESH_SETUP: ==============================[0m
+[0;32mI (475604) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (475604) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+I (475724) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+I (476414) wifi:<ba-add>idx:0 (ifx:0, b0:cb:d8:f3:32:19), tid:5, ssn:0, winSize:64
+[0;32mI (476414) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.[0m
+[0;32mI (476484) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.[0m
+[0;32mI (476504) CSV_LOGGER: SD mirror: /sdcard/wormhole/star/G402/victim_NODE_F42DC973E618_r5_b223_telem.csv[0m
+[0;33mW (481084) WORMHOLE: Wormhole end B -> A (no peer - build fallback)[0m
+[0;32mI (481084) NODE_ID: Role WORMHOLE_B -> WORMHOLE_A (decided at run time)[0m
+[0;31mE (481084) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is A only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+[0;33mW (481804) WORMHOLE: UART link noisy: 82 bad frame windows so far - check the jumpers and the common GND.[0m
+I (482814) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (482814) wifi:station: b4:bf:e9:32:fe:90 join, AID=1, bgn, 20
+[0;32mI (482814) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (482824) MESH_SETUP: ==============================[0m
+[0;32mI (482824) MESH_SETUP:   MESH CONNECTED: 2 node(s)[0m
+[0;32mI (482834) MESH_SETUP: ==============================[0m
+[0;32mI (482834) MESH_SETUP: Child connected: aid=1 MAC=b4:bf:e9:32:fe:90[0m
+[0;32mI (482844) MESH_SETUP: ==============================[0m
+[0;32mI (482854) MESH_SETUP:   MESH CONNECTED: 2 node(s)[0m
+[0;32mI (482854) MESH_SETUP: ==============================[0m
+[0;32mI (482864) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (483424) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (483424) wifi:station: b4:bf:e9:34:ed:80 join, AID=2, bgn, 20
+[0;32mI (483434) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (483434) MESH_SETUP: ==============================[0m
+[0;32mI (483444) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (483444) MESH_SETUP: ==============================[0m
+[0;32mI (483454) MESH_SETUP: Child connected: aid=2 MAC=b4:bf:e9:34:ed:80[0m
+[0;32mI (483454) MESH_SETUP: ==============================[0m
+[0;32mI (483464) MESH_SETUP:   MESH CONNECTED: 3 node(s)[0m
+[0;32mI (483464) MESH_SETUP: ==============================[0m
+[0;32mI (483474) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (484044) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (484044) wifi:station: 20:50:0d:e7:1c:38 join, AID=3, bgn, 20
+[0;32mI (484044) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (484054) MESH_SETUP: ==============================[0m
+[0;32mI (484054) MESH_SETUP:   MESH CONNECTED: 4 node(s)[0m
+[0;32mI (484064) MESH_SETUP: ==============================[0m
+[0;32mI (484064) MESH_SETUP: Child connected: aid=3 MAC=20:50:0d:e7:1c:38[0m
+[0;32mI (484074) MESH_SETUP: ==============================[0m
+[0;32mI (484084) MESH_SETUP:   MESH CONNECTED: 4 node(s)[0m
+[0;32mI (484084) MESH_SETUP: ==============================[0m
+[0;32mI (484094) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (484354) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (484354) wifi:station: 28:05:a5:32:d7:b4 join, AID=4, bgn, 20
+[0;32mI (484354) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (484354) MESH_SETUP: ==============================[0m
+[0;32mI (484364) MESH_SETUP:   MESH CONNECTED: 5 node(s)[0m
+[0;32mI (484374) MESH_SETUP: ==============================[0m
+[0;32mI (484374) MESH_SETUP: Child connected: aid=4 MAC=28:05:a5:32:d7:b4[0m
+[0;32mI (484384) MESH_SETUP: ==============================[0m
+[0;32mI (484384) MESH_SETUP:   MESH CONNECTED: 5 node(s)[0m
+[0;32mI (484394) MESH_SETUP: ==============================[0m
+[0;32mI (484404) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (485604) HEALTH: [HEALTH] up=484s heap=53632 min=48296 big=53248 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2228 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+I (485614) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (485624) wifi:station: 70:4b:ca:25:b7:68 join, AID=5, bgn, 20
+[0;32mI (485634) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (485644) MESH_SETUP: ==============================[0m
+[0;32mI (485644) MESH_SETUP:   MESH CONNECTED: 6 node(s)[0m
+[0;32mI (485654) MESH_SETUP: ==============================[0m
+[0;32mI (485654) MESH_SETUP: Child connected: aid=5 MAC=70:4b:ca:25:b7:68[0m
+[0;32mI (485664) MESH_SETUP: ==============================[0m
+[0;32mI (485664) MESH_SETUP:   MESH CONNECTED: 6 node(s)[0m
+[0;32mI (485674) MESH_SETUP: ==============================[0m
+[0;32mI (485684) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (490354) wifi:bcn_timeout,ap_probe_send_start
+[0;31mE (491104) WORMHOLE: !! UART TUNNEL LOST: the other wormhole board went silent - no tunnel copy can cross. This board is A only by its BUILD DEFAULT, not by depth. Check: GPIO17 (TX) -> peer GPIO16 (RX), both ways crossed, + GND -> GND.[0m
+I (492104) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (492104) wifi:station: 20:50:0d:e7:0c:80 join, AID=6, bgn, 20
+[0;32mI (492114) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (492114) MESH_SETUP: ==============================[0m
+[0;32mI (492124) MESH_SETUP:   MESH CONNECTED: 7 node(s)[0m
+[0;32mI (492124) MESH_SETUP: ==============================[0m
+[0;32mI (492134) MESH_SETUP: Child connected: aid=6 MAC=20:50:0d:e7:0c:80[0m
+[0;32mI (492144) MESH_SETUP: ==============================[0m
+[0;32mI (492144) MESH_SETUP:   MESH CONNECTED: 7 node(s)[0m
+[0;32mI (492154) MESH_SETUP: ==============================[0m
+[0;32mI (492154) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+I (492864) wifi:ap_probe_send over, reset wifi status to disassoc
+I (492864) wifi:state: run -> init (0xc800)
+I (492874) wifi:pm stop, total sleep time: 0 us / 17316717 us
+
+I (492874) wifi:<ba-del>idx:0, tid:5
+I (492874) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (492884) MESH_SETUP: Parent disconnected — reason 200.[0m
+I (492884) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (492894) wifi:state: init -> auth (0xb0)
+[0;33mW (492904) PROBE_RELAY: Forward failed seq=1293: ESP_ERR_MESH_DISCONNECTED[0m
+[0;33mW (492904) PROBE_RELAY: Forward failed seq=1677: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492914) PROBE_RELAY: Forward failed seq=1159: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492914) PROBE_RELAY: Forward failed seq=1529: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492924) PROBE_RELAY: Forward failed seq=1294: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492934) PROBE_RELAY: Forward failed seq=1160: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492944) PROBE_RELAY: Forward failed seq=1678: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492944) PROBE_RELAY: Forward failed seq=1530: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492954) PROBE_RELAY: Forward failed seq=1295: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492964) PROBE_RELAY: Forward failed seq=1161: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492964) PROBE_RELAY: Forward failed seq=1531: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492974) PROBE_RELAY: Forward failed seq=1296: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492984) PROBE_RELAY: Forward failed seq=1679: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492994) PROBE_RELAY: Forward failed seq=1162: ESP_ERR_INVALID_STATE[0m
+[0;33mW (492994) PROBE_RELAY: Forward failed seq=1532: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493004) PROBE_RELAY: Forward failed seq=1297: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493014) PROBE_RELAY: Forward failed seq=1533: ESP_ERR_INVALID_STATE[0m
+[0;32mI (493014) WORMHOLE: TUNNEL TEST #1 from B received over the UART, re-injected toward the root (ESP_ERR_INVALID_STATE).[0m
+[0;33mW (493014) PROBE_RELAY: Forward failed seq=1163: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493034) PROBE_RELAY: Forward failed seq=1549: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493044) PROBE_RELAY: Forward failed seq=1298: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493054) PROBE_RELAY: Forward failed seq=1534: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493054) PROBE_RELAY: Forward failed seq=1164: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493064) PROBE_RELAY: Forward failed seq=1550: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493074) PROBE_RELAY: Forward failed seq=1299: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493084) PROBE_RELAY: Forward failed seq=1535: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493084) PROBE_RELAY: Forward failed seq=1165: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493094) PROBE_RELAY: Forward failed seq=1300: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493104) PROBE_RELAY: Forward failed seq=1551: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493114) PROBE_RELAY: Forward failed seq=1536: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493114) PROBE_RELAY: Forward failed seq=1166: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493124) PROBE_RELAY: Forward failed seq=1301: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493134) PROBE_RELAY: Forward failed seq=1552: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493134) PROBE_RELAY: Forward failed seq=1537: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493144) PROBE_RELAY: Forward failed seq=1167: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493154) PROBE_RELAY: Forward failed seq=1302: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493164) PROBE_RELAY: Forward failed seq=1553: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493164) PROBE_RELAY: Forward failed seq=1538: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493174) PROBE_RELAY: Forward failed seq=1168: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493184) PROBE_RELAY: Forward failed seq=1303: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493184) PROBE_RELAY: Forward failed seq=1554: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493194) PROBE_RELAY: Forward failed seq=1169: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493204) PROBE_RELAY: Forward failed seq=1304: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493214) PROBE_RELAY: Forward failed seq=1555: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493214) PROBE_RELAY: Forward failed seq=1170: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493224) PROBE_RELAY: Forward failed seq=1556: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493234) PROBE_RELAY: Forward failed seq=1305: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493234) PROBE_RELAY: Forward failed seq=1557: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493244) PROBE_RELAY: Forward failed seq=1306: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493254) PROBE_RELAY: Forward failed seq=1171: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493264) PROBE_RELAY: Forward failed seq=1307: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493264) PROBE_RELAY: Forward failed seq=1558: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493274) PROBE_RELAY: Forward failed seq=1172: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493284) PROBE_RELAY: Forward failed seq=1559: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493294) PROBE_RELAY: Forward failed seq=1308: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493294) PROBE_RELAY: Forward failed seq=1309: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493304) PROBE_RELAY: Forward failed seq=1560: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493314) PROBE_RELAY: Forward failed seq=1561: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493314) PROBE_RELAY: Forward failed seq=1310: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493324) PROBE_RELAY: Forward failed seq=1311: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493334) PROBE_RELAY: Forward failed seq=1562: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493344) PROBE_RELAY: Forward failed seq=1563: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493344) PROBE_RELAY: Forward failed seq=1312: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493354) PROBE_RELAY: Forward failed seq=1564: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493564) PROBE_RELAY: Forward failed seq=1680: ESP_ERR_INVALID_STATE[0m
+[0;33mW (493614) WORMHOLE: Wormhole end A -> B (depth vs peer)[0m
+[0;32mI (493614) NODE_ID: Role WORMHOLE_A -> WORMHOLE_B (decided at run time)[0m
+[0;33mW (493614) WORMHOLE: UART tunnel link OK again - peer heard.[0m
+I (494104) wifi:state: auth -> init (0x200)
+I (494114) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (494114) MESH_SETUP: Parent disconnected — reason 2.[0m
+I (494114) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (494124) wifi:state: init -> auth (0xb0)
+I (495324) wifi:state: auth -> init (0x200)
+I (495344) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (495344) MESH_SETUP: Parent disconnected — reason 2.[0m
+I (495344) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (495354) wifi:state: init -> auth (0xb0)
+I (496554) wifi:state: auth -> init (0x200)
+I (496574) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (496574) MESH_SETUP: Parent disconnected — reason 2.[0m
+I (496574) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (496584) wifi:state: init -> auth (0xb0)
+I (497784) wifi:state: auth -> init (0x200)
+I (497804) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (497804) MESH_SETUP: Parent disconnected — reason 2.[0m
+I (497804) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (497814) wifi:state: init -> auth (0xb0)
+I (499014) wifi:state: auth -> init (0x200)
+I (499034) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (499034) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (499034) wifi:state: init -> auth (0xb0)
+[0;33mW (499034) MESH_SETUP: Parent disconnected — reason 2.[0m
+I (500244) wifi:state: auth -> init (0x200)
+I (500254) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+[0;33mW (500254) MESH_SETUP: Parent disconnected — reason 2.[0m
+W (500884) wifi:scan number is 0
+W (501484) wifi:scan number is 0
+W (502094) wifi:scan number is 0
+W (502214) wifi:scan number is 0
+W (502814) wifi:scan number is 0
+W (503424) wifi:scan number is 0
+W (503544) wifi:scan number is 0
+W (504144) wifi:scan number is 0
+W (504744) wifi:scan number is 0
+W (504874) wifi:scan number is 0
+W (505474) wifi:scan number is 0
+W (506074) wifi:scan number is 0
+W (506204) wifi:scan number is 0
+W (506804) wifi:scan number is 0
+W (507404) wifi:scan number is 0
+W (507524) wifi:scan number is 0
+W (508134) wifi:scan number is 0
+W (508734) wifi:scan number is 0
+W (508854) wifi:scan number is 0
+W (509454) wifi:scan number is 0
+W (510064) wifi:scan number is 0
+W (510184) wifi:scan number is 0
+W (510784) wifi:scan number is 0
+W (511394) wifi:scan number is 0
+W (511514) wifi:scan number is 0
+W (512114) wifi:scan number is 0
+W (512714) wifi:scan number is 0
+W (512844) wifi:scan number is 0
+W (513444) wifi:scan number is 0
+W (514044) wifi:scan number is 0
+W (514174) wifi:scan number is 0
+W (514774) wifi:scan number is 0
+W (515374) wifi:scan number is 0
+W (515494) wifi:scan number is 0
+[0;32mI (515624) HEALTH: [HEALTH] up=514s heap=50620 min=46708 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4280 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2124 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+I (516744) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<11,0>, prof:11, snd_ch_cfg:0x0
+I (516744) wifi:state: init -> auth (0xb0)
+I (516764) wifi:state: auth -> assoc (0x0)
+I (516774) wifi:state: assoc -> run (0x10)
+I (516774) wifi:connected with ESPM_F33218, aid = 1, channel 11, BW20, bssid = b0:cb:d8:f3:32:19
+I (516774) wifi:security: Open Auth, phy: bgn, rssi: -66, cipher(pairwise:0x0, group:0x0), pmf:0
+I (516784) wifi:pm start, type: 0
+
+[0;32mI (516794) MESH_SETUP: Routing table updated (node added).[0m
+[0;32mI (516794) MESH_SETUP: ==============================[0m
+[0;32mI (516794) MESH_SETUP:   MESH CONNECTED: 7 node(s)[0m
+[0;32mI (516804) MESH_SETUP: ==============================[0m
+I (516804) wifi:[0;32mI (516814) WORMHOLE: TUNNEL TEST #2 sent to A over the UART (ok) - the root prints '[TUNTEST]' when it arrives through A.[0m
+<ba-add>idx:0 (ifx:0, b0:cb:d8:f3:32:19), tid:5, ssn:0, winSize:64
+[0;33mW (516824) WORMHOLE: Wormhole end B -> A (depth vs peer)[0m
+[0;32mI (516834) NODE_ID: Role WORMHOLE_B -> WORMHOLE_A (decided at run time)[0m
+[0;32mI (516814) MESH_SETUP: Parent connected. Layer=2  ParentMAC=b0:cb:d8:f3:32:19  IsRoot=NO[0m
+[0;32mI (516854) MESH_SETUP: ==============================[0m
+[0;32mI (516854) MESH_SETUP:   MESH CONNECTED: 7 node(s)[0m
+[0;32mI (516864) MESH_SETUP: ==============================[0m
+I (516844) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+[0;32mI (516874) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11[0m
+[0;32mI (516884) MESH_SETUP: Root address: b0:cb:d8:f3:32:19[0m
+[0;32mI (517534) WORMHOLE: TUNNEL TEST #2 from B received over the UART, re-injected toward the root (ok).[0m
+[0;33mW (520454) PHASE_LISTENER: Root RESTARTED (new session 8cf712dc) - dropped phase 255 from the old session; rows stay phase 255 until the new root's Phase 0.[0m
+[0;32mI (527524) WORMHOLE: TUNNEL TEST #3 from B received over the UART, re-injected toward the root (ok).[0m
+W (537774) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:424, no_wnd_count:0, timeout_count:0
+[0;32mI (538084) WORMHOLE: TUNNEL TEST #4 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (545634) HEALTH: [HEALTH] up=544s heap=51696 min=46708 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+[0;32mI (547624) WORMHOLE: TUNNEL TEST #5 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (557724) WORMHOLE: TUNNEL TEST #6 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (567824) WORMHOLE: TUNNEL TEST #7 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (575644) HEALTH: [HEALTH] up=575s heap=51696 min=46288 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1496 ipc1=1520[0m
+[0;32mI (577824) WORMHOLE: TUNNEL TEST #8 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (587924) WORMHOLE: TUNNEL TEST #9 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (598024) WORMHOLE: TUNNEL TEST #10 from B received over the UART, re-injected toward the root (ok).[0m
+[0;32mI (605654) HEALTH: [HEALTH] up=605s heap=51696 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (606104) PHASE_LISTENER: Phase update → phase_id=0  gt_label=0  seq=18  root_ts=91844657 us[0m
+[0;33mW (606144) WORMHOLE: LOCKED as NODE A (exit) (exit/entry by depth: mine L2, peer L3) - fixed for the rest of the run.[0m
+I (620584) wifi:dp: 1, bi: 1024000, li: 1, scale listen interval from 307200 us to 1024000 us
+[0;32mI (635664) HEALTH: [HEALTH] up=635s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (665674) HEALTH: [HEALTH] up=665s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (695684) HEALTH: [HEALTH] up=695s heap=51492 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (725704) HEALTH: [HEALTH] up=725s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (755714) HEALTH: [HEALTH] up=755s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (785724) HEALTH: [HEALTH] up=785s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (815734) HEALTH: [HEALTH] up=815s heap=51492 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (845744) HEALTH: [HEALTH] up=845s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (875754) HEALTH: [HEALTH] up=875s heap=51828 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (905774) HEALTH: [HEALTH] up=905s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (906684) PHASE_LISTENER: Phase update → phase_id=2  gt_label=2  seq=19  root_ts=392424340 us[0m
+[0;32mI (935784) HEALTH: [HEALTH] up=935s heap=51496 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (965804) HEALTH: [HEALTH] up=965s heap=51568 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (995814) HEALTH: [HEALTH] up=995s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1025824) HEALTH: [HEALTH] up=1025s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+W (1041604) mesh: [mesh_schedule.c,3127] [WND-RX]max_wnd:1, 1200 ms timeout, seqno:0, xseqno:13191, no_wnd_count:0, timeout_count:0
+[0;32mI (1055834) HEALTH: [HEALTH] up=1055s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1085844) HEALTH: [HEALTH] up=1085s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1087264) PHASE_LISTENER: Phase update → phase_id=3  gt_label=0  seq=20  root_ts=573005439 us[0m
+[0;32mI (1115854) HEALTH: [HEALTH] up=1115s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1145864) HEALTH: [HEALTH] up=1145s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1175874) HEALTH: [HEALTH] up=1175s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1205884) HEALTH: [HEALTH] up=1205s heap=51820 min=46236 big=47104 | stack free(B): telemetry=1116 probe_gen=2212 probe_relay=2192 phase_listener=4248 heartbeat=4236 csv_export=3800 wh_uart_rx=2148 wh_role=2092 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1207804) PHASE_LISTENER: Phase update → phase_id=4  gt_label=0  seq=21  root_ts=693547270 us[0m
+[0;32mI (1207804) PHASE_LISTENER: Experiment terminated — phase listener task exiting.[0m
+[0;32mI (1207804) WORMHOLE: AUTO-SWITCH: OK - ran as NODE A (exit), decided by depth, peer heard, no conflict, shortcut held. UART bad windows: 213.[0m
+[0;32mI (1207824) WORMHOLE: Experiment complete as NODE A. Received: 722  Re-injected: 722  Fail: 0[0m
+[0;32mI (1207854) CSV_LOGGER: Telemetry file closed: /spiffs/telem.csv[0m
+[0;32mI (1207874) CSV_LOGGER: SD card unmounted — safe to remove.[0m
+[0;32mI (1207874) main_task: Returned from app_main()[0m
+[0;32mI (1207884) WORMHOLE: Telemetry task exiting.[0m
+[0;32mI (1207984) WORMHOLE: Probe generator exiting.[0m
+[0;32mI (1217734) MESH_SETUP: Heartbeat task exiting - log closed and reported (child node); the board stays up for serial export commands.[0m
+[0;32mI (1235894) HEALTH: [HEALTH] up=1235s heap=111340 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1265904) HEALTH: [HEALTH] up=1265s heap=111100 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1295914) HEALTH: [HEALTH] up=1295s heap=111100 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1325924) HEALTH: [HEALTH] up=1325s heap=111096 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1355934) HEALTH: [HEALTH] up=1355s heap=111096 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1385944) HEALTH: [HEALTH] up=1385s heap=111096 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[0;32mI (1415954) HEALTH: [HEALTH] up=1415s heap=111096 min=46236 big=47104 | stack free(B): probe_relay=2192 csv_export=3800 wh_uart_rx=2148 wh_fwd=2204 wh_reinject=2196 sd_recover=3504 ipc0=1448 ipc1=1520[0m
+[monitor] closed

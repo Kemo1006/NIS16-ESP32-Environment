@@ -1,0 +1,25 @@
+collect_run.py --ports COM3,COM9,COM10,COM30,COM31,COM41,COM42 --attack wormhole --topology star --location DLSU_Library --scenario highload --repeat 1 --since 2026-10-20 13:54 --skip-mac b0:cb:d8:f3:32:18 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-star-dlsu_library-highload.json --expect-mac COM3=2805A532D7B4;COM9=B4BFE932FE90;COM10=704BCA25B768;COM30=B4BFE934ED80;COM31=20500DE71C38;COM41=20500DE70C80;COM42=F42DC973E618 --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmpAD31.tmp
+(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\highload\collect-scan_oct21_015458am.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 2805A532D7B4 OK would copy victim_NODE_2805A532D7B4_r2_b2_telem.csv (? rows, ran 2026-10-21 00:52:27) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (577,886 B, ran 2026-10-21 00:52:27; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM9: reading the card ...
+COLLECT: COM9 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r2_b2_telem.csv (? rows, ran 2026-10-21 00:51:52) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (576,597 B, ran 2026-10-21 00:51:52; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM10: reading the card ...
+COLLECT: COM10 704BCA25B768 OK would copy victim_NODE_704BCA25B768_r2_b2_telem.csv (? rows, ran 2026-10-21 00:52:21) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (582,212 B, ran 2026-10-21 00:52:21; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM30: reading the card ...
+COLLECT: COM30 B4BFE934ED80 OK would copy victim_NODE_B4BFE934ED80_r2_b2_telem.csv (? rows, ran 2026-10-21 00:51:57) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (572,362 B, ran 2026-10-21 00:51:57; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM31: reading the card ...
+COLLECT: COM31 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r2_b2_telem.csv (? rows, ran 2026-10-21 00:52:21) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (578,429 B, ran 2026-10-21 00:52:21; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+-- COM41: reading the card ...
+COLLECT: COM41 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r5_b5_telem.csv (? rows, ran 2026-10-21 00:46:40) - PARTIAL: the board LOST THE ROOT during the run and closed its file safely after the planned run - took it (625,053 B, ran 2026-10-21 00:46:40). Rows after the loss carry the last phase it heard - check the run summary / root log
+
+-- COM42: reading the card ...
+COLLECT: COM42 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r3_b142_telem.csv (? rows, ran 2026-10-21 00:52:15) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (527,503 B, ran 2026-10-21 00:52:15; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0
