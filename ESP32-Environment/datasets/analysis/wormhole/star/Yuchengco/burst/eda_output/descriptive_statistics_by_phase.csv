@@ -1,0 +1,13 @@
+label,node_role,feature,mean,median,variance,n_valid,n_total
+Baseline,root,IngressEgressDelta,0.0,0.0,0.0,420,420
+Baseline,root,ParentSwitchRate,0.0,0.0,0.0,420,420
+Baseline,root,HopChangeCount,0.0,0.0,0.0,420,420
+Baseline,root,HopStabilityDuration,0.9997619047619047,1.0,2.3809523809523827e-05,420,420
+Baseline,root,RSSI_var,0.0,0.0,0.0,420,420
+Baseline,root,RSSI_stability,0.0,0.0,0.0,420,420
+Wormhole,root,IngressEgressDelta,0.0,0.0,0.0,180,180
+Wormhole,root,ParentSwitchRate,0.0,0.0,0.0,180,180
+Wormhole,root,HopChangeCount,0.0,0.0,0.0,180,180
+Wormhole,root,HopStabilityDuration,1.0,1.0,0.0,180,180
+Wormhole,root,RSSI_var,0.0,0.0,0.0,180,180
+Wormhole,root,RSSI_stability,0.0,0.0,0.0,180,180
