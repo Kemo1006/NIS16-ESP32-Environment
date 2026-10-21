@@ -552,3 +552,14 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Basis** | Engineering decision (labelling validity). |
 | **Effect** | blackhole/linear/G402/burst and blackhole/linear/home/burst: GOOD → MINOR GAPS (they were already Campaign CHECK by design). No other run changes. |
 | **Paper edit** | Grading table: add "the scenario was not applied" under MINOR GAPS. Checklist A35. |
+
+## D-35 · Benign runs: per topology one per location, each a different scenario (oct. 21, 2026)
+
+| | |
+|---|---|
+| **Before** | One matched benign run per (location, topology); inside one LOCATION the 4 topologies used 4 different scenarios (oct. 7 rule). With jitter out (D-33) 3 of the 12 benign slots were jitter and dropped: 9 benign planned. |
+| **Why** | User (oct. 21): "in our BENIGN ONLY (NOT THE ATTACKER) 3 runs each, basically 1 run per location but with diff scenario ... may also be randomized in other topology". Attack runs are NOT changed (still every scenario). |
+| **We do** | Per TOPOLOGY the 3 benign runs (G402, DLSU_Library, Yuchengco) use 3 DIFFERENT scenarios, and which location gets which is shuffled per topology; per location each scenario 1-2x, 4 runs per scenario overall. Captured benign runs are pinned. `inventory_cells.py --draw-benign` / `--set-benign`; GUI Campaign → Plan settings → "Benign runs" grid (pick per box, or Shuffle). Drawn (G402 / Library / Yuchengco): linear highload / stationary / burst; star stationary / highload / burst; tree stationary / burst / highload; partial_mesh burst / highload / stationary. Plan = 84 (72 attack + 12 benign). Matched pair still holds: every attack cell runs all 3 scenarios. |
+| **Basis** | Team scope decision (Latin-square style rotation). **Adviser check**: within one topology the benign scenario and location are confounded; the attack runs at the same location/scenario are the matched comparison. |
+| **Effect** | Benign run count 9 → 12; which benign scenario per location/topology. |
+| **Paper edit** | Methodology run matrix + benign-run sentence; Limitations note on the confounding. Checklist A36. |

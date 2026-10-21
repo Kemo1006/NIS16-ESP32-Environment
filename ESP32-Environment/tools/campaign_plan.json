@@ -154,20 +154,20 @@
       "jitter"
     ]
   },
-  "benign_note": "One matched benign (attack none) run per location/topology; the 4 topologies of a location use 4 different scenarios. Drawn once by inventory_cells.py (oct. 7, 2026).",
+  "benign_note": "One matched benign (attack none) run per location/topology; per topology the 3 locations use 3 different scenarios, shuffled per topology (oct. 21, 2026, D-35). Edit in Campaign > Plan settings.",
   "benign": {
-    "G402/linear": "jitter",
-    "G402/star": "burst",
+    "G402/linear": "highload",
+    "G402/star": "stationary",
     "G402/tree": "stationary",
-    "G402/partial_mesh": "highload",
-    "DLSU_Library/linear": "jitter",
-    "DLSU_Library/star": "stationary",
-    "DLSU_Library/tree": "highload",
-    "DLSU_Library/partial_mesh": "burst",
-    "Yuchengco/linear": "stationary",
-    "Yuchengco/star": "jitter",
+    "G402/partial_mesh": "burst",
+    "DLSU_Library/linear": "stationary",
+    "DLSU_Library/star": "highload",
+    "DLSU_Library/tree": "burst",
+    "DLSU_Library/partial_mesh": "highload",
+    "Yuchengco/linear": "burst",
+    "Yuchengco/star": "burst",
     "Yuchengco/tree": "highload",
-    "Yuchengco/partial_mesh": "burst"
+    "Yuchengco/partial_mesh": "stationary"
   },
   "skip": {
     "locations": [],

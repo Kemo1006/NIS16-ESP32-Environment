@@ -15,6 +15,40 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #82 — Oct 21, 2026 · ~3:30 PM — wormhole / partial_mesh / G402 / highload, the oct. 21 3:02 PM recapture
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4bc3dfd` (+ GitHub `adb2328`, the 3:21 PM smart sync that sent this run)
+> **Request:** "check the most recent partial mesh-g402-highload-wormhole run, and if its usable and valid"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | partial_mesh | G402 | highload | r1 | oct. 21, root 3:02 PM, children 3:04-3:17 PM (replaces the oct. 19 6:07 PM run, archived: `archive/2026-10-21_wormhole-partial_mesh-G402-highload-r1-replaced`, covered by #63) | `datasets/exports/wormhole/partial_mesh/G402/highload/` (root + arrivals + 7 children), analysis 3:22 PM |
+
+| Check | Result | Detail |
+|---|---|---|
+| verify_attack.py | ✅ WORMHOLE CONFIRMED · GOOD · OUTCOME PASS | TunnelIntensity 0 -> 3.995, DuplicateRate 0 -> 1.000 (2/2 primaries); TunnelBytes support |
+| Scenario | ✅ highload APPLIED | children probed 4.0/s in the baseline (~4/s expected) |
+| Tunnel | ✅ | one A (0C80, layer 4) + one B (E618, layer 5), A shallower than B, roles stable; UART B sent ~719 / A received ~720 frames; root saw duplicates in 180 attack windows; 720 duplicate deliveries from E618 in phase 2 |
+| START | ✅ normal | no START_ANYWAY in the root run log (`..._oct21_0246PM.log`) |
+| Completeness (inventory_cells) | ✅ OK | 7 children + root + arrivals, 16,094 rows |
+| validate_integrity, raw exports | ⚠️ 8 PASS, 1 FAIL | root telem: timestamp regression at row 22 - the first 20 rows (2 s) are from the boot just before the run |
+| validate_integrity, trimmed (what the analysis reads) | ✅ 9/9 PASS | trim_run drops those 20 rows; analysis root samples 7,048 = 7,068 raw - 20 |
+| Sample coverage | ✅ | every board 100 % at 10 Hz, at most 1 gap |
+| Phases (arrivals) | ✅ | baseline 301 s, 6 victims 22.7 probes/s; attack 4,940 probes (x1.17 = the duplicates); cooldown 120 s at 103 % of baseline |
+| Topology (verify_topology --structure) | ✅ settled + no baseline re-routing · ⚠️ plain tree | depth 5, fan-out <= 2 (root 2, 2805 2, others 1) = partial mesh by placement + fan-out (D-29); no board seen under a 2nd parent (the same honest WARN as every partial-mesh run) |
+| Per-node delivery | ✅ | plain children PDR 0.999-1.000 baseline and attack (a wormhole duplicates, it does not drop) |
+| GitHub | ✅ captures there, ⚠️ analysis not yet | `adb2328` (3:21 PM) sent the 9 captures and removed the oct. 19 highload + oct. 19 stationary runs (OLD RUN - REPLACED); the analysis was made at 3:22 PM, after that sync - send it with the next Smart sync |
+
+**Findings:**
+- The run is complete and clean: all 8 boards for the whole run, highload applied, tunnel working end to end, normal START.
+- The only integrity FAIL is 20 rows of a previous boot at the top of the root's RAW file; the trimmed copy (used by the analysis and verifier) is clean. No action needed.
+- Topology note is the D-29 standing note for every partial-mesh run (allowed but not observed parent switching) - not a defect of this run.
+- Also confirmed: GitHub's `wormhole/partial_mesh/G402/stationary` now holds only the oct. 21 run (the mixed-run mess is fixed by the same sync).
+
+**Verdict: ✅ USABLE AND VALID — WORMHOLE CONFIRMED, grade GOOD, OUTCOME PASS. Footnote only the standard D-29 partial-mesh note. Send its analysis with the next Smart sync.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #81 — Oct 21, 2026 · ~12 AM — member's paper copy with the new Chapter 5: every Chapter 5 number recomputed, merged into v4
 
 > **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `f22ee5cd`

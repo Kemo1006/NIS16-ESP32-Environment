@@ -348,6 +348,17 @@ def _not_done_reason(r):
 #     campaign_plan.json "benign" (see _draw_benign). With 3 locations (oct. 7,
 #     2026: home dropped) that is 12 benign runs, 108 total, 2 per scenario.
 #
+#  4. SINCE OCT. 21, 2026 (user: "3 runs each ... 1 run per location but with
+#     diff scenario ... may also be randomized in other topology"): still ONE
+#     benign run per (location, topology), but the rule is now PER TOPOLOGY -
+#     its 3 benign runs (G402, Library, Yuchengco) use 3 DIFFERENT scenarios,
+#     and which location gets which scenario is shuffled per topology (e.g.
+#     tree: G402 highload, Library stationary, Yuchengco burst; partial_mesh:
+#     G402 stationary ...). Each location still sees every scenario, each
+#     scenario gets 4 runs. Benign runs already captured are pinned. Editable
+#     by hand in the Campaign "Plan settings" dialog (--draw-benign /
+#     --set-benign). D-35.
+#
 # MOBILITY and POWERCYCLE are human scenarios (no firmware flag) — label-only.
 # oct. 7, 2026: "home" left the campaign (its captures still scan, as off-plan),
 # "Goks" renamed "Yuchengco".
@@ -360,6 +371,12 @@ PLAN_ATTACKS = ["blackhole", "wormhole"]
 # Pool == SCENARIOS_PER_CELL, so every cell runs all 4; only the order is drawn.
 SCENARIO_POOL = ["stationary", "highload", "burst", "jitter"]
 SCENARIOS_PER_CELL = 4
+# oct. 21, 2026 (user: "give options more scenario in the settings like the mobility
+# powercycle"): the two human-in-the-loop scenarios are back as OPT-IN plan options.
+# They are OFF unless campaign_plan.json "add_scenarios" lists them (Plan settings
+# tick box); ticked, every (location, topology, attack) cell gets that scenario as
+# an extra slot after its drawn ones. The benign assignment is not touched.
+OPTIONAL_SCENARIOS = ["mobility", "powercycle"]
 
 
 # "stationary" is the no-variation scenario everywhere since sep. 24 2026;
@@ -389,24 +406,29 @@ PLAN_FILE = os.path.join(_THIS_DIR, "campaign_plan.json")
 # (done / total shrink), its captures become off-plan, nothing is deleted. The
 # drawn order in "cells" is kept, so un-ticking it again restores the old slots.
 PLAN_ALL = {"locations": list(PLAN_LOCATIONS), "topologies": list(PLAN_TOPOLOGIES),
-            "attacks": list(PLAN_ATTACKS) + ["baseline"], "scenarios": list(SCENARIO_POOL)}
+            "attacks": list(PLAN_ATTACKS) + ["baseline"],
+            "scenarios": list(SCENARIO_POOL) + OPTIONAL_SCENARIOS}
 
 
 def read_plan_skip():
     import json
     try:
         with open(PLAN_FILE, encoding="utf-8") as fh:
-            sk = json.load(fh).get("skip") or {}
+            data = json.load(fh)
     except (OSError, ValueError):
-        sk = {}
+        data = {}
+    sk = dict(data.get("skip") or {})
+    added = set(data.get("add_scenarios") or [])
+    sk["scenarios"] = list(sk.get("scenarios") or []) + [x for x in OPTIONAL_SCENARIOS if x not in added]
     return {k: sorted(set(sk.get(k) or []) & set(v)) for k, v in PLAN_ALL.items()}
 
 
 PLAN_SKIP = read_plan_skip()
+SCENARIO_POOL += OPTIONAL_SCENARIOS
 for _lst, _key in ((PLAN_LOCATIONS, "locations"), (PLAN_TOPOLOGIES, "topologies"),
                    (PLAN_ATTACKS, "attacks"), (SCENARIO_POOL, "scenarios")):
     _lst[:] = [x for x in _lst if x not in PLAN_SKIP[_key]]
-SCENARIOS_PER_CELL = min(SCENARIOS_PER_CELL, len(SCENARIO_POOL))
+SCENARIOS_PER_CELL = len(SCENARIO_POOL)   # every cell runs the whole active pool
 
 
 def write_plan_skip(skip):
@@ -418,8 +440,14 @@ def write_plan_skip(skip):
     for k, v in PLAN_ALL.items():
         if k != "attacks" and len(clean[k]) >= len(v):
             raise SystemExit(f"ERROR: at least one {k[:-1]} must stay in the plan")
-    if any(clean.values()):
-        data["skip"] = clean
+    added = [x for x in OPTIONAL_SCENARIOS if x not in clean["scenarios"]]
+    stored = dict(clean, scenarios=[x for x in clean["scenarios"] if x not in OPTIONAL_SCENARIOS])
+    if added:
+        data["add_scenarios"] = added
+    else:
+        data.pop("add_scenarios", None)
+    if any(stored.values()):
+        data["skip"] = stored
     else:
         data.pop("skip", None)
     with open(PLAN_FILE, "w", encoding="utf-8") as fh:
@@ -459,38 +487,76 @@ def _draw_plan(seed):
     return cells
 
 
-def _draw_benign(cells, seed):
+def _draw_benign(cells, seed, pins=None):
     """{"loc/topo": scenario}: one benign run per (location, topology).
 
-    Inside a location the 4 topologies get 4 different scenarios, each one
-    that cell's attack runs drew (so it is a matched pair). Across locations
-    the least-used scenarios are preferred, so all 6 get benign coverage.
+    Oct. 21, 2026 rule (D-35): per TOPOLOGY the locations get DIFFERENT
+    scenarios (a shuffled permutation of the active pool, cycled when there are
+    more locations than scenarios); per location the scenarios stay balanced.
+    `pins` {"loc/topo": scenario} (benign runs already captured) are kept.
+    The matched-pair rule holds because every cell runs the whole active pool.
     """
     import itertools
     import random
     rng = random.Random(seed)
-    used = defaultdict(int)
-    out = {}
-    for loc in PLAN_LOCATIONS:
-        options = []
+    pins = {k: v for k, v in (pins or {}).items() if v in SCENARIO_POOL}
+    pool, locs = list(SCENARIO_POOL), list(PLAN_LOCATIONS)
+    reps = -(-len(locs) // len(pool))
+    perms = sorted({p[:len(locs)] for p in itertools.permutations(pool * reps, len(locs))
+                    if len(set(p[:len(locs)])) == min(len(pool), len(locs))})
+    best, best_score = None, None
+    for _ in range(4000):
+        pick = {}
         for topo in PLAN_TOPOLOGIES:
-            drawn = set()
-            for atk in PLAN_ATTACKS:
-                drawn |= {canon_scenario(x) for x in cells[f"{loc}/{topo}/{atk}"]}
-            options.append(sorted(drawn))
-        best, best_score = None, None
-        for combo in itertools.product(*options):
-            if len(set(combo)) < len(combo):
-                continue
-            score = (sum(used[x] for x in combo), rng.random())
-            if best_score is None or score < best_score:
-                best, best_score = combo, score
-        if best is None:          # cannot happen with 4 drawn per cell, but never crash
-            best = tuple(o[0] for o in options)
-        for topo, scn in zip(PLAN_TOPOLOGIES, best):
-            out[f"{loc}/{topo}"] = scn
-            used[scn] += 1
+            fit = [p for p in perms if all(pins.get(f"{l}/{topo}", x) == x for l, x in zip(locs, p))]
+            perm = rng.choice(fit or perms)
+            for l, x in zip(locs, perm):
+                pick[f"{l}/{topo}"] = pins.get(f"{l}/{topo}", x)
+        per_loc = [[sum(1 for t in PLAN_TOPOLOGIES if pick[f"{l}/{t}"] == x) for x in pool] for l in locs]
+        totals = [sum(c[i] for c in per_loc) for i in range(len(pool))]
+        same_neighbour = sum(1 for a, b in zip(PLAN_TOPOLOGIES, PLAN_TOPOLOGIES[1:])
+                             if all(pick[f"{l}/{a}"] == pick[f"{l}/{b}"] for l in locs))
+        score = (sum(max(c) - min(c) for c in per_loc) + max(totals) - min(totals),
+                 same_neighbour, rng.random())
+        if best_score is None or score < best_score:
+            best, best_score = pick, score
+    return {f"{l}/{t}": best[f"{l}/{t}"] for l in locs for t in PLAN_TOPOLOGIES}
+
+
+def captured_benign():
+    """{"loc/topo": scenario} for benign (baseline) runs with a root capture on disk."""
+    out = {}
+    base = os.path.join(_REPO, "datasets", "exports", "baseline")
+    for topo in PLAN_TOPOLOGIES:
+        for loc in PLAN_LOCATIONS:
+            for scn in SCENARIO_POOL:
+                d = os.path.join(base, topo, loc, scn)
+                if os.path.isdir(d) and any(f.startswith("root_") for f in os.listdir(d)):
+                    out.setdefault(f"{loc}/{topo}", scn)
     return out
+
+
+def write_plan_benign(mapping):
+    """Save a hand-edited / re-drawn benign assignment into campaign_plan.json."""
+    import json
+    with open(PLAN_FILE, encoding="utf-8") as fh:
+        data = json.load(fh)
+    new = dict(data.get("benign") or {})
+    for k, v in mapping.items():
+        loc, _, topo = k.partition("/")
+        if loc not in PLAN_ALL["locations"] or topo not in PLAN_ALL["topologies"]:
+            raise SystemExit(f"ERROR: unknown benign slot {k}")
+        if canon_scenario(v) not in PLAN_ALL["scenarios"]:
+            raise SystemExit(f"ERROR: unknown scenario {v} for {k}")
+        new[k] = canon_scenario(v)
+    data["benign"] = new
+    data["benign_note"] = ("One matched benign (attack none) run per location/topology; per topology "
+                           "the 3 locations use 3 different scenarios, shuffled per topology "
+                           "(oct. 21, 2026, D-35). Edit in Campaign > Plan settings.")
+    with open(PLAN_FILE, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    return new
 
 
 def load_plan(reshuffle=False, seed=None):
@@ -513,10 +579,9 @@ def load_plan(reshuffle=False, seed=None):
         print(f"  NEW randomised plan drawn (seed {seed}) -> {PLAN_FILE}")
         print("  Commit it so every laptop works the same plan.")
     if "benign" not in data or reshuffle:
-        data["benign"] = _draw_benign(data["cells"], data.get("seed"))
-        data["benign_note"] = ("One matched benign (attack none) run per location/topology; "
-                               "the 4 topologies of a location use 4 different scenarios. "
-                               "Drawn once by inventory_cells.py (oct. 7, 2026).")
+        data["benign"] = _draw_benign(data["cells"], data.get("seed"), captured_benign())
+        data["benign_note"] = ("One matched benign (attack none) run per location/topology; per topology "
+                               "the 3 locations use 3 different scenarios (oct. 21, 2026, D-35).")
         with open(PLAN_FILE, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
         print(f"  benign runs drawn (one per location/topology) -> {PLAN_FILE}")
@@ -526,7 +591,8 @@ def load_plan(reshuffle=False, seed=None):
         loc, topo, atk = k.split("/")
         if loc in sk["locations"] or topo in sk["topologies"] or atk in sk["attacks"]:
             continue
-        plan[(loc, topo, atk)] = [canon_scenario(x) for x in s if canon_scenario(x) not in sk["scenarios"]]
+        lst = [canon_scenario(x) for x in s if canon_scenario(x) not in sk["scenarios"]]
+        plan[(loc, topo, atk)] = lst + [x for x in SCENARIO_POOL if x not in lst]   # opt-in extras
     # ("benign", loc, topo) -> [scenario]: the cell's one matched benign run.
     for k, scn in data["benign"].items():
         loc, topo = k.split("/")
@@ -1149,7 +1215,26 @@ def main():
                     help='Plan settings: take items out of the plan, e.g. \'{"scenarios": ["jitter"]}\' '
                          '(keys: scenarios, locations, topologies, attacks; "{}" = full plan). '
                          'Writes campaign_plan.json "skip"; commit it so every laptop has the same plan.')
+    ap.add_argument("--draw-benign", action="store_true",
+                    help="Print a fresh benign assignment as JSON (one per location/topology, "
+                         "per topology 3 different scenarios; captured benign runs pinned). Writes nothing.")
+    ap.add_argument("--set-benign", default=None, metavar="JSON",
+                    help='Save the benign assignment, e.g. \'{"G402/tree": "highload"}\' (only the given '
+                         'slots change). Writes campaign_plan.json "benign".')
     args = ap.parse_args()
+    if args.draw_benign:
+        import json
+        import random
+        print(json.dumps({"benign": _draw_benign(None, args.seed if args.seed is not None
+                                                 else random.SystemRandom().randrange(1, 10**9),
+                                                 captured_benign()),
+                          "captured": captured_benign(), "scenarios": SCENARIO_POOL}))
+        return
+    if args.set_benign is not None:
+        import json
+        new = write_plan_benign(json.loads(args.set_benign))
+        print(f"benign plan saved: {len(new)} runs")
+        return
     if args.set_skip is not None:
         import json
         clean = write_plan_skip(json.loads(args.set_skip))
