@@ -53,6 +53,8 @@ DATA_ROOTS = (ps.EXPORTS, ps.ANALYSIS, ps.LOGS, ps.PRESETS, ps.CONFLICTS, ps.ARC
 HOME = Path(os.environ.get("LOCALAPPDATA") or str(Path.home() / ".cache")) / "NIS16"
 STATE = HOME / "sync_state.json"
 ROW_TOL = 2
+# push items that REMOVE a file on GitHub (oct. 21 2026: + "replaced" = the old capture of a re-captured run)
+DELETE_KINDS = ("delete", "replaced")
 
 
 def sha_blob(data):
@@ -351,6 +353,52 @@ def telem_names(root, cell):
     return {f.name for f in d.iterdir() if f.is_file() and f.name.endswith("_telem.csv")}
 
 
+def replaced_archives():
+    """{(cell, file name): archive folder} for every capture tools/archive_replaced.py moved
+    aside when a run was RE-CAPTURED (archive/<date>_..._replaced/REPLACED.txt, line 1 =
+    '<attack/topology/location/scenario> repeat N'). oct. 21 2026."""
+    out = {}
+    top = BASE / "archive"
+    if not top.is_dir():
+        return out
+    for d in top.iterdir():
+        note = d / "REPLACED.txt"
+        if not note.is_file():
+            continue
+        try:
+            cell = (note.read_text(encoding="utf-8", errors="replace").splitlines() or [""])[0].split(" repeat ")[0].strip()
+        except OSError:
+            continue
+        if cell.count("/") != 3:
+            continue
+        for _, _, files in os.walk(d):
+            for f in files:
+                out.setdefault((cell, f), d.name)
+    return out
+
+
+def live_root_here(cell):
+    """True when this laptop's run folder holds a ROOT capture (the replacement run)."""
+    return any(n.startswith("root") for n in telem_names(BASE, cell))
+
+
+def mixed_runs(root, cells):
+    """Run folders under `root` holding MORE THAN ONE root capture of the SAME repeat = two
+    runs mixed in one folder (the analysis would read both). r1..r5 side by side are
+    planned repeats, not a mix. [(cell, [root file names])]"""
+    out = []
+    for c in sorted(cells):
+        by_rep = {}
+        for n in telem_names(root, c):
+            if n.startswith("root"):
+                m = re.search(r"_r(\d+)_", n)
+                by_rep.setdefault(m.group(1) if m else "?", []).append(n)
+        mixed = sorted(n for v in by_rep.values() if len(v) > 1 for n in v)
+        if mixed:
+            out.append((c, mixed))
+    return out
+
+
 def freshness(root, cell, extra=()):
     """fresh / stale / missing / unknown / noexports for one analysis cell under `root`."""
     tel = telem_names(root, cell) | set(extra)
@@ -537,7 +585,9 @@ def push_plan(ctx, area, lhash, rhash, hist, archived, deleted, rfp_cache):
                 c = deleted[rel]
                 items.append(dict(it, kind="deleted", act="skip",
                                   why="deleted from GitHub ({}, '{}') - not re-uploaded; use Restore if that was a mistake".format(c[1], c[2][:50])))
-            elif sha in r_by_sha:
+            elif sha in r_by_sha and area != ps.ANALYSIS:
+                # oct. 21 2026: not for analysis - every run's column legend is byte-identical to
+                # every other run's, and a run's analysis is incomplete without its own copy
                 items.append(dict(it, kind="duplicate", act="skip",
                                   why="GitHub already has this exact file as " + r_by_sha[sha]))
             else:
@@ -576,13 +626,34 @@ def content_twin(ctx, rel, path, rhash, cache):
     return None
 
 
+def code_race(ctx, cell):
+    """'mine' / 'theirs' / None: which analysis of `cell` was made with the CURRENT analysis
+    code (analysis/code_stamp.py, analysis_info.json), when exactly one of them was.
+    oct. 21 2026: "both current for the same captures" used to mean "a re-render", so a
+    real re-analysis (the #75 latency fix, #76 MacRetryRate) was never sent."""
+    try:
+        sys.path.insert(0, str(BASE / "analysis"))
+        import code_stamp
+    except Exception:
+        return None
+    cur = code_stamp.fingerprint()
+    m = code_stamp.read_info(str(BASE / ps.ANALYSIS / cell)) or {}
+    t = code_stamp.read_info(str(ctx.rroot / ps.ANALYSIS / cell)) or {}
+    mc, tc = m.get("code") == cur, t.get("code") == cur
+    if mc and not tc:
+        return "mine"
+    if tc and not mc:
+        return "theirs"
+    return None
+
+
 def judge_analysis(ctx, items, pending_exports):
     """Per analysis cell: push only a CURRENT analysis, and only where GitHub's isn't."""
     cells = {}
     for it in items:
         if it["area"] == "analysis":
             cells.setdefault(it["cell"], []).append(it)
-    verdicts = {}
+    verdicts, race = {}, {}
     for cell, its in cells.items():
         mine = freshness(BASE, cell)
         theirs = freshness(ctx.rroot, cell, extra=pending_exports.get(cell, ()))
@@ -591,13 +662,32 @@ def judge_analysis(ctx, items, pending_exports):
             if mine not in ("fresh", "unknown"):
                 it.update(act="skip", kind="stale", why="your analysis is {} - it does not cover every capture of this run; "
                           "re-analyse first".format("missing" if mine == "missing" else "STALE"))
+            elif it["kind"] == "update" and theirs == "fresh" and race.setdefault(cell, code_race(ctx, cell)) == "mine":
+                it.update(why="made with the CURRENT analysis code; GitHub's copy of this run was made with older code")
             elif it["kind"] == "update" and theirs == "fresh":
                 it.update(act="skip", kind="equivalent",
-                          why="GitHub already has a current analysis of the same data (re-renders differ by a few bytes)")
+                          why="GitHub already has a current analysis of the same data" + (
+                              " made with the CURRENT analysis code (yours is older - take theirs or re-analyse)"
+                              if race.get(cell) == "theirs" else " (re-renders differ by a few bytes)"))
             elif it["kind"] == "update":
                 it.update(why="replaces GitHub's {} analysis with your current one".format(theirs))
             elif it["kind"] == "new":
                 it.update(why="current analysis, not on GitHub yet")
+        # oct. 21 2026: ONE run's analysis travels as ONE unit. Before, a re-made plot that
+        # came out byte-identical to an OLD GitHub version was held back as "GitHub has a
+        # newer version" while the rest of the same analysis went up - GitHub would hold
+        # half of each (blackhole/linear/G402/burst: 12 sent, 18 held).
+        sending = any(it["act"] == "push" and it["kind"] == "update" for it in its)
+        holding = any(it["act"] == "skip" and it["kind"] in ("equivalent", "stale") for it in its)
+        for it in its:
+            if sending and not holding and it["kind"] == "older":
+                it.update(act="push", kind="update", dest=ctx.prefix + it["rel"],
+                          why="part of your analysis of this run - the whole analysis goes up together "
+                              "(this exact file was on GitHub once before)")
+            elif holding and it["act"] == "push" and it["kind"] == "new":
+                it.update(act="skip", kind="equivalent",
+                          why="the rest of your analysis of this run is held back, so this file is too "
+                              "(never half of one analysis + half of another)")
     return verdicts
 
 
@@ -695,6 +785,9 @@ def judge_pull_analysis(ctx, items, incoming_exports):
         for it in its:
             if not covers and theirs != "unknown":
                 it.update(act="skip", kind="stale", why="GitHub's analysis does not cover the captures you have - analyse here instead")
+            elif it["kind"] == "update" and mine == "fresh" and code_race(ctx, cell) == "theirs":
+                it.update(kind="replace", why="GitHub's analysis was made with the CURRENT analysis code, yours with "
+                                              "older code - replaces yours (backed up first)")
             elif it["kind"] == "update" and mine == "fresh":
                 it.update(act="skip", kind="equivalent", why="your analysis is already current for this data")
             elif it["kind"] == "update":
@@ -745,6 +838,7 @@ def build_status(ctx):
         for _, _, files in os.walk(BASE / "archive"):
             local_archived.update(files)
     dels = local_deletions()
+    replaced = replaced_archives()
     for key, area in AREAS.items():
         pull += pull_plan(ctx, area, rh[area], lh[area], local_archived, dels[area])
     # oct. 20 2026: a file deleted here that GitHub still has -> an explicit DELETE item,
@@ -756,7 +850,18 @@ def build_status(ctx):
             if rsha is None:
                 continue
             it = {"area": key, "rel": rel, "cell": cell_of(rel), "size": 0, "dest": ctx.prefix + rel}
-            if rsha == dsha or same_remote_cached(ctx, area, rel, dsha, rsha):
+            same = rsha == dsha or same_remote_cached(ctx, area, rel, dsha, rsha)
+            rep = replaced.get((it["cell"], rel.rsplit("/", 1)[-1]))
+            if same and rep and live_root_here(it["cell"]):
+                # oct. 21 2026: the OLD capture of a re-captured run (archive_replaced.py moved it
+                # here, REPLACED.txt says so). Leaving it on GitHub mixes two runs in one folder
+                # (wormhole/partial_mesh/G402/stationary, oct. 21) - ticked, and only while the
+                # new run's ROOT is here (never leaves a run folder with no capture at all).
+                push.append(dict(it, kind="replaced", act="push", tick=True,
+                                 why="old capture of a RE-CAPTURED run ({}) - GitHub still has it next to the new "
+                                     "run, so that folder mixes two captures. Deleting keeps one run per folder; it "
+                                     "stays in GitHub's history + your archive".format(rep)))
+            elif same:
                 push.append(dict(it, kind="delete", act="push", tick=False,
                                  why="you deleted this on this laptop; GitHub still has it - tick to delete it on "
                                      "GitHub too (a normal commit: it stays in GitHub's history, Restore brings it back)"))
@@ -810,7 +915,7 @@ def build_status(ctx):
         except OSError:
             pass
     for it in push:
-        if it["act"] == "push" and it["area"] == "exports" and it["kind"] != "delete":
+        if it["act"] == "push" and it["area"] == "exports" and it["kind"] not in DELETE_KINDS:
             ca = freshness(BASE, it["cell"])
             if ca != "fresh":
                 it["needsAnalysis"] = ca
@@ -821,6 +926,10 @@ def build_status(ctx):
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
+    # oct. 21 2026: run folders on GitHub that mix two captures, and whether this sync fixes it
+    fixing = {it["cell"] for it in push if it["kind"] == "replaced"}
+    health["mixed"] = [{"cell": c, "roots": r, "fix": c in fixing} for c, r in mixed_runs(ctx.rroot, cells)]
+    health["mixedHere"] = [{"cell": c, "roots": r} for c, r in mixed_runs(BASE, cells)]
     return {"health": health, "push": push, "pull": pull, "gone": gone, "cells": list(cells.values()),
             "update": update, "last": state.get(ctx.branch), "generated": int(time.time())}
 
@@ -858,7 +967,7 @@ def do_push(ctx, wanted, report):
         # an analysis cell never goes up without the captures it was made from
         cells = {it["cell"] for it in go if it["area"] == "analysis"}
         extra = [it for it in st["push"] if it["act"] == "push" and it["area"] == "exports"
-                 and it["kind"] != "delete" and it["cell"] in cells and it["rel"] not in wanted]
+                 and it["kind"] not in DELETE_KINDS and it["cell"] in cells and it["rel"] not in wanted]
         if extra:
             log("  + {} capture file(s) added so the analysis travels with its data".format(len(extra)))
             go += extra
@@ -871,9 +980,9 @@ def do_push(ctx, wanted, report):
             log("  Nothing to push - GitHub already has it.")
             return 0
         writes, removes = [], []
-        for it in [x for x in go if x["kind"] == "delete"]:
+        for it in [x for x in go if x["kind"] in DELETE_KINDS]:
             removes.append(it["dest"])
-        go_w = [x for x in go if x["kind"] != "delete"]
+        go_w = [x for x in go if x["kind"] not in DELETE_KINDS]
         for it in go_w:
             rel = it["rel"]
             area = AREAS[it["area"]]

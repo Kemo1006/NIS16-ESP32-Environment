@@ -168,5 +168,13 @@
     "Yuchengco/star": "jitter",
     "Yuchengco/tree": "highload",
     "Yuchengco/partial_mesh": "burst"
+  },
+  "skip": {
+    "locations": [],
+    "topologies": [],
+    "attacks": [],
+    "scenarios": [
+      "jitter"
+    ]
   }
 }

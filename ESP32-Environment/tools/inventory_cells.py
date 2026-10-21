@@ -381,6 +381,52 @@ def lbl(scn):
 # every laptop works the same plan. The slot order is also the run order.
 PLAN_FILE = os.path.join(_THIS_DIR, "campaign_plan.json")
 
+# PLAN SETTINGS (user, oct. 21 2026: "tick and untick the scenario and location and
+# it will modify the checklist - not a filter, if we change our minds we change the
+# plan"). campaign_plan.json "skip" = {"scenarios": [...], "locations": [...],
+# "topologies": [...], "attacks": [...]} ("baseline" in attacks drops the matched
+# benign runs). A skipped item leaves the PLAN itself: its slots stop counting
+# (done / total shrink), its captures become off-plan, nothing is deleted. The
+# drawn order in "cells" is kept, so un-ticking it again restores the old slots.
+PLAN_ALL = {"locations": list(PLAN_LOCATIONS), "topologies": list(PLAN_TOPOLOGIES),
+            "attacks": list(PLAN_ATTACKS) + ["baseline"], "scenarios": list(SCENARIO_POOL)}
+
+
+def read_plan_skip():
+    import json
+    try:
+        with open(PLAN_FILE, encoding="utf-8") as fh:
+            sk = json.load(fh).get("skip") or {}
+    except (OSError, ValueError):
+        sk = {}
+    return {k: sorted(set(sk.get(k) or []) & set(v)) for k, v in PLAN_ALL.items()}
+
+
+PLAN_SKIP = read_plan_skip()
+for _lst, _key in ((PLAN_LOCATIONS, "locations"), (PLAN_TOPOLOGIES, "topologies"),
+                   (PLAN_ATTACKS, "attacks"), (SCENARIO_POOL, "scenarios")):
+    _lst[:] = [x for x in _lst if x not in PLAN_SKIP[_key]]
+SCENARIOS_PER_CELL = min(SCENARIOS_PER_CELL, len(SCENARIO_POOL))
+
+
+def write_plan_skip(skip):
+    """Save the "skip" settings into campaign_plan.json; everything else untouched."""
+    import json
+    with open(PLAN_FILE, encoding="utf-8") as fh:
+        data = json.load(fh)
+    clean = {k: sorted(set(skip.get(k) or []) & set(v)) for k, v in PLAN_ALL.items()}
+    for k, v in PLAN_ALL.items():
+        if k != "attacks" and len(clean[k]) >= len(v):
+            raise SystemExit(f"ERROR: at least one {k[:-1]} must stay in the plan")
+    if any(clean.values()):
+        data["skip"] = clean
+    else:
+        data.pop("skip", None)
+    with open(PLAN_FILE, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    return clean
+
 
 def _draw_plan(seed):
     """Balanced draw: per location every scenario is used 5-6 times (32 slots /
@@ -460,6 +506,8 @@ def load_plan(reshuffle=False, seed=None):
                 "note": "Drawn once by inventory_cells.py; slot order = run order. "
                         "Commit this file. --reshuffle re-draws it.",
                 "cells": _draw_plan(seed)}
+        if any(PLAN_SKIP.values()):
+            data["skip"] = PLAN_SKIP   # a re-draw keeps the plan settings
         with open(PLAN_FILE, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
         print(f"  NEW randomised plan drawn (seed {seed}) -> {PLAN_FILE}")
@@ -473,13 +521,18 @@ def load_plan(reshuffle=False, seed=None):
             json.dump(data, fh, indent=2)
         print(f"  benign runs drawn (one per location/topology) -> {PLAN_FILE}")
     plan = {}
+    sk = PLAN_SKIP
     for k, s in data["cells"].items():
         loc, topo, atk = k.split("/")
-        plan[(loc, topo, atk)] = [canon_scenario(x) for x in s]
+        if loc in sk["locations"] or topo in sk["topologies"] or atk in sk["attacks"]:
+            continue
+        plan[(loc, topo, atk)] = [canon_scenario(x) for x in s if canon_scenario(x) not in sk["scenarios"]]
     # ("benign", loc, topo) -> [scenario]: the cell's one matched benign run.
     for k, scn in data["benign"].items():
         loc, topo = k.split("/")
-        plan[("benign", loc, topo)] = [canon_scenario(scn)]
+        if loc in sk["locations"] or topo in sk["topologies"] or "baseline" in sk["attacks"]:
+            continue
+        plan[("benign", loc, topo)] = [s for s in [canon_scenario(scn)] if s not in sk["scenarios"]]
     return plan
 
 
@@ -962,6 +1015,7 @@ def campaign_status(rows, assign, scope="live"):
         "plan_file": os.path.basename(PLAN_FILE),
         "locations": PLAN_LOCATIONS, "topologies": PLAN_TOPOLOGIES,
         "attacks": PLAN_ATTACKS, "scenarios": SCENARIO_POOL,
+        "skip": PLAN_SKIP, "plan_all": PLAN_ALL,
         "benign": {f"{loc}/{topo}": benign_for(assign, loc, topo)
                    for loc in PLAN_LOCATIONS for topo in PLAN_TOPOLOGIES},
         "run_minutes": RUN_MIN,
@@ -1091,7 +1145,16 @@ def main():
                     help="Write the campaign status (slots, totals, sessions) as JSON, "
                          "for the dashboard page.")
     ap.add_argument("--no-color", action="store_true", help="Plain text, no ANSI colours.")
+    ap.add_argument("--set-skip", default=None, metavar="JSON",
+                    help='Plan settings: take items out of the plan, e.g. \'{"scenarios": ["jitter"]}\' '
+                         '(keys: scenarios, locations, topologies, attacks; "{}" = full plan). '
+                         'Writes campaign_plan.json "skip"; commit it so every laptop has the same plan.')
     args = ap.parse_args()
+    if args.set_skip is not None:
+        import json
+        clean = write_plan_skip(json.loads(args.set_skip))
+        print("plan settings saved: " + (", ".join(f"no {k}: {', '.join(v)}" for k, v in clean.items() if v) or "full plan"))
+        return
     summary_only = bool(args.board or args.sessions or args.json) and not (
         args.checklist or args.plan or args.csv or args.reshuffle)
     # oct. 17 2026: --checklist on its own is a VIEW (wizard Campaign -> [2]);

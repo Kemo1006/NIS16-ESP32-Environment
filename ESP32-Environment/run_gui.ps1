@@ -1195,6 +1195,8 @@ $StyleXaml
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
               <Button x:Name="LoadRedo" Style="{StaticResource Cool}" Content="&#x21BB;  Re-check the redo list"/>
               <Button x:Name="CampRefresh" Content="Refresh"/>
+              <Button x:Name="CampPlan" Content="&#x2699;  Plan settings"
+                      ToolTip="Tick / untick scenarios, locations, topologies, attacks to change what the campaign plans (gui\PlanSettings.ps1)"/>
             </StackPanel>
             <StackPanel>
               <TextBlock Style="{StaticResource H1}" Text="Campaign"/>
@@ -4956,6 +4958,7 @@ function Update-CampaignAfterJob {
     Set-Status 'Updating the Campaign tiles (the redo re-check takes about a minute)...' $Pal.Cyan
 }
 $ui.CampRefresh.Add_Click({ Update-Home })
+$ui.CampPlan.Add_Click({ Show-PlanSettings })
 
 # tile look per state: background, border, glyph, label
 $script:TileLook = @{
@@ -6424,6 +6427,7 @@ $script:SyncLook = @{
     archived   = @{ Text = 'ARCHIVED';           Bg = '#2A2E48'; Fg = $Pal.Dim }
     differ     = @{ Text = 'YOURS DIFFERS';      Bg = '#3A2E14'; Fg = $Pal.Amber }
     delete     = @{ Text = 'DELETE ON GITHUB';   Bg = '#3A1E2C'; Fg = $Pal.Red }
+    replaced   = @{ Text = 'OLD RUN - REPLACED'; Bg = '#3A2E14'; Fg = $Pal.Amber }
     deletedhere = @{ Text = 'YOU DELETED IT';    Bg = '#2A2E48'; Fg = $Pal.Dim }
     deleteconflict = @{ Text = 'DELETED HERE, CHANGED THERE'; Bg = '#3A2E14'; Fg = $Pal.Amber }
 }
@@ -6507,7 +6511,13 @@ function Show-SyncStatus($St) {
     $cd = @($h.codeDirty).Count
     if ($cd) { & $add ("$cd code file(s) edited here") $Pal.Dim $Pal.Card ("Never synced (code goes through git commit / push):`n" + ((@($h.codeDirty) | Select-Object -First 12 | ForEach-Object { "  $($_.status) $($_.path)" }) -join "`n")) }
     if ($h.stashes) { & $add ("$($h.stashes) old stash(es)") $Pal.Amber '#3A2E14' "'git stash list' - make sure nothing is forgotten there." }
-    if ($St.last) { & $add ("last smart sync  " + (Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$St.last.when).LocalDateTime))) $Pal.Dim $Pal.Card ("sent {0}, received {1}" -f $St.last.pushed, $St.last.pulled) }
+    # oct. 21 2026: a run folder holding two captures of the same repeat (the analysis reads both)
+    foreach ($m in @($h.mixed)) {
+        if (-not $m) { continue }
+        & $add ([string][char]0x26A0 + "  GitHub mixes 2 runs: " + ($m.cell -replace '/', ' / ') + $(if ($m.fix) { '  (this sync fixes it)' } else { '' })) $(if ($m.fix) { $Pal.Amber } else { $Pal.Red }) $(if ($m.fix) { '#3A2E14' } else { '#3A1E2C' }) ("Root captures in that folder on GitHub:`n  " + (@($m.roots) -join "`n  ") + $(if ($m.fix) { "`n`nThe OLD run is ticked under Send as 'OLD RUN - REPLACED' (your re-capture archive)." } else { "`n`nNo re-capture archive here says which run is old - decide with the team, then delete the old one on GitHub." }))
+    }
+    foreach ($m in @($h.mixedHere)) { if ($m) { & $add ([string][char]0x26A0 + "  this laptop mixes 2 runs: " + ($m.cell -replace '/', ' / ')) $Pal.Red '#3A1E2C' ("Root captures in that folder here:`n  " + (@($m.roots) -join "`n  ")) } }
+    if ($St.last) { & $add ("last smart sync  " +(Format-When ([DateTimeOffset]::FromUnixTimeSeconds([long]$St.last.when).LocalDateTime))) $Pal.Dim $Pal.Card ("sent {0}, received {1}" -f $St.last.pushed, $St.last.pulled) }
     $ui.SyncChips.ItemsSource = @($chips)
     # blocking banner
     if (@($h.blocking).Count) {
@@ -6686,6 +6696,12 @@ function Start-SyncApply([string[]]$Push = @(), [string[]]$Pull = @(), [string[]
     if ($Push.Count) {
         $by = @{}; foreach ($r in $script:SyncTables.Send.Rows) { if ($Push -contains $r.Rel) { $by[$r.Area] = 1 + [int]$by[$r.Area] } }
         $lines += ("SEND to GitHub ({0}):  {1}" -f $st.health.branch, ((@($by.Keys | Sort-Object | ForEach-Object { "$($by[$_]) $_" })) -join ', '))
+        # oct. 21 2026: removals on GitHub are spelled out, never hidden inside a count
+        $gone = @($script:SyncTables.Send.Rows | Where-Object { $Push -contains $_.Rel -and $_.Badge -in @('DELETE ON GITHUB', 'OLD RUN - REPLACED') })
+        if ($gone.Count) {
+            $runs = @($gone | ForEach-Object { ($_.CAtk + $_.CRest) -replace '\s+/\s+', '/' } | Select-Object -Unique)
+            $lines += ("REMOVE on GitHub: {0} file(s) of {1} run(s) - {2}`n  (normal commits: they stay in GitHub's history and can be restored)" -f $gone.Count, $runs.Count, ($runs -join ', '))
+        }
     }
     if ($Pull.Count) { $lines += ("RECEIVE {0} teammate file(s) - none of yours overwritten" -f $Pull.Count) }
     if ($Remove.Count) { $lines += ("CLEAN UP {0} copy(ies) of files deleted on GitHub (moved to backups)" -f $Remove.Count) }

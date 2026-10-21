@@ -577,6 +577,11 @@ class MissingBoard(unittest.TestCase):
         self.assertEqual(va._confidence(True, False, True, [und])[0], "UNDETERMINED")
         self.assertEqual(va._confidence(True, False, True, [yel])[0], "MINOR GAPS")
         self.assertEqual(va._confidence(True, False, True, [crit, und])[0], "MAJOR GAPS")
+        # oct. 21 2026: a scenario NOT APPLIED is a MINOR gap (was a note -> GOOD); applied stays a note
+        scn = ac.Issue(ac.WARN, "scenario check: burst NOT APPLIED - no child sent a burst")
+        self.assertEqual(va._confidence(True, False, True, [scn])[0], "MINOR GAPS")
+        self.assertEqual(va._confidence(True, False, True, [crit, scn])[0], "MAJOR GAPS")
+        self.assertEqual(va._confidence(True, False, True, [ac.Issue(ac.WARN, "scenario check: highload unclear - x")])[0], "GOOD")
         o = va._outcome(True, False, True, [und], 2, 2)
         self.assertEqual(o["outcome"], "INCONCLUSIVE")
 

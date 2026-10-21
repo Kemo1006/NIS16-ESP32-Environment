@@ -1467,6 +1467,11 @@ def main():
     print(f"Wrote {len(feature_table)} feature rows to: {args.output}")
     from preprocess import _write_column_legend
     _write_column_legend(feature_table.columns, args.output)
+    try:   # which analysis code made this table - GitHub sync compares it (oct. 21 2026)
+        from code_stamp import write_info
+        write_info(args.output)
+    except Exception as e:      # never fail an analysis over the stamp
+        print(f"  (analysis_info.json not written: {e})")
 
     nan_counts = {}
     for col in [

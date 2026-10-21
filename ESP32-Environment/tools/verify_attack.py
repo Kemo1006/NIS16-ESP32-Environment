@@ -729,13 +729,19 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
         return "FAILED", [], [], [], (["no attack signature moved past 3-sigma: the attacker kept forwarding and / or "
                                        "the victims kept delivering"] if conclusive
                                       else ["no attack signature could be tested - too little usable data"])
-    major, minor, notes, good = [], [], [], []
+    major, minor, notes, good, scen_gap = [], [], [], [], []
     for it in issues:
         if it.level == "OK" and it.text.startswith(("ROBUST:", "IMPACT CHECK:")):
             good.append(it.text.split(":", 1)[0].lower().replace("robust", "the re-test on the part BEFORE the first move confirmed it again")
                         if it.text.startswith("ROBUST:") else "impact check: " + it.text.split(": ", 1)[1])
             continue
         if it.level != "WARN":
+            continue
+        if it.text.startswith(getattr(_checks, "SCEN_TEXT", "scenario check:")) and "NOT APPLIED" in it.text:
+            # oct. 21 2026 (user: "include the scenario failed in minor gap"): the attack
+            # result stands, but the run is not the scenario it is filed as - a MINOR gap
+            # (yellow, recapture advised). Not a board, so the impact check never re-tests it.
+            scen_gap.append("scenario NOT APPLIED - " + " ".join(it.text[len("scenario check:"):].split())[:150])
             continue
         g = _gap(it)
         if g:
@@ -761,6 +767,7 @@ def _confidence(confirmed, setup_invalid, conclusive, issues):
         # the impact check could not clear them: these gaps DO matter - listed as major, never
         # as "result not affected" (verification #53)
         major, minor = major + minor, []
+    minor += list(dict.fromkeys(scen_gap))     # after the impact merge: never a board gap
     notes_all = notes + good
     if major:
         return "MAJOR GAPS", major, minor, notes_all, []

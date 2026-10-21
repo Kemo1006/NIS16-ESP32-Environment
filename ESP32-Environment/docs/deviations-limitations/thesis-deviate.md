@@ -530,3 +530,25 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Basis** | Karlof & Wagner 2003 (only traffic through the attacker is lost → bystanders = control); missing-data theory (Rubin 1976; Little & Rubin 2019: MCAR loss costs precision, not validity - verify before citing); structure-only placement = D-23 fairness rule 1. Thresholds (100 arrivals, 60 s) are engineering decisions. Full rules + the "standby board" answer: `docs/attack-validation/GRADING-AND-THRESHOLDS.md` §0b. |
 | **Effect** | 2 runs gain a named YELLOW footnote (above); no other status changed; tests 55/55. |
 | **Paper edit** | Verification method: "A board absent from a capture is graded by its position in the attack: ..." (table §0b). Checklist A33, C19, C20. |
+
+## D-33 · Jitter taken out of the campaign plan "for now" (oct. 21, 2026)
+
+| | |
+|---|---|
+| **Before** | Every (location, topology, attack) ran all 4 scenarios: stationary, highload, burst, jitter - 108 planned runs (96 attack + 12 matched benign). |
+| **Why** | User (oct. 21): "for now hide the jitter in the checklist ... if ever we change our minds we can change the plans". A plan decision, not a data problem. |
+| **We do** | New Campaign "Plan settings" (gui\PlanSettings.ps1 → `inventory_cells.py --set-skip`) writes `tools/campaign_plan.json` "skip": {"scenarios": ["jitter"]}. Plan = 81 runs (72 attack + 9 benign); 56 done. The 5 jitter captures already made stay on disk, counted as off-plan. The drawn slot order is kept, so re-ticking jitter restores the 108-run plan exactly. |
+| **Basis** | Scope decision of the team (no literature needed); re-check with the adviser. |
+| **Effect** | Methodology scenario list / run counts change from 4 scenarios × 27 cells to 3 (+ jitter as an extra, off-plan set if kept). |
+| **Paper edit** | Scenario table + run-count sentences (Methodology, Results intro). Checklist A34. |
+
+## D-34 · A scenario that was NOT APPLIED makes the run MINOR GAPS (oct. 21, 2026)
+
+| | |
+|---|---|
+| **Before** | The scenario check (verification #72-#74) only labelled the VERDICT line ('| scenario burst: NOT APPLIED'); the grade ignored it, so such a run could still be STRONG / GOOD. |
+| **Why** | User (oct. 21): "include the scenario failed in minor gap". The attack result stands, but the run is not the scenario it is filed as. |
+| **We do** | `verify_attack._confidence`: a scenario-check WARN containing "NOT APPLIED" is a MINOR gap (yellow DONE - RECAPTURE ADVISED). Added after the impact-check merge - it is not a board, so the impact check never re-tests it and it never turns MAJOR by itself. "unclear" / "not visible" stay notes. Tests 55/55 + new cases. |
+| **Basis** | Engineering decision (labelling validity). |
+| **Effect** | blackhole/linear/G402/burst and blackhole/linear/home/burst: GOOD → MINOR GAPS (they were already Campaign CHECK by design). No other run changes. |
+| **Paper edit** | Grading table: add "the scenario was not applied" under MINOR GAPS. Checklist A35. |

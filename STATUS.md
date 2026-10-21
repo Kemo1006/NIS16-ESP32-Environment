@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 21, 2026 ~2:30 PM (Angelo's laptop) — code + docs pushed (re-analysis tooling #75/#76, verdict-sync fix #78, sync page time strip + per-file times). GitHub audit: no accidental loss; wormhole/partial_mesh/G402/stationary on GitHub mixes the oct. 19 and oct. 21 runs (user to OK removing oct. 19). Data (analysis re-runs) goes via GUI Smart sync. Next: campaign plan editor (scenario/location ticks), scenario NOT APPLIED -> MINOR GAPS, #77 fixes.
+**Updated:** oct. 21, 2026 ~3 PM (Angelo's laptop) — plan settings (jitter out: 81 planned, D-33), scenario NOT APPLIED = MINOR GAPS (D-34), smart sync: replaced-run removal, mixed-run warning, analysis code stamp, whole-cell analysis, per-file times. GitHub: wormhole/partial_mesh/G402/stationary mixes oct. 19 + oct. 21 (removal of oct. 19 awaits user OK). Next: user OK for that removal; re-verify the 2 NOT APPLIED runs in the GUI; #77 fixes.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
