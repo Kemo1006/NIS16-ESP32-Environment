@@ -1,0 +1,892 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-g402-highload.json - 19/10/2026 5:42:28 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\wormhole-partial_mesh-g402-highload_r1_oct19_0542PM.log
+
+> node4  -  control  -  control (plain firmware) on COM3   .\run.ps1 -Port COM3 -Role child -Label node4 -Topology partial -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack wormhole -WormholeRole victim -Export -SkipExportNow -Mac f4:2d:c9:73:e6:18 -SharedBuild   (05:42:28 pm)
+Setting COM3's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 17:42:29 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM3
+Connecting.....
+Connecting.....
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 5.4 seconds.
+Hard resetting via RTS pin...
+Board: node4 (on COM3, MAC f4:2d:c9:73:e6:18)
+Flashing + monitoring child on COM3 (topology=partial, attack=wormhole/victim, scenario=highload, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_victim_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_victim_highload_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_victim_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_victim_highload_GUI/partition_table/partition-table.bin C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_victim_highload_GUI/child_node.bin"
+child_node.bin binary size 0x11d090 bytes. Smallest app partition is 0x180000 bytes. 0x62f70 bytes (26%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_victim_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_victim_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x68e0 bytes. 0x720 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.5 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_victim_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM3 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x0012dfff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16428...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16428 compressed) at 0x00001000 in 0.5 seconds (effective 419.3 kbit/s)...
+Hash of data verified.
+Compressed 1167504 bytes to 728662...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001be46... (4 %)
+Writing at 0x000294d3... (6 %)
+Writing at 0x00033afa... (8 %)
+Writing at 0x0003efe4... (11 %)
+Writing at 0x00045464... (13 %)
+Writing at 0x0004b213... (15 %)
+Writing at 0x00050a0d... (17 %)
+Writing at 0x0005609b... (20 %)
+Writing at 0x0005bf17... (22 %)
+Writing at 0x00061c7a... (24 %)
+Writing at 0x00067b5d... (26 %)
+Writing at 0x0006db7b... (28 %)
+Writing at 0x0007386b... (31 %)
+Writing at 0x00079cee... (33 %)
+Writing at 0x0007f4b8... (35 %)
+Writing at 0x00084c17... (37 %)
+Writing at 0x0008a1dc... (40 %)
+Writing at 0x0008fa64... (42 %)
+Writing at 0x00095229... (44 %)
+Writing at 0x0009aaee... (46 %)
+Writing at 0x000a03e7... (48 %)
+Writing at 0x000a5943... (51 %)
+Writing at 0x000aacdb... (53 %)
+Writing at 0x000b08f1... (55 %)
+Writing at 0x000b68fa... (57 %)
+Writing at 0x000bc20e... (60 %)
+Writing at 0x000c1a80... (62 %)
+Writing at 0x000c78e1... (64 %)
+Writing at 0x000cd351... (66 %)
+Writing at 0x000d2d19... (68 %)
+Writing at 0x000d8935... (71 %)
+Writing at 0x000de4f9... (73 %)
+Writing at 0x000e40d1... (75 %)
+Writing at 0x000e9f70... (77 %)
+Writing at 0x000ef8bb... (80 %)
+Writing at 0x000f4eaf... (82 %)
+Writing at 0x000fd18b... (84 %)
+Writing at 0x0010545e... (86 %)
+Writing at 0x0010b2a1... (88 %)
+Writing at 0x0011366d... (91 %)
+Writing at 0x001191d0... (93 %)
+Writing at 0x0011ebbf... (95 %)
+Writing at 0x001250e3... (97 %)
+Writing at 0x0012a49a... (100 %)
+Wrote 1167504 bytes (728662 compressed) at 0x00010000 in 17.5 seconds (effective 532.7 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1540.1 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2628.3 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM3 at 115200 baud
+I (479) esp_image: segment 3: paddr=0010ec14 vaddr=3ffb0cb4 size=03984h ( 14724) load
+I (485) esp_image: segment 4: paddr=001125a0 vaddr=40080000 size=1aacch (109260) load
+I (541) boot: Loaded app from partition at offset 0x10000
+I (545) boot: Set actual ota_seq=1 in otadata[0]
+I (545) boot: Disabling RNG early entropy source...
+I (559) cpu_start: Multicore app
+I (567) cpu_start: Pro cpu start user code
+I (567) cpu_start: cpu freq: 160000000 Hz
+I (567) app_init: Application information:
+I (570) app_init: Project name:     child_node
+I (575) app_init: App version:      backup/angelo-2026-10-01-254-g5
+I (582) app_init: Compile time:     Oct 19 2026 17:33:02
+I (588) app_init: ELF file SHA256:  6ece23fd7...
+I (594) app_init: ESP-IDF:          v5.3.5
+I (598) efuse_init: Min chip rev:     v0.0
+I (603) efuse_init: Max chip rev:     v3.99 
+I (608) efuse_init: Chip rev:         v3.1
+I (613) heap_init: Initializing. RAM available for dynamic allocation:
+I (620) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (626) heap_init: At 3FFBC3D8 len 00023C28 (143 KiB): DRAM
+I (632) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (639) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (645) heap_init: At 4009AACC len 00005534 (21 KiB): IRAM
+I (653) spi_flash: detected chip: generic
+I (656) spi_flash: flash io: dio
+I (661) main_task: Started on CPU0
+I (671) main_task: Calling app_main()
+I (671) VICTIM_MAIN: === VICTIM NODE STARTING ===
+I (671) SD_STATUS: clock seeded from build stamp 2026-10-19 17:33:02 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (681) SD_STATUS: Reset reason: POWERON
+I (691) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (701) sdspi_transaction: cmd=52, R1 response: command not supported
+I (741) sdspi_transaction: cmd=5, R1 response: command not supported
+I (771) SD_STATUS: clock: set from the card's host anchor -> 2026-10-19 17:42:29 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_F42DC973E618) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.3.5
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 17:42:29 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: partial_mesh
+  Firmware built: 2026-10-19 17:33:02
+  Run started: 2026-10-19 17:42:29 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_F42DC973E618 (MAC F4:2D:C9:73:E6:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 23
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+I (1511) VICTIM_MAIN: SD ENV: OK -- /sdcard/wormhole/partial_mesh/G402/status_NODE_F42DC973E618.txt
+I (1521) NODE_ID: Identity: "Board-F4:18" role=CHILD mac=f4:2d:c9:73:e6:18 (via MAC (no node_config.txt nickname))
+I (1561) wifi:wifi driver task: 3ffcb1c0, prio:23, stack:6656, core=0
+I (1561) wifi:wifi firmware version: 18db208
+I (1561) wifi:wifi certification version: v7.0
+I (1561) wifi:config NVS flash: enabled
+I (1561) wifi:config nano formating: disabled
+I (1571) wifi:Init data frame dynamic rx buffer num: 32
+I (1571) wifi:Init static rx mgmt buffer num: 5
+I (1581) wifi:Init management short buffer num: 32
+I (1581) wifi:Init dynamic tx buffer num: 32
+I (1581) wifi:Init static rx buffer size: 1600
+I (1591) wifi:Init static rx buffer num: 10
+I (1591) wifi:Init dynamic rx buffer num: 32
+I (1601) wifi_init: rx ba win: 6
+I (1601) wifi_init: accept mbox: 6
+I (1601) wifi_init: tcpip mbox: 32
+I (1611) wifi_init: udp mbox: 6
+I (1611) wifi_init: tcp mbox: 6
+I (1621) wifi_init: tcp tx win: 5760
+I (1621) wifi_init: tcp rx win: 5760
+I (1621) wifi_init: tcp mss: 1440
+I (1631) wifi_init: WiFi IRAM OP enabled
+I (1631) wifi_init: WiFi RX IRAM OP enabled
+I (1641) wifi:Set ps type: 0, coexist: 0
+I (1651) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1651) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1661) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1741) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1751) wifi:mode : sta (f4:2d:c9:73:e6:18) + softAP (f4:2d:c9:73:e6:19)
+I (1751) wifi:enable tsf
+I (1761) wifi:Total power save buffer number: 16
+I (1761) wifi:Init max length of beacon: 752/752
+I (1761) wifi:Init max length of beacon: 752/752
+I (1771) mesh: <nvs>read layer:0, err:0x1102
+I (1771) mesh: <nvs>read assoc:0, err:0x1102
+I (1771) MESH_SETUP: Topology shaping: PARTIAL (max_layer=25, max_children=2)
+I (1781) wifi:Set ps type: 0, coexist: 0
+I (1811) wifi:Total power save buffer number: 16
+I (2071) wifi:mode : sta (f4:2d:c9:73:e6:18)
+I (2081) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2081) MESH_SETUP: Mesh stack started.
+I (2081) MESH_SETUP: Mesh started. Node ID: NODE_F42DC973E618  Role: 1
+I (2091) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM3) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM3 --role child --topology partial --attack wormhole --repeat 1 --scenario highload --location G402 --label node4
+  finished (exit 0)
+  crash watch on node4 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node4_COM3_serial_oct19_0543pm.log
+
+> node3  -  tunnel end  -  wormhole tunnel board 1 (entry/exit chosen automatically) on COM4   .\run.ps1 -Port COM4 -Role child -Label node3 -Topology partial -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack wormhole -WormholeEnd A -Export -SkipExportNow -Mac 20:50:0d:e7:0c:80 -SharedBuild   (05:43:07 pm)
+Setting COM4's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 17:43:08 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM4 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM4
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.6 seconds.
+Hard resetting via RTS pin...
+Board: node3 (on COM4, MAC 20:50:0d:e7:0c:80)
+Flashing + monitoring child on COM4 (topology=partial, attack=wormhole/A, scenario=highload, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_A_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_A_highload_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_A_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_A_highload_GUI/partition_table/partition-table.bin C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_A_highload_GUI/child_node.bin"
+child_node.bin binary size 0x120740 bytes. Smallest app partition is 0x180000 bytes. 0x5f8c0 bytes (25%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_A_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_A_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x68e0 bytes. 0x720 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.5 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_A_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM4 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM4
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00130fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16428...
+Writing at 0x00001000... (50 %)
+Writing at 0x000078a2... (100 %)
+Wrote 26848 bytes (16428 compressed) at 0x00001000 in 0.5 seconds (effective 396.2 kbit/s)...
+Hash of data verified.
+Compressed 1181504 bytes to 734776...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001be52... (4 %)
+Writing at 0x000297b0... (6 %)
+Writing at 0x00033721... (8 %)
+Writing at 0x0003f72e... (11 %)
+Writing at 0x0004871b... (13 %)
+Writing at 0x0004e023... (15 %)
+Writing at 0x00053fef... (17 %)
+Writing at 0x00059bef... (20 %)
+Writing at 0x0005f6bb... (22 %)
+Writing at 0x00064f51... (24 %)
+Writing at 0x0006a949... (26 %)
+Writing at 0x000708eb... (28 %)
+Writing at 0x000765dc... (31 %)
+Writing at 0x0007c795... (33 %)
+Writing at 0x000826e5... (35 %)
+Writing at 0x0008832f... (37 %)
+Writing at 0x0008e4d2... (40 %)
+Writing at 0x00093be1... (42 %)
+Writing at 0x000992be... (44 %)
+Writing at 0x0009eae2... (46 %)
+Writing at 0x000a4178... (48 %)
+Writing at 0x000a99f8... (51 %)
+Writing at 0x000af2c0... (53 %)
+Writing at 0x000b49d2... (55 %)
+Writing at 0x000b9f29... (57 %)
+Writing at 0x000bf9c2... (60 %)
+Writing at 0x000c5833... (62 %)
+Writing at 0x000cb23d... (64 %)
+Writing at 0x000d08a1... (66 %)
+Writing at 0x000d63b8... (68 %)
+Writing at 0x000dc3db... (71 %)
+Writing at 0x000e1b25... (73 %)
+Writing at 0x000e7754... (75 %)
+Writing at 0x000ed45a... (77 %)
+Writing at 0x000f2e00... (80 %)
+Writing at 0x000f8b40... (82 %)
+Writing at 0x000fe6d7... (84 %)
+Writing at 0x0010415e... (86 %)
+Writing at 0x0010a841... (88 %)
+Writing at 0x0011471c... (91 %)
+Writing at 0x0011a55d... (93 %)
+Writing at 0x00120062... (95 %)
+Writing at 0x001261c2... (97 %)
+Writing at 0x0012bb8e... (100 %)
+Wrote 1181504 bytes (734776 compressed) at 0x00010000 in 17.6 seconds (effective 537.9 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1579.5 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2560.8 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM4 at 115200 baud
+I (503) esp_image: segment 4: paddr=00120b90 vaddr=4008af44 size=0fb88h ( 64392) load
+I (542) boot: Loaded app from partition at offset 0x10000
+I (543) boot: Set actual ota_seq=1 in otadata[0]
+I (543) boot: Disabling RNG early entropy source...
+I (560) cpu_start: Multicore app
+I (568) cpu_start: Pro cpu start user code
+I (568) cpu_start: cpu freq: 160000000 Hz
+I (568) app_init: Application information:
+I (571) app_init: Project name:     child_node
+I (576) app_init: App version:      backup/angelo-2026-10-01-254-g5
+I (583) app_init: Compile time:     Oct 19 2026 17:36:42
+I (589) app_init: ELF file SHA256:  670b7d6fd...
+I (594) app_init: ESP-IDF:          v5.3.5
+I (599) efuse_init: Min chip rev:     v0.0
+I (604) efuse_init: Max chip rev:     v3.99 
+I (609) efuse_init: Chip rev:         v3.1
+I (614) heap_init: Initializing. RAM available for dynamic allocation:
+I (621) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (627) heap_init: At 3FFBC480 len 00023B80 (142 KiB): DRAM
+I (633) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (640) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (646) heap_init: At 4009AACC len 00005534 (21 KiB): IRAM
+I (654) spi_flash: detected chip: generic
+I (657) spi_flash: flash io: dio
+I (662) main_task: Started on CPU0
+I (672) main_task: Calling app_main()
+I (672) WORMHOLE: === WORMHOLE NODE STARTING (auto-switch; fallback end A) ===
+I (672) SD_STATUS: clock seeded from build stamp 2026-10-19 17:36:42 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (682) SD_STATUS: Reset reason: POWERON
+I (692) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (702) sdspi_transaction: cmd=52, R1 response: command not supported
+I (742) sdspi_transaction: cmd=5, R1 response: command not supported
+I (772) SD_STATUS: clock: set from the card's host anchor -> 2026-10-19 17:43:08 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE70C80) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.3.5
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 17:43:08 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: partial_mesh
+  Firmware built: 2026-10-19 17:36:42
+  Run started: 2026-10-19 17:43:08 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE70C80 (MAC 20:50:0D:E7:0C:80)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 118
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 88
+I (1522) WORMHOLE: SD ENV: OK -- /sdcard/wormhole/partial_mesh/G402/status_NODE_20500DE70C80.txt
+I (1562) wifi:wifi driver task: 3ffcb268, prio:23, stack:6656, core=0
+I (1562) wifi:wifi firmware version: 18db208
+I (1562) wifi:wifi certification version: v7.0
+I (1562) wifi:config NVS flash: enabled
+I (1562) wifi:config nano formating: disabled
+I (1572) wifi:Init data frame dynamic rx buffer num: 32
+I (1572) wifi:Init static rx mgmt buffer num: 5
+I (1582) wifi:Init management short buffer num: 32
+I (1582) wifi:Init dynamic tx buffer num: 32
+I (1582) wifi:Init static rx buffer size: 1600
+I (1592) wifi:Init static rx buffer num: 10
+I (1592) wifi:Init dynamic rx buffer num: 32
+I (1602) wifi_init: rx ba win: 6
+I (1602) wifi_init: accept mbox: 6
+I (1602) wifi_init: tcpip mbox: 32
+I (1612) wifi_init: udp mbox: 6
+I (1612) wifi_init: tcp mbox: 6
+I (1622) wifi_init: tcp tx win: 5760
+I (1622) wifi_init: tcp rx win: 5760
+I (1622) wifi_init: tcp mss: 1440
+I (1632) wifi_init: WiFi IRAM OP enabled
+I (1632) wifi_init: WiFi RX IRAM OP enabled
+I (1642) wifi:Set ps type: 0, coexist: 0
+I (1652) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1652) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1662) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1742) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1762) wifi:mode : sta (20:50:0d:e7:0c:80) + softAP (20:50:0d:e7:0c:81)
+I (1762) wifi:enable tsf
+I (1762) wifi:Total power save buffer number: 16
+I (1762) wifi:Init max length of beacon: 752/752
+I (1762) wifi:Init max length of beacon: 752/752
+I (1772) mesh: <nvs>read layer:0, err:0x1102
+I (1772) mesh: <nvs>read assoc:0, err:0x1102
+I (1782) MESH_SETUP: Topology shaping: PARTIAL (max_layer=25, max_children=2)
+I (1782) wifi:Set ps type: 0, coexist: 0
+I (1812) wifi:Total power save buffer number: 16
+W (2072) MESH_SETUP: WORMHOLE A (D-30): this board joins the SHALLOWEST parent it hears (the root whenever it has room), so it stays above B.
+I (2082) wifi:mode : sta (20:50:0d:e7:0c:80)
+I (2092) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2092) MESH_SETUP: Mesh stack started.
+I (2092) MESH_SETUP: Mesh started. Node ID: NODE_20500DE70C80  Role: 3
+I (2092) mesh: [IO]disable self-organizing<stop reconnect>
+I (2102) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+I (2112) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM4) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM4 --role child --topology partial --attack wormhole --repeat 1 --scenario highload --location G402 --label node3
+  finished (exit 0)
+  crash watch on node3 (COM4) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node3_COM4_serial_oct19_0543pm.log
+
+> node2  -  tunnel end  -  wormhole tunnel board 2 (entry/exit chosen automatically) on COM6   .\run.ps1 -Port COM6 -Role child -Label node2 -Topology partial -Location G402 -Repeat 1 -Scenario highload -Wipe -Flash -Attack wormhole -WormholeEnd B -Export -SkipExportNow -Mac 20:50:0d:e7:1c:38 -SharedBuild   (05:43:48 pm)
+Setting COM6's clock from this laptop (so captures get real dates) ...
+LOCATION_CHECK: OK G402
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-19 17:43:49 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM6 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM6
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.5 seconds.
+Hard resetting via RTS pin...
+Board: node2 (on COM6, MAC 20:50:0d:e7:1c:38)
+Flashing + monitoring child on COM6 (topology=partial, attack=wormhole/B, scenario=highload, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_B_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+Executing action: flash
+Running ninja in directory C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_B_highload_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_B_highload_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_B_highload_GUI/partition_table/partition-table.bin C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_B_highload_GUI/child_node.bin"
+child_node.bin binary size 0x120740 bytes. Smallest app partition is 0x180000 bytes. 0x5f8c0 bytes (25%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_B_highload_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_B_highload_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x68e0 bytes. 0x720 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.5 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/child_node/build_child_wormhole_partial_B_highload_GUI -P C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM6 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM6
+Connecting.......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00130fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 400.4 kbit/s)...
+Hash of data verified.
+Compressed 1181504 bytes to 734771...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001be67... (4 %)
+Writing at 0x000297b4... (6 %)
+Writing at 0x00033723... (8 %)
+Writing at 0x0003f72f... (11 %)
+Writing at 0x0004871d... (13 %)
+Writing at 0x0004e025... (15 %)
+Writing at 0x00053ff5... (17 %)
+Writing at 0x00059bef... (20 %)
+Writing at 0x0005f6c3... (22 %)
+Writing at 0x00064f53... (24 %)
+Writing at 0x0006a94d... (26 %)
+Writing at 0x000708ed... (28 %)
+Writing at 0x000765e3... (31 %)
+Writing at 0x0007c796... (33 %)
+Writing at 0x000826e9... (35 %)
+Writing at 0x00088330... (37 %)
+Writing at 0x0008e4d4... (40 %)
+Writing at 0x00093be4... (42 %)
+Writing at 0x000992c2... (44 %)
+Writing at 0x0009eae6... (46 %)
+Writing at 0x000a417a... (48 %)
+Writing at 0x000a99fc... (51 %)
+Writing at 0x000af2c1... (53 %)
+Writing at 0x000b49d4... (55 %)
+Writing at 0x000b9f2d... (57 %)
+Writing at 0x000bf9c5... (60 %)
+Writing at 0x000c5836... (62 %)
+Writing at 0x000cb240... (64 %)
+Writing at 0x000d08a6... (66 %)
+Writing at 0x000d63bb... (68 %)
+Writing at 0x000dc3de... (71 %)
+Writing at 0x000e1b28... (73 %)
+Writing at 0x000e7756... (75 %)
+Writing at 0x000ed45f... (77 %)
+Writing at 0x000f2e07... (80 %)
+Writing at 0x000f8b43... (82 %)
+Writing at 0x000fe6da... (84 %)
+Writing at 0x00104163... (86 %)
+Writing at 0x0010a844... (88 %)
+Writing at 0x0011471f... (91 %)
+Writing at 0x0011a562... (93 %)
+Writing at 0x00120064... (95 %)
+Writing at 0x001261c8... (97 %)
+Writing at 0x0012bb92... (100 %)
+Wrote 1181504 bytes (734771 compressed) at 0x00010000 in 17.5 seconds (effective 539.5 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1571.1 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2527.4 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM6 at 115200 baud
+I (503) esp_image: segment 4: paddr=00120b90 vaddr=4008af44 size=0fb88h ( 64392) load
+I (542) boot: Loaded app from partition at offset 0x10000
+I (543) boot: Set actual ota_seq=1 in otadata[0]
+I (543) boot: Disabling RNG early entropy source...
+I (560) cpu_start: Multicore app
+I (568) cpu_start: Pro cpu start user code
+I (568) cpu_start: cpu freq: 160000000 Hz
+I (568) app_init: Application information:
+I (571) app_init: Project name:     child_node
+I (576) app_init: App version:      backup/angelo-2026-10-01-254-g5
+I (583) app_init: Compile time:     Oct 19 2026 17:40:23
+I (589) app_init: ELF file SHA256:  1eaf906c2...
+I (594) app_init: ESP-IDF:          v5.3.5
+I (599) efuse_init: Min chip rev:     v0.0
+I (604) efuse_init: Max chip rev:     v3.99 
+I (609) efuse_init: Chip rev:         v3.1
+I (614) heap_init: Initializing. RAM available for dynamic allocation:
+I (621) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (627) heap_init: At 3FFBC480 len 00023B80 (142 KiB): DRAM
+I (633) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (639) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (646) heap_init: At 4009AACC len 00005534 (21 KiB): IRAM
+I (654) spi_flash: detected chip: generic
+I (657) spi_flash: flash io: dio
+I (662) main_task: Started on CPU0
+I (672) main_task: Calling app_main()
+I (672) WORMHOLE: === WORMHOLE NODE STARTING (auto-switch; fallback end B) ===
+I (672) SD_STATUS: clock seeded from build stamp 2026-10-19 17:40:23 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (682) SD_STATUS: Reset reason: POWERON
+I (692) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (702) sdspi_transaction: cmd=52, R1 response: command not supported
+I (742) sdspi_transaction: cmd=5, R1 response: command not supported
+I (772) SD_STATUS: clock: set from the card's host anchor -> 2026-10-19 17:43:49 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_20500DE71C38) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.3.5
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-19 17:43:49 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: partial_mesh
+  Firmware built: 2026-10-19 17:40:23
+  Run started: 2026-10-19 17:43:49 PHT (clock: host)
+  Recorded location: G402
+  Node: NODE_20500DE71C38 (MAC 20:50:0D:E7:1C:38)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 86
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 50
+Crash resets (total): 2
+I (1552) WORMHOLE: SD ENV: OK -- /sdcard/wormhole/partial_mesh/G402/status_NODE_20500DE71C38.txt
+I (1592) wifi:wifi driver task: 3ffcb268, prio:23, stack:6656, core=0
+I (1592) wifi:wifi firmware version: 18db208
+I (1592) wifi:wifi certification version: v7.0
+I (1592) wifi:config NVS flash: enabled
+I (1592) wifi:config nano formating: disabled
+I (1602) wifi:Init data frame dynamic rx buffer num: 32
+I (1602) wifi:Init static rx mgmt buffer num: 5
+I (1612) wifi:Init management short buffer num: 32
+I (1612) wifi:Init dynamic tx buffer num: 32
+I (1612) wifi:Init static rx buffer size: 1600
+I (1622) wifi:Init static rx buffer num: 10
+I (1622) wifi:Init dynamic rx buffer num: 32
+I (1632) wifi_init: rx ba win: 6
+I (1632) wifi_init: accept mbox: 6
+I (1632) wifi_init: tcpip mbox: 32
+I (1642) wifi_init: udp mbox: 6
+I (1642) wifi_init: tcp mbox: 6
+I (1652) wifi_init: tcp tx win: 5760
+I (1652) wifi_init: tcp rx win: 5760
+I (1652) wifi_init: tcp mss: 1440
+I (1662) wifi_init: WiFi IRAM OP enabled
+I (1662) wifi_init: WiFi RX IRAM OP enabled
+I (1672) wifi:Set ps type: 0, coexist: 0
+I (1682) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1682) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1692) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1772) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1792) wifi:mode : sta (20:50:0d:e7:1c:38) + softAP (20:50:0d:e7:1c:39)
+I (1792) wifi:enable tsf
+I (1792) wifi:Total power save buffer number: 16
+I (1792) wifi:Init max length of beacon: 752/752
+I (1792) wifi:Init max length of beacon: 752/752
+I (1802) mesh: <nvs>read layer:0, err:0x1102
+I (1802) mesh: <nvs>read assoc:0, err:0x1102
+I (1812) MESH_SETUP: Topology shaping: PARTIAL (max_layer=25, max_children=2)
+I (1812) wifi:Set ps type: 0, coexist: 0
+I (1842) wifi:Total power save buffer number: 16
+W (2102) MESH_SETUP: WORMHOLE B (D-30): this board never takes the ROOT as parent and always sits deeper than A - it joins the strongest node at least as deep as A, so the tunnel to A skips at least one hop.
+I (2112) wifi:mode : sta (20:50:0d:e7:1c:38)
+I (2132) mesh: <MESH_NWK_LOOK_FOR_NETWORK>need_scan:0x1, need_scan_router:0x0, look_for_nwk_count:1
+I (2132) MESH_SETUP: Mesh stack started.
+I (2132) MESH_SETUP: Mesh started. Node ID: NODE_20500DE71C38  Role: 4
+I (2132) mesh: [IO]disable self-organizing<stop reconnect>
+I (2142) mesh: <WIFI_EVENT_SCAN_DONE>status:fail, num:0, id:128
+I (2152) MESH_SETUP: Searching for parent/root ... (retry log suppressed, connect/timeout banner below still prints)
+[monitor] closed
+Monitor closed - export SKIPPED for this child (instant skip). Data is safe on the board (COM6) - import it from its SD card later.
+To export later:  python tools\export_logs.py --port COM6 --role child --topology partial --attack wormhole --repeat 1 --scenario highload --location G402 --label node2
+  finished (exit 0)
+  crash watch on node2 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\node2_COM6_serial_oct19_0544pm.log
+All boards done in 13 min 53 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\G402\highload

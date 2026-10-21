@@ -1,0 +1,111 @@
+Setting COM5's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+-> SET_TIME (host clock -> board + SD card) ...
+   no answer — this board predates SET_TIME/GET_TIME. Reflash it to give it a real clock.
+Full-erasing COM5 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM5
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 5.3 seconds.
+Hard resetting via RTS pin...
+  Attacker MAC for this build: f4:2d:c9:73:e6:18 (from the wizard, overrides mesh_config.h)
+Board: node4 (on COM5, MAC f4:2d:c9:73:e6:18)
+Flashing + monitoring child on COM5 (topology=star, attack=wormhole/A, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_star_A_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+esptool.py --chip esp32 -p COM5 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM5
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: f4:2d:c9:73:e6:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00131fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 419.2 kbit/s)...
+Hash of data verified.
+Compressed 1186320 bytes to 737506...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bee7... (4 %)
+Writing at 0x0002998e... (6 %)
+Writing at 0x0003328d... (8 %)
+Writing at 0x0003f4e0... (10 %)
+Writing at 0x00048ae3... (13 %)
+Writing at 0x0004e3ae... (15 %)
+Writing at 0x0005435c... (17 %)
+Writing at 0x00059f86... (19 %)
+Writing at 0x0005f991... (21 %)
+Writing at 0x00065289... (23 %)
+Writing at 0x0006abeb... (26 %)
+Writing at 0x00070c01... (28 %)
+Writing at 0x000767c3... (30 %)
+Writing at 0x0007c9c5... (32 %)
+Writing at 0x00082b44... (34 %)
+Writing at 0x0008861f... (36 %)
+Writing at 0x0008e7c0... (39 %)
+Writing at 0x00093f8c... (41 %)
+Writing at 0x00099698... (43 %)
+Writing at 0x0009ed65... (45 %)
+Writing at 0x000a454d... (47 %)
+Writing at 0x000a9da3... (50 %)
+Writing at 0x000af617... (52 %)
+Writing at 0x000b4d88... (54 %)
+Writing at 0x000ba358... (56 %)
+Writing at 0x000bfd6f... (58 %)
+Writing at 0x000c5ab5... (60 %)
+Writing at 0x000cb536... (63 %)
+Writing at 0x000d0c90... (65 %)
+Writing at 0x000d6723... (67 %)
+Writing at 0x000dc743... (69 %)
+Writing at 0x000e1f12... (71 %)
+Writing at 0x000e7b04... (73 %)
+Writing at 0x000ed803... (76 %)
+Writing at 0x000f31e1... (78 %)
+Writing at 0x000f8f32... (80 %)
+Writing at 0x000fea2b... (82 %)
+Writing at 0x0010458a... (84 %)
+Writing at 0x0010a9c0... (86 %)
+Writing at 0x00114bd5... (89 %)
+Writing at 0x0011a72c... (91 %)
+Writing at 0x001202c6... (93 %)
+Writing at 0x001264c7... (95 %)
+Writing at 0x0012c012... (97 %)
+Writing at 0x001318f7... (100 %)
+Wrote 1186320 bytes (737506 compressed) at 0x00010000 in 17.6 seconds (effective 540.1 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1494.7 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2481.6 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Checking location.txt / scenario.txt again now that the new firmware runs (about 10 s) ...
+SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+Rebooting COM5 once so it starts recording under DLSU_Library / burst ...
+FLASH_ONLY_DONE: COM5 flashed and started (no monitor - the GUI listens to it)

@@ -1,0 +1,37 @@
+NIS16 Capture Studio run log - wormhole-star-dlsu_library-burst.json - 21/10/2026 9:53:54 am
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\wormhole-star-dlsu_library-burst_r1_oct21_0953AM.log
+
+> Parallel flash: 3 children, 3 at a time   (09:53:54 am)
+  node2 on COM6: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node2_COM6_flash_oct21_0953am.log)
+  node2: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node2: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node4 on COM5: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node4_COM5_flash_oct21_0953am.log)
+  node3 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node3_COM3_flash_oct21_0954am.log)
+  node4: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node3: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node3: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node2: Hash of data verified.
+  node4: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node3: Hash of data verified.
+  node4: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: FLASH_ONLY_DONE: COM6 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node2_COM6_serial_oct21_0954am.log
+  node2 on COM6: flashed + started in 33 sec
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  crash watch on node3 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node3_COM3_serial_oct21_0954am.log
+  node3 on COM3: flashed + started in 33 sec
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node4: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node4: FLASH_ONLY_DONE: COM5 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM5) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\star\DLSU_Library\burst\node4_COM5_serial_oct21_0954am.log
+  node4 on COM5: flashed + started in 54 sec
+  parallel flash: 3 of 3 children flashed in 59 sec
+All boards done in 14 min 44 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\star\DLSU_Library\burst
