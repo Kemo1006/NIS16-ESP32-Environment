@@ -12,7 +12,7 @@ Baseline,child,LatencyHopRatio,20.204285131894487,6.441,6442.975617657265,2085,2
 Baseline,root,IngressEgressDelta,0.0,0.0,0.0,419,419
 Baseline,root,ParentSwitchRate,0.0,0.0,0.0,419,419
 Baseline,root,HopChangeCount,0.0,0.0,0.0,419,419
-Baseline,root,HopStabilityDuration,0.999761336515513,1.0,2.3866348448687335e-05,419,419
+Baseline,root,HopStabilityDuration,1.0,1.0,0.0,419,419
 Baseline,root,RSSI_var,0.0,0.0,0.0,419,419
 Baseline,root,RSSI_stability,0.0,0.0,0.0,419,419
 Baseline,wormhole_a,ForwardingRatio,1.0005327114858829,0.9999998333333612,0.01913884202002972,420,420
@@ -51,7 +51,7 @@ Wormhole,child,LatencyHopRatio,12.217495541862652,5.579,2673.6966186033487,891,9
 Wormhole,root,IngressEgressDelta,0.0,0.0,0.0,180,180
 Wormhole,root,ParentSwitchRate,0.0,0.0,0.0,180,180
 Wormhole,root,HopChangeCount,0.0,0.0,0.0,180,180
-Wormhole,root,HopStabilityDuration,0.9994444444444445,1.0,5.555555555555553e-05,180,180
+Wormhole,root,HopStabilityDuration,1.0,1.0,0.0,180,180
 Wormhole,root,RSSI_var,0.0,0.0,0.0,180,180
 Wormhole,root,RSSI_stability,0.0,0.0,0.0,180,180
 Wormhole,wormhole_a,ForwardingRatio,0.9998185076190627,0.9999998333333612,0.001311007947886096,180,180
