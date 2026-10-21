@@ -1,0 +1,13 @@
+collect_run.py --ports COM3,COM4,COM7 --attack wormhole --topology partial_mesh --location DLSU_Library --scenario burst --repeat 1 --since 2026-10-21 05:53 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Bas\wormhole-partial_mesh-dlsu_library-burst.json --expect-mac COM3=20500DE71C38;COM4=20500DE70C80;COM7=F42DC973E618 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmpF3F.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\collect-scan_oct21_055330pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r7_b14_telem.csv (6784 rows, ran 2026-10-21 17:23:35)
+
+-- COM4: reading the card ...
+COLLECT: COM4 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r8_b225_telem.csv (6160 rows, ran 2026-10-21 17:23:34)
+
+-- COM7: reading the card ...
+COLLECT: COM7 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r12_b74_telem.csv (6213 rows, ran 2026-10-21 17:23:27)
+
+COLLECT_SUMMARY: ok=3 skip=0 fail=0

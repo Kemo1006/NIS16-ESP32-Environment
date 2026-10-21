@@ -1,0 +1,14 @@
+collect_run.py --ports COM3,COM6,COM7 --attack wormhole --topology partial_mesh --location Yuchengco --scenario highload --repeat 1 --since 2026-10-21 07:23 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-yuchengco-highload.json --expect-mac COM3=20500DE70C80;COM6=20500DE71C38;COM7=F42DC973E618 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp9701.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\highload\collect-scan_oct21_072400pm.log)
+
+-- COM3: reading the card ...
+   retry 2/3 of COM3 in 3 s (no_answer)
+COLLECT: COM3 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r2_b4_telem.csv (7676 rows, ran 2026-10-21 18:26:09)
+
+-- COM6: reading the card ...
+COLLECT: COM6 20500DE71C38 FAIL 2 runs of this attack + topology in the time window (Yuchengco ran 2026-10-21 18:02:28; Yuchengco ran 2026-10-21 18:27:53) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM7: reading the card ...
+COLLECT: COM7 F42DC973E618 FAIL 2 runs of this attack + topology in the time window (Yuchengco ran 2026-10-21 18:02:23; Yuchengco ran 2026-10-21 18:27:04) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+COLLECT_SUMMARY: ok=1 skip=0 fail=2

@@ -1,0 +1,21 @@
+﻿{
+    "attack":  "wormhole",
+    "topology":  "partial",
+    "location":  "Yuchengco",
+    "scenario":  "highload",
+    "owner":  "Cal",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-21 18:58",
+    "boards":  [
+                   {
+                       "Label":  "root",
+                       "Port":  "COM7",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "b0:cb:d8:f3:32:18",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

@@ -1,0 +1,36 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-dlsu_library-burst.json - 21/10/2026 5:23:15 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\wormhole-partial_mesh-dlsu_library-burst_r1_oct21_0523PM.log
+
+> Parallel flash: 3 children, 3 at a time   (05:23:16 pm)
+  node4 on COM7: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node4_COM7_flash_oct21_0523pm.log)
+  node4: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node4: LOCATION_CHECK: OK DLSU_Library
+  node3 on COM4: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node3_COM4_flash_oct21_0523pm.log)
+  node3: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node3: LOCATION_CHECK: OK DLSU_Library
+  node4: Hash of data verified.
+  node2 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node2_COM3_flash_oct21_0523pm.log)
+  node2: SCENARIO_CHECK: FIXED highload -> burst (applies on the next boot)
+  node2: LOCATION_CHECK: OK DLSU_Library
+  node3: Hash of data verified.
+  node2: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: FLASH_ONLY_DONE: COM7 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM7) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node4_COM7_serial_oct21_0523pm.log
+  node4 on COM7: flashed + started in 31 sec
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: FLASH_ONLY_DONE: COM4 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node3 (COM4) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node3_COM4_serial_oct21_0523pm.log
+  node3 on COM4: flashed + started in 33 sec
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\node2_COM3_serial_oct21_0524pm.log
+  node2 on COM3: flashed + started in 33 sec
+  parallel flash: 3 of 3 children flashed in 46 sec
+All boards done in 6 min 08 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\DLSU_Library\burst

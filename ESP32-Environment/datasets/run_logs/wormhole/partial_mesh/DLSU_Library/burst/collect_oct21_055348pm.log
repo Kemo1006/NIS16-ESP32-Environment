@@ -1,0 +1,20 @@
+collect_run.py --ports COM4,COM7,COM3 --attack wormhole --topology partial_mesh --location DLSU_Library --scenario burst --repeat 1 --since 2026-10-21 05:53 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Bas\wormhole-partial_mesh-dlsu_library-burst.json --expect-mac COM4=20500DE70C80;COM7=F42DC973E618;COM3=20500DE71C38 --pick COM4=wormhole/partial_mesh/DLSU_Library/victim_NODE_20500DE70C80_r8_b225_telem.csv;COM7=wormhole/partial_mesh/DLSU_Library/victim_NODE_F42DC973E618_r12_b74_telem.csv;COM3=wormhole/partial_mesh/DLSU_Library/victim_NODE_20500DE71C38_r7_b14_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\DLSU_Library\burst\collect_oct21_055348pm.log)
+
+-- COM4: reading the card ...
+   checked victim_NODE_20500DE70C80_r8_b225_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 14 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\DLSU_Library\burst\child_node3_partial_wormhole_r1_oct21_0553PM_telem.csv|6160
+COLLECT: COM4 20500DE70C80 OK victim_NODE_20500DE70C80_r8_b225_telem.csv -> child_node3_partial_wormhole_r1_oct21_0553PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 14 s
+
+-- COM7: reading the card ...
+   checked victim_NODE_F42DC973E618_r12_b74_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 19 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\DLSU_Library\burst\child_node4_partial_wormhole_r1_oct21_0554PM_telem.csv|6213
+COLLECT: COM7 F42DC973E618 OK victim_NODE_F42DC973E618_r12_b74_telem.csv -> child_node4_partial_wormhole_r1_oct21_0554PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 19 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE71C38_r7_b14_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 76 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\DLSU_Library\burst\child_node2_partial_wormhole_r1_oct21_0555PM_telem.csv|6784
+COLLECT: COM3 20500DE71C38 OK victim_NODE_20500DE71C38_r7_b14_telem.csv -> child_node2_partial_wormhole_r1_oct21_0555PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 76 s
+
+COLLECT_SUMMARY: ok=3 skip=0 fail=0
+

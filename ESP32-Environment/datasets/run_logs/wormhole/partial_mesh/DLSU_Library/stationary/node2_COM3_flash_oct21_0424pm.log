@@ -1,0 +1,109 @@
+Setting COM3's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-21 16:24:19 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM3
+Connecting......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.4 seconds.
+Hard resetting via RTS pin...
+Board: node2 (on COM3, MAC 20:50:0d:e7:1c:38)
+Flashing + monitoring child on COM3 (topology=partial, attack=wormhole/victim, scenario=stationary, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_wormhole_partial_victim_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+esptool.py --chip esp32 -p COM3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:1c:38
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x0012efff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 399.4 kbit/s)...
+Hash of data verified.
+Compressed 1174160 bytes to 732159...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bbe8... (4 %)
+Writing at 0x000295c8... (6 %)
+Writing at 0x00033a2d... (8 %)
+Writing at 0x0003efdd... (11 %)
+Writing at 0x0004541f... (13 %)
+Writing at 0x0004b201... (15 %)
+Writing at 0x00050989... (17 %)
+Writing at 0x0005600d... (20 %)
+Writing at 0x0005bdca... (22 %)
+Writing at 0x00061a07... (24 %)
+Writing at 0x00067bf1... (26 %)
+Writing at 0x0006daeb... (28 %)
+Writing at 0x00073a1d... (31 %)
+Writing at 0x00079f12... (33 %)
+Writing at 0x0007f585... (35 %)
+Writing at 0x00084d46... (37 %)
+Writing at 0x0008a2f9... (40 %)
+Writing at 0x0008fbc2... (42 %)
+Writing at 0x0009533e... (44 %)
+Writing at 0x0009ab4b... (46 %)
+Writing at 0x000a05b8... (48 %)
+Writing at 0x000a5b9c... (51 %)
+Writing at 0x000aaefc... (53 %)
+Writing at 0x000b0ad3... (55 %)
+Writing at 0x000b6a38... (57 %)
+Writing at 0x000bc2c1... (60 %)
+Writing at 0x000c19df... (62 %)
+Writing at 0x000c7628... (64 %)
+Writing at 0x000cd4f1... (66 %)
+Writing at 0x000d2cb4... (68 %)
+Writing at 0x000d884f... (71 %)
+Writing at 0x000de58a... (73 %)
+Writing at 0x000e414a... (75 %)
+Writing at 0x000e9f66... (77 %)
+Writing at 0x000efa94... (80 %)
+Writing at 0x000f5122... (82 %)
+Writing at 0x000fce76... (84 %)
+Writing at 0x0010562e... (86 %)
+Writing at 0x0010b441... (88 %)
+Writing at 0x0011365e... (91 %)
+Writing at 0x001198b4... (93 %)
+Writing at 0x0011f25e... (95 %)
+Writing at 0x001258ee... (97 %)
+Writing at 0x0012ad3e... (100 %)
+Wrote 1174160 bytes (732159 compressed) at 0x00010000 in 17.5 seconds (effective 535.6 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1507.7 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2512.2 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Checking location.txt / scenario.txt again now that the new firmware runs (about 10 s) ...
+SCENARIO_CHECK: FIXED burst -> stationary (applies on the next boot)
+Rebooting COM3 once so it starts recording under DLSU_Library / stationary ...
+FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)

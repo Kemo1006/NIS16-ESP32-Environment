@@ -1,0 +1,20 @@
+collect_run.py --ports COM4,COM7,COM3 --attack wormhole --topology partial_mesh --location Yuchengco --scenario stationary --repeat 1 --since 2026-10-21 06:25 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-yuchengco-stationary.json --expect-mac COM4=20500DE70C80;COM7=F42DC973E618;COM3=20500DE71C38 --pick COM4=wormhole/partial_mesh/Yuchengco/victim_NODE_20500DE70C80_r1_b2_telem.csv;COM7=wormhole/partial_mesh/Yuchengco/victim_NODE_F42DC973E618_r1_b2_telem.csv;COM3=wormhole/partial_mesh/Yuchengco/victim_NODE_20500DE71C38_r1_b2_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\stationary\collect_oct21_062555pm.log)
+
+-- COM4: reading the card ...
+   checked victim_NODE_20500DE70C80_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 118 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\stationary\victim_NODE-20500DE70C80_partial_wormhole_r1_oct21_0625PM_telem.csv|7205
+COLLECT: COM4 20500DE70C80 OK victim_NODE_20500DE70C80_r1_b2_telem.csv -> victim_NODE-20500DE70C80_partial_wormhole_r1_oct21_0625PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 118 s
+
+-- COM7: reading the card ...
+   checked victim_NODE_F42DC973E618_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 35 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\stationary\victim_NODE-F42DC973E618_partial_wormhole_r1_oct21_0626PM_telem.csv|6371
+COLLECT: COM7 F42DC973E618 OK victim_NODE_F42DC973E618_r1_b2_telem.csv -> victim_NODE-F42DC973E618_partial_wormhole_r1_oct21_0626PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 35 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE71C38_r1_b2_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 45 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\stationary\victim_NODE-20500DE71C38_partial_wormhole_r1_oct21_0627PM_telem.csv|6471
+COLLECT: COM3 20500DE71C38 OK victim_NODE_20500DE71C38_r1_b2_telem.csv -> victim_NODE-20500DE71C38_partial_wormhole_r1_oct21_0627PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 45 s
+
+COLLECT_SUMMARY: ok=3 skip=0 fail=0
+

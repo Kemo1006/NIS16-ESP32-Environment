@@ -1,0 +1,17 @@
+collect_run.py --ports COM4,COM7,COM3 --attack wormhole --topology partial_mesh --location G402 --scenario highload --repeat 1 --since 2026-10-21 12:01 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Bas\wormhole-partial_mesh-g402-highload.json --expect-mac COM4=20500DE70C80;COM7=F42DC973E618;COM3=20500DE71C38 --pick COM4=wormhole/partial_mesh/G402/victim_NODE_20500DE70C80_r3_b322_telem.csv;COM7=wormhole/partial_mesh/G402/victim_NODE_F42DC973E618_r2_b292_telem.csv;COM3=wormhole/partial_mesh/G402/victim_NODE_20500DE71C38_r3_b5_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\highload\collect_oct21_030127pm.log)
+
+-- COM4: reading the card ...
+   victim_NODE_20500DE70C80_r3_b322_telem.csv: started 14:45, after the root of this run was exported (18:09) - a LATER run, refused
+COLLECT: COM4 20500DE70C80 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_20500DE70C80_r3_b322_telem.csv (ran 2026-10-21 14:45:16): started AFTER this run's root was exported (18:09) - a later run, not this one. If you are sure, pick the file in Data > Import and footnote it
+
+-- COM7: reading the card ...
+   victim_NODE_F42DC973E618_r2_b292_telem.csv: started 14:45, after the root of this run was exported (18:09) - a LATER run, refused
+COLLECT: COM7 F42DC973E618 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_F42DC973E618_r2_b292_telem.csv (ran 2026-10-21 14:45:22): started AFTER this run's root was exported (18:09) - a later run, not this one. If you are sure, pick the file in Data > Import and footnote it
+
+-- COM3: reading the card ...
+   victim_NODE_20500DE71C38_r3_b5_telem.csv: started 14:47, after the root of this run was exported (18:09) - a LATER run, refused
+COLLECT: COM3 20500DE71C38 FAIL the only piece(s) with a baseline do NOT match the root's run - nothing filed (another run, or the board's phase labels were out of sync). Pieces checked: victim_NODE_20500DE71C38_r3_b5_telem.csv (ran 2026-10-21 14:47:35): started AFTER this run's root was exported (18:09) - a later run, not this one. If you are sure, pick the file in Data > Import and footnote it
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=3
+

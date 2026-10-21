@@ -1,0 +1,8 @@
+collect_run.py --ports COM3 --attack wormhole --topology partial_mesh --location Yuchengco --scenario highload --repeat 1 --since 2026-10-21 07:23 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-yuchengco-highload.json --expect-mac COM3=20500DE70C80 --pick COM3=wormhole/partial_mesh/Yuchengco/victim_NODE_20500DE70C80_r2_b4_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\highload\collect_oct21_072425pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 20500DE70C80 FAIL no piece on the card holds this run's baseline - nothing filed. Pieces checked: victim_NODE_20500DE70C80_r1_b2_telem.csv (ran 2026-10-21 18:02:27): NOT tried - an earlier run than the newest one on this card (ran 18:26); victim_NODE_20500DE70C80_r2_b4_telem.csv: copy failed (ERROR: could not read the card: board never finished LIST_SD (no SDLIST_END) - i)
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=1
+
