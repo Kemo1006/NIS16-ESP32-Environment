@@ -1,7 +1,0 @@
-collect_run.py --ports COM35 --attack wormhole --topology partial_mesh --location G402 --scenario stationary --repeat 1 --since 2026-10-19 05:01 --roster A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\presets\Cal\wormhole-partial_mesh-g402-stationary.json --dry-run --plan-json C:\Users\Angelo Calpoporo\AppData\Local\Temp\tmpFA0.tmp
-(log: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\G402\stationary\collect-scan_oct19_050138pm.log)
-
--- COM35: reading the card ...
-COLLECT: COM35 20500DE71C38 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-19 15:21:30; G402 ran 2026-10-19 16:25:34) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
-
-COLLECT_SUMMARY: ok=0 skip=0 fail=1
