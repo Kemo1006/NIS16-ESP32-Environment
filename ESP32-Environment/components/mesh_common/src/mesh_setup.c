@@ -155,10 +155,19 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
  *     enough (WH_PIN_MIN_RSSI) - the root whenever it has room;
  *   - B's parent must be at least as deep as A (A's layer comes from its UART
  *     HELLO, mesh_setup_wormhole_peer_layer), so B is always >= 1 hop deeper,
- *     and B re-picks by itself if A moves and the depths meet (rate-limited). */
+ *     and B re-picks by itself if A moves and the depths meet (rate-limited).
+ *
+ * oct. 22 2026: "at least as deep as A" still let B pick A ITSELF (A at H01 is
+ * layer 2 = the minimum), and A is always the loudest AP B hears - so B landed
+ * under A on every attempt (A H01 -> B H02, B's normal copy relayed by A only).
+ * B now also refuses A's mesh AP (A's STA MAC from the HELLO, + 1) and re-picks
+ * if it already sits under A, so B always hangs under a VICTIM. TREE only:
+ * partial keeps the oct. 19 rules unchanged. */
 #define WH_B_NO_ROOT \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && \
      (MESH_TOPOLOGY == NIS_TOPO_TREE || MESH_TOPOLOGY == NIS_TOPO_PARTIAL))
+#define WH_B_NOT_UNDER_A \
+    (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE)
 #define MANUAL_PARENT (STAR_HUB || WH_B_NO_ROOT)
 
 #if MANUAL_PARENT
@@ -166,6 +175,8 @@ static bool     s_pin_to_hub  = false;  /* star: join ONLY s_hub_bssid          
 static bool     s_pin_no_root = false;  /* wormhole B: strongest parent that is not root */
 static bool     s_pin_shallow = false;  /* wormhole A: shallowest open parent (root first) */
 static volatile int s_wh_peer_layer = 0;/* B: A's mesh layer from its HELLO (0 = unknown) */
+static uint8_t  s_wh_peer_ap[6];        /* B: A's mesh SoftAP (STA MAC + 1) - never B's parent */
+static volatile bool s_wh_peer_ap_known = false;
 static volatile bool s_repick = false;  /* B: switch to a deeper parent on the next scan */
 static int64_t  s_last_repick_us __attribute__((unused)) = 0;
 #define WH_PIN_MIN_RSSI   (-85)         /* A: weaker parents only if nothing better       */
@@ -709,6 +720,7 @@ static void star_hub_scan_done(int num)
     mesh_assoc_t assoc, hub_assoc = {0}, any_assoc = {0};
     wifi_ap_record_t rec, hub_rec = {0}, any_rec = {0};
     bool seen = false, joinable = false, root_only = false, too_shallow = false, any = false;
+    bool a_seen = false, other_deep = false;/* B: A heard / another deep-enough AP heard */
     /* B's parent must sit at least as deep as A (layer units: root = 1). */
     const int min_layer = (s_wh_peer_layer > 2) ? s_wh_peer_layer : 2;
 
@@ -734,6 +746,11 @@ static void star_hub_scan_done(int num)
                 else                 too_shallow = true;
                 continue;
             }
+            if (s_wh_peer_ap_known && memcmp(rec.bssid, s_wh_peer_ap, 6) == 0) {
+                a_seen = true;              /* never B's parent - see the D-30 note */
+                continue;
+            }
+            other_deep = true;
             if (open && (!joinable || rec.rssi > hub_rec.rssi)) {
                 joinable  = true;
                 hub_rec   = rec;
@@ -784,8 +801,12 @@ static void star_hub_scan_done(int num)
         uint8_t cur[6] = {0};
         mesh_setup_get_parent_mac(cur);
         if (!joinable || memcmp(cur, hub_rec.bssid, 6) == 0) {
-            ESP_LOGW(TAG, "WORMHOLE B (D-30): no deeper parent than A in reach yet - staying. "
-                     "Move B away from A's parent (or a child next to B).");
+            bool under_a = s_wh_peer_ap_known && memcmp(cur, s_wh_peer_ap, 6) == 0;
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): %s - staying. %s",
+                     under_a ? "B is still UNDER A and no other victim is in reach"
+                             : "no deeper parent than A in reach yet",
+                     under_a ? "Put a victim (H01/H02) within reach of B; B moves on its own."
+                             : "Move B away from A's parent (or a child next to B).");
             return;
         }
     }
@@ -797,7 +818,9 @@ static void star_hub_scan_done(int num)
                 ESP_LOGW(TAG, "WORMHOLE B (D-30): scan %lu - no parent deeper than A yet (%s). "
                          "Waiting: another board must be in the mesh within reach of B "
                          "(move a child, not A, closer to B).", (unsigned long)s_hub_scans,
-                         !seen ? "no mesh node heard" : root_only && !too_shallow ? "only the root is in reach"
+                         !seen ? "no mesh node heard"
+                         : a_seen && !other_deep && !too_shallow ? "only A itself is in reach - B never joins A"
+                         : root_only && !too_shallow ? "only the root is in reach"
                          : too_shallow ? "only nodes as shallow as A are in reach" : "the ones in reach are full");
             } else {
                 ESP_LOGW(TAG, "WORMHOLE A (D-30): scan %lu - no open parent heard yet (%s).",
@@ -1960,24 +1983,53 @@ bool heartbeat_wormhole_gate_active(void)
  * problems already (EXPOSURE box) but still started Phase 0, where the ends
  * LOCK - so a wrong setup could only be fixed by restarting the run. Checked
  * on fresh heartbeats only, in the order an operator should fix them. */
-void mesh_setup_wormhole_peer_layer(int peer_layer, bool may_repick)
+void mesh_setup_wormhole_peer_layer(int peer_layer, const uint8_t peer_mac[6], bool may_repick)
 {
 #if WH_B_NO_ROOT
     s_wh_peer_layer = peer_layer;
+#if WH_B_NOT_UNDER_A
+    /* Tree only. Elsewhere s_wh_peer_ap_known stays false, so the "never
+     * under A" checks in star_hub_scan_done and below never fire. */
+    if (s_pin_no_root && peer_mac) {
+        /* Mesh SoftAP BSSID = STA MAC + 1 (with carry), as in parent_mac. Built
+         * locally and stored only when it changes: a scan reads it from another
+         * task, so it must never see the half-incremented value. */
+        uint8_t ap[6];
+        memcpy(ap, peer_mac, 6);
+        for (int i = 5; i >= 0 && ++ap[i] == 0; i--) {
+        }
+        if (!s_wh_peer_ap_known || memcmp(ap, s_wh_peer_ap, 6) != 0) {
+            s_wh_peer_ap_known = false;
+            memcpy(s_wh_peer_ap, ap, 6);
+            s_wh_peer_ap_known = true;
+        }
+    }
+#else
+    (void)peer_mac;
+#endif
     if (!s_pin_no_root || !may_repick || peer_layer <= 0 || !s_have_parent) {
         return;
     }
     int me = mesh_setup_get_layer();
+    uint8_t cur[6] = {0};
+    bool under_a = s_wh_peer_ap_known && mesh_setup_get_parent_mac(cur) &&
+                   memcmp(cur, s_wh_peer_ap, 6) == 0;
     int64_t now = esp_timer_get_time();
-    if (me > 0 && me <= peer_layer && now - s_last_repick_us > WH_REPICK_GAP_US) {
+    if (me > 0 && (me <= peer_layer || under_a) && now - s_last_repick_us > WH_REPICK_GAP_US) {
         s_last_repick_us = now;
         s_repick = true;
-        ESP_LOGW(TAG, "WORMHOLE B (D-30): B is at layer %d, A at layer %d - not deeper than A. "
-                 "Looking for a deeper parent.", me, peer_layer);
+        if (under_a) {
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): B's parent is A itself (" MACSTR ") - the ends sit "
+                     "side by side. Looking for a victim parent instead.", MAC2STR(peer_mac));
+        } else {
+            ESP_LOGW(TAG, "WORMHOLE B (D-30): B is at layer %d, A at layer %d - not deeper than A. "
+                     "Looking for a deeper parent.", me, peer_layer);
+        }
         star_hub_scan();
     }
 #else
     (void)peer_layer;
+    (void)peer_mac;
     (void)may_repick;
 #endif
 }
