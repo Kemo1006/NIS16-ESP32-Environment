@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 21, 2026 ~6 PM (Angelo's laptop) - GitHub in sync: pulled 6 data commits, pushed the D-35 benign re-plan (PlanSettings.ps1, inventory_cells.py, campaign_plan.json) + verification #82 docs. Still local on purpose: mesh_config.h, presets/Cal edits, archive/, 11 DLSU_Library/legend data files (use Smart sync). Next: Smart sync the highload + DLSU burst analysis; re-verify the 2 NOT APPLIED runs; #77 fixes.
+**Updated:** oct. 22, 2026 (Angelo's laptop) - GitHub in sync (pulled Basti's 207-file smart sync). Still local on purpose: mesh_config.h, presets/Cal edits, archive/. ⚠️ DLSU_Library/burst ROOT exports + preset exist only here -> Smart sync them, then re-analyse that cell. Next: re-verify the 2 NOT APPLIED runs; #77 fixes.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
