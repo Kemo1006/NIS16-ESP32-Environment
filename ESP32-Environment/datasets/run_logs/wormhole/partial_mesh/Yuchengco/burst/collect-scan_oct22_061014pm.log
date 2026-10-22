@@ -1,0 +1,13 @@
+collect_run.py --ports COM3,COM6,COM7 --attack wormhole --topology partial_mesh --location Yuchengco --scenario burst --repeat 1 --since 2026-10-22 06:10 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-yuchengco-burst.json --expect-mac COM3=20500DE70C80;COM6=20500DE71C38;COM7=F42DC973E618 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp5270.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\collect-scan_oct22_061014pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 20500DE70C80 FAIL the only complete file ran 2026-10-22 16:41:15, but a NEWER run is on the card (ran 2026-10-22 17:07:53, 1 piece(s), none complete) - the complete file is probably an EARLIER attempt. Narrow the time window to the newer run, or pick the file in Data > Import
+
+-- COM6: reading the card ...
+COLLECT: COM6 20500DE71C38 FAIL the only complete file ran 2026-10-22 16:41:09, but a NEWER run is on the card (ran 2026-10-22 17:08:52, 1 piece(s), none complete) - the complete file is probably an EARLIER attempt. Narrow the time window to the newer run, or pick the file in Data > Import
+
+-- COM7: reading the card ...
+COLLECT: COM7 F42DC973E618 FAIL no clean file of this run in the time window - found only: wormhole/tree/G402 (another run)
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=3
