@@ -15,6 +15,62 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #84 — Oct 22, 2026 · ~11 PM — every wormhole / tree cell: double-check the verdicts
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a08f889` (after pulling Kyle's 8:13 PM / 8:57 PM child files)
+> **Request:** "can you double check the verdicts in tree wormhole"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 16 run (root 1:02 PM) + NEW oct. 22 8:57 PM children node5-8 (no root synced) | 9 + 4 |
+| wormhole | tree | G402 | stationary | r1 | oct. 22 6:07 PM run (root + node3-8 + B's raw card file) + NEW 8:13 PM children child-4..7 (no root synced) | 9 + 4 |
+| wormhole | tree | G402 | highload | r1 | oct. 22 7:23 PM, 4 victim files only | 4 |
+
+| Check | Result | Detail |
+|---|---|---|
+| DLSU stationary, verify_attack on the existing (oct. 16) feature table | ⚠️ CONFIRMED · OUTCOME INCONCLUSIVE | TunnelIntensity 0 -> 1, DuplicateRate 0 -> 1 (2/2 primaries); A (1C38) silent after +36 s, UART 32/180 (18 %), 0C80/ED80/FE90 major gaps - unchanged from the recorded D8 verdict |
+| DLSU stationary, inventory after the pull | ❌ | now 11 nodes, '4 node(s) below 95 % coverage': Kyle's 8:57 PM files MIX a second run into the oct. 16 folder |
+| G402 stationary 6:07 PM run (scratch copy, only that run) as filed | ❌ NOT CONFIRMED - SETUP INVALID | preprocess.py REFUSES B's file `victim_NODE_F42DC973E618_r15_b1432_telem.csv` (raw SD-card name, copied by hand, never imported) -> 'no wormhole_b', DuplicateRate no data |
+| same, with B's file renamed as import_sdcard.py would (scratch only) | ⚠️ CONFIRMED · OUTCOME INCONCLUSIVE | TunnelIntensity 0 -> 1, DuplicateRate 0 -> 0.405 (2/2 primaries); layout A 0C80 H01 -> 1C38 -> B E618 H03 (skips 2, Fig. 4.18); A silent after +12 s; UART 13/180 (7 %); 1C38 + FE90 re-parented (+73/+76 s) after A dropped; B's file = this run (phase rows 3,006 / 1,806 / 1,206 match the root) |
+| G402 highload | ❌ cannot verify | no root telemetry, no root arrivals |
+| 8:13 PM G402 + 8:57 PM DLSU runs | ⏳ cannot verify | children only; roots still on Kyle's laptop |
+
+**Findings:**
+- No tree wormhole cell is validated yet. Both full runs show the tunnel signature (CONFIRMED) but are INCONCLUSIVE because wormhole A stops mid-attack and the UART carries 7-18 % of frames - the A-restart problem D-36 targets; the oct. 22 6 PM run predates the reflash.
+- G402 stationary must be re-filed: import B's card file properly (`tools/import_sdcard.py --card <drive> --repeat 1 --scenario stationary --files victim_NODE_F42DC973E618_r15_b1432_telem.csv`) and delete the hand-copied raw file, else every analysis refuses B.
+- Kyle's new child files sit beside older runs in the SAME folders. When his roots arrive, archive the superseded run (oct. 16 DLSU / oct. 22 6 PM G402) before analysing, or the cells mix two runs (already breaks DLSU's coverage check).
+
+**Verdict: ⚠️ DLSU stationary = INCONCLUSIVE (unchanged); G402 stationary = INCONCLUSIVE once B is imported (NOT CONFIRMED as filed); G402 highload = incomplete; 8:13 / 8:57 PM runs pending their roots. Recapture tree wormhole on D-36 + D-37 firmware.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #83 — Oct 22, 2026 · ~10 PM — baseline (benign) / partial_mesh / G402 / highload: why the cell shows INCOMPLETE
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `667fdc0` (+ uncommitted D-37 firmware + export_logs.py fix)
+> **Request:** "check the firmware of partial mesh in benign why its incomplete in G404 [= G402] partial mesh benign"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| none (benign) | partial_mesh | G402 | highload | r1 | oct. 22, root 9:09 AM run (GUI, S:\ laptop, IDF 5.3.5), root export 9:19 AM, cards collected 9:25-9:42 AM | root telem 0919AM + 7 victim telem (trimmed/); extra raw: root 0835AM (earlier 8:24 attempt), 0C80 0938AM duplicate |
+
+| Check | Result | Detail |
+|---|---|---|
+| Firmware / run | ✅ | all 8 boards reached TERMINATE, root: `SD LOGGING 8/8`, `ALL 8 BOARDS DONE`; tree root -> H01 x2 -> H02 -> H03 |
+| Completeness (inventory_cells) | ❌ INCOMPLETE | `why: no root arrivals file` - the only reason |
+| Root export (run log ..._0909AM.log) | ❌ tool crash | EXPORT_LOGS saved 4,974 rows; EXPORT_ARRIVALS streamed 100 % (4,975 rows) then `SerialException: ClearCommError failed (Access is denied)` - another program opened COM3 - raised out of export_logs.py main(), rows never saved |
+| Victim telemetry | ✅ | every board: baseline 3,006-3,007 rows, cooldown 1,206-1,207 rows; B768's lower total (4,774) = fewer pre-run (phase 255) rows only |
+| Collect 9:23 AM | ⚠️ 0/7 | each card held both morning runs (08:09 + 08:59) -> refused to guess; the later narrower collect filed all 7 |
+
+**Findings:**
+- NOT a firmware problem. The capture is whole; only the root's arrivals file (PDR/latency source) is missing because export_logs.py crashed on a port-access error at the very end of the arrivals stream and discarded 4,975 received rows.
+- Fixed (oct. 22, uncommitted): `tools/export_logs.py` - a lost port inside `_capture_stream` returns the rows received (complete if the announced byte total arrived, else saved as PARTIAL); the retry loop stops cleanly instead of crashing. Mock test: full stream + port loss -> 101/101 rows, no error; partial -> rows kept + `SERIAL PORT LOST` error.
+- Recoverable without a recapture: a HIGHLOAD root writes arrivals to its SD card only (csv_logger `s_arrivals_sd_only`), so root B0:CB:D8:F3:32:18's card should still hold this run's arrivals (flash wipes do not touch the card). Import it with `tools/import_sdcard.py --port <root COM> --repeat 1 --scenario highload --dry-run`, then `--files <that boot's arrivals file>` (do not re-import the telem). Then re-run analyze for this cell.
+- Who took COM3 mid-export is not proven (candidates: GUI board-health/port holder, sniffer stop, a monitor left open).
+
+**Verdict: ⚠️ DATA OK, CELL INCOMPLETE until the root's arrivals file is imported from its SD card. Recapture only if the card no longer has it.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #82 — Oct 21, 2026 · ~3:30 PM — wormhole / partial_mesh / G402 / highload, the oct. 21 3:02 PM recapture
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `4bc3dfd` (+ GitHub `adb2328`, the 3:21 PM smart sync that sent this run)

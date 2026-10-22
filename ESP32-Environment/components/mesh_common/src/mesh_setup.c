@@ -175,7 +175,16 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
  * below A: H02 while A is at H01, so B is at H03 and A itself (at A's own depth)
  * can never be B's parent. B re-picks before Phase 0 if it is anywhere else.
  * Everything inside #if WH_B_TREE_DEPTH; partial and star compile exactly the
- * pre-oct. 22 code (checked by a preprocessor diff). */
+ * pre-oct. 22 code (checked by a preprocessor diff).
+ *
+ * D-37 (oct. 22 2026, evening): that rule could hold B off the mesh forever
+ * ("no parent at H02 yet") and the roster gate with it. B now falls back to
+ * partial's rule (any open parent at least as deep as A; A is a LEAF, D-36, so
+ * never A itself) after WH_B_TREE_FALLBACK_SCANS empty scans, and before Phase
+ * 0 still moves to an exact-depth parent when one appears. */
+#ifndef WH_B_TREE_FALLBACK_SCANS
+#define WH_B_TREE_FALLBACK_SCANS   6
+#endif
 #define WH_B_NO_ROOT \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && \
      (MESH_TOPOLOGY == NIS_TOPO_TREE || MESH_TOPOLOGY == NIS_TOPO_PARTIAL))
@@ -264,7 +273,8 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
      * config below). Defaults = NIS_TOPO_TREE = exact M1 behaviour.
      *
      *   STAR    (§4.2.2.1): cap depth at 2 → every node a direct child of root.
-     *   TREE    (§4.2.2.2): native self-organising multi-hop tree (default).
+     *   TREE    (§4.2.2.2): self-organising multi-hop tree (default), fan-out
+ *                       capped like PARTIAL (D-37) so it branches, not flattens.
      *   LINEAR  (§4.2.2.3): force a CHAIN + 1 child/node → hop-by-hop line.
      *   PARTIAL (§4.2.2.4): multi-hop like TREE but narrowed fan-out → nodes
      *                       branch across a subset of parents instead of all
@@ -286,13 +296,24 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     max_children = MESH_LINEAR_MAX_CHILDREN; /* 1 child/node → strict chain     */
 #elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
     max_children = MESH_PARTIAL_MAX_CHILDREN;/* narrowed fan-out → branched mesh */
+#elif (MESH_TOPOLOGY == NIS_TOPO_TREE)
+    max_children = MESH_TREE_MAX_CHILDREN;   /* D-37: partial's fan-out → multi-hop tree */
 #endif
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(max_layer));
     ESP_LOGI(TAG, "Topology shaping: %s (max_layer=%d, max_children=%d)",
              topo_name, max_layer, max_children);
 
     ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE)
+    /* D-38 (oct. 22 2026): esp_mesh.h - "If mesh softAP is encrypted, this value
+     * should be set a greater value, such as 30 seconds." Ours is (MESH_PASSWORD).
+     * At 10 s, tree children with GOOD links (-66..-77 dBm) were dropped by a busy
+     * parent (mostly the root) and rejoined it ~20 s later, mid-run (verif. #84). */
+    ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(TREE_AP_ASSOC_EXPIRE_S));
+    ESP_LOGI(TAG, "AP assoc expire: %d s (D-38, encrypted mesh AP)", TREE_AP_ASSOC_EXPIRE_S);
+#else
     ESP_ERROR_CHECK(esp_mesh_set_ap_assoc_expire(10));
+#endif
     ESP_ERROR_CHECK(esp_mesh_disable_ps());
 
 #if !MESH_USE_ROUTER
@@ -736,6 +757,10 @@ static void star_hub_scan_done(int num)
     /* Tree: EXACTLY one hop below A (H02 while A is at H01), so B is at H03. */
     const int min_layer = ((s_wh_peer_layer > 2) ? s_wh_peer_layer : 2) + 1;
     bool too_deep = false, at_depth = false;
+    /* D-37 fallback = partial's rule: strongest open parent at least as deep as A. */
+    mesh_assoc_t fb_assoc = {0};
+    wifi_ap_record_t fb_rec = {0};
+    bool fb_ok = false;
 #else
     const int min_layer = (s_wh_peer_layer > 2) ? s_wh_peer_layer : 2;
 #endif
@@ -757,6 +782,12 @@ static void star_hub_scan_done(int num)
                 continue;
             }
             seen = true;
+#if WH_B_TREE_DEPTH
+            if (open && assoc.layer >= min_layer - 1 && assoc.layer != min_layer &&
+                (!fb_ok || rec.rssi > fb_rec.rssi)) {
+                fb_ok = true; fb_rec = rec; fb_assoc = assoc;
+            }
+#endif
             if (assoc.layer < min_layer) {
                 if (assoc.layer < 2) root_only = true;
                 else                 too_shallow = true;
@@ -831,6 +862,16 @@ static void star_hub_scan_done(int num)
         }
     }
     s_hub_scans++;
+#if WH_B_TREE_DEPTH
+    /* Never repick into a fallback parent: s_have_parent is false here. */
+    if (s_pin_no_root && !joinable && fb_ok && s_hub_scans >= WH_B_TREE_FALLBACK_SCANS) {
+        joinable = true; hub_rec = fb_rec; hub_assoc = fb_assoc;
+        ESP_LOGW(TAG, "WORMHOLE B (D-37): no parent at H%02d after %lu scans - falling back to "
+                 "partial's rule (strongest parent at least as deep as A). Before Phase 0 B "
+                 "still moves to an H%02d parent if one appears.",
+                 min_layer - 1, (unsigned long)s_hub_scans, min_layer - 1);
+    }
+#endif
 
     if (!joinable && (s_pin_no_root || s_pin_shallow)) {
         if (s_hub_scans == 1 || s_hub_scans % 10 == 0) {

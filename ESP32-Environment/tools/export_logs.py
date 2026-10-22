@@ -393,8 +393,22 @@ def _capture_stream(ser: serial.Serial, command: str):
         # caps a big export at ~1 KB/s; chunked reads run near the 115200 line
         # rate (~11 KB/s), a ~10x speedup — the device streams at line rate, the
         # old bottleneck was purely here on the host.
-        n = ser.in_waiting
-        chunk = ser.read(n if n > 0 else 1)
+        try:
+            n = ser.in_waiting
+            chunk = ser.read(n if n > 0 else 1)
+        except (serial.SerialException, OSError) as e:
+            # oct. 22 2026 (baseline/partial/G402/highload): another program took the
+            # port at 100 % of EXPORT_ARRIVALS, this raised out of main() and all
+            # 4975 rows already received were thrown away. Hand them back instead.
+            if started:
+                sys.stderr.write("\n")
+                sys.stderr.flush()
+            if started and total_bytes > 0 and recv_bytes >= total_bytes:
+                sys.stderr.write(f"   NOTE: serial port lost ({e}) after the full "
+                                 f"{_fmt_bytes(total_bytes)} arrived — kept.\n")
+                return rows, None
+            return rows, (f"SERIAL PORT LOST ({e}) - another program (monitor, GUI, "
+                          f"sniffer) opened this COM port mid-export")
         if not chunk:
             # No data this poll. If the device announced a byte total and we've
             # already received the whole file, the END_OF_FILE marker was lost
@@ -535,14 +549,18 @@ def _capture_with_retries(ser: serial.Serial, command: str):
     # device. Track the last real error instead.
     best_rows, best_err = [], None
     for attempt in range(1, EXPORT_ATTEMPTS + 1):
-        if attempt > 1:
-            # Give the board a moment to settle (a just-closed monitor may have
-            # reset it) and clear any stale bytes before re-issuing.
-            serial_guard.discard_for(ser, RETRY_SETTLE_S)
-            _drain(ser)
-            print(f"   retry {attempt}/{EXPORT_ATTEMPTS} "
-                  f"(best so far: {len(best_rows)} rows) ...")
-        rows, err = _capture_stream(ser, command)
+        try:
+            if attempt > 1:
+                # Give the board a moment to settle (a just-closed monitor may have
+                # reset it) and clear any stale bytes before re-issuing.
+                serial_guard.discard_for(ser, RETRY_SETTLE_S)
+                _drain(ser)
+                print(f"   retry {attempt}/{EXPORT_ATTEMPTS} "
+                      f"(best so far: {len(best_rows)} rows) ...")
+            rows, err = _capture_stream(ser, command)
+        except (serial.SerialException, OSError) as e:
+            # Port still gone: retrying cannot help - keep what we have.
+            return best_rows, best_err or f"SERIAL PORT LOST ({e})", attempt
         # Perfect, complete capture — nothing to gain from more tries.
         if err is None and rows:
             return rows, None, attempt

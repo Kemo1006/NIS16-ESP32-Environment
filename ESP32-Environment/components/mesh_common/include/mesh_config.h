@@ -92,8 +92,10 @@
  *                      end A as the hub - root -> A -> every other board, so
  *                      B sits one hop deeper and the tunnel is a shortcut
  *                      (mesh_setup.c STAR_HUB_WORMHOLE).
- *   NIS_TOPO_TREE    — §4.2.2.2: native self-organising ESP-MESH tree, multi-hop
- *                      layering beneath the root (unchanged M1 behaviour).
+ *   NIS_TOPO_TREE    — §4.2.2.2: self-organising ESP-MESH tree, multi-hop
+ *                      layering beneath the root. D-37 (oct. 22 2026): fan-out
+ *                      capped like partial (MESH_TREE_MAX_CHILDREN) - the stock
+ *                      cap let the root take every board (flat, depth 2).
  *   NIS_TOPO_LINEAR  — §4.2.2.3: force a CHAIN (MESH_TOPO_CHAIN) AND cap fan-out
  *                      at 1 child/node, so nodes line up hop-by-hop from the
  *                      farthest node toward the root.
@@ -126,6 +128,23 @@
  *  tree branches + deepens instead of flattening into a star. Keep >1 so a real
  *  branched partial mesh (not a chain) can form. */
 #define MESH_PARTIAL_MAX_CHILDREN  2
+
+/** TREE (D-37, oct. 22 2026): the same narrowed fan-out partial uses. With the
+ *  stock 10 the root took every board it could hear (oct. 22 tree/G402 run: 5
+ *  boards at H01, "flat like a star", the one H02/H03 branch dropped mid-run),
+ *  while partial's cap of 2 gave a stable root -> 2 x H01 -> H02 -> H03 tree in
+ *  every run. Cap 2 forces the same branching depth. Override with
+ *  -DMESH_TREE_MAX_CHILDREN=3 for a wider (shallower) tree; never above 10. */
+#ifndef MESH_TREE_MAX_CHILDREN
+#define MESH_TREE_MAX_CHILDREN     2
+#endif
+
+/** TREE (D-38): seconds a parent keeps a silent child before disassociating it
+ *  (esp_mesh_set_ap_assoc_expire). IDF default 10; esp_mesh.h asks for ~30 on
+ *  an encrypted mesh AP, which ours is. Other topologies keep 10. */
+#ifndef TREE_AP_ASSOC_EXPIRE_S
+#define TREE_AP_ASSOC_EXPIRE_S     30
+#endif
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * ROUTER / UPLINK (only used when the root bridges to an AP)
