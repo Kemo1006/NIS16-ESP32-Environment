@@ -1,0 +1,12 @@
+NIS16 Capture Studio run log - baseline-partial_mesh-g402-highload.json - 22/10/2026 9:05:39 am
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\partial_mesh\G402\highload\baseline-partial_mesh-g402-highload_r1_oct22_0905AM.log
+  sniffer check: nothing recording - the root waits
+
+> Compile [1/1] root - ROOT   (09:07:42 am)
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · none · partial · highload  (compile only - no board is touched)
+  Build:  C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_none_partial_highload_GUI
+  ✔ Already built and up to date (built Oct 22 9:05am; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+All boards done in 3 min 37 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\partial_mesh\G402\highload

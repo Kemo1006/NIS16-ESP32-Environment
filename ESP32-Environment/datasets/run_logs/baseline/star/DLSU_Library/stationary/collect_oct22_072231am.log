@@ -1,0 +1,30 @@
+collect_run.py --ports COM10,COM11,COM3,COM9,COM14 --attack none --topology star --location DLSU_Library --scenario stationary --repeat 1 --since 2026-10-21 19:21 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-star-dlsu_library-stationary.json --expect-mac COM10=20500DE71C38;COM11=20500DE70C80;COM3=704BCA25B768;COM9=F42DC973E618;COM14=B4BFE932FE90 --pick COM10=baseline/star/DLSU_Library/victim_NODE_20500DE71C38_r1_b5_telem.csv;COM11=baseline/star/DLSU_Library/victim_NODE_20500DE70C80_r1_b2_telem.csv;COM3=baseline/star/DLSU_Library/victim_NODE_704BCA25B768_r1_b2_telem.csv;COM9=baseline/star/DLSU_Library/victim_NODE_F42DC973E618_r1_b2_telem.csv;COM14=baseline/star/DLSU_Library/victim_NODE_B4BFE932FE90_r1_b2_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\star\DLSU_Library\stationary\collect_oct22_072231am.log)
+
+-- COM10: reading the card ...
+   checked victim_NODE_20500DE71C38_r1_b5_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 451 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\star\DLSU_Library\stationary\victim_NODE-20500DE71C38_star_none_r1_oct22_0722AM_telem.csv|8729
+COLLECT: COM10 20500DE71C38 OK SHORT BASELINE - victim_NODE_20500DE71C38_r1_b5_telem.csv -> victim_NODE-20500DE71C38_star_none_r1_oct22_0722AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 451 s
+
+-- COM11: reading the card ...
+   checked victim_NODE_20500DE70C80_r1_b2_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 417 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\star\DLSU_Library\stationary\victim_NODE-20500DE70C80_star_none_r1_oct22_0723AM_telem.csv|8382
+COLLECT: COM11 20500DE70C80 OK SHORT BASELINE - victim_NODE_20500DE70C80_r1_b2_telem.csv -> victim_NODE-20500DE70C80_star_none_r1_oct22_0723AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 417 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_704BCA25B768_r1_b2_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 442 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\star\DLSU_Library\stationary\victim_NODE-704BCA25B768_star_none_r1_oct22_0724AM_telem.csv|8635
+COLLECT: COM3 704BCA25B768 OK SHORT BASELINE - victim_NODE_704BCA25B768_r1_b2_telem.csv -> victim_NODE-704BCA25B768_star_none_r1_oct22_0724AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 442 s
+
+-- COM9: reading the card ...
+   checked victim_NODE_F42DC973E618_r1_b2_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 412 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\star\DLSU_Library\stationary\victim_NODE-F42DC973E618_star_none_r1_oct22_0725AM_telem.csv|8332
+COLLECT: COM9 F42DC973E618 OK SHORT BASELINE - victim_NODE_F42DC973E618_r1_b2_telem.csv -> victim_NODE-F42DC973E618_star_none_r1_oct22_0725AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 412 s
+
+-- COM14: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r1_b2_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 396 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\star\DLSU_Library\stationary\victim_NODE-B4BFE932FE90_star_none_r1_oct22_0726AM_telem.csv|8174
+COLLECT: COM14 B4BFE932FE90 OK SHORT BASELINE - victim_NODE_B4BFE932FE90_r1_b2_telem.csv -> victim_NODE-B4BFE932FE90_star_none_r1_oct22_0726AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 396 s
+
+COLLECT_SUMMARY: ok=5 skip=0 fail=0
+

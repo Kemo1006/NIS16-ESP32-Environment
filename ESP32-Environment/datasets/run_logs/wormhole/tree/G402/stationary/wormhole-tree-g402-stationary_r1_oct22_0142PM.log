@@ -1,0 +1,36 @@
+NIS16 Capture Studio run log - wormhole-tree-g402-stationary.json - 22/10/2026 1:42:11 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\wormhole-tree-g402-stationary_r1_oct22_0142PM.log
+
+> Parallel flash: 3 children, 3 at a time   (01:42:11 pm)
+  node2 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node2_COM3_flash_oct22_0142pm.log)
+  node2: SCENARIO_CHECK: FIXED highload -> stationary (applies on the next boot)
+  node2: LOCATION_CHECK: OK G402
+  node3 on COM4: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node3_COM4_flash_oct22_0142pm.log)
+  node3: SCENARIO_CHECK: FIXED highload -> stationary (applies on the next boot)
+  node3: LOCATION_CHECK: OK G402
+  node2: Hash of data verified.
+  node4 on COM6: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node4_COM6_flash_oct22_0142pm.log)
+  node4: SCENARIO_CHECK: FIXED highload -> stationary (applies on the next boot)
+  node4: LOCATION_CHECK: OK G402
+  node3: Hash of data verified.
+  node4: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node2_COM3_serial_oct22_0142pm.log
+  node2 on COM3: flashed + started in 31 sec
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: FLASH_ONLY_DONE: COM4 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node3 (COM4) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node3_COM4_serial_oct22_0142pm.log
+  node3 on COM4: flashed + started in 34 sec
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: FLASH_ONLY_DONE: COM6 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\node4_COM6_serial_oct22_0142pm.log
+  node4 on COM6: flashed + started in 33 sec
+  parallel flash: 3 of 3 children flashed in 45 sec
+All boards done in 5 min 07 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary

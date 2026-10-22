@@ -1,0 +1,1463 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-yuchengco-burst.json - 22/10/2026 3:16:43 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\wormhole-partial_mesh-yuchengco-burst_r1_oct22_0316PM.log
+  sniffer check: nothing recording - the root waits
+  sniffer check: recording - flashing the root
+  asked to power-cycle the children by hand (the last attempt was stopped in its end phase)
+
+> root  -  ROOT  -  ROOT (announces the phases) on COM3   .\run.ps1 -Port COM3 -Role root -Label root -Topology partial -Location Yuchengco -Repeat 1 -Scenario burst -Wipe -Flash -Attack wormhole -Export -ExpectedChildren 7 -Mac b0:cb:d8:f3:32:18 -SharedBuild   (03:17:36 pm)
+Setting COM3's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: OK burst
+LOCATION_CHECK: OK Yuchengco
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-22 15:17:38 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM3 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM3
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 3.9 seconds.
+Hard resetting via RTS pin...
+Board: root (on COM3, MAC b0:cb:d8:f3:32:18)
+Flashing + monitoring root on COM3 (topology=partial, attack=wormhole, scenario=burst, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_partial_burst_GUI). Ctrl+] when it reaches 'terminate' to auto-export (you'll get a few seconds to cancel with 'n').
+Executing action: flash
+Running ninja in directory C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_partial_burst_GUI
+Executing "ninja flash"...
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_partial_burst_GUI\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_wormhole_partial_burst_GUI/partition_table/partition-table.bin C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_wormhole_partial_burst_GUI/root_node.bin"
+root_node.bin binary size 0x1211f0 bytes. Smallest app partition is 0x180000 bytes. 0x5ee10 bytes (25%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_partial_burst_GUI\bootloader\esp-idf\esptool_py && C:\Espressif\python_env\idf5.3_py3.11_env\Scripts\python.exe C:/Espressif/frameworks/esp-idf-v5.3.5/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_wormhole_partial_burst_GUI/bootloader/bootloader.bin"
+Bootloader binary size 0x68e0 bytes. 0x720 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\frameworks\esp-idf-v5.3.5\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/frameworks/esp-idf-v5.3.5 -D SERIAL_TOOL=C:/Espressif/python_env/idf5.3_py3.11_env/Scripts/python.exe;;C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/esp32b/NIS16-ESP32-Environment-THESIS3_5bb1685c/root_node/build_root_wormhole_partial_burst_GUI -P C:/Espressif/frameworks/esp-idf-v5.3.5/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM3 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 root_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM3
+Connecting.....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b0:cb:d8:f3:32:18
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x00131fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 423.9 kbit/s)...
+Hash of data verified.
+Compressed 1184240 bytes to 737129...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001be16... (4 %)
+Writing at 0x000297c1... (6 %)
+Writing at 0x000332d8... (8 %)
+Writing at 0x0003f478... (11 %)
+Writing at 0x000487ea... (13 %)
+Writing at 0x0004e0e9... (15 %)
+Writing at 0x000540d2... (17 %)
+Writing at 0x00059d80... (20 %)
+Writing at 0x0005f489... (22 %)
+Writing at 0x00064d6e... (24 %)
+Writing at 0x0006a65d... (26 %)
+Writing at 0x0007065f... (28 %)
+Writing at 0x000761c5... (31 %)
+Writing at 0x0007c3cb... (33 %)
+Writing at 0x00082516... (35 %)
+Writing at 0x00088011... (37 %)
+Writing at 0x0008e1a9... (40 %)
+Writing at 0x00093976... (42 %)
+Writing at 0x00099078... (44 %)
+Writing at 0x0009e761... (46 %)
+Writing at 0x000a3f2a... (48 %)
+Writing at 0x000a97ae... (51 %)
+Writing at 0x000af003... (53 %)
+Writing at 0x000b477d... (55 %)
+Writing at 0x000b9d67... (57 %)
+Writing at 0x000bf747... (60 %)
+Writing at 0x000c542f... (62 %)
+Writing at 0x000caed5... (64 %)
+Writing at 0x000d06a8... (66 %)
+Writing at 0x000d6123... (68 %)
+Writing at 0x000dc0d0... (71 %)
+Writing at 0x000e18f6... (73 %)
+Writing at 0x000e74ff... (75 %)
+Writing at 0x000ed1a5... (77 %)
+Writing at 0x000f2b66... (80 %)
+Writing at 0x000f891b... (82 %)
+Writing at 0x000fe451... (84 %)
+Writing at 0x00103fa2... (86 %)
+Writing at 0x0010a3c9... (88 %)
+Writing at 0x001144f8... (91 %)
+Writing at 0x0011a115... (93 %)
+Writing at 0x0011fd0e... (95 %)
+Writing at 0x00125e79... (97 %)
+Writing at 0x0012b9ee... (100 %)
+Wrote 1184240 bytes (737129 compressed) at 0x00010000 in 17.7 seconds (effective 535.6 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1639.7 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2856.9 kbit/s)...
+Hash of data verified.
+Leaving...
+Hard resetting via RTS pin...
+Done
+[monitor] listening on COM3 at 115200 baud
+I (504) esp_image: segment 4: paddr=00121334 vaddr=4008ac3c size=0fe90h ( 65168) load
+I (543) boot: Loaded app from partition at offset 0x10000
+I (546) boot: Set actual ota_seq=1 in otadata[0]
+I (546) boot: Disabling RNG early entropy source...
+I (561) cpu_start: Multicore app
+I (569) cpu_start: Pro cpu start user code
+I (569) cpu_start: cpu freq: 160000000 Hz
+I (569) app_init: Application information:
+I (572) app_init: Project name:     root_node
+I (577) app_init: App version:      backup/angelo-2026-10-01-338-g4
+I (584) app_init: Compile time:     Oct 22 2026 14:59:52
+I (590) app_init: ELF file SHA256:  2f668b307...
+I (595) app_init: ESP-IDF:          v5.3.5
+I (600) efuse_init: Min chip rev:     v0.0
+I (605) efuse_init: Max chip rev:     v3.99 
+I (610) efuse_init: Chip rev:         v3.1
+I (615) heap_init: Initializing. RAM available for dynamic allocation:
+I (622) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (628) heap_init: At 3FFBC4E0 len 00023B20 (142 KiB): DRAM
+I (634) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (640) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (647) heap_init: At 4009AACC len 00005534 (21 KiB): IRAM
+I (655) spi_flash: detected chip: generic
+I (658) spi_flash: flash io: dio
+I (663) main_task: Started on CPU0
+I (673) main_task: Calling app_main()
+I (673) ROOT_MAIN: === ROOT NODE STARTING ===
+I (673) SD_STATUS: clock seeded from build stamp 2026-10-22 14:59:52 (ESTIMATE) - refined from the card's anchor next if it has one.
+I (683) SD_STATUS: Reset reason: POWERON
+I (693) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (693) sdspi_transaction: cmd=52, R1 response: command not supported
+I (743) sdspi_transaction: cmd=5, R1 response: command not supported
+I (773) SD_STATUS: clock: set from the card's host anchor -> 2026-10-22 15:17:38 PHT (REAL time, plus however long this board sat unpowered).
+=== SD CARD ENVIRONMENT REPORT (NODE_B0CBD8F33218) ===
+[1] ESP32
+  Model: ESP32, rev v3.1, 2 core(s)
+  Features: WiFi BT BLE
+  IDF version: v5.3.5
+[2] SD CARD
+  Name: ASTC
+  Type: SDHC/SDXC
+  Speed: 4000 kHz (limit 4000 kHz)
+  Size: 3728 MB
+[2b] CLOCK
+  Boot time now: 2026-10-22 15:17:38 PHT
+  Source: HOST anchor (/sdcard/clock.txt) - a real clock, plus any time this board sat unpowered
+[3] READ/WRITE INTEGRITY CHECK: MATCH
+[3b] NODE CONFIG: nickname=(no node_config.txt)
+[4] ATTACK x TOPOLOGY x LOCATION FOLDER TREE
+  baseline                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  blackhole                EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  wormhole                 EXISTS
+    star                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    tree                     EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    linear                   EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+    partial_mesh             EXISTS
+      home                     EXISTS
+      G402                     EXISTS
+      DLSU_Library             EXISTS
+      Yuchengco                EXISTS
+  Recorded scenario: burst
+[5] ENVIRONMENT
+  Build attack: wormhole
+  Build topology: partial_mesh
+  Firmware built: 2026-10-22 14:59:52
+  Run started: 2026-10-22 15:17:38 PHT (clock: host)
+  Recorded location: Yuchengco
+  Node: NODE_B0CBD8F33218 (MAC B0:CB:D8:F3:32:18)
+[6] PHASE SCHEDULE (compiled into this firmware)
+  stabilise 60s / baseline 300s / attack 180s / cooldown 120s
+  jitter OFF -- measured durations should match the nominal above.
+  RF width: 20 MHz / HT20 (MESH_FORCE_HT20=1) (channel 11)
+Boot count: 8
+Reset reason (why THIS boot started): POWERON
+Brownout resets (total): 0
+Crash resets (total): 0
+I (1543) ROOT_MAIN: SD ENV: OK -- /sdcard/wormhole/partial_mesh/Yuchengco/status_NODE_B0CBD8F33218.txt
+I (1553) NODE_ID: Identity: "Board-B0:18" role=ROOT mac=b0:cb:d8:f3:32:18 (via MAC (no node_config.txt nickname))
+I (1593) wifi:wifi driver task: 3ffcbabc, prio:23, stack:6656, core=0
+I (1593) wifi:wifi firmware version: 18db208
+I (1593) wifi:wifi certification version: v7.0
+I (1593) wifi:config NVS flash: enabled
+I (1593) wifi:config nano formating: disabled
+I (1603) wifi:Init data frame dynamic rx buffer num: 32
+I (1603) wifi:Init static rx mgmt buffer num: 5
+I (1613) wifi:Init management short buffer num: 32
+I (1613) wifi:Init dynamic tx buffer num: 32
+I (1613) wifi:Init static rx buffer size: 1600
+I (1623) wifi:Init static rx buffer num: 10
+I (1623) wifi:Init dynamic rx buffer num: 32
+I (1633) wifi_init: rx ba win: 6
+I (1633) wifi_init: accept mbox: 6
+I (1633) wifi_init: tcpip mbox: 32
+I (1643) wifi_init: udp mbox: 6
+I (1643) wifi_init: tcp mbox: 6
+I (1653) wifi_init: tcp tx win: 5760
+I (1653) wifi_init: tcp rx win: 5760
+I (1653) wifi_init: tcp mss: 1440
+I (1663) wifi_init: WiFi IRAM OP enabled
+I (1663) wifi_init: WiFi RX IRAM OP enabled
+I (1673) wifi:Set ps type: 0, coexist: 0
+I (1683) MESH_SETUP: RF width (before wifi start): STA 20 MHz, AP 20 MHz, channel 0
+I (1683) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06
+W (1693) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1773) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1793) wifi:mode : sta (b0:cb:d8:f3:32:18) + softAP (b0:cb:d8:f3:32:19)
+I (1793) wifi:enable tsf
+I (1793) wifi:Total power save buffer number: 16
+I (1793) wifi:Init max length of beacon: 752/752
+I (1793) wifi:Init max length of beacon: 752/752
+I (1803) mesh: <nvs>read layer:0, err:0x1102
+I (1803) mesh: <nvs>read assoc:0, err:0x1102
+I (1803) MESH_SETUP: Topology shaping: PARTIAL (max_layer=25, max_children=2)
+I (1813) wifi:Set ps type: 0, coexist: 0
+I (1823) mesh: [IO]disable self-organizing<stop reconnect>
+I (1823) mesh: [IO]disable self-organizing<reconnect>
+I (1833) mesh: [CONFIG]invalid router settings, ssid_len:0, ssid:, bssid:00:00:00:00:00:00
+I (1863) wifi:Total power save buffer number: 16
+I (2123) MESH_SETUP: Root mesh RX queue: 64 (default 32).
+I (2123) mesh: [MANUAL]designated as root and router is not set
+I (2123) MESH_SETUP: Mesh stack started.
+I (2123) MESH_SETUP: Mesh started. Node ID: NODE_B0CBD8F33218  Role: 0
+I (2353) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (2353) wifi:station: b4:bf:e9:32:fe:90 join, AID=1, bgn, 20
+I (2353) MESH_SETUP: Routing table updated (node added).
+I (2363) MESH_SETUP: ==============================
+I (2363) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2373) MESH_SETUP: ==============================
+I (2373) MESH_SETUP: Child connected: aid=1 MAC=b4:bf:e9:32:fe:90
+I (2383) MESH_SETUP: ==============================
+I (2383) MESH_SETUP:   MESH CONNECTED: 2 node(s)
+I (2393) MESH_SETUP: ==============================
+I (2403) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (2403) MESH_SETUP: Mesh connected. Layer: 1  Root: NO
+I (2413) ROOT_MAIN: Node ID: NODE_B0CBD8F33218   Run ID: RUN_001
+I (2423) PHASE_LISTENER: Phase listener task running.
+I (2423) PHASE_LISTENER: Phase listener started.
+I (2433) MESH_SETUP: =================================================================
+I (2443) MESH_SETUP:  MESH TOPOLOGY
+I (2443) MESH_SETUP:  TYPE        : PARTIAL
+I (2443) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (2453) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (2453) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (2463) MESH_SETUP:  STATUS      : WARN
+I (2463) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1)
+I (2483) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (2483) MESH_SETUP:  SD LOGGING  : 0/1 board(s) writing to their SD card (the rest run older firmware - not reported)
+I (2493) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=NA uart=NA age=0 up=0 rssi=0
+I (2503) MESH_SETUP: -----------------------------------------------------------------
+I (2513) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (2523) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (2533) MESH_SETUP:  n/a = no parent link to measure (root)
+I (2533) MESH_SETUP: =================================================================
+W (2543) SPIFFS: mount failed, -10025. formatting...
+I (3073) wifi:new:<11,0>, old:<11,0>, ap:<11,0>, sta:<0,0>, prof:11, snd_ch_cfg:0x0
+I (3073) wifi:station: 20:50:0d:e7:1c:38 join, AID=2, bgn, 20
+I (3073) MESH_SETUP: Routing table updated (node added).
+I (3083) MESH_SETUP: ==============================
+I (3083) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (3093) MESH_SETUP: ==============================
+I (3093) MESH_SETUP: Child connected: aid=2 MAC=20:50:0d:e7:1c:38
+I (3103) MESH_SETUP: ==============================
+I (3113) MESH_SETUP:   MESH CONNECTED: 3 node(s)
+I (3113) MESH_SETUP: ==============================
+I (3123) MESH_SETUP: RF width (connected): STA 20 MHz, AP 20 MHz, channel 11
+I (5513) CSV_LOGGER: SPIFFS mounted. Total: 2287 KB  Used: 0 KB
+I (5513) CSV_LOGGER: Telemetry file: /spiffs/telem.csv
+I (5683) CSV_LOGGER: Arrivals file:  /spiffs/arrivals.csv
+I (5883) CSV_LOGGER: Logging starts when the root announces a run (PREPARE) or a phase is heard (LOG_ONLY_DURING_RUN) - nothing is written before that.
+I (5893) CSV_LOGGER: Logger ready. Role: root
+I (5903) CSV_LOGGER: Serial export task ready. Commands: EXPORT_LOGS | EXPORT_ARRIVALS | DELETE_LOGS | ARCHIVE_SD | LIST_FILES | LIST_SD | EXPORT_SD_PATH=<rel> | DELETE_SD_FILE=<rel> | SET_LOCATION=<value> | GET_LOCATION | SET_SCENARIO=<name> | GET_SCENARIO | SET_ATTACKER_MAC=<aa:bb:cc:dd:ee:ff> | GET_ATTACKER_MAC | CLEAR_ATTACKER_MAC | DELETE_SD_PATH=<attack>/<topology>/<location> | SET_TIME=<unix_epoch> | GET_TIME | END_RUN | START | START_ANYWAY
+===========You can ctrl + ] to export the data=========
+I (5933) CSV_LOGGER: CSV export task started on init (debug).
+I (5943) ROOT_MAIN: Logging to: /spiffs/telem.csv
+I (5953) ROOT_MAIN: Probe sink + heartbeat table registered (via phase-listener dispatch).
+I (5963) ROOT_MAIN: Telemetry task running at 100 ms interval.
+I (5963) HEALTH: Health log: one [HEALTH] line every 30 s (serial only, not in the CSV)
+I (5973) MESH_SETUP: Heartbeat sender running at 7000 ms interval.
+I (5983) MESH_SETUP: =================================================================
+I (5993) MESH_SETUP:  MESH TOPOLOGY
+I (5993) MESH_SETUP:  TYPE        : PARTIAL
+I (6003) MESH_SETUP:  NODE COUNT  : 0x01 (1)
+I (6003) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (6003) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (6013) MESH_SETUP:  STATUS      : WARN
+I (6013) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1)
+I (6033) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (6033) MESH_SETUP:  SD LOGGING  : 1/1 board(s) writing to their SD card
+I (6043) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=0 up=0 rssi=0
+I (6053) MESH_SETUP: -----------------------------------------------------------------
+I (6063) ROOT_MAIN: [CTRL] Waiting 60 s for mesh to stabilise...
+I (6063) MESH_SETUP:  HOP   MAC ADDRESS        ROLE  RSSI  PHASE       AGE(s)  EXPORT
+I (6073) ROOT_MAIN: [CTRL] Sending PREPARE every 5 s so children log the stabilisation window.
+I (6073) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   n/a  0xFF UNSET       0  not yet
+I (6093) MESH_SETUP:  n/a = no parent link to measure (root)
+I (6103) MESH_SETUP: =================================================================
+I (6113) PHASE_LISTENER: Root is preparing a run (stabilisation) - logging starts, rows stay phase 255 until Phase 0.
+I (6163) CSV_LOGGER: Run detected (root PREPARE heard, stabilisation window) - logging starts now.
+I (6183) CSV_LOGGER: SD mirror: /sdcard/wormhole/partial_mesh/Yuchengco/root_NODE_B0CBD8F33218_r7_b8_telem.csv
+I (6383) CSV_LOGGER: SD mirror: /sdcard/wormhole/partial_mesh/Yuchengco/root_NODE_B0CBD8F33218_r7_b8_arrivals.csv
+I (7363) MESH_SETUP: Routing table updated (node added).
+I (7363) MESH_SETUP: ==============================
+I (7363) MESH_SETUP:   MESH CONNECTED: 4 node(s)
+I (7363) MESH_SETUP: ==============================
+I (10343) MESH_SETUP: =======================================================================
+I (10343) MESH_SETUP:  MESH TOPOLOGY
+I (10353) MESH_SETUP:  TYPE        : PARTIAL
+I (10353) MESH_SETUP:  NODE COUNT  : 0x02 (2)
+I (10363) MESH_SETUP:  HOP DEPTH   : 0x00 (0)
+I (10363) MESH_SETUP:  REACHABLE   : 0x01 (1)
+W (10373) MESH_SETUP:  STATUS      : WARN
+I (10373) MESH_SETUP:  DETAIL      : 1 nodes, each seen under only one parent so far - still a plain tree (depth 1); 1 node(s) not attached to the root
+I (10383) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10393) MESH_SETUP:  SD LOGGING  : 2/2 board(s) writing to their SD card
+I (10403) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=4 up=0 rssi=0
+I (10413) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=ECHO age=0 up=63 rssi=-74
+I (10423) MESH_SETUP: -----------------------------------------------------------------------
+I (10433) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (10443) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       4  not yet
+I (10443) MESH_SETUP:  H--   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       0  not yet
+I (10453) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10463) MESH_SETUP: -----------------------------------------------------------------------
+I (10473) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10483) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (10483) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x00
+I (10493) MESH_SETUP: -----------------------------------------------------------------------
+I (10503) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10513) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (10523) MESH_SETUP: -----------------------------------------------------------------------
+I (10533) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (10543) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H??  RSSI  -74  phase 0xFF UNSET      UART ECHO (own TX->RX)  "Board-20:80"
+E (10553) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (10563) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (10583) MESH_SETUP: -----------------------------------------------------------------------
+I (10583) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (10593) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (10613) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (10613) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (10633) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (10643) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (10663) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+I (10673) MESH_SETUP:  (2 of 4 node(s) reported so far - verdict waits for the rest)
+I (10683) MESH_SETUP: =======================================================================
+I (10693) MESH_SETUP: =======================================================================
+I (10703) MESH_SETUP:  MESH TOPOLOGY
+I (10703) MESH_SETUP:  TYPE        : PARTIAL
+I (10703) MESH_SETUP:  NODE COUNT  : 0x03 (3)
+I (10713) MESH_SETUP:  HOP DEPTH   : 0x01 (1)
+I (10723) MESH_SETUP:  REACHABLE   : 0x02 (2)
+W (10723) MESH_SETUP:  STATUS      : WARN
+I (10723) MESH_SETUP:  DETAIL      : 2 nodes, each seen under only one parent so far - still a plain tree (depth 2); 1 node(s) not attached to the root
+I (10743) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (10753) MESH_SETUP:  SD LOGGING  : 3/3 board(s) writing to their SD card
+I (10753) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=4 up=0 rssi=0
+I (10763) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=ECHO age=0 up=63 rssi=-74
+I (10773) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=76 rssi=-71
+I (10783) MESH_SETUP: -----------------------------------------------------------------------
+I (10793) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (10803) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       4  not yet
+I (10813) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       0  not yet
+I (10823) MESH_SETUP:  H--   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       0  not yet
+I (10833) MESH_SETUP:  n/a = no parent link to measure (root)
+I (10833) MESH_SETUP: -----------------------------------------------------------------------
+I (10843) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (10853) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (10863) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x01
+I (10873) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (10873) MESH_SETUP: -----------------------------------------------------------------------
+I (10883) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (10893) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (10903) MESH_SETUP:  `-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (10913) MESH_SETUP: -----------------------------------------------------------------------
+I (10913) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (10933) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H??  RSSI  -74  phase 0xFF UNSET      UART ECHO (own TX->RX)  "Board-20:80"
+E (10943) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (10953) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (10963) MESH_SETUP: -----------------------------------------------------------------------
+I (10973) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (10983) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (10993) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (11003) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (11013) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (11023) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (11043) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (11053) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+I (11063) MESH_SETUP:  (3 of 4 node(s) reported so far - verdict waits for the rest)
+I (11073) MESH_SETUP: =======================================================================
+I (11083) MESH_SETUP: =======================================================================
+I (11093) MESH_SETUP:  MESH TOPOLOGY
+I (11103) MESH_SETUP:  TYPE        : PARTIAL
+I (11103) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (11113) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (11113) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (11123) MESH_SETUP:  STATUS      : WARN
+I (11123) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (11133) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (11143) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (11153) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=WAITING uart=NA age=5 up=0 rssi=0
+I (11163) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=ECHO age=0 up=63 rssi=-74
+I (11163) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=76 rssi=-71
+I (11173) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=69 rssi=-75
+I (11183) MESH_SETUP: -----------------------------------------------------------------------
+I (11193) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (11203) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       4  not yet
+I (11213) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -75  0xFF UNSET       0  not yet
+I (11223) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       0  not yet
+I (11233) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       0  not yet
+I (11243) MESH_SETUP:  n/a = no parent link to measure (root)
+I (11243) MESH_SETUP: -----------------------------------------------------------------------
+I (11253) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (11263) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (11273) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (11273) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (11283) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (11293) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (11303) MESH_SETUP: -----------------------------------------------------------------------
+I (11313) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (11323) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (11333) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (11333) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (11343) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (11353) MESH_SETUP: -----------------------------------------------------------------------
+I (11353) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (11373) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART ECHO (own TX->RX)  "Board-20:80"
+E (11383) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (11393) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (11403) MESH_SETUP: -----------------------------------------------------------------------
+I (11413) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (11423) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (11433) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (11443) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (11453) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (11463) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (11473) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (11493) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (11503) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (11513) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (11523) MESH_SETUP: =======================================================================
+I (13113) MESH_SETUP: =======================================================================
+I (13113) MESH_SETUP:  MESH TOPOLOGY
+I (13113) MESH_SETUP:  TYPE        : PARTIAL
+I (13123) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (13123) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (13133) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (13133) MESH_SETUP:  STATUS      : WARN
+I (13143) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (13153) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (13153) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (13163) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=7 rssi=0
+I (13173) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=ECHO age=2 up=63 rssi=-74
+I (13183) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=76 rssi=-71
+I (13193) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=2 up=69 rssi=-75
+I (13203) MESH_SETUP: -----------------------------------------------------------------------
+I (13213) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (13213) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       0  not yet
+I (13223) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -75  0xFF UNSET       2  not yet
+I (13233) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       2  not yet
+I (13243) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       2  not yet
+I (13253) MESH_SETUP:  n/a = no parent link to measure (root)
+I (13263) MESH_SETUP: -----------------------------------------------------------------------
+I (13273) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (13273) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (13283) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (13293) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (13303) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (13313) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (13323) MESH_SETUP: -----------------------------------------------------------------------
+I (13323) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (13333) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (13343) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (13353) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (13353) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (13363) MESH_SETUP: -----------------------------------------------------------------------
+I (13373) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (13383) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART ECHO (own TX->RX)  "Board-20:80"
+E (13393) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (13403) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (13423) MESH_SETUP: -----------------------------------------------------------------------
+I (13433) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (13443) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (13453) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (13463) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (13463) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (13473) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (13493) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (13503) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (13523) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (13533) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (13543) MESH_SETUP: =======================================================================
+I (17343) MESH_SETUP: =======================================================================
+I (17343) MESH_SETUP:  MESH TOPOLOGY
+I (17353) MESH_SETUP:  TYPE        : PARTIAL
+I (17353) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (17363) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (17363) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (17373) MESH_SETUP:  STATUS      : WARN
+I (17373) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (17383) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (17393) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (17403) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=7 rssi=0
+I (17413) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=0 up=70 rssi=-74
+I (17413) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=6 up=76 rssi=-71
+I (17423) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=69 rssi=-75
+I (17433) MESH_SETUP: -----------------------------------------------------------------------
+I (17443) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (17453) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (17463) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -75  0xFF UNSET       6  not yet
+I (17473) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       6  not yet
+I (17483) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       0  not yet
+I (17493) MESH_SETUP:  n/a = no parent link to measure (root)
+I (17493) MESH_SETUP: -----------------------------------------------------------------------
+I (17503) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (17513) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (17523) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (17533) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (17533) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (17543) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (17553) MESH_SETUP: -----------------------------------------------------------------------
+I (17563) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (17573) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (17583) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (17583) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (17593) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (17603) MESH_SETUP: -----------------------------------------------------------------------
+I (17603) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (17623) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (17633) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (17643) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (17653) MESH_SETUP: -----------------------------------------------------------------------
+I (17663) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (17673) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (17683) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (17693) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (17703) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (17713) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (17723) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (17743) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (17753) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (17763) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (17773) MESH_SETUP: =======================================================================
+I (24353) MESH_SETUP: =======================================================================
+I (24363) MESH_SETUP:  MESH TOPOLOGY
+I (24363) MESH_SETUP:  TYPE        : PARTIAL
+I (24363) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (24373) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (24373) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (24383) MESH_SETUP:  STATUS      : WARN
+I (24383) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (24393) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (24403) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (24413) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=14 rssi=0
+I (24423) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=ECHO age=0 up=77 rssi=-71
+I (24433) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=6 up=83 rssi=-72
+I (24433) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=76 rssi=-78
+I (24443) MESH_SETUP: -----------------------------------------------------------------------
+I (24453) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (24463) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (24473) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -78  0xFF UNSET       6  not yet
+I (24483) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -72  0xFF UNSET       6  not yet
+I (24493) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -71  0xFF UNSET       0  not yet
+I (24503) MESH_SETUP:  n/a = no parent link to measure (root)
+I (24503) MESH_SETUP: -----------------------------------------------------------------------
+I (24513) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (24523) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (24533) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (24543) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (24553) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (24553) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (24563) MESH_SETUP: -----------------------------------------------------------------------
+I (24573) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (24583) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (24593) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (24593) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (24603) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (24613) MESH_SETUP: -----------------------------------------------------------------------
+I (24623) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (24633) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -71  phase 0xFF UNSET      UART ECHO (own TX->RX)  "Board-20:80"
+E (24643) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (24653) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (24663) MESH_SETUP: -----------------------------------------------------------------------
+I (24673) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (24683) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (24693) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (24703) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (24713) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (24723) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (24733) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (24753) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (24773) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (24773) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (24793) MESH_SETUP: =======================================================================
+����������������������������������������������������������������====================================================================
+I (31363) MESH_SETUP:  MESH TOPOLOGY
+I (31373) MESH_SETUP:  TYPE        : PARTIAL
+I (31373) MESH_SETUP:  NODE COUNT  : 0x04 (4)
+I (31383) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (31383) MESH_SETUP:  REACHABLE   : 0x04 (4)
+W (31393) MESH_SETUP:  STATUS      : WARN
+I (31393) MESH_SETUP:  DETAIL      : 4 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (31403) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (31413) MESH_SETUP:  SD LOGGING  : 4/4 board(s) writing to their SD card
+I (31423) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=21 rssi=0
+I (31423) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=0 up=84 rssi=-72
+I (31433) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=6 up=90 rssi=-71
+I (31443) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=83 rssi=-74
+I (31453) MESH_SETUP: -----------------------------------------------------------------------
+I (31463) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (31473) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (31483) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -74  0xFF UNSET       6  not yet
+I (31493) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       6  not yet
+I (31503) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -72  0xFF UNSET       0  not yet
+I (31513) MESH_SETUP:  n/a = no parent link to measure (root)
+I (31513) MESH_SETUP: -----------------------------------------------------------------------
+I (31523) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (31533) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (31543) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (31553) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x00
+I (31553) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (31563) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (31573) MESH_SETUP: -----------------------------------------------------------------------
+I (31583) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (31593) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (31603) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (31603) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (31613) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (31623) MESH_SETUP: -----------------------------------------------------------------------
+I (31623) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (31643) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -72  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (31653) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (31663) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (31673) MESH_SETUP: -----------------------------------------------------------------------
+I (31683) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (31693) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (31703) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (31713) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (31723) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (31733) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (31743) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (31763) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (31773) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (31783) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (31793) MESH_SETUP: =======================================================================
+I (33043) MESH_SETUP: =======================================================================
+I (33043) MESH_SETUP:  MESH TOPOLOGY
+I (33043) MESH_SETUP:  TYPE        : PARTIAL
+I (33043) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (33053) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (33053) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (33063) MESH_SETUP:  STATUS      : WARN
+I (33063) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (33083) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (33083) MESH_SETUP:  SD LOGGING  : 5/5 board(s) writing to their SD card
+I (33093) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=5 up=21 rssi=0
+I (33103) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=1 up=84 rssi=-72
+I (33113) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=97 rssi=-71
+I (33123) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=90 rssi=-76
+I (33123) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=WAITING uart=NA age=0 up=0 rssi=-75
+I (33133) MESH_SETUP: -----------------------------------------------------------------------
+I (33143) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (33153) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       5  not yet
+I (33163) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -76  0xFF UNSET       1  not yet
+I (33173) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -71  0xFF UNSET       1  not yet
+I (33183) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -72  0xFF UNSET       1  not yet
+I (33193) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -75  0xFF UNSET       0  not yet
+I (33203) MESH_SETUP:  n/a = no parent link to measure (root)
+I (33203) MESH_SETUP: -----------------------------------------------------------------------
+I (33213) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (33223) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (33233) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (33243) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (33253) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (33253) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x01
+I (33263) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (33273) MESH_SETUP: -----------------------------------------------------------------------
+I (33283) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (33293) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (33303) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (33303) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (33313) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (33323) MESH_SETUP:      `-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (33323) MESH_SETUP: -----------------------------------------------------------------------
+I (33333) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (33343) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -72  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (33353) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (33363) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (33383) MESH_SETUP: -----------------------------------------------------------------------
+I (33393) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (33403) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (33413) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (33423) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (33433) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (33433) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (33443) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (33463) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (33473) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (33493) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (33503) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (33513) MESH_SETUP: =======================================================================
+I (34033) MESH_SETUP: Routing table updated (node added).
+I (34033) MESH_SETUP: ==============================
+I (34033) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (34033) MESH_SETUP: ==============================
+I (35973) HEALTH: [HEALTH] up=35s heap=57852 min=55316 big=57344 | stack free(B): telemetry=1120 phase_listener=2840 phase_resync=5596 heartbeat=4208 csv_export=3776 arr_writer=3708 exp_ctrl=6324 sd_recover=3524 ipc0=1520 ipc1=1520
+I (37813) MESH_SETUP: Routing table updated (node added).
+I (37823) MESH_SETUP: ==============================
+I (37823) MESH_SETUP:   MESH CONNECTED: 6 node(s)
+I (37823) MESH_SETUP: ==============================
+I (38443) MESH_SETUP: =======================================================================
+I (38443) MESH_SETUP:  MESH TOPOLOGY
+I (38453) MESH_SETUP:  TYPE        : PARTIAL
+I (38453) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (38463) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (38463) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (38473) MESH_SETUP:  STATUS      : WARN
+I (38473) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (38483) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (38493) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (38503) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=28 rssi=0
+I (38513) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=0 up=91 rssi=-74
+I (38513) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=104 rssi=-70
+I (38523) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=97 rssi=-77
+I (38533) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=WAITING uart=NA age=5 up=0 rssi=-75
+I (38543) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=WAITING uart=NA age=0 up=0 rssi=-79
+I (38553) MESH_SETUP: -----------------------------------------------------------------------
+I (38563) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (38573) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (38583) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -77  0xFF UNSET       0  not yet
+I (38593) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       0  not yet
+I (38603) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       0  not yet
+I (38603) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -75  0xFF UNSET       5  not yet
+I (38613) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -79  0xFF UNSET       0  not yet
+I (38623) MESH_SETUP:  n/a = no parent link to measure (root)
+I (38633) MESH_SETUP: -----------------------------------------------------------------------
+I (38643) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (38653) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (38653) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (38663) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (38673) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (38683) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (38693) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (38703) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (38703) MESH_SETUP: -----------------------------------------------------------------------
+I (38713) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (38723) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (38733) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (38743) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (38743) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (38753) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (38763) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (38763) MESH_SETUP: -----------------------------------------------------------------------
+I (38773) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (38783) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (38803) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (38803) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (38823) MESH_SETUP: -----------------------------------------------------------------------
+I (38833) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (38843) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (38853) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (38863) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (38873) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (38873) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (38883) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (38893) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (38913) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (38923) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (38943) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (38953) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (38963) MESH_SETUP: =======================================================================
+I (40053) MESH_SETUP: =======================================================================
+I (40053) MESH_SETUP:  MESH TOPOLOGY
+I (40063) MESH_SETUP:  TYPE        : PARTIAL
+I (40063) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (40073) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (40073) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (40083) MESH_SETUP:  STATUS      : WARN
+I (40083) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (40093) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (40103) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (40113) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=5 up=28 rssi=0
+I (40123) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=1 up=91 rssi=-74
+I (40123) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=1 up=104 rssi=-70
+I (40133) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=1 up=97 rssi=-77
+I (40143) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=7 rssi=-74
+I (40153) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=WAITING uart=NA age=1 up=0 rssi=-79
+I (40163) MESH_SETUP: -----------------------------------------------------------------------
+I (40173) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (40183) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       5  not yet
+I (40193) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -77  0xFF UNSET       1  not yet
+I (40193) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       1  not yet
+I (40203) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       1  not yet
+I (40213) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -74  0xFF UNSET       0  not yet
+I (40223) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -79  0xFF UNSET       1  not yet
+I (40233) MESH_SETUP:  n/a = no parent link to measure (root)
+I (40243) MESH_SETUP: -----------------------------------------------------------------------
+I (40253) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (40253) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (40263) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (40273) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (40283) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (40293) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (40303) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (40303) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (40313) MESH_SETUP: -----------------------------------------------------------------------
+I (40323) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (40333) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (40343) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (40343) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (40353) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (40363) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (40363) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (40373) MESH_SETUP: -----------------------------------------------------------------------
+I (40383) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (40393) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (40403) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (40413) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (40433) MESH_SETUP: -----------------------------------------------------------------------
+I (40443) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (40453) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (40463) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (40473) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (40473) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (40483) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (40493) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (40503) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (40513) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (40533) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (40553) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (40553) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (40573) MESH_SETUP: =======================================================================
+I (44403) MESH_SETUP: Routing table updated (node added).
+I (44403) MESH_SETUP: ==============================
+I (44403) MESH_SETUP:   MESH CONNECTED: 7 node(s)
+I (44413) MESH_SETUP: ==============================
+I (44873) MESH_SETUP: =======================================================================
+I (44873) MESH_SETUP:  MESH TOPOLOGY
+I (44873) MESH_SETUP:  TYPE        : PARTIAL
+I (44883) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (44883) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (44893) MESH_SETUP:  REACHABLE   : 0x07 (7)
+W (44893) MESH_SETUP:  STATUS      : WARN
+I (44903) MESH_SETUP:  DETAIL      : 7 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+I (44913) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (44923) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (44923) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=35 rssi=0
+I (44933) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=6 up=91 rssi=-74
+I (44943) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=6 up=104 rssi=-70
+I (44953) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=97 rssi=-77
+I (44963) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=4 up=7 rssi=-74
+I (44973) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=WAITING uart=NA age=6 up=0 rssi=-79
+I (44973) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=0 up=0 rssi=-68
+I (44983) MESH_SETUP: -----------------------------------------------------------------------
+I (44993) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (45003) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (45013) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -77  0xFF UNSET       6  not yet
+I (45023) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       6  not yet
+I (45033) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -74  0xFF UNSET       6  not yet
+I (45043) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -74  0xFF UNSET       4  not yet
+I (45053) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -79  0xFF UNSET       6  not yet
+I (45063) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD        -68  0xFF UNSET       0  not yet
+I (45073) MESH_SETUP:  n/a = no parent link to measure (root)
+I (45073) MESH_SETUP: -----------------------------------------------------------------------
+I (45083) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (45093) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (45103) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (45113) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (45113) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (45123) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (45133) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x01
+I (45143) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       20:50:0D:E7:0C:80  0x00
+I (45153) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (45163) MESH_SETUP: -----------------------------------------------------------------------
+I (45163) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (45173) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (45183) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (45193) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (45193) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (45203) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (45213) MESH_SETUP:      |   `-- [H03] CHILD       28:05:A5:32:D7:B4
+I (45213) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (45223) MESH_SETUP: -----------------------------------------------------------------------
+I (45233) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (45243) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -74  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (45253) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (45263) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (45283) MESH_SETUP: -----------------------------------------------------------------------
+I (45293) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (45303) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (45313) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (45323) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (45323) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (45333) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (45343) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (45353) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (45363) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (45373) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (45393) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (45403) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (45413) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (45423) MESH_SETUP: =======================================================================
+I (45463) MESH_SETUP: =======================================================================
+I (45473) MESH_SETUP:  MESH TOPOLOGY
+I (45473) MESH_SETUP:  TYPE        : PARTIAL
+I (45473) MESH_SETUP:  NODE COUNT  : 0x07 (7)
+I (45483) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (45483) MESH_SETUP:  REACHABLE   : 0x07 (7)
+W (45493) MESH_SETUP:  STATUS      : WARN
+I (45493) MESH_SETUP:  DETAIL      : 7 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+I (45503) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (45513) MESH_SETUP:  SD LOGGING  : 7/7 board(s) writing to their SD card
+I (45523) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=35 rssi=0
+I (45533) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=0 up=98 rssi=-73
+I (45543) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=111 rssi=-70
+I (45543) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=104 rssi=-73
+I (45553) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=7 rssi=-74
+I (45563) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=0 up=7 rssi=-77
+I (45573) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=0 up=0 rssi=-68
+I (45583) MESH_SETUP: -----------------------------------------------------------------------
+I (45593) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (45603) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (45613) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -73  0xFF UNSET       0  not yet
+I (45623) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       0  not yet
+I (45623) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -73  0xFF UNSET       0  not yet
+I (45633) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -74  0xFF UNSET       5  not yet
+I (45643) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -77  0xFF UNSET       0  not yet
+I (45653) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD        -68  0xFF UNSET       0  not yet
+I (45663) MESH_SETUP:  n/a = no parent link to measure (root)
+I (45673) MESH_SETUP: -----------------------------------------------------------------------
+I (45683) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (45683) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (45693) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (45703) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (45713) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (45723) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (45733) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x01
+I (45733) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       20:50:0D:E7:0C:80  0x00
+I (45743) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (45753) MESH_SETUP: -----------------------------------------------------------------------
+I (45763) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (45773) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (45783) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (45783) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (45793) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (45803) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (45803) MESH_SETUP:      |   `-- [H03] CHILD       28:05:A5:32:D7:B4
+I (45813) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (45823) MESH_SETUP: -----------------------------------------------------------------------
+I (45833) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (45843) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -73  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+E (45853) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+W (45863) MESH_SETUP:    Tunnel test : none arrived yet (B sends one every 10 s before Phase 0 once UART is OK; none = A's re-injection or the mesh path is broken, or older firmware)
+I (45873) MESH_SETUP: -----------------------------------------------------------------------
+I (45883) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (45893) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (45903) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (45913) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (45923) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (45933) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (45943) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (45943) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (45953) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (no signal at the end(s) reporting).
+E (45973) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (45983) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (46003) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (46013) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (46023) MESH_SETUP: =======================================================================
+I (47573) MESH_SETUP: Routing table updated (node added).
+I (47573) MESH_SETUP: ==============================
+I (47573) MESH_SETUP:   MESH CONNECTED: 8 node(s)
+I (47583) MESH_SETUP: ==============================
+I (47733) ROOT_MAIN: [TUNTEST] OK #1: B 20:50:0d:e7:0c:80 -> UART -> A -> mesh -> root works (1 test(s) received; not data, not logged)
+I (47733) MESH_SETUP: =======================================================================
+I (47743) MESH_SETUP:  MESH TOPOLOGY
+I (47753) MESH_SETUP:  TYPE        : PARTIAL
+I (47753) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (47763) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (47763) MESH_SETUP:  REACHABLE   : 0x08 (8)
+W (47773) MESH_SETUP:  STATUS      : WARN
+I (47773) MESH_SETUP:  DETAIL      : 8 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+I (47783) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (47793) MESH_SETUP:  SD LOGGING  : 8/8 board(s) writing to their SD card
+I (47803) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=6 up=35 rssi=0
+I (47803) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=NO_SIGNAL age=2 up=98 rssi=-73
+I (47813) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=2 up=111 rssi=-70
+I (47823) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=2 up=104 rssi=-73
+I (47833) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=0 up=14 rssi=-75
+I (47843) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=2 up=7 rssi=-77
+I (47853) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=2 up=0 rssi=-68
+I (47863) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=WAITING uart=CHECKING age=0 up=0 rssi=-61
+I (47873) MESH_SETUP: -----------------------------------------------------------------------
+I (47873) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (47883) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       6  not yet
+I (47893) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -73  0xFF UNSET       2  not yet
+I (47903) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       2  not yet
+I (47913) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -73  0xFF UNSET       2  not yet
+I (47923) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -75  0xFF UNSET       0  not yet
+I (47933) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -77  0xFF UNSET       2  not yet
+I (47943) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD        -68  0xFF UNSET       2  not yet
+I (47953) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A   -61  0xFF UNSET       0  not yet
+I (47963) MESH_SETUP:  n/a = no parent link to measure (root)
+I (47963) MESH_SETUP: -----------------------------------------------------------------------
+I (47973) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (47983) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (47993) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (48003) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (48013) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (48013) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (48023) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x02
+I (48033) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       20:50:0D:E7:0C:80  0x00
+I (48043) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A  20:50:0D:E7:0C:80  0x00
+I (48053) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (48063) MESH_SETUP: -----------------------------------------------------------------------
+I (48063) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (48073) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (48083) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (48093) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (48093) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (48103) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (48113) MESH_SETUP:      |   +-- [H03] CHILD       28:05:A5:32:D7:B4
+I (48113) MESH_SETUP:      |   `-- [H03] WORMHOLE_A  F4:2D:C9:73:E6:18
+I (48123) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (48133) MESH_SETUP: -----------------------------------------------------------------------
+I (48143) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+E (48153) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -73  phase 0xFF UNSET      UART NO SIGNAL  "Board-20:80"
+I (48163) MESH_SETUP:    EXIT   A  F4:2D:C9:73:E6:18  H03  RSSI  -61  phase 0xFF UNSET      UART checking  "Board-F4:18"
+I (48173) MESH_SETUP:    Normal copy : B 0C80 > 1C38 > ROOT  = 2 hop(s) over the mesh
+I (48183) MESH_SETUP:    Tunnel copy : B 0C80 =UART=> A E618 > ROOT  = wire + 3 hop(s)
+E (48193) MESH_SETUP:    Shortcut    : NONE - the tunnel copy travels 3 hop(s), B's normal copy 2
+I (48203) MESH_SETUP:    Tunnel test : OK - 1 test(s) came B -> UART -> A -> root, last 0 s ago
+I (48213) MESH_SETUP: -----------------------------------------------------------------------
+I (48223) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (48233) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (48243) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (48253) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (48263) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (48263) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (48273) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (48283) MESH_SETUP:    F4:2D:C9:73:E6:18  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+I (48293) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (48303) MESH_SETUP:  !! UART TUNNEL NOT WORKING - the wormhole boards cannot hear each other over the wire (only ONE direction works - one TX->RX jumper is bad).
+E (48313) MESH_SETUP:     Without it they keep their BUILD-DEFAULT A/B roles (can be reversed) and NO tunnel copy reaches the root. Do NOT start / keep this run.
+E (48333) MESH_SETUP:     Fix: GPIO17 (TX) -> other board's GPIO16 (RX), both ways (crossed), + GND -> GND. Then Wizard > MAINTENANCE > Wormhole UART tunnel test, and re-run.
+I (48353) MESH_SETUP: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+E (48363) MESH_SETUP:  !! WORMHOLE ENDS REVERSED: A (exit) is at H03, B (entry) at H02. The tunnelled copy would NOT be a shortcut - it arrives no faster than B's normal copy.
+E (48373) MESH_SETUP:     A must be CLOSER to the root than B. Auto-switch boards swap the names themselves before Phase 0 when they hear each other over UART - if it persists, check the cable. Pre-auto-switch firmware: reflash both.
+E (48393) MESH_SETUP:     >> If this shows AFTER Phase 0 started: STOP and restart the run. Roles are locked for the run, so it cannot fix itself, and the verifier will mark it 'DUPLICATION ONLY - SETUP INVALID'.
+I (48413) MESH_SETUP: =======================================================================
+I (52373) MESH_SETUP: =======================================================================
+I (52373) MESH_SETUP:  MESH TOPOLOGY
+I (52373) MESH_SETUP:  TYPE        : PARTIAL
+I (52383) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (52383) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (52393) MESH_SETUP:  REACHABLE   : 0x08 (8)
+W (52393) MESH_SETUP:  STATUS      : WARN
+I (52403) MESH_SETUP:  DETAIL      : 8 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+I (52413) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (52423) MESH_SETUP:  SD LOGGING  : 8/8 board(s) writing to their SD card
+I (52433) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=3 up=42 rssi=0
+I (52433) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=OK age=0 up=105 rssi=-73
+I (52443) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=6 up=111 rssi=-70
+I (52453) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=6 up=104 rssi=-73
+I (52463) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=5 up=14 rssi=-75
+I (52473) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=6 up=7 rssi=-77
+I (52483) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=7 up=0 rssi=-68
+I (52483) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=WAITING uart=CHECKING age=4 up=0 rssi=-61
+I (52493) MESH_SETUP: -----------------------------------------------------------------------
+I (52503) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (52513) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       3  not yet
+I (52523) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -73  0xFF UNSET       6  not yet
+I (52533) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       6  not yet
+I (52543) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -73  0xFF UNSET       0  not yet
+I (52553) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -75  0xFF UNSET       5  not yet
+I (52563) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -77  0xFF UNSET       6  not yet
+I (52573) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD        -68  0xFF UNSET       7  not yet
+I (52583) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A   -61  0xFF UNSET       4  not yet
+I (52593) MESH_SETUP:  n/a = no parent link to measure (root)
+I (52593) MESH_SETUP: -----------------------------------------------------------------------
+I (52603) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (52613) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (52623) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (52633) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (52633) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (52643) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (52653) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x02
+I (52663) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       20:50:0D:E7:0C:80  0x00
+I (52673) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A  20:50:0D:E7:0C:80  0x00
+I (52683) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (52683) MESH_SETUP: -----------------------------------------------------------------------
+I (52693) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (52703) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (52713) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (52723) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (52723) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (52733) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (52743) MESH_SETUP:      |   +-- [H03] CHILD       28:05:A5:32:D7:B4
+I (52743) MESH_SETUP:      |   `-- [H03] WORMHOLE_A  F4:2D:C9:73:E6:18
+I (52753) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (52763) MESH_SETUP: -----------------------------------------------------------------------
+I (52773) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+I (52783) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -73  phase 0xFF UNSET      UART OK  "Board-20:80"
+I (52793) MESH_SETUP:    EXIT   A  F4:2D:C9:73:E6:18  H03  RSSI  -61  phase 0xFF UNSET      UART checking  "Board-F4:18"
+I (52803) MESH_SETUP:    Normal copy : B 0C80 > 1C38 > ROOT  = 2 hop(s) over the mesh
+I (52813) MESH_SETUP:    Tunnel copy : B 0C80 =UART=> A E618 > ROOT  = wire + 3 hop(s)
+E (52823) MESH_SETUP:    Shortcut    : NONE - the tunnel copy travels 3 hop(s), B's normal copy 2
+I (52833) MESH_SETUP:    Tunnel test : OK - 1 test(s) came B -> UART -> A -> root, last 5 s ago
+I (52843) MESH_SETUP: -----------------------------------------------------------------------
+I (52853) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (52853) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (52873) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (52873) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (52883) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (52893) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (52903) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (52913) MESH_SETUP:    F4:2D:C9:73:E6:18  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+E (52923) MESH_SETUP:  !! WORMHOLE ENDS REVERSED: A (exit) is at H03, B (entry) at H02. The tunnelled copy would NOT be a shortcut - it arrives no faster than B's normal copy.
+E (52933) MESH_SETUP:     A must be CLOSER to the root than B. Auto-switch boards swap the names themselves before Phase 0 when they hear each other over UART - if it persists, check the cable. Pre-auto-switch firmware: reflash both.
+E (52963) MESH_SETUP:     >> If this shows AFTER Phase 0 started: STOP and restart the run. Roles are locked for the run, so it cannot fix itself, and the verifier will mark it 'DUPLICATION ONLY - SETUP INVALID'.
+I (52973) MESH_SETUP: =======================================================================
+I (53223) MESH_SETUP: Routing table shrunk (node removed).
+I (53223) MESH_SETUP: ==============================
+I (53223) MESH_SETUP:   MESH CONNECTED: 5 node(s)
+I (53233) MESH_SETUP: ==============================
+I (53243) MESH_SETUP: =======================================================================
+I (53243) MESH_SETUP:  MESH TOPOLOGY
+I (53253) MESH_SETUP:  TYPE        : PARTIAL
+I (53253) MESH_SETUP:  NODE COUNT  : 0x08 (8)
+I (53263) MESH_SETUP:  HOP DEPTH   : 0x03 (3)
+I (53263) MESH_SETUP:  REACHABLE   : 0x08 (8)
+W (53273) MESH_SETUP:  STATUS      : WARN
+I (53273) MESH_SETUP:  DETAIL      : 8 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+I (53283) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (53293) MESH_SETUP:  SD LOGGING  : 8/8 board(s) writing to their SD card
+I (53303) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=4 up=42 rssi=0
+I (53313) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=OK age=0 up=105 rssi=-73
+I (53323) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=0 up=118 rssi=-69
+I (53323) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=0 up=111 rssi=-75
+I (53333) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=6 up=14 rssi=-75
+I (53343) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=0 up=14 rssi=-77
+I (53353) MESH_SETUP:  NODESTAT 28:05:A5:32:D7:B4 sd=WAITING uart=NA age=8 up=0 rssi=-68
+I (53363) MESH_SETUP:  NODESTAT F4:2D:C9:73:E6:18 sd=WAITING uart=CHECKING age=5 up=0 rssi=-61
+I (53373) MESH_SETUP: -----------------------------------------------------------------------
+I (53383) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (53393) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       4  not yet
+I (53403) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -75  0xFF UNSET       0  not yet
+I (53413) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -69  0xFF UNSET       0  not yet
+I (53413) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -73  0xFF UNSET       0  not yet
+I (53423) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -75  0xFF UNSET       6  not yet
+I (53433) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -77  0xFF UNSET       0  not yet
+I (53443) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD        -68  0xFF UNSET       8  not yet
+I (53453) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A   -61  0xFF UNSET       5  not yet
+I (53463) MESH_SETUP:  n/a = no parent link to measure (root)
+I (53473) MESH_SETUP: -----------------------------------------------------------------------
+I (53483) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (53483) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (53493) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (53503) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (53513) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (53523) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (53523) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x02
+I (53533) MESH_SETUP:  H03   28:05:A5:32:D7:B4  CHILD       20:50:0D:E7:0C:80  0x00
+I (53543) MESH_SETUP:  H03   F4:2D:C9:73:E6:18  WORMHOLE_A  20:50:0D:E7:0C:80  0x00
+I (53553) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (53563) MESH_SETUP: -----------------------------------------------------------------------
+I (53573) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (53583) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (53583) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (53593) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (53603) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (53603) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (53613) MESH_SETUP:      |   +-- [H03] CHILD       28:05:A5:32:D7:B4
+I (53623) MESH_SETUP:      |   `-- [H03] WORMHOLE_A  F4:2D:C9:73:E6:18
+I (53623) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (53633) MESH_SETUP: -----------------------------------------------------------------------
+I (53643) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+I (53653) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -73  phase 0xFF UNSET      UART OK  "Board-20:80"
+I (53663) MESH_SETUP:    EXIT   A  F4:2D:C9:73:E6:18  H03  RSSI  -61  phase 0xFF UNSET      UART checking  "Board-F4:18"
+I (53673) MESH_SETUP:    Normal copy : B 0C80 > 1C38 > ROOT  = 2 hop(s) over the mesh
+I (53683) MESH_SETUP:    Tunnel copy : B 0C80 =UART=> A E618 > ROOT  = wire + 3 hop(s)
+E (53693) MESH_SETUP:    Shortcut    : NONE - the tunnel copy travels 3 hop(s), B's normal copy 2
+I (53703) MESH_SETUP:    Tunnel test : OK - 1 test(s) came B -> UART -> A -> root, last 5 s ago
+I (53713) MESH_SETUP: -----------------------------------------------------------------------
+I (53723) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (53733) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (53743) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (53753) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (53763) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (53773) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+I (53773) MESH_SETUP:    28:05:A5:32:D7:B4  not involved - relayed as in baseline
+I (53783) MESH_SETUP:    F4:2D:C9:73:E6:18  ATTACKER (WORMHOLE_A, exit)  - re-injects B's probes from here
+E (53793) MESH_SETUP:  !! WORMHOLE ENDS REVERSED: A (exit) is at H03, B (entry) at H02. The tunnelled copy would NOT be a shortcut - it arrives no faster than B's normal copy.
+E (53813) MESH_SETUP:     A must be CLOSER to the root than B. Auto-switch boards swap the names themselves before Phase 0 when they hear each other over UART - if it persists, check the cable. Pre-auto-switch firmware: reflash both.
+E (53833) MESH_SETUP:     >> If this shows AFTER Phase 0 started: STOP and restart the run. Roles are locked for the run, so it cannot fix itself, and the verifier will mark it 'DUPLICATION ONLY - SETUP INVALID'.
+I (53853) MESH_SETUP: =======================================================================
+I (65983) HEALTH: [HEALTH] up=65s heap=57804 min=54968 big=57344 | stack free(B): telemetry=1120 phase_listener=2840 phase_resync=5596 heartbeat=3104 csv_export=3776 arr_writer=3708 exp_ctrl=6324 sd_recover=3524 ipc0=1520 ipc1=1520
+I (66093) ROOT_MAIN: ════════════════════ WAITING FOR ALL CHILDREN ════════════════════  @ 15:18:43 PHT
+W (66093) ROOT_MAIN: [CTRL] WAITING: 4/7 children in the mesh (0 s). Phase 0 will NOT start until all have joined.
+W (66103) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (69563) MESH_SETUP: Node OFFLINE — no heartbeat for 24 s: 28:05:a5:32:d7:b4
+W (69563) MESH_SETUP: Node OFFLINE — no heartbeat for 21 s: f4:2d:c9:73:e6:18
+I (69563) MESH_SETUP: =======================================================================
+I (69573) MESH_SETUP:  MESH TOPOLOGY
+I (69583) MESH_SETUP:  TYPE        : PARTIAL
+I (69583) MESH_SETUP:  NODE COUNT  : 0x06 (6)
+I (69593) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (69593) MESH_SETUP:  REACHABLE   : 0x06 (6)
+W (69603) MESH_SETUP:  STATUS      : WARN
+I (69603) MESH_SETUP:  DETAIL      : 6 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (69613) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (69623) MESH_SETUP:  SD LOGGING  : 6/6 board(s) writing to their SD card
+I (69633) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=63 rssi=0
+I (69643) MESH_SETUP:  NODESTAT 20:50:0D:E7:0C:80 sd=OK uart=OK age=17 up=105 rssi=-73
+I (69643) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=132 rssi=-70
+I (69653) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=3 up=125 rssi=-83
+I (69663) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=1 up=35 rssi=-74
+I (69673) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=3 up=28 rssi=-77
+I (69683) MESH_SETUP: -----------------------------------------------------------------------
+I (69693) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        RSSI  PHASE       AGE(s)  EXPORT
+I (69703) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT         n/a  0xFF UNSET       0  not yet
+I (69713) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD        -83  0xFF UNSET       3  not yet
+I (69713) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD        -70  0xFF UNSET       3  not yet
+I (69723) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B   -73  0xFF UNSET      17  not yet
+I (69733) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD        -74  0xFF UNSET       1  not yet
+I (69743) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD        -77  0xFF UNSET       3  not yet
+I (69753) MESH_SETUP:  n/a = no parent link to measure (root)
+I (69763) MESH_SETUP: -----------------------------------------------------------------------
+I (69773) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (69773) MESH_SETUP:  HOP   MAC ADDRESS        ROLE        UPLINK             DN
+I (69783) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT        --:--:--:--:--:--  0x02
+I (69793) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD       B0:CB:D8:F3:32:18  0x01
+I (69803) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD       B4:BF:E9:32:FE:90  0x00
+I (69813) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD       B0:CB:D8:F3:32:18  0x02
+I (69823) MESH_SETUP:  H02   20:50:0D:E7:0C:80  WORMHOLE_B  20:50:0D:E7:1C:38  0x00
+I (69823) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD       20:50:0D:E7:1C:38  0x00
+I (69833) MESH_SETUP: -----------------------------------------------------------------------
+I (69843) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (69853) MESH_SETUP:  [H00] ROOT        B0:CB:D8:F3:32:18
+I (69863) MESH_SETUP:  +-- [H01] CHILD       B4:BF:E9:32:FE:90
+I (69863) MESH_SETUP:  |   `-- [H02] CHILD       70:4B:CA:25:B7:68
+I (69873) MESH_SETUP:  `-- [H01] CHILD       20:50:0D:E7:1C:38
+I (69883) MESH_SETUP:      +-- [H02] WORMHOLE_B  20:50:0D:E7:0C:80
+I (69883) MESH_SETUP:      `-- [H02] CHILD       B4:BF:E9:34:ED:80
+I (69893) MESH_SETUP: -----------------------------------------------------------------------
+I (69903) MESH_SETUP:  WORMHOLE TUNNEL (only Node B's OWN probes go through it; every other node is relayed as in baseline)
+I (69913) MESH_SETUP:    ENTRY  B  20:50:0D:E7:0C:80  H02  RSSI  -73  phase 0xFF UNSET      UART OK  "Board-20:80"
+E (69923) MESH_SETUP:    EXIT   A  -- not in the mesh / not reported --
+I (69933) MESH_SETUP:    Tunnel test : OK - 1 test(s) came B -> UART -> A -> root, last 22 s ago
+I (69943) MESH_SETUP: -----------------------------------------------------------------------
+I (69953) MESH_SETUP:  EXPOSURE (wormhole: no victims - the attack is DUPLICATION of B's probes)
+I (69963) MESH_SETUP:    20:50:0D:E7:0C:80  ATTACKER (WORMHOLE_B, entry) - its OWN probes are copied to A over UART
+I (69973) MESH_SETUP:    B4:BF:E9:32:FE:90  not involved - relayed as in baseline
+I (69983) MESH_SETUP:    20:50:0D:E7:1C:38  relays B's normal copy - honest, unaffected
+I (69993) MESH_SETUP:    70:4B:CA:25:B7:68  not involved - relayed as in baseline
+I (69993) MESH_SETUP:    B4:BF:E9:34:ED:80  not involved - relayed as in baseline
+E (70003) MESH_SETUP:  !! WORMHOLE NEEDS BOTH ENDS IN THE MESH - Node A is missing or not connected to the root.
+I (70013) MESH_SETUP: =======================================================================
+W (70113) ROOT_MAIN: [RXSTALL] Saving one probe to storage took 7 ms on average (slowest 31 ms) over the last 200 probes | Waiting-to-save line: longest 3 of 256, 0 lost so far | Mesh incoming buffer: longest 5 of 64 | Test phase: other
+W (76163) ROOT_MAIN: [CTRL] WAITING: 4/7 children in the mesh (10 s). Phase 0 will NOT start until all have joined.
+W (76163) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+W (84023) MESH_SETUP: Node OFFLINE — no heartbeat for 31 s: 20:50:0d:e7:0c:80
+I (84033) MESH_SETUP: ==================================================================
+I (84033) MESH_SETUP:  MESH TOPOLOGY
+I (84033) MESH_SETUP:  TYPE        : PARTIAL
+I (84043) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (84043) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (84053) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (84053) MESH_SETUP:  STATUS      : WARN
+I (84063) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (84073) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (84083) MESH_SETUP:  SD LOGGING  : 5/5 board(s) writing to their SD card
+I (84093) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=78 rssi=0
+I (84093) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=3 up=42 rssi=-78
+I (84103) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=146 rssi=-72
+I (84113) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=3 up=139 rssi=-78
+I (84123) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=1 up=49 rssi=-73
+I (84133) MESH_SETUP: ------------------------------------------------------------------
+I (84143) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (84153) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (84153) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       3  not yet
+I (84163) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -72  0xFF UNSET       3  not yet
+I (84173) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -73  0xFF UNSET       1  not yet
+I (84183) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -78  0xFF UNSET       3  not yet
+I (84193) MESH_SETUP:  n/a = no parent link to measure (root)
+I (84203) MESH_SETUP: ------------------------------------------------------------------
+I (84203) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (84213) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (84223) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (84233) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (84243) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x00
+I (84243) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD  B0:CB:D8:F3:32:18  0x01
+I (84253) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:1C:38  0x00
+I (84263) MESH_SETUP: ------------------------------------------------------------------
+I (84273) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (84283) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (84283) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (84293) MESH_SETUP:  |   `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (84303) MESH_SETUP:  `-- [H01] CHILD  20:50:0D:E7:1C:38
+I (84303) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (84313) MESH_SETUP: ==================================================================
+W (86323) ROOT_MAIN: [CTRL] WAITING: 4/7 children in the mesh (20 s). Phase 0 will NOT start until all have joined.
+W (86323) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (95993) HEALTH: [HEALTH] up=95s heap=57856 min=54968 big=57344 | stack free(B): telemetry=1120 phase_listener=2840 phase_resync=5596 heartbeat=3104 csv_export=3776 arr_writer=3708 exp_ctrl=5924 sd_recover=3524 ipc0=1520 ipc1=1520
+W (96343) ROOT_MAIN: [CTRL] WAITING: 4/7 children in the mesh (30 s). Phase 0 will NOT start until all have joined.
+W (96343) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (98323) MESH_SETUP: ==================================================================
+I (98323) MESH_SETUP:  MESH TOPOLOGY
+I (98323) MESH_SETUP:  TYPE        : PARTIAL
+I (98333) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (98333) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (98343) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (98343) MESH_SETUP:  STATUS      : WARN
+I (98353) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (98363) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (98373) MESH_SETUP:  SD LOGGING  : 5/5 board(s) writing to their SD card
+I (98373) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=92 rssi=0
+I (98383) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=3 up=56 rssi=-77
+I (98393) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=160 rssi=-70
+I (98403) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=3 up=153 rssi=-81
+I (98413) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=2 up=63 rssi=-72
+I (98423) MESH_SETUP: ------------------------------------------------------------------
+I (98433) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (98433) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (98443) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD   -81  0xFF UNSET       3  not yet
+I (98453) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -70  0xFF UNSET       3  not yet
+I (98463) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -72  0xFF UNSET       2  not yet
+I (98473) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -77  0xFF UNSET       3  not yet
+I (98483) MESH_SETUP:  n/a = no parent link to measure (root)
+I (98483) MESH_SETUP: ------------------------------------------------------------------
+I (98493) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (98503) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (98513) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (98523) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (98523) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x00
+I (98533) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD  B0:CB:D8:F3:32:18  0x01
+I (98543) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:1C:38  0x00
+I (98553) MESH_SETUP: ------------------------------------------------------------------
+I (98563) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (98573) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (98573) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (98583) MESH_SETUP:  |   `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (98583) MESH_SETUP:  `-- [H01] CHILD  20:50:0D:E7:1C:38
+I (98593) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (98603) MESH_SETUP: ==================================================================
+W (106613) ROOT_MAIN: [CTRL] WAITING: 4/7 children in the mesh (40 s). Phase 0 will NOT start until all have joined.
+W (106613) ROOT_MAIN: [CTRL]   A missing child is unpowered, brownout-looping (weak powerbank/cable) or out of range. Fix it, or type START_ANYWAY.
+I (112613) MESH_SETUP: ==================================================================
+I (112613) MESH_SETUP:  MESH TOPOLOGY
+I (112613) MESH_SETUP:  TYPE        : PARTIAL
+I (112623) MESH_SETUP:  NODE COUNT  : 0x05 (5)
+I (112623) MESH_SETUP:  HOP DEPTH   : 0x02 (2)
+I (112633) MESH_SETUP:  REACHABLE   : 0x05 (5)
+W (112633) MESH_SETUP:  STATUS      : WARN
+I (112643) MESH_SETUP:  DETAIL      : 5 nodes, each seen under only one parent so far - still a plain tree (depth 3)
+I (112653) MESH_SETUP:  EXPORT      : not yet - run in progress, do not export
+I (112663) MESH_SETUP:  SD LOGGING  : 5/5 board(s) writing to their SD card
+I (112663) MESH_SETUP:  NODESTAT B0:CB:D8:F3:32:18 sd=OK uart=NA age=0 up=106 rssi=0
+I (112673) MESH_SETUP:  NODESTAT B4:BF:E9:34:ED:80 sd=OK uart=NA age=2 up=70 rssi=-77
+I (112683) MESH_SETUP:  NODESTAT B4:BF:E9:32:FE:90 sd=OK uart=NA age=3 up=174 rssi=-69
+I (112693) MESH_SETUP:  NODESTAT 20:50:0D:E7:1C:38 sd=OK uart=NA age=3 up=167 rssi=-78
+I (112703) MESH_SETUP:  NODESTAT 70:4B:CA:25:B7:68 sd=OK uart=NA age=2 up=77 rssi=-75
+I (112713) MESH_SETUP: ------------------------------------------------------------------
+I (112713) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   RSSI  PHASE       AGE(s)  EXPORT
+I (112723) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT    n/a  0xFF UNSET       0  not yet
+I (112733) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD   -78  0xFF UNSET       3  not yet
+I (112743) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD   -69  0xFF UNSET       3  not yet
+I (112753) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD   -75  0xFF UNSET       2  not yet
+I (112763) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD   -77  0xFF UNSET       2  not yet
+I (112773) MESH_SETUP:  n/a = no parent link to measure (root)
+I (112773) MESH_SETUP: ------------------------------------------------------------------
+I (112783) MESH_SETUP:  PARENT/CHILD STRUCTURE (depth-first from root)
+I (112793) MESH_SETUP:  HOP   MAC ADDRESS        ROLE   UPLINK             DN
+I (112803) MESH_SETUP:  H00   B0:CB:D8:F3:32:18  ROOT   --:--:--:--:--:--  0x02
+I (112813) MESH_SETUP:  H01   B4:BF:E9:32:FE:90  CHILD  B0:CB:D8:F3:32:18  0x01
+I (112813) MESH_SETUP:  H02   70:4B:CA:25:B7:68  CHILD  B4:BF:E9:32:FE:90  0x00
+I (112823) MESH_SETUP:  H01   20:50:0D:E7:1C:38  CHILD  B0:CB:D8:F3:32:18  0x01
+I (112833) MESH_SETUP:  H02   B4:BF:E9:34:ED:80  CHILD  20:50:0D:E7:1C:38  0x00
+I (112843) MESH_SETUP: ------------------------------------------------------------------
+I (112853) MESH_SETUP:  TOPOLOGY TREE (branches = who sits under whom; probes flow UP toward the root)
+I (112863) MESH_SETUP:  [H00] ROOT   B0:CB:D8:F3:32:18
+I (112863) MESH_SETUP:  +-- [H01] CHILD  B4:BF:E9:32:FE:90
+I (112873) MESH_SETUP:  |   `-- [H02] CHILD  70:4B:CA:25:B7:68
+I (112883) MESH_SETUP:  `-- [H01] CHILD  20:50:0D:E7:1C:38
+I (112883) MESH_SETUP:      `-- [H02] CHILD  B4:BF:E9:34:ED:80
+I (112893) MESH_SETUP: ==================================================================
+  sniffer: STOPPED with the root - its capture is closed and saved (Wireshark & sniffer page)
+[monitor] closed
+Export skipped. Data is safe on the board (COM3) - import it from its SD card later, or export with the command below.
+To export later:  python tools\export_logs.py --port COM3 --role root --topology partial --attack wormhole --repeat 1 --scenario burst --location Yuchengco --label root
+  finished (exit 0)

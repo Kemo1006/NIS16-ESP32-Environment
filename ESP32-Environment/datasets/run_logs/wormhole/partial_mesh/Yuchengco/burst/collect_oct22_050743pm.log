@@ -1,0 +1,15 @@
+collect_run.py --ports COM4,COM3 --attack wormhole --topology partial_mesh --location Yuchengco --scenario burst --repeat 1 --since 2026-10-22 05:07 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-partial_mesh-yuchengco-burst.json --expect-mac COM4=20500DE70C80;COM3=20500DE71C38 --pick COM4=wormhole/partial_mesh/Yuchengco/victim_NODE_20500DE70C80_r7_b179_telem.csv;COM3=wormhole/partial_mesh/Yuchengco/victim_NODE_20500DE71C38_r7_b23_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\collect_oct22_050743pm.log)
+
+-- COM4: reading the card ...
+   checked victim_NODE_20500DE70C80_r7_b179_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 19 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\burst\victim_NODE-20500DE70C80_partial_wormhole_r1_oct22_0507PM_telem.csv|6213
+COLLECT: COM4 20500DE70C80 OK victim_NODE_20500DE70C80_r7_b179_telem.csv -> victim_NODE-20500DE70C80_partial_wormhole_r1_oct22_0507PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 19 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE71C38_r7_b23_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 201 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\burst\victim_NODE-20500DE71C38_partial_wormhole_r1_oct22_0508PM_telem.csv|8028
+COLLECT: COM3 20500DE71C38 OK victim_NODE_20500DE71C38_r7_b23_telem.csv -> victim_NODE-20500DE71C38_partial_wormhole_r1_oct22_0508PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 201 s
+
+COLLECT_SUMMARY: ok=2 skip=0 fail=0
+

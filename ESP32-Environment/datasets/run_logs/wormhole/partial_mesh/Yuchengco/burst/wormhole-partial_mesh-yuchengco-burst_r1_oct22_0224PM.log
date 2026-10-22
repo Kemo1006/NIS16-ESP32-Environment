@@ -1,0 +1,41 @@
+NIS16 Capture Studio run log - wormhole-partial_mesh-yuchengco-burst.json - 22/10/2026 2:24:16 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\wormhole-partial_mesh-yuchengco-burst_r1_oct22_0224PM.log
+
+> Parallel flash: 3 children, 3 at a time   (02:24:17 pm)
+  node4 on COM5: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node4_COM5_flash_oct22_0224pm.log)
+  node3 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node3_COM3_flash_oct22_0224pm.log)
+  node4: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node2 on COM6: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node2_COM6_flash_oct22_0224pm.log)
+  node3: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node2: SCENARIO_CHECK: FIXED stationary -> burst (applies on the next boot)
+  node2: LOCATION_CHECK: FIXED G402 -> Yuchengco (applies on the next boot)
+  node4: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node3: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node4: Hash of data verified.
+  node3: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node4: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node4: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node4: FLASH_ONLY_DONE: COM5 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM5) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node4_COM5_serial_oct22_0225pm.log
+  node4 on COM5: flashed + started in 1 min 09 sec
+  node3: SCENARIO_CHECK: UNKNOWN no answer (firmware before GET_SCENARIO, or still booting)
+  node3: LOCATION_CHECK: UNKNOWN no answer (firmware before GET_LOCATION, or still booting)
+  node3: FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node3 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node3_COM3_serial_oct22_0225pm.log
+  node3 on COM3: flashed + started in 1 min 10 sec
+  node2: A fatal error occurred: Packet content transfer stopped (received 8 bytes)
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: FLASH_ONLY_DONE: COM6 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\partial_mesh\Yuchengco\burst\node2_COM6_serial_oct22_0227pm.log
+  node2 on COM6: flashed + started in 2 min 47 sec
+  parallel flash: 3 of 3 children flashed in 2 min 57 sec
+All boards done in 13 min 52 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\partial_mesh\Yuchengco\burst

@@ -1,0 +1,16 @@
+feature,threshold_accuracy,nan_accuracy,coverage,excluded,majority_baseline,lift_over_majority
+IngressEgressDelta,1.0,,1.0,False,1.0,0.0
+PDR,1.0,0.8703814064362336,0.8703814064362336,False,1.0,0.0
+ParentSwitchRate,1.0,,1.0,False,1.0,0.0
+HopChangeCount,1.0,,1.0,False,1.0,0.0
+HopStabilityDuration,0.9997020262216925,,1.0,False,1.0,-0.00029797377830753646
+RSSI_var,0.9997020262216925,,1.0,False,1.0,-0.00029797377830753646
+RSSI_mean,0.9996595165134491,0.8751489868891538,0.8751489868891538,False,1.0,-0.0003404834865509132
+RSSI_Hop_Diff,0.9996595165134491,0.8751489868891538,0.8751489868891538,False,1.0,-0.0003404834865509132
+LatencyHopRatio,0.9965765148921603,0.8703814064362336,0.8703814064362336,False,1.0,-0.003423485107839741
+RSSI_stability,0.8751489868891538,,1.0,False,1.0,-0.12485101311084623
+ForwardingRatio,,,0.0,False,1.0,
+ConsistencyScore,,,0.0,False,1.0,
+TunnelIntensity,,,0.0,True,1.0,
+TunnelBytes,,,0.0,True,1.0,
+TunnelLatency,,,0.0,True,1.0,

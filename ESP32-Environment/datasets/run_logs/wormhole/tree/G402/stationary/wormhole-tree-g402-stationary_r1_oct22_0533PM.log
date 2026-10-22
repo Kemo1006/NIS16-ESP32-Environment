@@ -1,0 +1,37 @@
+NIS16 Capture Studio run log - wormhole-tree-g402-stationary.json - 22/10/2026 5:33:48 pm
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\wormhole-tree-g402-stationary_r1_oct22_0533PM.log
+  sniffer check: nothing recording - the root waits
+
+> Compile [1/1] node1 - ROOT   (05:38:13 pm)
+Board: node1 (on COM6, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · tree · stationary  (compile only - no board is touched)
+  Build:  C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_tree_GUI
+  ✔ Already built and up to date (built Oct 22 5:31pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+
+> Compile [1/1] node1 - ROOT   (05:38:57 pm)
+Board: node1 (on COM6, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · tree · stationary  (compile only - no board is touched)
+  Build:  C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_tree_GUI
+  ✔ Already built and up to date (built Oct 22 5:31pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+All boards done in 8 min 29 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary
+
+> Compile [1/1] node1 - ROOT   (05:39:38 pm)
+Board: node1 (on COM6, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · tree · stationary  (compile only - no board is touched)
+  Build:  C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_tree_GUI
+  ✔ Already built and up to date (built Oct 22 5:31pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+
+> Compile [1/1] node1 - ROOT   (05:39:44 pm)
+Board: node1 (on COM6, MAC b0:cb:d8:f3:32:18)
+  What:   root firmware · wormhole · tree · stationary  (compile only - no board is touched)
+  Build:  C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\root_node\build_root_wormhole_tree_GUI
+  ✔ Already built and up to date (built Oct 22 5:31pm; no firmware code or settings changed since) - skipped compiling.
+  finished (exit 0)
+All 1 variant(s) ready - 0 errors.
+All boards done in 9 min 15 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary
