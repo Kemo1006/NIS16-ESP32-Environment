@@ -1,0 +1,13 @@
+collect_run.py --ports COM3,COM4,COM7 --attack wormhole --topology tree --location G402 --scenario stationary --repeat 1 --since 2026-10-22 08:14 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Bas\wormhole-tree-g402-stationary.json --expect-mac COM3=20500DE71C38;COM4=20500DE70C80;COM7=F42DC973E618 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp6232.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\G402\stationary\collect-scan_oct22_081442pm.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 20500DE71C38 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-22 18:29:27; G402 ran 2026-10-22 19:42:42) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM4: reading the card ...
+COLLECT: COM4 20500DE70C80 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-22 17:48:56; G402 ran 2026-10-22 19:53:44) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+-- COM7: reading the card ...
+COLLECT: COM7 F42DC973E618 FAIL 2 runs of this attack + topology in the time window (G402 ran 2026-10-22 17:50:09; G402 ran 2026-10-22 19:53:04) - the card cannot say which scenario each was. Narrow the time window, or pick the file in Data > Import
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=3

@@ -1,0 +1,21 @@
+collect_run.py --ports COM4,COM7,COM3 --attack wormhole --topology tree --location DLSU_Library --scenario stationary --repeat 1 --since 2026-10-22 08:58 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\wormhole-tree-dlsu_library-stationary.json --expect-mac COM4=20500DE70C80;COM7=F42DC973E618;COM3=20500DE71C38 --pick COM4=wormhole/tree/DLSU_Library/victim_NODE_20500DE70C80_r3_b3_telem.csv;COM7=wormhole/tree/DLSU_Library/victim_NODE_F42DC973E618_r2_b3_telem.csv;COM3=wormhole/tree/DLSU_Library/victim_NODE_20500DE71C38_r3_b3_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\wormhole\tree\DLSU_Library\stationary\collect_oct22_085839pm.log)
+
+-- COM4: reading the card ...
+   checked victim_NODE_20500DE70C80_r3_b3_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 39 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\DLSU_Library\stationary\victim_NODE-20500DE70C80_tree_wormhole_r1_oct22_0858PM_telem.csv|6413
+COLLECT: COM4 20500DE70C80 OK victim_NODE_20500DE70C80_r3_b3_telem.csv -> victim_NODE-20500DE70C80_tree_wormhole_r1_oct22_0858PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 39 s
+
+-- COM7: reading the card ...
+   retry 2/3 of COM7 in 3 s (no_answer)
+   retry 3/3 of COM7 in 8 s (no_answer)
+COLLECT: COM7 - FAIL NO_ANSWER: the board did not answer in time (still booting, busy, or the ROOT / a board on old firmware) - nothing is wrong with its data. Unplug + replug it, then Retry failed
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE71C38_r3_b3_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 44 s -> FULL
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\DLSU_Library\stationary\victim_NODE-20500DE71C38_tree_wormhole_r1_oct22_0901PM_telem.csv|6463
+COLLECT: COM3 20500DE71C38 OK victim_NODE_20500DE71C38_r3_b3_telem.csv -> victim_NODE-20500DE71C38_tree_wormhole_r1_oct22_0901PM_telem.csv: baseline 300 s, attack 180 s, cooldown 120 s, stabilise 44 s
+
+COLLECT_SUMMARY: ok=2 skip=0 fail=1
+COLLECT_RETRY: COM7
+
