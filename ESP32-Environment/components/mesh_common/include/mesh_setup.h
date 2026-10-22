@@ -158,7 +158,8 @@ uint32_t mesh_setup_note_tunnel_test(const uint8_t src_mac[6]);
  *        its UART HELLO. On the board flashed as B it sets the minimum parent
  *        depth (never shallower than A), bars A's own mesh AP (@p peer_mac = A's
  *        STA MAC) as a parent and, when @p may_repick (before Phase 0 only),
- *        moves B if A is as deep as B or B sits under A. No-op elsewhere.
+ *        moves B if A is as deep as B or B sits under A. Tree also keeps B at
+ *        H03 (parent at H02, thesis Fig. 4.18). No-op elsewhere.
  */
 void mesh_setup_wormhole_peer_layer(int peer_layer, const uint8_t peer_mac[6], bool may_repick);
 
