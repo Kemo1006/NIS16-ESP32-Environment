@@ -42,7 +42,9 @@ The thesis's own tree wormhole figure puts A at hop 1 and B at **hop 3**, with B
 
 ## Decision taken (same day)
 
-The user chose a hop-2 victim, then a firmware RULE over an exact MAC pin: in tree wormhole builds B's parent must be at exactly H02, so B is always at H03 (`WH_B_TREE_PARENT_LAYER`, `mesh_setup.c`). It meets Figure 4.18 every run without preset/wizard/GUI changes, and keeps working when the H02 victim is on another laptop. The paper edits listed above still apply ("configured to join a hop-2 board" instead of a named board).
+The user chose a hop-2 victim, then a firmware RULE over an exact MAC pin: in tree wormhole builds B's parent must be at exactly H02, so B is always at H03. It meets Figure 4.18 every run without preset/wizard/GUI changes, and keeps working when the H02 victim is on another laptop. The paper edits listed above still apply ("configured to join a hop-2 board" instead of a named board).
+
+Final form (later the same day, after the user found the first version reached partial builds): `WH_B_TREE_DEPTH` in `mesh_setup.c` only — B's parent must be exactly one hop below A (H02 while A is at H01), which also keeps A itself from ever being B's parent, with no MAC needed. Partial and star now compile exactly the pre-oct. 22 code: preprocessing `mesh_setup.c` old vs new with the real partial and star compile flags gives 0 differing lines (7239 / 7221 lines each); tree differs by 16 lines.
 
 ## Sources
 

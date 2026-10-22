@@ -1,5 +1,7 @@
 # Verification: wormhole B never takes A as parent, tree builds only
 
+> **SUPERSEDED the same day.** The MAC-based version checked here also changed `wormhole_victim.c` / `mesh_setup.h`, which partial and star compile too. It was replaced by a depth-only rule inside `#if WH_B_TREE_DEPTH` (B's parent exactly one hop below A); partial and star now compile exactly the pre-oct. 22 code. See `oct. 22, 2026_wormhole-tree-pin-b-parent-vs-thesis.md` and D-30 in `thesis-deviate.md`.
+
 **Date:** oct. 22, 2026
 **Verdict:** 🔶 PARTIALLY CONFIRMED — behaviour gating confirmed by reading the code; tree builds + host test confirmed by running them; partial/star builds were NOT re-compiled after the final edit.
 

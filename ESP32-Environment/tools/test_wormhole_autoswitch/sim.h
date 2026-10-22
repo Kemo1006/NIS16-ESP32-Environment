@@ -128,7 +128,7 @@ static int s_sim_layer = -1;
 static inline esp_err_t mesh_setup_init(mesh_node_role_t r) { (void)r; return ESP_OK; }
 static inline void mesh_setup_get_node_id(char *b) { strcpy(b, "NODE_SIM"); }
 static inline int  mesh_setup_get_layer(void) { return s_sim_layer; }
-static inline void mesh_setup_wormhole_peer_layer(int l, const uint8_t m[6], bool r) { (void)l; (void)m; (void)r; }
+static inline void mesh_setup_wormhole_peer_layer(int l, bool r) { (void)l; (void)r; }
 static inline bool mesh_setup_get_parent_mac(uint8_t m[6]) { memset(m, 0, 6); return true; }
 static inline esp_err_t heartbeat_start(void) { return ESP_OK; }
 

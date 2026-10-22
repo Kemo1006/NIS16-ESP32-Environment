@@ -830,7 +830,7 @@ static bool rx_handle_window(const wh_frame_t *f)
         /* D-30: the board flashed as B keeps itself deeper than A - may move
          * only before the run starts. */
         uint8_t ph = phase_listener_get_phase_id();
-        mesh_setup_wormhole_peer_layer(f->h.layer, f->h.mac, !s_role_locked &&
+        mesh_setup_wormhole_peer_layer(f->h.layer, !s_role_locked &&
                                        (ph == PHASE_ID_UNSET || ph == PHASE_ID_PREPARE));
         s_peer_role    = f->h.role;
         s_peer_locked  = (f->h.locked != 0);
