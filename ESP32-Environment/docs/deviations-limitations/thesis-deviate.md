@@ -564,3 +564,15 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Basis** | Team scope decision (Latin-square style rotation). **Adviser check**: within one topology the benign scenario and location are confounded; the attack runs at the same location/scenario are the matched comparison. |
 | **Effect** | Benign run count 9 → 12; which benign scenario per location/topology. |
 | **Paper edit** | Methodology run matrix + benign-run sentence; Limitations note on the confounding. Checklist A36. |
+
+## D-36 · Wormhole ends (A and B) join as LEAF nodes in tree / partial; telemetry stack 4096 → 6144 B (oct. 22, 2026)
+
+| | |
+|---|---|
+| **Before** | Tunnel ends joined as ordinary MESH_NODEs, so other boards could hang under them. oct. 22 tree/G402/stationary: A (20:50:0D:E7:0C:80) at H01 carried 1C38 + FE90 (and B's normal path through 1C38). A RESTARTED x3 during the run; each time its children re-parented (20:80 → B4:80 / 70:68) during ATTACK → "layout changed during the capture" → RECAPTURE, tunnel down while A rebooted. Root printed `LOW STACK: task 'telemetry' has had only 504 B of stack left` (of 4096). |
+| **Why** | User (oct. 22): placement was done manually and the problem stayed - asked for a firmware fix. A's restart cause is NOT proven (no backtrace synced yet); telemetry stack exhaustion is one candidate. |
+| **We do** | `mesh_setup.c` `WH_ENDS_LEAF` (default 1): wormhole ends in tree/partial (the manually parented A and B, D-30) call `esp_mesh_set_parent(..., MESH_LEAF, ...)` - IDF: a leaf "has no forwarding ability", so no child can ever attach under A or B. `STACK_TELEMETRY` 4096 → 6144 B on every board. Star wormhole/blackhole and all other parent rules unchanged. |
+| **Basis** | An attacker endpoint that also relays honest nodes mixes two roles; as a leaf, A/B only carry their own + tunnelled probes, and an endpoint restart no longer moves honest nodes. |
+| **Effect** | Tree/partial wormhole layouts: nothing below A or B (B's NORMAL copy still goes via honest relays). Captures before oct. 22 evening may have had children under A/B. ~2 KB more RAM per board. |
+| **Checks** | Compile-checked on IDF 5.5.4 (WH A/B tree, WH A partial, root). **Not hardware-tested**: first run - A and B log `... as layer N` and the root's table shows DN 0x00 for A and B; no `LOW STACK: telemetry`. REFLASH ALL boards (stack change is in every build). |
+| **Paper edit** | Methodology, wormhole setup: "Both tunnel endpoints joined as leaf nodes, so no honest node used an endpoint as its parent." Checklist A37. **Adviser check.** |

@@ -853,7 +853,7 @@
                                           *   not real-time data */
 
 #define STACK_PHASE_LISTENER    6144U   /* also runs the non-phase data cb (probe sink) */
-#define STACK_TELEMETRY         4096U
+#define STACK_TELEMETRY         6144U   /* oct. 22 2026: root had 504 B left at 4096 (LOW STACK) */
 #define STACK_PROBE_GEN         4096U
 #define STACK_PROBE_SINK        4096U
 #define STACK_SERIAL_EXPORT     6144U

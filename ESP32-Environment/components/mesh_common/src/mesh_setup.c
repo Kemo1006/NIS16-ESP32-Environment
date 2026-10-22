@@ -57,6 +57,16 @@
 #define STICKY_PARENT_DURATION_X   3     /* weak-link watch window multiplier          */
 #endif
 
+/* ── D-36 WORMHOLE ENDS ARE LEAVES (tree / partial, oct. 22 2026) ───────────
+ * A at H01 took ordinary children (oct. 22 tree/G402 run: 1C38 + FE90 under A).
+ * When A restarted mid-attack they all re-parented -> "layout changed during
+ * the capture" -> recapture, and A carried their relay load on top of the
+ * tunnel. Both ends now join as MESH_LEAF (IDF: "no forwarding ability"), so
+ * nothing ever hangs under A or B. WH_ENDS_LEAF 0 = previous behaviour. */
+#ifndef WH_ENDS_LEAF
+#define WH_ENDS_LEAF               1
+#endif
+
 /* ── Module-private state ────────────────────────────────────────────────── */
 
 static const char *TAG = "MESH_SETUP";
@@ -877,6 +887,11 @@ static void star_hub_scan_done(int num)
         memcpy(parent.sta.password, MESH_PASSWORD, strlen(MESH_PASSWORD));
     }
     mesh_type_t my_type = (hub_assoc.layer_cap != 1) ? MESH_NODE : MESH_LEAF;
+#if WH_ENDS_LEAF
+    if (s_pin_no_root || s_pin_shallow) {
+        my_type = MESH_LEAF;            /* D-36: no children under a tunnel end */
+    }
+#endif
     int my_layer = hub_assoc.layer + 1;
     ESP_LOGW(TAG, "%s " MACSTR " (layer %d, rssi %d, ch %u) as layer %d.",
              s_pin_no_root ? (repick ? "WORMHOLE B (D-30): moving deeper than A, to"

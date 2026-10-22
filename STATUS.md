@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 22, 2026 (Basti's laptop) - wormhole TREE fix pushed (B never under A, B at H03 = Fig. 4.18). Earlier same day (Angelo): ⚠️ DLSU_Library/burst ROOT exports + preset only on Angelo's laptop -> Smart sync them, re-analyse that cell. Next: hardware-test the tree wormhole on B; re-verify the 2 NOT APPLIED runs; #77 fixes.
+**Updated:** oct. 22, 2026 ~7 PM (Angelo's laptop) - D-36 firmware: wormhole ends A/B join as LEAF in tree/partial (no children under them) + telemetry stack 6144 B. Cause: A (0C80) restarted x3 mid-attack in tree/G402, its children re-parented -> recapture. NEXT: reflash ALL boards, recapture tree/G402/stationary wormhole; send A's decoded crash backtrace (cause unproven); check A/B show DN 0x00. Still local on purpose: mesh_config.h attacker MAC, presets/Cal edits, archive/.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
