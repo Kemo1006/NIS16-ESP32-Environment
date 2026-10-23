@@ -191,6 +191,11 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
 /* D-41: tree wormhole builds take partial's mesh logic (mesh_config.h). */
 #define TREE_AS_PARTIAL \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE && TREE_WH_AS_PARTIAL)
+/* D-41 is the FROZEN THESIS3 tree wormhole firmware (user, oct. 23 2026): a tree
+ * wormhole build without it must not compile, so no laptop can flash another one. */
+#if (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE && !TREE_WH_AS_PARTIAL)
+#error "THESIS3 tree wormhole firmware is frozen at D-41: TREE_WH_AS_PARTIAL must stay 1 (MEMORY.md oct. 23 2026)"
+#endif
 #define WH_B_TREE_DEPTH \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE && !TREE_AS_PARTIAL)
 #define MANUAL_PARENT (STAR_HUB || WH_B_NO_ROOT)

@@ -151,7 +151,9 @@
  *  rule, no D-39 single-channel scan). Why: partial wormhole runs form and hold
  *  reliably and already come out tree-shaped; the oct. 23 tree burst runs kept
  *  failing to seat both ends. Tree blackhole / baseline builds are untouched.
- *  0 = the D-40 tree wormhole logic again (-DTREE_WH_AS_PARTIAL=0). */
+ *  FROZEN (user, oct. 23 2026): this is the THESIS3 tree wormhole firmware; a
+ *  tree wormhole build with 0 stops with #error in mesh_setup.c. Change it only
+ *  with the user's explicit OK (root CLAUDE.md, git tag thesis3-fw-d41). */
 #ifndef TREE_WH_AS_PARTIAL
 #define TREE_WH_AS_PARTIAL         1
 #endif

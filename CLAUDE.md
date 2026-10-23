@@ -51,6 +51,7 @@ Task complexity (simple → just do it; complex → Planner→Builder→Tester�
   why, not just the what. Completed/superseded entries roll to ARCHIVE.md to hold the line cap.
   Pure Q&A / read-only turns (nothing changed) need no entry — don't pad it with noise.
 - Destructive/irreversible actions (delete, overwrite non-generated files, deploy/publish): confirm first unless pre-authorized in MEMORY.md.
+- **Tree wormhole firmware is FROZEN at D-41** (git tag `thesis3-fw-d41`; user, oct. 23 2026): never change tree or tree-wormhole behaviour in `components/mesh_common` (`TREE_WH_AS_PARTIAL`, `TREE_AS_PARTIAL`, the `NIS_TOPO_TREE` branches, partial's code it now reuses) without the user's explicit OK that turn. A tree wormhole build with `TREE_WH_AS_PARTIAL 0` must keep failing (#error).
 - If unsure and the wrong guess is costly → ask. Otherwise pick a sensible default and state it.
 - This agent is synchronous — it never wakes on its own. Recurring/background checks (link audits, reminders, reviews) need an explicit scheduler (`/schedule`, `/loop`, or an OS cron / Task Scheduler entry), not an assumption that a future session will notice.
 - **Any request to verify datasets / analysis / EDA / verifiers** → add one block at the TOP of
