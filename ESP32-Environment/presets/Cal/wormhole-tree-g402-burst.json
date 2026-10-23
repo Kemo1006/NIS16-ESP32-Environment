@@ -1,0 +1,21 @@
+﻿{
+    "attack":  "wormhole",
+    "topology":  "tree",
+    "location":  "G402",
+    "scenario":  "burst",
+    "owner":  "Cal",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-23 14:02",
+    "boards":  [
+                   {
+                       "Label":  "root",
+                       "Port":  "COM3",
+                       "Role":  "root",
+                       "Kind":  "root",
+                       "Display":  "ROOT (announces the phases)",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

@@ -5,7 +5,8 @@
     "scenario":  "stationary",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-10-01 16:51",
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-22 13:45",
     "boards":  [
                    {
                        "Label":  "node1",

@@ -1,0 +1,7 @@
+wormhole/tree/G402/stationary repeat 1
+archived 2026-10-22 20:12 - files written before 2026-10-22 19:57
+why: the same run (same repeat) was captured again - the re-capture whose root exported 2026-10-22 20:12
+also moved: GUI verify report wormhole__tree__G402__stationary.txt, verdict 'VERDICT: WORMHOLE NOT CONFIRMED - SETUP INVALID  (1/1 primar'
+verification log blocks that covered the OLD capture (docs/dataset-verification.md, never edited): #6
+restore: move exports/, analysis/, run_logs/ back into datasets/ under the same run folder;
+         verification/ back into %LOCALAPPDATA%\NIS16\reports (+ its verdicts.json entry)

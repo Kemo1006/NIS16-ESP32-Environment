@@ -1,0 +1,443 @@
+
+=== wormhole/tree/G402/stationary ===
+APPLYING — 9 file(s)
+
+  child_node3_tree_wormhole_r1_oct22_0612PM_telem.csv
+      1340 data rows, 1 boot session(s)
+        session 1: rows   1340  span    133.9s  score    78.1  <-- KEEPING
+            - contains an ATTACK phase
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node3_tree_wormhole_r1_oct22_0612PM_telem.csv
+  child_node4_tree_wormhole_r1_oct22_0614PM_telem.csv
+      7085 data rows, 1 boot session(s)
+        session 1: rows   7085  span    708.4s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node4_tree_wormhole_r1_oct22_0614PM_telem.csv
+  child_node5_tree_wormhole_r1_oct22_0612PM_telem.csv
+      8370 data rows, 1 boot session(s)
+        session 1: rows   8370  span    879.8s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node5_tree_wormhole_r1_oct22_0612PM_telem.csv
+  child_node6_tree_wormhole_r1_oct22_0613PM_telem.csv
+      8690 data rows, 1 boot session(s)
+        session 1: rows   8690  span    869.0s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node6_tree_wormhole_r1_oct22_0613PM_telem.csv
+  child_node7_tree_wormhole_r1_oct22_0610PM_telem.csv
+      6370 data rows, 1 boot session(s)
+        session 1: rows   6370  span    636.9s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node7_tree_wormhole_r1_oct22_0610PM_telem.csv
+  child_node8_tree_wormhole_r1_oct22_0611PM_telem.csv
+      8339 data rows, 1 boot session(s)
+        session 1: rows   8339  span    833.8s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\child_node8_tree_wormhole_r1_oct22_0611PM_telem.csv
+  root_node1_tree_wormhole_r1_oct22_0607PM_telem.csv
+      7892 data rows, 1 boot session(s)
+        session 1: rows   7892  span    789.1s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\root_node1_tree_wormhole_r1_oct22_0607PM_telem.csv
+  root_node1_tree_wormhole_r1_oct22_0608PM_arrivals.csv
+      4107 data rows, 1 boot session(s)
+        session 1: rows   4107  span    789.1s  score    78.6  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\root_node1_tree_wormhole_r1_oct22_0608PM_arrivals.csv
+  victim_NODE_F42DC973E618_r15_b1432_telem.csv
+      6780 data rows, 1 boot session(s)
+        session 1: rows   6780  span    677.9s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\G402\stationary\trimmed\victim_NODE_F42DC973E618_r15_b1432_telem.csv
+
+------------------------------------------------------------
+  files            : 9
+  rows kept        : 58973
+  rows dropped     : 0
+  files rewritten  : 0
+  files copied as-is: 9
+  files in output  : 9 of 9
+  output folder    : S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary\trimmed
+  NOTE: point preprocess.py / features.py at that folder —
+        it is the COMPLETE analysis input (trimmed files plus
+        untouched copies of anything that needed no trimming).
+Loading raw telemetry from: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary\trimmed
+  [REFUSED] victim_NODE_F42DC973E618_r15_b1432_telem.csv: raw SD-card file, never imported. Its r-number is that board's on-device run counter, NOT a campaign repeat - loading it would pool an unrelated run. Import it with tools/import_sdcard.py --card <drive> --repeat <N>, or move it out of this folder.
+Wrote 4805 windowed rows to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\windowed_dataset.csv
+Wrote column legend to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\windowed_dataset_legend.csv
+
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               7
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          48086
+  Windows formed:             4820
+  Windows discarded (<4 smp): 15
+  Windows discarded (gap>2s): 0
+  Windows kept:               4805
+  Discard fraction:           0.3%
+  RSSI placeholders blanked:  7984 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1111   [excluded]
+    baseline               1794
+    attack                 1083
+    cooldown               805
+    transition             12   [excluded]
+  REFUSED (raw SD-card files, never imported): 1
+    victim_NODE_F42DC973E618_r15_b1432_telem.csv
+    -> run tools\import_sdcard.py --card <drive> --repeat <N> instead of copying off the card by hand.
+  Per-node window counts:
+    NODE_20500DE70C80: 134
+    NODE_20500DE71C38: 708
+    NODE_2805A532D7B4: 869
+    NODE_704BCA25B768: 835
+    NODE_B0CBD8F33218: 789
+    NODE_B4BFE932FE90: 637
+    NODE_B4BFE934ED80: 833
+───────────────────────────────────────────────────────────
+Running M6 preprocessing on: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary\trimmed
+  [REFUSED] victim_NODE_F42DC973E618_r15_b1432_telem.csv: raw SD-card file, never imported. Its r-number is that board's on-device run counter, NOT a campaign repeat - loading it would pool an unrelated run. Import it with tools/import_sdcard.py --card <drive> --repeat <N>, or move it out of this folder.
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               7
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          48086
+  Windows formed:             4820
+  Windows discarded (<4 smp): 15
+  Windows discarded (gap>2s): 0
+  Windows kept:               4805
+  Discard fraction:           0.3%
+  RSSI placeholders blanked:  7984 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1111   [excluded]
+    baseline               1794
+    attack                 1083
+    cooldown               805
+    transition             12   [excluded]
+  REFUSED (raw SD-card files, never imported): 1
+    victim_NODE_F42DC973E618_r15_b1432_telem.csv
+    -> run tools\import_sdcard.py --card <drive> --repeat <N> instead of copying off the card by hand.
+  Per-node window counts:
+    NODE_20500DE70C80: 134
+    NODE_20500DE71C38: 708
+    NODE_2805A532D7B4: 869
+    NODE_704BCA25B768: 835
+    NODE_B0CBD8F33218: 789
+    NODE_B4BFE932FE90: 637
+    NODE_B4BFE934ED80: 833
+───────────────────────────────────────────────────────────
+
+Computing 16 Table 4.11 features...
+[features] WARNING: 7 window(s) have ForwardingRatio > 1 (max 3.00). A relay cannot forward more than it received; this is a queue flush across a window edge. Check segment assignment before trusting the baseline distribution.
+Sniffer captures (real MAC retries, tools/pcap_retry.py):
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1201AM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 00:01:00 and 00:14:00 (this run and the next of the same cell) in exports/baseline/linear/Yuchengco/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1215AM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 00:14:00 and 00:33:00 (this run and the next of the same cell) in exports/baseline/linear/Yuchengco/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1244AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-baseline-highload-g402_r1_oct22_0825AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-baseline-highload-g402_r1_oct22_0909AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer star-baseline-stationary-dlsu_library_r1_oct22_0705AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer star-baseline-burst-g402_r1_oct22_0150AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct19_0434PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer partial_mesh-wormhole-burst-yuchengco_r1_oct22_0259PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 15:16:00 and 16:43:00 (this run and the next of the same cell) in exports/wormhole/partial_mesh/Yuchengco/burst - this run's own export is missing, so its phase times are unavailable.
+  sniffer partial_mesh-wormhole-burst-yuchengco_r1_oct22_0317PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 15:16:00 and 16:43:00 (this run and the next of the same cell) in exports/wormhole/partial_mesh/Yuchengco/burst - this run's own export is missing, so its phase times are unavailable.
+  sniffer partial_mesh-wormhole-burst-yuchengco_r1_oct22_0444PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer partial_mesh-wormhole-highload-yuchengco_r1_oct21_0704PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-stationary-yuchengco_r1_oct21_0609PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-burst-yuchengco_r1_oct21_1250PM.pcap: no retry data - phase(s) [0] started more than once - the root rebooted or two runs share this log. Split the log to the one run the capture covers.
+  sniffer star-wormhole-burst-yuchengco_r1_oct21_1259PM.pcap: no retry data - phase(s) [0] started more than once - the root rebooted or two runs share this log. Split the log to the one run the capture covers.
+  sniffer star-wormhole-highload-yuchengco_r1_oct21_1210PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer tree-wormhole-stationary-g402_r1_oct22_0153PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 13:53:00 and 15:44:00 (this run and the next of the same cell) in exports/wormhole/tree/G402/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer tree-wormhole-stationary-g402_r1_oct22_0404PM.pcap: no retry data - phase(s) [0] started more than once - the root rebooted or two runs share this log. Split the log to the one run the capture covers.
+  sniffer tree-wormhole-stationary-g402_r1_oct22_0552PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  none usable - MacRetryRate stays NaN
+S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\analysis\features.py:1382: UserWarning: [features] this wormhole run contains NO node with role wormhole_b — roles present: ['child', 'root', 'wormhole_a']. Every manipulation feature is gated on that role, so ForwardingRatio/IngressEgressDelta/ConsistencyScore will be all-NaN and the attack cannot be verified from this table. Check the attacker's board was exported, that the capture is in the right <attack>/ folder, and that the role string matches.
+  _warn_on_missing_attack_role(result)
+Wrote 4805 feature rows to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\feature_table.csv
+Wrote column legend to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\feature_table_legend.csv
+
+── Feature NaN Counts ──────────────────────────────
+  ForwardingRatio: 3819/4805 NaN [986 value(s) on 3 node(s) — not applicable elsewhere]
+  IngressEgressDelta: 0/4805 NaN
+  RetryRate: 1149/4805 NaN [3656 value(s) on 7 node(s) — not applicable elsewhere]
+  PDR: 1210/4805 NaN [3595 value(s) on 5 node(s) — not applicable elsewhere]
+  ParentSwitchRate: 0/4805 NaN
+  HopChangeCount: 0/4805 NaN
+  HopStabilityDuration: 0/4805 NaN
+  RSSI_mean: 791/4805 NaN [4014 value(s) on 6 node(s) — not applicable elsewhere]
+  RSSI_var: 0/4805 NaN
+  RSSI_stability: 0/4805 NaN
+  RSSI_Hop_Diff: 838/4805 NaN [3967 value(s) on 6 node(s) — not applicable elsewhere]
+  LatencyHopRatio: 1928/4805 NaN [2877 value(s) on 5 node(s) — not applicable elsewhere] [relative one-way delay — see thesis-deviate.md]
+  ConsistencyScore: 3819/4805 NaN [986 value(s) on 3 node(s) — not applicable elsewhere]
+  TunnelIntensity: 4671/4805 NaN [134 value(s) on 1 node(s) — not applicable elsewhere]
+  TunnelBytes: 4671/4805 NaN [134 value(s) on 1 node(s) — not applicable elsewhere]
+  TunnelLatency: 4805/4805 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  MacRetryRate: 4805/4805 NaN [all-NaN] [sniffer runs only, not a model input — NaN = not measured, D-15]
+─────────────────────────────────────────────────────
+Running EDA on: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\feature_table.csv
+findfont: Failed to find font weight medium, now using 400.
+
+=== Single-feature decidability audit - S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary
+    Majority-class baseline: 0.7059
+    (accuracy of ONE threshold on ONE column, labels visible)
+
+    feature                 thresh    lift  nan-acc   cover  status
+    -------------------------------------------------------  -----------
+    TunnelBytes             1.0000 +0.2941   0.6768    0.04  EXCLUDED
+    TunnelIntensity         1.0000 +0.2941   0.6768    0.04  EXCLUDED
+    LatencyHopRatio         0.7196 +0.0138   0.6266    0.78  model input
+    PDR                     0.7137 +0.0078   0.6266    0.78  model input
+    RSSI_Hop_Diff           0.7112 +0.0053   0.6461    0.83  model input
+    RSSI_mean               0.7072 +0.0014   0.6415    0.84  model input
+    ParentSwitchRate        0.7070 +0.0011      n/a    1.00  model input
+    HopChangeCount          0.7070 +0.0011      n/a    1.00  model input
+    HopStabilityDuration    0.7064 +0.0005      n/a    1.00  model input
+    IngressEgressDelta      0.7061 +0.0003      n/a    1.00  model input
+    RSSI_var                0.7061 +0.0003      n/a    1.00  model input
+    ConsistencyScore        0.6541 -0.0517   0.6350    0.27  model input
+    ForwardingRatio         0.6490 -0.0568   0.6350    0.27  model input
+    RSSI_stability          0.6431 -0.0627      n/a    1.00  model input
+    TunnelLatency              n/a     n/a      n/a    0.00  EXCLUDED
+
+
+── EDA Summary ─────────────────────────────────────
+  Descriptive statistics:  S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output\descriptive_statistics.csv
+  Distribution plots:      3 written
+  Time-series plots:       8 written
+  Correlation plots:       S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output\correlation_pearson.png, S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output\correlation_spearman.png
+  PCA/t-SNE plot:          S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output\dimensionality_reduction.png
+    excluded: ['ConsistencyScore', 'ForwardingRatio', 'PDR', 'TunnelBytes', 'TunnelIntensity', 'TunnelLatency']
+  Tunnel-end projection:   S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output\dimensionality_reduction_tunnel_ends.png
+    133 window(s) from 1 tunnel-end node(s); tunnel features kept: none
+  All outputs in:          S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\wormhole\tree\G402\stationary\eda_output/
+───────────────────────────────────────────────────────
+
+--- Gate 1/3: capture integrity -- wormhole/tree/G402/stationary
+[WARN] child_node3_tree_wormhole_r1_oct22_0612PM_telem.csv
+    WARN: phase 2 ran 13s but the nominal schedule says 180s — SHORTER than expected. If the firmware was built with a reduced -DPHASE_*_S, preprocess.py's baseline slice reaches past the real start and labels formation noise benign. Make mesh_config.h, preprocess.py and this file agree, or pass --phase-durations.
+    WARN: phase 0 (baseline) has 0 rows — expected ~3000 (missing phase, possible truncation)
+    WARN: phase 2 (wormhole) has 134 rows, expected ~1800 at 10.0 Hz (ratio 0.07 < 0.5) — possible truncation
+    info: sample coverage 100.1% of expected (1340 rows over 134s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: the root logged no probes from it (expected for the blackhole attacker)
+[PASS] child_node4_tree_wormhole_r1_oct22_0614PM_telem.csv
+    info: sample coverage 100.0% of expected (7085 rows over 708s, measured ~10.00 Hz, 0 gap(s))
+[WARN] child_node5_tree_wormhole_r1_oct22_0612PM_telem.csv
+    WARN: phase 3 ran 88s but the nominal schedule says 120s — SHORTER than expected. If the firmware was built with a reduced -DPHASE_*_S, preprocess.py's baseline slice reaches past the real start and labels formation noise benign. Make mesh_config.h, preprocess.py and this file agree, or pass --phase-durations.
+    info: sample coverage 95.1% of expected (8370 rows over 880s, measured ~10.00 Hz, 3 gap(s))
+[PASS] child_node6_tree_wormhole_r1_oct22_0613PM_telem.csv
+    info: sample coverage 100.0% of expected (8690 rows over 869s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node7_tree_wormhole_r1_oct22_0610PM_telem.csv
+    info: sample coverage 100.0% of expected (6370 rows over 637s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node8_tree_wormhole_r1_oct22_0611PM_telem.csv
+    info: sample coverage 100.0% of expected (8339 rows over 834s, measured ~10.00 Hz, 0 gap(s))
+[PASS] root_node1_tree_wormhole_r1_oct22_0607PM_telem.csv
+    info: sample coverage 100.0% of expected (7892 rows over 789s, measured ~10.00 Hz, 0 gap(s))
+[PASS] root_node1_tree_wormhole_r1_oct22_0608PM_arrivals.csv
+    info: phase 0 (baseline): 1796 probes from 6 victim(s) over 300s = 5.98/s (reference rate)
+    info: phase 2 (wormhole): 1082 probes at 6.00/s = 100% of baseline; 71 of them are DUPLICATE deliveries of 1011 unique probes (x1.07) from F4:2D:C9:73:E6:18 — the expected wormhole signature
+    info: phase 3 (cooldown): 717 probes from 6 victim(s) over 120s = 5.96/s (100% of baseline)
+[WARN] victim_NODE_F42DC973E618_r15_b1432_telem.csv
+    WARN: filename doesn't match the export_logs.py naming convention
+    info: sample coverage 100.0% of expected (6780 rows over 678s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: the root logged no probes from it (expected for the blackhole attacker)
+
+9 file(s) — 6 PASS, 3 WARN, 0 FAIL. Manifest: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\wormhole\tree\G402\stationary\manifest.json
+
+--- Gate 2/3: topology -- wormhole/tree/G402/stationary
+Loaded 7 telemetry file(s):
+  - child_node3_tree_wormhole_r1_oct22_0612PM_telem.csv
+  - child_node4_tree_wormhole_r1_oct22_0614PM_telem.csv
+  - child_node5_tree_wormhole_r1_oct22_0612PM_telem.csv
+  - child_node6_tree_wormhole_r1_oct22_0613PM_telem.csv
+  - child_node7_tree_wormhole_r1_oct22_0610PM_telem.csv
+  - child_node8_tree_wormhole_r1_oct22_0611PM_telem.csv
+  - root_node1_tree_wormhole_r1_oct22_0607PM_telem.csv
+
+=== Reconstructed structure ===
+8 node(s) attached, 3 layer(s)
+NODE_B0CBD8F33218  (layer 1, role root)
+    NODE_20500DE70C80  (layer 2, role wormhole_a)
+    NODE_2805A532D7B4  (layer 2, role child)
+    NODE_704BCA25B768  (layer 2, role child)
+        NODE_20500DE71C38  (layer 3, role child)
+    NODE_B4BFE934ED80  (layer 2, role child)
+        NODE_B4BFE932FE90  (layer 3, role child)
+    _704BCA25B768  (layer 2, role child)
+
+=== Per-node convergence & stability ===
+  [ - ] NODE_20500DE70C80  layer=2  converge=not recorded (log starts inside a phase)  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=1340
+  [OK ] NODE_20500DE71C38  layer=3  converge=481.1s (last change 374s AFTER Phase 0 - see the verifier's D-23 check)  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=7085
+  [OK ] NODE_2805A532D7B4  layer=2  converge=114.9s, settled 152s before Phase 0  parent_switches=2 (baseline 0)  layer_changes=4 (baseline 0)  samples=8690
+  [OK ] NODE_704BCA25B768  layer=2  converge=129.8s, settled 148s before Phase 0  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=8369
+  [OK ] NODE_B0CBD8F33218  layer=1  converge=  0.0s, settled 188s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=7892
+  [OK ] NODE_B4BFE932FE90  layer=3  converge=412.5s (last change 377s AFTER Phase 0 - see the verifier's D-23 check)  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=6370
+  [OK ] NODE_B4BFE934ED80  layer=2  converge= 93.7s, settled 138s before Phase 0  parent_switches=2 (baseline 0)  layer_changes=3 (baseline 0)  samples=8339
+  [ - ] _704BCA25B768  layer=2  converge=not recorded (log starts inside a phase)  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=1
+
+=== Expected-topology check ===
+  OK tree: 8 node(s), depth 3
+
+=== Milestone-3 verdict ===
+  Settled before Phase 0 : YES (2 node(s) NOT MEASURED — log starts inside a phase)   (formation time before START is shown, not judged; logs without phases: 60s rule)
+  Baseline re-routing free            : YES
+  Structure matches tree              : YES
+
+--- Gate 3/3: attack signature -- wormhole/tree/G402/stationary
+
+==========================================================================================================
+ WORMHOLE VERIFICATION  -  tree / G402 / stationary  (r1)
+==========================================================================================================
+ RESULT : NOT CONFIRMED - SETUP INVALID
+          the signature moved, but a setup check FAILED (see [3]) - the attack did not run as designed. Do
+          not report it as confirmed; fix the setup and recapture.
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2599 windows   attack phase: 1083 windows
+     pooling: 5 windows per point (Table 4.10 window = 5)
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       TunnelIntensity                      0.000 +- 0.000   1.000       +inf  primary, up    [Z]
+     NO DATA    DuplicateRate                        n/a              n/a          n/a  primary, up    [R]
+     PASS       TunnelBytes                          0.000 +- 0.000   30.000      +inf  support, up    [Z]
+
+     note 1: TunnelIntensity: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 2: DuplicateRate: no attack-phase values (signal absent during attack)
+     note 3: TunnelBytes: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - TunnelLatency: no duplicated probe reached the root - nothing to measure [H]
+     - LatencyHopRatio: normal 14.3 +- 39.5 -> attack 134.4 (z 3.04). Relative one-way delay per hop
+       (board clocks are not synchronised) with rare 100s-of-ms spikes, so its normal spread is too wide
+       for a 3-sigma test - context only
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  SCENARIO [ OK ]   BOARDS [WARN]   TOPOLOGY [WARN]   TUNNEL [FAIL]   OTHER [WARN]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       +-- 0C80   WORMHOLE A (exit)   * no windows after +12 s
+       |   +-- 1C38   child   * moved -> under B768 at +73 s
+       |   `-- FE90   child   * moved -> under ED80 at +76 s
+       +-- B768   child
+       +-- D7B4   child
+       `-- ED80   child
+
+     SCENARIO ................................ OK
+       OK   scenario check: stationary APPLIED - children probed 1.0/s in the baseline, no burst, plain
+            schedule
+     BOARDS .................................. WARN
+       WARN 0C80 (wormhole_a) - the ATTACKER - has NO attack windows after +12 s (167 s before the end):
+            it went SILENT (crash / reset / power) or its windows had too few samples. The verdict uses
+            the windows that exist; footnote it
+     TOPOLOGY ................................ WARN
+       WARN 1C38 (child) changed parent during the attack (2 parents)
+       WARN FE90 (child) changed parent during the attack (2 parents)
+       OK   topology during the attack = tree: 7 node(s), depth 3
+     TUNNEL .................................. FAIL
+       FAIL 1 board(s) logged as wormhole_a and 0 as wormhole_b - there must be exactly one of each (UART
+            cable / HELLO never heard?)  [Z]
+       FAIL the ROOT logged no duplicate arrivals during the attack - nothing re-injected by A reached it
+            [R]
+       WARN MISSING BOARD E618 (plain child): YELLOW - the root heard it, but there is no file; the
+            wormhole's signature is B's TunnelIntensity + the ROOT's DuplicateRate, neither uses this
+            board, so it adds no bias - footnote it [role: not a tunnel end]  [R]
+       OK   normal START - no START_ANYWAY in the root's run log (wormhole-
+            tree-g402-stationary_r1_oct22_0542PM.log)
+     OTHER ................................... WARN
+       WARN 1C38 (child) has only 120 s of COOLDOWN (the others: 286 s) - its recovery is not measured;
+            the verdict (baseline vs attack) does not use the cooldown
+       WARN D7B4 (child) has only 120 s of COOLDOWN (the others: 286 s) - its recovery is not measured;
+            the verdict (baseline vs attack) does not use the cooldown
+       WARN B768 (child) has only 88 s of COOLDOWN (the others: 286 s) - its recovery is not measured; the
+            verdict (baseline vs attack) does not use the cooldown
+       WARN FE90 (child) has only 120 s of COOLDOWN (the others: 286 s) - its recovery is not measured;
+            the verdict (baseline vs attack) does not use the cooldown
+       WARN ED80 (child) has only 119 s of COOLDOWN (the others: 286 s) - its recovery is not measured;
+            the verdict (baseline vs attack) does not use the cooldown
+       WARN IMPACT CHECK FAILED: gaps on 6 of 6 boards (1C38, B768, D7B4, E618, ED80, FE90) - more than
+            half the network; the attack cannot be re-tested on the boards that are left
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_20500DE71C38   child      not tunnelled    2     1.0000     1.0000    157
+     NODE_2805A532D7B4   child      not tunnelled    1     1.0000     1.0000    170
+     NODE_704BCA25B768   child      not tunnelled    1     1.0000     1.0000    162
+     NODE_B4BFE932FE90   child      not tunnelled    2     1.0000     1.0000    159
+     NODE_B4BFE934ED80   child      not tunnelled    1     1.0000     1.0000    172
+
+
+     not listed: 0C80 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [R]  Ramirez Gomez, Vargas Montoya & Leon Henao (2019), Rev. Colomb. Comput. 20(1) - wormhole
+          signature = duplicate packets (same data unit twice)
+     [H]  Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with timing the claimed
+          path cannot explain (packet leashes)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: WORMHOLE NOT CONFIRMED - SETUP INVALID  (1/1 primary signature(s) beyond 3-sigma)  |  scenario stationary: applied
+ CONFIDENCE: FAILED - the attack cannot be confirmed: the setup did not run as designed
+     x the setup did not run as designed: 1 board(s) logged as wormhole_a and 0 as wormhole_b - there must
+       be exactly one of each (UART cable / HELLO never heard?)
+     x the setup did not run as designed: the ROOT logged no duplicate arrivals during the attack -
+       nothing re-injected by A reached it
+     = WHAT TO DO: fix the cause above, then capture the run again
+ OUTCOME: FAIL - the run did not happen as designed: 1 board(s) logged as wormhole_a and 0 as wormhole_b - there must be exactly one of each (UART cable / HELLO never heard?)
+     signature PASS  |  setup FAIL  |  dataset -   (capture completeness / SD cards: Campaign status)
+----------------------------------------------------------------------------------------------------------
+
+ [6] WHY THE BOARD MOVES WERE ALLOWED - OR NOT   (D-23; full note: docs/attack-validation/REROUTE-VERDICT.md)
+     The question is not 'did a board change parent?' but 'did the move change WHO the attack reaches?' A
+     blackhole only harms traffic that passes through it [KW], and ESP-WIFI-MESH heals itself: when a
+     parent breaks down, its children first retry it, then each picks a new parent [E].
+     How: for every board, every second, its parents are followed up to the root -> VICTIM (passes the
+     attacker), BYSTANDER (does not), or NO PATH (detached / a board above it went down).
+     Rules: a board must stay VICTIM or BYSTANDER the whole attack (3 s+ of each = NOT ALLOWED); the
+     attacker may never move; NO-PATH seconds are left out of the test; where 60 s+ came before the first
+     move, the attack must also be confirmed on those seconds alone.
+     Fairness: decided from the layout only - delivery is never used to allow a move [BA]; the limits were
+     fixed in advance and are the same for every run [PR].
+
+     This run:
+       - 0C80: WARNING - no attack windows after +12 s (went silent, or too few samples); the verdict uses
+         the windows that exist
+
+     So: a move changed who the attack reached (or the re-test failed) - SETUP INVALID.
+
+     Sources for [6]:
+     [E]  Espressif Systems, ESP-WIFI-MESH API Guide (ESP-IDF v5.3), 'Intermediate Parent Node Failure' -
+          official protocol documentation: children first retry the broken parent, then each selects a new
+          parent; 'the network is healed, however the network routing has been affected'
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+     [BA] MacCoun & Perlmutter (2015), Nature 526:187-189 - blind analysis: the analysis is decided
+          without looking at the result, to stop confirmation bias
+     [PR] Simmons, Nelson & Simonsohn (2011), Psychol. Sci. 22(11):1359-1366; Nosek et al. (2018), PNAS
+          115(11):2600-2606 - rules fixed BEFORE the outcome is seen, not tuned afterwards
+
+
+=== Validation summary -- wormhole/tree/G402/stationary
+    integrity : PASS
+    topology  : PASS
+    attack    : NOT CONFIRMED - SETUP INVALID (recapture)
+
+
+Done: 1 run(s) analyzed, 4,805 row(s) in this batch.
+Run '.\analyze.ps1 -List' for the running total across everything captured.
