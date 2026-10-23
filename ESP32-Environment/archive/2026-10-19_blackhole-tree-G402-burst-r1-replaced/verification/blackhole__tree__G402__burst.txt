@@ -1,0 +1,97 @@
+
+==========================================================================================================
+ BLACKHOLE VERIFICATION  -  tree / G402 / burst  (r1)
+==========================================================================================================
+ RESULT : CONFIRMED
+          ForwardingRatio (attacker): normal 1.000 -> attack 0.000, -93.81 sigma (needs 3)
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2931 windows   attack phase: 1259 windows
+     pooling: 5 windows per point (Table 4.10 window = 5); ratio-of-sums for ForwardingRatio,
+     NeighbourForwardingRatio
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       ForwardingRatio (attacker)           1.000 +- 0.011   0.000     -93.81  primary, down  [A]
+     PASS       PDR                                  0.999 +- 0.012   0.601     -32.85  primary, down  [A]
+     PASS       ConsistencyScore                     0.006 +- 0.034   0.493      14.48  support, up    [A]
+     PASS       IngressEgressDelta                   0.005 +- 0.048   0.651      13.57  support, up    [A]
+     PASS       NeighbourForwardingRatio (attacker)  1.000 +- 0.000   0.000       -inf  support, down  [A]
+
+     note 1: NeighbourForwardingRatio (attacker): the normal phase never varied (sd = 0), so z is
+             infinite: any move in the expected direction counts
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - ForwardingRatio (all relays): network-wide 0.507 (z -65.62) = the attacker's 0.000 diluted by 1
+       honest relay(s) at 1.000; it still drops past 3-sigma (passing allows at most ~43 honest relays).
+       Same measurement as the attacker row, so never counted (it would count one fact twice).
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  BOARDS [WARN]   TOPOLOGY [ OK ]   VICTIMS [ OK ]   ATTACKER [ OK ]   START [ -- ]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       +-- 1C38   ATTACKER
+       |   +-- 0C80   VICTIM
+       |   `-- E618   VICTIM
+       +-- D7B4   bystander
+       `-- ED80   bystander
+           `-- B768   bystander
+
+     BOARDS .................................. WARN
+       WARN 1 node(s) have NO labelled window (no_phase_seen), so the checks above run without them: FE90
+            - a data/preprocessing gap, not evidence about the attack; check those boards' raw exports
+     TOPOLOGY ................................ OK
+       OK   topology during the attack = tree for the 7 boards with attack windows: 7 node(s), depth 3
+     VICTIMS ................................. OK
+       OK   2 victim(s) alive but cut off: attack PDR 0.000 (baseline 1.000)  [KW]
+       OK   4 node(s) not behind the attacker kept delivering (loss is specific to the attacker's path)
+            [KW]
+       OK   victim evidence: 360 traceable VICTIM-seconds  [KW]
+     ATTACKER ................................ OK
+       OK   attacker 1C38 received 833, forwarded 0 (0%) during the attack  [A]
+     START ................................... --
+       --   START_ANYWAY: no root run log from the 4 h before this capture (Oct 02 08:23 PM) - cannot tell
+            whether the gate was overridden
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_20500DE70C80   child      VICTIM          2     1.0000     0.0000    179
+     NODE_F42DC973E618   child      VICTIM          2     1.0000     0.0000    179
+     NODE_2805A532D7B4   child      not in path     1     0.9976     1.0000    180
+     NODE_704BCA25B768   child      not in path     2     1.0000     1.0000    179
+     NODE_B4BFE934ED80   child      not in path     1     1.0000     1.0000    180
+
+     ** 2 VICTIM(S) - the attacker sits on their path to the root. Worst attack PDR 0.0000.
+        NODE_20500DE70C80, NODE_F42DC973E618
+        This is the population the write-up should quote. The pooled PDR above averages
+        victims with bystanders and describes no actual node.
+     ** 3 node(s) were NOT in the attack path (built as children, never exposed):
+        NODE_2805A532D7B4, NODE_704BCA25B768, NODE_B4BFE934ED80
+        They sit ABOVE the attacker, so their traffic never transits it. Unaffected BY
+        CONSTRUCTION - not evidence the attack was weak, and not victims.
+
+     not listed: 1C38 - attacking board - PDR is computed for plain children only
+     not listed: FE90 - no attack windows in the table (see [3])
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [A]  Airehrour, Gutierrez & Ray (2018), AJTDE 6(1):41-59 - blackhole = node that drops what it should
+          forward; delivered/sent (ForwardingRatio, PDR) collapses
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: BLACKHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)
+ CONFIDENCE: MAJOR GAPS - attack confirmed, but data the result relies on is missing (1 major gap) - recapture required
+     + ATTACK: confirmed - 2/2 primary signature(s) beyond 3-sigma
+     + SETUP: no check failed
+     ~ MAJOR GAP (affects the result): FE90: no usable windows (no phase was seen), so the checks ran
+       without it
+     ~ note: whether the run was force-started could not be checked (no run log saved)
+     = REPORT AS: "BLACKHOLE CONFIRMED - major gaps" + 2 footnotes (copy them to the thesis checklist)
+----------------------------------------------------------------------------------------------------------
+
+

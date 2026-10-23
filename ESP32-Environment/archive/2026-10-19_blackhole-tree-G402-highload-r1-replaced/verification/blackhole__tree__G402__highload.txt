@@ -1,0 +1,154 @@
+
+==========================================================================================================
+ BLACKHOLE VERIFICATION  -  tree / G402 / highload  (r1)
+==========================================================================================================
+ RESULT : NOT CONFIRMED - SETUP INVALID
+          the signature moved, but a setup check FAILED (see [3]) - the attack did not run as designed. Do
+          not report it as confirmed; fix the setup and recapture.
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2755 windows   attack phase: 1277 windows
+     pooling: 5 windows per point (Table 4.10 window = 5); ratio-of-sums for ForwardingRatio,
+     NeighbourForwardingRatio
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       ForwardingRatio (attacker)           1.000 +- 0.008   0.000    -119.54  primary, down  [A]
+     PASS       PDR                                  1.000 +- 0.000   0.804       -inf  primary, down  [A]
+     PASS       ConsistencyScore                     0.024 +- 0.077   0.431       5.31  support, up    [A]
+     PASS       IngressEgressDelta                   0.023 +- 0.135   0.774       5.54  support, up    [A]
+     FAIL       NeighbourForwardingRatio (attacker)  0.471 +- 0.066   0.473       0.04  support, down  [A]
+
+     note 1: PDR: the normal phase never varied (sd = 0), so z is infinite: any move in the expected
+             direction counts
+     note 2: NeighbourForwardingRatio (attacker): independent of the attacker's own counters: in = what
+             its children report handing it, out = what its parent (the root's arrivals) received from
+             below it. If this matches the ForwardingRatio (attacker) row, the attacker's self-report is
+             confirmed by its neighbours - two sources agreeing, not one value printed twice
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - ForwardingRatio (all relays): network-wide 0.626 (z -10.39) = the attacker's 0.000 diluted by 4
+       honest relay(s) at 1.000; it still drops past 3-sigma (passing allows at most ~8 honest relays).
+       Same measurement as the attacker row, so never counted (it would count one fact twice).
+     - EXCLUDED from the test: 4 attack window(s) in which a board had no working path to the root
+       (detached, or a board above it went down) - neither attack evidence nor its absence (D-23;
+       including them would only make the attack look stronger)
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  BOARDS [WARN]   TOPOLOGY [FAIL]   VICTIMS [ OK ]   ATTACKER [WARN]   START [ OK ]   OTHER [WARN]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       +-- 1C38   ATTACKER
+       |   `-- 0C80   VICTIM
+       +-- D7B4   bystander
+       +-- ED80   bystander
+       |   `-- E618   bystander   * no windows after +78 s
+       |       `-- B768   VICTIM <-> BYSTANDER  (NOT ALLOWED)   * moved -> under 0C80 at +31 s; no windows after +124 s
+       `-- FE90   bystander
+
+     BOARDS .................................. WARN
+       WARN B768 (child) - a victim - has NO attack windows after +124 s (55 s before the end): it went
+            SILENT (crash / reset / power) or its windows had too few samples. The verdict uses the
+            windows that exist; footnote it  [KW]
+       WARN 0C80 (child) appears in the attack but NOT in the baseline - it has no normal-phase reference
+            of its own
+     TOPOLOGY ................................ FAIL
+       FAIL B768 (child) changed parent during the attack (2 parents) - it moved between VICTIM (94 s) and
+            BYSTANDER (27 s) during the attack, so the attack windows mix two experiments  [KW]
+       WARN B768 (child) was a BYSTANDER when START was pressed (last 60 s of the baseline) but a VICTIM
+            in the attack - the layout changed between the phases; its per-board baseline vs attack
+            comparison mixes the move with the attack  [KW]
+       WARN B768 (child) was a VICTIM in the attack but a BYSTANDER in the first 60 s of the cooldown -
+            its recovery is measured in another layout  [KW]
+       OK   topology during the attack = tree: 8 node(s), depth 4
+     VICTIMS ................................. OK
+       OK   2 victim(s) alive but cut off: attack PDR 0.363 (baseline 1.000)  [KW]
+       OK   4 node(s) not behind the attacker kept delivering (loss is specific to the attacker's path)
+            [KW]
+       OK   victim evidence: 274 traceable VICTIM-seconds, 4 no-path seconds left out (1%)  [KW]
+     ATTACKER ................................ WARN
+       WARN attacker says it forwarded 0%, its neighbours say 42% - the self-report is not confirmed  [A]
+       OK   attacker 1C38 received 912, forwarded 0 (0%) during the attack  [A]
+     START ................................... OK
+       OK   normal START - no START_ANYWAY in the root's run log (blackhole-
+            tree-g402-highload_r1_oct17_0524PM.log)
+     OTHER ................................... WARN
+       WARN FE90 (child) has only 37 s of COOLDOWN (the others: 174 s) - its recovery is not measured; the
+            verdict (baseline vs attack) does not use the cooldown
+       WARN E618 (child) has NO COOLDOWN (the others: 174 s) - its recovery is not measured; the verdict
+            (baseline vs attack) does not use the cooldown
+       OK   IMPACT CHECK: without B768, E618, FE90 (the boards with minor gaps) the attack is still
+            confirmed - the gaps do not change the result
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_704BCA25B768   child      VICTIM          3     1.0000     0.2385    109
+     NODE_20500DE70C80   child      VICTIM          2     1.0000     0.4869    172
+     NODE_2805A532D7B4   child      not in path     1     1.0000     1.0000    179
+     NODE_B4BFE932FE90   child      not in path     1     1.0000     1.0000    180
+     NODE_B4BFE934ED80   child      not in path     1     1.0000     1.0000    179
+     NODE_F42DC973E618   child      not in path     2     1.0000     1.0000     70
+
+     ** 2 VICTIM(S) - the attacker sits on their path to the root. Worst attack PDR 0.2385.
+        NODE_704BCA25B768, NODE_20500DE70C80
+        This is the population the write-up should quote. The pooled PDR above averages
+        victims with bystanders and describes no actual node.
+     ** 4 node(s) were NOT in the attack path (built as children, never exposed):
+        NODE_2805A532D7B4, NODE_B4BFE932FE90, NODE_B4BFE934ED80, NODE_F42DC973E618
+        They sit ABOVE the attacker, so their traffic never transits it. Unaffected BY
+        CONSTRUCTION - not evidence the attack was weak, and not victims.
+
+     not listed: 1C38 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [A]  Airehrour, Gutierrez & Ray (2018), AJTDE 6(1):41-59 - blackhole = node that drops what it should
+          forward; delivered/sent (ForwardingRatio, PDR) collapses
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: BLACKHOLE NOT CONFIRMED - SETUP INVALID  (2/2 primary signature(s) beyond 3-sigma)
+ CONFIDENCE: NOT CONFIRMED - the setup was invalid
+     x setup invalid: B768 (child) changed parent during the attack (2 parents) - it moved between VICTIM
+       (94 s) and BYSTANDER (27 s) during the attack, so the attack windows mix two experiments
+----------------------------------------------------------------------------------------------------------
+
+ [6] WHY THE BOARD MOVES WERE ALLOWED - OR NOT   (D-23; full note: docs/attack-validation/REROUTE-VERDICT.md)
+     The question is not 'did a board change parent?' but 'did the move change WHO the attack reaches?' A
+     blackhole only harms traffic that passes through it [KW], and ESP-WIFI-MESH heals itself: when a
+     parent breaks down, its children first retry it, then each picks a new parent [E].
+     How: for every board, every second, its parents are followed up to the root -> VICTIM (passes the
+     attacker), BYSTANDER (does not), or NO PATH (detached / a board above it went down).
+     Rules: a board must stay VICTIM or BYSTANDER the whole attack (3 s+ of each = NOT ALLOWED); the
+     attacker may never move; NO-PATH seconds are left out of the test; where 60 s+ came before the first
+     move, the attack must also be confirmed on those seconds alone.
+     Fairness: decided from the layout only - delivery is never used to allow a move [BA]; the limits were
+     fixed in advance and are the same for every run [PR].
+
+     This run:
+       - B768: NOT ALLOWED - it was a VICTIM for 94 s and a BYSTANDER for 27 s: the attack reached it only
+         part of the time, so its attack is two experiments mixed
+       - B768: WARNING - no attack windows after +124 s (went silent, or too few samples); the verdict
+         uses the windows that exist
+       - Left out of the test: 4 attack second(s) in total with no path to the root - they show 0 delivery
+         for a reason that is not the attack, so leaving them out can only make the attack HARDER to
+         confirm
+
+     So: a move changed who the attack reached (or the re-test failed) - SETUP INVALID.
+
+     Sources for [6]:
+     [E]  Espressif Systems, ESP-WIFI-MESH API Guide (ESP-IDF v5.3), 'Intermediate Parent Node Failure' -
+          official protocol documentation: children first retry the broken parent, then each selects a new
+          parent; 'the network is healed, however the network routing has been affected'
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+     [BA] MacCoun & Perlmutter (2015), Nature 526:187-189 - blind analysis: the analysis is decided
+          without looking at the result, to stop confirmation bias
+     [PR] Simmons, Nelson & Simonsohn (2011), Psychol. Sci. 22(11):1359-1366; Nosek et al. (2018), PNAS
+          115(11):2600-2606 - rules fixed BEFORE the outcome is seen, not tuned afterwards
+
+

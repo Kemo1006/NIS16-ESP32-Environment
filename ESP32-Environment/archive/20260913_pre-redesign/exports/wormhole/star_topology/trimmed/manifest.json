@@ -1,0 +1,107 @@
+{
+  "child_node2_star_wormhole_r1_20260727_014200_telem.csv": {
+    "row_count": 7080,
+    "sha256": "4df9c60cf014bf1bee9c26f128ce0f8afbbc0c1d6ef771c67f284f373d20dd2c",
+    "size_bytes": 518330
+  },
+  "child_node2_star_wormhole_r2_20260727_023748_telem.csv": {
+    "row_count": 6367,
+    "sha256": "2bdef46cb76c0ef9306b148a5cc4c0018f140e6e3d75d120059fd3e18e948a09",
+    "size_bytes": 462422
+  },
+  "child_node2_star_wormhole_r3_20260727_032835_telem.csv": {
+    "row_count": 6866,
+    "sha256": "f1044948f9af80270468cd99a79697a515307fd67e8a02f521f3f72575a28565",
+    "size_bytes": 503254
+  },
+  "child_node3_star_wormhole_r1_20260727_013843_telem.csv": {
+    "row_count": 7441,
+    "sha256": "d6e9f8556c9455b779afe87d63a1868aa75c73f1194ae6300e53e3fd14d1d3cc",
+    "size_bytes": 544811
+  },
+  "child_node3_star_wormhole_r2_20260727_023516_telem.csv": {
+    "row_count": 6421,
+    "sha256": "26b0ad9e10913d12d3b766288f917acb723695224759fb6c4209feeb5043ea3f",
+    "size_bytes": 466093
+  },
+  "child_node3_star_wormhole_r3_20260727_032559_telem.csv": {
+    "row_count": 7199,
+    "sha256": "3f9f3cd9dcea871c5dbe817a59f12d33c3cc220c74960c2deed56d3cb264cd88",
+    "size_bytes": 527979
+  },
+  "child_node4_star_wormhole_r1_20260727_013536_telem.csv": {
+    "row_count": 7113,
+    "sha256": "c935775ca77bbba0a2bc457382b1ce3decd65054da2ba832d4e3ba0ac4838628",
+    "size_bytes": 520717
+  },
+  "child_node4_star_wormhole_r2_20260727_023057_telem.csv": {
+    "row_count": 6117,
+    "sha256": "ff8944513c907e0cc8316a897441c602d9f100efdc5d772b73e87145847c398f",
+    "size_bytes": 444281
+  },
+  "child_node4_star_wormhole_r3_20260727_032202_telem.csv": {
+    "row_count": 6898,
+    "sha256": "e96fb2db5e003672075bde9d829e72473bbebffd3decaefb7789f7b34496c2d0",
+    "size_bytes": 504278
+  },
+  "child_node5_star_wormhole_r1_20260727_012854_telem.csv": {
+    "row_count": 7415,
+    "sha256": "e299dfae166152c2ded1e0bb1c3d15cabc2ea3268fdf34e7668987e239120d5c",
+    "size_bytes": 550322
+  },
+  "child_node5_star_wormhole_r2_20260727_022510_telem.csv": {
+    "row_count": 6449,
+    "sha256": "2f71fa6c13d45fabd16425235c59c4ce1bf60dc7774b21d36f4658c4a3068957",
+    "size_bytes": 480137
+  },
+  "child_node5_star_wormhole_r3_20260727_031404_telem.csv": {
+    "row_count": 7197,
+    "sha256": "5758578c9a5147d4a8d4816d1c6d6f6d6375a33ca7daafabe7649e41917b16fa",
+    "size_bytes": 534035
+  },
+  "child_node6_star_wormhole_r1_20260727_013217_telem.csv": {
+    "row_count": 7425,
+    "sha256": "4e93d6ab4dc5ef07de24f5e078f624c229be043aa1777c407913fdde3e04a611",
+    "size_bytes": 571943
+  },
+  "child_node6_star_wormhole_r2_20260727_022802_telem.csv": {
+    "row_count": 6704,
+    "sha256": "cdda7057dd60e5e587ebaf9971f4a2cca73cd82627b50c987f9f7c4c3d9dafd4",
+    "size_bytes": 517918
+  },
+  "child_node6_star_wormhole_r3_20260727_031835_telem.csv": {
+    "row_count": 7208,
+    "sha256": "33b3a70612ebaafa3d49b09478230e8daad01d92695a8874b1175ca3c2b5f4b8",
+    "size_bytes": 556181
+  },
+  "root_node1_star_wormhole_r1_20260727_014623_telem.csv": {
+    "row_count": 6321,
+    "sha256": "2f4f4abe06d9e715ebdc1bf13a9968bd2eb60fc8a167327657b6a5a2828bf0ed",
+    "size_bytes": 429159
+  },
+  "root_node1_star_wormhole_r1_20260727_014652_arrivals.csv": {
+    "row_count": 2820,
+    "sha256": "73479bd139e56c3c51b375b5ef9d3b7d91fb5c2fde4a11118b3998017f0ac45b",
+    "size_bytes": 284748
+  },
+  "root_node1_star_wormhole_r2_20260727_024201_telem.csv": {
+    "row_count": 6320,
+    "sha256": "792c5f639f13a8fe192e9a3775b6d41c68cadd1a323560add308f2291540b4d9",
+    "size_bytes": 428894
+  },
+  "root_node1_star_wormhole_r2_20260727_024229_arrivals.csv": {
+    "row_count": 2776,
+    "sha256": "1731bfa53bcce6b68b8adafcdfc6000fa5f88a4c7d0cad5852e59b656c074afb",
+    "size_bytes": 277256
+  },
+  "root_node1_star_wormhole_r3_20260727_033335_telem.csv": {
+    "row_count": 6321,
+    "sha256": "a0de813b15a6a7d88977a5015999bf7eb1a1d47846ee6b8d9f5d946de8f1a759",
+    "size_bytes": 429064
+  },
+  "root_node1_star_wormhole_r3_20260727_033403_arrivals.csv": {
+    "row_count": 2765,
+    "sha256": "db74561cd9c5c02f2e7798400811c7e403c9f6d3d75c04adac74b2cef3c299f8",
+    "size_bytes": 277773
+  }
+}

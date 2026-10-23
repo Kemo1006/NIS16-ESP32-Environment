@@ -1,0 +1,75 @@
+
+==========================================================================================================
+ BLACKHOLE VERIFICATION  -  tree / G402 / stationary  (r1)
+==========================================================================================================
+ RESULT : CONFIRMED
+          ForwardingRatio (attacker): normal 0.985 -> attack 0.000, -8.89 sigma (needs 3)
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2783 windows   attack phase: 1178 windows
+     pooling: 5 windows per point (Table 4.10 window = 5); ratio-of-sums for ForwardingRatio,
+     NeighbourForwardingRatio
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       ForwardingRatio (attacker)           0.985 +- 0.111   0.000      -8.89  primary, down  [A]
+     PASS       PDR                                  0.995 +- 0.071   0.552      -6.25  primary, down  [A]
+     PASS       ConsistencyScore                     0.022 +- 0.096   0.433       4.28  support, up    [A]
+     FAIL       IngressEgressDelta                   0.013 +- 0.105   0.309       2.82  support, up    [A]
+     PASS       NeighbourForwardingRatio (attacker)  0.992 +- 0.058   0.000     -17.16  support, down  [A]
+
+     note 1: NeighbourForwardingRatio (attacker): independent of the attacker's own counters: in = what
+             its children report handing it, out = what its parent (the root's arrivals) received from
+             below it. If this matches the ForwardingRatio (attacker) row, the attacker's self-report is
+             confirmed by its neighbours - two sources agreeing, not one value printed twice
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - ForwardingRatio (all relays): network-wide 0.578 (z -5.35) = the attacker's 0.000 diluted by 2
+       honest relay(s) at 0.974; it still drops past 3-sigma (passing allows at most ~3 honest relays).
+       Same measurement as the attacker row, so never counted (it would count one fact twice).
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     WARN ED80 (child) changed parent during the attack (2 parents)
+     WARN 1 node(s) have NO labelled window (no_phase_seen), so the checks above run without them: B768 -
+          a data/preprocessing gap, not evidence about the attack; check those boards' raw exports
+     OK   attacker E618 received 349, forwarded 0 (0%) during the attack  [A]
+     OK   2 victim(s) alive but cut off: attack PDR 0.000 (baseline 0.998)  [KW]
+     OK   4 node(s) not behind the attacker kept delivering (loss is specific to the attacker's path)
+          [KW]
+     OK   topology during the attack = tree for the 7 boards with attack windows: 7 node(s), depth 3
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_20500DE70C80   child      VICTIM          2     0.9976     0.0000    177
+     NODE_20500DE71C38   child      VICTIM          2     1.0000     0.0000    175
+     NODE_2805A532D7B4   child      not in path     1     1.0000     1.0000     95
+     NODE_B4BFE932FE90   child      not in path     1     1.0000     1.0000    175
+     NODE_B4BFE934ED80   child      not in path     1     1.0000     1.0000     66
+     NODE_B4BFE934ED80   child      not in path     2     1.0000     1.0000     99
+
+     ** 2 VICTIM(S) - the attacker sits on their path to the root. Worst attack PDR 0.0000.
+        NODE_20500DE70C80, NODE_20500DE71C38
+        This is the population the write-up should quote. The pooled PDR above averages
+        victims with bystanders and describes no actual node.
+     ** 3 node(s) were NOT in the attack path (built as children, never exposed):
+        NODE_2805A532D7B4, NODE_B4BFE932FE90, NODE_B4BFE934ED80
+        They sit ABOVE the attacker, so their traffic never transits it. Unaffected BY
+        CONSTRUCTION - not evidence the attack was weak, and not victims.
+
+     not listed: B768 - no attack windows in the table (see [3])
+     not listed: E618 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [A]  Airehrour, Gutierrez & Ray (2018), AJTDE 6(1):41-59 - blackhole = node that drops what it should
+          forward; delivered/sent (ForwardingRatio, PDR) collapses
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: BLACKHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)
+----------------------------------------------------------------------------------------------------------
+
+

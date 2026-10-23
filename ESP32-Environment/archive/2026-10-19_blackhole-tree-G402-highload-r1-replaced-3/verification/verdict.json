@@ -1,0 +1,8 @@
+{
+ "blackhole/tree/G402/highload": {
+  "Code": 3,
+  "Line": "VERDICT: BLACKHOLE NOT CONFIRMED - SETUP INVALID  (1/2 primary signature(s) beyond 3-sigma)",
+  "When": "2026-10-19 20:18",
+  "Data": "trimmed"
+ }
+}

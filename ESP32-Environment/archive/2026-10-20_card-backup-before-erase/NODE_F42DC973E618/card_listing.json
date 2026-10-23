@@ -1,0 +1,57 @@
+{
+ "files": {
+  "wormhole/star/G402/status_NODE_F42DC973E618.txt": 3607,
+  "wormhole/star/G402/victim_NODE_F42DC973E618_r1_b2_telem.csv": 80125,
+  "wormhole/star/G402/victim_NODE_F42DC973E618_r2_b3_telem.csv": 552540,
+  "wormhole/star/G402/victim_NODE_F42DC973E618_r3_b8_telem.csv": 1030325
+ },
+ "live": [
+  "wormhole/star/G402/victim_NODE_F42DC973E618_r3_b8_telem.csv"
+ ],
+ "manifests": {
+  "wormhole/star/G402": {
+   "2": {
+    "rows": 0,
+    "uptime_s": 109,
+    "clean": false,
+    "built": "2026-10-20 20:19:37",
+    "started": "2026-10-20 20:26:02",
+    "clock_src": "host",
+    "reset": "POWERON",
+    "ended_by": "POWERON",
+    "sd_missed": 0,
+    "sd_lost": false,
+    "scenario": "highload",
+    "root_lost": false
+   },
+   "3": {
+    "rows": 0,
+    "uptime_s": 2,
+    "clean": false,
+    "built": "2026-10-20 20:19:37",
+    "started": "2026-10-20 20:23:41",
+    "clock_src": "host",
+    "reset": "POWERON",
+    "ended_by": "POWERON",
+    "sd_missed": 0,
+    "sd_lost": false,
+    "scenario": "highload",
+    "root_lost": false
+   },
+   "8": {
+    "rows": 0,
+    "uptime_s": 293,
+    "clean": false,
+    "built": "2026-10-20 20:19:37",
+    "started": "2026-10-20 21:13:58",
+    "clock_src": "host",
+    "reset": "POWERON",
+    "ended_by": null,
+    "sd_missed": 0,
+    "sd_lost": false,
+    "scenario": "highload",
+    "root_lost": false
+   }
+  }
+ }
+}

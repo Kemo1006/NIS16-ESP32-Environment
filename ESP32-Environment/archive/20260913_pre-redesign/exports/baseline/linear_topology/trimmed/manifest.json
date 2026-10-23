@@ -1,0 +1,37 @@
+{
+  "child_node2_linear_none_r1_20260725_225635_telem.csv": {
+    "row_count": 4533,
+    "sha256": "f1774f88fa699669ea195fa9bb8b2f4c2eb3bb5db9bd8a760a4a6d320b392251",
+    "size_bytes": 328897
+  },
+  "child_node3_linear_none_r1_20260725_231258_telem.csv": {
+    "row_count": 4773,
+    "sha256": "4d09a02497699acfa11008becea803b186ca15c468cb6ad9207398c816d56d56",
+    "size_bytes": 350260
+  },
+  "child_node4_linear_none_r1_20260725_231510_telem.csv": {
+    "row_count": 4484,
+    "sha256": "14619f28672214432ce779d1352b742eb8df1c910c7988b8b977d9cc9cca9172",
+    "size_bytes": 325278
+  },
+  "child_node5_linear_none_r1_20260725_233253_telem.csv": {
+    "row_count": 4818,
+    "sha256": "cf0294aa900ea17b1a516f0065b0cba6ded320342d37662905cf462953f0eb47",
+    "size_bytes": 353502
+  },
+  "child_node6_linear_none_r1_20260725_233508_telem.csv": {
+    "row_count": 4817,
+    "sha256": "f90f7ad9e1352f5cce31e42fb30ea986affee7c331f9697594e02b488d1e5b40",
+    "size_bytes": 353424
+  },
+  "root_node1_linear_none_r1_20260725_233705_telem.csv": {
+    "row_count": 4598,
+    "sha256": "79789c3156f4608a4741eb7b9aaa0d64c3c4f286be2052d0a20dc1cfdbe8de29",
+    "size_bytes": 310691
+  },
+  "root_node1_linear_none_r1_20260725_233820_arrivals.csv": {
+    "row_count": 2368,
+    "sha256": "8fc35cb45fc39b268c83e4aab35b9e27efe8b39d306a7cf04a936bc7eb0a9b83",
+    "size_bytes": 235499
+  }
+}

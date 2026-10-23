@@ -1,0 +1,7 @@
+blackhole/tree/G402/highload repeat 1
+archived 2026-10-19 14:52 - files written before 2026-10-19 14:25
+why: the same run (same repeat) was captured again - the re-capture whose root exported 2026-10-19 14:52
+also moved: GUI verify report blackhole__tree__G402__highload.txt, verdict 'VERDICT: BLACKHOLE NOT CONFIRMED - SETUP INVALID  (2/2 prima'
+verification log blocks that covered the OLD capture (docs/dataset-verification.md, never edited): #39
+restore: move exports/, analysis/, run_logs/ back into datasets/ under the same run folder;
+         verification/ back into %LOCALAPPDATA%\NIS16\reports (+ its verdicts.json entry)

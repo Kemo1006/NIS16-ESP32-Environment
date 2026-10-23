@@ -1,0 +1,390 @@
+
+=== blackhole/tree/G402/stationary ===
+APPLYING — 9 file(s)
+
+  root_root_tree_blackhole_r1_oct18_0738PM_arrivals.csv
+      3952 data rows, 1 boot session(s)
+        session 1: rows   3952  span    866.1s  score    78.6  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\root_root_tree_blackhole_r1_oct18_0738PM_arrivals.csv
+  root_root_tree_blackhole_r1_oct18_0738PM_telem.csv
+      8668 data rows, 1 boot session(s)
+        session 1: rows   8668  span    866.7s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\root_root_tree_blackhole_r1_oct18_0738PM_telem.csv
+  victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_0756PM_telem.csv
+      6018 data rows, 1 boot session(s)
+        session 1: rows   6018  span    601.7s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_0756PM_telem.csv
+  victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv
+      9347 data rows, 1 boot session(s)
+        session 1: rows   9347  span    940.9s  score    79.0  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv
+  victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_0801PM_telem.csv
+      6731 data rows, 1 boot session(s)
+        session 1: rows   6731  span    673.0s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_0801PM_telem.csv
+  victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_0758PM_telem.csv
+      6223 data rows, 1 boot session(s)
+        session 1: rows   6223  span    622.2s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_0758PM_telem.csv
+  victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct18_0757PM_telem.csv
+      6477 data rows, 1 boot session(s)
+        session 1: rows   6477  span    647.6s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct18_0757PM_telem.csv
+  victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct18_0759PM_telem.csv
+      8369 data rows, 1 boot session(s)
+        session 1: rows   8369  span    836.8s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct18_0759PM_telem.csv
+  victim_NODE-F42DC973E618_tree_blackhole_r1_oct18_0808PM_telem.csv
+      6880 data rows, 1 boot session(s)
+        session 1: rows   6880  span    687.9s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\blackhole\tree\G402\stationary\trimmed\victim_NODE-F42DC973E618_tree_blackhole_r1_oct18_0808PM_telem.csv
+
+------------------------------------------------------------
+  files            : 9
+  rows kept        : 62665
+  rows dropped     : 0
+  files rewritten  : 0
+  files copied as-is: 9
+  files in output  : 9 of 9
+  output folder    : A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\tree\G402\stationary\trimmed
+  NOTE: point preprocess.py / features.py at that folder —
+        it is the COMPLETE analysis input (trimmed files plus
+        untouched copies of anything that needed no trimming).
+Loading raw telemetry from: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\tree\G402\stationary\trimmed
+Wrote 5553 windowed rows to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\windowed_dataset.csv
+Wrote column legend to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\windowed_dataset_legend.csv
+
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 3654 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          58713
+  Windows formed:             5880
+  Windows discarded (<4 smp): 327
+  Windows discarded (gap>2s): 0
+  Windows kept:               5553
+  Discard fraction:           5.6%
+  RSSI placeholders blanked:  8881 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1217   [excluded]
+    baseline               2386
+    attack                 1300
+    cooldown               637
+    transition             13   [excluded]
+  ROOT RESTARTED mid-file on 1 node(s) - rows from the earlier root session are pre_baseline (excluded):
+    NODE_20500DE71C38 (victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv): 339 window(s) before the restart at window_start=338s
+  Per-node window counts:
+    NODE_20500DE70C80: 594
+    NODE_20500DE71C38: 771
+    NODE_2805A532D7B4: 673
+    NODE_704BCA25B768: 622
+    NODE_B0CBD8F33218: 863
+    NODE_B4BFE932FE90: 532
+    NODE_B4BFE934ED80: 810
+    NODE_F42DC973E618: 688
+───────────────────────────────────────────────────────────
+Running M6 preprocessing on: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\tree\G402\stationary\trimmed
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 3654 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          58713
+  Windows formed:             5880
+  Windows discarded (<4 smp): 327
+  Windows discarded (gap>2s): 0
+  Windows kept:               5553
+  Discard fraction:           5.6%
+  RSSI placeholders blanked:  8881 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1217   [excluded]
+    baseline               2386
+    attack                 1300
+    cooldown               637
+    transition             13   [excluded]
+  ROOT RESTARTED mid-file on 1 node(s) - rows from the earlier root session are pre_baseline (excluded):
+    NODE_20500DE71C38 (victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv): 339 window(s) before the restart at window_start=338s
+  Per-node window counts:
+    NODE_20500DE70C80: 594
+    NODE_20500DE71C38: 771
+    NODE_2805A532D7B4: 673
+    NODE_704BCA25B768: 622
+    NODE_B0CBD8F33218: 863
+    NODE_B4BFE932FE90: 532
+    NODE_B4BFE934ED80: 810
+    NODE_F42DC973E618: 688
+───────────────────────────────────────────────────────────
+
+Computing 16 Table 4.11 features...
+[features] WARNING: 18 window(s) have ForwardingRatio > 1 (max 2.50). A relay cannot forward more than it received; this is a queue flush across a window edge. Check segment assignment before trusting the baseline distribution.
+Sniffer captures (real MAC retries, tools/pcap_retry.py):
+  sniffer linear-blackhole-jitter-dlsu_library_r1_oct07_0640PM.pcap: blackhole/linear/DLSU_Library/jitter r1, attack 18:49:03 (fitted, phases from exports)
+  sniffer linear-blackhole-jitter-g402_r1_oct01_0244PM.pcap: blackhole/linear/G402/jitter r1, attack 14:53:22 (fitted, phases from exports)
+  sniffer partial_mesh-blackhole-highload-dlsu_library_r1_oct07_0313PM.pcap: blackhole/partial_mesh/DLSU_Library/highload r1, attack 15:20:41 (fitted, phases from exports)
+  sniffer partial_mesh-blackhole-highload-dlsu_library_r1_oct07_0446PM.pcap: no retry data - cannot place the phases on the laptop clock. No blackhole attack step found in the capture. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer partial_mesh-blackhole-stationary-dlsu_library_r1_oct07_0122PM.pcap: no retry data - the root export root_node1_partial_blackhole_r1_oct07_0207PM_telem.csv runs backwards in time - the board rebooted mid-run, so one phase timeline cannot be read from it. Pass --attack-start.
+  sniffer partial_mesh-blackhole-burst-g402_r1_oct17_0102AM.pcap: blackhole/partial_mesh/G402/burst r1, attack 01:11:39 (fitted, phases from exports)
+  sniffer partial_mesh-blackhole-jitter-g402_r1_oct01_0342PM.pcap: no retry data - cannot place the phases on the laptop clock. No blackhole attack step found in the capture. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer star-blackhole-burst-dlsu_library_r1_oct07_1058AM.pcap: blackhole/star/DLSU_Library/burst r1, attack 11:07:45 (fitted, phases from exports)
+  sniffer star-blackhole-burst-g402_r1_oct01_0146PM.pcap: blackhole/star/G402/stationary r1, attack 13:54:11 (fitted, phases from exports)
+  sniffer tree-blackhole-burst-g402_r1_oct02_0754PM.pcap: blackhole/tree/G402/burst r1, attack 19:59:03 (fitted, phases from exports)
+  sniffer tree-blackhole-highload-g402_r1_oct17_0524PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-jitter-g402_r1_oct02_0642PM.pcap: blackhole/tree/G402/jitter r1, attack 18:50:00 (fitted, phases from exports)
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0650PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0710PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0721PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer linear-wormhole-burst-dlsu_library_r1_oct18_0519PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer linear-wormhole-highload-dlsu_library_r1_oct18_0325PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer linear-wormhole-stationary-dlsu_library_r1_oct07_0537PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer linear-wormhole-stationary-dlsu_library_r1_oct07_1242PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 12:45:32 and 17:57:24 (this run and the next of the same cell) in exports/wormhole/linear/DLSU_Library/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-wormhole-burst-g402_r1_oct17_1111PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer linear-wormhole-highload-g402_r1_oct17_0859PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer linear-wormhole-highload-yuchengco_r3_oct16_0714PM.pcap: no retry data - no run log of this run (wormhole/linear/Yuchengco/highload) within 20 min; the nearest log is linear-wormhole-highload-yuchengco_r1_oct16_0725PM.log, which is a different run
+  sniffer linear-wormhole-stationary-yuchengco_r1_oct16_0326PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer tree-wormhole-stationary-dlsu_library_r1_oct16_1248PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  7 non-root file(s) with no capture of their run (NaN): victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_0756PM_telem.csv, victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv, victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_0801PM_telem.csv, victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_0758PM_telem.csv ...
+Wrote 5553 feature rows to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\feature_table.csv
+Wrote column legend to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\feature_table_legend.csv
+
+── Feature NaN Counts ──────────────────────────────
+  ForwardingRatio: 3608/5553 NaN [1945 value(s) on 5 node(s) — not applicable elsewhere]
+  IngressEgressDelta: 0/5553 NaN
+  RetryRate: 1199/5553 NaN [4354 value(s) on 8 node(s) — not applicable elsewhere]
+  PDR: 1767/5553 NaN [3786 value(s) on 6 node(s) — not applicable elsewhere]
+  ParentSwitchRate: 0/5553 NaN
+  HopChangeCount: 0/5553 NaN
+  HopStabilityDuration: 0/5553 NaN
+  RSSI_mean: 879/5553 NaN [4674 value(s) on 7 node(s) — not applicable elsewhere]
+  RSSI_var: 0/5553 NaN
+  RSSI_stability: 0/5553 NaN
+  RSSI_Hop_Diff: 894/5553 NaN [4659 value(s) on 7 node(s) — not applicable elsewhere]
+  LatencyHopRatio: 2290/5553 NaN [3263 value(s) on 6 node(s) — not applicable elsewhere] [relative one-way delay — see thesis-deviate.md]
+  ConsistencyScore: 3608/5553 NaN [1945 value(s) on 5 node(s) — not applicable elsewhere]
+  TunnelIntensity: 5553/5553 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  TunnelBytes: 5553/5553 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  TunnelLatency: 5038/5553 NaN [515 value(s) on 3 node(s) — not applicable elsewhere]
+  MacRetryRate: 5553/5553 NaN [all-NaN] [sniffer runs only, not a model input — NaN = not measured, D-15]
+─────────────────────────────────────────────────────
+Running EDA on: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\feature_table.csv
+findfont: Failed to find font weight medium, now using 400.
+
+=== Single-feature decidability audit - A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary
+    Majority-class baseline: 0.6993
+    (accuracy of ONE threshold on ONE column, labels visible)
+
+    feature                 thresh    lift  nan-acc   cover  status
+    -------------------------------------------------------  -----------
+    TunnelLatency           0.9981 +0.2988   0.5806    0.12  EXCLUDED
+    PDR                     0.8456 +0.1463   0.5936    0.74  model input
+    LatencyHopRatio         0.8313 +0.1320   0.7044    0.63  model input
+    ForwardingRatio         0.7957 +0.0964   0.5246    0.37  model input
+    ConsistencyScore        0.7944 +0.0951   0.5246    0.37  model input
+    IngressEgressDelta      0.7215 +0.0222      n/a    1.00  model input
+    RSSI_Hop_Diff           0.7009 +0.0016   0.6465    0.86  model input
+    HopChangeCount          0.7002 +0.0009      n/a    1.00  model input
+    ParentSwitchRate        0.7002 +0.0009      n/a    1.00  model input
+    RSSI_mean               0.7001 +0.0009   0.6456    0.86  model input
+    HopStabilityDuration    0.6995 +0.0002      n/a    1.00  model input
+    RSSI_var                0.6991 -0.0002      n/a    1.00  model input
+    RSSI_stability          0.6454 -0.0539      n/a    1.00  model input
+    TunnelIntensity            n/a     n/a      n/a    0.00  EXCLUDED
+    TunnelBytes                n/a     n/a      n/a    0.00  EXCLUDED
+
+
+── EDA Summary ─────────────────────────────────────
+  Descriptive statistics:  A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output\descriptive_statistics.csv
+  Distribution plots:      3 written
+  Time-series plots:       9 written
+  Correlation plots:       A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output\correlation_pearson.png, A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output\correlation_spearman.png
+  PCA/t-SNE plot:          A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output\dimensionality_reduction.png
+    excluded: ['ConsistencyScore', 'ForwardingRatio', 'LatencyHopRatio', 'TunnelBytes', 'TunnelIntensity', 'TunnelLatency']
+  Tunnel-end projection:   A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output\dimensionality_reduction_tunnel_ends.png
+    513 window(s) from 3 tunnel-end node(s); tunnel features kept: none
+  All outputs in:          A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\blackhole\tree\G402\stationary\eda_output/
+───────────────────────────────────────────────────────
+
+--- Gate 1/3: capture integrity -- blackhole/tree/G402/stationary
+[WARN] root_root_tree_blackhole_r1_oct18_0738PM_arrivals.csv
+    WARN: phase 3 (cooldown): 591 probes from 5 victim(s) over 120s = 4.93/s (83% of baseline) — victim(s) ['F4:2D:C9:73:E6:18'] probed during baseline but never returned after the attack
+    info: phase 0 (baseline): 1781 probes from 6 victim(s) over 300s = 5.93/s (reference rate)
+    info: phase 1 (blackhole): 537 probes still reached the root — 50.3% of the ~1067 expected at the baseline rate — 3 of 6 source(s) silenced (28:05:A5:32:D7:B4, B4:BF:E9:34:ED:80, F4:2D:C9:73:E6:18); the other 3 kept delivering (20:50:0D:E7:0C:80, 70:4B:CA:25:B7:68, B4:BF:E9:32:FE:90), i.e. not in the attacker's path. Per-source drop = attack took effect; check exposure in verify_attack.py
+[PASS] root_root_tree_blackhole_r1_oct18_0738PM_telem.csv
+    info: sample coverage 100.0% of expected (8668 rows over 867s, measured ~10.00 Hz, 0 gap(s))
+[PASS] victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_0756PM_telem.csv
+    info: sample coverage 100.0% of expected (6018 rows over 602s, measured ~10.00 Hz, 2 gap(s))
+[PASS] victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv
+    info: phase 1 ran 820s vs nominal 180s (longer — expected under the 'jitter' scenario; on any other scenario the root most likely restarted and its schedule began again, while this node stayed in phase 1)
+    info: phase 3 ran 908s vs nominal 120s (longer — expected under the 'jitter' scenario; on any other scenario the root most likely restarted and its schedule began again, while this node stayed in phase 3)
+    info: sample coverage 99.3% of expected (9347 rows over 941s, measured ~10.00 Hz, 76 gap(s))
+    info: phase sync not checked: the root logged no probes from it (expected for the blackhole attacker)
+[PASS] victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_0801PM_telem.csv
+    info: sample coverage 100.0% of expected (6731 rows over 673s, measured ~10.00 Hz, 0 gap(s))
+[PASS] victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_0758PM_telem.csv
+    info: sample coverage 100.0% of expected (6223 rows over 622s, measured ~10.00 Hz, 0 gap(s))
+[PASS] victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct18_0757PM_telem.csv
+    info: sample coverage 100.0% of expected (6477 rows over 648s, measured ~10.00 Hz, 13 gap(s))
+[PASS] victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct18_0759PM_telem.csv
+    info: sample coverage 100.0% of expected (8369 rows over 837s, measured ~10.00 Hz, 10 gap(s))
+[WARN] victim_NODE-F42DC973E618_tree_blackhole_r1_oct18_0808PM_telem.csv
+    WARN: phase 1 ran 152s but the nominal schedule says 180s — SHORTER than expected. If the firmware was built with a reduced -DPHASE_*_S, preprocess.py's baseline slice reaches past the real start and labels formation noise benign. Make mesh_config.h, preprocess.py and this file agree, or pass --phase-durations.
+    WARN: phase 3 (cooldown) has 0 rows — expected ~1200 (missing phase, possible truncation)
+    info: sample coverage 100.0% of expected (6880 rows over 688s, measured ~10.00 Hz, 0 gap(s))
+
+9 file(s) — 7 PASS, 2 WARN, 0 FAIL. Manifest: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\blackhole\tree\G402\stationary\manifest.json
+
+--- Gate 2/3: topology -- blackhole/tree/G402/stationary
+Loaded 8 telemetry file(s):
+  - root_root_tree_blackhole_r1_oct18_0738PM_telem.csv
+  - victim_NODE-20500DE70C80_tree_blackhole_r1_oct18_0756PM_telem.csv
+  - victim_NODE-20500DE71C38_tree_blackhole_r1_oct18_0800PM_telem.csv
+  - victim_NODE-2805A532D7B4_tree_blackhole_r1_oct18_0801PM_telem.csv
+  - victim_NODE-704BCA25B768_tree_blackhole_r1_oct18_0758PM_telem.csv
+  - victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct18_0757PM_telem.csv
+  - victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct18_0759PM_telem.csv
+  - victim_NODE-F42DC973E618_tree_blackhole_r1_oct18_0808PM_telem.csv
+
+=== Reconstructed structure ===
+8 node(s) attached, 4 layer(s)
+NODE_B0CBD8F33218  (layer 1, role root)
+    NODE_20500DE70C80  (layer 2, role child)
+    NODE_20500DE71C38  (layer 2, role blackhole)
+        NODE_2805A532D7B4  (layer 3, role child)
+            NODE_B4BFE934ED80  (layer 4, role child)
+        NODE_F42DC973E618  (layer 3, role child)
+    NODE_B4BFE932FE90  (layer 2, role child)
+        NODE_704BCA25B768  (layer 3, role child)
+
+=== Per-node convergence & stability ===
+  [ - ] NODE_20500DE70C80  layer=2  converge=not recorded (log starts inside a phase)  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6018
+  [ - ] NODE_20500DE71C38  layer=2  converge=not recorded (log starts inside a phase)  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=9347
+  [  ?] NODE_2805A532D7B4  layer=3  converge=532.9s  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=6731
+  [OK ] NODE_704BCA25B768  layer=3  converge=  0.0s  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6223
+  [OK ] NODE_B0CBD8F33218  layer=1  converge=  0.0s  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=8668
+  [OK ] NODE_B4BFE932FE90  layer=2  converge=  0.0s  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6477
+  [  ?] NODE_B4BFE934ED80  layer=4  converge=698.2s  parent_switches=3 (baseline 0)  layer_changes=6 (baseline 0)  samples=8369
+  [OK ] NODE_F42DC973E618  layer=3  converge=  0.0s  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6880
+
+=== Expected-topology check ===
+  OK tree: 8 node(s), depth 4
+
+=== Milestone-3 verdict ===
+  Converged within 60s : NO — see nodes marked ? (2 node(s) NOT MEASURED — log starts inside a phase)
+  Baseline re-routing free            : YES
+  Structure matches tree              : YES
+  Gate 2 FAILED -- late convergence or baseline re-routing.
+  'Converged within 60s: NO' usually means a node was probing before
+  the root joined. Check the root's power (see STATUS.md blockers).
+
+--- Gate 3/3: attack signature -- blackhole/tree/G402/stationary
+
+==========================================================================================================
+ BLACKHOLE VERIFICATION  -  tree / G402 / stationary  (r1)
+==========================================================================================================
+ RESULT : NOT CONFIRMED - SETUP INVALID
+          the signature moved, but a setup check FAILED (see [3]) - the attack did not run as designed. Do
+          not report it as confirmed; fix the setup and recapture.
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 3023 windows   attack phase: 1300 windows
+     pooling: 5 windows per point (Table 4.10 window = 5); ratio-of-sums for ForwardingRatio,
+     NeighbourForwardingRatio
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       ForwardingRatio (attacker)           1.000 +- 0.000   0.000       -inf  primary, down  [A]
+     PASS       PDR                                  1.000 +- 0.000   0.512       -inf  primary, down  [A]
+     PASS       ConsistencyScore                     0.009 +- 0.054   0.333       5.99  support, up    [A]
+     PASS       IngressEgressDelta                   0.006 +- 0.059   0.311       5.16  support, up    [A]
+     PASS       NeighbourForwardingRatio (attacker)  0.999 +- 0.026   0.000     -37.76  support, down  [A]
+
+     note 1: ForwardingRatio (attacker): the normal phase never varied (sd = 0), so z is infinite: any
+             move in the expected direction counts
+     note 2: PDR: the normal phase never varied (sd = 0), so z is infinite: any move in the expected
+             direction counts
+     note 3: NeighbourForwardingRatio (attacker): independent of the attacker's own counters: in = what
+             its children report handing it, out = what its parent (the root's arrivals) received from
+             below it. If this matches the ForwardingRatio (attacker) row, the attacker's self-report is
+             confirmed by its neighbours - two sources agreeing, not one value printed twice
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - ForwardingRatio (all relays): network-wide 0.679 (z -7.99) = the attacker's 0.000 diluted by 4
+       honest relay(s) at 1.003; it still drops past 3-sigma (passing allows at most ~7 honest relays).
+       Same measurement as the attacker row, so never counted (it would count one fact twice).
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     FAIL D7B4 (child) changed parent during the attack (2 parents) - the attack depends on its position,
+          so the attack windows mix two topologies
+     FAIL ED80 (child) changed parent during the attack (2 parents) - the attack depends on its position,
+          so the attack windows mix two topologies
+     OK   attacker 1C38 received 262, forwarded 0 (0%) during the attack  [A]
+     OK   3 victim(s) alive but cut off: attack PDR 0.000 (baseline 1.000)  [KW]
+     OK   3 node(s) not behind the attacker kept delivering (loss is specific to the attacker's path)
+          [KW]
+     OK   topology during the attack = tree: 8 node(s), depth 4
+     OK   normal START - no START_ANYWAY in the root's run log (blackhole-
+          tree-g402-stationary_r1_oct18_0721PM.log)
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_2805A532D7B4   child      VICTIM          2     1.0000     0.0000     18
+     NODE_2805A532D7B4   child      VICTIM          3     1.0000     0.0000    145
+     NODE_B4BFE934ED80   child      VICTIM          3     1.0000     0.0000    168
+     NODE_F42DC973E618   child      VICTIM          2     1.0000     0.0000    148
+     NODE_20500DE70C80   child      not in path     1     1.0000     1.0000    176
+     NODE_704BCA25B768   child      not in path     2     1.0000     1.0000    178
+     NODE_B4BFE932FE90   child      not in path     1     1.0000     1.0000    143
+
+     ** 3 VICTIM(S) - the attacker sits on their path to the root. Worst attack PDR 0.0000.
+        NODE_2805A532D7B4, NODE_B4BFE934ED80, NODE_F42DC973E618
+        This is the population the write-up should quote. The pooled PDR above averages
+        victims with bystanders and describes no actual node.
+     ** 3 node(s) were NOT in the attack path (built as children, never exposed):
+        NODE_20500DE70C80, NODE_704BCA25B768, NODE_B4BFE932FE90
+        They sit ABOVE the attacker, so their traffic never transits it. Unaffected BY
+        CONSTRUCTION - not evidence the attack was weak, and not victims.
+
+     not listed: 1C38 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [A]  Airehrour, Gutierrez & Ray (2018), AJTDE 6(1):41-59 - blackhole = node that drops what it should
+          forward; delivered/sent (ForwardingRatio, PDR) collapses
+     [KW] Karlof & Wagner (2003) - blackhole damage depends on the attacker's POSITION (only traffic
+          routed through it is lost)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: BLACKHOLE NOT CONFIRMED - SETUP INVALID  (2/2 primary signature(s) beyond 3-sigma)
+----------------------------------------------------------------------------------------------------------
+
+
+=== Validation summary -- blackhole/tree/G402/stationary
+    integrity : PASS
+    topology  : FAIL
+    attack    : NOT CONFIRMED - SETUP INVALID (recapture)
+
+
+Done: 1 run(s) analyzed, 5,553 row(s) in this batch.
+Run '.\analyze.ps1 -List' for the running total across everything captured.

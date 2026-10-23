@@ -1,0 +1,6 @@
+blackhole/tree/G402/stationary repeat 1
+archived 2026-10-18 19:44 - files written before 2026-10-18 18:00
+why: the same run (same repeat) was captured again - the oct. 18 2026 recapture (root exported 7:38 PM; user asked to archive the old one)
+restore: move exports/ and analysis/ back into datasets/ under the same run folder
+also moved (2026-10-18 19:48): GUI verify report blackhole__tree__G402__stationary.txt, verdict 'VERDICT: BLACKHOLE CONFIRMED  (2/2 primary signature(s) beyo'
+verification log blocks that covered the OLD capture (docs/dataset-verification.md, never edited): #2

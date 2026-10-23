@@ -1,0 +1,7 @@
+wormhole/star/G402/highload repeat 1
+archived 2026-10-20 21:10 - files written before 2026-10-20 21:40
+why: the same run (same repeat) was captured again
+also moved: no GUI verification on this laptop
+verification log blocks that covered the OLD capture (docs/dataset-verification.md, never edited): #69, #70
+restore: move exports/, analysis/, run_logs/ back into datasets/ under the same run folder;
+         verification/ back into %LOCALAPPDATA%\NIS16\reports (+ its verdicts.json entry)

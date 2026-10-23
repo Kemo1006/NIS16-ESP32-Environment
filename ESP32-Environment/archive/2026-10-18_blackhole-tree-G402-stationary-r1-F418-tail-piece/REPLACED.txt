@@ -1,0 +1,6 @@
+blackhole/tree/G402/stationary r1 (oct. 18 2026 recapture) - board F4:2D:C9:73:E6:18
+This file = card r12_b19: the board's piece AFTER it crashed (PANIC) 152 s into the attack:
+19 s of attack + the cooldown, NO baseline (1,397 rows). Replaced in exports by card r11_b18
+(stabilise + full 300 s baseline + 152 s of attack, ended by PANIC; 6,880 rows) - the analysis
+takes one file per board and needs the baseline. F4:18 sat directly under the attacker (parent
+20:50:0D:E7:1C:39). Verification #43.

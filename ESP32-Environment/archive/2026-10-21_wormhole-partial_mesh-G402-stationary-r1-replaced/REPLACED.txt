@@ -1,0 +1,7 @@
+wormhole/partial_mesh/G402/stationary repeat 1
+archived 2026-10-21 14:02 - files written before 2026-10-21 13:46
+why: the same run (same repeat) was captured again - the re-capture whose root exported 2026-10-21 14:01
+also moved: GUI verify report wormhole__partial_mesh__G402__stationary.txt, verdict 'VERDICT: WORMHOLE CONFIRMED  (2/2 primary signature(s) beyon'
+verification log blocks that covered the OLD capture (docs/dataset-verification.md, never edited): #58, #60
+restore: move exports/, analysis/, run_logs/ back into datasets/ under the same run folder;
+         verification/ back into %LOCALAPPDATA%\NIS16\reports (+ its verdicts.json entry)

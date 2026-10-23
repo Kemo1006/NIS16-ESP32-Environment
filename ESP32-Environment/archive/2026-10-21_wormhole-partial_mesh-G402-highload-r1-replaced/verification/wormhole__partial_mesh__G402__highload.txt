@@ -1,0 +1,101 @@
+
+==========================================================================================================
+ WORMHOLE VERIFICATION  -  partial_mesh / G402 / highload  (r1)
+==========================================================================================================
+ RESULT : CONFIRMED
+          TunnelIntensity: normal 0.000 -> attack 4.000; the normal phase never varied, so this move is
+          beyond any sigma
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2938 windows   attack phase: 1257 windows
+     pooling: 5 windows per point (Table 4.10 window = 5)
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       TunnelIntensity                      0.000 +- 0.000   4.000       +inf  primary, up    [Z]
+     PASS       DuplicateRate                        0.000 +- 0.000   1.000       +inf  primary, up    [R]
+     PASS       TunnelBytes                          0.000 +- 0.000   120.000     +inf  support, up    [Z]
+
+     note 1: TunnelIntensity: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 2: DuplicateRate: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 3: TunnelBytes: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - TunnelLatency: the two copies of B's probes reached the root 45.8 ms apart (attack mean). Exists
+       only while the tunnel runs, so there is no normal value to test against - reported as a
+       measurement: the wormhole's timing mismatch [H]
+     - LatencyHopRatio: normal 9.8 +- 23.5 -> attack 10.4 (z 0.02). Relative one-way delay per hop (board
+       clocks are not synchronised) with rare 100s-of-ms spikes, so its normal spread is too wide for a
+       3-sigma test - context only
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  SCENARIO [ OK ]   TOPOLOGY [WARN]   TUNNEL [WARN]   OTHER [ OK ]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       `-- B768   child
+           +-- 0C80   WORMHOLE A (exit)
+           `-- E618   child
+               `-- FE90   child
+                   `-- ED80   child
+                       `-- 1C38   WORMHOLE B (entry)
+
+     SCENARIO ................................ OK
+       OK   scenario check: highload APPLIED - children probed 4.0/s in the baseline (highload = every 250
+            ms, ~4/s; normal 1/s)
+     TOPOLOGY ................................ WARN
+       WARN topology during the attack: 7 nodes, each seen under only one parent so far - still a plain
+            tree (depth 6)
+     TUNNEL .................................. WARN
+       WARN MISSING BOARD D7B4 (plain child): YELLOW - the root heard it, but there is no file; the
+            wormhole's signature is B's TunnelIntensity + the ROOT's DuplicateRate, neither uses this
+            board, so it adds no bias - footnote it [role: not a tunnel end]  [R]
+       OK   one A + one B, roles stable in the experiment, A shallower than B, tunnel carried data  [H]
+       OK   UART: B sent ~720 tunnel frames, A received ~720 (100%)  [Z]
+       OK   the root saw duplicate arrivals in 180 attack window(s)  [R]
+       OK   normal START - no START_ANYWAY in the root's run log (wormhole-
+            partial_mesh-g402-highload_r1_oct19_0550PM.log)
+     OTHER ................................... OK
+       OK   IMPACT CHECK: without D7B4 (the boards with minor gaps) the attack is still confirmed - the
+            gaps do not change the result
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_704BCA25B768   child      not tunnelled    1     1.0000     1.0000    177
+     NODE_B4BFE932FE90   child      not tunnelled    3     1.0000     1.0000    179
+     NODE_B4BFE934ED80   child      not tunnelled    4     1.0000     1.0000    176
+     NODE_F42DC973E618   child      not tunnelled    2     1.0000     1.0000    180
+
+
+     not listed: 0C80, 1C38 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [R]  Ramirez Gomez, Vargas Montoya & Leon Henao (2019), Rev. Colomb. Comput. 20(1) - wormhole
+          signature = duplicate packets (same data unit twice)
+     [H]  Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with timing the claimed
+          path cannot explain (packet leashes)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: WORMHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)  |  scenario highload: applied
+ CONFIDENCE: MINOR GAPS - attack confirmed; 1 small gap in the data, none of which changes the result - recapture advised
+     + ATTACK: confirmed - 2/2 primary signature(s) beyond 3-sigma
+     + SETUP: no check failed
+     ~ MINOR GAP (result not affected): D7B4 (plain child): missing - the root heard it, but there is no
+       file; the wormhole's signature is B's TunnelIntensity + the ROOT's DuplicateRate, neither uses this
+       board, so it adds no bias - footnote it [role: not a tunnel end]
+     + impact check: without D7B4 (the boards with minor gaps) the attack is still confirmed - the gaps do
+       not change the result
+     ~ note: topology during the attack: 7 nodes, each seen under only one parent so far - still a plain
+       tree (depth 6)
+     = REPORT AS: "WORMHOLE CONFIRMED - minor gaps" + 2 footnotes (copy them to the thesis checklist)
+ OUTCOME: PASS - the attack signature moved past 3-sigma, the setup ran as designed and the data gaps were shown not to change the result
+     signature PASS  |  setup PASS  |  dataset MINOR   (capture completeness / SD cards: Campaign status)
+----------------------------------------------------------------------------------------------------------
+
+

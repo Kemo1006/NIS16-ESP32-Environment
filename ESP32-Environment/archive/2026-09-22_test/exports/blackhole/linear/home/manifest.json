@@ -1,0 +1,52 @@
+{
+  "child_node2_linear_blackhole_r1_20260922_162312_telem.csv": {
+    "row_count": 6844,
+    "sha256": "2d43437c5fd28c2758300908b6e3e30a600cd091d73abe34b0c402916a847452",
+    "size_bytes": 547049
+  },
+  "child_node3_linear_blackhole_r1_20260922_162453_telem.csv": {
+    "row_count": 6452,
+    "sha256": "2ce04bf2a9c4989c916949f969750a28a14925242776bda1badf02f9fa6bd622",
+    "size_bytes": 556999
+  },
+  "child_node4_linear_blackhole_r1_20260922_162808_telem.csv": {
+    "row_count": 6364,
+    "sha256": "7600b5cd3c1f01cc5fc1c98482d1e88ce6ebacff23aeb774933066215f2c0f04",
+    "size_bytes": 525937
+  },
+  "root_node1_linear_blackhole_r1_20260922_163147_telem.csv": {
+    "row_count": 6197,
+    "sha256": "01c7dd831feb4a8dc1c4b553d282a7f41355dfc761160dd490d2dd4d62b54cc2",
+    "size_bytes": 456860
+  },
+  "root_node1_linear_blackhole_r1_20260922_163157_arrivals.csv": {
+    "row_count": 1144,
+    "sha256": "a03a70a9c090c98394d0202ea7098af81398577b8e2e71bc34fea95db7d027fe",
+    "size_bytes": 114461
+  },
+  "trimmed/child_node2_linear_blackhole_r1_20260922_162312_telem.csv": {
+    "row_count": 6844,
+    "sha256": "2d43437c5fd28c2758300908b6e3e30a600cd091d73abe34b0c402916a847452",
+    "size_bytes": 547049
+  },
+  "trimmed/child_node3_linear_blackhole_r1_20260922_162453_telem.csv": {
+    "row_count": 6452,
+    "sha256": "2ce04bf2a9c4989c916949f969750a28a14925242776bda1badf02f9fa6bd622",
+    "size_bytes": 556999
+  },
+  "trimmed/child_node4_linear_blackhole_r1_20260922_162808_telem.csv": {
+    "row_count": 6364,
+    "sha256": "7600b5cd3c1f01cc5fc1c98482d1e88ce6ebacff23aeb774933066215f2c0f04",
+    "size_bytes": 525937
+  },
+  "trimmed/root_node1_linear_blackhole_r1_20260922_163147_telem.csv": {
+    "row_count": 6197,
+    "sha256": "01c7dd831feb4a8dc1c4b553d282a7f41355dfc761160dd490d2dd4d62b54cc2",
+    "size_bytes": 456860
+  },
+  "trimmed/root_node1_linear_blackhole_r1_20260922_163157_arrivals.csv": {
+    "row_count": 1144,
+    "sha256": "a03a70a9c090c98394d0202ea7098af81398577b8e2e71bc34fea95db7d027fe",
+    "size_bytes": 114461
+  }
+}

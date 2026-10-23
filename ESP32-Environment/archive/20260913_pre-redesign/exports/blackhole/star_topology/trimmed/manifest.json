@@ -1,0 +1,107 @@
+{
+  "child_node2_star_blackhole_r1_20260727_043125_telem.csv": {
+    "row_count": 8096,
+    "sha256": "7b46733feb3e19f18556e7cfa6677053952f13e9f6c054d1f396daa97d6a06f3",
+    "size_bytes": 595857
+  },
+  "child_node2_star_blackhole_r2_20260727_051815_telem.csv": {
+    "row_count": 6377,
+    "sha256": "b06daa593059ee943d00d5b732de182e1078cc30569f28cfd21989892b5c4c97",
+    "size_bytes": 463491
+  },
+  "child_node2_star_blackhole_r3_20260727_060657_telem.csv": {
+    "row_count": 6994,
+    "sha256": "04a0abeacbe9066ca6a21c32f2c856e046c98503a08fbddca79f79b5e5053ef7",
+    "size_bytes": 512967
+  },
+  "child_node3_star_blackhole_r1_20260727_042821_telem.csv": {
+    "row_count": 8454,
+    "sha256": "eb591b3d072da9f02ac1196f47a959e35650cbd750b961fd305ec78f18559334",
+    "size_bytes": 620369
+  },
+  "child_node3_star_blackhole_r2_20260727_051536_telem.csv": {
+    "row_count": 6623,
+    "sha256": "ae613eb93f500f1a583c62556916209dd324946ee238cda20bcd2c3baac4a9ad",
+    "size_bytes": 486811
+  },
+  "child_node3_star_blackhole_r3_20260727_060419_telem.csv": {
+    "row_count": 7329,
+    "sha256": "4972ff137a8256322c97e82eeda0f350642bed7b6b65cc0de12271e35ab01fc7",
+    "size_bytes": 535678
+  },
+  "child_node4_star_blackhole_r1_20260727_042523_telem.csv": {
+    "row_count": 8122,
+    "sha256": "920e2cbaa3ed2217e66a88f03698d7ec95f39262966f421cd2dea3f748a575b8",
+    "size_bytes": 597336
+  },
+  "child_node4_star_blackhole_r2_20260727_051147_telem.csv": {
+    "row_count": 6291,
+    "sha256": "bbb5a391cbdad59bd5ce5e5239cfa3354078e2327fd108f142b00d3d43d1e028",
+    "size_bytes": 457195
+  },
+  "child_node4_star_blackhole_r3_20260727_060131_telem.csv": {
+    "row_count": 7033,
+    "sha256": "d052af3a43ded73451712c65c84d70131062026b76ccb510d9efe38186841ac8",
+    "size_bytes": 515504
+  },
+  "child_node5_star_blackhole_r1_20260727_041912_telem.csv": {
+    "row_count": 8422,
+    "sha256": "be3fc03afe4bc390f487e75bfd3253200dd06e1ff663f93894cdd1aec9e4ff67",
+    "size_bytes": 647193
+  },
+  "child_node5_star_blackhole_r2_20260727_050519_telem.csv": {
+    "row_count": 6862,
+    "sha256": "0b4109371feba7f92f17ccfbf0a461afc3062715f6576b3c44e9de106244060f",
+    "size_bytes": 532148
+  },
+  "child_node5_star_blackhole_r3_20260727_055509_telem.csv": {
+    "row_count": 7333,
+    "sha256": "0c83b62bcb6b125774b90cf912b669aaf7ecc4874f6abda3a3702805a98dae0d",
+    "size_bytes": 567058
+  },
+  "child_node6_star_blackhole_r1_20260727_042227_telem.csv": {
+    "row_count": 8424,
+    "sha256": "14104e7478043e6b3bccb8987ec50d7f98039a80adeee8a0b72ea7943123a07c",
+    "size_bytes": 618364
+  },
+  "child_node6_star_blackhole_r2_20260727_050808_telem.csv": {
+    "row_count": 6810,
+    "sha256": "596d0057549b92482f779990a38572c162223d1efc0993e9cb1296512e8a68b3",
+    "size_bytes": 499733
+  },
+  "child_node6_star_blackhole_r3_20260727_055753_telem.csv": {
+    "row_count": 7325,
+    "sha256": "2dd80faebcb4d2e03d390940b73db20942c08f66c04c92485aa5e7eec710d40f",
+    "size_bytes": 535754
+  },
+  "root_node1_star_blackhole_r1_20260727_043502_telem.csv": {
+    "row_count": 6316,
+    "sha256": "2c2e5970027f865a7a5d27b5bccb34170627300240e1e63cb82fb1c5eea0bb11",
+    "size_bytes": 428862
+  },
+  "root_node1_star_blackhole_r1_20260727_043519_arrivals.csv": {
+    "row_count": 1918,
+    "sha256": "b9063ea463284cd269ea4118020a790f313283b4cc29ec9655941a46b1b0ec94",
+    "size_bytes": 192834
+  },
+  "root_node1_star_blackhole_r2_20260727_052250_telem.csv": {
+    "row_count": 6314,
+    "sha256": "66089cd0aacd16237be5d69fd4805b94bfb663a87b8d4f1d77320313d3f78155",
+    "size_bytes": 428594
+  },
+  "root_node1_star_blackhole_r2_20260727_052307_arrivals.csv": {
+    "row_count": 1896,
+    "sha256": "8e5c65b82161e5482eafa8f0c4fb065281cd6c872e0267cbb077fc0764db722e",
+    "size_bytes": 188379
+  },
+  "root_node1_star_blackhole_r3_20260727_061045_telem.csv": {
+    "row_count": 6317,
+    "sha256": "5e871f3d6d461320347d51b59ff79cb346843850256ac7e93bdb46a74abf7862",
+    "size_bytes": 428897
+  },
+  "root_node1_star_blackhole_r3_20260727_061102_arrivals.csv": {
+    "row_count": 1917,
+    "sha256": "8dcaa6bd8c38f2966847577338d20695de5a14dcf506439e214feeb543e71423",
+    "size_bytes": 192570
+  }
+}

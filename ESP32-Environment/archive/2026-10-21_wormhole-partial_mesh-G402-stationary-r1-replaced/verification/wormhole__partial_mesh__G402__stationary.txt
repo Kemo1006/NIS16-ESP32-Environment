@@ -1,0 +1,103 @@
+
+==========================================================================================================
+ WORMHOLE VERIFICATION  -  partial_mesh / G402 / stationary  (r1)
+==========================================================================================================
+ RESULT : CONFIRMED
+          TunnelIntensity: normal 0.000 -> attack 1.000; the normal phase never varied, so this move is
+          beyond any sigma
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 2936 windows   attack phase: 1259 windows
+     pooling: 5 windows per point (Table 4.10 window = 5)
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       TunnelIntensity                      0.000 +- 0.000   1.000       +inf  primary, up    [Z]
+     PASS       DuplicateRate                        0.000 +- 0.000   0.995       +inf  primary, up    [R]
+     PASS       TunnelBytes                          0.000 +- 0.000   30.000      +inf  support, up    [Z]
+
+     note 1: TunnelIntensity: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 2: DuplicateRate: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 3: TunnelBytes: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - TunnelLatency: the two copies of B's probes reached the root 5.3 ms apart (attack mean). Exists
+       only while the tunnel runs, so there is no normal value to test against - reported as a
+       measurement: the wormhole's timing mismatch [H]
+     - LatencyHopRatio: normal 9.2 +- 27.9 -> attack 8.3 (z -0.03). Relative one-way delay per hop (board
+       clocks are not synchronised) with rare 100s-of-ms spikes, so its normal spread is too wide for a
+       3-sigma test - context only
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  SCENARIO [ OK ]   BOARDS [WARN]   TUNNEL [ OK ]   OTHER [ OK ]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       `-- ED80   child
+           `-- E618   child
+               `-- 1C38   WORMHOLE B (entry)
+       ?   0C80   WORMHOLE A (exit)  (its parent could not be traced)
+       ?   B768   child  (its parent could not be traced)
+       ?   D7B4   child  (its parent could not be traced)
+
+     SCENARIO ................................ OK
+       OK   scenario check: stationary APPLIED - children probed 1.0/s in the baseline, no burst, plain
+            schedule
+     BOARDS .................................. WARN
+       WARN topology during the attack cannot be judged: built from 7 of 8 boards, the others have no
+            attack windows (FE90). The full-run structure check is verify_topology.py
+       WARN 1 node(s) have NO labelled window (no_phase_seen), so the checks above run without them: FE90
+            - their raw files may be COMPLETE: preprocessing unlabels a board whose phase labels are out
+            of sync with the root's ([UNLABELLED] in the preprocessing report), or one that never left
+            phase 0. A data/preprocessing gap, not evidence about the attack
+     TUNNEL .................................. OK
+       OK   one A + one B, roles stable in the experiment, A shallower than B, tunnel carried data  [H]
+       OK   UART: B sent ~180 tunnel frames, A received ~180 (100%)  [Z]
+       OK   the root saw duplicate arrivals in 179 attack window(s)  [R]
+       OK   normal START - no START_ANYWAY in the root's run log (wormhole-
+            partial_mesh-g402-stationary_r1_oct19_0434PM.log)
+     OTHER ................................... OK
+       OK   IMPACT CHECK: without FE90 (the boards with minor gaps) the attack is still confirmed - the
+            gaps do not change the result
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_2805A532D7B4   child      not tunnelled    3     1.0000     1.0000    180
+     NODE_704BCA25B768   child      not tunnelled    2     1.0000     1.0000    179
+     NODE_B4BFE934ED80   child      not tunnelled    1     1.0000     1.0000    178
+     NODE_F42DC973E618   child      not tunnelled    2     1.0000     1.0000    179
+
+
+     not listed: 0C80, 1C38 - attacking board - PDR is computed for plain children only
+     not listed: FE90 - no attack windows in the table (see [3])
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [R]  Ramirez Gomez, Vargas Montoya & Leon Henao (2019), Rev. Colomb. Comput. 20(1) - wormhole
+          signature = duplicate packets (same data unit twice)
+     [H]  Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with timing the claimed
+          path cannot explain (packet leashes)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: WORMHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)  |  scenario stationary: applied
+ CONFIDENCE: MINOR GAPS - attack confirmed; 1 small gap in the data, none of which changes the result - recapture advised
+     + ATTACK: confirmed - 2/2 primary signature(s) beyond 3-sigma
+     + SETUP: no check failed
+     ~ MINOR GAP (result not affected): FE90: its phase labels could not be used (out of sync with the
+       root, or it never left phase 0 - its file itself may be complete), so the checks ran without it - a
+       plain child, not part of the tunnel; the impact check decides whether the result needs it
+     + impact check: without FE90 (the boards with minor gaps) the attack is still confirmed - the gaps do
+       not change the result
+     ~ note: topology during the attack cannot be judged: built from 7 of 8 boards, the others have no
+       attack windows (FE90...
+     = REPORT AS: "WORMHOLE CONFIRMED - minor gaps" + 2 footnotes (copy them to the thesis checklist)
+ OUTCOME: PASS - the attack signature moved past 3-sigma, the setup ran as designed and the data gaps were shown not to change the result
+     signature PASS  |  setup PASS  |  dataset MINOR   (capture completeness / SD cards: Campaign status)
+----------------------------------------------------------------------------------------------------------
+
+

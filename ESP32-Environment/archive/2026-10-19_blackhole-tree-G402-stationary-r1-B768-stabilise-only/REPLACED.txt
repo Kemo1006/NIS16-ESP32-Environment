@@ -1,0 +1,2 @@
+Moved here oct. 19 2026 by Claude: collect_run.py (PARTIAL rule v1) filed B7:68's piece r7_b18 by size+time, but it holds only 319 s of stabilise (no baseline/attack/cooldown). Replaced by the content-checked re-collect.
+Also moved here: r8_b19 (filed 11:15 PM by the 'most data' rule) = the 9:40 PM root attempt (baseline 300 s, attack 53 s), NOT the 9:55 PM run. Boot order b19 < b113 < b114; the run is b114.

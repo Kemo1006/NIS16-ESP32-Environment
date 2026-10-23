@@ -1,0 +1,47 @@
+{
+  "root_root_tree_blackhole_r1_oct19_0250PM_telem.csv": {
+    "row_count": 12972,
+    "sha256": "5e66cb9e5e9c8329d3adc574bad0a4770ac295e8ccc54082be50e33e7028ec03",
+    "size_bytes": 994970
+  },
+  "root_root_tree_blackhole_r1_oct19_0252PM_arrivals.csv": {
+    "row_count": 14396,
+    "sha256": "16a8cf1216eb532b7e45e13bbe4cafcb15cb6cbfc20fcd3e21a09bb140cd3db8",
+    "size_bytes": 1474883
+  },
+  "victim_NODE-20500DE70C80_tree_blackhole_r1_oct19_0306PM_telem.csv": {
+    "row_count": 4660,
+    "sha256": "81298023d69fab5a233349e624e4ccf033d767ea65d87181f21a3d2126f925fb",
+    "size_bytes": 384665
+  },
+  "victim_NODE-20500DE71C38_tree_blackhole_r1_oct19_0307PM_telem.csv": {
+    "row_count": 8569,
+    "sha256": "4325db1cbbda67564f547ad24600df65b6ff4ea6b36733d913a4fcebe79a2116",
+    "size_bytes": 767761
+  },
+  "victim_NODE-2805A532D7B4_tree_blackhole_r1_oct19_0259PM_telem.csv": {
+    "row_count": 5008,
+    "sha256": "dade9c0c1f2a3b3559b82985728a43967779b0b78f4b0c2d67cf709ca7eaf426",
+    "size_bytes": 394034
+  },
+  "victim_NODE-704BCA25B768_tree_blackhole_r1_oct19_0258PM_telem.csv": {
+    "row_count": 7515,
+    "sha256": "6afab1c2f44e466c216c83d4794854fdc29462267b955b24ad0a41dfa24c4126",
+    "size_bytes": 606212
+  },
+  "victim_NODE-B4BFE932FE90_tree_blackhole_r1_oct19_0259PM_telem.csv": {
+    "row_count": 7918,
+    "sha256": "f90fd7bd8271ede696bc87714317a00428d51c5e4466edb30b8a08740f3b2862",
+    "size_bytes": 634810
+  },
+  "victim_NODE-B4BFE934ED80_tree_blackhole_r1_oct19_0300PM_telem.csv": {
+    "row_count": 8017,
+    "sha256": "05041bf618ac562c5428cb6eb11e90391afd333b5b0bed70a53f8e278063e7cb",
+    "size_bytes": 646760
+  },
+  "victim_NODE-F42DC973E618_tree_blackhole_r1_oct19_0306PM_telem.csv": {
+    "row_count": 6790,
+    "sha256": "a07fe7f244ba142fc69f1dd4fe34d112e64c2f60898d323f5bf0b26b1d4574c1",
+    "size_bytes": 562218
+  }
+}

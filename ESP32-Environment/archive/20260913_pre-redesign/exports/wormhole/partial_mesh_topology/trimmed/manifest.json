@@ -1,0 +1,37 @@
+{
+  "child_node2_partial_wormhole_r1_20260727_102348_telem.csv": {
+    "row_count": 6674,
+    "sha256": "66cfb3c68eaa2dcd17087a99aad604f24d22cb5a4266a7e40c59a3119e8a16f1",
+    "size_bytes": 484507
+  },
+  "child_node3_partial_wormhole_r1_20260727_102046_telem.csv": {
+    "row_count": 7014,
+    "sha256": "80ccbd1afbdca4fc52f036743193a2ad92a3ce4ce6d8f73027e543a115ec3356",
+    "size_bytes": 507285
+  },
+  "child_node4_partial_wormhole_r1_20260727_101741_telem.csv": {
+    "row_count": 6708,
+    "sha256": "7d878f2891e85871eb2e33962eeb85d4317a7bb6c5e9f3d90890f552a31312fe",
+    "size_bytes": 486532
+  },
+  "child_node5_partial_wormhole_r1_20260727_101130_telem.csv": {
+    "row_count": 7019,
+    "sha256": "f7ebb9bb45582ea3a24b6e473426871fc407f38366121ed526bf11a63855801c",
+    "size_bytes": 521298
+  },
+  "child_node6_partial_wormhole_r1_20260727_101428_telem.csv": {
+    "row_count": 7025,
+    "sha256": "529bec46f0577cebc02b0a644add5c417f67bc26e89a3a2d76c5d14f917f2a79",
+    "size_bytes": 541777
+  },
+  "root_node1_partial_wormhole_r1_20260727_102823_telem.csv": {
+    "row_count": 6322,
+    "sha256": "3087a723c128562a007864b761339ba01bf06ff84775aa26985e815b03cb3cab",
+    "size_bytes": 429311
+  },
+  "root_node1_partial_wormhole_r1_20260727_102852_arrivals.csv": {
+    "row_count": 2825,
+    "sha256": "2c289532c72bd7620fa1ab82dbcc8f76f0afddaa26b9f83c76b5cdf9e87a012a",
+    "size_bytes": 282884
+  }
+}

@@ -1,0 +1,1 @@
+Byte-identical copies of ../exports/ that the GitHub sync (smart_sync.py) pulled back into the run folder at 23:36 on oct. 18 2026, because it did not know ESP32-Environment/archive/. Moved out oct. 19 2026 (fixed in smart_sync.py + trim_run.py).

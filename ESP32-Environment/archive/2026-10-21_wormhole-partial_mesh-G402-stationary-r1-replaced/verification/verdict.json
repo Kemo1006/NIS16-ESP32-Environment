@@ -1,0 +1,8 @@
+{
+ "wormhole/partial_mesh/G402/stationary": {
+  "Code": 0,
+  "Line": "VERDICT: WORMHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)  |  scenario stationary: applied",
+  "When": "2026-10-21 11:41",
+  "Data": "trimmed"
+ }
+}

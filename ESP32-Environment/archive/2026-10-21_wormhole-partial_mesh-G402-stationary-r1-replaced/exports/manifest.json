@@ -1,0 +1,47 @@
+{
+  "child_node2_partial_wormhole_r1_oct19_0508PM_telem.csv": {
+    "row_count": 6454,
+    "sha256": "b0b1c4241c3455db196b91da1a00ecf8c4edbd2244d2128ed990843d387bf05f",
+    "size_bytes": 537662
+  },
+  "child_node3_partial_wormhole_r1_oct19_0510PM_telem.csv": {
+    "row_count": 6302,
+    "sha256": "3353e152254aecbb786ff237d23d25e271220d60083bc4212b7fea2c2ff441b4",
+    "size_bytes": 530882
+  },
+  "child_node4_partial_wormhole_r1_oct19_0511PM_telem.csv": {
+    "row_count": 9554,
+    "sha256": "986930139cf18ece4fdc1d8156b9c343983ca7a1bdc85bcf3b5c2090f638a9db",
+    "size_bytes": 774844
+  },
+  "root_root_partial_wormhole_r1_oct19_0450PM_telem.csv": {
+    "row_count": 7481,
+    "sha256": "9453265c8c85dbb6b816da8dbff97a5b17d47356d9879829ab2e33999509826d",
+    "size_bytes": 558928
+  },
+  "root_root_partial_wormhole_r1_oct19_0451PM_arrivals.csv": {
+    "row_count": 4125,
+    "sha256": "22510aa548e4f8ede4574adb5adcd7d65c2307e37e60e81f79bbf53cbccf01ef",
+    "size_bytes": 412832
+  },
+  "victim_NODE-2805A532D7B4_partial_wormhole_r1_oct19_0506PM_telem.csv": {
+    "row_count": 6932,
+    "sha256": "f060ba9f8873aa6ed8ba242e93ee3e45edf364f56807f81c839f915a59c334e1",
+    "size_bytes": 547469
+  },
+  "victim_NODE-704BCA25B768_partial_wormhole_r1_oct19_0505PM_telem.csv": {
+    "row_count": 6654,
+    "sha256": "0af90698ae40d54cc4db31bc9df5702e57928c9cb54050412b8b1ed57bd38e8f",
+    "size_bytes": 518710
+  },
+  "victim_NODE-B4BFE932FE90_partial_wormhole_r1_oct19_0502PM_telem.csv": {
+    "row_count": 7003,
+    "sha256": "5d0b4f430285ff0becb3ea38ead6bc195879d285f8ea218672de5a28fc7adba4",
+    "size_bytes": 547552
+  },
+  "victim_NODE-B4BFE934ED80_partial_wormhole_r1_oct19_0504PM_telem.csv": {
+    "row_count": 6708,
+    "sha256": "657812fdb91facd05092939c98a0f3f18ab13133ddfd201f23a2703691cf0fb5",
+    "size_bytes": 550906
+  }
+}

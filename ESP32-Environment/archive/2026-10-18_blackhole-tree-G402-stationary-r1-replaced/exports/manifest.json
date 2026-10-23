@@ -1,0 +1,47 @@
+{
+  "child_child-4_tree_blackhole_r1_sept30_0259PM_telem.csv": {
+    "row_count": 3040,
+    "sha256": "3f2c1db31a1197854bf8b70792ab1fa2bfbd8ddaf101a0c87d957b67b67295f0",
+    "size_bytes": 251183
+  },
+  "child_child-5_tree_blackhole_r1_sept30_0256PM_telem.csv": {
+    "row_count": 4580,
+    "sha256": "0379bfca09ad0d747fc4ce2dd2309f63380710250e9491055d305eed53a14e2e",
+    "size_bytes": 380111
+  },
+  "child_child-6_tree_blackhole_r1_sept30_0259PM_telem.csv": {
+    "row_count": 6617,
+    "sha256": "28fe8562d0914c9891d87736b890b2b7495761655f266c7fcd7534e6b6777cf7",
+    "size_bytes": 522784
+  },
+  "child_child-7_tree_blackhole_r1_sept30_0257PM_telem.csv": {
+    "row_count": 6617,
+    "sha256": "4955b03c71c54fce2a62de914faf85e48f584fc4c2a533dac5fa524990bfca92",
+    "size_bytes": 528312
+  },
+  "child_node2_tree_blackhole_r1_sept30_0259PM_telem.csv": {
+    "row_count": 6616,
+    "sha256": "f82087d2ea4c22e2fe3b9a54960131de2892af9b1420b6fb6022ec3218072876",
+    "size_bytes": 523330
+  },
+  "child_node3_tree_blackhole_r1_sept30_0304PM_telem.csv": {
+    "row_count": 5653,
+    "sha256": "1a050a8d9ea2c398d80c1535c6b54f73ce9b344074cdb28e71a5e34192a771b2",
+    "size_bytes": 438120
+  },
+  "child_node4_tree_blackhole_r1_sept30_0301PM_telem.csv": {
+    "row_count": 6617,
+    "sha256": "8e61dee08a8f7f263f31d0ba6ba0195dfe6ddae2276d18337380f70397b4840d",
+    "size_bytes": 574859
+  },
+  "root_node1_tree_blackhole_r1_sept30_0255PM_arrivals.csv": {
+    "row_count": 2901,
+    "sha256": "5b01d28380c8fa947647d340aef6aed110e04184ab22ebc01231e5e84d8d2113",
+    "size_bytes": 289932
+  },
+  "root_node1_tree_blackhole_r1_sept30_0255PM_telem.csv": {
+    "row_count": 6616,
+    "sha256": "aecd231f1b0210aa38a64aad975067dbd72e78c5887ad02d68e1f5b6c4053e3e",
+    "size_bytes": 492083
+  }
+}
