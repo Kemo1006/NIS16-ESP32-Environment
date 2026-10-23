@@ -15,6 +15,60 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #87 — Oct 23, 2026 · ~4:30 PM — follow-up to #86: the new layout is deliberate (root 0C80, tunnel ends B0:18 + F4:18)
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `78ac088`
+> **Request:** "we changed our nodes - our root is 20:80 [0C80] and B0:18 and F4:18 our tunnel ends"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | G402 | burst | r1 | oct. 23 2:17 / 2:32 / 2:41 / 2:50 / 3:18 PM (new layout) | root run logs only |
+
+| Check | Result | Detail |
+|---|---|---|
+| #86 advice "go back to root B0:18" | ⚠️ withdrawn | layout change is intentional; the rest of #86 stands |
+| Each board's own uptime (root NODESTAT `up=`) | ⚠️ | victims: 0-1 reset per run. **B0:18 never reported at all in 2:17, 2:41, 2:50, 3:18** - only in 2:32 (the one healthy run, B0:18 = B at H04, UART OK) |
+| B0:18 as A, 3:18 PM | ❌ | joins the root's Wi-Fi at 92 / 171 / 319 / 412 s, sends nothing, kicked 30 s later each time (`inactive timer`, reason 4) = resets or loses power right after joining (brownout on TX or crash) - not proven, needs its card / serial |
+| UART tunnel | ❌ | 3:18 PM: B (F4:18) `UART ECHO (own TX->RX)` then `UART LOST`, root: "UART TUNNEL NOT WORKING"; 2:41 PM: `UART NO SIGNAL` |
+| Leftover state between attempts | ❌ | 2:41 PM: A (F4:18) still reports `phase 0x02 WORMHOLE` 33 s into the new run - not restarted after the 2:32 PM run was stopped |
+
+**Verdict: ❌ in the new layout the struggle is the tunnel END B0:18 (mute after every join, absent in 4/5 runs) plus the UART wiring after the A/B swap, plus boards carrying the previous attempt's phase. Next: read B0:18's card (`python tools/fetch_crashes.py --card E:\` + count its `_b<boot>` files from 3:18 PM), give B0:18 solid power, re-check the crossed UART + common GND (Wizard > MAINTENANCE > UART tunnel test), power-cycle/reflash EVERY board between attempts.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #86 — Oct 23, 2026 · ~4 PM — tree wormhole: why today's G402 burst runs struggle to join (vs the oct. 22 PASS runs) + firmware check
+
+> **Requested by:** Basti · **Laptop:** Basti's (S:\ working copy, root built here with local IDF 5.3.5) · **Commit:** `78ac088` (firmware = `1c92df0` D-40; working tree firmware sources = HEAD)
+> **Request:** "verify why the recent runs in tree topology are struggling to connect today unlike yesterday" + "check all the successful tree wormhole and check the current firmware"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| wormhole | tree | G402 | stationary | r1 | oct. 22 7:57 PM (PASS) | root run log + exports |
+| wormhole | tree | DLSU_Library | stationary | r1 | oct. 22 8:38 PM (PASS) | root run log + exports |
+| wormhole | tree | G402 | highload | r1 | oct. 23 10:58 AM (PASS) | root run log + exports |
+| wormhole | tree | G402 | burst | r1 | oct. 23 12:14 PM - 3:18 PM, 9 attempts, none exported | root run logs only (*.log, git-ignored, this laptop) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Firmware of the 3 PASS runs (root boot log) | ✅ | 7:57 PM + 8:38 PM: built oct. 22 3:51 PM = `ec479ca`, max_children=10, no D-36/D-38. 10:58 AM highload: built oct. 23 10:56 AM = D-36 + D-37 cap 2 + D-38 assoc 30 s - **passed anyway** |
+| Fan-out cap as the cause | ⚠️ partly | cap 2 runs: highload PASS, burst 12:14-2:50 failed; cap 10 (D-40) 3:18 PM also failed -> cap is not the whole cause |
+| Join health (script over root logs) | ❌ burst | PASS: all 8 in 12-72 s, 0-2 count drops. Burst: 4/9 never had all 8; others 41-86 s with up to 7 drops; only 10:58 AM + 2:32 PM reached Phase 0 |
+| Who was missing / dropped | ❌ | 1:14 PM: BOTH wormhole ends never joined (5/7 = all victims). Drops were whole branches (3-5 boards at once), e.g. 3:18 PM 122 s: 1C38's subtree (B768, FE90, B) |
+| Disconnect reasons at the root | ❌ burst only | reason 15 (4-way handshake timeout) x3-10 in 5 burst runs (D7B4, ED80, FE90, B768, 1C38), 0 in PASS runs; reason 4 (inactivity, D-38 30 s) x7 at 3:18 PM (B0:18 = A kicked 3x) |
+| Roles / boards vs the PASS runs | ❌ changed | PASS: root always B0:18, ends = 0C80 + F4:18. Today: root moved to 0C80 from 2:17 PM (0C80 = board that restarted 3x on oct. 22, D-36); B0:18 used as an end; 1C38 (brownout board, #70) = B at 12:33 PM and the H01 hub at 3:18 PM |
+| B's link | ❌ 3:18 PM | B (F4:18) RSSI -80..-89 dBm vs -57 (7:57 PM) / -73..-75 (PASS) |
+| Children's firmware | ⚠️ unverifiable | no child flash logs / child ELFs on this laptop today (only 5 root ELFs); children do not report a build to the root -> mixed builds possible |
+| 2:32 PM burst run | ⚠️ healthy | 8/8 in 41 s, 0 drops, tunnel test OK (9), A F4:18 H02 / B B0:18 H04; stopped by hand ~4 min into BASELINE, export skipped (data on root SD) |
+
+**Findings:**
+- Yesterday's success was firmware `ec479ca` + a fixed board layout (root B0:18, ends 0C80/F4:18, good B signal). Today's failures coincide with the cap-2 firmware (morning to 2:50 PM) AND a reshuffled layout (new root, B0:18 as an end, 1C38 in a key slot) AND handshake failures that the PASS runs never show (channel contention / weak links in G402 at midday - not proven, no sniffer analysis done).
+- Current firmware (HEAD, D-40): cap 10 again (= `ec479ca`), but still carries D-36 (ends LEAF), D-37 B fallback, D-38 (30 s assoc expire, all tree nodes), D-39 (ends scan ch 11 only). D-38 means a silent board holds its slot 30 s before the parent frees it (3:18 PM: 7 kicks).
+- Not checked: children's serial logs (on the flashing laptop), sniffer PCAPs, which laptop/commit flashed the children.
+
+**Verdict: ⚠️ NOT ONE CAUSE - the cap-2 firmware explains the 12:14-2:50 PM runs, but 3:18 PM (cap 10) failed on layout/RF: new root 0C80, brownout board 1C38 as a hub, B at -80..-89 dBm. Next: reflash ALL boards (root + children) from HEAD on one laptop, restore the PASS layout (root B0:18, ends 0C80/F4:18, 1C38 out), keep B above ~-75 dBm.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #85 — Oct 23, 2026 · ~1:30 AM — every benign (baseline) cell: scenario verdict added to the benign verifier
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `d777056` (+ uncommitted verifier/GUI fix)
