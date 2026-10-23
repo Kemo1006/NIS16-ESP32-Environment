@@ -1,0 +1,25 @@
+collect_run.py --ports COM3,COM6,COM7,COM9,COM10,COM14,COM15 --attack none --topology star --location Yuchengco --scenario highload --repeat 1 --since 2026-10-22 14:20 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-star-yuchengco-highload.json --expect-mac COM3=704BCA25B768;COM6=B4BFE934ED80;COM7=2805A532D7B4;COM9=F42DC973E618;COM10=20500DE71C38;COM14=B4BFE932FE90;COM15=20500DE70C80 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp79CB.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\star\Yuchengco\highload\collect-scan_oct23_022051am.log)
+
+-- COM3: reading the card ...
+COLLECT: COM3 704BCA25B768 OK would copy victim_NODE_704BCA25B768_r1_b1_telem.csv (5013 rows, ran 2026-10-23 01:57:29)
+
+-- COM6: reading the card ...
+COLLECT: COM6 B4BFE934ED80 OK would copy victim_NODE_B4BFE934ED80_r1_b1_telem.csv (4963 rows, ran 2026-10-23 01:57:05)
+
+-- COM7: reading the card ...
+COLLECT: COM7 2805A532D7B4 OK would copy victim_NODE_2805A532D7B4_r1_b2_telem.csv (5013 rows, ran 2026-10-23 01:49:37)
+
+-- COM9: reading the card ...
+COLLECT: COM9 F42DC973E618 OK would copy victim_NODE_F42DC973E618_r1_b1_telem.csv (5013 rows, ran 2026-10-23 01:57:26)
+
+-- COM10: reading the card ...
+COLLECT: COM10 20500DE71C38 OK would copy victim_NODE_20500DE71C38_r1_b1_telem.csv (5013 rows, ran 2026-10-23 01:57:19)
+
+-- COM14: reading the card ...
+COLLECT: COM14 B4BFE932FE90 OK would copy victim_NODE_B4BFE932FE90_r1_b1_telem.csv (5013 rows, ran 2026-10-23 01:56:58)
+
+-- COM15: reading the card ...
+COLLECT: COM15 20500DE70C80 OK would copy victim_NODE_20500DE70C80_r1_b2_telem.csv (? rows, ran 2026-10-23 01:48:12) - PARTIAL: the board was RESET during the run (ended by an unknown reset (power cut / unplugged)) - took its run piece (396,620 B, ran 2026-10-23 01:48:12; 1 piece(s) on the card). Its data stops at the reset - check the run summary
+
+COLLECT_SUMMARY: ok=7 skip=0 fail=0

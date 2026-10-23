@@ -1,0 +1,7 @@
+collect_run.py --ports COM9 --attack none --topology linear --location G402 --scenario highload --repeat 1 --since 2026-10-22 12:24 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-linear-g402-highload.json --expect-mac COM9=F42DC973E618 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmp5119.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\G402\highload\collect-scan_oct23_122448am.log)
+
+-- COM9: reading the card ...
+COLLECT: COM9 F42DC973E618 FAIL no clean file of this run in the time window - this attack + topology was recorded at ANOTHER location (DLSU_Library ran 2026-10-22 23:57:20); tick 'cards may have recorded the wrong location' only if this run really was at G402
+
+COLLECT_SUMMARY: ok=0 skip=0 fail=1

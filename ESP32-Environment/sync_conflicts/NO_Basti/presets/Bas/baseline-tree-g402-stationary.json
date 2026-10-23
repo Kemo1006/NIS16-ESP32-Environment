@@ -1,0 +1,75 @@
+﻿{
+    "attack":  "none",
+    "topology":  "tree",
+    "location":  "G402",
+    "scenario":  "stationary",
+    "owner":  "Bas",
+    "repeat":  1,
+    "expectedChildren":  7,
+    "savedAt":  "2026-10-22 07:53",
+    "boards":  [
+                   {
+                       "Label":  "node2",
+                       "Port":  "COM10",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "20:50:0d:e7:1c:38",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node3",
+                       "Port":  "COM3",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "20:50:0d:e7:0c:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node7",
+                       "Port":  "COM14",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "b4:bf:e9:32:fe:90",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node4",
+                       "Port":  "COM9",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "f4:2d:c9:73:e6:18",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node6",
+                       "Port":  "COM7",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "28:05:a5:32:d7:b4",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node8",
+                       "Port":  "COM6",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "b4:bf:e9:34:ed:80",
+                       "ScenarioTarget":  false
+                   },
+                   {
+                       "Label":  "node5",
+                       "Port":  "COM5",
+                       "Role":  "child",
+                       "Kind":  "plain",
+                       "Display":  "plain child",
+                       "Mac":  "70:4b:ca:25:b7:68",
+                       "ScenarioTarget":  false
+                   }
+               ]
+}

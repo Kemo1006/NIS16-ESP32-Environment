@@ -1,0 +1,106 @@
+Setting COM15's clock from this laptop (so captures get real dates) ...
+SCENARIO_CHECK: FIXED stationary -> highload (applies on the next boot)
+LOCATION_CHECK: FIXED DLSU_Library -> G402 (applies on the next boot)
+-> SET_TIME (host clock -> board + SD card) ...
+   board clock: 2026-10-22 23:55:21 PHT (real clock, from this laptop)
+   Saved to clock.txt on the card — the next boot starts from it, so captures get true dates.
+Full-erasing COM15 before this run (guaranteed-clean SPIFFS; auto-fixes 'storage full') ...
+esptool.py v4.11.0
+Serial port COM15
+Connecting......
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Erasing flash (this may take a while)...
+Chip erase completed successfully in 7.5 seconds.
+Hard resetting via RTS pin...
+Board: node3 (on COM15, MAC 20:50:0d:e7:0c:80)
+Flashing + monitoring child on COM15 (topology=linear, attack=none, scenario=highload, build=C:\esp32b\NIS16-ESP32-Environment-THESIS3_5bb1685c\child_node\build_child_none_linear_highload_GUI). Ctrl+] when it reaches 'terminate' to move on - NO export (skipped instantly; data stays on the SD card).
+esptool.py --chip esp32 -p COM15 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 child_node.bin 0x8000 partition_table/partition-table.bin 0xe000 ota_data_initial.bin
+esptool.py v4.11.0
+Serial port COM15
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: 20:50:0d:e7:0c:80
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00007fff...
+Flash will be erased from 0x00010000 to 0x0012dfff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+SHA digest in image updated
+Compressed 26848 bytes to 16430...
+Writing at 0x00001000... (50 %)
+Writing at 0x0000789c... (100 %)
+Wrote 26848 bytes (16430 compressed) at 0x00001000 in 0.5 seconds (effective 396.0 kbit/s)...
+Hash of data verified.
+Compressed 1170016 bytes to 730251...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001bd87... (4 %)
+Writing at 0x000294e1... (6 %)
+Writing at 0x00033782... (8 %)
+Writing at 0x0003f064... (11 %)
+Writing at 0x00045519... (13 %)
+Writing at 0x0004b2f2... (15 %)
+Writing at 0x00050a93... (17 %)
+Writing at 0x000561b7... (20 %)
+Writing at 0x0005bf90... (22 %)
+Writing at 0x00061cb2... (24 %)
+Writing at 0x00067cad... (26 %)
+Writing at 0x0006dc2a... (28 %)
+Writing at 0x000739d5... (31 %)
+Writing at 0x00079e58... (33 %)
+Writing at 0x0007f4f5... (35 %)
+Writing at 0x00084e57... (37 %)
+Writing at 0x0008a458... (40 %)
+Writing at 0x0008fad8... (42 %)
+Writing at 0x00095372... (44 %)
+Writing at 0x0009ac8f... (46 %)
+Writing at 0x000a0406... (48 %)
+Writing at 0x000a59c9... (51 %)
+Writing at 0x000aad6a... (53 %)
+Writing at 0x000b09a4... (55 %)
+Writing at 0x000b6996... (57 %)
+Writing at 0x000bc22c... (60 %)
+Writing at 0x000c19c4... (62 %)
+Writing at 0x000c771a... (64 %)
+Writing at 0x000cd3df... (66 %)
+Writing at 0x000d2d38... (68 %)
+Writing at 0x000d8883... (71 %)
+Writing at 0x000de51c... (73 %)
+Writing at 0x000e408e... (75 %)
+Writing at 0x000e9f47... (77 %)
+Writing at 0x000ef947... (80 %)
+Writing at 0x000f4f3d... (82 %)
+Writing at 0x000fcfd0... (84 %)
+Writing at 0x001053d1... (86 %)
+Writing at 0x0010b2cf... (88 %)
+Writing at 0x0011369d... (91 %)
+Writing at 0x00119308... (93 %)
+Writing at 0x0011ec8a... (95 %)
+Writing at 0x00125276... (97 %)
+Writing at 0x0012a67c... (100 %)
+Wrote 1170016 bytes (730251 compressed) at 0x00010000 in 17.6 seconds (effective 531.4 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 119...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (119 compressed) at 0x00008000 in 0.0 seconds (effective 1292.1 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.0 seconds (effective 2478.6 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+FLASH_ONLY_DONE: COM15 flashed and started (no monitor - the GUI listens to it)

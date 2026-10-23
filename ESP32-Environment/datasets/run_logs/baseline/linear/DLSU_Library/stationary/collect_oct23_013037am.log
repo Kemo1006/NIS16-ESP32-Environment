@@ -1,0 +1,35 @@
+collect_run.py --ports COM5,COM6,COM3,COM7,COM14,COM10 --attack none --topology linear --location DLSU_Library --scenario stationary --repeat 1 --since 2026-10-22 13:29 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-linear-dlsu_library-stationary.json --expect-mac COM5=704BCA25B768;COM6=B4BFE934ED80;COM3=20500DE70C80;COM7=2805A532D7B4;COM14=B4BFE932FE90;COM10=20500DE71C38 --pick COM5=baseline/linear/DLSU_Library/victim_NODE_704BCA25B768_r1_b1_telem.csv;COM6=baseline/linear/DLSU_Library/victim_NODE_B4BFE934ED80_r1_b2_telem.csv;COM3=baseline/linear/DLSU_Library/victim_NODE_20500DE70C80_r1_b1_telem.csv;COM7=baseline/linear/DLSU_Library/victim_NODE_2805A532D7B4_r1_b1_telem.csv;COM14=baseline/linear/DLSU_Library/victim_NODE_B4BFE932FE90_r1_b1_telem.csv;COM10=baseline/linear/DLSU_Library/victim_NODE_20500DE71C38_r1_b1_telem.csv
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\collect_oct23_013037am.log)
+
+-- COM5: reading the card ...
+   checked victim_NODE_704BCA25B768_r1_b1_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-704BCA25B768_linear_none_r1_oct23_0130AM_telem.csv|5595
+COLLECT: COM5 704BCA25B768 OK SHORT BASELINE - victim_NODE_704BCA25B768_r1_b1_telem.csv -> victim_NODE-704BCA25B768_linear_none_r1_oct23_0130AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s
+
+-- COM6: reading the card ...
+   checked victim_NODE_B4BFE934ED80_r1_b2_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 100 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-B4BFE934ED80_linear_none_r1_oct23_0131AM_telem.csv|5213
+COLLECT: COM6 B4BFE934ED80 OK SHORT BASELINE - victim_NODE_B4BFE934ED80_r1_b2_telem.csv -> victim_NODE-B4BFE934ED80_linear_none_r1_oct23_0131AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 100 s
+
+-- COM3: reading the card ...
+   checked victim_NODE_20500DE70C80_r1_b1_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-20500DE70C80_linear_none_r1_oct23_0132AM_telem.csv|5595
+COLLECT: COM3 20500DE70C80 OK SHORT BASELINE - victim_NODE_20500DE70C80_r1_b1_telem.csv -> victim_NODE-20500DE70C80_linear_none_r1_oct23_0132AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s
+
+-- COM7: reading the card ...
+   checked victim_NODE_2805A532D7B4_r1_b1_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-2805A532D7B4_linear_none_r1_oct23_0133AM_telem.csv|5593
+COLLECT: COM7 2805A532D7B4 OK SHORT BASELINE - victim_NODE_2805A532D7B4_r1_b1_telem.csv -> victim_NODE-2805A532D7B4_linear_none_r1_oct23_0133AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s
+
+-- COM14: reading the card ...
+   checked victim_NODE_B4BFE932FE90_r1_b1_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 13 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-B4BFE932FE90_linear_none_r1_oct23_0133AM_telem.csv|4343
+COLLECT: COM14 B4BFE932FE90 OK SHORT BASELINE - victim_NODE_B4BFE932FE90_r1_b1_telem.csv -> victim_NODE-B4BFE932FE90_linear_none_r1_oct23_0133AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 13 s
+
+-- COM10: reading the card ...
+   checked victim_NODE_20500DE71C38_r1_b1_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s -> SHORT_BASELINE
+COLLECT_FILE: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary\victim_NODE-20500DE71C38_linear_none_r1_oct23_0134AM_telem.csv|5595
+COLLECT: COM10 20500DE71C38 OK SHORT BASELINE - victim_NODE_20500DE71C38_r1_b1_telem.csv -> victim_NODE-20500DE71C38_linear_none_r1_oct23_0134AM_telem.csv: baseline 300 s, attack 0 s, cooldown 120 s, stabilise 138 s
+
+COLLECT_SUMMARY: ok=6 skip=0 fail=0
+

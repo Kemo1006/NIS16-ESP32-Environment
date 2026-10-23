@@ -1,0 +1,4 @@
+collect_run.py --ports COM3,COM5,COM6,COM7,COM9,COM10,COM14 --attack none --topology linear --location DLSU_Library --scenario stationary --repeat 1 --since 2026-10-22 14:15 --skip-mac b0:cb:d8:f3:32:18 --roster S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\presets\Cal\baseline-linear-dlsu_library-stationary.json --expect-mac COM3=20500DE70C80;COM5=704BCA25B768;COM6=B4BFE934ED80;COM7=2805A532D7B4;COM9=F42DC973E618;COM10=20500DE71C38;COM14=B4BFE932FE90 --dry-run --plan-json C:\Users\Basti\AppData\Local\Temp\tmpD9E2.tmp
+(log: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\collect-scan_oct23_021542am.log)
+
+-- COM3: reading the card ...

@@ -1,0 +1,76 @@
+NIS16 Capture Studio run log - baseline-linear-dlsu_library-stationary.json - 23/10/2026 1:10:09 am
+Logging this run -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\baseline-linear-dlsu_library-stationary_r1_oct23_0110AM.log
+
+> Parallel flash: 7 children, 3 at a time   (01:10:09 am)
+  node6 on COM7: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node6_COM7_flash_oct23_0110am.log)
+  node6: SCENARIO_CHECK: OK stationary
+  node6: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node7 on COM14: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node7_COM14_flash_oct23_0110am.log)
+  node7: SCENARIO_CHECK: OK stationary
+  node7: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node8 on COM6: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node8_COM6_flash_oct23_0110am.log)
+  node6: Hash of data verified.
+  node8: SCENARIO_CHECK: OK stationary
+  node8: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node6: Hash of data verified.
+  node6: Hash of data verified.
+  node6: Hash of data verified.
+  node6: FLASH_ONLY_DONE: COM7 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node6 (COM7) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node6_COM7_serial_oct23_0110am.log
+  node6 on COM7: flashed + started in 30 sec
+  node5 on COM5: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node5_COM5_flash_oct23_0110am.log)
+  node5: SCENARIO_CHECK: OK stationary
+  node5: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node5: Hash of data verified.
+  node7: Hash of data verified.
+  node8: Hash of data verified.
+  node5: Hash of data verified.
+  node5: Hash of data verified.
+  node5: Hash of data verified.
+  node5: FLASH_ONLY_DONE: COM5 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node5 (COM5) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node5_COM5_serial_oct23_0111am.log
+  node5 on COM5: flashed + started in 32 sec
+  node2 on COM10: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node2_COM10_flash_oct23_0111am.log)
+  node2: SCENARIO_CHECK: OK stationary
+  node2: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node7: Hash of data verified.
+  node7: Hash of data verified.
+  node7: Hash of data verified.
+  node7: FLASH_ONLY_DONE: COM14 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node7 (COM14) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node7_COM14_serial_oct23_0111am.log
+  node7 on COM14: flashed + started in 1 min 02 sec
+  node8: Hash of data verified.
+  node8: Hash of data verified.
+  node3 on COM3: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node3_COM3_flash_oct23_0111am.log)
+  node8: Hash of data verified.
+  node8: FLASH_ONLY_DONE: COM6 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node8 (COM6) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node8_COM6_serial_oct23_0111am.log
+  node8 on COM6: flashed + started in 1 min 01 sec
+  node3: SCENARIO_CHECK: OK stationary
+  node3: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node4 on COM9: flashing  (log S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node4_COM9_flash_oct23_0111am.log)
+  node2: Hash of data verified.
+  node4: SCENARIO_CHECK: OK stationary
+  node4: LOCATION_CHECK: FIXED G402 -> DLSU_Library (applies on the next boot)
+  node3: Hash of data verified.
+  node4: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: Hash of data verified.
+  node2: FLASH_ONLY_DONE: COM10 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node2 (COM10) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node2_COM10_serial_oct23_0111am.log
+  node2 on COM10: flashed + started in 35 sec
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: Hash of data verified.
+  node3: FLASH_ONLY_DONE: COM3 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node3 (COM3) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node3_COM3_serial_oct23_0111am.log
+  node3 on COM3: flashed + started in 33 sec
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: Hash of data verified.
+  node4: FLASH_ONLY_DONE: COM9 flashed and started (no monitor - the GUI listens to it)
+  crash watch on node4 (COM9) -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\run_logs\baseline\linear\DLSU_Library\stationary\node4_COM9_serial_oct23_0111am.log
+  node4 on COM9: flashed + started in 32 sec
+  parallel flash: 7 of 7 children flashed in 1 min 45 sec
+All boards done in 3 min 10 sec. Exports -> S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\linear\DLSU_Library\stationary
