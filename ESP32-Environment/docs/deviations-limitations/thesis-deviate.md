@@ -612,3 +612,15 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Effect** | B stays associated while it looks for a better parent; both ends' first-join scans also run ~13x faster (B's fallback after 6 scans now ~2 s instead of ~28 s). Not yet hardware-tested. |
 | **Checks** | Compile-checked IDF 5.5.4 (tree WH A/B, tree blackhole/baseline, root) - 0 warnings. On hardware: B's serial log shows no `bcn_timeout` / `reason 200` right after `WORMHOLE B ... Looking for a parent`. If B still waits with `the ones in reach are full`, the cause is capacity (cap 2 + leaf ends) - next lever: let non-root nodes take 3 children while the root keeps 2. |
 | **Paper edit** | None needed beyond D-37's tree paragraph (implementation detail); listed in checklist A42 for completeness. |
+
+## D-40 · Tree fan-out back to the stock 10 (D-37's cap of 2 reverted) (oct. 23, 2026)
+
+| | |
+|---|---|
+| **Before** | D-37 (oct. 22, 10:20 PM) capped every tree board at 2 children, copying partial. With the two wormhole ends side by side and both LEAVES (D-36), the ends competed for the few free slots near them: user (oct. 23): "if one wormhole attacker joins, the other attacker is having difficulty joining". |
+| **Why** | The tree wormhole run that worked end to end - oct. 22 7:57 PM, G402 stationary, firmware ec479ca (built 3:51 PM, `max_children=10`): 7/7 in 42 s, A at H01 + B at H03 (skips 2), UART OK, 8 tunnel tests, no drop / offline / re-parent in baseline, attack or cooldown, ALL 8 BOARDS DONE. Its root had 5 direct children incl. A - a layout cap 2 cannot form. User: "I think the firmware in there is correct"; chose "undo the cap, keep the other fixes". |
+| **We do** | `MESH_TREE_MAX_CHILDREN` defaults to `MESH_MAX_CHILDREN` (10). Kept: D-36 (ends are leaves), D-37's B fallback (B never waits forever), D-38 (30 s assoc expire), D-39 (single-channel scan). Partial unchanged (2). |
+| **Basis** | Hardware evidence from the working run; tree depth comes from placement (§4.2.2: placement does most of the work). |
+| **Effect** | Tree builds form as in the 7:57 PM run again, plus the D-36/D-38/D-39 protections. The cap can still be set per build (`-DMESH_TREE_MAX_CHILDREN=N`). |
+| **Checks** | Compile-checked IDF 5.5.4, 6 variants 0 warnings; preprocessed tree build `max_children = 10`, partial `= 2` and identical to before. Not hardware-tested. |
+| **Paper edit** | Withdraws A38 (tree "at most two children" sentence) - see checklist A43. |

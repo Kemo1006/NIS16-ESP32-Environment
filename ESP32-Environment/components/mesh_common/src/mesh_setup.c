@@ -273,8 +273,8 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
      * config below). Defaults = NIS_TOPO_TREE = exact M1 behaviour.
      *
      *   STAR    (§4.2.2.1): cap depth at 2 → every node a direct child of root.
-     *   TREE    (§4.2.2.2): self-organising multi-hop tree (default), fan-out
- *                       capped like PARTIAL (D-37) so it branches, not flattens.
+     *   TREE    (§4.2.2.2): self-organising multi-hop tree (default); fan-out
+     *                       MESH_TREE_MAX_CHILDREN (stock 10 again, D-40).
      *   LINEAR  (§4.2.2.3): force a CHAIN + 1 child/node → hop-by-hop line.
      *   PARTIAL (§4.2.2.4): multi-hop like TREE but narrowed fan-out → nodes
      *                       branch across a subset of parents instead of all
@@ -297,7 +297,7 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 #elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
     max_children = MESH_PARTIAL_MAX_CHILDREN;/* narrowed fan-out → branched mesh */
 #elif (MESH_TOPOLOGY == NIS_TOPO_TREE)
-    max_children = MESH_TREE_MAX_CHILDREN;   /* D-37: partial's fan-out → multi-hop tree */
+    max_children = MESH_TREE_MAX_CHILDREN;   /* stock 10 unless overridden (D-40) */
 #endif
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(max_layer));
     ESP_LOGI(TAG, "Topology shaping: %s (max_layer=%d, max_children=%d)",

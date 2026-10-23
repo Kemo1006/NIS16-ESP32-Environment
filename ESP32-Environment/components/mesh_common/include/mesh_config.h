@@ -93,9 +93,8 @@
  *                      B sits one hop deeper and the tunnel is a shortcut
  *                      (mesh_setup.c STAR_HUB_WORMHOLE).
  *   NIS_TOPO_TREE    — §4.2.2.2: self-organising ESP-MESH tree, multi-hop
- *                      layering beneath the root. D-37 (oct. 22 2026): fan-out
- *                      capped like partial (MESH_TREE_MAX_CHILDREN) - the stock
- *                      cap let the root take every board (flat, depth 2).
+ *                      layering beneath the root (stock fan-out again since
+ *                      D-40; MESH_TREE_MAX_CHILDREN can still cap it).
  *   NIS_TOPO_LINEAR  — §4.2.2.3: force a CHAIN (MESH_TOPO_CHAIN) AND cap fan-out
  *                      at 1 child/node, so nodes line up hop-by-hop from the
  *                      farthest node toward the root.
@@ -129,14 +128,14 @@
  *  branched partial mesh (not a chain) can form. */
 #define MESH_PARTIAL_MAX_CHILDREN  2
 
-/** TREE (D-37, oct. 22 2026): the same narrowed fan-out partial uses. With the
- *  stock 10 the root took every board it could hear (oct. 22 tree/G402 run: 5
- *  boards at H01, "flat like a star", the one H02/H03 branch dropped mid-run),
- *  while partial's cap of 2 gave a stable root -> 2 x H01 -> H02 -> H03 tree in
- *  every run. Cap 2 forces the same branching depth. Override with
- *  -DMESH_TREE_MAX_CHILDREN=3 for a wider (shallower) tree; never above 10. */
+/** TREE fan-out. D-37 (oct. 22 2026) set it to partial's 2; D-40 (oct. 23 2026)
+ *  put it BACK to the stock 10: the tree wormhole run that worked end to end
+ *  (oct. 22 7:57 PM, G402 stationary, firmware ec479ca) had 5 boards at H01
+ *  incl. A - impossible with 2, and with 2 the second wormhole end struggled to
+ *  find a free slot near the first. Tree depth comes from placement, as in
+ *  that run. Override with -DMESH_TREE_MAX_CHILDREN=N to try a cap again. */
 #ifndef MESH_TREE_MAX_CHILDREN
-#define MESH_TREE_MAX_CHILDREN     2
+#define MESH_TREE_MAX_CHILDREN     MESH_MAX_CHILDREN
 #endif
 
 /** TREE (D-38): seconds a parent keeps a silent child before disassociating it

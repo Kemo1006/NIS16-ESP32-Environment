@@ -1,7 +1,7 @@
 # Status
 
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** oct. 22, 2026 ~9:30 PM (Angelo's laptop) - **D-37 + D-38 (NOT committed): TREE now uses partial's fan-out cap (2 children/node) and parents keep a silent child 30 s (IDF guidance, was 10 s)** so it branches (root -> 2 x H01 -> H02 -> H03) instead of the root taking every board; tree wormhole B falls back to partial's 'at least as deep as A' rule after 6 empty scans instead of waiting. 6 variants build clean (IDF 5.5.4, 0 warnings); partial's preprocessed mesh_setup.c identical to HEAD. REFLASH ALL tree boards (root too). GUI vs wizard: same run.ps1 + same firmware; the oct. 22 3:52 PM GUI tree run (S:\ laptop, IDF 5.3.5) formed A H01 / B H03 correctly and failed on boards DROPPING mid-baseline, not on the GUI - ask which laptop/commit ran the wizard run that worked. Still local on purpose: presets/Cal, archive/.
+**Updated:** oct. 22, 2026 ~9:30 PM (Angelo's laptop) - **D-37 + D-38 (NOT committed): TREE fan-out back to 10 (D-40, cap 2 reverted); parents keep a silent child 30 s (IDF guidance, was 10 s)** so it branches (root -> 2 x H01 -> H02 -> H03) instead of the root taking every board; tree wormhole B falls back to partial's 'at least as deep as A' rule after 6 empty scans instead of waiting. 6 variants build clean (IDF 5.5.4, 0 warnings); partial's preprocessed mesh_setup.c identical to HEAD. REFLASH ALL tree boards (root too). GUI vs wizard: same run.ps1 + same firmware; the oct. 22 3:52 PM GUI tree run (S:\ laptop, IDF 5.3.5) formed A H01 / B H03 correctly and failed on boards DROPPING mid-baseline, not on the GUI - ask which laptop/commit ran the wizard run that worked. Still local on purpose: presets/Cal, archive/.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Documents\Thesis\THESIS3` · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
@@ -37,4 +37,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 23 (Angelo) — D-39 tree wormhole ends scan only ch 11 (B kept dropping once A joined); benign SCENARIO verdict (#85); trimmed 9 cells. All uncommitted. oct. 22: D-37/D-38 pushed (5a52807).
+- oct. 23 ~3 PM (Angelo) — D-40 tree fan-out back to 10 (cap 2 reverted after the oct. 22 7:57 PM ec479ca run worked); D-39 single-channel scan, benign SCENARIO verdict (#85) pushed earlier (7d50467). Reflash tree boards.
