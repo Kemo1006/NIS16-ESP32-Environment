@@ -1021,6 +1021,7 @@ SCEN_BURST_MIN = 240         # extra probes in 10 s from one child = the burst (
 SCEN_HIGHLOAD_MIN = 3.0      # children's median probes/s in the baseline
 SCEN_NORMAL_MAX = 1.5
 SCEN_ATTACK_S = 180          # PHASE_ATTACK_S
+SCEN_BASELINE_S = 300        # PHASE_BASELINE_S (benign: Phase 0b opens after it)
 
 
 def scenario_issues(df):
@@ -1040,7 +1041,12 @@ def scenario_issues(df):
     if base.empty:
         return [Issue(SKIP, f"{SCEN_TEXT} {sc} - no baseline windows from the children")]
     rate = float(base.groupby("node_id")["_tx"].median().median())
-    atk_ph = 1 if (d["_ph"] == 1).any() else 2
+    # oct. 23 2026: a BENIGN run has no attack phase. Its burst fires in "Phase 0b" (root_main.c:
+    # an attack-length window re-announced as phase 0 after the first PHASE_BASELINE_S), and its
+    # jitter lengthens the baseline (jit_base) - so both are looked for in phase 0.
+    benign = not d["_ph"].isin([1, 2]).any()
+    atk_ph = 0 if benign else (1 if (d["_ph"] == 1).any() else 2)
+    win = "the baseline window" if benign else "the attack"
     # the biggest 10 s excess over each child's own baseline rate, per phase
     spike = {}
     for nid, g in d.sort_values("_t").groupby("node_id"):
@@ -1069,19 +1075,30 @@ def scenario_issues(df):
                                "the children ran highload firmware"))
     if sc == "burst":
         if burst[0] >= SCEN_BURST_MIN:
+            when = (f"{burst[2]:.0f} s into the baseline (benign: Phase 0b opens after the first {SCEN_BASELINE_S} s; "
+                    f"design: 300 probes, 60 s into it)" if benign
+                    else f"{burst[2]:.0f} s into the attack (design: 300 probes, 60 s in)")
             out.append(Issue("OK", f"{SCEN_TEXT} burst APPLIED - {_short(burst[1])} sent {burst[0]:.0f} extra probes within "
-                                   f"10 s, {burst[2]:.0f} s into the attack (design: 300 probes, 60 s in)"))
+                                   f"10 s, {when}"))
         elif elsewhere:
             ph, s = elsewhere[0]
-            out.append(Issue(WARN, f"{SCEN_TEXT} burst NOT APPLIED in the attack - {_short(s[1])} fired ~{s[0]:.0f} probes "
-                                   f"in phase {ph:.0f}, outside the attack window"))
+            out.append(Issue(WARN, f"{SCEN_TEXT} burst NOT APPLIED in {win} - {_short(s[1])} fired ~{s[0]:.0f} probes "
+                                   f"in phase {ph:.0f}, outside {'the baseline window' if benign else 'the attack window'}"))
         else:
             out.append(Issue(WARN, f"{SCEN_TEXT} burst NOT APPLIED - no child sent a burst (largest 10 s excess "
-                                   f"in the attack: {burst[0]:.0f} probes; the burst is 300) - no board was built as the burst target"))
+                                   f"in {win}: {burst[0]:.0f} probes; the burst is 300) - no board was built as the burst target"))
     elif burst[0] >= SCEN_BURST_MIN:
         out.append(Issue(WARN, f"{SCEN_TEXT} {sc} - but a burst-sized spike ({burst[0]:.0f} probes in 10 s from "
-                               f"{_short(burst[1])}) in the attack - was a board built as the burst target?"))
-    if sc == "jitter":
+                               f"{_short(burst[1])}) in {win} - was a board built as the burst target?"))
+    if sc == "jitter" and benign:
+        extra = base_s - SCEN_BASELINE_S
+        if extra >= 3:
+            out.append(Issue("OK", f"{SCEN_TEXT} jitter APPLIED - baseline lasted {base_s:.0f} s (standard {SCEN_BASELINE_S} s; "
+                                   f"a benign run has no attack, so jitter lengthens the baseline)"))
+        else:
+            out.append(Issue(WARN, f"{SCEN_TEXT} jitter not visible - baseline lasted {base_s:.0f} s, the standard length "
+                                   "(the draw can be ~0 s; check the root log for 'TIMING JITTER ACTIVE')"))
+    elif sc == "jitter":
         extra = atk_s - SCEN_ATTACK_S
         if extra >= 3:
             out.append(Issue("OK", f"{SCEN_TEXT} jitter APPLIED - attack lasted {atk_s:.0f} s (standard {SCEN_ATTACK_S} s, "

@@ -600,3 +600,15 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Effect** | A child that really dies is released by its parent after up to 30 s instead of 10 s (the root's heartbeat table has its own staleness timer, unchanged; children detect a lost PARENT independently). Fewer false drops of healthy children expected - not yet measured. |
 | **Checks** | Compile-checked IDF 5.5.4: tree WH A/B, tree blackhole, tree baseline, root tree WH - 0 warnings. **Not hardware-tested**: boot log shows `AP assoc expire: 30 s (D-38 ...)`; compare in-phase parent changes against verification #84's 12/87. |
 | **Paper edit** | Methodology §4.2.2.2 tree: "Parents kept a silent child associated for 30 s (ESP-IDF's recommendation for an encrypted mesh) instead of the 10 s default." Checklist A39. |
+
+## D-39 · Tree: wormhole ends scan only the mesh channel (oct. 23, 2026)
+
+| | |
+|---|---|
+| **Before** | The manual-parent scan (`star_hub_scan`, used by both tree wormhole ends) ran a PASSIVE scan of all 13 channels (`channel = 0`, ~360 ms each, ~4.7 s off the mesh channel). Once end A joins, its UART HELLO gives B A's depth; in tree B then re-checks its parent every 15 s before Phase 0 (WH_B_TREE_DEPTH repick) by running that scan WHILE CONNECTED - so B missed its parent's beacons (`bcn_timeout`, reason 200), dropped and re-joined. |
+| **Why** | User (oct. 23): "if one wormhole attacker joins, the other attacker is having difficulty in joining." Matches the code path exactly: B only re-scans once A's depth is known. |
+| **We do** | Tree builds only: `sc.channel = MESH_CHANNEL` (11) in `star_hub_scan` - ~0.36 s per scan. The mesh never leaves that channel (`allow_channel_switch = false`, no router), so nothing is lost. Partial/star/linear unchanged (preprocessed output identical). |
+| **Basis** | ESP-IDF `wifi_scan_config_t.channel`: 0 = all channels; a station off its AP's channel misses beacons. |
+| **Effect** | B stays associated while it looks for a better parent; both ends' first-join scans also run ~13x faster (B's fallback after 6 scans now ~2 s instead of ~28 s). Not yet hardware-tested. |
+| **Checks** | Compile-checked IDF 5.5.4 (tree WH A/B, tree blackhole/baseline, root) - 0 warnings. On hardware: B's serial log shows no `bcn_timeout` / `reason 200` right after `WORMHOLE B ... Looking for a parent`. If B still waits with `the ones in reach are full`, the cause is capacity (cap 2 + leaf ends) - next lever: let non-root nodes take 3 children while the root keeps 2. |
+| **Paper edit** | None needed beyond D-37's tree paragraph (implementation detail); listed in checklist A42 for completeness. |

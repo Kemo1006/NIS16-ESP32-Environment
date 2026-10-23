@@ -739,6 +739,14 @@ static void star_hub_scan(void)
     wifi_scan_config_t sc = {0};
     sc.show_hidden = 1;                     /* mesh SoftAPs are hidden */
     sc.scan_type   = WIFI_SCAN_TYPE_PASSIVE;
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE)
+    /* D-39 (oct. 23 2026): channel 0 = a passive sweep of all 13 channels, ~4.7 s off the
+     * mesh channel. Once A's HELLO gives B a depth, B re-scans every WH_REPICK_GAP_US while
+     * CONNECTED - so it kept missing its parent's beacons (bcn_timeout, reason 200) and
+     * dropped/rejoined: "when one end joins, the other struggles". The mesh never leaves
+     * MESH_CHANNEL (allow_channel_switch = false), so scan only that: ~0.36 s. */
+    sc.channel = MESH_CHANNEL;
+#endif
     esp_wifi_scan_stop();
     esp_err_t err = esp_wifi_scan_start(&sc, false);
     if (err != ESP_OK) {

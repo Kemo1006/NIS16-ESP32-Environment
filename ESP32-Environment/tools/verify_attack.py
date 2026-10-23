@@ -1784,6 +1784,16 @@ def verify_benign(df):
                 gaps.append((str(n)[-4:], f"{str(n)[-4:]}: windows for only {have} of {whole} s of its {name} "
                                           f"({int(100 * have / whole)}%)"))
 
+    # [4] scenario (oct. 23 2026): the same check the attack verifier runs - was the run
+    # really the scenario it is filed as? NOT APPLIED = a MINOR gap, as for an attack run (D-34)
+    try:
+        scen = ac.scenario_issues(df)
+    except Exception as e:                       # never let this check break the report
+        scen = [ac.Issue(ac.SKIP, f"{ac.SCEN_TEXT} could not run: {e}")]
+    stag = ac.scenario_tag(scen)
+    scen_gap = ["scenario NOT APPLIED - " + " ".join(i.text[len(ac.SCEN_TEXT):].split())[:150]
+                for i in scen if i.level == ac.WARN and "NOT APPLIED" in i.text]
+
     conclusive = tested > 0 and base.sum() > 0 and ctl.sum() > 0
     benign = conclusive and not passed and not bad_health
     word = "INCONCLUSIVE" if not conclusive else ("BENIGN CONFIRMED" if benign else "BENIGN NOT CONFIRMED")
@@ -1805,18 +1815,23 @@ def verify_benign(df):
     for _b, g in gaps:
         P(_wrap("WARN " + g, "     "))
     P()
+    P(" [4] SCENARIO   did the traffic match the scenario this run is filed as?")
+    for it in scen:
+        P(_wrap(f"{CHECK_MARK.get(it.level, it.level)} {it.text}", "     "))
+    P()
     P(" [5] STUDY BASIS")
     for k in ("Z", "A", "K"):
         P(_wrap(f"[{k}]  {STUDIES[k]}", "     "))
     P()
     P("-" * RULE_W)
     why = ["the " + a + " signature PASSED on normal traffic (" + ctl_name + " vs baseline)" for a in passed] + bad_health
+    tag = f"  |  {stag}" if stag else ""
     if word == "BENIGN CONFIRMED":
-        P(" VERDICT: BENIGN CONFIRMED  (no attack signature, healthy delivery)")
+        P(" VERDICT: BENIGN CONFIRMED  (no attack signature, healthy delivery)" + tag)
     elif word == "INCONCLUSIVE":
-        P(" VERDICT: BENIGN INCONCLUSIVE - too little data to test")
+        P(" VERDICT: BENIGN INCONCLUSIVE - too little data to test" + tag)
     else:
-        P(" VERDICT: BENIGN NOT CONFIRMED - " + "; ".join(why[:2]))
+        P(" VERDICT: BENIGN NOT CONFIRMED - " + "; ".join(why[:2]) + tag)
     boards = sorted({b for b, _ in gaps})
     if word != "BENIGN CONFIRMED":
         grade = "FAILED"
@@ -1826,9 +1841,10 @@ def verify_benign(df):
             P(_wrap(w, "     x "))
     else:
         major = len(boards) > IMPACT_MAX_SHARE * max(len(nonroot), 1)
-        grade = "MAJOR GAPS" if major else ("MINOR GAPS" if gaps else "STRONG")
+        nfoot = len(gaps) + len(scen_gap)
+        grade = "MAJOR GAPS" if major else ("MINOR GAPS" if nfoot else "STRONG")
         say = {"STRONG": "benign confirmed, all board data present, nothing to note",
-               "MINOR GAPS": f"benign confirmed; {_n(len(gaps), 'small gap')} in the data - recapture advised",
+               "MINOR GAPS": f"benign confirmed; {_n(nfoot, 'small gap')} - recapture advised",
                "MAJOR GAPS": f"benign confirmed, but {len(boards)} of {len(nonroot)} boards have gaps - "
                              f"recapture required"}[grade]
         P(f" CONFIDENCE: {grade} - {say}")
@@ -1836,14 +1852,21 @@ def verify_benign(df):
         P(_wrap("HEALTH: delivery and forwarding normal in every phase", "     + "))
         for _b, g in gaps:
             P(_wrap(("MAJOR GAP (affects the result): " if major else "MINOR GAP (result not affected): ") + g, "     ~ "))
+        for g in scen_gap:
+            P(_wrap("MINOR GAP (result not affected): " + g, "     ~ "))
         if not gaps:
             P(_wrap("DATA: every board has usable data for every phase", "     + "))
-        P(_wrap(f"REPORT AS: \"BENIGN CONFIRMED{' - major gaps' if major else (' - minor gaps' if gaps else '')}\""
-                + (f" + {_n(len(gaps), 'footnote')} (copy them to the thesis checklist)" if gaps else ""), "     = "))
+        if stag.endswith(": applied"):
+            P(_wrap(f"SCENARIO: {stag[len('scenario '):-len(': applied')]} applied as filed", "     + "))
+        elif stag and not scen_gap:
+            P(_wrap(f"note: scenario {stag[len('scenario '):].split(':')[0]} - check [4]", "     ~ "))
+        P(_wrap(f"REPORT AS: \"BENIGN CONFIRMED{' - major gaps' if major else (' - minor gaps' if nfoot else '')}\""
+                + (f" + {_n(nfoot, 'footnote')} (copy them to the thesis checklist)" if nfoot else ""), "     = "))
     # OUTCOME (oct. 20 2026) - same three words as an attack run, for the benign question
     # "is this a clean normal reference?"
     if word == "BENIGN CONFIRMED" and grade != "MAJOR GAPS":
-        bo = ("PASS", "clean normal traffic: no attack signature moved and delivery stayed healthy", "PASS")
+        bo = ("PASS", "clean normal traffic: no attack signature moved and delivery stayed healthy"
+              + (" (scenario not as filed - footnoted)" if scen_gap else ""), "MINOR" if grade == "MINOR GAPS" else "PASS")
     elif word == "BENIGN CONFIRMED":
         bo = ("INCONCLUSIVE", "no signature moved, but too many boards have gaps to call it a complete "
                               "reference", "FAIL")
@@ -1851,16 +1874,20 @@ def verify_benign(df):
         bo = ("INCONCLUSIVE", "too little data to test it as a normal reference", "-")
     else:
         bo = ("FAIL", "not a clean normal reference: " + (why[0] if why else "it looks attacked"), "-")
+    sig = ("FAIL" if word not in ("BENIGN CONFIRMED", "INCONCLUSIVE")
+           else ("PASS" if word == "BENIGN CONFIRMED" else "INCONCLUSIVE"))
+    # setup = the scenario check, the only setup a benign run has (a NOT APPLIED scenario is a
+    # MINOR gap, not a failed setup - same as an attack run)
+    setup = "PASS" if any(i.level in ("OK", ac.WARN) for i in scen) else "-"
     P(f" OUTCOME: {bo[0]} - {bo[1]}")
-    P(f"     signature {'FAIL' if word not in ('BENIGN CONFIRMED', 'INCONCLUSIVE') else ('PASS' if word == 'BENIGN CONFIRMED' else 'INCONCLUSIVE')}"
-      f"  |  setup -  |  dataset {bo[2]}   (capture completeness / SD cards: Campaign status)")
+    P(f"     signature {sig}  |  setup {setup}  |  dataset {bo[2]}   (capture completeness / SD cards: Campaign status)")
     P("-" * RULE_W)
     print(out.getvalue(), end="")
     _LAST_ISSUES[0] = []
     _LAST_SETUP_INVALID[0] = False
-    _LAST_OUTCOME[0] = {"outcome": bo[0], "why": bo[1], "signature": "-", "setup": "-", "dataset": bo[2]}
-    _LAST_BENIGN[0] = {"word": word, "grade": grade, "gaps": [g for _b, g in gaps], "why": why,
-                       "major": grade == "MAJOR GAPS"}
+    _LAST_OUTCOME[0] = {"outcome": bo[0], "why": bo[1], "signature": sig, "setup": setup, "dataset": bo[2]}
+    _LAST_BENIGN[0] = {"word": word, "grade": grade, "gaps": [g for _b, g in gaps] + scen_gap, "why": why,
+                       "major": grade == "MAJOR GAPS", "scenario": stag}
     return benign, conclusive
 
 

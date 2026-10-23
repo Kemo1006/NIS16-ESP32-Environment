@@ -15,6 +15,38 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #85 — Oct 23, 2026 · ~1:30 AM — every benign (baseline) cell: scenario verdict added to the benign verifier
+
+> **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `d777056` (+ uncommitted verifier/GUI fix)
+> **Request:** "fix on the validator verdicts the benign why it doesnt have verdict in scenario and double check and fix it"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| none (benign) | linear | Yuchengco | stationary | r1 | - | feature table |
+| none (benign) | linear | home | highload | r1 | - | feature table |
+| none (benign) | partial_mesh | G402 | highload | r1 | oct. 22 9:09 AM | feature table |
+| none (benign) | star | DLSU_Library | stationary | r1 | - | feature table |
+| none (benign) | star | G402 | burst | r1 | - | feature table |
+
+| Check | Result | Detail |
+|---|---|---|
+| Why benign had no scenario verdict | ❌ found 2 causes | (1) `verify_benign` never ran `attack_checks.scenario_issues` (report had no scenario section, `setup -`, stored signature '-'); (2) GUI `CampaignVisual.ps1` forced the Scenario step to blank for benign twice (`-or $isBase`, `if ($Rep.Benign) {'na'}`) |
+| Scenario check on benign data (before fix) | ⚠️ 1 false alarm | star/G402/burst: 'burst NOT APPLIED in the attack - E618 fired ~297 probes in phase 0' - a benign run has no attack phase; by design (root_main.c 'Phase 0b') its burst fires in phase 0 |
+| After fix, all 5 benign cells | ✅ | linear/Yuchengco/stationary stationary APPLIED · linear/home/highload highload APPLIED · partial/G402/highload highload APPLIED · star/DLSU/stationary stationary APPLIED · star/G402/burst burst APPLIED (E618 +297 probes, 363 s into the baseline = 300 s + 60 s into Phase 0b, as designed) |
+| Benign verdicts | ✅ unchanged | linear/Yuchengco/stationary PASS STRONG · linear/home/highload FAIL (blackhole signature passed, cooldown PDR 72 %) · partial/G402/highload INCONCLUSIVE (no root arrivals, verification #83) · star/DLSU/stationary PASS STRONG · star/G402/burst PASS STRONG |
+| Attack runs unchanged | ✅ 73/73 identical | old (HEAD) vs new verifier on every blackhole + wormhole feature table, all verdict/confidence/outcome/scenario/START lines: 0 differences |
+| Tests | ✅ | `python -m unittest test_verify_attack` 55/55 OK; GUI `run_gui.ps1 -SelfTest` completes (timers 0); `CampaignVisual.ps1` parses with 0 errors |
+
+**Findings:**
+- `tools/attack_checks.py`: scenario check is benign-aware (no phase 1/2 = benign): burst looked for in phase 0 (Phase 0b), jitter measured as baseline length vs 300 s (benign jitter lengthens the baseline). Attack-run code path and wording unchanged.
+- `tools/verify_attack.py` (benign): new `[4] SCENARIO` section; VERDICT line ends `| scenario <x>: applied | NOT APPLIED | check`; NOT APPLIED = MINOR gap + footnote (same rule as attack runs, D-34); OUTCOME line now `setup PASS` and the stored outcome carries the real signature/setup/dataset.
+- `gui/CampaignVisual.ps1`: benign runs show the Scenario journey step.
+- This laptop's cached reports (%LOCALAPPDATA%\NIS16) for the 5 benign cells were regenerated; other laptops: press Verify on each benign run after pulling.
+
+**Verdict: ✅ FIXED - every benign run now has a scenario verdict (all 5 APPLIED); no attack verdict changed.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #84 — Oct 22, 2026 · ~11 PM — every wormhole / tree cell: double-check the verdicts
 
 > **Requested by:** Angelo · **Laptop:** Angelo's · **Commit:** `a08f889` (after pulling Kyle's 8:13 PM / 8:57 PM child files)

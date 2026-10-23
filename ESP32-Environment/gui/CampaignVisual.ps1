@@ -82,7 +82,8 @@ function New-CampPill([string]$Text, [string]$Fg, [string]$Bg, [double]$Size = 1
 function Get-CampScenarioStep($Rep) {
     # oct. 21 2026: verify_attack ends the VERDICT line with "| scenario <x>: applied |
     # NOT APPLIED | check (see [3])" - @(state, detail) for the journey's Scenario step
-    if (-not $Rep -or $Rep.Benign) { return @('na', '') }
+    # oct. 23 2026: benign reports carry the same tag now (verify_benign [4] SCENARIO)
+    if (-not $Rep) { return @('na', '') }
     if ([string]$Rep.Verdict -match 'scenario (\w+):\s*(NOT APPLIED|applied|check)') {
         switch ($Matches[2]) { 'applied' { return @('ok', "$($Matches[1]) applied") } 'NOT APPLIED' { return @('bad', "$($Matches[1]) NOT applied") } default { return @('warn', "$($Matches[1]) - check") } }
     }
@@ -455,7 +456,7 @@ function Add-CampVisual($Body, $S, [string]$Look) {
                elseif ($rep.Old) { @('warn', 'old report - press Verify') }
                else { switch ($rep.Grade) { 'STRONG' { @('ok', 'strong') } 'GOOD' { @('ok', 'good') } 'MINOR GAPS' { @('warn', 'minor gaps') } 'UNDETERMINED' { @('warn', 'investigate') } 'MAJOR GAPS' { @('major', 'major gaps') } 'FAILED' { @('bad', 'failed') } default { @('todo', '') } } }
     }
-    $scn = if ($Look -in @('todo', 'partial') -or $isBase) { @('todo', '') } else { Get-CampScenarioStep $rep }
+    $scn = if ($Look -in @('todo', 'partial')) { @('todo', '') } else { Get-CampScenarioStep $rep }
     Add-CampJourney $Body @(@('Captured', $cap[0], $cap[1]), @('Analysed', $ana[0], $ana[1]), @('Verified', $ver[0], $ver[1]), @('Graded', $grd[0], $grd[1]), @('Scenario', $scn[0], $scn[1]))
     if (-not $rep) { return }
 
