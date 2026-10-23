@@ -564,6 +564,7 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Basis** | Team scope decision (Latin-square style rotation). **Adviser check**: within one topology the benign scenario and location are confounded; the attack runs at the same location/scenario are the matched comparison. |
 | **Effect** | Benign run count 9 → 12; which benign scenario per location/topology. |
 | **Paper edit** | Methodology run matrix + benign-run sentence; Limitations note on the confounding. Checklist A36. |
+| **Amended (oct. 24, 2026)** | Collection closed. The 4 benign runs never captured were removed from the plan (user): DLSU_Library/tree (burst), DLSU_Library/partial_mesh (highload), Yuchengco/tree (highload), Yuchengco/partial_mesh (stationary). Final plan = 80 runs (72 attack + 8 benign): G402 linear highload, star burst, tree stationary, partial_mesh highload; DLSU_Library linear + star stationary; Yuchengco linear stationary (captured oct. 22 as stationary, plan set to match), star highload. Benign per scenario: 4 stationary, 3 highload, 1 burst; tree and partial_mesh have 1 benign run each (both G402). Verified oct. 24: 7 BENIGN CONFIRMED, partial_mesh/G402/highload INCONCLUSIVE (root arrivals not exported; on root's card). Paper: Google Doc tab 1 Appendix C note + latest tab §5.5/§5.7/§6.5.4 (suggestions). |
 
 ## D-36 · Wormhole ends (A and B) join as LEAF nodes in tree / partial; telemetry stack 4096 → 6144 B (oct. 22, 2026)
 
