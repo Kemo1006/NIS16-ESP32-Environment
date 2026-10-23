@@ -1,0 +1,47 @@
+{
+  "child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv": {
+    "row_count": 7265,
+    "sha256": "1fdb820676cdcacae695080f3f9f4485fe4e2c03847c8e6e608a9b243c058d9e",
+    "size_bytes": 613266
+  },
+  "child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv": {
+    "row_count": 6844,
+    "sha256": "acaffffc787bf0e75e3c5e82b7fbc8eaab1dc657b7487495355f5ba2eb5124e0",
+    "size_bytes": 570324
+  },
+  "child_node4_tree_wormhole_r1_oct24_1252AM_telem.csv": {
+    "row_count": 6844,
+    "sha256": "05ea20f02de78ca61a2f4bb90569030f5e6f24f475998bbe8f2ebc9e42377ea5",
+    "size_bytes": 553297
+  },
+  "child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv": {
+    "row_count": 7215,
+    "sha256": "c903545cc1862d63a10d9304c2a6cc766e1bfcbfe590cb71b2a445b8a25e897b",
+    "size_bytes": 586416
+  },
+  "child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv": {
+    "row_count": 7263,
+    "sha256": "e632ba6885e41bb3f8789009ef3ddd7bcaf208155e3108049677a43ed23a071d",
+    "size_bytes": 568442
+  },
+  "child_node7_tree_wormhole_r1_oct24_1251AM_telem.csv": {
+    "row_count": 7215,
+    "sha256": "37886f13123727730bd7d37c2d1edcea448953c9eddb6d32f5d8e2e5af090980",
+    "size_bytes": 564782
+  },
+  "child_node8_tree_wormhole_r1_oct24_1256AM_telem.csv": {
+    "row_count": 6859,
+    "sha256": "d2c8fb04ed14df8b8267cbb72d57cc3304b2081993b650cba68dd5618db81fb6",
+    "size_bytes": 572482
+  },
+  "root_root_tree_wormhole_r1_oct24_1245AM_arrivals.csv": {
+    "row_count": 4201,
+    "sha256": "22a78ed97da610d9f0e1bc609f685954ef9c4ce8a16a000694d0bc8f1d842e58",
+    "size_bytes": 421806
+  },
+  "root_root_tree_wormhole_r1_oct24_1245AM_telem.csv": {
+    "row_count": 6843,
+    "sha256": "fa6ff57f834ca56e0487cfb88719d62acb6b68424673114296f4b9b0ba2190f9",
+    "size_bytes": 509842
+  }
+}

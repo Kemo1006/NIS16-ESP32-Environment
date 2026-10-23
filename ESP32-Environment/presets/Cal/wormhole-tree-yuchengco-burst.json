@@ -5,7 +5,7 @@
     "scenario":  "burst",
     "owner":  "Cal",
     "repeat":  1,
-    "savedAt":  "2026-10-24 00:21",
+    "savedAt":  "2026-10-24 01:05",
     "boards":  [
                    {
                        "Label":  "node5",
@@ -21,9 +21,9 @@
                        "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "control",
-                       "Display":  "control (plain firmware)",
+                       "Display":  "control (plain firmware) + BURST TARGET",
                        "Mac":  "28:05:a5:32:d7:b4",
-                       "ScenarioTarget":  false
+                       "ScenarioTarget":  true
                    },
                    {
                        "Label":  "node7",

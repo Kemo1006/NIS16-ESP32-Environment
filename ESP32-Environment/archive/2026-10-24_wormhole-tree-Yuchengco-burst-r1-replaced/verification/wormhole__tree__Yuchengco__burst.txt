@@ -1,0 +1,441 @@
+
+=== wormhole/tree/Yuchengco/burst ===
+APPLYING — 9 file(s)
+
+  child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv
+      7265 data rows, 1 boot session(s)
+        session 1: rows   7265  span    726.4s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv
+  child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv
+      6844 data rows, 1 boot session(s)
+        session 1: rows   6844  span    684.3s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv
+  child_node4_tree_wormhole_r1_oct24_1252AM_telem.csv
+      6844 data rows, 1 boot session(s)
+        session 1: rows   6844  span    684.3s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node4_tree_wormhole_r1_oct24_1252AM_telem.csv
+  child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv
+      7215 data rows, 1 boot session(s)
+        session 1: rows   7215  span    721.4s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv
+  child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv
+      7263 data rows, 1 boot session(s)
+        session 1: rows   7263  span    726.2s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv
+  child_node7_tree_wormhole_r1_oct24_1251AM_telem.csv
+      7215 data rows, 1 boot session(s)
+        session 1: rows   7215  span    721.4s  score    78.9  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node7_tree_wormhole_r1_oct24_1251AM_telem.csv
+  child_node8_tree_wormhole_r1_oct24_1256AM_telem.csv
+      6859 data rows, 1 boot session(s)
+        session 1: rows   6859  span    685.8s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\child_node8_tree_wormhole_r1_oct24_1256AM_telem.csv
+  root_root_tree_wormhole_r1_oct24_1245AM_arrivals.csv
+      4201 data rows, 1 boot session(s)
+        session 1: rows   4201  span    684.0s  score    78.6  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\root_root_tree_wormhole_r1_oct24_1245AM_arrivals.csv
+  root_root_tree_wormhole_r1_oct24_1245AM_telem.csv
+      6843 data rows, 1 boot session(s)
+        session 1: rows   6843  span    684.2s  score    78.8  <-- KEEPING
+            - contains an ATTACK phase
+            - 3 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\wormhole\tree\Yuchengco\burst\trimmed\root_root_tree_wormhole_r1_oct24_1245AM_telem.csv
+
+------------------------------------------------------------
+  files            : 9
+  rows kept        : 60549
+  rows dropped     : 0
+  files rewritten  : 0
+  files copied as-is: 9
+  files in output  : 9 of 9
+  output folder    : A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\tree\Yuchengco\burst\trimmed
+  NOTE: point preprocess.py / features.py at that folder —
+        it is the COMPLETE analysis input (trimmed files plus
+        untouched copies of anything that needed no trimming).
+Loading raw telemetry from: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\tree\Yuchengco\burst\trimmed
+Wrote 5631 windowed rows to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\windowed_dataset.csv
+Wrote column legend to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\windowed_dataset_legend.csv
+
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          56348
+  Windows formed:             5647
+  Windows discarded (<4 smp): 16
+  Windows discarded (gap>2s): 0
+  Windows kept:               5631
+  Discard fraction:           0.3%
+  RSSI placeholders blanked:  7003 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           824   [excluded]
+    baseline               2398
+    attack                 1435
+    cooldown               959
+    transition             15   [excluded]
+  Per-node window counts:
+    NODE_20500DE70C80: 684
+    NODE_20500DE71C38: 726
+    NODE_2805A532D7B4: 726
+    NODE_704BCA25B768: 721
+    NODE_B0CBD8F33218: 684
+    NODE_B4BFE932FE90: 721
+    NODE_B4BFE934ED80: 685
+    NODE_F42DC973E618: 684
+───────────────────────────────────────────────────────────
+Running M6 preprocessing on: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\tree\Yuchengco\burst\trimmed
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          56348
+  Windows formed:             5647
+  Windows discarded (<4 smp): 16
+  Windows discarded (gap>2s): 0
+  Windows kept:               5631
+  Discard fraction:           0.3%
+  RSSI placeholders blanked:  7003 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           824   [excluded]
+    baseline               2398
+    attack                 1435
+    cooldown               959
+    transition             15   [excluded]
+  Per-node window counts:
+    NODE_20500DE70C80: 684
+    NODE_20500DE71C38: 726
+    NODE_2805A532D7B4: 726
+    NODE_704BCA25B768: 721
+    NODE_B0CBD8F33218: 684
+    NODE_B4BFE932FE90: 721
+    NODE_B4BFE934ED80: 685
+    NODE_F42DC973E618: 684
+───────────────────────────────────────────────────────────
+
+Computing 16 Table 4.11 features...
+[features] WARNING: 2 window(s) have ForwardingRatio > 1 (max 2.00). A relay cannot forward more than it received; this is a queue flush across a window edge. Check segment assignment before trusting the baseline distribution.
+Sniffer captures (real MAC retries, tools/pcap_retry.py):
+  sniffer linear-blackhole-jitter-dlsu_library_r1_oct07_0640PM.pcap: blackhole/linear/DLSU_Library/jitter r1, attack 18:49:03 (fitted, phases from exports)
+  sniffer linear-blackhole-jitter-g402_r1_oct01_0244PM.pcap: blackhole/linear/G402/jitter r1, attack 14:53:22 (fitted, phases from exports)
+  sniffer linear-blackhole-stationary-yuchengco_r1_oct19_0120AM.pcap: blackhole/linear/Yuchengco/stationary r1, attack 01:30:41 (fitted)
+  sniffer partial_mesh-blackhole-highload-dlsu_library_r1_oct07_0313PM.pcap: blackhole/partial_mesh/DLSU_Library/highload r1, attack 15:20:41 (fitted, phases from exports)
+  sniffer partial_mesh-blackhole-highload-dlsu_library_r1_oct07_0446PM.pcap: no retry data - cannot place the phases on the laptop clock. No blackhole attack step found in the capture. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer partial_mesh-blackhole-stationary-dlsu_library_r1_oct07_0122PM.pcap: no retry data - the root export root_node1_partial_blackhole_r1_oct07_0207PM_telem.csv runs backwards in time - the board rebooted mid-run, so one phase timeline cannot be read from it. Pass --attack-start.
+  sniffer partial_mesh-blackhole-burst-g402_r1_oct17_0102AM.pcap: blackhole/partial_mesh/G402/burst r1, attack 01:11:39 (fitted, phases from exports)
+  sniffer partial_mesh-blackhole-jitter-g402_r1_oct01_0342PM.pcap: no retry data - cannot place the phases on the laptop clock. No blackhole attack step found in the capture. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer star-blackhole-burst-dlsu_library_r1_oct07_1058AM.pcap: blackhole/star/DLSU_Library/burst r1, attack 11:07:45 (fitted, phases from exports)
+  sniffer star-blackhole-burst-g402_r1_oct01_0146PM.pcap: blackhole/star/G402/stationary r1, attack 13:54:11 (fitted, phases from exports)
+  sniffer tree-blackhole-burst-g402_r1_oct02_0754PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-burst-g402_r1_oct19_0746PM.pcap: blackhole/tree/G402/burst r1, attack 19:56:13 (fitted)
+  sniffer tree-blackhole-highload-g402_r1_oct17_0524PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-highload-g402_r1_oct19_0225PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 14:21:00 and 18:40:00 (this run and the next of the same cell) in exports/blackhole/tree/G402/highload - this run's own export is missing, so its phase times are unavailable.
+  sniffer tree-blackhole-highload-g402_r1_oct19_0645PM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer tree-blackhole-highload-g402_r1_oct19_0654PM.pcap: blackhole/tree/G402/highload r1, attack 19:06:34 (fitted)
+  sniffer tree-blackhole-highload-g402_r1_oct19_0838PM.pcap: blackhole/tree/G402/highload r1, attack 20:46:53 (fitted)
+  sniffer tree-blackhole-highload-g402_r1_oct19_1044AM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-blackhole-jitter-g402_r1_oct02_0642PM.pcap: blackhole/tree/G402/jitter r1, attack 18:50:00 (fitted, phases from exports)
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0650PM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0710PM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer tree-blackhole-stationary-g402_r1_oct18_0955PM.pcap: blackhole/tree/G402/stationary r1, attack 22:04:05 (fitted)
+  sniffer linear-wormhole-burst-dlsu_library_r1_oct18_0519PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer linear-wormhole-highload-dlsu_library_r1_oct18_0325PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer linear-wormhole-stationary-dlsu_library_r1_oct07_0537PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 17:38:41 and 17:50:33 (this run and the next of the same cell) in exports/wormhole/linear/DLSU_Library/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-wormhole-stationary-dlsu_library_r1_oct07_1242PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 12:45:32 and 17:38:41 (this run and the next of the same cell) in exports/wormhole/linear/DLSU_Library/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-wormhole-burst-g402_r1_oct17_1111PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer linear-wormhole-highload-g402_r1_oct17_0859PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer linear-wormhole-burst-yuchengco_r1_oct19_1140AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer linear-wormhole-highload-yuchengco_r3_oct16_0714PM.pcap: no retry data - no run log of this run (wormhole/linear/Yuchengco/highload) within 20 min; the nearest log is linear-wormhole-highload-yuchengco_r1_oct16_0725PM.log, which is a different run
+  sniffer linear-wormhole-stationary-yuchengco_r1_oct16_0326PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer partial_mesh-wormhole-burst-dlsu_library_r1_oct21_0526PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-burst-dlsu_library_r1_oct21_0535PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-highload-dlsu_library_r1_oct21_0455PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-stationary-dlsu_library_r1_oct21_0426PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-burst-g402_r1_oct21_0338PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-burst-g402_r1_oct21_0343PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-burst-g402_r1_oct21_0352PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-highload-g402_r1_oct19_0552PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 17:42:00 and 05:42:00 (this run and the next of the same cell) in exports/wormhole/partial_mesh/G402/highload - this run's own export is missing, so its phase times are unavailable.
+  sniffer partial_mesh-wormhole-highload-g402_r1_oct21_0246PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct19_0331PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct19_0356PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct19_0414PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct21_0146PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-burst-dlsu_library_r1_oct21_1001AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-highload-dlsu_library_r1_oct21_0137AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-highload-dlsu_library_r1_oct21_1252AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-stationary-dlsu_library_r1_oct21_1201AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer star-wormhole-burst-g402_r1_oct20_1113PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-highload-g402_r1_oct20_0828PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-highload-g402_r1_oct20_1016PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-stationary-g402_r1_oct20_0255PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-stationary-yuchengco_r1_oct21_1058AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer tree-wormhole-burst-dlsu_library_r1_oct23_0754PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer tree-wormhole-highload-dlsu_library_r1_oct23_0655PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer tree-wormhole-stationary-dlsu_library_r1_oct16_1248PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 12:49:08 and 00:49:08 (this run and the next of the same cell) in exports/wormhole/tree/DLSU_Library/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer tree-wormhole-burst-yuchengco_r1_oct24_1231AM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer tree-wormhole-highload-yuchengco_r1_oct23_1137PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS (the root banner time is missing or its clock was never set by SET_TIME).
+  sniffer tree-wormhole-stationary-yuchengco_r1_oct23_0837PM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 20:32:00 and 20:44:00 (this run and the next of the same cell) in exports/wormhole/tree/Yuchengco/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer tree-wormhole-stationary-yuchengco_r1_oct23_1057PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  7 non-root file(s) with no capture of their run (NaN): child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv (its run's capture is unusable or missing), child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv (its run's capture is unusable or missing), child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv (its run's capture is unusable or missing), child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv (its run's capture is unusable or missing) ...
+Wrote 5631 feature rows to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\feature_table.csv
+Wrote column legend to: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\feature_table_legend.csv
+
+── Feature NaN Counts ──────────────────────────────
+  ForwardingRatio: 3618/5631 NaN [2013 value(s) on 3 node(s) — not applicable elsewhere]
+  IngressEgressDelta: 0/5631 NaN
+  RetryRate: 1290/5631 NaN [4341 value(s) on 8 node(s) — not applicable elsewhere]
+  PDR: 2098/5631 NaN [3533 value(s) on 5 node(s) — not applicable elsewhere]
+  ParentSwitchRate: 0/5631 NaN
+  HopChangeCount: 0/5631 NaN
+  HopStabilityDuration: 0/5631 NaN
+  RSSI_mean: 699/5631 NaN [4932 value(s) on 7 node(s) — not applicable elsewhere]
+  RSSI_var: 0/5631 NaN
+  RSSI_stability: 0/5631 NaN
+  RSSI_Hop_Diff: 707/5631 NaN [4924 value(s) on 7 node(s) — not applicable elsewhere]
+  LatencyHopRatio: 2024/5631 NaN [3607 value(s) on 6 node(s) — not applicable elsewhere] [relative one-way delay — see thesis-deviate.md]
+  ConsistencyScore: 3618/5631 NaN [2013 value(s) on 3 node(s) — not applicable elsewhere]
+  TunnelIntensity: 4263/5631 NaN [1368 value(s) on 2 node(s) — not applicable elsewhere]
+  TunnelBytes: 4263/5631 NaN [1368 value(s) on 2 node(s) — not applicable elsewhere]
+  TunnelLatency: 5451/5631 NaN [180 value(s) on 1 node(s) — not applicable elsewhere]
+  MacRetryRate: 5631/5631 NaN [all-NaN] [sniffer runs only, not a model input — NaN = not measured, D-15]
+─────────────────────────────────────────────────────
+Running EDA on: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\feature_table.csv
+findfont: Failed to find font weight medium, now using 400.
+
+=== Single-feature decidability audit - A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst
+    Majority-class baseline: 0.7005
+    (accuracy of ONE threshold on ONE column, labels visible)
+
+    feature                 thresh    lift  nan-acc   cover  status
+    -------------------------------------------------------  -----------
+    TunnelBytes             1.0000 +0.2995   0.6000    0.25  EXCLUDED
+    TunnelIntensity         1.0000 +0.2995   0.6000    0.25  EXCLUDED
+    TunnelLatency           0.9944 +0.2939   0.7379    0.04  EXCLUDED
+    ConsistencyScore        0.8007 +0.1001   0.5503    0.37  model input
+    ForwardingRatio         0.8007 +0.1001   0.5503    0.37  model input
+    RSSI_mean               0.7023 +0.0017   0.6505    0.87  model input
+    RSSI_Hop_Diff           0.7021 +0.0015   0.6505    0.87  model input
+    LatencyHopRatio         0.7011 +0.0006   0.6004    0.75  model input
+    RSSI_var                0.7010 +0.0004      n/a    1.00  model input
+    PDR                     0.7008 +0.0002   0.5501    0.62  model input
+    HopStabilityDuration    0.7008 +0.0002      n/a    1.00  model input
+    ParentSwitchRate        0.7005 +0.0000      n/a    1.00  model input
+    HopChangeCount          0.7005 +0.0000      n/a    1.00  model input
+    IngressEgressDelta      0.7005 +0.0000      n/a    1.00  model input
+    RSSI_stability          0.6492 -0.0513      n/a    1.00  model input
+
+
+── EDA Summary ─────────────────────────────────────
+  Descriptive statistics:  A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output\descriptive_statistics.csv
+  Distribution plots:      3 written
+  Time-series plots:       9 written
+  Correlation plots:       A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output\correlation_pearson.png, A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output\correlation_spearman.png
+  PCA/t-SNE plot:          A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output\dimensionality_reduction.png
+    excluded: ['ConsistencyScore', 'ForwardingRatio', 'HopChangeCount', 'HopStabilityDuration', 'PDR', 'ParentSwitchRate', 'TunnelBytes', 'TunnelIntensity', 'TunnelLatency']
+  Tunnel-end projection:   A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output\dimensionality_reduction_tunnel_ends.png
+    1198 window(s) from 2 tunnel-end node(s); tunnel features kept: none
+  All outputs in:          A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\analysis\wormhole\tree\Yuchengco\burst\eda_output/
+───────────────────────────────────────────────────────
+
+--- Gate 1/3: capture integrity -- wormhole/tree/Yuchengco/burst
+[PASS] child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv
+    info: sample coverage 100.0% of expected (7265 rows over 726s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv
+    info: sample coverage 100.0% of expected (6844 rows over 684s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node4_tree_wormhole_r1_oct24_1252AM_telem.csv
+    info: sample coverage 100.0% of expected (6844 rows over 684s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: the root logged no probes from it (expected for the blackhole attacker)
+[PASS] child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv
+    info: sample coverage 100.0% of expected (7215 rows over 721s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv
+    info: sample coverage 100.0% of expected (7263 rows over 726s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node7_tree_wormhole_r1_oct24_1251AM_telem.csv
+    info: sample coverage 100.0% of expected (7215 rows over 721s, measured ~10.00 Hz, 0 gap(s))
+[PASS] child_node8_tree_wormhole_r1_oct24_1256AM_telem.csv
+    info: sample coverage 100.0% of expected (6859 rows over 686s, measured ~10.00 Hz, 0 gap(s))
+[PASS] root_root_tree_wormhole_r1_oct24_1245AM_arrivals.csv
+    info: phase 0 (baseline): 1803 probes from 6 victim(s) over 300s = 6.01/s (reference rate)
+    info: phase 2 (wormhole): 1262 probes at 7.00/s = 117% of baseline; 180 of them are DUPLICATE deliveries of 1082 unique probes (x1.17) from 20:50:0D:E7:0C:80 — the expected wormhole signature
+    info: phase 3 (cooldown): 723 probes from 6 victim(s) over 120s = 6.01/s (100% of baseline)
+[PASS] root_root_tree_wormhole_r1_oct24_1245AM_telem.csv
+    info: sample coverage 100.0% of expected (6843 rows over 684s, measured ~10.00 Hz, 0 gap(s))
+
+9 file(s) — 9 PASS, 0 WARN, 0 FAIL. Manifest: A:\Angelo\Excelsior\THESIS\T\ESP32-Environment\datasets\exports\wormhole\tree\Yuchengco\burst\manifest.json
+
+--- Gate 2/3: topology -- wormhole/tree/Yuchengco/burst
+Loaded 8 telemetry file(s):
+  - child_node2_tree_wormhole_r1_oct24_1255AM_telem.csv
+  - child_node3_tree_wormhole_r1_oct24_1253AM_telem.csv
+  - child_node4_tree_wormhole_r1_oct24_1252AM_telem.csv
+  - child_node5_tree_wormhole_r1_oct24_1258AM_telem.csv
+  - child_node6_tree_wormhole_r1_oct24_1254AM_telem.csv
+  - child_node7_tree_wormhole_r1_oct24_1251AM_telem.csv
+  - child_node8_tree_wormhole_r1_oct24_1256AM_telem.csv
+  - root_root_tree_wormhole_r1_oct24_1245AM_telem.csv
+
+=== Reconstructed structure ===
+8 node(s) attached, 4 layer(s)
+NODE_B0CBD8F33218  (layer 1, role root)
+    NODE_20500DE71C38  (layer 2, role child)
+        NODE_2805A532D7B4  (layer 3, role child)
+        NODE_B4BFE932FE90  (layer 3, role child)
+    NODE_B4BFE934ED80  (layer 2, role child)
+        NODE_704BCA25B768  (layer 3, role child)
+            NODE_20500DE70C80  (layer 4, role wormhole_b)
+        NODE_F42DC973E618  (layer 3, role wormhole_a)
+
+=== Per-node convergence & stability ===
+  [OK ] NODE_20500DE70C80  layer=4  converge=  0.0s, settled 83s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6844
+  [OK ] NODE_20500DE71C38  layer=2  converge= 38.4s, settled 86s before Phase 0  parent_switches=1 (baseline 0)  layer_changes=2 (baseline 0)  samples=7265
+  [OK ] NODE_2805A532D7B4  layer=3  converge=  0.0s, settled 125s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=7263
+  [OK ] NODE_704BCA25B768  layer=3  converge=  0.0s, settled 120s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=7215
+  [OK ] NODE_B0CBD8F33218  layer=1  converge=  0.0s, settled 83s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6843
+  [OK ] NODE_B4BFE932FE90  layer=3  converge=  0.0s, settled 120s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=7215
+  [OK ] NODE_B4BFE934ED80  layer=2  converge=  0.0s, settled 84s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6859
+  [OK ] NODE_F42DC973E618  layer=3  converge=  0.0s, settled 83s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6844
+
+=== Expected-topology check ===
+  OK tree: 8 node(s), depth 4
+
+=== Milestone-3 verdict ===
+  Settled before Phase 0 : YES   (formation time before START is shown, not judged; logs without phases: 60s rule)
+  Baseline re-routing free            : YES
+  Structure matches tree              : YES
+
+--- Gate 3/3: attack signature -- wormhole/tree/Yuchengco/burst
+
+==========================================================================================================
+ WORMHOLE VERIFICATION  -  tree / Yuchengco / burst  (r1)
+==========================================================================================================
+ RESULT : CONFIRMED
+          TunnelIntensity: normal 0.000 -> attack 1.000; the normal phase never varied, so this move is
+          beyond any sigma
+
+ [1] ATTACK SIGNATURE   3-sigma test: attack phase vs normal phase  [Z]
+     normal phase: 3357 windows   attack phase: 1435 windows
+     pooling: 5 windows per point (Table 4.10 window = 5)
+
+     result     feature                              normal           attack         z  role           study
+     -----------------------------------------------------------------------------------------------------
+     PASS       TunnelIntensity                      0.000 +- 0.000   1.000       +inf  primary, up    [Z]
+     PASS       DuplicateRate                        0.000 +- 0.000   1.000       +inf  primary, up    [R]
+     PASS       TunnelBytes                          0.000 +- 0.000   30.000      +inf  support, up    [Z]
+
+     note 1: TunnelIntensity: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 2: DuplicateRate: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+     note 3: TunnelBytes: the normal phase never varied (sd = 0), so z is infinite: any move in the
+             expected direction counts
+
+ [2] MEASURED, NOT SCORED   shown for context; never part of the verdict
+     - TunnelLatency: the two copies of B's probes reached the root 3.1 ms apart (attack mean). Exists
+       only while the tunnel runs, so there is no normal value to test against - reported as a
+       measurement: the wormhole's timing mismatch [H]
+     - LatencyHopRatio: normal 7.4 +- 12.1 -> attack 7.0 (z -0.03). Relative one-way delay per hop (board
+       clocks are not synchronised) with rare 100s-of-ms spikes, so its normal spread is too wide for a
+       3-sigma test - context only
+
+ [3] SETUP CHECKS   did the attack run as designed? (from the data)
+     AT A GLANCE:  SCENARIO [WARN]   TOPOLOGY [ OK ]   TUNNEL [ OK ]
+
+     LAYOUT AT THE START OF THE ATTACK   (who sat under whom;  * = what happened during the attack)
+       3218  ROOT
+       +-- 1C38   child
+       |   +-- D7B4   child
+       |   `-- FE90   child
+       `-- ED80   child
+           +-- B768   child
+           |   `-- 0C80   WORMHOLE B (entry)
+           `-- E618   WORMHOLE A (exit)
+
+     SCENARIO ................................ WARN
+       WARN scenario check: burst NOT APPLIED - no child sent a burst (largest 10 s excess in the attack:
+            10 probes; the burst is 300) - no board was built as the burst target
+     TOPOLOGY ................................ OK
+       OK   topology during the attack = tree: 8 node(s), depth 4
+     TUNNEL .................................. OK
+       OK   one A + one B, roles stable in the experiment, A shallower than B, tunnel carried data  [H]
+       OK   UART: B sent ~179 tunnel frames, A received ~179 (100%)  [Z]
+       OK   the root saw duplicate arrivals in 179 attack window(s)  [R]
+       OK   normal START - no START_ANYWAY in the root's run log (wormhole-tree-yuchengco-
+            burst_r1_oct24_1226AM.log)
+
+ [4] PER-NODE DELIVERY (PDR)
+     node_id             built as   exposure      hop   baseline     attack      n
+     -----------------------------------------------------------------------------------------------------
+     NODE_20500DE71C38   child      not tunnelled    1     1.0000     1.0000    178
+     NODE_2805A532D7B4   child      not tunnelled    2     1.0000     1.0000    180
+     NODE_704BCA25B768   child      not tunnelled    2     1.0000     1.0000    179
+     NODE_B4BFE932FE90   child      not tunnelled    2     1.0000     1.0000    179
+     NODE_B4BFE934ED80   child      not tunnelled    1     1.0000     1.0000    179
+
+
+     not listed: 0C80, E618 - attacking board - PDR is computed for plain children only
+
+ [5] STUDY BASIS   the peer-reviewed source behind each [tag] above
+     [Z]  Zhukabayeva et al. (2025), Technologies 13(8):348 - 3-sigma normal-vs-attack test; wormhole =
+          out-of-band tunnel between two nodes
+     [R]  Ramirez Gomez, Vargas Montoya & Leon Henao (2019), Rev. Colomb. Comput. 20(1) - wormhole
+          signature = duplicate packets (same data unit twice)
+     [H]  Hu, Perrig & Johnson (2003) - wormhole = a shortcut whose packets arrive with timing the claimed
+          path cannot explain (packet leashes)
+
+----------------------------------------------------------------------------------------------------------
+ VERDICT: WORMHOLE CONFIRMED  (2/2 primary signature(s) beyond 3-sigma)  |  scenario burst: NOT APPLIED
+ CONFIDENCE: MINOR GAPS - attack confirmed; 1 small gap in the data, none of which changes the result - recapture advised
+     + ATTACK: confirmed - 2/2 primary signature(s) beyond 3-sigma
+     + SETUP: no check failed
+     ~ MINOR GAP (result not affected): scenario NOT APPLIED - burst NOT APPLIED - no child sent a burst
+       (largest 10 s excess in the attack: 10 probes; the burst is 300) - no board was built as the burst
+       target
+     = REPORT AS: "WORMHOLE CONFIRMED - minor gaps" + 1 footnote (copy them to the thesis checklist)
+ OUTCOME: PASS - the attack signature moved past 3-sigma, the setup ran as designed and the data gaps were shown not to change the result
+     signature PASS  |  setup PASS  |  dataset MINOR   (capture completeness / SD cards: Campaign status)
+----------------------------------------------------------------------------------------------------------
+
+
+--- Burst check -- wormhole/tree/Yuchengco/burst
+BURST check - root_root_tree_wormhole_r1_oct24_1245AM_arrivals.csv (r1)
+    20:50:0D:E7:0C:80  extra probes     +1
+    B4:BF:E9:34:ED:80  extra probes     -0
+    70:4B:CA:25:B7:68  extra probes     -0
+    28:05:A5:32:D7:B4  extra probes     -0
+    B4:BF:E9:32:FE:90  extra probes     -0
+    20:50:0D:E7:1C:38  extra probes     -2
+  NO BURST FIRED - no victim sent the ~300 extra probes.
+  Either no board was built as the burst TARGET (run.ps1 -ScenarioTarget), or the
+  sender's firmware predates the oct. 1, 2026 burst-window fix (victim_main.c never
+  opened the window on an attack run). This capture is effectively STATIONARY -
+  do not file or report it as burst.
+  NO BURST - this capture is a stationary run, not burst. Re-run with one
+  victim marked as the burst TARGET on exactly one laptop.
+
+=== Validation summary -- wormhole/tree/Yuchengco/burst
+    integrity : PASS
+    topology  : PASS
+    attack    : CONFIRMED
+    burst     : NOT FIRED
+
+
+Done: 1 run(s) analyzed, 5,631 row(s) in this batch.
+Run '.\analyze.ps1 -List' for the running total across everything captured.
