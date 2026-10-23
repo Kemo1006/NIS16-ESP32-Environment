@@ -1,0 +1,17 @@
+label,node_role,feature,mean,median,variance,n_valid,n_total
+Baseline,child,ForwardingRatio,1.0003738779388613,0.9999998750000156,0.0009423985206136104,1248,2937
+Baseline,child,IngressEgressDelta,0.017024174327545116,0.0,0.01674005152711946,2937,2937
+Baseline,child,ParentSwitchRate,0.0,0.0,0.0,2937,2937
+Baseline,child,HopChangeCount,0.0,0.0,0.0,2937,2937
+Baseline,child,HopStabilityDuration,0.9998297582567246,1.0,2.3812969730368615e-05,2937,2937
+Baseline,child,RSSI_mean,-67.63978360382855,-66.0,71.63574583736974,2937,2937
+Baseline,child,RSSI_var,0.20651517253265067,0.0,0.30129222182936033,2937,2937
+Baseline,child,RSSI_stability,0.8990466462376367,0.8999999999999773,0.0004146221421884698,2937,2937
+Baseline,child,RSSI_Hop_Diff,3.746063632580487,3.700000000000003,6.702726209711415,2937,2937
+Baseline,child,ConsistencyScore,0.005506345962569498,1.249999842523053e-07,0.0009121942573332329,1248,2937
+Baseline,root,IngressEgressDelta,0.0,0.0,0.0,419,419
+Baseline,root,ParentSwitchRate,0.0,0.0,0.0,419,419
+Baseline,root,HopChangeCount,0.0,0.0,0.0,419,419
+Baseline,root,HopStabilityDuration,0.9995226730310263,1.0,4.761850384259625e-05,419,419
+Baseline,root,RSSI_var,0.0,0.0,0.0,419,419
+Baseline,root,RSSI_stability,0.0,0.0,0.0,419,419

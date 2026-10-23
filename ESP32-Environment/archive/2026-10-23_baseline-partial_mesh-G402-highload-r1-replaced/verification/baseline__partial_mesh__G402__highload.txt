@@ -1,0 +1,285 @@
+
+=== baseline/partial_mesh/G402/highload ===
+  [!] 2 file(s) LEFT OUT of the analysis (still in the folder, untouched):
+        root_root_partial_none_r1_oct22_0835AM_telem.csv  - an OLDER capture of the same board (r1 telem); the newest, root_root_partial_none_r1_oct22_0919AM_telem.csv, is analysed
+        victim_NODE-20500DE70C80_partial_none_r1_oct22_0938AM_telem.csv  - an OLDER capture of the same board (r1 telem); the newest, victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv, is analysed
+      Archive them (or delete them) so the folder holds one run.
+
+APPLYING — 8 file(s)
+
+  root_root_partial_none_r1_oct22_0919AM_telem.csv
+      4974 data rows, 1 boot session(s)
+        session 1: rows   4974  span    497.3s  score    28.7  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\root_root_partial_none_r1_oct22_0919AM_telem.csv
+  victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv
+      7432 data rows, 1 boot session(s)
+        session 1: rows   7432  span    743.1s  score    28.9  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv
+  victim_NODE-20500DE71C38_partial_none_r1_oct22_0925AM_telem.csv
+      7330 data rows, 1 boot session(s)
+        session 1: rows   7330  span    732.9s  score    28.9  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-20500DE71C38_partial_none_r1_oct22_0925AM_telem.csv
+  victim_NODE-2805A532D7B4_partial_none_r1_oct22_0929AM_telem.csv
+      7582 data rows, 1 boot session(s)
+        session 1: rows   7582  span    758.1s  score    28.9  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-2805A532D7B4_partial_none_r1_oct22_0929AM_telem.csv
+  victim_NODE-704BCA25B768_partial_none_r1_oct22_0934AM_telem.csv
+      4774 data rows, 1 boot session(s)
+        session 1: rows   4774  span    477.3s  score    28.7  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-704BCA25B768_partial_none_r1_oct22_0934AM_telem.csv
+  victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0927AM_telem.csv
+      6755 data rows, 1 boot session(s)
+        session 1: rows   6755  span    675.4s  score    28.8  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0927AM_telem.csv
+  victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0942AM_telem.csv
+      6781 data rows, 1 boot session(s)
+        session 1: rows   6781  span    678.0s  score    28.8  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0942AM_telem.csv
+  victim_NODE-F42DC973E618_partial_none_r1_oct22_0936AM_telem.csv
+      7633 data rows, 1 boot session(s)
+        session 1: rows   7633  span    763.2s  score    28.9  <-- KEEPING
+            - 2 distinct phases -> a real phase progression
+      single session — copied unchanged -> datasets\exports\baseline\partial_mesh\G402\highload\trimmed\victim_NODE-F42DC973E618_partial_none_r1_oct22_0936AM_telem.csv
+
+------------------------------------------------------------
+  files            : 8
+  rows kept        : 53261
+  rows dropped     : 0
+  files rewritten  : 0
+  files copied as-is: 8
+  files in output  : 8 of 8
+  output folder    : S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\partial_mesh\G402\highload\trimmed
+  NOTE: point preprocess.py / features.py at that folder —
+        it is the COMPLETE analysis input (trimmed files plus
+        untouched copies of anything that needed no trimming).
+Loading raw telemetry from: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\partial_mesh\G402\highload\trimmed
+Wrote 5324 windowed rows to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\windowed_dataset.csv
+Wrote column legend to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\windowed_dataset_legend.csv
+
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          53261
+  Windows formed:             5336
+  Windows discarded (<4 smp): 12
+  Windows discarded (gap>2s): 0
+  Windows kept:               5324
+  Discard fraction:           0.2%
+  RSSI placeholders blanked:  5351 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1960   [excluded]
+    baseline               2396
+    cooldown               960
+    transition             8   [excluded]
+  Per-node window counts:
+    NODE_20500DE70C80: 743
+    NODE_20500DE71C38: 733
+    NODE_2805A532D7B4: 758
+    NODE_704BCA25B768: 477
+    NODE_B0CBD8F33218: 497
+    NODE_B4BFE932FE90: 675
+    NODE_B4BFE934ED80: 678
+    NODE_F42DC973E618: 763
+───────────────────────────────────────────────────────────
+Running M6 preprocessing on: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\partial_mesh\G402\highload\trimmed
+── Preprocessing Quality Report ──────────────────────────
+  Files loaded:               8
+  Files skipped (bad/empty):  0
+  Rows dropped (contaminated):0
+  Rows dropped (corrupt ts):  0
+  Rows downsampled to 10Hz grid: 0 (expected — see current SAMPLING_INTERVAL_MS in thesis-deviate.md)
+  Raw rows ingested:          53261
+  Windows formed:             5336
+  Windows discarded (<4 smp): 12
+  Windows discarded (gap>2s): 0
+  Windows kept:               5324
+  Discard fraction:           0.2%
+  RSSI placeholders blanked:  5351 (rssi_dbm == 0 -> missing; audit A1 #7)
+  Windows per segment (pre_baseline is EXCLUDED, window_label = NaN):
+    pre_baseline           1960   [excluded]
+    baseline               2396
+    cooldown               960
+    transition             8   [excluded]
+  Per-node window counts:
+    NODE_20500DE70C80: 743
+    NODE_20500DE71C38: 733
+    NODE_2805A532D7B4: 758
+    NODE_704BCA25B768: 477
+    NODE_B0CBD8F33218: 497
+    NODE_B4BFE932FE90: 675
+    NODE_B4BFE934ED80: 678
+    NODE_F42DC973E618: 763
+───────────────────────────────────────────────────────────
+
+Computing 16 Table 4.11 features...
+[features] WARNING: 46 window(s) have ForwardingRatio > 1 (max 6.75). A relay cannot forward more than it received; this is a queue flush across a window edge. Check segment assignment before trusting the baseline distribution.
+Sniffer captures (real MAC retries, tools/pcap_retry.py):
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1201AM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 00:01:00 and 00:14:00 (this run and the next of the same cell) in exports/baseline/linear/Yuchengco/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1215AM.pcap: no retry data - no 'Starting PHASE' lines in the run log, and no root *_telem.csv for r1 exported between 00:14:00 and 00:33:00 (this run and the next of the same cell) in exports/baseline/linear/Yuchengco/stationary - this run's own export is missing, so its phase times are unavailable.
+  sniffer linear-baseline-stationary-yuchengco_r1_oct22_1244AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-baseline-highload-g402_r1_oct22_0825AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-baseline-highload-g402_r1_oct22_0909AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer star-baseline-stationary-dlsu_library_r1_oct22_0705AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer star-baseline-burst-g402_r1_oct22_0150AM.pcap: no retry data - no attack phase (1/2) and cooldown (3) in root run log - incomplete run.
+  sniffer partial_mesh-wormhole-stationary-g402_r1_oct19_0434PM.pcap: no retry data - no run log started within 20 min of this capture - copy the root's log into datasets/run_logs
+  sniffer partial_mesh-wormhole-highload-yuchengco_r1_oct21_0704PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer partial_mesh-wormhole-stationary-yuchengco_r1_oct21_0609PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer star-wormhole-burst-yuchengco_r1_oct21_1250PM.pcap: no retry data - phase(s) [0] started more than once - the root rebooted or two runs share this log. Split the log to the one run the capture covers.
+  sniffer star-wormhole-burst-yuchengco_r1_oct21_1259PM.pcap: no retry data - phase(s) [0] started more than once - the root rebooted or two runs share this log. Split the log to the one run the capture covers.
+  sniffer star-wormhole-highload-yuchengco_r1_oct21_1210PM.pcap: no retry data - cannot place the phases on the laptop clock. Only blackhole runs can be fitted from traffic. Pass --attack-start HH:MM:SS or --trust-stamp.
+  sniffer tree-wormhole-stationary-g402_r1_oct22_0153PM.pcap: no retry data - no 'Starting PHASE' lines in the run log and no exports folder for this cell (looked in exports/wormhole/tree/G402/stationary and archive/*/exports/wormhole/tree/G402/stationary)
+  none usable - MacRetryRate stays NaN
+Wrote 5324 feature rows to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\feature_table.csv
+Wrote column legend to: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\feature_table_legend.csv
+
+── Feature NaN Counts ──────────────────────────────
+  ForwardingRatio: 3180/5324 NaN [2144 value(s) on 3 node(s) — not applicable elsewhere]
+  IngressEgressDelta: 0/5324 NaN
+  RetryRate: 557/5324 NaN [4767 value(s) on 8 node(s) — not applicable elsewhere]
+  PDR: 5324/5324 NaN [all-NaN]
+  ParentSwitchRate: 0/5324 NaN
+  HopChangeCount: 0/5324 NaN
+  HopStabilityDuration: 0/5324 NaN
+  RSSI_mean: 530/5324 NaN [4794 value(s) on 7 node(s) — not applicable elsewhere]
+  RSSI_var: 0/5324 NaN
+  RSSI_stability: 0/5324 NaN
+  RSSI_Hop_Diff: 571/5324 NaN [4753 value(s) on 7 node(s) — not applicable elsewhere]
+  LatencyHopRatio: 5324/5324 NaN [all-NaN] [relative one-way delay — see thesis-deviate.md]
+  ConsistencyScore: 3180/5324 NaN [2144 value(s) on 3 node(s) — not applicable elsewhere]
+  TunnelIntensity: 5324/5324 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  TunnelBytes: 5324/5324 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  TunnelLatency: 5324/5324 NaN [all-NaN — TUNNEL-END ONLY: needs a wormhole run]
+  MacRetryRate: 5324/5324 NaN [all-NaN] [sniffer runs only, not a model input — NaN = not measured, D-15]
+─────────────────────────────────────────────────────
+Running EDA on: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\feature_table.csv
+findfont: Failed to find font weight medium, now using 400.
+
+=== Single-feature decidability audit - S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload
+    Majority-class baseline: 1.0000
+    (accuracy of ONE threshold on ONE column, labels visible)
+
+    feature                 thresh    lift  nan-acc   cover  status
+    -------------------------------------------------------  -----------
+    HopChangeCount          1.0000 +0.0000      n/a    1.00  model input
+    ParentSwitchRate        1.0000 +0.0000      n/a    1.00  model input
+    HopStabilityDuration    0.9997 -0.0003      n/a    1.00  model input
+    RSSI_var                0.9997 -0.0003      n/a    1.00  model input
+    RSSI_mean               0.9997 -0.0003   0.8751    0.88  model input
+    RSSI_Hop_Diff           0.9997 -0.0003   0.8751    0.88  model input
+    ConsistencyScore        0.9976 -0.0024   0.6281    0.37  model input
+    ForwardingRatio         0.9976 -0.0024   0.6281    0.37  model input
+    IngressEgressDelta      0.9851 -0.0149      n/a    1.00  model input
+    RSSI_stability          0.9425 -0.0575      n/a    1.00  model input
+    PDR                        n/a     n/a      n/a    0.00  model input
+    LatencyHopRatio            n/a     n/a      n/a    0.00  model input
+    TunnelIntensity            n/a     n/a      n/a    0.00  EXCLUDED
+    TunnelBytes                n/a     n/a      n/a    0.00  EXCLUDED
+    TunnelLatency              n/a     n/a      n/a    0.00  EXCLUDED
+
+
+── EDA Summary ─────────────────────────────────────
+  Descriptive statistics:  S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\eda_output\descriptive_statistics.csv
+  Distribution plots:      3 written
+  Time-series plots:       9 written
+  Correlation plots:       S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\eda_output\correlation_pearson.png, S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\eda_output\correlation_spearman.png
+    excluded (all-NaN): ['PDR', 'LatencyHopRatio']
+  PCA/t-SNE plot:          S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\eda_output\dimensionality_reduction.png
+    excluded: ['ConsistencyScore', 'ForwardingRatio', 'HopChangeCount', 'LatencyHopRatio', 'PDR', 'ParentSwitchRate', 'TunnelBytes', 'TunnelIntensity', 'TunnelLatency']
+  Tunnel-end projection:   skipped — no rows carry tunnel data (not a wormhole run)
+  All outputs in:          S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\analysis\baseline\partial_mesh\G402\highload\eda_output/
+───────────────────────────────────────────────────────
+
+--- Gate 1/3: capture integrity -- baseline/partial_mesh/G402/highload[PASS] root_root_partial_none_r1_oct22_0835AM_telem.csv
+    info: sample coverage 100.0% of expected (4943 rows over 494s, measured ~10.00 Hz, 0 gap(s))
+[PASS] root_root_partial_none_r1_oct22_0919AM_telem.csv
+    info: sample coverage 100.0% of expected (4974 rows over 497s, measured ~10.00 Hz, 1 gap(s))
+[PASS] victim_NODE-20500DE70C80_partial_none_r1_oct22_0938AM_telem.csv
+    info: sample coverage 100.0% of expected (7429 rows over 743s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv
+    info: sample coverage 100.0% of expected (7432 rows over 743s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-20500DE71C38_partial_none_r1_oct22_0925AM_telem.csv
+    info: sample coverage 100.0% of expected (7330 rows over 733s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-2805A532D7B4_partial_none_r1_oct22_0929AM_telem.csv
+    info: sample coverage 100.0% of expected (7582 rows over 758s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-704BCA25B768_partial_none_r1_oct22_0934AM_telem.csv
+    info: sample coverage 100.0% of expected (4774 rows over 477s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0927AM_telem.csv
+    info: sample coverage 100.0% of expected (6755 rows over 675s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0942AM_telem.csv
+    info: sample coverage 100.0% of expected (6781 rows over 678s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+[PASS] victim_NODE-F42DC973E618_partial_none_r1_oct22_0936AM_telem.csv
+    info: sample coverage 100.0% of expected (7633 rows over 763s, measured ~10.00 Hz, 0 gap(s))
+    info: phase sync not checked: no *_arrivals.csv in the folder
+
+10 file(s) — 10 PASS, 0 WARN, 0 FAIL. Manifest: S:\My Work\Business\Claude\Workstations\NIS16-ESP32-Environment-THESIS3\ESP32-Environment\datasets\exports\baseline\partial_mesh\G402\highload\manifest.json
+
+--- Gate 2/3: topology -- baseline/partial_mesh/G402/highload
+Loaded 10 telemetry file(s):
+  - root_root_partial_none_r1_oct22_0835AM_telem.csv
+  - root_root_partial_none_r1_oct22_0919AM_telem.csv
+  - victim_NODE-20500DE70C80_partial_none_r1_oct22_0938AM_telem.csv
+  - victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv
+  - victim_NODE-20500DE71C38_partial_none_r1_oct22_0925AM_telem.csv
+  - victim_NODE-2805A532D7B4_partial_none_r1_oct22_0929AM_telem.csv
+  - victim_NODE-704BCA25B768_partial_none_r1_oct22_0934AM_telem.csv
+  - victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0927AM_telem.csv
+  - victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0942AM_telem.csv
+  - victim_NODE-F42DC973E618_partial_none_r1_oct22_0936AM_telem.csv
+
+=== Reconstructed structure ===
+8 node(s) attached, 4 layer(s)
+NODE_B0CBD8F33218  (layer 1, role root)
+    NODE_2805A532D7B4  (layer 2, role child)
+        NODE_20500DE70C80  (layer 3, role child)
+        NODE_B4BFE932FE90  (layer 3, role child)
+    NODE_F42DC973E618  (layer 2, role child)
+        NODE_20500DE71C38  (layer 3, role child)
+            NODE_B4BFE934ED80  (layer 4, role child)
+        NODE_704BCA25B768  (layer 3, role child)
+
+=== Per-node convergence & stability ===
+  [OK ] NODE_20500DE70C80  layer=3  converge=  0.0s, settled 322s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=14861
+  [OK ] NODE_20500DE71C38  layer=3  converge=  0.0s, settled 312s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=7330
+  [OK ] NODE_2805A532D7B4  layer=2  converge=257.0s, settled 80s before Phase 0  parent_switches=2 (baseline 0)  layer_changes=4 (baseline 0)  samples=7582
+  [OK ] NODE_704BCA25B768  layer=3  converge=  0.0s, settled 56s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=4774
+  [OK ] NODE_B0CBD8F33218  layer=1  converge=  0.0s, settled 76s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=9917
+  [OK ] NODE_B4BFE932FE90  layer=3  converge=  0.0s, settled 254s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6755
+  [OK ] NODE_B4BFE934ED80  layer=4  converge=  0.0s, settled 257s before Phase 0  parent_switches=0 (baseline 0)  layer_changes=0 (baseline 0)  samples=6781
+  [OK ] NODE_F42DC973E618  layer=2  converge=262.0s, settled 80s before Phase 0  parent_switches=2 (baseline 0)  layer_changes=4 (baseline 0)  samples=7633
+
+=== Expected-topology check ===
+  WARN partial: 8 nodes, each seen under only one parent so far - still a plain tree (depth 4)
+
+=== Milestone-3 verdict ===
+  Settled before Phase 0 : YES   (formation time before START is shown, not judged; logs without phases: 60s rule)
+  Baseline re-routing free            : YES
+  Structure matches partial           : YES
+
+--- Gate 3/3: attack signature -- baseline/partial_mesh/G402/highload
+
+=== Validation summary -- baseline/partial_mesh/G402/highload
+C:\Espressif\tools\idf-python\3.11.2\python.exe: can't open file 'S:\\My Work\\Business\\Claude\\Workstations\\NIS16-ESP32-Environment-THESIS3\\ESP32-Environment\\tools\x0berify_attack.py': [Errno 22] Invalid argument
+    integrity : PASS
+    topology  : PASS
+    attack    : BENIGN INCONCLUSIVE
+
+
+Done: 1 run(s) analyzed, 5,324 row(s) in this batch.
+Run '.\analyze.ps1 -List' for the running total across everything captured.
