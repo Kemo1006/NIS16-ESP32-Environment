@@ -30,7 +30,7 @@ Method: `mesh_setup.c` was run through the ESP32 compiler's preprocessor (`xtens
 ## Conflicts between sources (if any)
 
 - STATUS/MEMORY D-40 (oct. 23 ~3 PM) recorded tree wormhole at fan-out 10 with D-37/D-38/D-39 kept; D-41 supersedes that for tree wormhole only (user's decision, oct. 23 ~4:30 PM).
-- Paper Fig. 4.18 (tunnel skips 2 hops, A H01 -> B H03) no longer matches what the tree wormhole firmware enforces - checklist A44.
+- Paper Fig. 4.18 (tunnel skips 2 hops, A H01 -> B H03) is no longer enforced by the tree wormhole firmware. User decision (oct. 23): D-41 is NOT mentioned in the paper (checklist A44 = not for paper).
 
 ## What remains unverified
 
