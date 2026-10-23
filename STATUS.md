@@ -37,4 +37,4 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
-- oct. 23 ~3 PM (Angelo) — D-40 tree fan-out back to 10 (cap 2 reverted after the oct. 22 7:57 PM ec479ca run worked); D-39 single-channel scan, benign SCENARIO verdict (#85) pushed earlier (7d50467). Reflash tree boards.
+- oct. 23 ~3 PM (Angelo) — D-40 tree fan-out back to 10 (cap 2 reverted after the oct. 22 7:57 PM ec479ca run worked); D-39 single-channel scan, benign SCENARIO verdict (#85) pushed earlier (7d50467). Reflash tree boards. ~4:40 PM: GitHub sync 'tick all/none' fixed in run_gui.ps1 (uncommitted).

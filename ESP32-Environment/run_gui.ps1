@@ -6760,14 +6760,19 @@ $ui.SyncSendOnly.Add_Click({ Start-SyncApply -Push (Get-SyncPicked 'Send') })
 $ui.SyncRecvOnly.Add_Click({ Start-SyncApply -Pull (Get-SyncPicked 'Recv') -Remove (Get-SyncPicked 'Gone') })
 $ui.SyncFoldOnly.Add_Click({ Start-SyncApply -Update $true })
 $ui.SyncUpdate.Add_Click({ Update-SyncCounts })
+# oct. 23 2026: these used .GetNewClosure() - inside a closure $script:SyncTables is the
+# closure's OWN (empty) scope, so every click hit 'return' and tick all / none did nothing.
+# The table name + value now ride on the button's Tag; the handler is a plain block.
 foreach ($pair in @(@('SyncSendAll', 'Send', $true), @('SyncSendNone', 'Send', $false), @('SyncRecvAll', 'Recv', $true), @('SyncRecvNone', 'Recv', $false))) {
-    $w = $pair[1]; $v = $pair[2]
+    $ui[$pair[0]].Tag = @($pair[1], $pair[2])
     $ui[$pair[0]].Add_Click({
+        param($s, $e)
         if (-not $script:SyncTables) { return }
+        $w = $s.Tag[0]; $v = [bool]$s.Tag[1]
         $script:SyncBulk = $true   # one recount at the end, not one per row (282 rows = 80 000 updates)
         try { foreach ($r in $script:SyncTables[$w].Rows) { $r.Pick = $v } } finally { $script:SyncBulk = $false }
         Update-SyncCounts
-    }.GetNewClosure())
+    })
 }
 $ui.SyncAbortMerge.Add_Click({
     $py = Get-Py; if (-not $py) { return }
