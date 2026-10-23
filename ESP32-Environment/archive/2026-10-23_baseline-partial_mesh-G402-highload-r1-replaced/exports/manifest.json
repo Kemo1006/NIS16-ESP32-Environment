@@ -1,0 +1,87 @@
+{
+  "root_root_partial_none_r1_oct22_0835AM_telem.csv": {
+    "row_count": 4943,
+    "sha256": "c21fd3c333b81f9ab15aecdf977deaa3e58f0b14690a73a0d5a590daa752d9a1",
+    "size_bytes": 369892
+  },
+  "root_root_partial_none_r1_oct22_0919AM_telem.csv": {
+    "row_count": 4974,
+    "sha256": "bdc10f33e645c709f55cf4221fc3ce536fadf6252ab627e7847e5ca94aba747c",
+    "size_bytes": 372250
+  },
+  "victim_NODE-20500DE70C80_partial_none_r1_oct22_0848AM_telem.csv": {
+    "row_count": 6065,
+    "sha256": "b147fd13a428e64b46d5edc3d4c04879ba5046a5af28cf62fac6995e8d53c59f",
+    "size_bytes": 490538
+  },
+  "victim_NODE-20500DE70C80_partial_none_r1_oct22_0938AM_telem.csv": {
+    "row_count": 7429,
+    "sha256": "813de06193e3c1e33d004ad5387ce90f08ae7c00f3349a8073130c7e9d79a8f1",
+    "size_bytes": 600900
+  },
+  "victim_NODE-20500DE70C80_partial_none_r1_oct22_0939AM_telem.csv": {
+    "row_count": 7432,
+    "sha256": "5378234c63cc75ad21223bf5ee3e968d27ef5b93902f644c957f0282c8f0984e",
+    "size_bytes": 601144
+  },
+  "victim_NODE-20500DE71C38_partial_none_r1_oct22_0849AM_telem.csv": {
+    "row_count": 6266,
+    "sha256": "5239f6a94ce24bcd061350dd40d4d93aa94f675f1eb41d6ece4dffa69fa93471",
+    "size_bytes": 536083
+  },
+  "victim_NODE-20500DE71C38_partial_none_r1_oct22_0925AM_telem.csv": {
+    "row_count": 7330,
+    "sha256": "b77297907f1ecc884397f32c11ff0bd3eaf068fa4bfe55457ab6443a9283a80c",
+    "size_bytes": 626624
+  },
+  "victim_NODE-2805A532D7B4_partial_none_r1_oct22_0846AM_telem.csv": {
+    "row_count": 6417,
+    "sha256": "e003417e3bd8218ae99229e4028224f2f1bf046c478d38acb7f4b124f0bf91c8",
+    "size_bytes": 515506
+  },
+  "victim_NODE-2805A532D7B4_partial_none_r1_oct22_0929AM_telem.csv": {
+    "row_count": 7582,
+    "sha256": "3d5ae0d871c4d5d7bbbb9b03354db0da88a093bab008ca6b924ea3d9363a639f",
+    "size_bytes": 675755
+  },
+  "victim_NODE-704BCA25B768_partial_none_r1_oct22_0845AM_telem.csv": {
+    "row_count": 6668,
+    "sha256": "cb9e8f90751ebe133b6a0c66b5dd645f09389b71c468f0cf07769abc9caf6839",
+    "size_bytes": 541178
+  },
+  "victim_NODE-704BCA25B768_partial_none_r1_oct22_0934AM_telem.csv": {
+    "row_count": 4774,
+    "sha256": "52f5e0b8ee3d31bb920cf8820497d1b9789b3882db31c3cede4f5c8b827aa88b",
+    "size_bytes": 377822
+  },
+  "victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0847AM_telem.csv": {
+    "row_count": 4694,
+    "sha256": "e16825506f435e30ffd74834d273112218b0a897a038721871734eb7bd7ec3a0",
+    "size_bytes": 371160
+  },
+  "victim_NODE-B4BFE932FE90_partial_none_r1_oct22_0927AM_telem.csv": {
+    "row_count": 6755,
+    "sha256": "a05a7b83c8c1e64dcf5ecea72e6bb6b65ca6722a3c71e2f953f818cacc784e44",
+    "size_bytes": 544326
+  },
+  "victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0844AM_telem.csv": {
+    "row_count": 6206,
+    "sha256": "21862b52de406badade2b21aaeb3fe90961dee17a32c2d71360317f3dc04067c",
+    "size_bytes": 545017
+  },
+  "victim_NODE-B4BFE934ED80_partial_none_r1_oct22_0942AM_telem.csv": {
+    "row_count": 6781,
+    "sha256": "c75bef7a4ba1798202fe68be925bcdfaffc21450c3f0eb9da155de6e4f4ca3b5",
+    "size_bytes": 546230
+  },
+  "victim_NODE-F42DC973E618_partial_none_r1_oct22_0847AM_telem.csv": {
+    "row_count": 6165,
+    "sha256": "be1e4b98b6b00a6a890ec49e0b1d38fdd6cf9c38c2eca4906e6bc3e7c92c3004",
+    "size_bytes": 525297
+  },
+  "victim_NODE-F42DC973E618_partial_none_r1_oct22_0936AM_telem.csv": {
+    "row_count": 7633,
+    "sha256": "f7e3f8734869c2fd39056f2c9430dec55338514401b6cbc5eee541ef2cfff97b",
+    "size_bytes": 683166
+  }
+}

@@ -624,3 +624,15 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Effect** | Tree builds form as in the 7:57 PM run again, plus the D-36/D-38/D-39 protections. The cap can still be set per build (`-DMESH_TREE_MAX_CHILDREN=N`). |
 | **Checks** | Compile-checked IDF 5.5.4, 6 variants 0 warnings; preprocessed tree build `max_children = 10`, partial `= 2` and identical to before. Not hardware-tested. |
 | **Paper edit** | Withdraws A38 (tree "at most two children" sentence) - see checklist A43. |
+
+## D-41 · Tree WORMHOLE runs use partial's mesh logic (oct. 23, 2026)
+
+| | |
+|---|---|
+| **Before** | Tree wormhole had its own rules: stock fan-out 10 (D-40), 30 s assoc expire (D-38), sticky parents (D-26), B exactly one hop below A's depth (A H01 -> B H03, oct. 22) with a 6-scan fallback (D-37), single-channel scan (D-39). Oct. 23 G402 burst: 9 attempts, both ends failed to seat or kept dropping (verifications #86/#87). |
+| **Why** | User (Basti, oct. 23 ~4:30 PM, in a hurry): partial wormhole forms and holds reliably, and its verdicts already show a tree shape - use partial's logic for tree. |
+| **We do** | `TREE_WH_AS_PARTIAL` 1 (mesh_config.h): in tree + wormhole builds only (root, victims, A, B), mesh_setup.c takes partial's code: fan-out `MESH_PARTIAL_MAX_CHILDREN` (2), assoc expire 10 s, no sticky parents, B = strongest open parent at least as deep as A (`WH_B_TREE_DEPTH` off), all-channel scan. Kept: D-36 (ends are leaves), topology label/folders "tree", root reporting. Tree blackhole / baseline and every other topology unchanged. `-DTREE_WH_AS_PARTIAL=0` = D-40 logic. |
+| **Basis** | Partial wormhole hardware runs (oct. 21) formed root -> 2 x H01 -> H02 -> H03 and held; root setup gate (A shallower than B + UART OK) is topology-generic. |
+| **Effect** | Tree wormhole and partial wormhole now form the mesh the same way; the tunnel may skip 1 hop instead of the paper's 2 (Fig. 4.18). Does NOT fix B0:18 going silent after joining or the UART wiring (verification #87). |
+| **Checks** | Clean (from-scratch) builds, IDF 5.3.5: root, A, B, victim tree wormhole = 0 warnings, 0 errors; root + A + B binaries contain the D-41 log line and none of the D-38 / D-26 strings. Tree blackhole/baseline: unchanged by construction (`TREE_AS_PARTIAL` is 0 unless ACTIVE_ATTACK = wormhole). Not hardware-tested. |
+| **Paper edit** | **None - do NOT mention D-41 in the paper** (user decision, oct. 23 2026: the panel focuses on the data; tree and partial already look alike). Internal record only; checklist A44 marks it not-for-paper. |

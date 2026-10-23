@@ -145,6 +145,17 @@
 #define TREE_AP_ASSOC_EXPIRE_S     30
 #endif
 
+/** D-41 (oct. 23 2026): TREE + WORMHOLE builds run PARTIAL's mesh logic - fan-out
+ *  MESH_PARTIAL_MAX_CHILDREN, assoc expire 10 s, no sticky parents, B's rule
+ *  "strongest open parent at least as deep as A" (no exact A H01 -> B H03 depth
+ *  rule, no D-39 single-channel scan). Why: partial wormhole runs form and hold
+ *  reliably and already come out tree-shaped; the oct. 23 tree burst runs kept
+ *  failing to seat both ends. Tree blackhole / baseline builds are untouched.
+ *  0 = the D-40 tree wormhole logic again (-DTREE_WH_AS_PARTIAL=0). */
+#ifndef TREE_WH_AS_PARTIAL
+#define TREE_WH_AS_PARTIAL         1
+#endif
+
 /* ═══════════════════════════════════════════════════════════════════════════
  * ROUTER / UPLINK (only used when the root bridges to an AP)
  * Set MESH_USE_ROUTER to 0 for a pure self-contained mesh (recommended for

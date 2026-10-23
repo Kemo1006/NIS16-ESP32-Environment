@@ -19,7 +19,7 @@
                    },
                    {
                        "Label":  "node3",
-                       "Port":  "COM11",
+                       "Port":  "COM3",
                        "Role":  "child",
                        "Kind":  "plain",
                        "Display":  "plain child",
@@ -46,7 +46,7 @@
                    },
                    {
                        "Label":  "node6",
-                       "Port":  "COM3",
+                       "Port":  "COM7",
                        "Role":  "child",
                        "Kind":  "plain",
                        "Display":  "plain child",
@@ -55,7 +55,7 @@
                    },
                    {
                        "Label":  "node8",
-                       "Port":  "COM4",
+                       "Port":  "COM6",
                        "Role":  "child",
                        "Kind":  "plain",
                        "Display":  "plain child",
@@ -64,7 +64,7 @@
                    },
                    {
                        "Label":  "node5",
-                       "Port":  "COM6",
+                       "Port":  "COM5",
                        "Role":  "child",
                        "Kind":  "plain",
                        "Display":  "plain child",

@@ -188,8 +188,11 @@ static void heartbeat_mark_offline(const uint8_t mac[6]);
 #define WH_B_NO_ROOT \
     (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && \
      (MESH_TOPOLOGY == NIS_TOPO_TREE || MESH_TOPOLOGY == NIS_TOPO_PARTIAL))
+/* D-41: tree wormhole builds take partial's mesh logic (mesh_config.h). */
+#define TREE_AS_PARTIAL \
+    (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE && TREE_WH_AS_PARTIAL)
 #define WH_B_TREE_DEPTH \
-    (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE)
+    (ACTIVE_ATTACK == PHASE_ID_WORMHOLE && MESH_TOPOLOGY == NIS_TOPO_TREE && !TREE_AS_PARTIAL)
 #define MANUAL_PARENT (STAR_HUB || WH_B_NO_ROOT)
 
 #if MANUAL_PARENT
@@ -294,8 +297,13 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
     ESP_ERROR_CHECK(esp_mesh_set_topology(MESH_TOPO_CHAIN));
     max_layer    = MESH_STACK_MAX_LAYER_CHAIN;
     max_children = MESH_LINEAR_MAX_CHILDREN; /* 1 child/node → strict chain     */
-#elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL)
+#elif (MESH_TOPOLOGY == NIS_TOPO_PARTIAL) || TREE_AS_PARTIAL
     max_children = MESH_PARTIAL_MAX_CHILDREN;/* narrowed fan-out → branched mesh */
+#if TREE_AS_PARTIAL
+    ESP_LOGW(TAG, "TREE WORMHOLE (D-41): running PARTIAL's mesh logic (fan-out %d, assoc "
+             "expire 10 s, no sticky parents, B at least as deep as A).",
+             MESH_PARTIAL_MAX_CHILDREN);
+#endif
 #elif (MESH_TOPOLOGY == NIS_TOPO_TREE)
     max_children = MESH_TREE_MAX_CHILDREN;   /* stock 10 unless overridden (D-40) */
 #endif
@@ -304,7 +312,7 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
              topo_name, max_layer, max_children);
 
     ESP_ERROR_CHECK(esp_mesh_set_vote_percentage(1));
-#if (MESH_TOPOLOGY == NIS_TOPO_TREE)
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE) && !TREE_AS_PARTIAL
     /* D-38 (oct. 22 2026): esp_mesh.h - "If mesh softAP is encrypted, this value
      * should be set a greater value, such as 30 seconds." Ours is (MESH_PASSWORD).
      * At 10 s, tree children with GOOD links (-66..-77 dBm) were dropped by a busy
@@ -380,7 +388,7 @@ esp_err_t mesh_setup_init(mesh_node_role_t role)
 
     ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 
-#if (MESH_TOPOLOGY == NIS_TOPO_TREE) && TREE_STICKY_PARENTS
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE) && TREE_STICKY_PARENTS && !TREE_AS_PARTIAL
     if (role != MESH_ROLE_ROOT) {
         /* D-26: shift ESP-MESH's own defaults - never fatal, every value logged.
          * ONLY the "keep / leave the parent I have" side. oct. 19 2026 (afternoon):
@@ -739,7 +747,7 @@ static void star_hub_scan(void)
     wifi_scan_config_t sc = {0};
     sc.show_hidden = 1;                     /* mesh SoftAPs are hidden */
     sc.scan_type   = WIFI_SCAN_TYPE_PASSIVE;
-#if (MESH_TOPOLOGY == NIS_TOPO_TREE)
+#if (MESH_TOPOLOGY == NIS_TOPO_TREE) && !TREE_AS_PARTIAL
     /* D-39 (oct. 23 2026): channel 0 = a passive sweep of all 13 channels, ~4.7 s off the
      * mesh channel. Once A's HELLO gives B a depth, B re-scans every WH_REPICK_GAP_US while
      * CONNECTED - so it kept missing its parent's beacons (bcn_timeout, reason 200) and

@@ -6,7 +6,7 @@
                         "boards":  [
                                        {
                                            "nickname":  "ROOT",
-                                           "mac":  "B0:18",
+                                           "mac":  "20:80",
                                            "role":  "root"
                                        }
                                    ]
@@ -31,7 +31,7 @@
                                        },
                                        {
                                            "nickname":  "child_2(node3)",
-                                           "mac":  "20:80",
+                                           "mac":  "B0:18",
                                            "role":  "child"
                                        },
                                        {

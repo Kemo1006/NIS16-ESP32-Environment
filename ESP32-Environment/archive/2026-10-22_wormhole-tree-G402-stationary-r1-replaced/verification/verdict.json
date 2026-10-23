@@ -1,0 +1,8 @@
+{
+ "wormhole/tree/G402/stationary": {
+  "Code": 3,
+  "Line": "VERDICT: WORMHOLE NOT CONFIRMED - SETUP INVALID  (1/1 primary signature(s) beyond 3-sigma)  |  scenario stationary: applied",
+  "When": "2026-10-22 18:34",
+  "Data": "trimmed"
+ }
+}

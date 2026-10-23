@@ -1,0 +1,70 @@
+﻿{
+    "_help":  "Shown at the top of run_wizard.ps1 and menu.ps1. Member names are fixed (Cal, Bas, Kyle). mac can be the full MAC or just first:last byte - only first:last is displayed. role: root, child, attacker (anything else is shown uncolored).",
+    "members":  [
+                    {
+                        "name":  "Cal",
+                        "boards":  [
+                                       {
+                                           "nickname":  "ROOT",
+                                           "mac":  "B0:18",
+                                           "role":  "root"
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Sniffer",
+                        "boards":  [
+                                       {
+                                           "nickname":  "Sniffer",
+                                           "mac":  "70:B0",
+                                           "role":  "child"
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Bas",
+                        "boards":  [
+                                       {
+                                           "nickname":  "child_1(node 2)",
+                                           "mac":  "20:38",
+                                           "role":  "child"
+                                       },
+                                       {
+                                           "nickname":  "child_2(node3)",
+                                           "mac":  "20:80",
+                                           "role":  "child"
+                                       },
+                                       {
+                                           "nickname":  "child_3(node4)",
+                                           "mac":  "F4:18",
+                                           "role":  "child"
+                                       }
+                                   ]
+                    },
+                    {
+                        "name":  "Kyle",
+                        "boards":  [
+                                       {
+                                           "nickname":  "child_4(node5)",
+                                           "mac":  "70:68",
+                                           "role":  "child"
+                                       },
+                                       {
+                                           "nickname":  "child_5(node6)",
+                                           "mac":  "28:B4",
+                                           "role":  "child"
+                                       },
+                                       {
+                                           "nickname":  "child_6(node7)",
+                                           "mac":  "B4:90",
+                                           "role":  "child"
+                                       },
+                                       {
+                                           "nickname":  "child_7(node8)",
+                                           "mac":  "B4:80",
+                                           "role":  "child"
+                                       }
+                                   ]
+                    }
+                ]
+}
