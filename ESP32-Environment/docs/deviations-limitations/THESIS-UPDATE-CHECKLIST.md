@@ -70,6 +70,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 
 | # | Status | Where | What to change | Source |
 |---|---|---|---|---|
+| B-official24 | ⬜ | Whole paper: `Plan/Paper-Editing/1-Working-Copy/THESIS3 Official (oct. 24, 2026).docx` | **Combined copy (oct. 24, 2026, Basti's laptop, Claude)** of the Google Doc tabs: Tab 1 Ch. 1-4 + Block A (new §4.2.7.7), latest Ch. 5-6 + Blocks B1-C7, Ch. 6 tables/figures renumbered, all 124 suggestions accepted; every change yellow, full list in `THESIS3 Official - change report (oct. 24, 2026).md`. Removed per team rules: D-33/jitter, D-38, D-39, the D-41 note, ~45 development dates (Table 6.11 capture dates kept). Fixed: §4.2.2.5 'three benign runs per topology' (D-35 amended → tree/partial have one, at G402) and a stale 44-run paragraph. Team: re-read the yellow, rebuild contents/lists, re-run the provisional pooled tables | MEMORY oct. 24 |
 | B1 | ⬜ | Every results table with z-scores | A z of `-inf` means baseline σ = 0 (perfectly stable). Write **"z undefined (σ = 0)"** and give the finite primary (PDR) next to it — never print −∞ | Verification #3, #4 |
 | B2 | ⬜ | Blackhole results | Quote **per-node PDR** (victim 1.0 → 0.0) rather than the pooled PDR, which mixes victims with bystanders | Verification #1 |
 | B3 | 🟨 | Results framing | PDR / LatencyHopRatio separate the classes perfectly on their own — frame as expected for a blackhole, not as a model result | STATUS blockers |
