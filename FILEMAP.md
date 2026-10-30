@@ -40,7 +40,7 @@ combined/                             ← workstation root (this anchor)
 ├── Plan/            # THESIS 3 planning — THESIS3-PANEL-PLAN.md (the adviser-facing
 │                     # framework, 7 problems × 5 workstreams) + MEMBER-HOWTO/TASK-SPLIT
 ├── (Implementation Issues/ moved → ESP32-Environment/docs/issues-and-fixes/)
-├── Paper/           # the thesis deliverable (reference, not code)
+├── Paper/           # thesis deliverable; Defense/ = Thesis 3 defense: final-paper decks, study guide v1 + v2 (v2 = checked against the paper; + images/), oct. 20, 2026 progress deck/ (same-day files = v1/v2, other days = own date)
 ├── Setups/          # SD-CARD-WIRING.md (the real wiring facts, incl. the VIN/5V and
 │                     # 4MHz-clock gotchas) + a stale runbook snapshot — prefer
 │                     # ESP32-Environment/docs/ for anything current
