@@ -15,6 +15,40 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #89 — Oct 31, 2026 · ~11:30 PM — sniffer captures for the DEFENSE: blackhole pcap chosen (phases + Wireshark filters), wormhole pcap ON HOLD
+
+> **Requested by:** Kyle · **Laptop:** Kyle's (`LAPTOP-O7JMND47`) · **Commit:** `ce4f2ab0`
+> **Request:** "provide 1 capture for blackhole and 1 capture for wormhole that are valid and that has phases that i can use for our thesis defense" (oct. 25), then "lets hold on for wormhole as i dont have all the pcap files yet". Work done oct. 25, written up here after the oct. 31 pull (the oct. 25 draft numbered itself #88 and collided with the final-dataset block).
+> **Scope:** every `*_retry.json` under `datasets/PCAP/` on Kyle's laptop (28 files; PCAP is local, not committed - other laptops hold other captures, e.g. Angelo's wormhole/star/DLSU_Library/highload oct. 21).
+
+| Attack | Topology | Location | Scenario | Repeat | Capture | Role |
+|---|---|---|---|---|---|---|
+| blackhole (attacker `0C80`, hop 1, 6 victims) | linear | DLSU_Library | highload | r1 | `PCAP/blackhole/linear/DLSU_Library/highload/linear-blackhole-highload-dlsu_library_r1_oct11_0331PM.pcap` (23.9 MB, 15:32:01-15:43:44) | **chosen** |
+| blackhole (attacker `1C38`, hop 2, 2 victims + 4 bystanders) | partial_mesh | G402 | highload | r1 | `PCAP/blackhole/partial_mesh/G402/highload/partial_mesh-blackhole-highload-g402_r1_oct15_0151PM.pcap` (13.9 MB, 13:51:41-14:03:57) | backup |
+| wormhole (A `1C38` hop 2, B `0C80` hop 7) | linear | G402 | stationary | r1 | `PCAP/wormhole/linear/G402/stationary/linear-wormhole-stationary-g402_r1_oct14_0236PM.pcap` (14:36:53-14:49:02) | **on hold** (only candidate on this laptop) |
+
+| Check | Result | Detail |
+|---|---|---|
+| Survey of all captures | 19 OK / 9 REFUSED | every OK is blackhole (`pcap_retry.py` fits the phases from the attacker's uplink drop). Both wormhole captures REFUSED: 0127PM = the reversed-ends run (#12, not usable); 0236PM = "Only blackhole runs can be fitted from traffic". Also orphaned: blackhole/linear/Yuchengco/stationary 0758PM (its run was replaced by the oct. 19 recapture, no export left; the 0548PM file is 24 bytes) |
+| `verify_attack.py` today, blackhole linear/DLSU/highload | ✅ BLACKHOLE CONFIRMED 2/2, confidence GOOD, no setup check failed | FR 1.000 -> 0.000 (z -494), PDR 1.000 -> 0.000 (z -263), NeighbourFR 1.003 -> 0.002; all 6 victims PDR 1.0 -> 0.0 |
+| `verify_topology.py`, same cell | ✅ | linear chain of 8 (root -> 0C80 -> 1C38 -> E618 -> D7B4 -> ED80 -> B768 -> FE90), settled before Phase 0, baseline re-routing free |
+| `verify_attack.py` today, backup partial/G402/highload | ✅ CONFIRMED 2/2, confidence MINOR GAPS | attacker `1C38` FR 1.000 -> 0.000; victims `FE90`/`ED80` PDR 1.0 -> 0.0, 4 bystanders stay 1.0 (pooled 0.667 - quote per node). Gap: `ED80` baseline 266/300 s (joined late, same as #30). Topology WARN: **a plain tree, not a mesh (B-pm)** |
+| Blackhole phases (chosen capture) | ✅ attack start OBSERVED, the rest DERIVED | fitted from the radio traffic: **attack start 15:38:26.00** (attacker uplink 27.4 -> 3.4 frames/s for 181 s). Root phase changes (exported CSV; the run log lost its phase lines): baseline at root uptime 71.93 s, attack 372.53 s, cooldown 553.23 s. Derived from those DIFFERENCES: **baseline start 15:33:25.4** (= 15:38:26.00 - 300.60 s), cooldown 15:41:26.7 (+180.70 s), end 15:43:26.7. Cross-check: root boot = 15:33:25.4 - 71.93 s = 15:32:13.5, 35 s after the run log's 'Start time 15:31:38' = root flash time. Accuracy about +-1 s (fit works in 1 s steps) |
+| What the radio shows (chosen capture) | ✅ | Wireshark filter `wlan.fc.type == 2 && wlan.ta == 20:50:0d:e7:0c:80`: 74-87 frames/s before 15:38:26, 36 in the second of the start, then 5 / 32 / 19 / 0 / 4 ... a few per second until 15:41:26, then back to 30+/s. The user's I/O Graph (1 s interval) shows the cliff at x ~385 s and the recovery at x ~565 s, exactly 180 s apart. Backup capture: uplink ~12 -> ~1 frame/s at 13:58:01 (baseline 13:53:00, cooldown 14:01:01, end 14:03:02) |
+| Wormhole capture 0236PM = the #29 / #40 run? | ⚠️ paired by TIMING only | `pcap_retry.py` refused, so no tool ties them. Evidence: root telem ends at uptime 667.7 s = the run's TERMINATE; run log 'Start time 14:36:48' + 34 s flash = root boot 14:37:22; root export stamped 2:50 PM, 2 min after the end |
+| Wormhole phases in the pcap | ⚠️ anchored BY HAND, +-3 s | anchor = TERMINATE: the 8 boards' STATION (uplink) frames fall 129 -> 46 per 5 s at **14:48:30** (= root uptime 667.7 s) while the access-point side RISES (root, A, B768 about 20 -> 180 per 30 s, so the mesh-wide total looks flat - filter on STA MACs only). Then baseline 14:38:28, attack 14:43:29, cooldown 14:46:29, terminate 14:48:30 (x = ~95 / 396 / 576 / 697 s). Assumes the collapse IS TERMINATE |
+| Wormhole signature on the radio | ❌ not visible (by design) | the tunnel is a UART WIRE. End A's uplink (`wlan.ta == 20:50:0d:e7:1c:38`) is heard only until ~14:42:53 (x ~345 s), i.e. BEFORE the attack, and has no step at 14:43:29; the root's link is heard ~40-100 frames/min after the first minute. Links that go quiet at 14:42:53 (A, E618->root, B's uplink flattens) do not line up with any phase and persist into cooldown - cause not diagnosed (sniffer range vs real silence) |
+
+### Findings
+- **Blackhole = the defense capture.** The attacker's uplink collapses within one second at 15:38:26 and recovers at 15:41:26, 180 s later, independent of every board's own counters. Say: "the sniffer shows the attacker going quiet", NOT "the pcap shows packets dropped" (the mesh is encrypted; the drop itself is proven by the attacker's counters + the victims' PDR). Only the attack start is observed in the traffic; baseline and cooldown boundaries are calculated from the root's own timestamps.
+- **Wormhole = nothing chosen.** What proves the wormhole is the root's arrival log, not the pcap: 180 of B's attack-phase probes arrive twice, the tunnel copy first by ~13 ms (copies a median 9.9 ms apart), TunnelIntensity 0 -> 1.0 msg/s (#29 / #40). The pcap can give the run's timeline and the end-of-run collapse only. Waiting for the other laptops' pcaps (Angelo's wormhole/star/DLSU_Library/highload oct. 21, the oct. 22-23 tree wormhole runs). A usable one needs: a confirmed wormhole run, end A's uplink AND the root's link audible all run, and a way to place the phases (TERMINATE anchor or `--attack-start`).
+- **Wireshark syntax:** `wlan.ta in {mac, mac, ...}` needs COMMAS in this build (4.6.9); a space-separated list silently matches nothing. Station MACs only for the end-of-run collapse.
+- **Not applied:** `pcap_retry.py --attack-start 14:43:29` was NOT run, so no wormhole MacRetryRate entered the dataset (B-mrr2 says wormhole cells cannot be filled) - a dataset change, the team's call. Not checked: the other 17 OK blackhole captures one by one; captures on other laptops.
+
+**Verdict: ✅ USE `linear-blackhole-highload-dlsu_library_r1_oct11_0331PM.pcap` as the blackhole example** (backup: partial_mesh/G402/highload, with the B-pm caveat). **Wormhole: undecided - on hold** until the other laptops' pcaps are in.
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #88 — Oct 31, 2026 · ~3:45 PM — whole final dataset (80 runs): blanks explained + "is it real?" recount for the defense study guide
 
 > **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `b7b66831`

@@ -36,5 +36,6 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `S:\My Work\Business\Claude\Overl
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run — analyze.ps1 re-trims.
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- oct. 31 (Kyle) — sniffer notes #89: blackhole pcap chosen (linear/DLSU/highload oct11_0331PM; attack start observed, other phases derived), wormhole pcap ON HOLD until the other laptops' pcaps arrive. Notes only, uncommitted.
 - oct. 31 (Basti, ~10 PM) — study guide v8, Part 16 (preprocessing in depth, checked against the code); Paper/Defense/ reorganized into `Study Guide/`, `Ppt/`, `_logs/`.
 - oct. 31 (Angelo) — Canva deck slides 12-19 redesigned as the 4-check validation flow (Dataset + Scenario slides are new), saved in Canva. Nothing committed; no local .pptx made.
