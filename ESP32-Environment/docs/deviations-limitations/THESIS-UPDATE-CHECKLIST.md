@@ -65,6 +65,7 @@ exact wording guidance. Entries with **no paper change** are listed so nobody re
 | A42 | ⛔ | WITHDRAWN - not for paper (D-39) | **Do NOT add**: tree wormhole ends no longer scan only channel 11 (D-41 uses partial's scan), and the paper must not show a tree-wormhole firmware difference (user, oct. 23) | D-39, D-41, user oct. 23 |
 | A43 | ⬜ | Methodology §4.2.2.2 tree (D-40) | **A38 WITHDRAWN: tree is NOT capped at two children any more** (stock fan-out 10, as in the oct. 22 7:57 PM run that worked). Do not add A38's sentence; if it was added, remove it. Tree depth comes from placement | D-40, MEMORY oct. 23 |
 | A44 | ⛔ | NOT FOR THE PAPER (D-41) | **Do NOT add anything about D-41 to the paper** (tree wormhole firmware using partial's mesh rules). User decision, oct. 23 2026: the panel's focus is the data, and tree and partial already look alike. Internal record only (thesis-deviate D-41) - no Methodology sentence, no figure change, no adviser item | D-41, user oct. 23 |
+| A45 | ⬜ | Scope §1.4, Limitations, any "indoor" wording | **Not all 3 sites are indoor:** Yuchengco is a semi-outdoor open area below the building. Replace "3 indoor sites" / "indoor campus" with "3 campus sites (one semi-outdoor)" wherever the paper says it (Sec. 1.4 scope, limits, setting descriptions). Deck slides 4, 7, 10, 56 already changed (draft pending commit) | user statement oct. 31, 2026 |
 
 ## B. Reporting & wording (how results are stated)
 
