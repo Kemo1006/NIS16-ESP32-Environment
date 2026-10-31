@@ -3,6 +3,8 @@
 - **Source:** the final paper, [NIS16-Full_Thesis_Document.docx](../../Plan/Paper-Editing/1-Working-Copy/NIS16-Full_Thesis_Document.docx). Every number in this guide is taken from it, and the feature formulas were checked against `ESP32-Environment/analysis/features.py`. Two exceptions are marked where they appear: the 1,077 probes of the worked example in Part 3 (from the repository's verification log, not printed in the paper) and the all-window pooled ceilings in Part 7 (our own recomputation).
 - **Version 2:** every claim was re-checked against the paper; the fixes are listed in [Corrections in version 2](#corrections-in-version-2) at the end.
 - **Version 3:** adds [Part 11](#part-11-wireshark-and-the-sniffer-reading-a-capture-and-proving-a-run-is-real) on Wireshark and the sniffer (how to read a capture, how a capture proves a run is real, and the panel questions about it), plus two new weak spots in Part 10. See [Changes in version 3](#changes-in-version-3).
+- **Version 4:** adds [Part 12](#part-12-the-reference-studies-what-each-one-says-and-on-which-page) on the reference studies behind deck slides 13 and 14 (Airehrour [70], Zhukabayeva [71], Ramírez Gómez [72], Khan [22]). Every claim was checked page by page against the original PDFs, and each comes with its link and printed page number. Part 12.7 compares the submitted paper with the same sources. See [Changes in version 4](#changes-in-version-4).
+- **Version 5:** adds [Part 13](#part-13-why-each-source-matters-to-our-thesis), which answers "how is this source relevant to our thesis?" for every one of the 81 references: a four-part answer to use on stage, the job each source does in the thesis, full cards for the sources most likely to be asked (with a spoken answer for each), a one-line table for the rest, and the references a panelist could use against us. See [Changes in version 5](#changes-in-version-5).
 - **Defense weight:** the adviser wants the focus on **Chapters 5 to 7**, with Chapter 4 possibly included. Chapters 1 to 3 should be brief. This guide follows that split: Parts 1 to 2 are short, Parts 3 to 8 are the deep ones.
 - **How to use it:** read Part 0 first (the whole thesis in one page), then the part for the chapter you present. Every part ends with a self-test question whose answer is folded away. Part 9 is a bank of likely panel questions.
 
@@ -20,9 +22,13 @@
 10. [Part 9: Panel question bank](#part-9-panel-question-bank)
 11. [Part 10: Weak spots in the submitted paper](#part-10-weak-spots-in-the-submitted-paper)
 12. [Part 11: Wireshark and the sniffer: reading a capture and proving a run is real](#part-11-wireshark-and-the-sniffer-reading-a-capture-and-proving-a-run-is-real)
-13. [Formula summary](#formula-summary)
-14. [Corrections in version 2](#corrections-in-version-2)
-15. [Changes in version 3](#changes-in-version-3)
+13. [Part 12: The reference studies: what each one says and on which page](#part-12-the-reference-studies-what-each-one-says-and-on-which-page)
+14. [Part 13: Why each source matters to our thesis](#part-13-why-each-source-matters-to-our-thesis)
+15. [Formula summary](#formula-summary)
+16. [Corrections in version 2](#corrections-in-version-2)
+17. [Changes in version 3](#changes-in-version-3)
+18. [Changes in version 4](#changes-in-version-4)
+19. [Changes in version 5](#changes-in-version-5)
 
 ## Coverage map
 
@@ -49,6 +55,8 @@
 | 7.1 to 7.7 Conclusion and Recommendations | Part 8 |
 | Appendix C Deviations Log | Part 5 (through Table 5.2) |
 | Sniffer and Wireshark: 1.6.1, 1.6.2, 4.2.3.3, D-14, D-15, 6.2.4, Appendix B | Part 11 |
+| Reference studies [70], [71], [72] (4.2.7.6, Tables 4.4, 4.5, 4.20, 4.21, 4.23, Figures 4.48, 4.54, Table 6.34); deck slides 13 and 14 | Part 12 |
+| Every reference [1] to [81] (Appendix A): why it is cited, where, and the risky ones | Part 13 |
 
 ---
 
@@ -1811,6 +1819,423 @@ The verifier (Part 4) decides whether the attack **worked**. These checks decide
 
 ---
 
+## Part 12: The reference studies: what each one says and on which page
+
+Deck slides 13 and 14 compare our attacks with three published studies. Each claim below was checked against the original PDF in `Resources/`. Page numbers are the **printed journal page numbers**, so they match a citation. A panelist who asks "where does it say that?" can be pointed to the exact page. For "how is this paper relevant to our thesis?", see [Part 13](#part-13-why-each-source-matters-to-our-thesis).
+
+### 12.1 Why each attack has its own reference study
+
+- No published study runs a blackhole **and** a wormhole on ESP-WIFI-MESH, so each comparison uses the closest real-hardware study:
+  - **Blackhole:** Airehrour et al. [70], RPL on motes.
+  - **Wormhole:** Zhukabayeva et al. [71] (ZigBee, GSM tunnel) and Ramírez Gómez et al. [72] (XBee, malicious node).
+  - **Healthy baseline:** Khan et al. [22], an ESP32 mesh.
+- We compare **direction and rough size**, never equal values: the platforms, scales and protocols differ (paper 6.5.2, Table 6.34).
+
+### 12.2 Blackhole: Airehrour et al. [70]
+
+- **Citation:** Airehrour, D., Gutierrez, J., & Ray, S. K. (2018). A trust-based defence scheme for mitigating blackhole and selective forwarding attacks in the RPL routing protocol. *Australian Journal of Telecommunications and the Digital Economy*, 6(1), 41–59.
+- **Link:** <https://doi.org/10.18080/jtde.v6n1.138>
+- **Local copy:** `Resources/A-Trust-based-Defence-Scheme-for-Mitigating-Blackhole-and-Selective-Forwarding-Attacks-in-the-RPL-Routing-Protocol.pdf` (PDF page = printed page − 40).
+
+| What slide 13 says | What the paper says | Page |
+|---|---|---|
+| 14 real AS-XM1000 (Telos-B) motes | "fourteen AS-XM1000 motes … based on the Telos-B system were deployed in a research laboratory" | 48 |
+| In a research lab, about 30 m × 30 m | Fourth floor, School of Engineering, Auckland University of Technology; "approximately 30 metres by 30 metres" | 48 |
+| InstantContiki 3.0 | "The InstantContiki 3.0 platform … was used to carry out the experiment" | 48 |
+| 1 sink, 12 senders, 2 blackhole motes | "one UDP sink mote; twelve UDP sender motes; and two Blackhole attacking motes" | 48 |
+| The sink feeds a PC running Contiki/Cooja | "The sink mote was connected to a desktop PC running … the Contiki/Cooja emulation program" | 48–49 |
+| Their set-up table (paper Table 4.21) | Table 2, Testbed Parameters. It lists "Contiki/Cooja 3.0" as the testbed tool and "Smart building" as the environment | 49 |
+| Photo of the real motes | Figure 4, "Physical deployment of 14 XM1000 motes in the research lab" | 49 |
+| RPL with MRHOF | Contiki uses MRHOF by default; the study compares MRHOF-RPL with their trust-based RPL | 47, 49 |
+| Their attack: false good rank, attracts traffic, drops it | The blackhole node broadcasts "a false and low DIO rank value", neighbours choose it as parent, and it discards the packets | 45 |
+| 16 to 246 rank changes | MRHOF-RPL "had a range between 16 – 246 mote Rank changes"; trust-based RPL 15–55 (Figure 8) | 51–52 |
+| Throughput per mote | Network throughput in kbit/s per mote (Figure 9) | 52 |
+| Loss 60–75%, under 28% with trust-based RPL | "the Trust-based RPL protocol maintained a packet loss rate of less than 28%, but MRHOF-RPL had 60 to 75% packet loss rates" (Figure 10) | 53 |
+| Their loss chart (paper Figure 4.48) | Figure 10, packet loss per mote | 53 |
+
+> [!warning] Two things to say correctly
+> - **"Delivery 25–40%" is our arithmetic** (100% minus 60–75% loss). The paper reports loss, not delivery.
+> - **It was not a simulation.** The motes were real hardware in a lab. Contiki/Cooja appears in their Table 2 only because it ran on the PC attached to the sink, as the data collection tool.
+
+### 12.3 Wormhole: Zhukabayeva et al. [71]
+
+- **Citation:** Zhukabayeva, T., Zholshiyeva, L., Mardenov, Y., Buja, A., Khan, S., & Alnazzawi, N. (2025). Real-time detection and response to wormhole and sinkhole attacks in wireless sensor networks. *Technologies*, 13(8), 348.
+- **Link:** <https://doi.org/10.3390/technologies13080348>
+- **Local copy:** `Resources/Real-Time-Detection-and-Response-to-Wormhole-and-Sinkhole-Attacks-in-Wireless-Sensor-Networks.pdf` (33 pages, numbered "x of 33"; PDF page = printed page).
+
+| What slide 14 says | What the paper says | Page |
+|---|---|---|
+| ZigBee (XBee) nodes on Arduino | Nodes built on Arduino Uno, each with an XBee (Series 2) module in router API mode | 21–22 |
+| A chain | The node layout R0 to R5 with coordinator C, described as the "chain" | 26 (their Table 6) |
+| The tunnel is two Raspberry Pi nodes joined by GSM and a TCP/IP link | R4 and R5 have a Raspberry Pi (version 3 or higher) with a GSM/GPRS module (SIM800 or SIM900); the Pis open a TCP/IP connection over the mobile network and re-inject the ZigBee frames | 22–24 |
+| 3-sigma rule | "The detection system uses the 3-sigma rule … any value which surpasses three standard deviations from the mean gets marked as questionable" | 14 (also 1, 9–10, 15) |
+| Hop count 4 → 3 | Table 7: "data are routed in 3 hops instead of 4", old route R3 → R2 → R1 → R0 → C, new route R3 → R4 → R5 → C | 28 |
+| Delay 80–100 → 120–200 ms | Table 7: "Before the attack: 4 hops, 80–100 ms delay … After the attack: 3 hops, 120–200 ms delay" | 28 |
+| 20–30% data modified | Table 7: "20–30% of data modified by the attacker" | 28 |
+| Their table (paper Table 4.23) | Table 7, rows "Route Changes During Attack" and "Comparative Traffic Analysis" | 28 |
+
+> [!warning] The source is not fully consistent; say so if asked
+> - The **abstract** (p. 1) gives "the average delay increased by 40%" and "false sensor readings … in over 30% of cases". Table 7 (p. 28) gives 20–30%.
+> - The text under their Figure 19 (p. 28) says the hop count "increased slightly", which contradicts Table 7's 4 → 3.
+> - **What we took** is the 3-sigma rule (p. 14) and the out-of-band tunnel idea. **Pooling 5 one-second windows per point is our own step**; they state only the 3-sigma rule.
+
+### 12.4 Wormhole: Ramírez Gómez et al. [72]
+
+- **Citation:** Ramírez Gómez, J., Vargas Montoya, H., & León Henao, Á. (2019). Implementing a wormhole attack on wireless sensor networks with XBee S2C devices. *Revista Colombiana de Computación*, 20(1), 41–58.
+- **Link:** <https://doi.org/10.29375/25392115.3606>
+- **Local copy:** `Resources/Implementing_a_Wormhole_Attack_on_Wireless_Sensor_.pdf` (PDF page = printed page − 40).
+
+| What slide 14 says | What the paper says | Page |
+|---|---|---|
+| Their diagram (paper Figure 4.54) | Figure 2, "Wormhole attack with malicious node" | 43 |
+| XBee S2C with source routing | Classic and "reverse" wormhole attacks "on XBee S2C devices with source routing enabled"; their Table 1 lists the node features | 44, 50 |
+| The malicious node is a Raspberry Pi 3 with a USB radio dongle | Their Table 2: Raspberry Pi 3 Model B with an Atmel RZUSBSTICK running KillerBee firmware | 44, 50 |
+| 1 coordinator and 2 routers | "two testing networks were built with a coordinator node and two router nodes" | 50 |
+| Results are qualitative | The results are packet captures and modified route fields (their Figures 9 to 15). They give no delivery, loss or delay figures | 50–56 |
+| Duplicated routing packets as a signature | Signature 1, "Routing packet duplication": the devices receive "two source routing packets per data packet" | 55 |
+
+- **What we took:** duplicates as the wormhole signature, measured at the root as **DuplicateRate** (D-21).
+- **Difference:** they duplicate **routing** packets; our tunnel duplicates **data** probes. Related evidence, not the same thing (paper 4.2.7.6).
+
+### 12.5 The healthy baseline: Khan et al. [22]
+
+- **Citation:** Khan, A. U., Khan, M. E., Hasan, M., Zakri, W., Alhazmi, W., & Islam, T. (2022). An efficient wireless sensor network based on the ESP-MESH protocol for indoor and outdoor air quality monitoring. *Sustainability*, 14(24), 16630.
+- **Link:** <https://doi.org/10.3390/su142416630>
+- **Local copy:** `Resources/An-Efficient-Wireless-Sensor-Network-Based-on-the-ESP-MESH-Protocol-for-Indoor-and-Outdoor-Air-Quality-Monitoring.pdf` (the publisher's PDF, 21 pages numbered "x of 21"; PDF page = printed page).
+
+| What our slides and paper say | What Khan et al. say | Page |
+|---|---|---|
+| Delivery above 97% | "the ESP-MESH network accomplishes more than 97% RPD, except for node H" (their Figure 20a) | 18 |
+| Loss and error below 1.8% | "the PER and PLR … for each active node are under the limit (less than 1.8%) except for node H" | 18 |
+| Node H was outdoor and far away | Node H "was placed 100 m away from the root node (A) and across more than four buildings and walls"; "we suspect it might be due to its outdoor location" | 18 |
+| 7 sensor nodes and a root, on a campus | "a college campus of a 100 m by 80 m area … (seven nodes)"; "All eight deployed nodes were continuously working for a duration of five days" | 18 |
+| Campus test: one 64-byte package every 2 min for 5 days | "a 64 Byte package was transmitted for five days at two-minute intervals" | 18 |
+| Open-area test: above 98% at every node | Stability test, "one 64 Bytes data package per minute for five days"; "All the nodes show greater than 98% of RPD" (their Figures 17, 18) | 15–16 |
+| Self-healing about 4.2 s and 3.5 s | Their Table 6: network-building 17.32 s, healing after sink failure 4.18 s, after intermediate-node failure 3.46 s | 18 |
+| Sensor readings every 2 min | Air-quality data "taken (every 2 min)" from nodes C and H for 72 min | 1, 14 |
+
+### 12.6 The wormhole definition: Hu, Perrig and Johnson [46]
+
+- **Citation:** Hu, Y.-C., Perrig, A., & Johnson, D. B. (2003). Packet leashes: A defense against wormhole attacks in wireless networks. *IEEE INFOCOM 2003*, 3, 1976–1986.
+- **Link:** <https://doi.org/10.1109/INFCOM.2003.1209219>
+- **Not checked against the original:** no copy could be opened (IEEE is paywalled; the mirrors failed or held a different paper). A search excerpt confirms the core definition: the attacker "records a packet … at one location in the network, tunnels the packet … to another location, and replays it there".
+- **"4 of 5 criteria met" is our own count** in Table 4.5, not a claim of [46].
+- Get the PDF through the DLSU library (IEEE Xplore) before the defense and check the page of the definition.
+
+### 12.7 The submitted paper against these sources
+
+Every sentence of the submitted paper that cites [22], [46], [70], [71] or [72] was compared with the originals. The reference-list DOIs all lead to the right articles. For [70], the PDF prints `10.18080/ajtde.v6n1.138` and the paper uses `10.18080/jtde.v6n1.138`; both resolve to the same article, and the publisher now lists the `jtde` form, so the paper is right. Everything matches except the points below. They are **not fixed in the paper**; know them in case a panelist has read the source.
+
+| Paper location | What the paper says | What the source says | How serious |
+|---|---|---|---|
+| 4.2.7.6, the Khan paragraph | The delivery figures "come from a stability test that sent every 60 s over five days", then gives "above 97% … except node H" | Two tests. The **97% / node H** figures come from the **campus** test (64 bytes every **2 min**, 5 days, p. 18). The **60 s** open-area stability test gave **above 98%** at every node (pp. 15–16). The Table 6.34 note gets this right | Misattribution; say "the campus test, every 2 min" if asked |
+| 2.7 (ESP32 literature) | "an ESP-MESH network of **seven** ESP32 nodes" | Seven **sensor** nodes plus root A: "All eight deployed nodes" (p. 18). Table 6.34 says "7 sensor nodes and a root", which is right | Minor |
+| D-21 (5.6) and 6.2.2 | DuplicateRate is "measured at the root **as in** Ramírez Gómez et al. [72]" | [72] measured nothing at a root. It **proposes** routing-packet duplication as a signature (p. 55). The paper itself says so in 4.2.7.6 ("a proposed signature and not a measured result") | Wording; safe line: "following the signature proposed by [72]" |
+| Reference [46] | `…Computer and Communications Societies*, *3*1976–1986` | Volume and pages need a comma: "3, 1976–1986" | Formatting |
+| Reference [22] | `Sustainability, 14(24). https://doi…` | APA needs the article number: "14(24), 16630" | Formatting |
+| 3.5 and 4.2.1.3, the [46] definition | "two colluding malicious nodes … low-latency out-of-band channel … the illusion that physically remote nodes are direct wireless neighbors [46]" | Not checked against the original (12.6). The record, tunnel and replay core is confirmed | Unverified |
+
+### 12.8 Panel questions on the reference studies
+
+- **"Was Airehrour's study a simulation?"**
+  - No. Fourteen real AS-XM1000 motes were deployed in a lab at Auckland University of Technology (p. 48, photo in Figure 4 on p. 49). Contiki/Cooja ran on the PC attached to the sink.
+- **"Their blackhole lost 60–75%, yours lost 100%. Why?"**
+  - Theirs depends on which motes happen to pick the blackhole as parent through RPL routing (p. 45). Ours sits on the victims' path by placement (D-20), so every victim probe passes through it.
+- **"They had 16 to 246 rank changes. Why do your parents barely change?"**
+  - Their attacker lures children with a false rank (p. 45), so routes keep shifting (p. 51). Ours never advertises a false route, so there is nothing to re-route to: 0.00009 parent changes per second.
+- **"Where did your 3-sigma rule come from?"**
+  - Zhukabayeva et al. [71], p. 14. Pooling 5 one-second windows into one point is our own addition.
+- **"Their wormhole shortened the route. Yours didn't. Is it really a wormhole?"**
+  - Their tunnel became a route that ZigBee adopted (Table 7, p. 28). Ours is an application-layer relay the mesh does not route through (D-20). We reproduce the packet-level signature: duplicates, as Ramírez Gómez proposed (p. 55), and a latency mismatch.
+- **"Why compare a GSM tunnel with a UART wire?"**
+  - Both are out-of-band channels between two colluding ends. Their delays are not comparable, which is why the delay row of Table 6.34 reads "different measure".
+
+### Check-in (Part 12)
+
+- **Q:** A panelist says: "Airehrour et al. only ran Cooja simulations, and Zhukabayeva's 3-sigma test pooled 5-second windows just like yours. So your 'real hardware' comparison is weak and your verifier isn't original." What two corrections do you make, and which pages do you cite?
+- **Your answer:** *(pending)*
+
+> [!question]- Answer (click to reveal)
+> First, Airehrour's testbed was real hardware: 14 AS-XM1000 (Telos-B) motes in a research lab at Auckland University of Technology (p. 48, with a photo in Figure 4 on p. 49). Contiki/Cooja only ran on the PC attached to the sink, which is why it appears in their Table 2. Second, Zhukabayeva et al. give only the 3-sigma rule (p. 14), with no pooling. Pooling 5 one-second windows into one point (60 baseline and 36 attack points per run) is our own step, described in paper 4.2.7.1.
+>
+> 📖 **Review it:** Part 12.2 and 12.3 of this guide; Part 4.2; paper 4.2.7.1 and 4.2.7.6
+
+---
+
+## Part 13: Why each source matters to our thesis
+
+Part 12 shows **what** the reference studies say and on which page. This part answers the other question a panelist asks: **"How is this paper relevant to your thesis?"** Every one of the 81 sources in Appendix A is covered, starting with the ones a panelist is most likely to ask about.
+
+> [!warning] How far the descriptions go
+> Only [22], [70], [71] and [72] were checked against the original PDFs (Part 12). For every other source, the description below is **what our paper says about it** (the section is named), so your answer never goes beyond what we wrote. Where a source was not opened, the card says so.
+
+### 13.1 The four-part answer (works for any source)
+
+When a panelist names a source, answer in this order:
+
+1. **What they did**, in one line.
+2. **What job it does in our thesis** (the jobs are listed in 13.2).
+3. **Where it appears in our paper** (section, table or figure).
+4. **How we differ**, said before the panelist says it, and why the difference does not hurt the thesis.
+
+Worked example, the panelist's question: *"How is Ramírez Gómez et al. relevant to your thesis?"*
+
+> "Ramírez Gómez and colleagues built a real wormhole on XBee ZigBee devices, using a Raspberry Pi as the malicious node, and from their packet captures they proposed signatures for spotting a wormhole. The first one is routing-packet duplication: the devices receive two source-routing packets for every data packet.
+>
+> That signature is one of the two checks our verifier uses to prove that each wormhole run really happened. Our tunnel end counts its own tunnel messages, but a counter on the attacking board is weak evidence, so the root also checks independently whether the entry end's probes arrive twice. That is DuplicateRate, deviation D-21. It is also our comparison row for the wormhole in Table 6.34. In our runs, 99.86% of the entry end's probes reached the root twice during the attack, and none did in the baseline.
+>
+> The difference is that they duplicate routing packets inside ZigBee, and we duplicate data probes in ESP-WIFI-MESH. Also, their duplication is a proposed signature, not a measured rate. So we say the two agree in kind, not in value, which is how Section 4.2.7.6 and Table 6.34 put it."
+
+### 13.2 The seven jobs a source can do in our thesis
+
+| Job | What it gives the thesis | Sources |
+|---|---|---|
+| 1. Defines the problem and the gap | Mesh networks are useful but open to routing attacks, and attack data comes from simulators or IP networks, not from real microcontroller meshes | [1], [2], [3], [4], [5], [13], [18], [20], [24] to [31] |
+| 2. Proves the platform works | ESP32 with ESP-WIFI-MESH is a real, documented, field-tested platform, and its documentation sets what we can and cannot change | [21], [22], [23], [75], [76] |
+| 3. Defines the attacks | The textbook definition of a blackhole and a wormhole: the yardstick we hold our implementation against, including the parts we do not reproduce | [43], [44], [45], [46], [70], [81] |
+| 4. Gives the validation method or a signature | How we prove each run was a real attack: the 3-sigma test, the duplicate signature, the leakage audit | [71], [72], [80], [81] |
+| 5. Gives published numbers to compare with | The values our results are set beside in Table 6.34 | [22], [70], [71], [72] |
+| 6. Justifies the features and the analysis | Why we picked cross-layer features, kept the set small, and used EDA and clustering instead of a detector | [5], [8], [9], [19], [32] to [38], [42], [48] to [52], [57], [58] |
+| 7. Names the tools | Where the firmware, the board identity and the sniffer come from | [77], [78], [79] |
+
+> [!tip] The one-line answer when you forget the details
+> Every source does at least one of these jobs. If you remember only the job, say: "It is one of the sources that [defines the gap / proves the platform / defines the attack / gives our validation test / gives the number we compare with / justifies our features or method]," and name the section.
+
+---
+
+### 13.3 The reference studies and the platform (most likely to be asked)
+
+#### Ramírez Gómez et al. [72]: the wormhole signature we measure
+
+- **What they did:** a classic and a "reverse" wormhole on XBee S2C ZigBee devices with source routing. The malicious node was a Raspberry Pi 3 with a USB radio dongle running KillerBee, in two small networks of one coordinator and two routers. Their results are packet captures, not numbers, and they end with proposed detection signatures (Part 12.4, pp. 43 to 56).
+- **Its jobs in our thesis:**
+  1. **Validation signature (job 4).** "Routing packet duplication" (their p. 55) is the basis of **DuplicateRate**, one of the verifier's two primary wormhole checks (D-21, Section 5.6). The root measures it, so it is independent of the attacking boards' own counter (TunnelIntensity).
+  2. **Comparison (job 5).** The duplicate-arrival row of Table 6.34: their two routing packets per data packet against our 99.86% of entry-end probes arriving twice.
+  3. **Reference exhibit.** Their diagram is our Figure 4.54 (Section 4.2.7.6).
+  4. **Support for dropping RetryRate as a check.** Section 5.3 (D-15) notes that none of the attack studies cited, [72] included, names a retry rate as a signature.
+  5. **Precedent for real hardware.** A wormhole was built on cheap low-power devices, not only simulated, which is the same direction as our testbed.
+- **Where in our paper:** 4.2.1.3, the 4.2.7 validation table ("Published behaviour"), 4.2.7.2, 4.2.7.6, 5.3, 5.6 (D-21), 6.5.2 and Table 6.34.
+- **How we differ (say it first):** routing packets inside ZigBee against data probes counted at an ESP-WIFI-MESH root. Their duplication is proposed, ours is measured. Their malicious node changes route records, our tunnel does not change the topology.
+- **If they push:** "So your DuplicateRate is not really from [72]?" → "The idea is from [72]: a wormhole shows up as the same packet arriving twice. The measurement is ours, at the root, on data probes. The safe wording is 'following the signature proposed by [72]'." (Part 12.7 notes that D-21 says "as in [72]", which overstates it.)
+
+#### Zhukabayeva et al. [71]: our statistical test and our tunnel idea
+
+- **What they did:** a ZigBee chain of Arduino nodes with XBee modules. The wormhole was two Raspberry Pi nodes joined by GSM/GPRS and a TCP/IP tunnel that re-injected the ZigBee frames. The route went from 4 hops to 3, and the delay rose from 80 to 100 ms to 120 to 200 ms. Detection used the **3-sigma rule** (Part 12.3, pp. 14, 21 to 28).
+- **Its jobs in our thesis:**
+  1. **The verifier's statistical test (job 4).** Every one of the 80 runs is judged by a 3-sigma test of attack windows against the baseline mean and standard deviation (Section 4.2.7.1, D-21). This is the most important borrowing in the whole thesis: it is how "all 72 attack runs PASS" is decided.
+  2. **The out-of-band tunnel (job 3).** Their GSM link is the model for our UART wire: "plays the role of the out-of-band tunnel that Zhukabayeva et al. [71] built with a GSM/GPRS link" (4.2.1.3).
+  3. **Comparison (job 5).** Three rows of Table 6.34: hop count, delay, delivery of the other boards.
+  4. **Reference exhibits.** Figure 4.52, Table 4.23 and Figure 4.53 (4.2.7.6).
+- **Where in our paper:** 4.2.1.3, 4.2.7 (statistical test row), 4.2.7.2, 4.2.7.6, 5.3, 5.6 (D-21), 6.5.2 and Table 6.34.
+- **How we differ (say it first):**
+  - Their tunnel became a shorter route that ZigBee chose. Ours is an application-layer relay that the mesh never routes through, so our hop count never changed (36 of 36 runs, D-20).
+  - They report route delay, we report delay per hop and the spread between the two copies (median 3.9 ms). Different measures, so the delay row reads "different measure".
+  - **Pooling 5 one-second windows into one point is our own step.** They give only the rule.
+- **If they push:** "Your wormhole didn't shorten the route, so is it a wormhole?" → "Not in the full sense, which is why the method is called wormhole-inspired and Table 4.5 marks the false-neighbour criterion as not met. What we reproduce is the packet-level signature: the same packet arriving by a second path with a different delay."
+
+#### Airehrour et al. [70]: the blackhole yardstick and comparison
+
+- **What they did:** 14 real AS-XM1000 (Telos-B) motes running RPL in a 30 m by 30 m lab at Auckland University of Technology, with 2 blackhole motes. They compared standard RPL (MRHOF) with their trust-based RPL. Loss was 60 to 75% under standard RPL and under 28% with trust-based RPL; rank changes were 16 to 246 per mote (Part 12.2, pp. 45 to 53).
+- **Its jobs in our thesis:**
+  1. **Defines the blackhole we check against (job 3).** Table 4.4 checks our blackhole against [70] criterion by criterion: **5 of 6 met**. The one not met is "attracts traffic by advertising a false route", their false DIO rank (p. 45).
+  2. **Comparison (job 5).** Two rows of Table 6.34: delivery in the attack (their 25 to 40% delivery, our 0.000) and parent changes (their 16 to 246 rank changes, our 0.00009 per second).
+  3. **Evidence that a delivery collapse is a realistic blackhole result** on real hardware (4.2.7.2: "consistent with published hardware results").
+  4. **Reference exhibits.** Table 4.21 and Figures 4.48 to 4.50 (4.2.7.6).
+  5. **Support for dropping RetryRate as a check** (5.3), as with [72].
+- **Where in our paper:** 4.2.1.2, 4.2.1.4 and Table 4.4, 4.2.7, 4.2.7.2, 4.2.7.6, 5.3, 6.5.2 and Table 6.34.
+- **How we differ (say it first):** their attacker lures children with a false rank, so which motes lose packets depends on routing. Ours is placed on the path (D-20), so every victim loses everything. Same direction, different size, and the paper claims only the direction.
+- **If they push:** "Why compare with an RPL paper at all?" → "No published study runs a blackhole on ESP-WIFI-MESH hardware. [70] is the closest: a real-hardware multi-hop testbed with a blackhole and measured loss, so it shows what direction of change to expect."
+
+#### Khan et al. [22]: the platform proof and the healthy baseline
+
+- **What they did:** an ESP-MESH network of ESP32 boards (7 sensor nodes and a root) on a 100 m by 80 m college campus for indoor and outdoor air-quality monitoring. Delivery was above 97% at every node except outdoor node H in the campus test, and above 98% at every node in the open-area test (Part 12.5, pp. 15 to 18).
+- **Its jobs in our thesis:**
+  1. **Proves the platform (job 2).** ESP-MESH on ESP32 works in a real campus deployment and can report delivery, loss and error rates (1.1, 2.7).
+  2. **Gives our scenario.** Indoor environmental monitoring on a smart campus is why our sites are DLSU rooms (1.1, 4.2.2.5).
+  3. **Healthy reference (job 5).** Their >97% is what a normal baseline should look like. Ours averaged about 0.998 for victims and 0.996 for bystanders, and 0.9994 to 1.0000 in the benign runs (4.2.4.2.2, Table 6.34). This is how we argue our baselines are normal, not already broken.
+  4. **Reference exhibits.** Figure 4.51 and Table 4.22 (4.2.7.6).
+- **Where in our paper:** 1.1, 2.7, 3.1.1, 4.2.2.5, 4.2.4.2.2, 4.2.7, 4.2.7.2, 4.2.7.6, 4.3.1.2, 6.5.2 and Table 6.34.
+- **How we differ (say it first):** same protocol and device family, but they sent one 64-byte package every 1 or 2 minutes for 5 days, and our boards send about one probe per second for an 11-minute run (60 + 300 + 180 + 120 s). So the paper does not claim the two PDRs are equal, only that both are healthy.
+- **Watch out:** 4.2.7.6 ties the 97% and node H figures to "a stability test that sent every 60 s". They come from the campus test, every 2 minutes (Part 12.7).
+
+#### Hu, Perrig and Johnson [46]: the wormhole definition, and our honest "no"
+
+- **What they did:** the classic wormhole paper that also proposed "packet leashes" as a defence. Our paper uses their definition: two colluding nodes, a low-latency out-of-band channel, packets recorded at one place and replayed at another, making distant nodes look like neighbours (3.3.2).
+- **Its jobs in our thesis:**
+  1. **Defines the wormhole (job 3).** It is the theory behind Section 3.3.2.
+  2. **The conformance table.** Table 4.5 checks our wormhole against [46]: **4 of 5 met**. The one not met is "creates a false neighbour relationship", because no parent or layer changed during the attack.
+  3. **The reason for the name.** That missing criterion is why the method is called **"wormhole-inspired"** and why D-20 calls both attacks emulations (4.2.1.3).
+- **How we differ (say it first):** the false-neighbour effect is the heart of their definition, and we do not reproduce it. We say so in Table 4.5 instead of hiding it.
+- **Not checked against the original** (Part 12.6). The record, tunnel and replay core is confirmed from an excerpt.
+- **If they push:** "Then why call it a wormhole?" → "Four of the five defining criteria hold, and the packet-level effect, a copy arriving by a second path, is real and measured. We call it wormhole-inspired and list the missing criterion ourselves."
+
+#### Espressif [21], [75], [76]: why both attacks had to be emulated
+
+- **What they are:** the official ESP-WIFI-MESH programming guide [21], its API reference [75] and the `esp_mesh.h` source header [76] (ESP-IDF v5.3).
+- **Their jobs in our thesis:**
+  1. **They justify the biggest deviation, D-20.** The documentation describes a way to **read** a node's routing table but none to **write** one (1.4.1, 4.2.1.2). So a board cannot advertise a false route, and the attacks had to act on our own application-layer probes. This is the source to name when a panelist asks "why didn't you do a real routing attack?"
+  2. **They explain the network we measure.** Root, intermediate and leaf roles; parent selection by shallowest layer, then fewest children; self-healing; RSSI thresholds (3.1, 3.2).
+  3. **They fix our hop numbering.** The API numbers the root as layer 1 [76], so hop = layer − 1 (3.1.2, 5.3).
+  4. **They explain why the relay is explicit.** The mesh stack forwards below the application and hands it only packets "targeted to self" [75], so every node relays probes itself with `esp_mesh_send()` and counts them (3.1.3.2, D-12).
+  5. **They explain the missing MAC retry count.** ESP-IDF exposes no 802.11 MAC statistics [75], so RetryRate is an application counter (D-15).
+- **Say it in 30 seconds:** "Espressif's own documentation is why our attacks are emulations. You can read the mesh's routing table but not write it, so no board can lie about its route. We therefore put the attacks on our own probe traffic, and we say in D-20 and Tables 4.4 and 4.5 exactly which part of a textbook attack that leaves out."
+
+---
+
+### 13.4 The theory and method sources
+
+#### Al-Anzi [5], Amouri et al. [8], Srinivasan [19]: the cross-layer premise we tested
+
+- **What they did (per our paper):** [5] built a full cross-layer IDS for WMNs using forwarding rate, routing-table changes, packet drops and RSSI variance. [8] built a two-stage, anomaly-based cross-layer IDS for WSN and MANET. [19] combined physical, MAC and network-layer knowledge against blackhole and wormhole attacks (2.2, 2.6).
+- **Their jobs in our thesis:**
+  1. **The premise of the feature design (job 6).** A routing attack leaves correlated traces across PHY, MAC and network layers (4.3.1). That is why the dataset records RSSI, link and parent state, and forwarding counters together.
+  2. **The source of the predictions in Tables 3.4 and 3.5,** which Section 6.2.4 tests and reports as **not observed**.
+  3. **[5] also gives the cost argument:** full cross-layer IDSs are heavy for low-power nodes, so a smaller feature set is the pragmatic choice (2.6), with [9] and [42].
+- **How we differ (say it first):** their attacks act on routing, ours were emulated at the application layer, so the radio and routing never changed. The missing cross-layer trace is a finding about application-layer attacks, not a contradiction of [5], [8] or [19]. The retransmission row of Table 3.4 is our own hypothesis, not their published result (6.2.4).
+- **If they push:** "Your premise came from these papers and it failed. Isn't your feature design wrong?" → "The premise holds for routing attacks, which is what they studied. Our result shows where an application-layer attack leaves its mark: in the data plane only. The cross-layer features are what let us show that, because they stayed flat (|d| below 0.1)."
+
+#### Karlof and Wagner [81]: measuring a silent attacker
+
+- **What it is:** the classic 2003 survey of attacks on sensor-network routing (selective forwarding, sinkhole, wormhole and others).
+- **Its job in our thesis:** it supports how the blackhole is measured (4.2.7.1). A blackhole node keeps participating, so the sender sees no failure. We therefore measure at the attacker (its ForwardingRatio, confirmed by its neighbours' counts) and at the root (the victims' sequence numbers), with bystander boards as a control group.
+- **Not checked against the original.** In that paper, a blackhole is the extreme case of selective forwarding: a node that refuses to forward every packet. Read the passage before the defense if you plan to quote it.
+
+#### Arp et al. [80]: the leakage audit
+
+- **What it is:** a USENIX Security 2022 paper on common pitfalls of machine learning in security.
+- **Its job in our thesis:** it is why Section 6.2.3 exists. One pitfall is **spurious correlation**: a feature that is an artefact of how the data were made decides the result. So we tested every feature alone against the majority rate (about 70%), and also the run clock.
+- **What the audit found because of [80]:** PDR alone separates blackhole victims (99.9% against 70.1%), which is expected by construction. LatencyHopRatio carries its information in its missing values, and position in the run could reveal the phase, so both are kept out of the clustering.
+- **Say it in 20 seconds:** "Arp and colleagues warn that a dataset can look learnable because of how it was made. We ran that check on our own data before clustering and removed the features that would have leaked the answer."
+
+#### Kurosawa et al. [43], Baadache and Belmehdi [44]: the textbook blackhole
+
+- **Per our paper:** both describe a blackhole as a node that attracts traffic by advertising a favourable route, then drops it (3.3.1).
+- **Their job:** the canonical definition (job 3). It is the background for Table 4.4's one unmet criterion, and for why 4.2.1.2 says the "route-advertisement half" is not reproduced.
+
+#### Khalil et al. [45], LiteWorp: the textbook wormhole
+
+- **Per our paper:** a malicious node captures packets at one location and tunnels them to a distant colluder that replays them. Wormholes can stay out of routing tables and need no stolen keys (3.3.2.1).
+- **Its job:** with [46], the definition behind Table 4.5. It is also cited for the physical-layer feature theory (4.3.1.4), and it backs the "no compromise of keys" criterion that our wormhole meets.
+
+#### Ring et al. [31], Sommer and Paxson [30], Tavallaee et al. [29]: the dataset gap
+
+- **Per our paper:**
+  - [29] showed the weaknesses of KDD Cup 99 (redundancy, imbalance, unrealistic traffic).
+  - [30] argued that detection results from simulated or small lab traffic often lack realism, and that representative data is rare.
+  - [31] compared intrusion-detection datasets on 15 properties, including whether the traffic is **real, emulated or synthetic** (1.1, 2.9).
+- **Their job:** they define the gap (job 1). Most datasets are simulated or IP-based, so nobody had recorded these attacks on a real microcontroller mesh.
+- **How to use [31] on stage:** on Ring's axis, our dataset is **real traffic from real hardware, with emulated attacks**. Saying it that way is honest, and it answers "is it really real?" before it is asked.
+- **Watch out:** [30] says small lab networks also lack realism, and ours is an 8-board indoor testbed. The answer: we never claim deployment realism, only real radio, real hardware and real mesh behaviour, and the scope (1.4) limits the claims.
+
+#### The EDA and clustering sources: [35] to [38], [48] to [52], [57], [58]
+
+| Source | Per our paper | Job in our thesis |
+|---|---|---|
+| Tukey [35] | Introduced EDA: discover structure and anomalies through plots and summaries, not confirmatory tests | Why Chapter 6.3 describes the data and states no detection result |
+| Aggarwal [36], Han et al. [37] | Preprocessing before clustering (cleaning, normalising, correlation), and descriptive statistics and visualisation | Why we standardise features and show the correlation matrix before clustering |
+| Jain [38] | 50 years of clustering: success depends on data structure, feature relevance and distance | Why three feature sets are compared (Table 6.24) instead of one |
+| Chatterjee and Ahmed [48] | Survey of 64 IoT anomaly-detection studies; ground-truth labels are scarce | Why we use unsupervised methods that need no labels |
+| Miguel-Diez et al. [49] | Review of unsupervised anomaly detection on network flows | Why we explore structure instead of claiming real-time detection |
+| van der Maaten and Hinton [50], McInnes et al. [51] | t-SNE and UMAP preserve neighbourhoods but do not validate clusters on their own | Why the plots are backed by ARI, purity and silhouette scores |
+| Jolliffe [52] | PCA finds the main sources of variance and redundant features | Used in 4.2.4.6 as an exploratory tool |
+| Lloyd [58], Bishop [57] | The K-Means algorithm and its step-by-step view | The adapted K-Means figures (4.34, 4.35) |
+
+- **The one-line answer for all of them:** "These are why the study explores the data and tests separability without labels, instead of training a detector. Labelled attack data on this kind of hardware does not exist yet, and producing it is what our dataset is for."
+
+---
+
+### 13.5 Every other source, one line each
+
+The descriptions are what our paper says (Chapter 2 unless another section is named). These are unlikely to be asked one by one; know the job column.
+
+| Ref | Source | What it is | Its job in our thesis |
+|---|---|---|---|
+| [1] | Akyildiz et al. (2005) | The classic WMN survey: self-organising, multi-hop, every node also routes | Background (1.1, 2.1). Its hop count and link-quality metrics motivate our topology features |
+| [2] | Cilfone et al. (2019) | WMN technologies for IoT | Background and applications. Its link quality and PDR measures motivate recording RSSI and PDR |
+| [3] | Hanif et al. (2022) | Review of AI-based wormhole detection in WSNs | Gap: detection work is mostly ML on simulated data |
+| [4] | Bhatti et al. (2024) | Detecting wormholes by what attackers do afterwards | Gap, and the point that attackers stay protocol-compliant at PHY and link layers (1.1) |
+| [6] | Ioulianou et al. (2022) | Trust-based IDS for RPL, rank plus blackhole attacks | IDS context: distributed designs need nodes to share information |
+| [9] | Singh (2022) | Cross-layer feature selection for WSN IDS | Why a small feature set is enough (2.6) |
+| [13] | Alshehri (2024) | SVM and DNN wormhole detection, tested in NS-3 | Gap: a simulation-only result |
+| [18] | Vanlalhruaia et al. (2025) | Blackhole detection in AODV mesh via sequence numbers and hop counts | Gap: simulation-based |
+| [20] | Bhonsle et al. (2025) | RNN/LSTM blackhole detection in WMNs | Gap: most studies use simulation or NSL-KDD (2.4) |
+| [23] | Qian et al. (2024) | ESP-WIFI-MESH for lab instruments: forms in under 10 s, self-repairs in about 4.5 s | Platform proof: the mesh forms and heals by itself on ESP32-class hardware |
+| [24] | Avina and Geetha (2025) | ResNeXt and autoencoder wormhole detection, simulated WSN | Dataset gap |
+| [25] | Boiano et al. (2026) | Zigbee traffic dataset from 21 commercial devices | Dataset gap: real devices, but Zigbee, not ESP-WIFI-MESH |
+| [26] | Das et al. (2023) | UNR-IDD, from an emulated software-defined network | Dataset gap, and a basis for forwarding features such as packet counters |
+| [27] | Moustafa and Slay (2015) | UNSW-NB15, lab testbed with a traffic generator | Dataset gap: IP network |
+| [28] | Miekkala et al. (2024) | NordicDat, 5G QoS measurements | Dataset gap: cellular, not mesh |
+| [32] | García-Teodoro et al. (2009) | Anomaly-based intrusion detection | Good anomaly models need well-built datasets and features |
+| [33] | Tsai et al. (2009) | ML for intrusion detection | Examine a dataset's features before modelling |
+| [34] | Chandola et al. (2009) | The classic anomaly-detection survey | Deviation-based modelling when attack signatures are unknown |
+| [39] | Pedroso et al. (2024) | Collaborative NIDS sharing rules directly, 99% detection | IDS context |
+| [40] | Hernandez-Ramos et al. | Review of federated learning in IDS | IDS context |
+| [41] | Rassam (2024) | Autoencoder anomaly detection in body-area networks, F1 about 0.96 | IDS context (also cited in 1.1 for separability, see 13.6) |
+| [42] | Li et al. (2024) | Feature selection vs feature extraction for IoT IDS | Why a small feature set is enough (2.6) |
+| [53] to [56] | Shameer, Soni, UpGrad, STHDA | Web tutorials on DBSCAN | Explain DBSCAN in the 4.2.5 figures |
+| [59] to [62] | ResearchGate, UC R guide, Minitab, Singh | Web tutorials on hierarchical clustering | Explain hierarchical clustering in the 4.2.5 figures |
+| [63] to [66] | VanderPlas, MathWorks, AI Learning Hub, ResearchGate | Web tutorials on Gaussian mixtures | Explain GMM in the 4.2.5 figures |
+| [67], [69] | ResearchGate, StrataScratch | Spectral clustering figure, K-Means explanation | Explain the algorithms in the 4.2.5 figures |
+| [77] | Espressif, MAC address API | How each board's MAC is read | Board identity in presets and logs (4.2.3.7) |
+| [78] | Wireshark | The packet analyser | Reads the sniffer captures (Part 11) |
+| [79] | Our own repository | Firmware, verifier and scripts | Reproducibility: every tool and the full set of figures (1.6.2, 4.2.6, 7.5) |
+
+---
+
+### 13.6 Sources a panelist could use against us
+
+Checked against the submitted paper's text. None of these is fixed in the paper. Know the safe answer.
+
+| Problem | Sources | What is wrong | Safe answer on stage |
+|---|---|---|---|
+| Listed but never cited | [7], [10], [11], [12], [14], [15], [16], [17], [47], [68], [73], [74] | 12 entries in Appendix A appear nowhere in the text, neither by number nor by author name. [73] (REAL-IoT) is even saved in `Resources/` | "They were read during the review and should have been removed from the final list or cited. They do not support any claim in the paper." |
+| Wrong reference entry | [49] | Listed as IEEE Access 13, 45231–45259, DOI `10.1109/ACCESS.2025.1234567`. That DOI is a placeholder. The review by Miguel-Diez et al. is on arXiv (2503.08293) and in the *Logic Journal of the IGPL* (DOI 10.1093/jigpal/jzaf020) | "The citation details are wrong in our list; the review itself exists, and what we say about it in 2.10 is correct." |
+| Wrong reference entry | [48] | Listed as "Chatterjee, S., et al. … Anomaly detection in IoT systems: A survey. *Internet of Things*, 18, 100508". The text says "Chatterjee and Ahmed", which is right: Chatterjee, A., & Ahmed, B. S. (2022). IoT anomaly detection methods and applications: A survey. *Internet of Things*, 19, 100568. https://doi.org/10.1016/j.iot.2022.100568. The 64 studies, January 2019 to July 2021, match the real survey | "The list entry has the wrong title and volume; the text describes the right survey." |
+| Format slips | [40], [46], [22], [47] | [40] gives the year as "2022–2024". [47] has no venue. [46] and [22] are in Part 12.7 | Formatting only |
+| Web tutorials as sources | [53] to [56], [59] to [67], [69] | Medium posts, vendor blogs and ResearchGate figure pages. A panelist may say they are not academic | "They are used only to illustrate how each algorithm works in Chapter 4. The algorithms themselves rest on Lloyd [58], Bishop [57] and Jain [38], and we use the standard scikit-learn implementations listed in the repository [79]." |
+| Cited for a claim they do not make | [25], [26] in 1.1 | The sentence "implemented as application-layer emulations of blackhole and wormhole behavior [25, 26]" cites a Zigbee traffic dataset and an SDN dataset. Neither emulates attacks at the application layer | "Those two are examples of datasets built from real devices [25] and from an emulated network [26]. The application-layer emulation is our own design, D-20." |
+| Weak support | [41] in 1.1 | "normal and malicious behaviors are separable based on observable network features [38, 41]": [41] is an autoencoder on patients' body-sensor data, not network attacks | "[41] shows unsupervised separation of normal and abnormal data in a wireless sensor setting. The network-attack question is exactly what our study tests." |
+| Premise not observed | [5], [8], [19] | Tables 3.4 and 3.5 rest on them and were not observed (6.2.4) | See 13.4: their attacks are routing attacks, ours are application-layer emulations |
+| Misattribution and wording | [22], [72] | See Part 12.7 | See Part 12.7 |
+
+---
+
+### 13.7 Panel drill: "How is this relevant to your thesis?"
+
+- **"Why so many simulation papers in your related work?"**
+  - Because that is the gap. [3], [13], [18] and [20] detect these attacks in simulation or on NSL-KDD. Our contribution is the same attacks on real ESP32 mesh hardware.
+- **"Which source is your validation based on?"**
+  - The 3-sigma rule of Zhukabayeva et al. [71] for every run, and the duplicate signature proposed by Ramírez Gómez et al. [72] as the second wormhole check. Pooling five windows per point is our own step.
+- **"Which source tells you the baseline is healthy?"**
+  - Khan et al. [22]: above 97% delivery on an ESP-MESH campus network. Our baselines are 0.996 to 0.998, and the benign runs 0.9994 to 1.0000.
+- **"Is your blackhole a real blackhole?"**
+  - It meets 5 of the 6 criteria of Table 4.4, against Airehrour et al. [70]. It does not attract traffic with a false route, because Espressif's documentation [21], [75] gives no way to write the routing table.
+- **"Is your wormhole a real wormhole?"**
+  - It meets 4 of the 5 criteria of Table 4.5, against Hu, Perrig and Johnson [46]. It does not create a false neighbour, so it is called wormhole-inspired.
+- **"Why did you expect cross-layer traces?"**
+  - Al-Anzi [5], Amouri et al. [8] and Srinivasan [19] find them for routing attacks. We tested the prediction and did not observe it, because our attacks do not touch the radio or the routing (6.2.4).
+- **"Why no supervised detector?"**
+  - Labelled attack data on this hardware is scarce (Chatterjee and Ahmed [48]), and EDA and clustering ask first whether the data separate at all (Tukey [35], Jain [38]). Arp et al. [80] is why we audited the features for leakage before clustering.
+- **"How do you know your dataset is different from the existing ones?"**
+  - On Ring et al.'s [31] properties: real traffic from real ESP32 hardware, cross-layer features, labelled phases, four topologies. KDD/NSL-KDD [29], UNSW-NB15 [27] and UNR-IDD [26] are IP or SDN traffic.
+- **"What is reference [73]?"**
+  - Honest answer: it is in the list but not cited in the text, so it supports no claim in the paper (13.6).
+
+### Check-in (Part 13)
+
+- **Q:** A panelist says: "You cite Zhukabayeva et al. and Ramírez Gómez et al., but neither did anything on ESP32, and Zhukabayeva's wormhole shortened the route while yours didn't. So how are these two papers relevant to your thesis at all?" Answer with the four-part answer of 13.1, covering both papers in under a minute.
+- **Your answer:** *(pending)*
+
+> [!question]- Answer (click to reveal)
+> **What they did:** both built a real wormhole on ZigBee hardware. Zhukabayeva et al. joined two Raspberry Pi nodes with a GSM tunnel and detected the attack with a 3-sigma rule. Ramírez Gómez et al. used a Raspberry Pi with KillerBee and proposed duplicated routing packets as a signature.
+> **Their jobs in our thesis:** they give our validation. Every run is judged with the 3-sigma test of [71] (4.2.7.1), and the second wormhole check, DuplicateRate at the root, follows the signature proposed by [72] (D-21). [71]'s GSM tunnel is also the model for our UART tunnel (4.2.1.3), and both give the comparison rows of Table 6.34.
+> **Where:** 4.2.1.3, 4.2.7.1, 4.2.7.2, 4.2.7.6 (Figures 4.52 to 4.54, Table 4.23), D-21 and Table 6.34.
+> **How we differ:** no study runs a wormhole on ESP-WIFI-MESH, so we took the closest real-hardware ones and compare direction, not values. Their tunnel became a route, ours is an application-layer relay, so our hop count stays the same, and Table 4.5 says so (false neighbour: not met). What we reproduce is the packet-level signature: a second copy arriving by another path, 99.86% of the entry end's probes in the attack and none in the baseline.
+>
+> 📖 **Review it:** Parts 13.1 and 13.3 of this guide; Parts 12.3 and 12.4; paper 4.2.7 and Table 6.34
+
+---
+
 ## Formula summary
 
 | Quantity | Formula | Unit / range |
@@ -1869,3 +2294,34 @@ Nothing from version 2 was changed except the additions below.
 | Part 11.7 tables | Per-phase frame counts and the counter comparison are **our own reading of the dataset's feature tables** (MacFramesHeard, forward counter), not numbers printed in the paper |
 | Part 10 | Two new weak spots: "the mesh traffic is encrypted" (1.6.1, 1.6.2, Appendix B) and "the sniffer captured none of the wormhole runs" (note under Table 6.16). Both were checked against a real capture and the alignment tool's records |
 | Parts 2 and 9 | One pointer line each to Part 11 |
+
+---
+
+## Changes in version 4
+
+Nothing from version 3 was changed except the additions below.
+
+| Where | What was added |
+|---|---|
+| Part 12 (new) | The three reference studies behind deck slides 13 and 14. Each slide claim is matched to the sentence in the original paper, with its link and printed page number: Airehrour et al. [70] pp. 45–53, Zhukabayeva et al. [71] pp. 1, 14, 21–28, Ramírez Gómez et al. [72] pp. 43–56, Khan et al. [22] pp. 1, 14–16, 18 |
+| Part 12.2 and 12.3 | Two points to say correctly: "delivery 25–40%" is our arithmetic from their 60–75% loss, and the 5-window pooling of the 3-sigma test is our own step. Also the inconsistencies inside [71] (abstract vs. Table 7 vs. Figure 19 text) |
+| Part 12.5 | Khan et al. [22] checked against the publisher's PDF, with pages (pp. 1, 14–16, 18) |
+| Part 12.6 | Hu, Perrig and Johnson [46]: not checked against the original (no copy could be opened); what is confirmed so far |
+| Part 12.7 | The submitted paper against the five sources: one misattribution (Khan's 97% comes from the 2-minute campus test, not the 60 s stability test), two minor wording points, two reference-format slips |
+| Header, Parts list, Coverage map | One line each for Part 12 |
+
+---
+
+## Changes in version 5
+
+Nothing from version 4 was changed except the additions below.
+
+| Where | What was added |
+|---|---|
+| Part 13 (new) | "How is this source relevant to our thesis?" for all 81 references: the four-part answer (what they did, its job in our thesis, where in our paper, how we differ), a worked spoken answer for Ramírez Gómez et al. [72], and the seven jobs a source can do |
+| Part 13.3 | Full cards with a spoken answer and a push-back answer for [72], [71], [70], [22], [46] and Espressif [21], [75], [76] |
+| Part 13.4 | Cards for the theory and method sources: the cross-layer premise [5], [8], [19]; Karlof and Wagner [81]; Arp et al. [80]; the textbook attack definitions [43], [44], [45]; the dataset gap [29], [30], [31]; and a table for the EDA and clustering sources |
+| Part 13.5 | One line for every other cited source |
+| Part 13.6 | Reference problems found in the submitted paper (not fixed in it): 12 references never cited in the text; wrong list entries for [48] and [49] (checked online); web tutorials used as sources; [25], [26] and [41] cited for claims they do not make |
+| Part 13.7 | A panel drill and a check-in |
+| Part 12 intro | One pointer line to Part 13 |
