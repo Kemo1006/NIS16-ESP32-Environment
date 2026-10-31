@@ -5,6 +5,9 @@
 - **Version 3:** adds [Part 11](#part-11-wireshark-and-the-sniffer-reading-a-capture-and-proving-a-run-is-real) on Wireshark and the sniffer (how to read a capture, how a capture proves a run is real, and the panel questions about it), plus two new weak spots in Part 10. See [Changes in version 3](#changes-in-version-3).
 - **Version 4:** adds [Part 12](#part-12-the-reference-studies-what-each-one-says-and-on-which-page) on the reference studies behind deck slides 13 and 14 (Airehrour [70], Zhukabayeva [71], Ramírez Gómez [72], Khan [22]). Every claim was checked page by page against the original PDFs, and each comes with its link and printed page number. Part 12.7 compares the submitted paper with the same sources. See [Changes in version 4](#changes-in-version-4).
 - **Version 5:** adds [Part 13](#part-13-why-each-source-matters-to-our-thesis), which answers "how is this source relevant to our thesis?" for every one of the 81 references: a four-part answer to use on stage, the job each source does in the thesis, full cards for the sources most likely to be asked (with a spoken answer for each), a one-line table for the rest, and the references a panelist could use against us. See [Changes in version 5](#changes-in-version-5).
+- **Version 6:** adds [Part 14](#part-14-the-dataset-itself-what-is-in-it-why-some-cells-are-blank-and-how-to-prove-it-is-real) on the dataset files themselves: the five data folders, how to read a raw row, the six reasons a cell is blank (with Table 6.8), what is missing and why, six layers of evidence that the dataset is real, panel questions, weak spots and a live demo. Its repository numbers come from a recount over all 80 runs that reproduced Table 6.2 exactly. See [Changes in version 6](#changes-in-version-6).
+- **Version 7:** adds [Part 15](#part-15-our-wormhole-and-our-protocol-compared-with-the-sources), written in plain sentences: how our wormhole differs from the definition [46], from [71], [72] and from the simulated wormholes of Chapter 2, and how ESP-WIFI-MESH differs from RPL, AODV and ZigBee as the paper describes them. See [Changes in version 7](#changes-in-version-7).
+- **Version 8:** adds [Part 16](#part-16-preprocessing-explained-step-by-step-for-the-panel), a step-by-step explanation of preprocessing for the panel: the six cleaning steps and why each exists, the three features that need special handling, how the 16 features become 8 and then 4 before clustering, how blanks and scaling are handled, nine panel questions and what to say if someone opens the code. Every step was checked against the analysis code. See [Changes in version 8](#changes-in-version-8).
 - **Defense weight:** the adviser wants the focus on **Chapters 5 to 7**, with Chapter 4 possibly included. Chapters 1 to 3 should be brief. This guide follows that split: Parts 1 to 2 are short, Parts 3 to 8 are the deep ones.
 - **How to use it:** read Part 0 first (the whole thesis in one page), then the part for the chapter you present. Every part ends with a self-test question whose answer is folded away. Part 9 is a bank of likely panel questions.
 
@@ -24,11 +27,16 @@
 12. [Part 11: Wireshark and the sniffer: reading a capture and proving a run is real](#part-11-wireshark-and-the-sniffer-reading-a-capture-and-proving-a-run-is-real)
 13. [Part 12: The reference studies: what each one says and on which page](#part-12-the-reference-studies-what-each-one-says-and-on-which-page)
 14. [Part 13: Why each source matters to our thesis](#part-13-why-each-source-matters-to-our-thesis)
-15. [Formula summary](#formula-summary)
-16. [Corrections in version 2](#corrections-in-version-2)
-17. [Changes in version 3](#changes-in-version-3)
-18. [Changes in version 4](#changes-in-version-4)
-19. [Changes in version 5](#changes-in-version-5)
+15. [Part 14: The dataset itself: what is in it, why some cells are blank, and how to prove it is real](#part-14-the-dataset-itself-what-is-in-it-why-some-cells-are-blank-and-how-to-prove-it-is-real)
+16. [Part 15: Our wormhole and our protocol, compared with the sources](#part-15-our-wormhole-and-our-protocol-compared-with-the-sources)
+17. [Part 16: Preprocessing, explained step by step for the panel](#part-16-preprocessing-explained-step-by-step-for-the-panel)
+17. [Formula summary](#formula-summary)
+18. [Corrections in version 2](#corrections-in-version-2)
+19. [Changes in version 3](#changes-in-version-3)
+20. [Changes in version 4](#changes-in-version-4)
+21. [Changes in version 5](#changes-in-version-5)
+22. [Changes in version 6](#changes-in-version-6)
+23. [Changes in version 7](#changes-in-version-7)
 
 ## Coverage map
 
@@ -57,6 +65,9 @@
 | Sniffer and Wireshark: 1.6.1, 1.6.2, 4.2.3.3, D-14, D-15, 6.2.4, Appendix B | Part 11 |
 | Reference studies [70], [71], [72] (4.2.7.6, Tables 4.4, 4.5, 4.20, 4.21, 4.23, Figures 4.48, 4.54, Table 6.34); deck slides 13 and 14 | Part 12 |
 | Every reference [1] to [81] (Appendix A): why it is cited, where, and the risky ones | Part 13 |
+| The dataset files: 4.2.3, 4.2.3.7, 6.1 (Tables 6.1, 6.2, 6.5, 6.6, 6.8), 7.3; why cells are blank; proof the data is real | Part 14 |
+| Our wormhole against [46], [71], [72] and the simulated studies; ESP-WIFI-MESH against RPL, AODV and ZigBee (2.1 to 2.8, 3.1 to 3.3, D-20, Table 6.34) | Part 15 |
+| Preprocessing in depth: 4.2.4, D-1, D-2, D-8, D-9, D-25, Table 6.2, 6.2.3 (leakage guard), 6.4.1 and Table 6.24 (clustering preparation) | Part 16 |
 
 ---
 
@@ -2236,6 +2247,516 @@ Checked against the submitted paper's text. None of these is fixed in the paper.
 
 ---
 
+## Part 14: The dataset itself: what is in it, why some cells are blank, and how to prove it is real
+
+> [!note] Where this sits in the paper, and where the numbers come from
+> - The paper covers the dataset in **4.2.3** (what each board records), **4.2.4** (windows and features), **4.2.3.7** (completeness), **6.1** (Tables 6.1 to 6.8) and **7.3** (evidence that the dataset is valid).
+> - Numbers marked **(repository)** are not printed in the paper. They come from our own recount over all 80 runs, read straight from the files in `ESP32-Environment/datasets/`. Say "from our dataset files" if you use them, never "as in the paper".
+> - The recount first rebuilt the feature tables of the 9 cells that are not stored on GitHub, then counted all 80. It reproduced Table 6.2 **to the exact window** (14.6). That match is itself one of the strongest answers in this part.
+
+### 14.1 The dataset in one table: the five folders
+
+Everything lives in `ESP32-Environment/datasets/`. The folder path **is** the run's label: `<attack>/<topology>/<location>/<scenario>/`, for example `blackhole/linear/G402/stationary/`. Benign runs sit under `baseline/`.
+
+| Folder | What is inside | Who writes it | On GitHub? |
+|---|---|---|---|
+| `exports/` | The **raw** files exactly as they came off the boards: one `*_telem.csv` per board (10 samples a second), plus the root's `*_arrivals.csv` (one row per probe that reached the root). A `trimmed/` subfolder holds a copy cut to this run only | The boards (flash + microSD), copied off by the export or the SD import | Yes |
+| `analysis/` | What the code built from the raw files: `windowed_dataset.csv` (one row per board per second), `feature_table.csv` (the 16 features + labels), a `*_legend.csv` that explains every column, `analysis_info.json` (which code version and which laptop made it), and `eda_output/` (statistics and plots) | `analyze.ps1` (preprocess, features, EDA) | Yes, except 9 feature tables (14.7) |
+| `archive/` | Captures that were **replaced** or failed, kept with a `REPLACED.txt` or `README.md` that says why | `archive.ps1`, by hand | Yes |
+| `PCAP/` | Sniffer captures (`.pcap` + a `.json` of loss counts) | The sniffer board via `tools/sniff.py` | No (too big) |
+| `run_logs/` | The serial log of every run: the root's live dashboard, each board's flash and monitor output (744 `.log` files, repository) | The wizard / GUI while the run is going | Yes |
+
+- **Size (repository):** 80 runs, **637 telemetry files**, none empty, **4,570,906 raw rows** (one row = one board, 0.1 s).
+- **One file per board per run.** 637 = 78 runs x 8 boards + 1 run of 6 boards (benign star/Yuchengco/highload) + 1 run of 7 (blackhole tree/G402/highload, B768 has no file), as in Table 6.1.
+
+### 14.2 Reading one raw row
+
+**A child board's row** (`exports/blackhole/linear/G402/stationary/victim_NODE-704BCA25B768_..._telem.csv`):
+
+```text
+timestamp_us,node_id,role,layer,parent_mac,rssi_dbm,retry_count,tx_count,probes_count,phase_id,gt_label,recv_count,forward_count,drop_count
+1718789580,NODE_704BCA25B768,child,5,B4:BF:E9:32:FE:91,-72,1,1068,1068,3,0,3291,3284,7
+```
+
+| Field | Value | Read it as |
+|---|---|---|
+| `timestamp_us` | 1718789580 | 1,718.8 s since **this board** booted (microseconds, from `esp_timer_get_time()`). Not a date, not shared with other boards |
+| `node_id` | NODE_704BCA25B768 | The board's own Wi-Fi MAC, read from the chip's eFuse |
+| `role` | child | What the firmware is (child, root, blackhole, wormhole_a, wormhole_b) |
+| `layer` | 5 | Depth in the mesh tree, root = layer 1, so this board is **hop 4** (hop = layer - 1, D-11) |
+| `parent_mac` | B4:BF:E9:32:FE:91 | The parent's **SoftAP** address = the parent's STA MAC **+ 1** (parent is B4:BF:E9:32:FE:90) |
+| `rssi_dbm` | -72 | Signal strength of the link to the parent only (one link, not the whole path) |
+| `retry_count` | 1 | Failed sends of its own probes **since boot** (application counter, not 802.11 retries, D-15) |
+| `tx_count`, `probes_count` | 1068, 1068 | Its own probes sent **since boot** (on a child these two are equal) |
+| `phase_id`, `gt_label` | 3, 0 | Phase 3 = cooldown, label 0 = normal |
+| `recv_count`, `forward_count`, `drop_count` | 3291, 3284, 7 | Probes it received from the boards below to relay, passed on, and did not pass on, **since boot** |
+
+**A root arrival row** (`..._arrivals.csv`): the last four fields matter.
+
+```text
+timestamp_us,node_id,role,layer,parent_mac,rssi_dbm,retry_count,tx_count,probes_received,phase_id,gt_label,src_mac,seq_num,latency_us
+6467740,NODE_B0CBD8F33218,root,1,00:00:00:00:00:00,0,0,0,3,255,255,70:4B:CA:25:B7:68,411,-1051121843
+```
+
+- `src_mac` = who sent the probe, `seq_num` = the probe's number on that sender, `latency_us` = root's clock minus the sender's clock stamp.
+- **Delivery is joined on `seq_num`, never on time** (D-2): "probe 411 of board B768 arrived" is a fact that needs no shared clock.
+
+**Things in the raw files that look wrong but are correct**
+
+| What you see | Why it is correct | How many (repository) |
+|---|---|---|
+| `phase_id` and `gt_label` = **255** at the start of every file | The board was logging before it heard the root's first phase broadcast. 255 = "no phase yet, no ground truth". Those rows become the unlabelled `pre_baseline` windows | 85,435 windows (Table 6.2) |
+| Root rows: `layer` 1, `parent_mac` 00:00:00:00:00:00, `rssi_dbm` 0 | The root has no parent, so there is no uplink to measure | Every root row |
+| `parent_mac` never equals any `node_id` | The parent column holds the parent's SoftAP address, which is its STA MAC + 1. Subtract 1 and it matches | Resolves to a board of the same run in **3,955,479 of 3,955,480** rows with a parent |
+| `timestamp_us` starts at a few seconds, not at a date | Microseconds since that board's own boot | Every file |
+| Counters only grow | They are running totals since boot. The analysis uses the **change per window** (delta), never the raw total | Every file |
+| `latency_us` is **negative** in most arrival rows | Two unsynchronised clocks: the number is "true delay + the gap between two boot times", and the gap can have either sign. Only the **relative** delay is used (D-2) | 367,125 of 536,736 arrivals (68.4%) |
+| A timestamp or counter suddenly drops back to a small number | The board **rebooted** (power or crash), so its clock and counters restarted. The windows that span it are flagged `*_reset_detected` and their delta is forced to 0 | 6 clock restarts and 10 counter resets in 637 files; 21 to 23 flagged windows |
+| The same `seq_num` twice in a wormhole root file | That **is** the wormhole: one copy by the mesh, one by the tunnel | 12,448 in the attack phase, 5 in cooldown (in-flight copies), 0 in baseline; 0 in every blackhole and benign run |
+| Extra "duplicates" if you count the raw file naively | Before a run the root already logs probes from idle boards (phase 255). The boards are then reset, so their `seq_num` restarts and collides with those idle rows. The code drops every phase-255 arrival first, so these never count | About 3,600 such rows (repository) |
+| On wormhole end B, `retry_count` keeps rising | On B that counter holds **frames sent into the tunnel**, not failures (Part 3.2) | Every B file |
+| A line with blanks in the middle of the node ID, such as `NODE_2805A          2D7B4` | A damaged line (part of it overwritten when the row was written or exported; cause not proven). The code drops it: it cannot fill a window, and none of these IDs reaches any feature table | **5 lines in 4.57 million** |
+| Two naming styles: `victim_NODE-<MAC>_...` and `child_node7_...` / `root_root_...` | Different export paths named files differently during the campaign. The identity is the `node_id` **inside** the file, and every `NODE-<MAC>` file name matches the `node_id` inside it | 0 mismatches |
+| A `trimmed/` folder next to the raw files | `trim_run.py` copies only this run's rows into it. The raw file is never edited | Raw files untouched |
+
+### 14.3 Why some values are blank: the full explanation
+
+> [!important] The one rule behind every blank
+> **A blank means "there was nothing to measure". A zero means "we measured, and the answer was zero".** The code never writes 0 for a blank. Example: a window where a board sent no probe gets **no** PDR. Writing 0/0 = 0 would invent a fake blackhole (D-8).
+
+There are **six reasons** a cell is blank. Every blank in the dataset falls under one of them.
+
+| # | Reason | Features blank | Gap or result? |
+|---|---|---|---|
+| 1 | **Role gate: the feature does not exist on this kind of board** | Tunnel features on every board except the two tunnel ends. PDR on the root, the blackhole attacker and both tunnel ends (not scored on delivery). RSSI on the root (no parent) | By design |
+| 2 | **Ratio of nothing: the denominator is 0** | ForwardingRatio and ConsistencyScore on a board that received nothing to relay (every leaf). RetryRate in a window with no send attempt. PDR in a window where the board sent no probe. TunnelLatency in a window with no duplicated probe | By design; a value would be invented |
+| 3 | **The attack worked** | LatencyHopRatio of blackhole victims during the attack: no probe arrived, so there is no delay to measure | **A result** |
+| 4 | **Not measured** | MacRetryRate and MacFramesHeard outside the 7 sniffer-covered blackhole runs | Honest gap (paper says so, 6.2.4) |
+| 5 | **Placeholder removed** | `rssi_dbm` = 0 is the firmware's "no parent link" code. A real 0 dBm would be a physically impossible perfect signal, so it is blanked before averaging | By design |
+| 6 | **No label** | `window_label` / `Label` is empty in `pre_baseline` windows (before the experiment) and `transition` windows (a phase changed inside the second) | By design; kept, never analysed |
+
+**How big each blank is (Table 6.8 of the paper, all windows recorded, including the unlabelled ones)**
+
+| Feature | Blackhole attacker | Blackhole non-attacker | Wormhole end A | Wormhole end B | Wormhole non-attacker | Benign child |
+|---|---|---|---|---|---|---|
+| ForwardingRatio | 94.4 | 36.3 | 50.9 | 24.8 | 48.7 | 39.1 |
+| RetryRate | 70.4 | 96.3 | 26.1 | 87.7 | 98.8 | 98.5 |
+| PDR | 0.0 | 94.8 | 0.0 | 0.0 | 97.3 | 97.5 |
+| RSSI_mean | 98.6 | 99.1 | 99.7 | 99.8 | 98.8 | 99.4 |
+| RSSI_Hop_Diff | 97.8 | 98.7 | 99.6 | 99.7 | 98.5 | 99.1 |
+| LatencyHopRatio | 0.0 | 66.3 | 0.0 | 88.4 | 83.8 | 73.6 |
+| TunnelIntensity, TunnelBytes | 0.0 | 0.0 | 100.0 | 100.0 | 0.0 | 0.0 |
+| TunnelLatency | 0.0 | 0.0 | 0.0 | 26.6 | 0.0 | 0.0 |
+| IngressEgressDelta, ParentSwitchRate, HopChangeCount, HopStabilityDuration, RSSI_var, RSSI_stability | 100 | 100 | 100 | 100 | 100 | 100 |
+
+*(% of windows with a value. ConsistencyScore has the same coverage as ForwardingRatio.)*
+
+**Each blank, explained in one or two lines**
+
+- **ForwardingRatio 36.3% on blackhole non-attackers.** It needs something received to relay. Leaves (end nodes) never relay, so they never have it. In the repository, all 146,117 non-attacker windows with nothing received have no ForwardingRatio, and every window that received something has one.
+- **ForwardingRatio 94.4% on the attacker, not 100%.** The attacker has nothing to relay in the seconds before its children join and when a child drops out.
+- **ForwardingRatio 24.8% on end B and 50.9% on end A.** These ends sit where the topology puts them; in many layouts they have no child below them.
+- **RetryRate 70.4% on the attacker and 26.1% on end A.** RetryRate = failures / (sends + failures). During the attack the attacker forwards nothing (0 sends), and end A only re-injects during the attack. No attempt, no ratio.
+- **PDR 0.0% on the attacker, end A and end B.** They are not scored on delivery: the attacker is the cause, and B's probes arrive twice on purpose, so a PDR there would read above 1 (only 1 window in the whole dataset was clipped, repository).
+- **PDR 94.8% to 97.5% on the scored boards.** The missing part is mostly before the experiment (no root logging yet) plus windows where the board sent no probe (1,389 such labelled windows, repository, all blank).
+- **PDR is NOT blank for victims in the attack.** In the repository, 99.0% of victim attack windows have a PDR, and **every one of them is 0.000**. Delivery was measured and it was zero. That is the blackhole.
+- **LatencyHopRatio 66.3% on blackhole non-attackers.** Delay needs a delivered probe. For victims in the attack, the repository shows **0.0%** with a value, against 98.7% in baseline and 99.3% in cooldown. The blank **is** the attack.
+- **LatencyHopRatio 0.0% on the attacker and end A.** They originate no probes of their own that the root scores, so there is no delay to compute.
+- **TunnelLatency 26.6% on end B.** It exists only in a window where one of B's probes arrived twice, which happens only in the attack (180 of about 680 s of a run). Repository: 100% of B's attack windows have it, 0% of baseline and cooldown.
+- **RSSI_mean 98.6% to 99.8%.** The blanks are the `rssi_dbm = 0` placeholders: 39,002 of 4,005,742 child rows (0.97%, repository), almost all from before the board joined the mesh. In labelled windows of child boards, RSSI_mean is present in practically every window.
+- **MacRetryRate.** Only 7 of 36 blackhole runs have a usable sniffer capture (Part 11.9). Blank = not measured, never "no retries".
+
+> [!warning] Blanks give the label away: that is why the leakage guard exists
+> "Is this column blank?" alone tells you the board's role, and sometimes the phase (a victim's blank LatencyHopRatio = attack). So `analysis/leakage.py` keeps those columns out of every model input and writes the reason for each one: ForwardingRatio, IngressEgressDelta, ConsistencyScore, RetryRate, LatencyHopRatio and the three tunnel features (Section 6.2.3). Safe line: "The blanks are honest, and because they are honest they leak the label, so we did not let the clustering see them."
+
+### 14.4 Why some rows, windows and boards are missing
+
+| What is missing | Size | Why | What we did |
+|---|---|---|---|
+| Windows with fewer than 8 of 10 samples | 1,372 of 457,568 (0.30%); no run above 1% | Late or lost samples (logger timing, a reboot) | Discarded (D-9). Repository: of the 369,678 analysed windows, **368,978 (99.81%) have all 10 samples**, 499 have 9, 201 have 8 |
+| Pre-baseline windows | 85,435 (18.7%) | Boards log from boot, before the experiment starts | Kept, unlabelled, not analysed |
+| Transition windows | 1,082 (0.2%) | The phase changed inside that second, so its counters mix two phases | Kept, unlabelled, not analysed |
+| Board B768 in blackhole tree/G402/highload | 1 board | Recorded nothing | It was a **bystander**, so the run keeps its evidence (D-32) |
+| Benign star/Yuchengco/highload | 6 boards instead of 8 | As recorded in Table 6.1 | Analysed with 6 boards |
+| Sniffer data | 73 of 80 runs | No sniffer on the run, or the capture could not be paired with its run (Part 11.9) | Left blank, never zero |
+| Earlier captures of the same cell | 15 captures of 11 cells | Replaced by a newer capture | Moved to `archive/` with the reason; **only the newest capture of a cell is analysed** (Table 6.5) |
+| Captures outside the plan | 12 (5 jitter, 7 at home) | Not part of the 80-run plan | Kept on disk, not counted (Table 6.6) |
+
+- **"Only the newest capture" is a rule, not a choice.** We did not pick the best-looking attempt. That matters for the cherry-picking question (14.6, layer 5).
+
+### 14.5 How do you know this dataset is real? Six layers of evidence
+
+Think of it like a court case: no single piece proves it alone, but each layer would have to be faked **separately and consistently** with all the others.
+
+**Layer 1: The boards are real ESP32 hardware**
+
+- Every `node_id` is the chip's Wi-Fi MAC, read from its **eFuse** (`esp_read_mac(..., ESP_MAC_WIFI_STA)`). The USB bridge cannot be the source: it is a serial device with no MAC (REVIEWER-QUESTIONS §2).
+- All 8 board MACs fall in **6 address blocks registered to Espressif Inc.** in the IEEE registry: 20:50:0D, 28:05:A5, 70:4B:CA, B0:CB:D8, B4:BF:E9, F4:2D:C9 (repository; anyone can check them in the public [IEEE Registration Authority listing](https://regauth.standards.ieee.org/standards-ra-web/pub/view.html#registries)).
+- The SoftAP = STA + 1 rule is an ESP32 hardware convention. It holds in 3,955,479 of 3,955,480 parent rows. Someone inventing data would have to know that rule and apply it in four million rows.
+- The sniffer, which is a separate board, hears the mesh frames with Espressif's vendor tag (OUI 0x18FE34) on channel 11 (Part 11.10).
+
+**Layer 2: Physical fingerprints that are very hard to fake**
+
+- **Each board's clock has its own error, and it stays the same for weeks.** Every quartz crystal runs slightly fast or slow. Plotting the fastest delivery delay of each 30 s against the root's clock gives a slope: how many microseconds per second the two clocks pull apart (parts per million, ppm). Against root B0:CB:D8:F3:32:18 (repository):
+
+| Board | Runs measured | Median drift (ppm) | Middle half of the runs (ppm) |
+|---|---|---|---|
+| B4:BF:E9:32:FE:90 | 77 | -39.1 | -40.7 to -37.5 |
+| 20:50:0D:E7:1C:38 | 52 | -35.0 | -36.1 to -34.4 |
+| 70:4B:CA:25:B7:68 | 77 | -15.8 | -16.4 to -14.7 |
+| 28:05:A5:32:D7:B4 | 77 | -4.9 | -5.8 to -4.2 |
+| B4:BF:E9:34:ED:80 | 77 | -4.7 | -6.1 to -3.6 |
+| F4:2D:C9:73:E6:18 | 49 | -1.3 | -2.5 to 0.4 |
+| 20:50:0D:E7:0C:80 | 59 | +5.8 | +4.4 to +6.9 |
+
+- **How to say it:** "Every board has its own clock error, like a fingerprint. The same board shows the same error in every run, across different days and three different buildings, and no two boards share it. A simulator would have to give each board its own crystal error and keep it consistent across thousands of probes and 80 runs. Nobody fakes that by accident."
+- Small spread inside one board (1 to 3 ppm) is expected: crystal frequency shifts a little with temperature.
+- **Real scheduling jitter.** The median gap between samples is **100.0 ms** and 98.2% of gaps fall between 90 and 110 ms (repository). But not all: the logger sometimes writes a late sample right after another (gaps such as 258 ms then 1 ms, D-25). That is what a real-time OS on a busy chip does. Invented 10 Hz data is usually perfectly even.
+- **Real radio values.** RSSI readings run from **-97 to -24 dBm**, median -71, in 71 different whole-number levels (repository). Captures of the same cell differ by 8.1 dB (blackhole) and 7.1 dB (wormhole) on average because the boards were set up again each time (Part 9, "Why is RSSI so different").
+- **Real hardware scars.** Reboots (6 clock restarts, 10 counter resets), 5 damaged lines, one board with no file, a board that crashed (PANIC) 152 s into an attack and had its pieces stitched from the card (`archive/.../REPLACED.txt`), and brownouts on powerbanks. A made-up dataset is usually too clean. Ours carries the marks of cheap boards on batteries.
+
+**Layer 3: Independent recorders agree with each other**
+
+The same event is recorded by **different boards, with different clocks**, joined only on sequence numbers.
+
+| Event | Recorder 1 | Recorder 2 | Recorder 3 |
+|---|---|---|---|
+| Blackhole drop | The attacker's own counters: ForwardingRatio 1.000 to 1.004 -> 0.000 to 0.007 | The **root's** arrival log: victims' PDR 0.998 -> 0.000 | The **neighbours'** counters (NeighbourForwardingRatio): built only from the children's and parent's counts, so an attacker that lies about its own forwarding cannot hide |
+| Who was hit | The live run log prints, **before the attack starts**, which boards are below the attacker ("not in the attack path - above the attacker, will be UNAFFECTED") | The data afterwards: bystanders' PDR 1.000 in the attack, victims' 0.000 | — |
+| Wormhole tunnel | End B's tunnel counter | End A's received count (99% to 101% of what B sent) | The root: 12,448 of 12,465 of B's attack probes arrived twice (99.86%) |
+| The attack from the air | Board counters | The **sniffer**, which never transmits: the attacker's uplink falls, the victims' does not (7 runs, Part 11.7) | — |
+| Phase labels | Each node's phase at its own send time | The root's phase at that moment (`analysis/phase_sync.py`; a node out of step fails `validate_integrity.py` and is unlabelled) | — |
+
+- **How to say it:** "The root never sees the attacker's counters, and the attacker never sees the root's log. They are separate boards with separate clocks. They still tell the same story, second for second, joined only by probe numbers."
+
+**Layer 4: Anyone can rebuild every number from the raw files**
+
+- The raw files are **never edited**. Trimming writes a copy; analysis writes new files.
+- The pipeline is written to give the same output for the same input, and every analysed cell carries `analysis_info.json` with the **code version** and the **laptop** that made it.
+- **Our recount (repository):** the 9 feature tables missing from GitHub were rebuilt from the raw files and pooled with the 71 stored ones. The result matched the paper exactly:
+
+| Quantity | Paper (Table 6.2, 4.2.3.7, 6.2.2) | Rebuilt from raw files |
+|---|---|---|
+| All windows | 456,195 | 456,195 |
+| Baseline / attack / cooldown | 190,423 / 103,187 / 76,068 | 190,423 / 103,187 / 76,068 |
+| Pre-baseline / transition | 85,435 / 1,082 | 85,435 / 1,082 |
+| Analysed (normal + attack) | 369,678 (266,491 + 103,187) | 369,678 (266,491 + 103,187) |
+| Telemetry files, empty files | 637, none | 637, 0 |
+| B's probes that arrived twice in the attack | 12,448 | 12,448 |
+
+- **How to say it:** "You don't have to trust our tables. Take the raw CSVs, run the same code, and you get the same 456,195 windows. We did exactly that."
+
+**Layer 5: The process left an audit trail, including the failures**
+
+- **Git history:** 167 commits that add or change data, by three team members on three laptops (repository). Data arrived run by run during the campaign, not in one drop at the end.
+- **Verification log:** `docs/dataset-verification.md` holds 68 dated verification blocks (numbered up to #87). The rule is that past blocks are never edited, only new ones added on top.
+- **Failures are kept, with reasons:** 17 `REPLACED.txt` notes in the archives say what was wrong with each replaced capture (crash, reversed tunnel ends, two runs in one file). Failed runs were never labelled as data.
+- **Every change is a deviation:** D-1 to D-37 in Chapter 5 and Appendix C record what changed from the plan and why.
+- **Rules before results:** the predictions in Tables 3.4 and 3.5 were written before data collection; the verifier's thresholds come from the cited studies; a placebo test gave 0 false confirmations in 106 tries, and moving every threshold by ±50% changed no verdict (Part 4, Part 9).
+- **No cherry-picking:** the newest capture of each cell is analysed, by rule. The sniffer pairing tool refused 32 of 44 captures on rules written beforehand (Part 11.9).
+
+**Layer 6: The results behave like reality, not like a wish**
+
+- **Predictions failed, and we reported them.** Victims' retries did not rise, hop counts did not change under the wormhole, and RSSI_Hop_Diff did not react (Section 6.2.4). If the data had been made up, the cross-layer features would have "worked", because that was the thesis' hope.
+- **The attack hit exactly the boards physics says it should.** Victims behind the attacker lost delivery; bystanders above it did not (PDR 1.000 in the attack vs 0.996 in baseline).
+- **Small imperfections a designer would not add:** 2 of 123 victims dropped one second late; 1 of 6,469 wormhole attack windows had no duplicate; partial-mesh runs behaved as branched trees; 5 of 72 attack runs have minor data gaps (7.3).
+
+### 14.6 Panel questions on the dataset
+
+- **"How do we know you didn't edit the CSVs?"**
+  - The raw files are kept untouched next to the trimmed copies, they are in Git with their history, and the same code rebuilds the paper's tables from them to the exact window.
+  - Then Layer 2: each board's clock error is the same in every run. Editing values by hand would break that pattern, and the parent addresses (STA + 1) and sequence numbers would stop matching.
+- **"Why are there so many blank cells? Isn't that bad data?"**
+  - Every blank has one of six causes (14.3), and none of them is a logging failure. Most are "this board cannot have this value" (a leaf cannot forward) or "nothing to divide by". The one that looks largest, LatencyHopRatio during the attack, is the blackhole itself: no probe arrived, so there is no delay.
+- **"If nothing arrived, why is PDR 0 and not blank?"**
+  - Because the board did send. PDR = arrived / sent = 0 / 4 = 0. It is blank only when the board sent nothing (0 / 0), and we never write that as 0.
+- **"Your latency values are negative. Is the data broken?"**
+  - No. The boards have no shared clock, so the raw value is the true delay plus the gap between two boot times. We only use the delay relative to each board's fastest delivery, which cancels that gap (D-2). TunnelLatency compares two copies of one probe on the same two clocks, so there the gap cancels exactly (D-3).
+- **"Why does the root show RSSI 0 and parent 00:00:00:00:00:00?"**
+  - The root has no parent, so there is no uplink signal to read. The code treats 0 dBm as "no link", not as a reading.
+- **"Why does the parent address never match any board?"**
+  - On the ESP32, the access-point address is the station address + 1. Subtract 1 and it matches a board of the same run in all but one of 3.96 million rows.
+- **"Could this have come from a simulator?"**
+  - A simulator would have to reproduce Espressif's registered MAC blocks, the STA + 1 rule, each board's own stable clock error, real-time scheduling jitter, reboots and damaged lines, and the sniffer's independent radio capture. And our results include the failed predictions a simulation built to prove the thesis would not produce.
+- **"Did you throw away runs that didn't work?"**
+  - Replaced runs are in `archive/` with the reason, and the rule was always "newest capture of the cell", not "best capture". Off-plan captures are kept and listed (Table 6.6). 5 attack runs with minor gaps are in the dataset and reported (7.3).
+- **"Why are 18.7% of the windows not analysed?"**
+  - They are the minutes before the experiment started (boards log from power-on). They have no label, so putting them in either group would be guessing.
+- **"When exactly was each run captured? The boards have no clock."**
+  - True: the boards only count time since boot, and they run on powerbanks, so no clock survives. The run's time comes from outside the boards: the export time in each file name (laptop clock), the saved run log, and the Git commit that added it.
+- **"Your CSV has columns that are not in the paper (NeighbourIn, NeighbourOut, exposure, _pdr_clipped, missing_firmware_fields)."**
+  - They are helper columns. NeighbourForwardingRatio is the support check that rebuilds the attacker's forwarding from its neighbours' counters. `exposure` is the victim / bystander / attacker tag derived from the tree, kept as metadata and never a model input. The other two are diagnostic flags.
+- **"Why do some windows have 8 or 9 samples, not 10?"**
+  - A sample was late or lost. The rule allows up to 2 missing (D-9) and fills them (RSSI interpolated, counters carried forward). Only 700 of 369,678 analysed windows are not complete.
+- **"Show me the raw data of one run."** See 14.8.
+
+### 14.7 Weak spots about the dataset (say them before the panel does)
+
+| Where | What a panelist could notice | What to say |
+|---|---|---|
+| Table 6.8 vs other percentages | Table 6.8 counts **all** windows, including pre-baseline; percentages over analysed windows are higher | "Table 6.8 counts every window recorded, so it includes the minutes before the experiment. Over the analysed windows the coverage is higher." Never mix the two |
+| `feature_table_legend.csv` | The `exposure` row says "Unknown (no legend entry)" | It is the victim / bystander tag from the topology (`analysis/exposure.py`); the legend file simply lacks its line |
+| `feature_table_legend.csv` | ForwardingRatio note says "only defined on the blackhole attacker; empty elsewhere" | Out of date since D-12: honest relays count their forwarding too, which is why Table 6.8 shows 36.3% on non-attackers |
+| `docs/panel-answers/REVIEWER-QUESTIONS.md` §9 | Its NaN table (89.8% blank ForwardingRatio, "attacker only") is from one early capture, before D-12 | Do not quote it; use Table 6.8 |
+| Console output of the analysis | Prints "Windows discarded (<4 smp)" | Only the printed label is old; the code's rule is 8 of 10 (`MIN_VALID_SAMPLES = 8` in `preprocess.py`) |
+| GitHub | 9 cells have no `feature_table.csv` on GitHub (6 tree wormhole cells and 3 benign cells) | They are rebuilt from the raw files with `analyze.ps1`, and the rebuild matches the paper exactly (14.5, Layer 4). Rebuild them on the presenting laptop before the defense if a panelist may ask to open one |
+| `PCAP/` | Not on GitHub | Copy the 7 blackhole sniffer captures to the presenting laptop beforehand (Part 11.10) |
+| `RetryRate` | Called a retry rate | It is application send failures, not 802.11 retransmissions (D-15). Not used in any model |
+
+### 14.8 If a panelist says "show me the data" (live demo script)
+
+1. Open `datasets/exports/blackhole/linear/G402/stationary/`. Show one file per board, named by its MAC, plus the root's arrivals file.
+2. Open a victim's `*_telem.csv` in Excel. Show the header, the `255` rows at the top (before the experiment), then scroll to phase 0. Point at `parent_mac` (STA + 1) and the counters that only grow.
+3. Open the matching `analysis/.../feature_table_legend.csv`. Every column has its meaning, unit and notes.
+4. Open `feature_table.csv`, filter `node_role` = blackhole: ForwardingRatio near 1 in baseline, near 0 in attack.
+5. Show the topology straight from the data: `run_wizard.ps1` -> **VERIFY** -> *Show TOPOLOGY STRUCTURE of a captured run*. It prints each board's hop, MAC, role and parent from the CSVs (REVIEWER-QUESTIONS §6).
+6. Open the run's log in `datasets/run_logs/`: the live dashboard with the board list and the exposure lines printed before the attack.
+7. Optional: open a sniffer capture (Part 11.10).
+
+### Check-in (Part 14)
+
+- **Q:** A panelist opens a blackhole victim's feature table and says: "During the attack, your LatencyHopRatio column is empty but your PDR column is full of zeros. Pick one. Either nothing was measured or zero was measured." Answer in three sentences.
+- **Your answer:** *(pending)*
+
+> [!question]- Answer (click to reveal)
+> Both are right, because they measure different things. PDR divides what arrived by what the board sent: the victim kept sending (4 probes a second in highload) and none arrived, so PDR = 0 / 4 = 0, a real measurement of zero. LatencyHopRatio needs a probe that arrived to time it, and none did, so there is nothing to measure and the cell stays blank; the blank is the blackhole, which is also why the leakage guard keeps LatencyHopRatio out of the clustering.
+>
+> 📖 **Review it:** Part 14.3 of this guide; paper Table 6.8, Section 6.2.3 and D-8
+
+---
+
+## Part 15: Our wormhole and our protocol, compared with the sources
+
+> [!note] Where this sits in the paper
+> - The wormhole comparison draws on **3.3.2** (wormhole theory and its adaptation to ESP-WIFI-MESH), **4.2.1.3** (the tunnel), **Table 4.5** (conformance with [46]), **4.2.7.6** (the reference studies), **D-20**, **6.5.2** and **Table 6.34**.
+> - The protocol comparison draws on **2.1**, **2.2**, **2.3**, **2.7**, **2.8**, **3.1** and **3.2** (how ESP-WIFI-MESH works) and **D-20** (why the attacks had to be emulated).
+> - Page-by-page checks of [71] and [72] are in Part 12; this part puts everything into sentences you can say out loud.
+
+### 15.1 Our wormhole compared with other wormholes
+
+**Our wormhole in one paragraph.** Two of our boards are joined by a UART wire running at 115200 baud, and that wire is the out-of-band tunnel. During the attack, end B (the deeper board) sends each of its own probes up the mesh as usual and also writes a copy into the wire. End A (the shallower board) reads the copy, checks it, and sends it on toward the root with B's sequence number, timestamp and MAC unchanged. The root therefore receives each of B's probes twice, once by the normal multi-hop path and once through the shortcut, with a small difference in delay. In our runs, 12,448 of B's 12,465 attack probes arrived twice (99.86%), and none did in the baseline. Nothing else changes: no board changes parent or hop, and the other five boards' traffic is untouched, so a wormhole run has no victims.
+
+**Against the definition of Hu, Perrig and Johnson [46].** In the classic definition, two colluding nodes record packets at one place, send them through a low-latency out-of-band channel, and replay them somewhere else. The routing protocol then believes that two distant nodes are neighbours, and traffic starts to flow through the tunnel. Our wormhole has the colluding pair, the out-of-band channel and the record-and-replay, and it needs no stolen keys, so it meets four of the five criteria in Table 4.5. It does not make distant nodes look like neighbours, because the mesh never uses the wire as a link. That missing criterion is the heart of the classic attack, and it is the reason the paper calls ours "wormhole-inspired" and lists the gap itself.
+
+**Against Zhukabayeva et al. [71].** They built a wormhole on a ZigBee chain of Arduino nodes with XBee radios, and their tunnel was two Raspberry Pi nodes connected over GSM/GPRS and TCP/IP. ZigBee accepted the tunnel as a real route, so the path went from 4 hops to 3, the delay rose from 80 to 100 ms to 120 to 200 ms, and 20 to 30% of the data was modified. Our tunnel plays the same role as their GSM link, but the mesh does not route over it, so our hop count stayed the same in all 36 runs, no data was changed, and the copies are exact. They reported the delay of the route; we report the gap between the two copies of one probe (median 3.9 ms), which is a different measure. From them we took the 3-sigma rule that the verifier uses on every run. Grouping 5 one-second windows into one point before the test is our own step.
+
+**Against Ramírez Gómez et al. [72].** They attacked XBee S2C ZigBee devices that use source routing, with a single malicious node (a Raspberry Pi 3 with a KillerBee USB dongle) that changed the route records inside the packets. Their results are packet captures, not numbers, and they propose "routing packet duplication" as a sign of a wormhole. We took that idea: a wormhole shows up as the same packet arriving twice. The difference is that they duplicate routing packets inside ZigBee and only propose the signature, while our tunnel duplicates data probes and we measure the duplicates at the root. The safe wording is "following the signature proposed by [72]", not "as in [72]".
+
+**Against the simulated wormholes in Chapter 2.** Most of the wormhole studies the paper reviews are detection methods tested in simulators. For example, Alshehri [13] tested in NS-3.37, Srinivasan [19] in NS3, and the review by Hanif et al. [3] notes a scheme that was accurate in simulation but reached only 75% in a real-time system. In a simulator the tunnel is a few lines of code that the simulated routing protocol obeys. Ours is a physical wire between two real ESP32 boards, recorded second by second on real hardware. That is the gap the thesis fills (2.8). The price is that real ESP-WIFI-MESH routing cannot be steered (15.2), so we get the packet-level effect without the route change.
+
+**What is ours alone.**
+- **Roles by depth:** the two ends decide who is A and who is B at run time from their depth in the mesh, so the deeper board is always the entry and the tunnel always points toward the root (D-17).
+- **Star layout:** in the star, end A is made the hub, so that a one-hop shortcut exists at all (D-28).
+- **Linear layout:** the tunnel skips up to 5 hops.
+- **Duplicate count at the root:** the root counts the duplicates, which is independent of the attacking boards' own tunnel counters.
+
+**Why ours had to be different.** In every study above, the attack works on the routing itself: the tunnel becomes a route, or route records are rewritten. ESP-WIFI-MESH gives the application no way to do that. Espressif's documentation offers a call that reads a node's routing table and none that writes a route. The routing logic sits inside Espressif's closed-source mesh library. And there are no route request or reply messages to forge (D-20). So the only honest option was to act on our own probes, on the data plane. That is also why our radio and routing features stayed flat: a copy sent at the application layer never touches the radio or the routing.
+
+> [!tip] Say it like this
+> "The wormholes in the literature rewire the route: Zhukabayeva's tunnel became a 3-hop path, Ramírez Gómez's node rewrote route records. ESP-WIFI-MESH doesn't let a node write routes, so ours can't do that. What we reproduce is the packet-level signature, the same probe arriving twice by two paths, and we measured it in 99.86% of the entry end's attack probes and never in the baseline. That's why we call it wormhole-inspired, and we list the missing false-neighbour criterion ourselves."
+
+### 15.2 ESP-WIFI-MESH compared with the protocols in the paper
+
+**What ESP-WIFI-MESH is.** ESP-WIFI-MESH is Espressif's own mesh protocol for the ESP32, part of the official ESP-IDF framework, and it runs on ordinary 802.11 Wi-Fi (2.7, 3.1). It always builds a tree:
+- **Root** at the top, which in our testbed is the sink for all probes.
+- **Intermediate nodes** run as station and access point at the same time, so they can have a parent above and children below.
+- **Leaf nodes** have no children.
+
+A joining node picks its parent by the shallowest layer first and the fewest children second. RSSI is only used as a pass or fail threshold, never to rank parents (3.2.1). The network repairs itself when a node fails. Data moves hop by hop toward the root with best-effort delivery. Routing and forwarding happen inside the mesh stack, below the application, and the application only receives the packets addressed to itself (3.1.2, 3.1.3). Most importantly for our attacks, nobody checks that a relay really forwards, and the advertised layer and child count are taken on trust (3.1.3.2, 3.2.1.2).
+
+**Compared with RPL (Airehrour et al. [70], Ioulianou et al. [6]).** RPL is the IPv6 routing protocol for low-power and lossy networks. In RPL, each node advertises a "rank" in DIO messages, and its neighbours choose a parent from those ranks. A blackhole in RPL broadcasts a false low rank, which attracts children to it, and then drops their packets. That is why Airehrour et al. saw 16 to 246 rank changes per mote. ESP-WIFI-MESH also advertises values a joining node cannot check (layer and child count, carried in the mesh beacons). But the public API gives the application no way to change what a node advertises, so our blackhole cannot lure anyone. It is placed on the path instead, and that is why our parent changes stayed near zero (0.00009 per second) where theirs were in the hundreds.
+
+**Compared with AODV (Vanlalhruaia et al. [18], and the ad hoc networks of Srinivasan [19]).** AODV finds routes on demand. A node that needs a route floods a route request, and the route reply carries a destination sequence number that marks how fresh the route is. The classic AODV blackhole answers route requests with a fake, very fresh route, so traffic is sent to it, and Vanlalhruaia et al. detect it from those sequence numbers. ESP-WIFI-MESH has no route request or reply messages at all: the tree forms from beacons and parent selection, so there is nothing of that kind to forge (D-20).
+
+**Compared with ZigBee / IEEE 802.15.4 (Zhukabayeva et al. [71], Ramírez Gómez et al. [72], Boiano et al. [25]).** ZigBee runs on a separate low-power radio standard (IEEE 802.15.4), with a coordinator and routers. In [72] the devices use source routing, so the route record travels inside the packet, and a malicious node can rewrite it. In [71] the ZigBee routing accepted the GSM tunnel as a shorter route. In ESP-WIFI-MESH the route is not written in the packet and is not open to the application: the mesh stack picks the next hop itself. Boiano et al. [25] show that a real-hardware ZigBee mesh dataset exists (21 commercial devices), which is the closest thing in Chapter 2 to ours, but it is on a different protocol and is meant for forensics, not for routing attacks.
+
+**Compared with the other mesh technologies (Cilfone et al. [2]).** The paper mentions 802.11, Bluetooth, IEEE 802.15.4 and LoRa mesh only through the survey of Cilfone et al. [2], which places mesh networks at the centre of IoT and lists their open issues (interoperability, limited resources, mixed devices). The paper makes no detailed comparison with Bluetooth or LoRa mesh, so do not claim one.
+
+**What they all share, and the one difference that matters.** Every protocol in the paper trusts its nodes: relays are expected to forward, and advertised values are believed. That is why a blackhole or wormhole works on all of them (2.2, 3.1.3.2). The difference is **where an attacker can reach**. In RPL, AODV and ZigBee, the routing messages (ranks, route replies, route records) are open to forgery or rewriting, so the studies attack the control plane. In ESP-WIFI-MESH the routing is closed inside Espressif's library, and its public interface can read routes but not write them. So our attacks act on the data plane: probes that vanish (blackhole) and probes that arrive twice (wormhole). That one difference explains both main results of the thesis: the attacks show up clearly in delivery and duplicates, but not in the routing or radio features (6.5.3).
+
+> [!warning] Two things not to say
+> - **Do not say ESP-WIFI-MESH is "more secure".** It is not. Forwarding is still not verified and the advertised values are still trusted (3.1.3.2). The routing is simply not open to our application. Someone who forged the mesh's management frames or reverse-engineered the library could probably attack it on the control plane, and the paper names that as outside an exploratory study (D-20).
+> - **Do not say the mesh traffic is encrypted** as the reason the sniffer cannot read the probes. The data frames are not 802.11-encrypted; the sniffer only keeps the first 64 bytes of each frame (Part 10, Part 11.2).
+
+> [!tip] Say it like this
+> "RPL, AODV and ZigBee all let a node advertise or rewrite routes: a false rank, a fake route reply, a changed route record. That's how the attacks in those papers pull traffic in. ESP-WIFI-MESH builds its tree from beacons inside Espressif's closed library, and the API can read the routing table but not write it. So the same trust problem is there, but our boards could only attack the data, not the routes. That's why our attacks show up in delivery and duplicate arrivals, and not in the routing features."
+
+### Check-in (Part 15)
+
+- **Q:** A panelist says: "Airehrour's blackhole caused hundreds of rank changes, and Zhukabayeva's wormhole shortened the route. Yours caused almost no parent changes and no hop change. Isn't your testbed just broken?" Answer in three or four sentences.
+- **Your answer:** *(pending)*
+
+> [!question]- Answer (click to reveal)
+> No, it's the protocol. In RPL and ZigBee the attacker can advertise a false rank or get its tunnel adopted as a route, so the routing reacts, and that's what those numbers measure. ESP-WIFI-MESH's public interface reads routes but cannot write them, so our blackhole is placed on the path and our tunnel is never used as a route (D-20). The attacks still did exactly what they were built to do, with delivery collapsing to 0.000 behind the blackhole and 99.86% of the entry end's probes arriving twice, and the paper reports the missing route effects openly, in Table 4.5 and Table 6.34.
+>
+> 📖 **Review it:** Parts 15.1 and 15.2 of this guide; paper 3.1, 3.3.2.2, D-20 and Table 6.34
+
+---
+
+## Part 16: Preprocessing, explained step by step for the panel
+
+> [!note] Where this sits in the paper
+> - **4.2.4** (preprocessing and feature extraction, Equations 4.1 to 4.18), **D-1, D-2, D-8, D-9, D-25** (Chapter 5), **6.1** (Table 6.2, the window counts), **6.2.3** (the leakage guard) and **6.4.1** (clustering setup, Table 6.24).
+> - Part 3 has the short version. This part goes one level deeper, so you can answer "why" for every step. Every step was checked against the code: `analysis/preprocess.py` (Stage A), `analysis/features.py` (Stage B), `analysis/leakage.py` and `docs/thesis-figures/cluster_final.py` (Stage C).
+
+### 16.1 The one-sentence version
+
+> [!tip] Say it like this
+> "We turned each board's raw log of 10 samples a second into one row per board per second, cleaned the small gaps, turned the counters into per-second changes, computed 16 features, and before clustering we removed every feature that would leak the answer and standardised the rest."
+
+| Stage | Input → output | Code |
+|---|---|---|
+| A. Preprocessing (4.2.4) | Raw CSVs → clean 1-second windows | `preprocess.py` |
+| B. Feature computation | Windows → 16 features per window | `features.py` |
+| C. Preparing for clustering (6.4) | 16 features → 8 → 4, standardised | `leakage.py`, `cluster_final.py` |
+
+### 16.2 Before Stage A: what comes off the boards
+
+- **Each child board** writes one `*_telem.csv`: 10 samples a second with RSSI, the counters, layer, parent, phase and label.
+- **The root** writes `*_arrivals.csv`: one row per probe that reached it.
+- **Raw files are never edited.** `trim_run.py` copies only this run's rows into a `trimmed/` folder; analysis writes new files.
+- **RSSI = 0 is "missing", not a reading.** The firmware leaves 0 when the board has no parent link (and on every root row), so the code treats it as a blank.
+  - 39,002 of 4,005,742 child rows (0.97%), almost all from before the board joined the mesh (Part 14.3).
+
+### 16.3 Stage A: raw rows → one-second windows
+
+#### Step 1. Align time, each board to its own anchor
+
+- **What:** each board's timeline is anchored to **its own first exit from phase 0**. The 300 s before that anchor is the baseline.
+- **Why:** the boards share no clock. Each counts from its own boot, and on powerbanks a reboot resets it. The phase change the root broadcasts is the one event every board sees.
+- **Side effect:** phase 0 means three things in the firmware: the real baseline, the root's settle time, and "I have not heard the root yet". The anchor separates them, so the windows **before the baseline** (85,435, 18.7%) get no label and are never analysed.
+
+#### Step 2. Put the samples on a 10 Hz grid (D-25)
+
+- **What:** each sample takes the **earliest free 0.1 s tick**, at most 300 ms late, never early.
+- **Why:** the logger sometimes writes late samples back to back (gaps like 258 ms, 1 ms, 41 ms). The old "nearest tick" rule put two samples on one tick, left a false hole next to it, and threw away healthy windows.
+
+#### Step 3. Cut into one-second windows (D-9)
+
+- **What:** non-overlapping 1 s windows. A window needs **at least 8 of its 10 samples**, otherwise it is discarded.
+- **Why 8 of 10:** it keeps the planned 80% completeness rule (the plan had 4 of 5).
+- **Why 1 s and not 5 s (D-1, D-9):**
+  - With 5 samples per window, one lost sample costs 20% of the window.
+  - The panel asked for about 10,000 rows per run; a clean baseline went from 577 to 2,894 rows.
+
+#### Step 4. Fill only the tiny gaps
+
+- **RSSI:** linear interpolation for gaps of **1 to 2 samples** (at most 0.2 s), only inside a window.
+- **Counters:** forward-filled (no new sample = counter assumed unchanged).
+- **Longer gaps:** stay blank, so the window fails the 8-of-10 rule and is dropped.
+- **Why so strict:** 0.2 s is the most "made-up" data any window can hold. We fill a blip, never a real outage.
+
+#### Step 5. Counters → per-window changes (Equation 4.1)
+
+- **What:** the counters only grow, so each window uses (value at the end) − (value at the start): Δreceived, Δforwarded, Δretry and so on.
+- **Why:** a running total says how long the board has been on; the change says what happened in that second.
+
+#### Step 6. Labels
+
+- **What:** baseline and cooldown = **0 (normal)**, blackhole attack = **1**, wormhole attack = **2**.
+- **Phase boundaries:** a window that straddles a phase change gets no label (1,082 windows, 0.2%) and is left out.
+- **Every board of the run gets the run's label**, including bystanders the attack never touched. Honest, but it caps the clustering scores later (Part 6.1).
+
+#### Result of Stage A
+
+- **One row = one board × one second** (the node-window).
+- 457,568 windows formed, **1,372 discarded (0.30%)**; no run lost more than 1%; mean samples per window at least 9.97 in every run.
+- **Analysed: 369,678 windows** (266,491 normal + 103,187 attack, Table 6.2).
+- **Why per board, not per network:** in a blackhole the attacker's forwarding falls while the boards behind it lose delivery. A network average would blur both.
+
+### 16.4 Stage B: the three features that need special handling
+
+1. **PDR joins on the sequence number, never on time.**
+   - Each probe a board sent is matched to the root's arrival log by `seq_num`.
+   - Why: the boards' clocks differ by minutes, so a time join would pair the wrong probes.
+   - A window gets a PDR (even 0) only if the board **sent** in it, was **attached** to the mesh, and the root was **logging** (D-8).
+2. **LatencyHopRatio uses relative delay (D-2).**
+   - Raw delay = true delay + a large unknown clock offset (once −194 s).
+   - Subtracting the sender's **fastest** delay in the run cancels the offset.
+   - So only the **shape** can be compared, not absolute milliseconds across boards or runs.
+3. **RSSI_Hop_Diff compares with the run's own baseline.**
+   - The expected RSSI is the baseline median at that board's layer, in the same run, so it adapts to each room.
+
+> [!warning] Blanks stay blank, never 0
+> A blank means "could not be measured": a leaf relays nothing, so it has no ForwardingRatio. A victim's PDR in a blackhole is **measured and equals 0.000**. That 0 is the attack, not a blank (Part 14.3).
+
+### 16.5 Stage C: preparing the features for clustering
+
+#### C1. Which windows go in
+
+- **Child boards only** (no root, attacker or wormhole ends), with a label, not straddling a phase change.
+- **Two populations:** all non-attacker boards (127,372 windows) and victims only (72,687).
+- **Why no attackers:** the attacker's own counters **are** the attack. Clustering them would only rediscover the switch we turned on.
+
+#### C2. The leakage guard (Arp et al. [80]): 16 features → 8
+
+`leakage.py` holds the list of columns that may never be model inputs, with the reason for each:
+
+| Excluded | Why |
+|---|---|
+| ForwardingRatio, IngressEgressDelta, ConsistencyScore | Relay counters; whether they are filled or blank reveals the board's role |
+| RetryRate | An application counter, and on wormhole end B it counts tunnel frames, so it records the attack itself |
+| TunnelIntensity, TunnelBytes, TunnelLatency | Exist only on the ends, so their presence reveals the run type |
+| LatencyHopRatio | Its **blanks alone** predict the label in 86% of windows (no delivered probe = no delay = attack) |
+
+> [!tip] Say it like this
+> "The blanks are honest, and because they are honest they leak the label, so we did not let the clustering see them."
+
+#### C3. Low-variance and correlation filters: FULL 8 → REDUCED 4
+
+- **Low-variance filter:** drop a feature if more than 90% of windows share one value. It removed:
+  - ParentSwitchRate (100% one value)
+  - HopChangeCount (100%)
+  - HopStabilityDuration (99.8%)
+  - RSSI_stability (98.5%)
+- **Correlation filter:** drop a feature if |r| > 0.85 with another. It removed nothing (largest |r| = 0.11).
+- **REDUCED = PDR, RSSI_mean, RSSI_var, RSSI_Hop_Diff.**
+- **Control set without PDR** (3 features): does anything other than PDR separate the attack?
+
+#### C4. Missing values in clustering
+
+- A window with a blank in any chosen feature is **dropped, not filled**. Clustering needs a complete table, and filling would invent behaviour.
+- This is safe because the leakage guard already removed the columns whose blanks follow the label.
+
+#### C5. Sampling and standardising
+
+- **Sampling:** for each of three seeds (**42, 7, 123**), a fresh random sample of **6,000 windows**; results are means over the seeds.
+- **Standardising (z-score):** each feature becomes (value − mean) / SD, fitted on that sample.
+  - Why: RSSI is in dBm (about −40 to −90), PDR is 0 to 1, RSSI_var is in dBm². Without scaling, the feature with the biggest units would decide every distance.
+- **Sources:** Aggarwal [36] and Han et al. [37] for standardising and checking correlation before clustering (Part 13).
+
+### 16.6 Panel questions on preprocessing
+
+| Question | Answer |
+|---|---|
+| "Why not synchronise the clocks?" | "The boards run on powerbanks and reboot, so no clock survives, and an isolated mesh has no internet time. We anchor each board to the phase change it hears from the root, and join delivery by sequence number." |
+| "Isn't interpolation making up data?" | "At most 0.2 seconds, only for RSSI, and only inside a window that already has 8 of 10 real samples. Anything longer stays blank and the window is dropped." |
+| "How much data did you throw away?" | "0.30% of windows in cleaning, and no run lost more than 1%." |
+| "Why one-second windows?" | "At 10 samples a second a 1 s window holds 10 samples, keeps the 80% rule, and gives about ten thousand rows per run. With 5 s windows of 5 samples, one lost sample cost 20%." |
+| "Why drop ForwardingRatio if it's your best blackhole feature?" | "Because it is measured at the attacker, it is the attack. Clustering on it proves nothing. We report it as the attack check, not as a model input." |
+| "Why drop rows instead of imputing?" | "The blanks have causes: no relay, no delivered probe. Filling them would invent behaviour, and the columns whose blanks follow the label were already removed." |
+| "Why standardise?" | "The features have different units: dBm, ratios, dBm². Without it, RSSI would dominate every distance." |
+| "Why only 6,000 windows?" | "Three different random samples of 6,000, averaged, so the result does not hang on one draw." *(The paper gives the sample size only. If pushed on why not all 127,372: spectral clustering and the silhouette score compare every pair of windows, so their cost grows with the square of the sample. That reason is ours, not a sentence in the paper.)* |
+| "Can RSSI_Hop_Diff be negative?" | "No, in the dataset it is an absolute difference." (The paper's text says "observed minus baseline median"; `features.py` takes the absolute value, Part 3.2.) |
+
+### 16.7 If someone opens the code
+
+- **The header comment of `preprocess.py` is out of date.** It still says "1 Hz samples", "5-second windows" and "4 of 5". The settings a few lines below are what run: 10 Hz grid, 1 s windows, 8 of 10. Say: "The header predates D-9; the settings below it are what run."
+- **The PCA and t-SNE plots clip values at ±5 SD** so that a few parent-switch windows cannot take over an axis. **The clustering itself does not clip.** Do not mix the two up.
+- **IngressEgressDelta** has the same absolute-value gap between paper and code as RSSI_Hop_Diff (Part 3.2).
+
+### Check-in (Part 16)
+
+- **Q:** A panelist says: "You dropped windows, interpolated values and removed half your features. How do we know you didn't shape the data to get your result?" Answer in three or four sentences.
+- **Your answer:** *(pending)*
+
+> [!question]- Answer (click to reveal)
+> The cleaning removed only 0.30% of windows, no run lost more than 1%, and interpolation can fill at most 0.2 s of RSSI inside a window that already has 8 of 10 real samples. The features were removed for written reasons, before clustering: the leakage guard drops columns that would give the answer away, and the two filters drop features that do not vary or that repeat another. The raw files are never edited, so anyone can rerun the pipeline and get the same windows. And the result is not flattering: only PDR separates the blackhole and nothing in the cross-layer features separates the wormhole. A shaped dataset would not report that.
+>
+> 📖 **Review it:** Part 16 of this guide; paper 4.2.4, D-9, D-25, 6.2.3, 6.4.1 and Table 6.24
+
+---
+
 ## Formula summary
 
 | Quantity | Formula | Unit / range |
@@ -2325,3 +2846,42 @@ Nothing from version 4 was changed except the additions below.
 | Part 13.6 | Reference problems found in the submitted paper (not fixed in it): 12 references never cited in the text; wrong list entries for [48] and [49] (checked online); web tutorials used as sources; [25], [26] and [41] cited for claims they do not make |
 | Part 13.7 | A panel drill and a check-in |
 | Part 12 intro | One pointer line to Part 13 |
+
+---
+
+## Changes in version 6
+
+Nothing from version 5 was changed except the additions below.
+
+| Where | What was added |
+|---|---|
+| Part 14 (new) | The dataset files themselves, for the question "why are there blanks, and how do we know the data is real?" |
+| Part 14.1, 14.2 | The five data folders, one raw telemetry row and one root arrival row read field by field, and 13 things in the raw files that look wrong but are correct |
+| Part 14.3 | The six reasons a cell is blank, the paper's Table 6.8, and every blank explained, incl. "PDR = 0 is a measurement, a blank LatencyHopRatio is the attack" |
+| Part 14.4 | Missing windows, boards, sniffer data and replaced captures, with what was done about each |
+| Part 14.5 | Six layers of evidence that the dataset is real: Espressif hardware identity, per-board clock drift as a fingerprint, independent recorders that agree, the rebuild that reproduced Table 6.2 exactly, the audit trail, and results that include failed predictions |
+| Part 14.6 to 14.8 | 13 panel questions on the data, the weak spots in the dataset files and their legends, and a live demo script |
+| Repository numbers | From a recount over all 80 runs (the 9 feature tables not on GitHub were rebuilt from the raw files first); the recount matched Table 6.2, the 637 files and the 12,448 wormhole duplicates exactly |
+| Header, Parts list, Coverage map | One line each for Part 14 |
+
+---
+
+## Changes in version 7
+
+Nothing from version 6 was changed except the additions below.
+
+- **Part 15.1 (new):** our wormhole compared, in plain sentences, with the definition of Hu, Perrig and Johnson [46], with Zhukabayeva et al. [71], with Ramírez Gómez et al. [72] and with the simulated wormholes of Chapter 2, plus what is ours alone and why it had to differ (D-20).
+- **Part 15.2 (new):** ESP-WIFI-MESH compared with RPL, AODV and ZigBee as the paper's sources describe them, what they share and the one difference that matters, and two things not to say.
+- **Spoken answers and a check-in** for Part 15.
+- **Header, Parts list, Coverage map:** one line each for Part 15.
+
+---
+
+## Changes in version 8
+
+Nothing from version 7 was changed except the additions below.
+
+- **Part 16 (new):** preprocessing explained step by step: what comes off the boards, the six Stage A steps (time anchor, 10 Hz grid, 1 s windows, gap filling, counter changes, labels) with the reason for each, the three features that need special handling (PDR, LatencyHopRatio, RSSI_Hop_Diff), and the clustering preparation (which windows, leakage guard, low-variance and correlation filters, dropped blanks, sampling, standardising).
+- **Part 16.6, 16.7:** nine panel questions with spoken answers, and three things to know if someone opens the code (the out-of-date header comment in `preprocess.py`, plot clipping vs. clustering, the absolute-value gap).
+- **Checked against the code:** `preprocess.py` (10 Hz grid, 1 s windows, 8 of 10, gaps of at most 2 samples), `leakage.py` and `cluster_final.py` (child windows only, labelled and not phase-mixed; blanks dropped; 6,000-window samples, seeds 42, 7, 123; z-score per sample; no clipping).
+- **Header, Parts list, Coverage map:** one line each for Part 16.

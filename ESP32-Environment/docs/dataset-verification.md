@@ -15,6 +15,37 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #88 — Oct 31, 2026 · ~3:45 PM — whole final dataset (80 runs): blanks explained + "is it real?" recount for the defense study guide
+
+> **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `b7b66831`
+> **Request:** "create a detailed explanation for the datasets ... why there are some empty/blank values ... how will i know this dataset is legit ... every possible angle to defend that the dataset is real"
+
+| Attack | Topology | Location | Scenario | Repeat | Captured | Files |
+|---|---|---|---|---|---|---|
+| blackhole + wormhole + baseline | all 4 | G402, DLSU_Library, Yuchengco | all 3 | newest per cell | the 80 on-plan cells (jitter + home excluded) | 637 telem + root arrivals; 71 stored feature tables + 9 rebuilt |
+
+| Check | Result | Detail |
+|---|---|---|
+| Feature tables on this laptop | ⚠️ | 9 of 80 cells have NO `feature_table.csv` in git (wormhole/tree: DLSU burst + highload, G402 burst, Yuchengco x3; baseline: partial/G402/highload, star/Yuchengco/highload, tree/G402/stationary). Rebuilt with `analysis/features.py` into a scratch folder only (trimmed/ when it held >= 7 telem files, else the raw folder); repo files untouched (git status clean) |
+| Windows vs Table 6.2 | ✅ exact | 456,195 total; baseline 190,423, attack 103,187, cooldown 76,068, pre_baseline 85,435, transition 1,082; labelled 369,678 = 266,491 + 51,438 (BH) + 51,749 (WH) |
+| Files | ✅ | 637 telemetry files, 0 empty, 4,570,906 rows; boards/run 8 (78 runs), 6, 7 |
+| Complete windows | ✅ | labelled: 368,978 x 10 samples, 499 x 9, 201 x 8 (mean 9.998) |
+| Sample spacing | ✅ | median 100.0 ms, 98.2% of steps 90-110 ms, p1 91.2 / p99 100.8 ms |
+| Wormhole duplicates | ✅ exact | phase-255 arrivals removed: 12,448 in attack + 5 in cooldown + 0 in baseline; 0 in every blackhole/benign run. Raw naive count adds ~3,600 phase-0 rows whose seq collides with a pre-run (phase 255) row - dropped by features.py since the oct. 21 fix |
+| parent_mac (SoftAP = STA + 1) | ✅ | 3,955,479 / 3,955,480 non-zero parent rows resolve to a board of the same run |
+| Board MACs | ✅ | 8 MACs in 6 OUIs (20500D, 2805A5, 704BCA, B0CBD8, B4BFE9, F42DC9), all IEEE MA-L blocks of Espressif Inc. (maclookup.app mirror of the IEEE registry) |
+| Clock drift per board vs root B0CB | ✅ fingerprint | slope of the per-30 s minimum latency vs root time: FE90 -39.1, 1C38 -35.0, B768 -15.8, D7B4 -4.9, ED80 -4.7, E618 -1.3, 0C80 +5.8 ppm (medians over 49-77 run captures, IQR 1-3 ppm) |
+| Damaged rows | ⚠️ harmless | 5 lines with blanks inside node_id (e.g. `NODE_2805A <spaces> 2D7B4`) in 5 files; none reaches any feature table (checked) |
+| Reboots | ⚠️ known | 6 timestamp restarts + 10 counter decreases; 21/23 windows `*_reset_detected` |
+| RSSI | ✅ | 39,002 / 4,005,742 child rows are the 0 placeholder (0.97%), nearly all pre-join; readings -97..-24 dBm, median -71, 71 levels |
+| Blank coverage (labelled windows) | ✅ explained | victims: PDR 99.0% present in attack and all 0.000; LatencyHopRatio 0.0% present in attack vs 98.7% baseline; B TunnelLatency 100% attack / 0% else; ForwardingRatio blank in all 146,117 non-attacker windows with recv delta 0; PDR blank in all 1,389 windows with no probe sent; `_pdr_clipped` 1 window |
+| ForwardingRatio 36.3% (Table 6.8) | ✅ explained | Table 6.8 counts ALL windows incl. pre-baseline; over labelled non-attacker windows our recount gives 43.5%; do not mix the two denominators |
+| Legends / docs | ⚠️ stale | `feature_table_legend.csv`: `exposure` has no entry ("Unknown"); ForwardingRatio note "only on the blackhole attacker" is pre-D-12. REVIEWER-QUESTIONS.md §9 NaN table is pre-D-12. preprocess prints "Windows discarded (<4 smp)" but MIN_VALID_SAMPLES = 8 (label only) |
+
+**Verdict: ✅ the 80-run dataset rebuilds from the raw files to the paper's exact window counts and duplicate count; every blank has a documented cause; physical fingerprints (Espressif MACs, STA + 1 parents, stable per-board clock drift, real timing jitter, reboots, damaged lines) are consistent across all runs. Not fixed (cosmetic): the stale legend notes and console label above; the 9 missing feature tables should be rebuilt with `analyze.ps1` on any laptop that will open them at the defense. Written up as Part 14 of `Paper/Defense/THESIS3 Defense Study Guide oct. 31, 2026 v6.md`.**
+
+<!-- ═════════════════════════════════════════════════════════════════
+
 ## 🔎 VERIFICATION #87 — Oct 23, 2026 · ~4:30 PM — follow-up to #86: the new layout is deliberate (root 0C80, tunnel ends B0:18 + F4:18)
 
 > **Requested by:** Basti · **Laptop:** Basti's · **Commit:** `78ac088`
