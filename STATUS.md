@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `S:\My Work\Business\Claude\Overl
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run — analyze.ps1 re-trims.
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- nov. 1 (Kyle) — verification #90: WORMHOLE defense pcap chosen = linear/Yuchengco/burst oct19_1140AM (end A's uplink x8 in the attack, relays flat; phases on the root beacon clock, TERMINATE anchor found 57 s off). Notes only, uncommitted.
 - nov. 1 (Basti) — PCAPs un-ignored except > 100 MB (`tools/ignore_big_pcaps.py`, tested); submitted paper's probe/sniffer claims checked, B-sniff01 added.
-- oct. 31 (Kyle) — sniffer notes #89: blackhole pcap chosen (linear/DLSU/highload oct11_0331PM; attack start observed, other phases derived), wormhole pcap ON HOLD until the other laptops' pcaps arrive. Notes only, uncommitted.
