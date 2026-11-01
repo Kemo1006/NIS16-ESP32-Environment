@@ -98,9 +98,15 @@ Thumbs.db
 how to run esp32.txt
 
 
-# Raw packet captures — large, kept local only (GitHub 100MB cap)
-PCAP/
-*.pcap
+# Raw packet captures ARE pushed (nov. 1, 2026). Only a capture over GitHub's
+# 100 MB file limit stays local: run `python tools/ignore_big_pcaps.py` before
+# committing captures - it rewrites the block below. Do not edit the block by hand.
+# <capture>.json (sniff.py's own record) IS pushed; pcap_retry.py's _retry.* files
+# are a per-laptop cache built from that laptop's run logs, so they stay local.
+datasets/PCAP/**/*_retry.json
+datasets/PCAP/**/*_retry.csv
+# >>> pcaps over 100 MB (tools/ignore_big_pcaps.py) >>>
+# <<< pcaps over 100 MB <<<
 
 # Personal IDE/MCP config (holds an absolute path to one laptop) - oct. 1, 2026
 .mcp.json
