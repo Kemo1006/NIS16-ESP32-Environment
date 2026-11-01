@@ -1,0 +1,37 @@
+{
+  "tool": "tools/sniff.py",
+  "capture": "partial_mesh-wormhole-burst-yuchengco_r1_oct22_0317PM.pcap",
+  "label": "",
+  "port": "COM4",
+  "baud": 921600,
+  "sniffer_firmware": "esp32-sniffer 1 built Oct 17 2026 17:20:23",
+  "channel": 11,
+  "snaplen": {
+    "mgmt": 256,
+    "data": 64
+  },
+  "started": "2026-10-22T15:17:27+08:00",
+  "ended": "2026-10-22T15:20:03+08:00",
+  "duration_s": 156.0,
+  "stop_reason": "stop file (wizard)",
+  "frames_written": 53801,
+  "frames_by_type": {
+    "mgmt": 11926,
+    "ctrl": 36349,
+    "data": 5526,
+    "misc": 0
+  },
+  "loss": {
+    "usb_link_lost_frames": 3,
+    "board_ring_dropped_frames": 0,
+    "bad_fcs_frames_discarded": 0,
+    "board_frames_heard": 53761,
+    "corrupt_bytes_skipped_after_sync": 126,
+    "note": "board_ring_dropped / usb_link_lost are frames the sniffer HEARD but did not deliver; frames the radio never decoded are unknowable."
+  },
+  "sniffer_reboots": 0,
+  "paused_s": 0,
+  "frames_not_saved_while_paused": 0,
+  "pauses": [],
+  "timing": "per-frame radio RX timestamp (us); wall clock anchored to this laptop at the first frame (few ms USB latency) and re-anchored after a reboot"
+}

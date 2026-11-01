@@ -1,0 +1,37 @@
+{
+  "tool": "tools/sniff.py",
+  "capture": "tree-wormhole-stationary-g402_r1_oct22_0552PM.pcap",
+  "label": "",
+  "port": "COM3",
+  "baud": 921600,
+  "sniffer_firmware": "esp32-sniffer 1 built Oct 17 2026 17:20:23",
+  "channel": 11,
+  "snaplen": {
+    "mgmt": 256,
+    "data": 64
+  },
+  "started": "2026-10-22T17:52:26+08:00",
+  "ended": "2026-10-22T18:06:47+08:00",
+  "duration_s": 861.2,
+  "stop_reason": "stop file (wizard)",
+  "frames_written": 173007,
+  "frames_by_type": {
+    "mgmt": 25994,
+    "ctrl": 114299,
+    "data": 32714,
+    "misc": 0
+  },
+  "loss": {
+    "usb_link_lost_frames": 6,
+    "board_ring_dropped_frames": 0,
+    "bad_fcs_frames_discarded": 0,
+    "board_frames_heard": 172970,
+    "corrupt_bytes_skipped_after_sync": 334,
+    "note": "board_ring_dropped / usb_link_lost are frames the sniffer HEARD but did not deliver; frames the radio never decoded are unknowable."
+  },
+  "sniffer_reboots": 0,
+  "paused_s": 0,
+  "frames_not_saved_while_paused": 0,
+  "pauses": [],
+  "timing": "per-frame radio RX timestamp (us); wall clock anchored to this laptop at the first frame (few ms USB latency) and re-anchored after a reboot"
+}

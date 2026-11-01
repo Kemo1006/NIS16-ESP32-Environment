@@ -1,0 +1,37 @@
+{
+  "tool": "tools/sniff.py",
+  "capture": "star-baseline-highload-yuchengco_r1_oct23_0157AM.pcap",
+  "label": "",
+  "port": "COM3",
+  "baud": 921600,
+  "sniffer_firmware": "esp32-sniffer 1 built Oct 17 2026 17:20:23",
+  "channel": 11,
+  "snaplen": {
+    "mgmt": 256,
+    "data": 64
+  },
+  "started": "2026-10-23T01:57:14+08:00",
+  "ended": "2026-10-23T02:07:40+08:00",
+  "duration_s": 625.6,
+  "stop_reason": "stop file (wizard)",
+  "frames_written": 93958,
+  "frames_by_type": {
+    "mgmt": 26786,
+    "ctrl": 42209,
+    "data": 24963,
+    "misc": 0
+  },
+  "loss": {
+    "usb_link_lost_frames": 0,
+    "board_ring_dropped_frames": 0,
+    "bad_fcs_frames_discarded": 0,
+    "board_frames_heard": 93865,
+    "corrupt_bytes_skipped_after_sync": 0,
+    "note": "board_ring_dropped / usb_link_lost are frames the sniffer HEARD but did not deliver; frames the radio never decoded are unknowable."
+  },
+  "sniffer_reboots": 0,
+  "paused_s": 0,
+  "frames_not_saved_while_paused": 0,
+  "pauses": [],
+  "timing": "per-frame radio RX timestamp (us); wall clock anchored to this laptop at the first frame (few ms USB latency) and re-anchored after a reboot"
+}
