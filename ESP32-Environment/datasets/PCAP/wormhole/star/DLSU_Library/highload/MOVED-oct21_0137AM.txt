@@ -1,0 +1,1 @@
+Moved oct. 21 2026 from wormhole/star/G402/highload: this capture is the 1:29 AM LIBRARY run that was run with the G402 preset (verification #72 era fix_location). Renamed g402 -> dlsu_library; capture field in the .json updated.

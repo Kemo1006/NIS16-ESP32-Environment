@@ -106,6 +106,7 @@ how to run esp32.txt
 datasets/PCAP/**/*_retry.json
 datasets/PCAP/**/*_retry.csv
 # >>> pcaps over 100 MB (tools/ignore_big_pcaps.py) >>>
+/datasets/PCAP/blackhole/partial_mesh/DLSU_Library/highload/partial_mesh-blackhole-highload-dlsu_library_r1_oct07_0313PM.pcap
 # <<< pcaps over 100 MB <<<
 
 # Personal IDE/MCP config (holds an absolute path to one laptop) - oct. 1, 2026

@@ -1,0 +1,50 @@
+{
+  "tool": "tools/sniff.py",
+  "capture": "partial_mesh-blackhole-stationary-dlsu_library_r1_oct07_0122PM.pcap",
+  "label": "stationary partial_mesh-blackhole-stationary-dlsu_library_r1_oct07_0122PM",
+  "port": "COM15",
+  "baud": 921600,
+  "sniffer_firmware": "esp32-sniffer 1 built Oct  7 2026 10:56:49",
+  "channel": 11,
+  "snaplen": {
+    "mgmt": 256,
+    "data": 64
+  },
+  "started": "2026-10-07T13:50:15+08:00",
+  "ended": "2026-10-07T14:06:58+08:00",
+  "duration_s": 1002.5,
+  "stop_reason": "Enter/Ctrl+C (confirmed)",
+  "frames_written": 439128,
+  "frames_by_type": {
+    "mgmt": 72589,
+    "ctrl": 337751,
+    "data": 28788,
+    "misc": 0
+  },
+  "loss": {
+    "usb_link_lost_frames": 5,
+    "board_ring_dropped_frames": 0,
+    "bad_fcs_frames_discarded": 0,
+    "board_frames_heard": 440688,
+    "corrupt_bytes_skipped_after_sync": 0,
+    "note": "board_ring_dropped / usb_link_lost are frames the sniffer HEARD but did not deliver; frames the radio never decoded are unknowable."
+  },
+  "sniffer_reboots": 0,
+  "paused_s": 7.1,
+  "frames_not_saved_while_paused": 1839,
+  "pauses": [
+    {
+      "started": "2026-10-07T13:50:15+08:00",
+      "frames_not_saved": 1283,
+      "ended": "2026-10-07T13:50:20+08:00",
+      "seconds": 5.3
+    },
+    {
+      "started": "2026-10-07T14:06:56+08:00",
+      "frames_not_saved": 556,
+      "ended": "2026-10-07T14:06:58+08:00",
+      "seconds": 1.8
+    }
+  ],
+  "timing": "per-frame radio RX timestamp (us); wall clock anchored to this laptop at the first frame (few ms USB latency) and re-anchored after a reboot"
+}
