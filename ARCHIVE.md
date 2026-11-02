@@ -2875,3 +2875,9 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 <!-- rolled from STATUS.md nov. 2, 2026 -->
 - nov. 1 (Basti) — PCAPs un-ignored except > 100 MB (`tools/ignore_big_pcaps.py`, tested); submitted paper's probe/sniffer claims checked, B-sniff01 added.
+
+<!-- rolled from MEMORY.md nov. 2, 2026 -->
+- oct. 14, 2026 ~3:10 PM (Kyle's laptop) — **Verification #29: wormhole/linear/G402/stationary RECAPTURE (2:50 PM) USABLE - valid wormhole, clearest so far.** A `1C38` hop 2, B `0C80` hop 7 (5-hop shortcut), no role flips, B tunnelled 180 / A received 180 / root logged all 180 B probes twice; first copy ~13 ms faster than B's baseline path = tunnel arrives first (in #28 it arrived last). How to tell which copy is the tunnel: compare each copy's `latency_us` with B's baseline median (constant clock offset cancels). Checklist D6 done.
+
+<!-- rolled from STATUS.md nov. 2, 2026 -->
+- nov. 1 (Kyle) — verification #90: WORMHOLE defense pcap chosen = linear/Yuchengco/burst oct19_1140AM (end A's uplink x8 in the attack, relays flat; phases on the root beacon clock, TERMINATE anchor found 57 s off). Notes only, uncommitted.

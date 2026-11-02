@@ -36,5 +36,5 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `S:\My Work\Business\Claude\Overl
 - ⚠️ `datasets/exports/wormhole/linear/G402/stationary/trimmed/` holds the OLD reversed run — analyze.ps1 re-trims.
 - Adviser checks open: D-29 (partial = placement), D-31 (attacker re-parenting), D-28/D-30 wormhole.
 ## Recently done (last 2 max, newest first — older entries roll to ARCHIVE.md)
+- nov. 2 (Kyle) — verification #91: all wormhole pcaps re-scanned; defense wormhole pcap CHANGED to linear/DLSU_Library/stationary oct07_0537PM (end A heard ~fully, +1.1 frames/s at the attack marker, below-A + B flat); #90's Yuchengco pick superseded ('x8' = audibility, markers 8 s early). Notes only, uncommitted.
 - nov. 2 (Kyle) — study guide v10: blackhole Wireshark walk-through added to 11.7 (filters + measured victim rates/retries). Uncommitted, user checking it first.
-- nov. 1 (Kyle) — verification #90: WORMHOLE defense pcap chosen = linear/Yuchengco/burst oct19_1140AM (end A's uplink x8 in the attack, relays flat; phases on the root beacon clock, TERMINATE anchor found 57 s off). Notes only, uncommitted.
