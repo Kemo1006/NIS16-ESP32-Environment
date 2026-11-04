@@ -106,6 +106,36 @@ _add("drop_count", "Raw (board)",
      "Running total of relay packets this node received and did NOT pass on",
      "count, cumulative since boot",
      "Schema v2 only. Same meaning on every role. The blackhole's drops land here.")
+# ── Schema v3 (D-44): one meaning per column on every role; 0 where it does not apply ──
+_add("own_sent", "Raw (board)",
+     "Running total of probes THIS node created and the mesh stack accepted",
+     "count, cumulative since boot",
+     "Schema v3. 0 on the root, the blackhole attacker and wormhole end A (they create no "
+     "probes). Old files: this is probes_count on a victim/child and on wormhole_b.")
+_add("own_failed", "Raw (board)",
+     "Running total of this node's own sends that FAILED at the application layer",
+     "count, cumulative since boot",
+     "Schema v3. NOT an 802.11 radio retry count (ESP-IDF does not expose one; see "
+     "MacRetryRate from the sniffer). Old files: retry_count on a victim/child.")
+_add("arrivals_count", "Raw (board)",
+     "Root only: running total of probes that arrived at the root",
+     "count, cumulative since boot", "Schema v3. 0 on every other role. Old files: probes_count on the root.")
+_add("bcast_count", "Raw (board)",
+     "Root only: running total of phase broadcasts sent",
+     "count, cumulative since boot", "Schema v3. 0 on every other role. Old files: tx_count on the root.")
+_add("bcast_failed", "Raw (board)",
+     "Root only: running total of phase broadcasts that failed",
+     "count, cumulative since boot", "Schema v3. 0 on every other role. Old files: retry_count on the root.")
+_add("tunnel_tx", "Raw (board)",
+     "Wormhole ends: B = probes also written into the tunnel; A = probes re-injected toward the root",
+     "count, cumulative since boot",
+     "Schema v3. 0 on every other role. Old files: retry_count on B, tx_count on A.")
+_add("tunnel_rx", "Raw (board)",
+     "Wormhole end A: tunnelled probes received from B over the wire",
+     "count, cumulative since boot", "Schema v3. 0 on every other role. Old files: probes_count on A.")
+_add("tunnel_fail", "Raw (board)",
+     "Wormhole end A: re-injection send failures",
+     "count, cumulative since boot", "Schema v3. 0 on every other role. Old files: retry_count on A.")
 _add("src_mac", "Raw (board)",
      "Which victim sent the probe that just arrived (arrivals file, root only)",
      "MAC address")
@@ -164,7 +194,9 @@ _add("rssi_dbm_min", "Windowed (preprocess)",
 _add("rssi_dbm_max", "Windowed (preprocess)",
      "Strongest signal reading in this window", "dBm")
 
-for _base in ("retry_count", "tx_count", "probes_count",
+for _base in ("own_sent", "own_failed", "arrivals_count", "bcast_count", "bcast_failed",
+              "tunnel_tx", "tunnel_rx", "tunnel_fail",
+              "retry_count", "tx_count", "probes_count",   # pre-v3 tables
               "recv_count", "forward_count", "drop_count"):
     _add(f"{_base}_delta", "Windowed (preprocess)",
          f"How much {_base} went up during this window (_last - _first)",
@@ -235,7 +267,7 @@ _add("NeighbourForwardingRatio", "Feature (features.py)",
      "Boards share no clock: aligned on t_anchor_s, so a single window can read above 1 at a window edge.")
 _add("RetryRate", "Feature (features.py)",
      "Failed sends ÷ all send attempts in the window", "0-1",
-     "Built from retry_count, so it is NOT a radio retransmission rate. "
+     "Built from own_failed (retry_count in older files), so it is NOT a radio retransmission rate. "
      "Kept in the dataset for completeness but NOT used in EDA, attack "
      "verification or any model: no cited study backs it as an attack "
      "indicator and it measured flat in every phase (D-15).")

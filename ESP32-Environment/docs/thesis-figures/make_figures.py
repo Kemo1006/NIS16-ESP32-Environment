@@ -220,10 +220,10 @@ def fig_dataset():
 def fig_scenario():
     fig, axs = plt.subplots(3, 1, figsize=(7.2, 5.0), sharex=True)
     for ax, scn, title in zip(axs, ["stationary", "highload", "burst"], ["(a) stationary", "(b) highload", "(c) burst"]):
-        d = ft("blackhole", "star", "G402", scn, ["node_id", "node_role", "t_anchor_s", "window_label", "probes_count_delta"])
+        d = ft("blackhole", "star", "G402", scn, ["node_id", "node_role", "t_anchor_s", "window_label", "own_sent_delta"])
         d["t"] = rel_time(d, 1).round()
         c = d[d.node_role.isin(["child"])]
-        s = c.groupby("t").probes_count_delta.mean()
+        s = c.groupby("t").own_sent_delta.mean()
         s = s[(s.index > -300) & (s.index < 300)]
         ax.axvspan(0, 180, color=C["atk"], alpha=0.08, lw=0)
         ax.plot(s.index, s.values, color="#2d3748", lw=0.8)

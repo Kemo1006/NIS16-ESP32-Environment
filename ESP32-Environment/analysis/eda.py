@@ -1436,8 +1436,9 @@ def add_display_columns(df: pd.DataFrame, n: int = 5) -> pd.DataFrame:
         # Only where the per-window feature is defined for that node at all.
         relay = df.loc[order].groupby("source_file")["ForwardingRatio"].transform(lambda s: s.notna().any())
         df["ForwardingRatio_5w"] = ratio.where(relay).reindex(df.index)
-    if {"node_role", "probes_count_delta"} <= set(df.columns):
-        df["RootArrivals"] = df["probes_count_delta"].where(df["node_role"] == "root")
+    arr_col = "arrivals_count_delta" if "arrivals_count_delta" in df.columns else "probes_count_delta"
+    if {"node_role", arr_col} <= set(df.columns):
+        df["RootArrivals"] = df[arr_col].where(df["node_role"] == "root")
     return df
 
 

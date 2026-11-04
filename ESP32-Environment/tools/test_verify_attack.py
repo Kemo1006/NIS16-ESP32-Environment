@@ -61,13 +61,16 @@ class TreeReroute(unittest.TestCase):
         txt = [i.text for i in ac.setup_issues(self.df, "blackhole")]
         self.assertTrue(any("D7B4" in t and "TOLERATED" in t for t in txt))
 
-    def test_victim_becoming_bystander_still_fails(self):
+    def test_victim_becoming_bystander_is_flagged_not_failed(self):
+        # nov. 4 2026 (user): a victim<->bystander switch is FLAGGED (WARN), no longer a setup FAIL
         d = self.df.copy()
         m = attack_rows(d) & (d.node_id == "NODE_F42DC973E618")
         late = d[m].sort_values("t_anchor_s").index[len(d[m]) // 2:]
         d.loc[late, "parent_mac"] = "B0:CB:D8:F3:32:19"     # straight under the root
         d.loc[late, "PDR"] = 1.0
-        self.assertTrue(any("VICTIM" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
+        self.assertFalse(any("VICTIM" in t and "BYSTANDER" in t for t in fails(d, "blackhole")))
+        self.assertTrue(any("VICTIM" in i.text and "BYSTANDER" in i.text and "FLAGGED" in i.text and i.level == ac.WARN
+                            for i in ac.setup_issues(d, "blackhole")))
 
     def test_long_outage_is_excluded_not_fatal(self):
         # oct. 19 2026: 30 s without a path (> the 10 % of a brief re-join) -> those windows are

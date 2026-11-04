@@ -52,6 +52,7 @@ import pandas as pd
 # names (old 20260927_031130 and readable sept27_0311AM).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
 import name_stamp  # noqa: E402
+import schema as _schema  # noqa: E402  (analysis/schema.py, v3 column layout)
 
 from progress import Progress  # noqa: E402  (analysis/progress.py)
 
@@ -183,19 +184,18 @@ MAX_GRID_ROWS = 5_000_000
 # identical. Membership tests (`col in CUMULATIVE_COLUMNS`) work fine on
 # a tuple, so nothing else needs to change.
 CUMULATIVE_COLUMNS = (
-    "retry_count",
-    "tx_count",
-    "probes_count",
+    # Telemetry schema v3 (D-44): same meaning on every role. Older v1/v2 files are
+    # converted to these names on load (_normalise_to_v3), so the windowed tables
+    # no longer carry the role-dependent probes_count/tx_count/retry_count.
+    "own_sent", "own_failed",
+    "recv_count", "forward_count", "drop_count",
+    "arrivals_count", "bcast_count", "bcast_failed",
+    "tunnel_tx", "tunnel_rx", "tunnel_fail",
     "probes_received",
-    # F3 (telemetry schema v2). Absent from every capture up to and including
-    # 2026-09-18; every loop over this tuple skips columns the file does not
-    # have, so listing them here is a no-op on v1 data and picks them up
-    # automatically on v2. features.compute_forwarding_features() already
-    # prefers recv_count_delta/forward_count_delta when they exist.
-    "recv_count",
-    "forward_count",
-    "drop_count",
 )
+
+# The role-dependent v1/v2 names that _normalise_to_v3 replaces.
+_LEGACY_COUNTERS = ("retry_count", "tx_count", "probes_count")
 
 # Columns that are CONTINUOUS metrics — aggregated as mean/var/min/max
 # per window rather than delta'd. Same ordering note as above.
@@ -221,6 +221,10 @@ NUMERIC_COLUMNS = (
     # F3 schema v2 — skipped when absent (see the loop at _coerce_and_drop_
     # malformed), so v1 captures are unaffected.
     "recv_count", "forward_count", "drop_count",
+    # v3 names (native v3 files). Old files' counters are coerced above under their old
+    # names, so malformed-row handling is identical before and after the rename.
+    "own_sent", "own_failed", "arrivals_count", "bcast_count", "bcast_failed",
+    "tunnel_tx", "tunnel_rx", "tunnel_fail",
 )
 
 
@@ -674,9 +678,9 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport,
 
         required_cols = {
             "timestamp_us", "node_id", "role", "layer", "parent_mac",
-            "rssi_dbm", "retry_count", "tx_count", "probes_count",
-            "phase_id", "gt_label",
-        }
+            "rssi_dbm", "phase_id", "gt_label",
+        } | ({"own_sent"} if _schema.detect_version(df.columns) == 3
+             else {"retry_count", "tx_count", "probes_count"})
         missing = required_cols - set(df.columns)
         if missing:
             report.files_skipped.append(os.path.basename(fp))
@@ -696,6 +700,7 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport,
             continue
 
         df["_source_file"] = os.path.basename(fp)
+        df["_schema_v"] = _schema.detect_version(df.columns)
         frames.append(df)
         report.files_loaded += 1
 
@@ -707,9 +712,27 @@ def load_raw_telemetry(input_dir: str, report: PreprocessReport,
 
     raw = pd.concat(frames, ignore_index=True)
     raw = _coerce_and_drop_malformed(raw, report)
+    raw = _normalise_to_v3(raw)
     raw = _unlabel_desynced(raw, input_dir, report)
     report.raw_rows_total = len(raw)
     return raw
+
+
+def _normalise_to_v3(raw: pd.DataFrame) -> pd.DataFrame:
+    """Rewrite every file's counters into the role-neutral v3 columns (D-44).
+
+    Runs AFTER _coerce_and_drop_malformed so contaminated rows are still counted and
+    dropped exactly as before. Each file is converted with its own schema version
+    (v1 / v2 / v3), then the pieces are re-joined in the original row order.
+    """
+    parts = []
+    for ver, grp in raw.groupby("_schema_v", sort=False):
+        conv = _schema.to_v3(grp, ver=int(ver))
+        extra = [c for c in grp.columns if c not in conv.columns
+                 and c not in _LEGACY_COUNTERS and c != "_schema_v"]
+        parts.append(pd.concat([conv, grp[extra]], axis=1))
+    out = pd.concat(parts).loc[raw.index]
+    return out.reset_index(drop=True)
 
 
 def _unlabel_desynced(raw: pd.DataFrame, input_dir: str, report: PreprocessReport) -> pd.DataFrame:

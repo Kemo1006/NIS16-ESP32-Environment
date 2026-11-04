@@ -107,7 +107,7 @@ LEAKING_COLUMNS: dict[str, str] = {
     "RetryRate": (
         "Dataset column only, excluded from analysis: no cited study backs it as "
         "a blackhole or wormhole indicator, and it measured flat (0 failed sends) "
-        "in baseline, attack and cooldown. Its source retry_count is an "
+        "in baseline, attack and cooldown. Its source retry_count (own_failed in schema v3) is an "
         "app-layer send-failure count, not an 802.11 retransmission count, and "
         "pre-F3 blackhole / wormhole Node B captures overload it with the "
         "attack's own drop / tunnel counter. See D-15."

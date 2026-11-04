@@ -52,6 +52,10 @@ PHASE_NAMES = {0: "baseline", 1: "attack", 2: "attack", 3: "cooldown", 4: "termi
 FIT_EDGE_S = 30            # seconds either side of the attack used as "normal" rate
 FIT_MAX_INSIDE_RATIO = 0.5  # attacker uplink must fall to <= half of normal
 FIT_MIN_OUTSIDE_RATE = 0.5  # frames/s; below this there is nothing to fit on
+# wormhole: end A re-injects B's probes toward the root, so A's uplink STEPS UP for
+# exactly the attack's length (Figure 6.30). Same search as the blackhole fit, mirrored.
+FIT_MIN_STEP_RATIO = 1.4    # attack-phase rate must be >= this x the rate either side
+FIT_MIN_STEP_FPS = 0.5      # ... and at least this many frames/s higher
 # Transcript start -> root boot takes erase + build + flash; this caps the fit's search.
 MAX_BOOT_DELAY_S = 600
 # --all: a capture belongs to the root log whose transcript started closest to it.
@@ -412,6 +416,29 @@ def fit_attack_start(frames, attacker_sta, attack_len, lo, hi):
     return best
 
 
+def fit_attack_start_stepup(frames, end_a_sta, attack_len, lo, hi):
+    """Wormhole twin of fit_attack_start: the start second of the attack_len window where
+    end A's uplink rate is HIGHEST against the FIT_EDGE_S either side (first transmissions
+    only, so retries - the thing being measured - never steer the fit).
+    Returns (start, inside_rate, outside_rate) or None."""
+    per_s = collections.Counter(int(ts) for ts, ta, _, retry in frames if ta == end_a_sta and not retry)
+    if not per_s:
+        return None
+    t0, t1 = min(per_s), max(per_s)
+    L, E = int(round(attack_len)), FIT_EDGE_S
+    best = None
+    for s in range(max(int(lo), t0 + E), min(int(hi), t1 - L - E) + 1):
+        inside = sum(per_s.get(t, 0) for t in range(s, s + L)) / L
+        outside = (sum(per_s.get(t, 0) for t in range(s - E, s))
+                   + sum(per_s.get(t, 0) for t in range(s + L, s + L + E))) / (2 * E)
+        if best is None or inside - outside > best[1] - best[2]:
+            best = (s, inside, outside)
+    if (best is None or best[2] < FIT_MIN_OUTSIDE_RATE or best[1] < FIT_MIN_STEP_RATIO * best[2]
+            or best[1] - best[2] < FIT_MIN_STEP_FPS):
+        return None
+    return best
+
+
 def analyze(pcap, run_log, attack_start_hms=None, trust_stamp=False, pkts=None,
             sibling_logs=None, say=print):
     """Everything about one capture + its root log. Raises Refuse."""
@@ -462,18 +489,28 @@ def analyze(pcap, run_log, attack_start_hms=None, trust_stamp=False, pkts=None,
             lo = max(floors)
             say("Fit search: attack start between %s and %s" % (hms(lo), hms(lo + MAX_BOOT_DELAY_S)))
             fit = fit_attack_start(frames, attackers[0], attack_len, lo, lo + MAX_BOOT_DELAY_S)
+        ends_a = [m for m, r in roster.items() if r == "WORMHOLE_A"]
+        if fit is None and attack_id in (1, 2) and len(ends_a) == 1 and not attackers and floors:
+            lo = max(floors)
+            say("Fit search (wormhole end A step-up): attack start between %s and %s" % (hms(lo), hms(lo + MAX_BOOT_DELAY_S)))
+            fit = fit_attack_start_stepup(frames, ends_a[0], attack_len, lo, lo + MAX_BOOT_DELAY_S)
+            fit_kind = "WORMHOLE_A"
+        else:
+            fit_kind = "BLACKHOLE"
         if fit:
             attack_start = float(fit[0])
-            how = ("fitted: BLACKHOLE %s uplink %.1f -> %.1f frames/s for %d s"
-                   % (attackers[0], fit[2], fit[1], round(attack_len)))
+            who_fit = attackers[0] if fit_kind == "BLACKHOLE" else ends_a[0]
+            how = ("fitted: %s %s uplink %.1f -> %.1f frames/s for %d s"
+                   % (fit_kind, who_fit, fit[2], fit[1], round(attack_len)))
         elif stamp_attack and trust_stamp:
             attack_start = stamp_attack
             how = "root banner time (--trust-stamp; runs behind by the flash time, ~40 s)"
         else:
             raise Refuse("cannot place the phases on the laptop clock. %s Pass --attack-start "
                          "HH:MM:SS%s." % (
-                             "No blackhole attack step found in the capture." if attack_id == 1
-                             else "Only blackhole runs can be fitted from traffic.",
+                             "No attack step found in the capture (blackhole: attacker uplink drop; "
+                             "wormhole: end A uplink rise)." if attack_id == 1
+                             else "Only blackhole and wormhole runs can be fitted from traffic.",
                              " or --trust-stamp" if stamp_attack else
                              " (the root banner time is missing or its clock was never set by SET_TIME)"))
 

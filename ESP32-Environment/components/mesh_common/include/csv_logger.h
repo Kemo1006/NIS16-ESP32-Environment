@@ -119,7 +119,16 @@ void csv_logger_set_arrivals_sd_only(bool on);
 /* ── Telemetry row (all roles) ───────────────────────────────────────────── */
 
 /**
- * @brief Append one 14-column cross-layer telemetry row (schema v2).
+ * @brief Append one 19-column cross-layer telemetry row (schema v3, D-44).
+ *
+ * D-44 (nov. 5, 2026): the CALLERS still pass the role-specific counters below
+ * (retry_count / tx_count / probes_count / recv / forward / drop) and nothing in
+ * the counting code changed. csv_logger_append_telemetry() maps them onto the
+ * role-neutral file columns (own_sent, own_failed, recv_count, forward_count,
+ * drop_count, arrivals_count, bcast_count, bcast_failed, tunnel_tx, tunnel_rx,
+ * tunnel_fail), 0 where a column does not apply to the role. See
+ * docs/data-and-results/DATA-DICTIONARY.md section 0. The text below describes
+ * the v2 file layout and the F3 reasoning, which still explains the relay columns.
  *
  * Columns:
  *   timestamp_us, node_id, role, layer, parent_mac,

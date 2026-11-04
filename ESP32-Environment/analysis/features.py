@@ -211,7 +211,7 @@ def compute_forwarding_features(windowed: pd.DataFrame) -> pd.DataFrame:
         out["ConsistencyScore"] = (ratio - 1.0).abs()
         return out
 
-    # Current firmware: derive from the blackhole attacker's overloaded counters.
+    # Legacy windowed tables (pre-v3, D-44): derive from the blackhole attacker's overloaded counters.
     # Compute ONLY for attacker rows; leave every other role NaN.
     if "node_role" in windowed.columns:
         mask = windowed["node_role"] == "blackhole"
@@ -343,6 +343,8 @@ def _originated(windowed: pd.DataFrame) -> pd.Series:
     num = lambda c: pd.to_numeric(windowed.get(c), errors="coerce").fillna(0)
     role = windowed["node_role"].astype(str)
     own = pd.Series(0.0, index=windowed.index)
+    if "own_sent_delta" in windowed.columns:   # schema v3: already 0 on attacker/root/end A
+        return num("own_sent_delta")
     own = own.where(role != CHILD_ROLE, num("tx_count_delta"))
     own = own.where(role != "wormhole_b", num("probes_count_delta"))
     return own
@@ -381,8 +383,9 @@ def compute_neighbour_forwarding_features(
     """
     out = pd.DataFrame(np.nan, index=windowed.index, columns=NEIGHBOUR_COLUMNS)
     need = ["node_id", "node_role", "parent_mac", "t_anchor_s",
-            "tx_count_delta", "forward_count_delta", "recv_count_delta"]
-    if any(c not in windowed.columns for c in need):
+            "forward_count_delta", "recv_count_delta"]
+    if any(c not in windowed.columns for c in need) or not (
+            {"own_sent_delta"} <= set(windowed.columns) or {"tx_count_delta"} <= set(windowed.columns)):
         return out
 
     num = lambda c: pd.to_numeric(windowed[c], errors="coerce").fillna(0)
@@ -509,8 +512,12 @@ def compute_link_reliability_features(windowed: pd.DataFrame) -> pd.DataFrame:
     """
     out = pd.DataFrame(index=windowed.index)
 
-    retry = windowed["retry_count_delta"]
-    tx = windowed["tx_count_delta"]
+    if "own_failed_delta" in windowed.columns:       # schema v3 (D-44)
+        retry = windowed["own_failed_delta"]
+        tx = windowed["own_sent_delta"]
+    else:                                              # legacy windowed table
+        retry = windowed["retry_count_delta"]
+        tx = windowed["tx_count_delta"]
     attempts = tx + retry
     out["RetryRate"] = (retry / attempts).where(attempts > 0)
 
@@ -715,8 +722,8 @@ def compute_pdr_features(
         )
         return out
 
-    edge_cols = ["probes_count_first", "probes_count_last",
-                 "retry_count_first", "retry_count_last"]
+    edge_cols = ["own_sent_first", "own_sent_last",
+                 "own_failed_first", "own_failed_last"]
     missing = [c for c in edge_cols if c not in windowed.columns]
     if missing:
         raise ValueError(
@@ -747,11 +754,11 @@ def compute_pdr_features(
         if not rp.empty:
             root_phases = set(rp)
 
-    probes_sent = pd.to_numeric(windowed["probes_count_delta"], errors="coerce")
-    seq_first = (pd.to_numeric(windowed["probes_count_first"], errors="coerce")
-                 + pd.to_numeric(windowed["retry_count_first"], errors="coerce"))
-    seq_last = (pd.to_numeric(windowed["probes_count_last"], errors="coerce")
-                + pd.to_numeric(windowed["retry_count_last"], errors="coerce"))
+    probes_sent = pd.to_numeric(windowed["own_sent_delta"], errors="coerce")
+    seq_first = (pd.to_numeric(windowed["own_sent_first"], errors="coerce")
+                 + pd.to_numeric(windowed["own_failed_first"], errors="coerce"))
+    seq_last = (pd.to_numeric(windowed["own_sent_last"], errors="coerce")
+                + pd.to_numeric(windowed["own_failed_last"], errors="coerce"))
 
     # "child" is the canonical role since 2026-09-23; preprocess.py folds the
     # older "victim" spelling into it (ROLE_ALIASES), so this one test covers
@@ -767,8 +774,8 @@ def compute_pdr_features(
             return pd.Series(False, index=windowed.index)
         return windowed[col].fillna(False).astype(bool)
 
-    no_reset = ~(_reset_flag("probes_count_reset_detected")
-                 | _reset_flag("retry_count_reset_detected"))
+    no_reset = ~(_reset_flag("own_sent_reset_detected")
+                 | _reset_flag("own_failed_reset_detected"))
     seq_known = seq_first.notna() & seq_last.notna()
     if root_phases is None:
         root_running = pd.Series(True, index=windowed.index)
@@ -816,8 +823,8 @@ def _arrival_sender_window(windowed: pd.DataFrame, arrivals: pd.DataFrame) -> np
     two runs' sequence ranges overlap and the arrival cannot be placed.
     """
     placed = np.full(len(arrivals), np.nan)
-    edge_cols = ["probes_count_first", "probes_count_last",
-                 "retry_count_first", "retry_count_last", "node_role"]
+    edge_cols = ["own_sent_first", "own_sent_last",
+                 "own_failed_first", "own_failed_last", "node_role"]
     missing = [c for c in edge_cols if c not in windowed.columns]
     if missing:
         warnings.warn(
@@ -832,13 +839,13 @@ def _arrival_sender_window(windowed: pd.DataFrame, arrivals: pd.DataFrame) -> np
     role = windowed["node_role"]
     is_child = role == CHILD_ROLE
     is_wh_b = role == "wormhole_b"
-    seq_first = (num("probes_count_first") + num("retry_count_first")).where(is_child)
-    seq_first = seq_first.where(~is_wh_b, num("probes_count_first"))
-    seq_last = (num("probes_count_last") + num("retry_count_last")).where(is_child)
-    seq_last = seq_last.where(~is_wh_b, num("probes_count_last"))
+    # v3: own_failed is 0 on end B (its tunnel count lives in tunnel_tx), so one
+    # expression covers child (sent + failed) and wormhole_b (sent only).
+    seq_first = (num("own_sent_first") + num("own_failed_first")).where(is_child | is_wh_b)
+    seq_last = (num("own_sent_last") + num("own_failed_last")).where(is_child | is_wh_b)
 
     reset = pd.Series(False, index=windowed.index)
-    for col in ("probes_count_reset_detected", "retry_count_reset_detected"):
+    for col in ("own_sent_reset_detected", "own_failed_reset_detected"):
         if col in windowed.columns:
             reset |= windowed[col].fillna(False).astype(bool)
 
@@ -1288,8 +1295,10 @@ def compute_tunnel_features(windowed: pd.DataFrame) -> pd.DataFrame:
             out.loc[mask, "TunnelIntensity"] = msgs / WINDOW_SECONDS
             out.loc[mask, "TunnelBytes"] = msgs * TUNNEL_FRAME_BYTES
 
-    _fill(windowed["node_role"] == "wormhole_b", "retry_count_delta")
-    _fill(windowed["node_role"] == "wormhole_a", "probes_count_delta")
+    b_col = "tunnel_tx_delta" if "tunnel_tx_delta" in windowed.columns else "retry_count_delta"
+    a_col = "tunnel_rx_delta" if "tunnel_rx_delta" in windowed.columns else "probes_count_delta"
+    _fill(windowed["node_role"] == "wormhole_b", b_col)
+    _fill(windowed["node_role"] == "wormhole_a", a_col)
 
     return out
 
