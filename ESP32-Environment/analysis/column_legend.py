@@ -324,10 +324,6 @@ _add("TunnelLatency", "Feature (features.py)",
 _add("Label", "Feature (features.py)",
      "Final ground-truth label used for analysis (copy of window_label)",
      "0 normal | 1 blackhole | 2 wormhole | empty = unlabelled")
-_add("missing_firmware_fields", "Feature (features.py)",
-     "Features that are only defined on relaying nodes and may be empty here",
-     "comma-separated feature names",
-     "Same text on every row; informational only.")
 
 
 FIELDS = ["column", "group", "meaning", "unit_or_values", "notes"]

@@ -160,7 +160,6 @@ METADATA_COLUMNS: dict[str, str] = {
     "scenario": "Run provenance.",
     "run_repeat": "Run provenance.",
     "_pdr_clipped": "Internal diagnostic flag.",
-    "missing_firmware_fields": "Internal diagnostic flag.",
 }
 
 

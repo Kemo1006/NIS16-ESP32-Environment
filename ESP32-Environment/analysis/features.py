@@ -136,7 +136,9 @@ ATTACK_ROLES = {
 # are NaN in baseline and wormhole runs BY DESIGN (no relay present), and
 # populate on the attacker's windows in a blackhole run — verified 155/884 rows
 # on the 2026-07-25 blackhole·linear capture. This is not a firmware gap; the
-# name is kept because "missing_firmware_fields" is part of the output schema.
+# (nov. 5, 2026: the old constant "missing_firmware_fields" output column was removed - it
+# repeated this list on every row and its name wrongly suggested a firmware gap. The tuple
+# is still used for the all-NaN hint printed after a run.)
 FEATURES_BLOCKED_ON_FIRMWARE = (
     "ForwardingRatio",
     "IngressEgressDelta",
@@ -1328,10 +1330,9 @@ def compute_features(
 
     Returns
     -------
-    A copy of windowed with 16 feature columns appended, plus a
-    'missing_firmware_fields' column listing (comma-separated) which of
-    the 16 features are NaN due to a firmware gap rather than a real
-    absence of signal — see module docstring for which three those are.
+    A copy of windowed with the 16 feature columns appended (plus Label, exposure and a
+    few diagnostic columns). The relay features (ForwardingRatio, IngressEgressDelta,
+    ConsistencyScore) are blank on every node that relays nothing: by design, not a firmware gap.
     """
     fwd = compute_forwarding_features(windowed)
     nbr = compute_neighbour_forwarding_features(
@@ -1384,9 +1385,6 @@ def compute_features(
     # METADATA, not a feature -- inside an attack window "downstream" is nearly
     # the label itself, so leakage.py lists it alongside node_role.
     result["exposure"] = exposure.compute_exposure(result).values
-
-    blocked = ",".join(FEATURES_BLOCKED_ON_FIRMWARE)
-    result["missing_firmware_fields"] = blocked
 
     _warn_on_missing_attack_role(result)
 

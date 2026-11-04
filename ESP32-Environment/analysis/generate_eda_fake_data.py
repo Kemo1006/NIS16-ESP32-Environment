@@ -94,7 +94,6 @@ def _make_window_rows(
             "RSSI_stability": rng.uniform(3.5, 5.0),
             "PDR": float(np.clip(rng.uniform(*pdr_range), 0, 1)),
             "Label": label,
-            "missing_firmware_fields": "ForwardingRatio,IngressEgressDelta,ConsistencyScore",
         })
     return rows
 
