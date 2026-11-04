@@ -15,7 +15,7 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
-## 🔎 VERIFICATION #91 — Nov 5, 2026 — schema v3 (role-neutral columns): every table regenerated, old vs new compared (D-44)
+## 🔎 VERIFICATION #92 — Nov 5, 2026 — schema v3 (role-neutral columns): every table regenerated, old vs new compared (D-44)
 
 > **Requested by:** Angelo (user) · **Laptop:** Angelo's · **Commit:** uncommitted
 > **Request:** "update all of the datasets and even how it was analyzed ... make sure nothing is hurt ... `audit_threshold_sensitivity` and others"
@@ -66,6 +66,72 @@ EDA plots (time series + PCA/t-SNE).
 **Verdict: 🔧 a victim -> bystander switch is flagged and footnoted, not fatal. No current cell changes. Open: adviser check (the paper says flips FAIL: checklist B-switch), and the user decides whether the oct. 19 recapture of tree/G402/highload is still needed.**
 
 <!-- ═════════════════════════════════════════════
+## 🔎 VERIFICATION #91 — Nov 2, 2026 · evening — ALL wormhole sniffer captures re-scanned on the beacon clock + 802.11 sequence numbers: defense wormhole pcap CHANGED to linear/DLSU_Library/stationary oct. 7 (corrects #90)
+
+> **Requested by:** Kyle · **Laptop:** Kyle's (`LAPTOP-O7JMND47`) · **Commit:** `2f5dfad6`
+> **Request:** "is this a usable run? or is there a better wormhole capture we can use?" -> "rescan all the wormhole captures then" (while starting the Wireshark walk-through of #90's pick).
+> **Scope:** all 36 wormhole cells (`datasets/exports/wormhole`, roles/parents from every board's telem export, so tree cells without analysis are included) x all 71 wormhole pcaps; 37 captures overlap a kept run in time, **32 cells have a capture that covers the whole kept run** (root-beacon TSF segment spans baseline..end). No capture covers the kept run in 4 cells: linear/DLSU_Library/burst (no pcap), star/G402/highload, star/DLSU_Library/stationary, star/G402/stationary. Verifier re-run on every analysed cell.
+
+| Attack | Topology | Location | Scenario | Repeat | Capture | Role |
+|---|---|---|---|---|---|---|
+| wormhole (chain ROOT 3218 -> B768 -> D7B4 -> FE90 -> **1C38 A** (hop 4) -> E618 -> **0C80 B** (hop 6) -> ED80) | linear | DLSU_Library | stationary | r1 | `PCAP/wormhole/linear/DLSU_Library/stationary/linear-wormhole-stationary-dlsu_library_r1_oct07_0537PM.pcap` (32.4 MB, 384,359 frames, 0 lost, 0 sniffer reboots) | **chosen** |
+| wormhole (A 1C38 hop 3, B 0C80 hop 5) | linear | Yuchengco | burst | r1 | `…burst-yuchengco_r1_oct19_1140AM.pcap` (#90's pick) | **dropped** (usable, but see findings) |
+| wormhole (A E618 hop 1 = hub, B 0C80) | star | Yuchengco | burst | r1 | `…star-wormhole-burst-yuchengco_r1_oct21_1259PM.pcap` | backup 1 |
+| wormhole (A 1C38 hop 1, B 0C80 hop 5) | linear | G402 | highload | r1 | `…linear-wormhole-highload-g402_r1_oct17_0859PM.pcap` | backup 2 |
+
+| Check | Result | Detail |
+|---|---|---|
+| Verifier, chosen cell | ✅ WORMHOLE CONFIRMED, CONFIDENCE **GOOD**, OUTCOME PASS | 2/2 primary (TunnelIntensity 0 -> 1.000, DuplicateRate 0 -> 1.000), TunnelBytes 0 -> 30; UART B sent ~180, A received ~180 (100 %); root duplicates in 180 attack windows; TunnelLatency 3.6 ms; scenario stationary APPLIED (1.0/s, no burst); PDR 1.0000 baseline and attack for all 5 plain children. GOOD not STRONG only because no run log exists for oct. 7 to check force-start |
+| Root duplicates (arrivals export, chosen) | ✅ | **0 / 181 / 0** (baseline / attack / cooldown); first and last duplicate at uptime 366.7 / 546.7 s, attack phase = 366.4-547.0 s |
+| Phase clock (chosen) | ✅ two independent checks agree | root AP `b0:cb:d8:f3:32:19` beacon TSF + 1.5 s = root uptime -> Wireshark **x = 1265.8 / 1566.3 / 1746.9 / 1867.4 s** (baseline / attack / cooldown / end). Independent: the step in end A's first transmissions is at x = 1568.3, **2.0 s after the attack marker**. (Correlation of root arrivals vs radio is weak here, r -0.06, because stationary traffic has no structure to correlate; the TSF itself is steady) |
+| Capture completeness (chosen) | ✅ with a gap BEFORE the run | json: sniffer paused saving 17:38:10-17:57:27 (x ≈ 39-1196, empty in Wireshark) and in the last 15 s; the whole run (≈ 17:58:37-18:08:38) is inside the saved stretch 17:57:27-18:10:24. 0 USB loss, 0 ring drops, 0 bad FCS. Channel 11 |
+| Audibility of end A (chosen) | ✅ ~all frames heard | share of A's sequence numbers the sniffer decoded: **0.97 / 0.99 / 1.00** -> the raw I/O graph is honest. Only QoS data, TID 5 (`wlan.fc.type_subtype == 0x0028`) |
+| What the radio shows (chosen, QoS data) | ✅ | end A `wlan.ta == 20:50:0d:e7:1c:38`: frames sent (seq advance) **5.27 -> 6.36 -> 5.25 /s** (+1.10 /s in the attack = the root's 181 duplicates / 180 s); first transmissions (`wlan.fc.retry == 0`) **4.95 -> 6.10 -> 5.21 /s** (10-s bins 49 52 48 52 \| 59 59 57 62 59 51 across the marker); raw frames 7.74 -> 11.14 -> 8.46 /s (retries rise too) |
+| Controls (chosen) | ✅ flat | board below A (E618, hop 5) sent 4.77 / 4.77 / 4.76 /s (heard 0.92-0.97); end B 3.17 / 3.18 / 3.15 /s (heard 0.90-0.98); A's parent FE90 6.81 -> 7.39 -> 6.25 (+0.9 = it forwards A's extra; heard only ~0.35). (Re)association / deauth frames to or from mesh boards: 0 / 0 / 0 |
+| ⚠️ #90's pick re-checked (Yuchengco burst) | ⚠️ usable, but misleading as a picture | (1) #90's x markers were **8 s early** (x counted from the json/earlier anchor, not Wireshark's first frame 11:40:55.9): correct **x = 340.5 / 641.1 / 821.7 / 942.1**; the scenario burst at x ≈ 701 (= 641 + 60) confirms. (2) The **"x8" uplink of end A is mostly audibility**: the sniffer decoded ~1 in 10 of A's frames in baseline vs ~1 in 2 in the attack (A at -83 dBm); by sequence numbers A really sent 6.8 -> 9.8 -> 6.9 /s, and outside the burst window 6.8 -> ~8.0 -> 6.9 (**+1.2 /s**), with the boards below A (B768, B, E618) flat (+0.0-0.1) and the parent +1.1. (3) The burst (300 probes from E618 at x ≈ 701-705) is the tallest thing on the graph and passes through every board above it |
+| Other captures | info | linear/Yuchengco/highload r3: root duplicates in BASELINE (143, naive count) - not used; star/DLSU_Library/burst: end B inaudible in attack; linear/G402/stationary (#89's candidate): A heard 0.24 -> 0.01; partial-mesh / tree / most star rows: the per-TID sequence check was not run on them (first pass mixed subtypes), not ranked |
+
+### Findings
+- **Defense wormhole capture = `linear-wormhole-stationary-dlsu_library_r1_oct07_0537PM.pcap`.** Stationary (no burst spike), the sniffer hears almost every frame of end A, so a plain I/O graph is truthful: A's first transmissions step from ~5.0 to ~6.1 per second exactly at the attack marker (+2 s) and fall back to ~5.2 in cooldown, while the board directly below A and end B stay flat. The +1.1 frames/s is the rate of B's tunnelled probes (root: 181 duplicates in 180 s). Say: "an extra stream of about one frame a second appears at end A - the tunnel exit - only during the attack; nothing below A changes". Do not say the pcap shows the tunnel or the duplicates (the copy travels by wire; probe contents are cut by the 64-byte snaplen).
+- **Corrections to #90 (past block left unedited):** Yuchengco burst markers +8 s (above); the 'A x8 / relays x1.1-1.2' contrast came from frames the sniffer happened to decode, not from what the boards sent - do not quote x8. Its verdict 'use as the wormhole example' is superseded.
+- **Method for any wormhole pcap:** phases from the root beacon TSF (+1.5 s, re-measured 1.25-2.25 s where traffic allowed); compare boards by **802.11 sequence-number advance per TID on QoS data frames**, not by frames heard, and check the heard share before trusting an I/O graph.
+- **Caveats:** the naive root-duplicate count used for screening shows baseline 'duplicates' in 13 cells (likely seq_num restarts, NOT the verifier's DuplicateRate, which is 0 in every normal phase) - only cells with 0 were preferred, not diagnosed; Oct. 7 is an early run (CONFIDENCE GOOD, no run log); Wireshark shows a 19-minute empty stretch before the run (sniffer paused).
+
+**Verdict: ✅ USE `PCAP/wormhole/linear/DLSU_Library/stationary/linear-wormhole-stationary-dlsu_library_r1_oct07_0537PM.pcap` as the wormhole example** (I/O graph: end A `wlan.fc.type_subtype == 0x0028 && wlan.ta == 20:50:0d:e7:1c:38 && wlan.fc.retry == 0`; controls E618 `f4:2d:c9:73:e6:18` and end B `20:50:0d:e7:0c:80`; markers x = 1265.8 / 1566.3 / 1746.9 / 1867.4). #90's Yuchengco burst pick is superseded. Blackhole example unchanged (#89).
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #90 — Nov 1, 2026 · afternoon — sniffer capture for the DEFENSE: WORMHOLE pcap chosen (linear/Yuchengco/burst oct. 19), phases placed on the root's beacon clock
+
+> **Requested by:** Kyle · **Laptop:** Kyle's (`LAPTOP-O7JMND47`) · **Commit:** `69468be6`
+> **Request:** "check the recent pushes of pcap captures, and since we already have a capture for blackhole [linear/DLSU_Library/highload oct11_0331PM] now lts look for a wormhole pcap capture that we can use" (follow-up to #89, which put the wormhole choice ON HOLD).
+> **Scope:** all 36 wormhole cells under `datasets/analysis/wormhole/` (29 have analysis; the other 7 are tree cells without one) matched to the sniffer captures pushed in 81abc00d / e6ce9da4 / 69468be6, using each json's started/ended times against the root export time. 27 cells matched a capture.
+
+| Attack | Topology | Location | Scenario | Repeat | Capture | Role |
+|---|---|---|---|---|---|---|
+| wormhole (A `1C38` hop 3, B `0C80` hop 5, 7-board chain + root `B0CB…3218`) | linear | Yuchengco | burst | r1 | `PCAP/wormhole/linear/Yuchengco/burst/linear-wormhole-burst-yuchengco_r1_oct19_1140AM.pcap` (20.4 MB, 11:41:04-11:58:53, 0 frames lost by the sniffer) | **chosen** |
+| wormhole (A `1C38` hop 2, B `0C80` hop 7) | linear | G402 | stationary | r1 | `…_oct14_0236PM.pcap` (#89's candidate) | dropped: end A's uplink inaudible from 14:42:53 |
+
+| Check | Result | Detail |
+|---|---|---|
+| `verify_attack.py --attack wormhole`, all 29 analysed cells | ✅ 29/29 WORMHOLE CONFIRMED | chosen cell: 2/2 primary, **CONFIDENCE STRONG**, OUTCOME PASS; TunnelIntensity 0 -> 1.0, DuplicateRate 0 -> 1.0, TunnelBytes 0 -> 30; the two copies reach the root 17.8 ms apart |
+| Root arrivals export (chosen cell) | ✅ | 180 duplicate (src, seq) arrivals, ALL from B `0C80`, ALL in the attack phase; 0 in baseline (1,796 arrivals) and 0 in cooldown (711) |
+| Phase clock: root beacons | ✅ placed, about +-0.5 s | the root AP's beacons (`wlan.fc.type_subtype == 8 && wlan.ta == b0:cb:d8:f3:32:19`, 3,334 heard) carry its TSF = microseconds since its Wi-Fi started: TSF 0 = 11:41:53.34 (one restart blip in the first 0.3 s, then steady, spread 0.10 s). Cross-correlating the root's arrivals (root uptime) with the radio frames h1 -> root AP: **uptime = TSF + 1.5 s** (r = 0.77; the scan's TERMINATE anchor gave r = 0.13). Root boot 11:41:51.8 |
+| Phases (root uptime -> clock -> Wireshark x) | ✅ | baseline 284.63 s -> **11:46:36.5** (x = 332 s) · attack 585.23 s -> **11:51:37.1** (x = 633 s) · cooldown 765.83 s -> **11:54:37.7** (x = 813 s) · end 886.20 s -> 11:56:38.0 (x = 934 s); root boot x = 47 s |
+| ⚠️ TERMINATE anchor (#89's method) | ❌ wrong by 57 s here | the boards keep transmitting until the capture stops, so the 'end-of-run collapse' anchor landed at 11:57:35, 57 s late. The scan's per-cell rates (TEMP wh_scan.csv) used that anchor and are NOT reliable for the other cells; #89's oct. 14 wormhole timeline (anchored the same way) is suspect too. The blackhole example is NOT affected (its attack start is fitted from the attacker's own traffic) |
+| What the radio shows: end A uplink | ✅ visible | `wlan.fc.type == 2 && wlan.ta == 20:50:0d:e7:1c:38`: **0.70 -> 5.75 -> 3.46 frames/s** (baseline -> attack -> cooldown); first transmissions (`wlan.fc.retry == 0`) **0.10 -> 3.42 -> 1.69 /s**, retry share 86 % -> 40 % -> 51 %. In 15 s bins A's first transmissions are 0 for the whole baseline, start within 15 s of the attack start (20, 31, 39, then a 236-frame burst at x ~692-707 s), stay ~50 per 15 s to the cooldown, then fade over ~80 s to 0 by x ~887 s. Small early blip 12-13 frames at x ~587-617 s (45 s before the attack, not diagnosed) |
+| Controls (same phases) | ✅ | attack / baseline ratio: h1 1.1, h2 (A's parent) 1.2, h4 1.2, h7 0.9, h6 1.9; end A **8.3**, end B **9.6** (B 0.17 -> 1.63 -> 0.20 /s). Only the two tunnel ends change; the ordinary relays stay flat |
+| Mesh settling | ⚠️ before baseline | until ~11:43:50 (x ~166 s, root still in setup) A transmitted to F42D's AP, then moved to B4BF…ED80 (hop 2); stable after that |
+
+### Findings
+- **Wormhole = the defense capture: `linear-wormhole-burst-yuchengco_r1_oct19_1140AM.pcap`.** The UART tunnel itself is invisible (a wire), but its EFFECT is not: end A starts sending fresh frames at the attack start and becomes 8x busier, while its own parent and the other relays stay flat. The root's log says why: 180 of B's probes arrive twice in exactly that phase. Say "the sniffer shows end A suddenly transmitting B's re-injected traffic"; do NOT say the pcap shows the tunnel or the duplicates (encrypted, and the copy travels by wire).
+- **Unlike the blackhole, all phase boundaries here are placed on the root's own clock** (beacon TSF + 1.5 s), not fitted from the attack. The 1.5 s is the gap between the root's boot and its Wi-Fi start, measured from the data (correlation of the root's arrivals with the radio).
+- **Caveats to say if asked:** A's radio stays busy ~80 s into cooldown although the root logs no duplicates there (cause not diagnosed - backlog/re-routing); burst scenario, so traffic is bursty (one 236-frame burst 55 s into the attack); absolute frame rates depend on what the sniffer could decode (A's frames were heard mostly as retries in baseline) - compare phases and nodes, not absolute numbers.
+- **Other cells not ranked:** the scan's TERMINATE anchor was wrong, so no backup wormhole capture was picked; re-running the scan with the beacon clock would rank them. Not checked: the 7 tree cells (no analysis).
+
+**Verdict: ✅ USE `PCAP/wormhole/linear/Yuchengco/burst/linear-wormhole-burst-yuchengco_r1_oct19_1140AM.pcap` as the wormhole example** (I/O graph, 5 or 10 s interval: end A `wlan.fc.type == 2 && wlan.ta == 20:50:0d:e7:1c:38`, control = its parent `wlan.fc.type == 2 && wlan.ta == b4:bf:e9:34:ed:80`; markers x = 332 / 633 / 813 / 934 s). Blackhole example unchanged (#89).
+
+<!-- ═════════════════════════════════════════════════════════════════
 
 ## 🔎 VERIFICATION #89 — Oct 31, 2026 · ~11:30 PM — sniffer captures for the DEFENSE: blackhole pcap chosen (phases + Wireshark filters), wormhole pcap ON HOLD
 
