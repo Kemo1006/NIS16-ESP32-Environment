@@ -17,18 +17,14 @@ rssi_dbm_mean,Windowed (preprocess),Average signal strength to parent in this wi
 rssi_dbm_var,Windowed (preprocess),Variance of signal strength in this window,dBm²,
 rssi_dbm_min,Windowed (preprocess),Weakest signal reading in this window,dBm,
 rssi_dbm_max,Windowed (preprocess),Strongest signal reading in this window,dBm,
-retry_count_delta,Windowed (preprocess),How much retry_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'retry_count' for what is being counted on each role.
-retry_count_reset_detected,Windowed (preprocess),True if retry_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
-retry_count_first,Windowed (preprocess),Running total retry_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
-retry_count_last,Windowed (preprocess),Running total retry_count at the last row of the window,count,
-tx_count_delta,Windowed (preprocess),How much tx_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'tx_count' for what is being counted on each role.
-tx_count_reset_detected,Windowed (preprocess),True if tx_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
-tx_count_first,Windowed (preprocess),Running total tx_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
-tx_count_last,Windowed (preprocess),Running total tx_count at the last row of the window,count,
-probes_count_delta,Windowed (preprocess),How much probes_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'probes_count' for what is being counted on each role.
-probes_count_reset_detected,Windowed (preprocess),True if probes_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
-probes_count_first,Windowed (preprocess),Running total probes_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
-probes_count_last,Windowed (preprocess),Running total probes_count at the last row of the window,count,
+own_sent_delta,Windowed (preprocess),How much own_sent went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'own_sent' for what is being counted on each role.
+own_sent_reset_detected,Windowed (preprocess),True if own_sent went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+own_sent_first,Windowed (preprocess),Running total own_sent at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+own_sent_last,Windowed (preprocess),Running total own_sent at the last row of the window,count,
+own_failed_delta,Windowed (preprocess),How much own_failed went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'own_failed' for what is being counted on each role.
+own_failed_reset_detected,Windowed (preprocess),True if own_failed went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+own_failed_first,Windowed (preprocess),Running total own_failed at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+own_failed_last,Windowed (preprocess),Running total own_failed at the last row of the window,count,
 recv_count_delta,Windowed (preprocess),How much recv_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'recv_count' for what is being counted on each role.
 recv_count_reset_detected,Windowed (preprocess),True if recv_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
 recv_count_first,Windowed (preprocess),Running total recv_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
@@ -41,6 +37,30 @@ drop_count_delta,Windowed (preprocess),How much drop_count went up during this w
 drop_count_reset_detected,Windowed (preprocess),True if drop_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
 drop_count_first,Windowed (preprocess),Running total drop_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
 drop_count_last,Windowed (preprocess),Running total drop_count at the last row of the window,count,
+arrivals_count_delta,Windowed (preprocess),How much arrivals_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'arrivals_count' for what is being counted on each role.
+arrivals_count_reset_detected,Windowed (preprocess),True if arrivals_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+arrivals_count_first,Windowed (preprocess),Running total arrivals_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+arrivals_count_last,Windowed (preprocess),Running total arrivals_count at the last row of the window,count,
+bcast_count_delta,Windowed (preprocess),How much bcast_count went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'bcast_count' for what is being counted on each role.
+bcast_count_reset_detected,Windowed (preprocess),True if bcast_count went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+bcast_count_first,Windowed (preprocess),Running total bcast_count at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+bcast_count_last,Windowed (preprocess),Running total bcast_count at the last row of the window,count,
+bcast_failed_delta,Windowed (preprocess),How much bcast_failed went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'bcast_failed' for what is being counted on each role.
+bcast_failed_reset_detected,Windowed (preprocess),True if bcast_failed went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+bcast_failed_first,Windowed (preprocess),Running total bcast_failed at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+bcast_failed_last,Windowed (preprocess),Running total bcast_failed at the last row of the window,count,
+tunnel_tx_delta,Windowed (preprocess),How much tunnel_tx went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'tunnel_tx' for what is being counted on each role.
+tunnel_tx_reset_detected,Windowed (preprocess),True if tunnel_tx went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+tunnel_tx_first,Windowed (preprocess),Running total tunnel_tx at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+tunnel_tx_last,Windowed (preprocess),Running total tunnel_tx at the last row of the window,count,
+tunnel_rx_delta,Windowed (preprocess),How much tunnel_rx went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'tunnel_rx' for what is being counted on each role.
+tunnel_rx_reset_detected,Windowed (preprocess),True if tunnel_rx went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+tunnel_rx_first,Windowed (preprocess),Running total tunnel_rx at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+tunnel_rx_last,Windowed (preprocess),Running total tunnel_rx at the last row of the window,count,
+tunnel_fail_delta,Windowed (preprocess),How much tunnel_fail went up during this window (_last - _first),count per window (never negative),The per-window version of the running total — see 'tunnel_fail' for what is being counted on each role.
+tunnel_fail_reset_detected,Windowed (preprocess),True if tunnel_fail went DOWN inside the window or since the previous window ended (board rebooted and the counter restarted from 0),True | False,"When True, the _delta for this window was forced to 0 and is not trustworthy."
+tunnel_fail_first,Windowed (preprocess),Running total tunnel_fail at the START edge of the window (the previous window's last row; this window's first row when there is no directly preceding kept window),count,
+tunnel_fail_last,Windowed (preprocess),Running total tunnel_fail at the last row of the window,count,
 window_label,Windowed (preprocess),Ground-truth label for the window,0 normal | 1 blackhole | 2 wormhole | empty = unlabelled,"Empty outside the three real phases (e.g. pre_baseline), so those windows never enter a normal or attack group."
 window_phase_id,Windowed (preprocess),Most common phase_id among the window's raw rows,0 baseline | 1 blackhole | 2 wormhole | 3 cooldown | 4 terminate | 255 not heard yet,
 window_phase_mixed,Windowed (preprocess),True when the window's raw rows carry two real phases (the phase changed inside it),True | False,Such a window gets segment 'transition' and no label: its counters mix two phases.
