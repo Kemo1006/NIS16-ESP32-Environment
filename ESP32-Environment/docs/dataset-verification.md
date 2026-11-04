@@ -36,11 +36,12 @@ EDA plots (time series + PCA/t-SNE).
 | `feature_separability` | ✅ identical output | old-code tables vs new |
 | Tests | ✅ | `test_verify_attack` OK, `test_segments` all pass, `test_schema` 16 checks |
 | Native v3 file vs migrated-from-raw | ✅ identical windowed table | blackhole / star / G402 / burst, 5293 rows x 67 columns |
+| Firmware build, all 16 variants (`build_all_variants.ps1`, IDF 5.5.4) | ✅ BUILD OK, 0 errors, 0 warnings | incremental (warm) build: `csv_logger.c` itself recompiled, unchanged files reused cached objects, so this is not a clean-build result; re-run with `-Clean` for milestone evidence |
 | Firmware mapping (`csv_logger.c`) vs `schema.to_v3` | ✅ identical | host-compiled the exact mapping (`-Wall -Wextra -Werror`) for all six roles; header and 11 counters equal |
 
 **Finding that changed the test, not the data:** comparing against the tables saved BEFORE this work showed 46 "differences" (LatencyHopRatio in 2 cells, a few window counts). Re-running the OLD committed code on today's data gave the same differences, so the saved tables were simply older than the data/code; the gate therefore compares new code against old code on the same input.
 
-**Verdict: ✅ the tables are role-neutral and every audit output is unchanged. Open: firmware build of all 16 variants, a board flashed with the new firmware and one test cell, pull/push of the datasets (needs the user's OK).**
+**Verdict: ✅ the tables are role-neutral and every audit output is unchanged; all 16 firmware variants build. Open: a clean (`-Clean`) build for milestone evidence, a board flashed with the new firmware and one test cell. Pushed to origin/THESIS3 nov. 5.**
 
 
 <!-- ═════════════════════════════════════════════════════════════════
