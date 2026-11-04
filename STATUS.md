@@ -1,6 +1,6 @@
 # Status
 <!-- Overwrite each session. Hard cap: 40 lines — move "done" items to ARCHIVE.md. First thing a new session reads. -->
-**Updated:** nov. 5, 2026 (Angelo's laptop) - **Schema v3 (D-44): code, data and docs DONE and gated (0 unexpected diffs, audits identical). OPEN: firmware 16-variant build (killed by low memory at 3/16), flash + one test cell, pull/push (needs user OK).** MEMORY nov. 5 latest 16.
+**Updated:** nov. 5, 2026 (Angelo's laptop) - **Schema v3 (D-44): code, data and docs DONE and gated (0 unexpected diffs, audits identical). PUSHED nov. 5 (merge 1b3303b). OPEN: firmware 16-variant build (killed by low memory at 3/16), flash + one test cell, `missing_firmware_fields` column question.** MEMORY nov. 5 latest 16.
 
 ## ⚠️ Working copies / layout
 Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `S:\My Work\Business\Claude\Overlord\D_School\NIS16-ESP32-Environment-THESIS3` (only live copy since oct. 30; the Workstations and OneDrive copies are stale) · Kyle `D:\NIS16-ESP32-Environment` · branch `THESIS3`. Data in `ESP32-Environment/datasets/{exports,analysis,archive,PCAP,run_logs}`; analysis tables + `eda_output/` force-added (`git add -f`).
