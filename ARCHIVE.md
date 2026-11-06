@@ -2887,3 +2887,29 @@ Angelo `A:\Angelo\Excelsior\THESIS\T` · Basti `C:\Users\Basti\OneDrive\Document
 
 <!-- rolled from STATUS.md nov. 2, 2026 -->
 - nov. 2 (Kyle) — study guide v10: blackhole Wireshark walk-through added to 11.7 (filters + measured victim rates/retries). Uncommitted, user checking it first.
+
+<!-- rolled from MEMORY.md nov. 3, 2026 -->
+- oct. 15, 2026 ~2:50 PM (Kyle's laptop) — **Verification #30: blackhole/partial_mesh/G402/highload r1 USABLE.** Attacker `1C38` (hop 2) counters exact (+2221/2220/0; +1429/0/1429), 2 victims `FE90`/`ED80` -> PDR 0.000-0.003, 2/2 primaries (FR z -63.9, PDR z -14.6), all `6fecb46` setup checks ok, no arrival loss at 23/s. `ED80` came up ~34 s INTO the baseline (log starts in phase 0 with tx 0, root seq 1.. with no gap: late join, not a reboot, no de-dup loss). Structure = plain tree (B-pm). Checklist C11.
+
+<!-- rolled from STATUS.md nov. 3, 2026 -->
+- nov. 2 (Kyle) — verification #91: all wormhole pcaps re-scanned; defense wormhole pcap CHANGED to linear/DLSU_Library/stationary oct07_0537PM (end A heard ~fully, +1.1 frames/s at the attack marker, below-A + B flat); #90's Yuchengco pick superseded ('x8' = audibility, markers 8 s early). Notes only, uncommitted.
+
+<!-- rolled from MEMORY.md nov. 4, 2026 -->
+- oct. 15, 2026 ~4:10 PM (Kyle's laptop) — **Verification #31: location comparison, blackhole stationary, 4 topologies x G402/DLSU_Library/Yuchengco = locations are EQUIVALENT.** Same signature in all 12 cells (FR -> 0.000-0.006, victim PDR -> 0.000-0.003, bystanders ~1.0); site RSSI medians -68..-78 dBm but ranking flips per topology (node-level KW p 0.07-0.24 = placement, not building); site can't be predicted from baseline windows (acc 16-40 %, chance 33 %); detector trained on 2 sites -> 3rd F1 0.68-0.83, not worse than same-site training. Why it matters: justifies pooling sites in the paper (checklist B-loc). Real cell differences = attacker hop + victim count, not location. **NEW (#32, ~4:20 PM):** partial_mesh/Yuchengco/stationary (oct. 10, pre-de-dup-fix) has the de-dup baseline loss too: boards restarted pre-run, root kept only 162/166 of ~300 baseline probes from victim `1C38` / bystander `E618` (attacker = `0C80`; #31's "victim 0C80" was wrong, corrected in #32). Decision: RECAPTURE in the same Yuchengco session as linear/Yuch/stationary (D7); fallback = mask first ~140 s + footnote (C12). star/Yuch stationary clean. Script was a one-off in the session scratchpad (not in repo).
+
+<!-- rolled from STATUS.md nov. 4, 2026 -->
+- nov. 2 (Kyle) — study guide v11: 11.8 = wormhole Wireshark walk-through (DLSU stationary oct. 7 capture, Kyle's counts A 4.94/6.10/5.22 first sends/s, seq check A +1.1/s attack only, B flat), 2.6/Part 10/11.10 corrected. Uncommitted, user checking it first.
+
+<!-- rolled from MEMORY.md nov. 5, 2026 -->
+- oct. 16, 2026 ~1:50 PM (Angelo's laptop) — **Verification #33: wormhole/tree/DLSU_Library/stationary r1 = INCONCLUSIVE because of the INPUTS, not the attack.** Root `_arrivals.csv` phase 2: B `E618` 362 arrivals (2x181), all 362 duplicates from B -> tunnel worked. (1) Imported B file `child_node4_..._0125PM` is an aborted earlier boot (ends 223 s, phase 0 only, parent `...1C:39` = under A) -> re-import B's complete file. (2) The root's 4 direct children (A `1C38`, `0C80`, `FE90`, `ED80`) logged 10 rows/s in baseline then thinned to ~3-6/s in attack, ~1-3/s cooldown, while H02/H03 nodes stayed 10/s and their probes still reached the root; preprocess drops their sparse windows -> no phase exit -> `no_phase_seen`, so only root+704B+2805 got labels. Cause of (2) NOT diagnosed (candidate: root-RX flow-control throttling, highload doc §12) - check serial/SD logs. Run had a 1-hop shortcut (A H01, B H02, natural formation; user accepted it, footnote only). Numbered #33 because Kyle's #14-#32 are not yet in this laptop's file. Board file names: `b<boot>` = any reset (not compile), `r<run>` = gapless logged runs; pick the run by time, not number.
+
+<!-- rolled from STATUS.md nov. 5, 2026 -->
+- nov. 3 (Kyle) — NEW `Paper/Defense/Study Guide/THESIS3 Chapter 6 Study Guide (blackhole and wormhole results) nov. 3, 2026.md`: Ch. 6 blackhole + wormhole results made simple (every table/figure explained, 27 figures, 20 panel Qs), numbers from the final paper. Uncommitted.
+
+<!-- rolled from MEMORY.md nov. 5, 2026 (Canva wormhole slide push) -->
+- oct. 16, 2026 ~2:10 PM (Angelo's laptop) — Verification #34 (re-check of #33): wormhole/tree/DLSU/stationary -> RECAPTURE. Root telemetry stall on root's 4 direct children caused `no_phase_seen`; the "A received ~0" check was a false alarm from A having no labelled windows. Storage-write stall in csv_logger suspected, unverified.
+- oct. 16, 2026 ~2:40 PM (Angelo's laptop) — Verification #35: fixed verifier bug (TunnelIntensity summed only labelled windows, false "UART carried nothing"); TunnelLatency status changed INCONCL -> N/A with explanatory note; LatencyHopRatio INFEASIBLE kept, reason documented. Verdict logic unchanged.
+- oct. 16, 2026 ~3:15 PM (Angelo's laptop) — Verification #36 + preprocess fix: `assign_segments` bug anchored phases only on kept windows, losing all windows for nodes whose phase exit fell in a discarded window; fixed via fallback anchor on all windows (`anchored_on_discarded`). B's PDR is NaN by design (child-only role).
+
+<!-- rolled from MEMORY.md nov. 5, 2026 (sniffer study guide) -->
+- oct. 16, 2026 ~4:00 PM (Angelo's laptop) — Verifier report redesigned; TunnelLatency + LatencyHopRatio moved to a `measured` (shown, never scored) tier in `tools/verify_attack.py` (verdicts unchanged). Report layout: RESULT, [1] 3-sigma table with study column, [2] measured-not-scored, [3] setup checks, [4] per-node PDR, [5] study basis, VERDICT. Study tags only from REFERENCES + ATTACK-VALIDATION §4 (Z, A, KW, K, R, H). Checklist B-lat.
