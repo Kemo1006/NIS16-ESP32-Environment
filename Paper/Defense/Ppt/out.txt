@@ -1,0 +1,6 @@
+run: 'Majority rate ≈ 70%: 420 normal s of 600 s' size: 139700 bold: None
+run: 'TunnelIntensity and TunnelBytes reach 99.7% on the tunnel ends: the tunnel carries messages only during the attack' size: 139700 bold: None
+run: 'TunnelLatency exists only on the entry end during the attack, so its presence alone gives the label away' size: 139700 bold: None
+run: 'RetryRate reaches 100% on the entry end: its counter holds the frames sent through the tunnel, so it records the attack by construction' size: 139700 bold: None
+run: 'Non-attacker nodes: no feature beats 70% by more than 0.01 points' size: 139700 bold: None
+box w/h in: 3.2 2.75

@@ -200,15 +200,17 @@ static volatile bool s_export_in_progress = false;
 
 /* ── CSV headers ─────────────────────────────────────────────────────────── */
 
-/* Schema v2 (F3). The first 11 fields and their order are schema v1, untouched,
- * so a positional reader of an older capture is unaffected; the three relay
- * counters are appended. See csv_logger.h for what they mean and why they had
- * to exist. */
+/* Schema v3 (D-44): role-neutral. Every counter column means the same thing on
+ * every board and is 0 where it does not apply to the role (e.g. the blackhole
+ * attacker and the root write own_sent = 0). Replaces v2's role-dependent
+ * retry_count / tx_count / probes_count. See csv_logger.h and
+ * docs/data-and-results/DATA-DICTIONARY.md. analysis/schema.py (to_v3) reads
+ * v1, v2 and v3 files, so older captures keep working. */
 static const char *TELEMETRY_HEADER =
-    "timestamp_us,node_id,role,layer,parent_mac,"
-    "rssi_dbm,retry_count,tx_count,probes_count,"
-    "phase_id,gt_label,"
-    "recv_count,forward_count,drop_count\n";
+    "timestamp_us,node_id,role,layer,parent_mac,rssi_dbm,phase_id,gt_label,"
+    "own_sent,own_failed,recv_count,forward_count,drop_count,"
+    "arrivals_count,bcast_count,bcast_failed,"
+    "tunnel_tx,tunnel_rx,tunnel_fail\n";
 
 static const char *PROBE_ARRIVAL_HEADER =
     "timestamp_us,node_id,role,layer,parent_mac,"
@@ -1640,23 +1642,47 @@ esp_err_t csv_logger_append_telemetry(
 
     /* Format once, write the same bytes to SPIFFS and to the SD mirror, so the
      * two copies are identical row for row and either can be used as the run. */
+    /* D-44: map the caller's role-specific counters onto the role-neutral v3
+     * columns here, in one place, so no caller changes and no counting code is
+     * touched. Mirrors analysis/schema.py to_v3() for a v2 row. A column that
+     * does not apply to the role is 0. */
+    const bool is_root = (strcmp(role_str, "root") == 0);
+    const bool is_bh   = (strcmp(role_str, "blackhole") == 0);
+    const bool is_wa   = (strcmp(role_str, "wormhole_a") == 0);
+    const bool is_wb   = (strcmp(role_str, "wormhole_b") == 0);
+    const bool is_child = !(is_root || is_bh || is_wa || is_wb);   /* "child" / "victim" */
+
+    uint32_t own_sent = 0, own_failed = 0;
+    uint32_t arrivals = 0, bcast = 0, bcast_failed = 0;
+    uint32_t tunnel_tx = 0, tunnel_rx = 0, tunnel_fail = 0;
+    if (is_child)      { own_sent = probes_count; own_failed = retry_count; }
+    else if (is_bh)    { own_failed = retry_count; }                  /* originates no probes */
+    else if (is_root)  { arrivals = probes_count; bcast = tx_count; bcast_failed = retry_count; }
+    else if (is_wb)    { own_sent = probes_count; tunnel_tx = retry_count; }
+    else               { tunnel_rx = probes_count; tunnel_tx = tx_count; tunnel_fail = retry_count; } /* wormhole_a */
+
     char row[LOGGER_BUF_SIZE];
     int n = snprintf(row, sizeof(row),
-        "%lld,%s,%s,%d,%s,%d,%lu,%lu,%lu,%u,%u,%lu,%lu,%lu\n",
+        "%lld,%s,%s,%d,%s,%d,%u,%u,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\n",
         (long long)timestamp_us,
         node_id,
         role_str,
         layer,
         parent_str,
         rssi_dbm,
-        (unsigned long)retry_count,
-        (unsigned long)tx_count,
-        (unsigned long)probes_count,
         (unsigned)phase_id,
         (unsigned)gt_label,
+        (unsigned long)own_sent,
+        (unsigned long)own_failed,
         (unsigned long)recv_count,
         (unsigned long)forward_count,
-        (unsigned long)drop_count
+        (unsigned long)drop_count,
+        (unsigned long)arrivals,
+        (unsigned long)bcast,
+        (unsigned long)bcast_failed,
+        (unsigned long)tunnel_tx,
+        (unsigned long)tunnel_rx,
+        (unsigned long)tunnel_fail
     );
 
     if (n < 0 || n >= (int)sizeof(row)) {

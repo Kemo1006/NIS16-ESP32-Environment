@@ -1,6 +1,6 @@
 # Telemetry data dictionary — what every column actually contains
 
-**Created:** sep. 20, 2026 · **Updated:** sep. 25, 2026 (§2 rewritten for post-C7 firmware; see `deviations-limitations/thesis-deviate.md` D-12, D-15) · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
+**Created:** sep. 20, 2026 · **Updated:** nov. 5, 2026 (**§0 added: schema v3, role-neutral columns, D-44**; §1-§3 describe the older layouts and stay valid for old captures; see `deviations-limitations/thesis-deviate.md` D-12, D-15, D-44) · **Applies to:** `*_telem.csv`, `*_arrivals.csv`, `windowed_dataset.csv`, `feature_table.csv`
 
 This file exists because three columns in the telemetry schema **mean different things depending on
 which board wrote the row**, and the manuscript currently describes them as something they are not.
@@ -14,6 +14,61 @@ misrepresentation. Do the second immediately, the first at the next capture.
 > not read anywhere in this firmware — grep for `esp_wifi_get_statistics`, there are no hits.
 > It cannot be: ESP-IDF 5.3/5.5 only *print* Wi-Fi stats (`esp_wifi_statis_dump`). Real 802.11
 > retries come from the sniffer's Retry bit — `tools/pcap_retry.py`, see D-15.
+
+---
+
+## 0. Telemetry schema v3 (19 columns) — role-neutral, D-44 (nov. 5, 2026)
+
+**Why:** in v1/v2 `probes_count`, `tx_count` and `retry_count` meant a different thing on each role
+(§1-§2), so a reader had to special-case every board. In v3 **every column has one meaning on every
+role, and is 0 where it does not apply.** The raw v1/v2 logs are never edited; `analysis/schema.py`
+(`to_v3`) reads v1, v2 and v3 alike, and `tools/migrate_telem_v3.py` writes clean copies of every raw
+file to `datasets/exports_v3/` (with `manifest_v3.csv`: source path, SHA-256, row counts).
+
+| Column | Meaning (same on every role) | Non-zero on |
+|---|---|---|
+| `timestamp_us, node_id, role, layer, parent_mac, rssi_dbm, phase_id, gt_label` | unchanged (§1) | all |
+| `own_sent` | probes this node **created** and the mesh stack accepted | child, wormhole B |
+| `own_failed` | this node's own `esp_mesh_send()` calls that failed (application layer, **not** an 802.11 retry) | child, blackhole |
+| `recv_count` | frames received **for relay** (not created here) | relays only (the attacker) |
+| `forward_count` | relay frames passed on | relays only |
+| `drop_count` | relay frames received and not passed on | relays only |
+| `arrivals_count` | probes that arrived at the root | root |
+| `bcast_count`, `bcast_failed` | phase broadcasts sent / failed | root |
+| `tunnel_tx` | B: probes also written into the tunnel; A: probes re-injected toward the root | wormhole ends |
+| `tunnel_rx` | A: tunnelled probes received from B | wormhole A |
+| `tunnel_fail` | A: re-injection send failures | wormhole A |
+
+**Zero by design:** the blackhole attacker and the root write `own_sent = 0` (they create no probes);
+only the root has `arrivals_count`; only wormhole ends have `tunnel_*`. A 0 means "does not apply", not
+"nothing happened". Honest children report `recv/forward/drop = 0` because the mesh stack relays below the
+application layer (§2).
+
+**Old name → v3 name** (what `to_v3` does; checked row by row against the firmware mapping):
+
+| Role | probes_count | tx_count | retry_count |
+|---|---|---|---|
+| child | `own_sent` | (not kept; equals probes_count except ~7 of 1.1 M rows) | `own_failed` |
+| blackhole (v2) | (relay in = `recv_count`, already separate) | (= `forward_count`, already separate) | `own_failed` |
+| blackhole (v1, pre-F3) | `recv_count` | `forward_count` | `drop_count` |
+| root | `arrivals_count` | `bcast_count` | `bcast_failed` |
+| wormhole B | `own_sent` | (not kept) | `tunnel_tx` |
+| wormhole A | `tunnel_rx` | `tunnel_tx` | `tunnel_fail` |
+
+**What changed in the analysis tables:** windowed and feature tables carry the v3 names
+(`own_sent_delta`, `own_failed_delta`, ...). The 16 features are unchanged, **except `RetryRate`**
+(`own_failed / (own_sent + own_failed)`): it is now **blank** on the attacker, the root and wormhole end A
+(they send no probes; it used to read 0.0 there because it divided a forwarding or broadcast count by
+itself), and on wormhole end B it now measures its real failed sends (it used to measure the tunnel
+count). Checked on all 83 data folders by `tools/gate_v3_regression.py` against the old code on the same
+input: 0 unexpected differences; verdict sync, false-positive, threshold-sensitivity and separability
+audits are identical.
+
+**Which firmware writes v3:** builds after nov. 5, 2026 (`csv_logger.c` maps the callers' counters onto
+v3 in one place; no counting code changed). Captures before that are v1/v2; read them through
+`analysis/schema.py`. Note: 83 data folders exist but the design is 80 runs; the extra 3 are home-site
+pilot runs (`blackhole/linear/home/burst`, `.../highload`, `baseline/linear/home/highload`).
+`tools/recover_spiffs.py` still recovers only the old 11-column layout.
 
 ---
 

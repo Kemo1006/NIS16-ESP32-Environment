@@ -637,3 +637,45 @@ Both targets fit flash; reaching either requires lengthening `PHASE_BASELINE_S` 
 | **Effect** | Tree wormhole and partial wormhole now form the mesh the same way; the tunnel may skip 1 hop instead of the paper's 2 (Fig. 4.18). Does NOT fix B0:18 going silent after joining or the UART wiring (verification #87). |
 | **Checks** | Clean (from-scratch) builds, IDF 5.3.5: root, A, B, victim tree wormhole = 0 warnings, 0 errors; root + A + B binaries contain the D-41 log line and none of the D-38 / D-26 strings. Tree blackhole/baseline: unchanged by construction (`TREE_AS_PARTIAL` is 0 unless ACTIVE_ATTACK = wormhole). Not hardware-tested. |
 | **Paper edit** | **None - do NOT mention D-41 in the paper** (user decision, oct. 23 2026: the panel focuses on the data; tree and partial already look alike). Internal record only; checklist A44 marks it not-for-paper. |
+
+## D-42 · A victim <-> bystander switch no longer invalidates a run (nov. 4, 2026)
+
+| | |
+|---|---|
+| **Before** | D-23 rule R1: a board in the other class (victim vs bystander) for 3 s or more = setup FAIL = SETUP INVALID / REDO ("the attack windows mix two experiments"). |
+| **Why** | User (Angelo, nov. 4): ESP-MESH re-parents by itself; the switch is itself evidence (a victim that leaves the attacker recovers, B768: PDR 0.00 behind vs 1.00 not behind). Same logic as D-31. |
+| **We do** | `attack_checks.setup_issues`: the 3 flip FAILs become WARN "FLAGGED" (footnote). The attacker moving AND boards switching no longer fails by itself. Nothing is excluded from the 3-sigma test: the pooled windows can only dilute the loss (harder to confirm). `tools/switch_split_pdr.py` splits a board's PDR by state (descriptive only). |
+| **Basis** | Espressif self-healing (REROUTE-VERDICT.md §7); Karlof and Wagner 2003 (only traffic through the attacker is lost); fairness rule 6 (stricter only). |
+| **Effect** | No current cell changes. The old B768 run (git 6ecbe3e) would be CONFIRMED with a flag instead of SETUP INVALID. FLIP_MIN_WINDOWS (3) now only decides what is flagged. |
+| **Checks** | test_verify_attack 55/55, audit_verdict_sync 5/5, sensitivity 0 flips (verification #90). |
+| **Paper edit** | Wherever the paper says a victim/bystander flip FAILS a run: change to "flagged and footnoted" (checklist B-switch). Adviser check open. |
+
+## D-43 · MacRetryRate now placed on wormhole runs too, by fitting the attack from end A's uplink (nov. 4, 2026)
+
+| | |
+|---|---|
+| **Before** | `tools/pcap_retry.py` could put a sniffer capture on the run's phases only for BLACKHOLE runs (the attacker's uplink rate drops for exactly the attack's length). Every wormhole capture was refused ("Only blackhole runs can be fitted from traffic"), so MacRetryRate existed for blackhole only (checklist B-mrr2). |
+| **Why** | User (Angelo, nov. 4): wants the real 802.11 retry rate for both attacks on the slides. The wormhole has its own traffic signature: end A re-injects B's probes, so A's uplink STEPS UP for the attack's length (Figure 6.30). |
+| **We do** | `fit_attack_start_stepup()` mirrors the blackhole fit: the start second of the 181 s window where end A's uplink rate is highest against 30 s either side, over FIRST transmissions only (retries, the thing measured, never steer the fit). Accepted only if inside >= 1.4 x outside, >= 0.5 frames/s higher, outside >= 0.5 frames/s. Blackhole path unchanged. New `tools/macretry_summary.py` pools retried / frames per phase per run, keeps the latest usable capture per run cell, writes `docs/data-and-results/macretry_{blackhole,wormhole}_by_run.csv` + `macretry_summary.txt`. |
+| **Result** | Blackhole 27 runs usable (26 with frames in both phases): all links 34.8 % -> 37.5 % (+2.7 points, up in 16 of 26), attacker's own link 31.9 % -> 39.2 % (up in 20 of 26). Wormhole 18 runs: all links 29.1 % -> 28.5 % (up in 10 of 18), end A's link 28.9 % -> 23.2 % (down in 13 of 18). Of 71 wormhole captures: 18 usable, 21 run log without phase markers, 9 no run log, 19 no clear step (7 star, 7 partial mesh, 4 tree, 1 linear), 4 incomplete or root rebooted. Fit steps range 1.4x to 8.2x. |
+| **Basis** | Not a cited study: a measurement choice of this work. Checked on one blackhole and one wormhole run against a plain `tshark` count of ALL data frames in the same windows: same direction, within about 4 points (the tool counts only unicast frames between mesh boards, so its rate is a few points higher). |
+| **Effect** | MacRetryRate can be filled for wormhole runs on re-analysis (`features.py` runs `pcap_retry.py --all`); NOT run on the analysis tables here, so the dataset is unchanged. Context only, not a model input. |
+| **Limits** | The wormhole window is inferred from the same traffic family (more frames from A), so the end-A link numbers are the least independent; the weakest steps are 1.4x. Star has 2 usable wormhole runs. A sniffer hears only part of the frames. |
+| **Paper edit** | Sec. 6.2.4 / D-14: replace "no wormhole or benign run" and "7 blackhole runs" with the counts above; say the wormhole phases were found from end A's uplink (checklist B-mrr3). Adviser check open. |
+
+---
+
+## D-44 · Telemetry schema v3: role-neutral columns (nov. 5, 2026)
+
+| | |
+|---|---|
+| **Before** | `probes_count`, `tx_count`, `retry_count` meant a different thing on every role (child = own sends and failed sends; blackhole attacker = relay counts in v1, failed sends in v2; root = arrivals / broadcasts; wormhole ends = tunnel counts), and the attacker repeated its relay numbers in `recv_count` / `forward_count`. Readers had to special-case every board; `RetryRate` read 0.0 on nodes that send nothing and measured the tunnel count on wormhole end B. |
+| **Why** | User (Angelo, nov. 4-5): a future researcher must not have to guess what a column means per role; the attacker's own-send columns should be 0 and the root tidy. |
+| **We do** | 19 columns, each with ONE meaning on every role and 0 where it does not apply: `own_sent`, `own_failed`, `recv_count`, `forward_count`, `drop_count`, `arrivals_count`, `bcast_count`, `bcast_failed`, `tunnel_tx`, `tunnel_rx`, `tunnel_fail` (DATA-DICTIONARY.md §0). Raw v1/v2 logs are NOT edited; `analysis/schema.py` converts any version on load and `tools/migrate_telem_v3.py` writes clean copies to `datasets/exports_v3/` with a SHA-256 manifest. Firmware (`csv_logger.c`) writes v3 by mapping the callers' counters in one place; no counting, forwarding, attack or tree code changed (D-41 frozen code untouched). |
+| **Result** | All 83 data folders regenerated; 16 features identical to the old code on the same input, except `RetryRate`: blank (was 0.0) on the attacker, root and wormhole end A, and the real failed-send rate (was the tunnel count) on end B. Verdict sync, false-positive, threshold-sensitivity and separability audits give identical output (verification #92). |
+| **Basis** | Not a cited study: a data-hygiene decision of this work. |
+| **Effect** | Windowed and feature tables carry v3 names (`own_sent_delta`, ...). Old captures stay readable. Boards must be reflashed for new captures to be v3; until then new captures are v2 and are converted on load. |
+| **Limits** | Firmware not yet flashed/tested on boards by this session (host-compiled mapping equals the Python migration for all six roles; full 16-variant build result in verification #92 / STATUS). `tools/recover_spiffs.py` recovers only the old 11-column layout. 83 data folders exist for the 80-run design (3 extra home pilot runs). |
+| **Paper edit** | Tables 4.2 / 4.5 and any text that says "`retry_count` / `tx_count` / `probes_count`" per role: describe the role-neutral layout and that raw files keep the old one (checklist B-v3). |
+
+---

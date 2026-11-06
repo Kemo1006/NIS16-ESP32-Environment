@@ -138,8 +138,9 @@ requires this be reported as a dataset quality metric.
 
 ## M7 output — `feature_table.csv`
 
-`windowed_dataset.csv` plus the 16 Table 4.11 feature columns, plus a
-`missing_firmware_fields` column.
+`windowed_dataset.csv` plus the 16 Table 4.11 feature columns. (The old constant
+`missing_firmware_fields` column was removed on nov. 5, 2026: it repeated the three relay-only
+features on every row and its name wrongly suggested a firmware gap.)
 
 ### Read this before trusting a feature column blindly
 
@@ -182,9 +183,8 @@ is a statement about the assembled dataset, not about any single run.
 Every NaN column is still emitted with the correct name, so the
 milestone criterion "feature table contains all 16 columns" is met
 structurally. "All 16 columns exist" and "all 16 columns currently
-have real numbers" are different claims — check
-`missing_firmware_fields` (or the NaN-count summary `features.py`
-prints after running) before assuming a column is populated.
+have real numbers" are different claims — check the NaN-count summary
+`features.py` prints after running before assuming a column is populated.
 
 ### A note on PDR specifically
 

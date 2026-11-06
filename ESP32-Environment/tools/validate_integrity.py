@@ -59,6 +59,15 @@ TELEM_HEADER = [
 # below, and any reader that indexes by position keeps working unchanged.
 TELEM_HEADER_V2 = TELEM_HEADER + ["recv_count", "forward_count", "drop_count"]
 
+# Telemetry schema v3 - D-44, role-neutral. Same columns on every role; 0 where a column
+# does not apply. Identity/phase columns first, then the counters (analysis/schema.py V3_HEADER).
+TELEM_HEADER_V3 = [
+    "timestamp_us", "node_id", "role", "layer", "parent_mac", "rssi_dbm", "phase_id", "gt_label",
+    "own_sent", "own_failed", "recv_count", "forward_count", "drop_count",
+    "arrivals_count", "bcast_count", "bcast_failed",
+    "tunnel_tx", "tunnel_rx", "tunnel_fail",
+]
+
 ARRIVALS_HEADER = TELEM_HEADER[:9] + ["phase_id", "gt_label", "src_mac", "seq_num", "latency_us"]
 # probes_count is named probes_received in arrivals.csv (same position/meaning)
 ARRIVALS_HEADER[8] = "probes_received"
@@ -68,7 +77,7 @@ ARRIVALS_HEADER[8] = "probes_received"
 # schema FAIL just for carrying the columns the panel asked for.
 EXPECTED_HEADERS = {"telem": TELEM_HEADER, "arrivals": ARRIVALS_HEADER}
 ACCEPTED_HEADERS = {
-    "telem": [TELEM_HEADER, TELEM_HEADER_V2],
+    "telem": [TELEM_HEADER, TELEM_HEADER_V2, TELEM_HEADER_V3],
     "arrivals": [ARRIVALS_HEADER],
 }
 

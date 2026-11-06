@@ -66,4 +66,3 @@ PDR,Feature (features.py),Packet Delivery Ratio: share of this victim's probes t
 _pdr_clipped,Feature (features.py),True if PDR came out above 1 and was capped,True | False,Happens when duplicates (e.g. wormhole copies) arrive; worth checking.
 Label,Feature (features.py),Final ground-truth label used for analysis (copy of window_label),0 normal | 1 blackhole | 2 wormhole | empty = unlabelled,
 exposure,Unknown,(no legend entry — add one in analysis/column_legend.py),,
-missing_firmware_fields,Feature (features.py),Features that are only defined on relaying nodes and may be empty here,comma-separated feature names,Same text on every row; informational only.

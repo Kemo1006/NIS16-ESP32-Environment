@@ -335,6 +335,48 @@ def _wormhole_order(df, roles):
     return bad < FLIP_MIN_WINDOWS, bad, len(both)
 
 
+def switch_split(df, attack, trim=2.0):
+    """One row per board that was BOTH behind the attacker (victim) and not (bystander) during
+    the attack: its OWN mean PDR in each state (nov. 4 2026, D-42). DESCRIPTIVE - never feeds a
+    verdict. Same class per second as exposure_timeline; detached / unknown seconds are left out and
+    `trim` seconds each side of a class change are dropped (a window at the edge mixes both)."""
+    if attack != "blackhole" or "PDR" not in df.columns:
+        return []
+    tl = exposure_timeline(df, attack)
+    seg = _seg(df, "attack")
+    tc = _tcol(seg)
+    rows = []
+    for n, seq in tl.items():
+        cls = [c for _t, c in seq]
+        if not (cls.count("victim") and cls.count("bystander")):
+            continue
+        edges, last = [], None
+        for t, c in seq:
+            if c in ("victim", "bystander"):
+                if last is not None and c != last[1]:
+                    edges.append((last[0] + t) / 2)
+                last = (t, c)
+        cmap = dict(seq)
+        g = seg[seg["node_id"] == n].dropna(subset=[tc])
+        got = {"victim": [], "bystander": []}
+        cut = 0
+        for t, pdr in zip(g[tc].astype(float), pd.to_numeric(g["PDR"], errors="coerce")):
+            c = cmap.get(t)
+            if c not in got:
+                continue
+            if any(abs(t - e) <= trim for e in edges):
+                cut += 1
+                continue
+            if pd.notna(pdr):
+                got[c].append(float(pdr))
+        mean = lambda v: round(sum(v) / len(v), 3) if v else None
+        rows.append({"board": _short(n), "victim_s": cls.count("victim"), "bystander_s": cls.count("bystander"),
+                     "detached_s": cls.count("detached") + cls.count("unknown"), "trimmed_s": cut,
+                     "n_vic_pdr": len(got["victim"]), "n_bys_pdr": len(got["bystander"]),
+                     "PDR_behind_attacker": mean(got["victim"]), "PDR_not_behind": mean(got["bystander"])})
+    return rows
+
+
 def unresolved_windows(df, attack):
     """{(node_id, t)} of attack windows in which a board had NO working path to the
     root: detached, or a board above it went silent (crashed / reset). They are
@@ -647,10 +689,7 @@ def topology_issues(df, attack, key_nodes=()):
             # victims' probes exactly like the attack does, so a long outage is not evidence.
             out_s, n_s = attacker_outage(df, n)
             has_victim = any(_majority([c for _t, c in seq]) == "victim" for seq in timeline.values())
-            if flipped:
-                out.append(Issue(FAIL, msg + " - the ATTACKER moved AND boards switched between victim and bystander"
-                                             " (listed below): the attack reached different boards during the attack"))
-            elif not has_victim:
+            if not has_victim:
                 out.append(Issue(FAIL, msg + " - the ATTACKER moved and no board stayed behind it as a victim"))
             elif n_s and out_s > REROUTE_BUDGET * n_s:
                 out.append(Issue(FAIL, msg + f" - the ATTACKER had no uplink for {out_s} of {n_s} attack windows "
@@ -658,8 +697,9 @@ def topology_issues(df, attack, key_nodes=()):
                                              f"an attacker without a path drops its victims' probes exactly like the "
                                              f"attack does, so those windows cannot tell the two apart"))
             else:
-                out.append(Issue(WARN, msg + f" - TOLERATED (D-31): the ATTACKER changed its own parent, but every board "
-                                             f"kept its victim / bystander class and it had no uplink for only {out_s} s "
+                out.append(Issue(WARN, msg + f" - TOLERATED (D-31): the ATTACKER changed its own parent, but "
+                                             + ("boards that switched between victim and bystander are flagged below, " if flipped else "every board kept its victim / bystander class, ")
+                                             + f"and it had no uplink for only {out_s} s "
                                              f"(limit {int(REROUTE_BUDGET * n_s)} s, those windows are left out); the attack "
                                              f"reached the same boards. Decided from the layout only"))
             continue
@@ -667,9 +707,11 @@ def topology_issues(df, attack, key_nodes=()):
             cls = [c for _t, c in timeline[n]]
             off = cls.count("detached") + cls.count("unknown")
             if n in flipped:
-                out.append(Issue(FAIL, msg + f" - it moved between VICTIM ({cls.count('victim')} s) and BYSTANDER "
-                                             f"({cls.count('bystander')} s) during the attack, so the attack windows "
-                                             f"mix two experiments"))
+                out.append(Issue(WARN, msg + f" - it moved between VICTIM ({cls.count('victim')} s) and BYSTANDER "
+                                             f"({cls.count('bystander')} s) during the attack: FLAGGED, no longer a FAIL "
+                                             f"(user, nov. 4 2026). Its windows mix two states, which can only DILUTE the "
+                                             f"victim loss (harder to confirm, never easier); its own PDR can be split by "
+                                             f"state with tools/switch_split_pdr.py. Footnote it"))
             elif _majority(cls) is None:
                 out.append(Issue(FAIL, msg + " - its position during the attack could not be resolved"))
             elif off > REROUTE_BUDGET * len(cls):
@@ -700,9 +742,10 @@ def topology_issues(df, attack, key_nodes=()):
     # boards that did not move themselves but were carried across by an ancestor
     for n in sorted(flipped - set(moved)):
         seq = [c for _t, c in timeline[n]]
-        out.append(Issue(FAIL, f"{_short(n)} ({roles.get(n, '?')}) switched between VICTIM ({seq.count('victim')} s) "
+        out.append(Issue(WARN, f"{_short(n)} ({roles.get(n, '?')}) switched between VICTIM ({seq.count('victim')} s) "
                                f"and BYSTANDER ({seq.count('bystander')} s) during the attack because a board above "
-                               f"it moved - the attack windows mix two experiments"))
+                               f"it moved: FLAGGED, no longer a FAIL (user, nov. 4 2026) - its windows mix two states "
+                               f"(dilutes the victim loss, never inflates it). Footnote it"))
     # Phase-to-phase comparison: the layout when START was pressed (end of the
     # baseline) vs the attack vs the start of the cooldown. A board in a different
     # class between phases did not mix the attack windows (the checks above), but
@@ -1029,13 +1072,19 @@ def scenario_issues(df):
     sc = _first(df, "scenario")
     if sc not in ("stationary", "burst", "highload", "jitter"):
         return [Issue(SKIP, f"{SCEN_TEXT} scenario {sc or '?'!r} has no traffic check")]
-    need = {"node_id", "node_role", "window_phase_id", "tx_count_delta"}
+    # schema v3 (D-44): own_sent_delta is a node's OWN sends (0 on the attacker/root); older
+    # windowed tables carry tx_count_delta instead.
+    v3 = "own_sent_delta" in df.columns
+    sent_col = "own_sent_delta" if v3 else "tx_count_delta"
+    need = {"node_id", "node_role", "window_phase_id", sent_col}
     if not need <= set(df.columns):
         return [Issue(SKIP, f"{SCEN_TEXT} {sc} - columns missing ({', '.join(sorted(need - set(df.columns)))})")]
     tc = _tcol(df)
-    d = df[df["node_role"].astype(str).str.lower() != "root"].copy()
+    role_l = df["node_role"].astype(str).str.lower()
+    # v3: only nodes that originate probes (a relay's own_sent is 0 and would drag the median down)
+    d = (df[role_l.isin(["child", "victim", "wormhole_b"])] if v3 else df[role_l != "root"]).copy()
     d["_ph"] = pd.to_numeric(d["window_phase_id"], errors="coerce")
-    d["_tx"] = pd.to_numeric(d["tx_count_delta"], errors="coerce")
+    d["_tx"] = pd.to_numeric(d[sent_col], errors="coerce")
     d["_t"] = pd.to_numeric(d[tc], errors="coerce")
     base = d[d["_ph"] == 0]
     if base.empty:

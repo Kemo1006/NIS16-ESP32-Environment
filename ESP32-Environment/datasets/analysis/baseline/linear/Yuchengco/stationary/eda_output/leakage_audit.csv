@@ -1,6 +1,6 @@
 feature,threshold_accuracy,nan_accuracy,coverage,excluded,majority_baseline,lift_over_majority
-ParentSwitchRate,1.0,,1.0,False,1.0,0.0
 PDR,1.0,0.8683348227584152,0.8683348227584152,False,1.0,0.0
+ParentSwitchRate,1.0,,1.0,False,1.0,0.0
 HopChangeCount,1.0,,1.0,False,1.0,0.0
 IngressEgressDelta,0.9997021149836163,,1.0,False,1.0,-0.00029788501638372544
 RSSI_var,0.9997021149836163,,1.0,False,1.0,-0.00029788501638372544

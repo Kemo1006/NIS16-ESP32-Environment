@@ -15,6 +15,57 @@ EDA plots (time series + PCA/t-SNE).
 
 <!-- ═════════════════════════════════════════════════════════════════
 
+## 🔎 VERIFICATION #92 — Nov 5, 2026 — schema v3 (role-neutral columns): every table regenerated, old vs new compared (D-44)
+
+> **Requested by:** Angelo (user) · **Laptop:** Angelo's · **Commit:** uncommitted
+> **Request:** "update all of the datasets and even how it was analyzed ... make sure nothing is hurt ... `audit_threshold_sensitivity` and others"
+> **Scope:** all 83 data folders under `datasets/exports/` (80 design runs + 3 home pilot runs), raw logs untouched; new code `analysis/schema.py`, `preprocess.py`, `features.py`, `attack_checks.py`, `eda.py`, `column_legend.py`; firmware `csv_logger.c`.
+
+| Attack | Topology | Location | Scenario | Repeat |
+|---|---|---|---|---|
+| blackhole (38 folders), wormhole (36), benign (9) | all 4 | G402, DLSU_Library, Yuchengco (+ home) | all | r1 |
+
+| Check | Result | Detail |
+|---|---|---|
+| Raw logs unchanged | ✅ | `migrate_telem_v3.py --check`: SHA-256 of every raw `_telem.csv` equals the manifest; 1392 files converted, 0 unreadable, row counts equal |
+| 16 features, old code vs new code, SAME input (83 folders) | ✅ 0 unexpected | `tools/gate_v3_regression.py`: only differences are `RetryRate` on rows of a node that sends no probes (attacker / root / end A: now blank, was 0.0; 28,993 windows) and on wormhole end B (now its real failed sends, was its tunnel count; 6,629 windows) |
+| Baseline PDR / ForwardingRatio / LatencyHopRatio / topology features | ✅ identical | 1e-12 |
+| `audit_verdict_sync` | ✅ identical output | all 5 rules hold |
+| `audit_false_positives` | ✅ identical output | 0 false positives |
+| `audit_threshold_sensitivity` | ✅ identical output | same 74 verdicts, same flips |
+| `feature_separability` | ✅ identical output | old-code tables vs new |
+| Tests | ✅ | `test_verify_attack` OK, `test_segments` all pass, `test_schema` 16 checks |
+| Native v3 file vs migrated-from-raw | ✅ identical windowed table | blackhole / star / G402 / burst, 5293 rows x 67 columns |
+| Firmware mapping (`csv_logger.c`) vs `schema.to_v3` | ✅ identical | host-compiled the exact mapping (`-Wall -Wextra -Werror`) for all six roles; header and 11 counters equal |
+
+**Finding that changed the test, not the data:** comparing against the tables saved BEFORE this work showed 46 "differences" (LatencyHopRatio in 2 cells, a few window counts). Re-running the OLD committed code on today's data gave the same differences, so the saved tables were simply older than the data/code; the gate therefore compares new code against old code on the same input.
+
+**Verdict: ✅ the tables are role-neutral and every audit output is unchanged. Open: firmware build of all 16 variants, a board flashed with the new firmware and one test cell, pull/push of the datasets (needs the user's OK).**
+
+
+<!-- ═════════════════════════════════════════════════════════════════
+
+## 🔎 VERIFICATION #90 — Nov 4, 2026 — victim <-> bystander switch no longer makes a run SETUP INVALID (verdict rule change, D-42)
+
+> **Requested by:** Angelo (user) · **Laptop:** Angelo's · **Commit:** uncommitted
+> **Request:** "can you remove in our verdict where it make invalid if the node became victim then bystander"
+> **Scope:** `tools/attack_checks.py` (setup_issues), `tools/test_verify_attack.py`, all 74 analysed attack runs, the old tree/G402/highload table (git `6ecbe3e`).
+
+| Attack | Topology | Location | Scenario | Repeat |
+|---|---|---|---|---|
+| blackhole | tree (old B768 flip run, git 6ecbe3e) + all analysed cells | G402 + all | highload + all | r1 |
+
+| Check | Result | Detail |
+|---|---|---|
+| Rule changed | 🔧 | 3 FAILs -> WARN "FLAGGED": (a) a board that moved and switched, (b) a board carried across by a moved ancestor, (c) the ATTACKER moved AND boards switched (that branch removed; the attacker still FAILS with no victim behind it or an outage over 10 %). Rule R1 in REROUTE-VERDICT.md updated |
+| Direction of the bias | ✅ conservative | the switching board's victim-class seconds keep PDR ~0 and its bystander-class seconds PDR ~1, both stay pooled in the victim group -> victim loss is DILUTED: harder to confirm, never easier. Nothing is excluded (excluding the recovered seconds would have favoured confirming) |
+| Tests | ✅ | test_verify_attack 55/55 (the old "still fails" test now asserts WARN + FLAGGED, no FAIL); audit_verdict_sync 5/5 |
+| Sensitivity (74 runs x 17) | ✅ unchanged | 73 CONFIRMED + 1 INCONCLUSIVE, 14 real thresholds flip 0; no current run changed (none has a real flip) |
+| Old B768 flip run (git 6ecbe3e) | 🔧 verdict moves | was SETUP INVALID; now CONFIRMED, B768 flagged (victim 94 s PDR 0.00, bystander 27 s PDR 1.00 - `switch_split_pdr_tree-G402-highload_B768_commit6ecbe3e.csv`). That table was replaced by the oct. 19 recapture, so no published cell changes |
+
+**Verdict: 🔧 a victim -> bystander switch is flagged and footnoted, not fatal. No current cell changes. Open: adviser check (the paper says flips FAIL: checklist B-switch), and the user decides whether the oct. 19 recapture of tree/G402/highload is still needed.**
+
+<!-- ═════════════════════════════════════════════
 ## 🔎 VERIFICATION #91 — Nov 2, 2026 · evening — ALL wormhole sniffer captures re-scanned on the beacon clock + 802.11 sequence numbers: defense wormhole pcap CHANGED to linear/DLSU_Library/stationary oct. 7 (corrects #90)
 
 > **Requested by:** Kyle · **Laptop:** Kyle's (`LAPTOP-O7JMND47`) · **Commit:** `2f5dfad6`

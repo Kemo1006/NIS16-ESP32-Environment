@@ -14,7 +14,7 @@ Baseline,child,ConsistencyScore,0.02427189408983676,4.999997500476638e-07,0.0247
 Baseline,root,IngressEgressDelta,0.0,0.0,0.0,402,402
 Baseline,root,ParentSwitchRate,0.0,0.0,0.0,402,402
 Baseline,root,HopChangeCount,0.0,0.0,0.0,402,402
-Baseline,root,HopStabilityDuration,0.9898009950248757,1.0,0.001466793215965062,402,402
+Baseline,root,HopStabilityDuration,0.9902985074626867,1.0,0.0014268433394126624,402,402
 Baseline,root,RSSI_var,0.0,0.0,0.0,402,402
 Baseline,root,RSSI_stability,0.0,0.0,0.0,402,402
 Baseline,wormhole_a,IngressEgressDelta,0.0,0.0,0.0,419,419

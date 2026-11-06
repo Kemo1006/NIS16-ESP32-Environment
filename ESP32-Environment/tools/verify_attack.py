@@ -148,7 +148,7 @@ FEATURE_UPPER_BOUND = {"PDR": 1.0, "ForwardingRatio": 1.0, "ConsistencyScore": 1
 #     sends, so pooling on it tested honest relays against their own traffic.
 RATIO_OF_SUMS = {
     "ForwardingRatio": [("forward_count_delta", ("recv_count_delta",)),
-                        ("tx_count_delta", ("probes_count_delta",))],
+                        ("tx_count_delta", ("probes_count_delta",))],   # legacy v1 tables only; v3 always has the first
     "NeighbourForwardingRatio": [("NeighbourOut", ("NeighbourIn",))],
 }
 
@@ -1268,6 +1268,18 @@ def verify(df, attack, sigma, block=DEFAULT_BLOCK_WINDOWS, checks=True):
             issues = _checks.setup_issues(df_nodes, attack)
         except Exception as e:                      # never block the verdict
             issues = [_checks.Issue(_checks.SKIP, f"setup checks could not run: {e}")]
+        try:        # D-42 (nov. 4 2026): a board that switched is measured IN EACH state; display only
+            for r in _checks.switch_split(df_nodes, attack):
+                if r["PDR_behind_attacker"] is None or r["PDR_not_behind"] is None:
+                    continue
+                issues.append(_checks.Issue("OK", f"SPLIT PDR: {r['board']} switched - behind the attacker its own PDR was "
+                    f"{r['PDR_behind_attacker']:.2f} ({r['n_vic_pdr']} s), not behind it {r['PDR_not_behind']:.2f} "
+                    f"({r['n_bys_pdr']} s; {r['detached_s']} s detached and {r['trimmed_s']} s at the switches left out)"
+                    + (" - the loss follows the attacker, not the board"
+                       if r["PDR_behind_attacker"] < 0.5 <= r["PDR_not_behind"] else "")
+                    + ". Descriptive only, not in the verdict"))
+        except Exception as e:                      # never block the verdict
+            issues.append(_checks.Issue(_checks.SKIP, f"split PDR could not run: {e}"))
         if confirmed:
             try:
                 rob = _robustness_issue(df_in, attack, sigma, block, issues)

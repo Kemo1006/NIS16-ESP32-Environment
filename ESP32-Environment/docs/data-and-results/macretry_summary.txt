@@ -1,0 +1,30 @@
+== BLACKHOLE: 27 runs with per-phase data (latest capture per cell; 2 refused/stale files skipped); 26 have frames in both baseline and attack
+All links: baseline mean 34.8%, attack mean 37.5%, cooldown mean 36.1%
+Attack minus baseline (all links) per run: mean +2.71 pts, median +0.83, up in 16 of 26, range -7.6 to +15.0
+BLACKHOLE link: baseline mean 31.9%, attack mean 39.2%; attack minus baseline mean +7.29, median +5.10, up in 20 of 26; median frames baseline 3672 attack 1062
+  topology  linear         n= 5  baseline  39.3%  attack  41.1%
+  topology  partial_mesh   n= 6  baseline  34.8%  attack  36.6%
+  topology  star           n= 7  baseline  33.1%  attack  36.2%
+  topology  tree           n= 8  baseline  33.5%  attack  37.3%
+  location  DLSU_Library   n= 7  baseline  37.5%  attack  40.0%
+  location  G402           n= 9  baseline  34.2%  attack  35.4%
+  location  Yuchengco      n=10  baseline  33.6%  attack  37.7%
+  scenario  burst          n= 8  baseline  33.6%  attack  37.3%
+  scenario  highload       n=11  baseline  37.8%  attack  39.4%
+  scenario  stationary     n= 7  baseline  31.6%  attack  35.0%
+
+== WORMHOLE: 18 runs with per-phase data (latest capture per cell; 0 refused/stale files skipped); 18 have frames in both baseline and attack
+All links: baseline mean 29.1%, attack mean 28.5%, cooldown mean 28.2%
+Attack minus baseline (all links) per run: mean -0.69 pts, median +0.43, up in 10 of 18, range -11.6 to +5.8
+WORMHOLE_A link: baseline mean 28.9%, attack mean 23.2%; attack minus baseline mean -5.68, median -1.80, up in 5 of 18; median frames baseline 280 attack 985
+  topology  linear         n= 6  baseline  29.3%  attack  28.3%
+  topology  partial_mesh   n= 5  baseline  35.3%  attack  35.3%
+  topology  star           n= 2  baseline  27.8%  attack  27.5%
+  topology  tree           n= 5  baseline  23.3%  attack  22.2%
+  location  DLSU_Library   n= 3  baseline  26.3%  attack  25.5%
+  location  G402           n= 7  baseline  32.2%  attack  33.1%
+  location  Yuchengco      n= 8  baseline  27.6%  attack  25.5%
+  scenario  burst          n= 6  baseline  27.0%  attack  25.8%
+  scenario  highload       n= 6  baseline  30.5%  attack  29.7%
+  scenario  stationary     n= 6  baseline  30.0%  attack  29.9%
+
